@@ -240,8 +240,9 @@ func printReport(testFailures map[string]TestFailureMeta) {
 
 func main() {
 	opt := &options{
-		opt.SortByFlakes=true,
-		opt.FailureCount=1,
+		SortByFlakes:   false,
+		SortByFailures: false,
+		FailureCount:   1,
 	}
 
 	klog.InitFlags(nil)
