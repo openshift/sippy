@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+
+	"github.com/spf13/cobra"
+	"k8s.io/klog"
 )
 
 /*
@@ -29,7 +32,7 @@ var (
 	}
 )
 
-type FailureMeta struct {
+type TestFailureMeta struct {
 	count int
 	jobs  map[string]interface{}
 	sig   string
@@ -93,8 +96,37 @@ func fetchJobDetails(dashboard_url, jobName, sortBy string) (JobDetails, error) 
 	return details, nil
 }
 
+type options struct {
+	SampleData     bool
+	SortByFlakes   bool
+	SortByFailures bool
+}
+
 func main() {
-	failures := make(map[string]FailureMeta)
+	opt := &options{}
+	cmd := &cobra.Command{
+		Run: func(cmd *cobra.Command, arguments []string) {
+			if opt.SortByFlakes && opt.SortByFailures {
+				klog.Exitf("Cannot set both sort-by-flakes and sort-by-failures")
+			}
+			if err := opt.Run(); err != nil {
+				klog.Exitf("error: %v", err)
+			}
+		},
+	}
+	flag := cmd.Flags()
+	flag.BoolVar(&opt.SampleData, "sample-data", opt.SampleData, "Use dummy testgrid data from local disk (sample-data dir)")
+	flag.BoolVar(&opt.SortByFlakes, "sort-by-flakes", opt.SortByFlakes, "Sort tests by flakiness")
+	flag.BoolVar(&opt.SortByFailures, "sort-by-failures", opt.SortByFailures, "Sort tests by failures")
+
+	if err := cmd.Execute(); err != nil {
+		klog.Exitf("error: %v", err)
+	}
+}
+
+func (o *options) Run() error {
+
+	testFailures := make(map[string]TestFailureMeta)
 	sigRegex := regexp.MustCompile(`\[(sig-.*?)\]`)
 	//	i := 0
 
@@ -117,9 +149,9 @@ func main() {
 						continue
 					}
 					fmt.Printf("found top failing test: %q\n", test.Name)
-					meta, ok := failures[test.Name]
+					meta, ok := testFailures[test.Name]
 					if !ok {
-						meta = FailureMeta{
+						meta = TestFailureMeta{
 							jobs: make(map[string]interface{}),
 						}
 					}
@@ -133,7 +165,7 @@ func main() {
 					} else {
 						meta.sig = "sig-unknown"
 					}
-					failures[test.Name] = meta
+					testFailures[test.Name] = meta
 					break
 				}
 				fmt.Println("\n\n================================================================================")
@@ -148,16 +180,17 @@ func main() {
 	}
 
 	sigCount := make(map[string]int)
-	for t, f := range failures {
-		fmt.Printf("Test: %s\nCount: %d\nSig: %s\nJobs: %v\n\n", t, f.count, f.sig, f.jobs)
-		if _, ok := sigCount[f.sig]; !ok {
-			sigCount[f.sig] = 0
+	for test, meta := range testFailures {
+		fmt.Printf("Test: %s\nCount: %d\nSig: %s\nJobs: %v\n\n", test, meta.count, meta.sig, meta.jobs)
+		if _, ok := sigCount[meta.sig]; !ok {
+			sigCount[meta.sig] = 0
 		}
-		sigCount[f.sig] += f.count
+		sigCount[meta.sig] += meta.count
 	}
 	for s, c := range sigCount {
 		fmt.Printf("Sig %s is responsible for the top flake in %d job definitions\n", s, c)
 	}
+	return nil
 }
 
 /*
