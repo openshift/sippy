@@ -1,3 +1,3 @@
-ci-investigator: *.go
+sippy: *.go
 	go build -mod=vendor .
 

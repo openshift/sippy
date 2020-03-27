@@ -17,28 +17,30 @@ import (
 )
 
 var (
-	dashboard_urls []string = []string{
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.5-informing",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.3-informing",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.2-informing",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.1-informing",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.5-blocking",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-blocking",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.3-blocking",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.2-blocking",
-		"https://testgrid.k8s.io/redhat-openshift-ocp-release-4.1-blocking",
+	dashboards []string = []string{
+		"redhat-openshift-ocp-release-4.5-informing",
+		"redhat-openshift-ocp-release-4.4-informing",
+		"redhat-openshift-ocp-release-4.3-informing",
+		"redhat-openshift-ocp-release-4.2-informing",
+		"redhat-openshift-ocp-release-4.1-informing",
+		"redhat-openshift-ocp-release-4.5-blocking",
+		"redhat-openshift-ocp-release-4.4-blocking",
+		"redhat-openshift-ocp-release-4.3-blocking",
+		"redhat-openshift-ocp-release-4.2-blocking",
+		"redhat-openshift-ocp-release-4.1-blocking",
 	}
 	sigRegex      *regexp.Regexp = regexp.MustCompile(`\[(sig-.*?)\]`)
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
-)
 
-type options struct {
-	SampleData     string
-	SortByFlakes   bool
-	SortByFailures bool
-	FailureCount   int
-}
+	// platform regexes
+	awsRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-aws-`)
+	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
+	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp-`)
+	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
+	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
+	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
+	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
+)
 
 type TestReport struct {
 	TestName        string   `json:"testName"`
@@ -48,11 +50,12 @@ type TestReport struct {
 	AssociatedBug   string   `json:"associatedBug"`
 }
 type TestFailureMeta struct {
-	name  string
-	count int
-	jobs  map[string]interface{}
-	sig   string
-	bug   string
+	name     string
+	count    int
+	jobs     map[string]interface{}
+	sig      string
+	bug      string
+	platform string
 }
 
 type Job struct {
@@ -68,7 +71,7 @@ type Test struct {
 	Name string `json:"name"`
 }
 
-func badStatus(status string) bool {
+func jobHasBadStatus(status string) bool {
 	switch status {
 	case "FAILING", "FLAKY":
 		return true
@@ -98,8 +101,28 @@ func findBug(testName string) string {
 	return "no bug found"
 }
 
-func fetchJobs(dashboard_url string) (map[string]Job, error) {
-	resp, err := http.Get(dashboard_url + "/summary")
+func findPlatform(name string) string {
+	switch {
+	case awsRegex.MatchString(name):
+		return "aws"
+	case azureRegex.MatchString(name):
+		return "azure"
+	case gcpRegex.MatchString(name):
+		return "gcp"
+	case openstackRegex.MatchString(name):
+		return "openstack"
+	case metalRegex.MatchString(name):
+		return "metal"
+	case ovirtRegex.MatchString(name):
+		return "ovirt"
+	case vsphereRegex.MatchString(name):
+		return "vsphere"
+	}
+	return "unknown platform"
+}
+
+func fetchJobs(dashboard string) (map[string]Job, error) {
+	resp, err := http.Get(fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard))
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +138,7 @@ func fetchJobs(dashboard_url string) (map[string]Job, error) {
 	return jobs, nil
 }
 
-func fetchJobDetails(dashboard_url, jobName string, opts *options) (JobDetails, error) {
+func fetchJobDetails(dashboard, jobName string, opts *options) (JobDetails, error) {
 	details := JobDetails{
 		Name: jobName,
 	}
@@ -128,7 +151,7 @@ func fetchJobDetails(dashboard_url, jobName string, opts *options) (JobDetails, 
 			sortBy = "sort-by-failures="
 		}
 
-		url := fmt.Sprintf("%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24&%s", dashboard_url, jobName, sortBy)
+		url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24&%s", dashboard, jobName, sortBy)
 		resp, err := http.Get(url)
 		if err != nil {
 			return details, err
@@ -171,11 +194,11 @@ func processJobDetails(details JobDetails, opts *options, testFailures map[strin
 
 		meta, ok := testFailures[test.Name]
 		if !ok {
-			bug := findBug(test.Name)
 			meta = TestFailureMeta{
-				jobs: make(map[string]interface{}),
-				name: test.Name,
-				bug:  bug,
+				name:     test.Name,
+				jobs:     make(map[string]interface{}),
+				bug:      findBug(test.Name),
+				platform: findPlatform(test.Name),
 			}
 		}
 		meta.count++
@@ -238,6 +261,14 @@ func printReport(testFailures map[string]TestFailureMeta) {
 	}
 }
 
+type options struct {
+	SampleData     string
+	SortByFlakes   bool
+	SortByFailures bool
+	FailureCount   int
+	Dashboards     []string
+}
+
 func main() {
 	opt := &options{
 		SortByFlakes:   false,
@@ -266,6 +297,7 @@ func main() {
 	flags.BoolVar(&opt.SortByFlakes, "sort-by-flakes", opt.SortByFlakes, "Sort tests by flakiness")
 	flags.BoolVar(&opt.SortByFailures, "sort-by-failures", opt.SortByFailures, "Sort tests by failures")
 	flags.IntVar(&opt.FailureCount, "failure-count", opt.FailureCount, "Number of test failures to report on per test job")
+	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -289,18 +321,20 @@ func (o *options) Run() error {
 		printReport(testFailures)
 		return nil
 	}
-
-	for _, dashboard_url := range dashboard_urls {
-		jobs, err := fetchJobs(dashboard_url)
+	if len(o.Dashboards) == 0 {
+		o.Dashboards = dashboards
+	}
+	for _, dashboard := range o.Dashboards {
+		jobs, err := fetchJobs(dashboard)
 		if err != nil {
-			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard_url, err)
+			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
 
 		for jobName, job := range jobs {
-			if badStatus(job.OverallStatus) {
+			if jobHasBadStatus(job.OverallStatus) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
-				details, err := fetchJobDetails(dashboard_url, jobName, o)
+				details, err := fetchJobDetails(dashboard, jobName, o)
 				if err != nil {
 					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
 				}

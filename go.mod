@@ -1,4 +1,4 @@
-module github.com/bparees/ci-investigator
+module github.com/bparees/sippy
 
 go 1.12
 
