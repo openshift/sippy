@@ -11,9 +11,12 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
+
+	"github.com/bparees/sippy/pkg/testgrid"
 )
 
 var (
@@ -40,8 +43,14 @@ var (
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
+
+	ByAll      map[string]AggregateResult = make(map[string]AggregateResult)
+	ByJob      map[string]AggregateResult = make(map[string]AggregateResult)
+	ByPlatform map[string]AggregateResult = make(map[string]AggregateResult)
+	BySig      map[string]AggregateResult = make(map[string]AggregateResult)
 )
 
+/*
 type TestReport struct {
 	TestName        string   `json:"testName"`
 	OwningSig       string   `json:"owningSig"`
@@ -49,7 +58,23 @@ type TestReport struct {
 	JobsFailedNames []string `json:"jobsFailedNames"`
 	AssociatedBug   string   `json:"associatedBug"`
 }
-type TestFailureMeta struct {
+*/
+
+type TestReport struct {
+	All        map[string]SortedAggregateResult `json:"all"`
+	ByPlatform map[string]SortedAggregateResult `json:"byPlatform`
+	ByJob      map[string]SortedAggregateResult `json:"byJob`
+	BySig      map[string]SortedAggregateResult `json:"bySig`
+}
+
+type SortedAggregateResult struct {
+	Successes      int      `json:"successes"`
+	Failures       int      `json:"failures"`
+	PassPercentage float32  `json:"PassPercentage"`
+	Results        []Result `json:"results"`
+}
+
+type TestMeta struct {
 	name     string
 	count    int
 	jobs     map[string]interface{}
@@ -58,17 +83,19 @@ type TestFailureMeta struct {
 	platform string
 }
 
-type Job struct {
-	OverallStatus string `json:"overall_status"`
+type AggregateResult struct {
+	Successes      int               `json:"successes"`
+	Failures       int               `json:"failures"`
+	PassPercentage float32           `json:"PassPercentage"`
+	Results        map[string]Result `json:"results"`
 }
 
-type JobDetails struct {
-	Name  string
-	Tests []Test `json:"tests"`
-}
-
-type Test struct {
-	Name string `json:"name"`
+type Result struct {
+	Name           string  `json:"name"`
+	Successes      int     `json:"successes"`
+	Failures       int     `json:"failures"`
+	PassPercentage float32 `json:"PassPercentage"`
+	Bug            string  `json:"Bug"`
 }
 
 func jobHasBadStatus(status string) bool {
@@ -101,6 +128,15 @@ func findBug(testName string) string {
 	return "no bug found"
 }
 
+// find associated sig from test name
+func findSig(name string) string {
+	match := sigRegex.FindStringSubmatch(name)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return "sig-unknown"
+}
+
 func findPlatform(name string) string {
 	switch {
 	case awsRegex.MatchString(name):
@@ -121,7 +157,7 @@ func findPlatform(name string) string {
 	return "unknown platform"
 }
 
-func fetchJobs(dashboard string) (map[string]Job, error) {
+func fetchJobSummaries(dashboard string) (map[string]testgrid.JobSummary, error) {
 	resp, err := http.Get(fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard))
 	if err != nil {
 		return nil, err
@@ -130,7 +166,7 @@ func fetchJobs(dashboard string) (map[string]Job, error) {
 		return nil, fmt.Errorf("Non-200 response code fetching dashboard page: %v", resp)
 	}
 
-	var jobs map[string]Job
+	var jobs map[string]testgrid.JobSummary
 	err = json.NewDecoder(resp.Body).Decode(&jobs)
 	if err != nil {
 		return nil, err
@@ -138,11 +174,24 @@ func fetchJobs(dashboard string) (map[string]Job, error) {
 	return jobs, nil
 }
 
-func fetchJobDetails(dashboard, jobName string, opts *options) (JobDetails, error) {
-	details := JobDetails{
+func fetchJobDetails(dashboard, jobName string, opts *options) (testgrid.JobDetails, error) {
+	details := testgrid.JobDetails{
 		Name: jobName,
 	}
-	if len(opts.SampleData) == 0 {
+
+	if len(opts.SampleData) != 0 {
+		f, err := os.Open(opts.SampleData)
+		if err != nil {
+			return details, fmt.Errorf("Could not open sample data file %s: %v", opts.SampleData, err)
+		}
+		err = json.NewDecoder(f).Decode(&details)
+		if err != nil {
+			return details, err
+		}
+		return details, nil
+	}
+
+	/*
 		sortBy := ""
 		switch {
 		case opts.SortByFlakes:
@@ -150,29 +199,18 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (JobDetails, erro
 		case opts.SortByFailures:
 			sortBy = "sort-by-failures="
 		}
+	*/
 
-		url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24&%s", dashboard, jobName, sortBy)
-		resp, err := http.Get(url)
-		if err != nil {
-			return details, err
-		}
-		if resp.StatusCode != 200 {
-			return details, fmt.Errorf("Non-200 response code fetching job details: %v", resp)
-		}
-
-		err = json.NewDecoder(resp.Body).Decode(&details)
-		if err != nil {
-			return details, err
-		}
-
-		return details, nil
-	}
-
-	f, err := os.Open(opts.SampleData)
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24", dashboard, jobName)
+	resp, err := http.Get(url)
 	if err != nil {
-		return details, fmt.Errorf("Could not open sample data file %s: %v", opts.SampleData, err)
+		return details, err
 	}
-	err = json.NewDecoder(f).Decode(&details)
+	if resp.StatusCode != 200 {
+		return details, fmt.Errorf("Non-200 response code fetching job details: %v", resp)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&details)
 	if err != nil {
 		return details, err
 	}
@@ -181,99 +219,246 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (JobDetails, erro
 
 }
 
-func processJobDetails(details JobDetails, opts *options, testFailures map[string]TestFailureMeta) {
-	for i, test := range details.Tests {
-		if i > opts.FailureCount {
+func computeLookback(lookback int, timestamps []int) int {
+
+	stop := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
+
+	for i, t := range timestamps {
+		if int64(t) < stop {
+			return i
+		}
+	}
+	return 0
+}
+
+func processTest(job string, test testgrid.Test, meta TestMeta, cols int) {
+	col := 0
+	passed := 0
+	failed := 0
+	total := 0
+	for _, result := range test.Statuses {
+		//klog.V(2).Infof("processing test %s status %d of %d\n", test.Name, col, cols)
+
+		col += result.Count
+		switch result.Value {
+		case 1:
+			passed += result.Count
+		case 12:
+			failed += result.Count
+		}
+		total += result.Count
+		if col > cols {
 			break
 		}
-		if test.Name == "Overall" {
-			continue
+	}
+
+	/*
+		overall := AggregateResult{}
+
+		overall.Successes += passed
+		overall.Failures += failed
+		if f, ok := overall.Results[test.Name]; !ok {
+			overall.Results[test.Name] = Result{}
 		}
+		overall.Results[test.Name].Name = test.Name
+		overall.Results[test.Name].Successes += passed
+		overall.Results[test.Name].Failures += failed
+	*/
 
-		klog.V(4).Infof("Found a top failing test: %q\n\n", test.Name)
+	addTestResult("all", ByAll, test.Name, meta, passed, failed)
+	addTestResult(job, ByJob, test.Name, meta, passed, failed)
+	addTestResult(meta.platform, ByPlatform, test.Name, meta, passed, failed)
+	addTestResult(meta.sig, BySig, test.Name, meta, passed, failed)
+}
 
-		meta, ok := testFailures[test.Name]
+func addTestResult(categoryKey string, categories map[string]AggregateResult, testName string, meta TestMeta, passed, failed int) {
+
+	klog.V(2).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
+	category, ok := categories[categoryKey]
+	if !ok {
+		category = AggregateResult{
+			Results: make(map[string]Result),
+		}
+	}
+
+	category.Successes += passed
+	category.Failures += failed
+
+	result, ok := category.Results[testName]
+	if !ok {
+		result = Result{}
+	}
+	result.Name = testName
+	result.Successes += passed
+	result.Failures += failed
+	result.Bug = meta.bug
+
+	category.Results[testName] = result
+
+	categories[categoryKey] = category
+}
+
+func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[string]TestMeta) {
+
+	cols := computeLookback(opts.Lookback, job.Timestamps)
+
+	for _, test := range job.Tests {
+		klog.V(2).Infof("Analyzing results from job %s for test %s\n", job.Name, test.Name)
+		/*
+			if i > opts.FailureCount {
+				break
+			}
+		*/
+		/*
+			if test.Name == "Overall" {
+				continue
+			}
+		*/
+		//klog.V(4).Infof("Found a top failing test: %q\n\n", test.Name)
+
+		meta, ok := testMeta[test.Name]
 		if !ok {
-			meta = TestFailureMeta{
+			meta = TestMeta{
 				name:     test.Name,
 				jobs:     make(map[string]interface{}),
-				bug:      findBug(test.Name),
 				platform: findPlatform(test.Name),
+				sig:      findSig(test.Name),
+			}
+			if opts.FindBugs {
+				meta.bug = findBug(test.Name)
+			} else {
+				meta.bug = "Bug search not requested"
 			}
 		}
 		meta.count++
-		if _, ok := meta.jobs[details.Name]; !ok {
-			meta.jobs[details.Name] = struct{}{}
+		if _, ok := meta.jobs[job.Name]; !ok {
+			meta.jobs[job.Name] = struct{}{}
 		}
 
-		// find associated sig from test name
-		match := sigRegex.FindStringSubmatch(test.Name)
-		if len(match) > 1 {
-			meta.sig = match[1]
-		} else {
-			meta.sig = "sig-unknown"
-		}
+		// update test metadata
+		testMeta[test.Name] = meta
 
-		// update testfailures metadata
-		testFailures[test.Name] = meta
+		processTest(job.Name, test, meta, cols)
+
 	}
 }
 
-func printReport(testFailures map[string]TestFailureMeta) {
-	klog.V(4).Infof("====================== Printing test report ======================\n")
-	sigCount := make(map[string]int)
-	var failures []TestFailureMeta
-	for _, meta := range testFailures {
-		failures = append(failures, meta)
+func computePercentages(aggregateResults map[string]AggregateResult) {
+	for k, aggregateResult := range aggregateResults {
+
+		aggregateResult.PassPercentage = float32(aggregateResult.Successes) / float32(aggregateResult.Successes+aggregateResult.Failures) * 100
+		for k, r := range aggregateResult.Results {
+			r.PassPercentage = float32(r.Successes) / float32(r.Successes+r.Failures) * 100
+			aggregateResult.Results[k] = r
+		}
+		aggregateResults[k] = aggregateResult
+	}
+}
+
+func generateSortedResults(aggregateResult map[string]AggregateResult) map[string]SortedAggregateResult {
+	sorted := make(map[string]SortedAggregateResult)
+
+	for k, v := range aggregateResult {
+		sorted[k] = SortedAggregateResult{
+			Failures:       v.Failures,
+			Successes:      v.Successes,
+			PassPercentage: v.PassPercentage,
+		}
+
+		for _, result := range v.Results {
+			s := sorted[k]
+			s.Results = append(s.Results, result)
+			sorted[k] = s
+		}
+		// sort from lowest to highest
+		sort.SliceStable(sorted[k].Results, func(i, j int) bool {
+			return sorted[k].Results[i].PassPercentage < sorted[k].Results[j].PassPercentage
+		})
 	}
 
-	// sort from highest count to lowest
-	sort.SliceStable(failures, func(i, j int) bool {
-		return failures[i].count > failures[j].count
-	})
-	var report []TestReport
+	return sorted
 
-	for _, meta := range failures {
-		klog.V(4).Infof("Test: %s\nCount: %d\nSig: %s\nJobs: %v\n\n", meta.name, meta.count, meta.sig, meta.jobs)
+}
 
-		var jobs []string
-		for k := range meta.jobs {
-			jobs = append(jobs, k)
-		}
-		testReport := TestReport{
-			TestName:        meta.name,
-			OwningSig:       meta.sig,
-			AssociatedBug:   meta.bug,
-			JobsFailedCount: meta.count,
-			JobsFailedNames: jobs,
-		}
-		report = append(report, testReport)
-		if _, ok := sigCount[meta.sig]; !ok {
-			sigCount[meta.sig] = 0
-		}
-		sigCount[meta.sig] += meta.count
-	}
+func printReport() {
+
+	computePercentages(ByAll)
+	computePercentages(ByPlatform)
+	computePercentages(ByJob)
+	computePercentages(BySig)
+
+	byAll := generateSortedResults(ByAll)
+	byPlatform := generateSortedResults(ByPlatform)
+	byJob := generateSortedResults(ByJob)
+	bySig := generateSortedResults(BySig)
 
 	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(report)
-	for s, c := range sigCount {
-		klog.V(4).Infof("Sig %s is responsible for the top flake in %d job definitions\n", s, c)
-	}
+	enc.Encode(TestReport{
+		All:        byAll,
+		ByPlatform: byPlatform,
+		ByJob:      byJob,
+		BySig:      bySig})
+
+	/*
+
+		klog.V(4).Infof("====================== Printing test report ======================\n")
+		sigCount := make(map[string]int)
+		var failures []TestMeta
+		for _, meta := range testMeta {
+			failures = append(failures, meta)
+		}
+
+		// sort from highest count to lowest
+		sort.SliceStable(failures, func(i, j int) bool {
+			return failures[i].count > failures[j].count
+		})
+		var report []TestReport
+
+		for _, meta := range failures {
+			klog.V(4).Infof("Test: %s\nCount: %d\nSig: %s\nJobs: %v\n\n", meta.name, meta.count, meta.sig, meta.jobs)
+
+			var jobs []string
+			for k := range meta.jobs {
+				jobs = append(jobs, k)
+			}
+			testReport := TestReport{
+				TestName:        meta.name,
+				OwningSig:       meta.sig,
+				AssociatedBug:   meta.bug,
+				JobsFailedCount: meta.count,
+				JobsFailedNames: jobs,
+			}
+			report = append(report, testReport)
+			if _, ok := sigCount[meta.sig]; !ok {
+				sigCount[meta.sig] = 0
+			}
+			sigCount[meta.sig] += meta.count
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		enc.Encode(report)
+		for s, c := range sigCount {
+			klog.V(4).Infof("Sig %s is responsible for the top flake in %d job definitions\n", s, c)
+		}
+	*/
 }
 
 type options struct {
-	SampleData     string
-	SortByFlakes   bool
-	SortByFailures bool
-	FailureCount   int
-	Dashboards     []string
+	SampleData string
+	//SortByFlakes   bool
+	//SortByFailures bool
+	FailureCount int
+	Dashboards   []string
+	Lookback     int
+	FindBugs     bool
 }
 
 func main() {
 	opt := &options{
-		SortByFlakes:   false,
-		SortByFailures: false,
-		FailureCount:   1,
+		//SortByFlakes:   false,
+		//SortByFailures: false,
+		FailureCount: 1,
+		Lookback:     14,
 	}
 
 	klog.InitFlags(nil)
@@ -281,12 +466,15 @@ func main() {
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
-			if opt.SortByFlakes && opt.SortByFailures {
-				klog.Exitf("Cannot set both sort-by-flakes and sort-by-failures")
-			}
-			if len(opt.SampleData) > 0 && (opt.SortByFlakes || opt.SortByFailures) {
-				klog.Exitf("Cannot sort tests when using sample data")
-			}
+			/*
+				if opt.SortByFlakes && opt.SortByFailures {
+					klog.Exitf("Cannot set both sort-by-flakes and sort-by-failures")
+				}
+
+				if len(opt.SampleData) > 0 && (opt.SortByFlakes || opt.SortByFailures) {
+					klog.Exitf("Cannot sort tests when using sample data")
+				}
+			*/
 			if err := opt.Run(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -294,10 +482,12 @@ func main() {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&opt.SampleData, "sample-data", opt.SampleData, "Path to sample testgrid data from local disk")
-	flags.BoolVar(&opt.SortByFlakes, "sort-by-flakes", opt.SortByFlakes, "Sort tests by flakiness")
-	flags.BoolVar(&opt.SortByFailures, "sort-by-failures", opt.SortByFailures, "Sort tests by failures")
+	//flags.BoolVar(&opt.SortByFlakes, "sort-by-flakes", opt.SortByFlakes, "Sort tests by flakiness")
+	//flags.BoolVar(&opt.SortByFailures, "sort-by-failures", opt.SortByFailures, "Sort tests by failures")
 	flags.IntVar(&opt.FailureCount, "failure-count", opt.FailureCount, "Number of test failures to report on per test job")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
+	flags.IntVar(&opt.FailureCount, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
+	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -309,23 +499,22 @@ func main() {
 
 func (o *options) Run() error {
 
-	testFailures := make(map[string]TestFailureMeta)
-	i := 0
-
+	testMeta := make(map[string]TestMeta)
 	if len(o.SampleData) > 0 {
 		details, err := fetchJobDetails("", "sample-job", o)
 		if err != nil {
 			klog.Errorf("Error fetching job details for %s: %v\n", o.SampleData, err)
 		}
-		processJobDetails(details, o, testFailures)
-		printReport(testFailures)
+		processJobDetails(details, o, testMeta)
+		printReport()
 		return nil
 	}
 	if len(o.Dashboards) == 0 {
 		o.Dashboards = dashboards
 	}
+
 	for _, dashboard := range o.Dashboards {
-		jobs, err := fetchJobs(dashboard)
+		jobs, err := fetchJobSummaries(dashboard)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
@@ -338,17 +527,13 @@ func (o *options) Run() error {
 				if err != nil {
 					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
 				}
-				processJobDetails(details, o, testFailures)
+				processJobDetails(details, o, testMeta)
 				klog.V(4).Infoln("\n\n================================================================================")
-			}
-			i++
-			if i > 5 {
-				break
 			}
 		}
 	}
 
-	printReport(testFailures)
+	printReport()
 
 	return nil
 }
