@@ -50,16 +50,6 @@ var (
 	BySig      map[string]AggregateResult = make(map[string]AggregateResult)
 )
 
-/*
-type TestReport struct {
-	TestName        string   `json:"testName"`
-	OwningSig       string   `json:"owningSig"`
-	JobsFailedCount int      `json:"jobsFailedCount"`
-	JobsFailedNames []string `json:"jobsFailedNames"`
-	AssociatedBug   string   `json:"associatedBug"`
-}
-*/
-
 type TestReport struct {
 	All        map[string]SortedAggregateResult `json:"all"`
 	ByPlatform map[string]SortedAggregateResult `json:"byPlatform`
@@ -191,16 +181,6 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (testgrid.JobDeta
 		return details, nil
 	}
 
-	/*
-		sortBy := ""
-		switch {
-		case opts.SortByFlakes:
-			sortBy = "sort-by-flakiness="
-		case opts.SortByFailures:
-			sortBy = "sort-by-failures="
-		}
-	*/
-
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24", dashboard, jobName)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -237,8 +217,6 @@ func processTest(job string, test testgrid.Test, meta TestMeta, cols int) {
 	failed := 0
 	total := 0
 	for _, result := range test.Statuses {
-		//klog.V(2).Infof("processing test %s status %d of %d\n", test.Name, col, cols)
-
 		col += result.Count
 		switch result.Value {
 		case 1:
@@ -251,19 +229,6 @@ func processTest(job string, test testgrid.Test, meta TestMeta, cols int) {
 			break
 		}
 	}
-
-	/*
-		overall := AggregateResult{}
-
-		overall.Successes += passed
-		overall.Failures += failed
-		if f, ok := overall.Results[test.Name]; !ok {
-			overall.Results[test.Name] = Result{}
-		}
-		overall.Results[test.Name].Name = test.Name
-		overall.Results[test.Name].Successes += passed
-		overall.Results[test.Name].Failures += failed
-	*/
 
 	addTestResult("all", ByAll, test.Name, meta, passed, failed)
 	addTestResult(job, ByJob, test.Name, meta, passed, failed)
@@ -304,17 +269,6 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 
 	for _, test := range job.Tests {
 		klog.V(2).Infof("Analyzing results from job %s for test %s\n", job.Name, test.Name)
-		/*
-			if i > opts.FailureCount {
-				break
-			}
-		*/
-		/*
-			if test.Name == "Overall" {
-				continue
-			}
-		*/
-		//klog.V(4).Infof("Found a top failing test: %q\n\n", test.Name)
 
 		meta, ok := testMeta[test.Name]
 		if !ok {
@@ -346,16 +300,20 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 func computePercentages(aggregateResults map[string]AggregateResult) {
 	for k, aggregateResult := range aggregateResults {
 
-		aggregateResult.PassPercentage = float32(aggregateResult.Successes) / float32(aggregateResult.Successes+aggregateResult.Failures) * 100
+		if aggregateResult.Successes+aggregateResult.Failures > 0 {
+			aggregateResult.PassPercentage = float32(aggregateResult.Successes) / float32(aggregateResult.Successes+aggregateResult.Failures) * 100
+		}
 		for k, r := range aggregateResult.Results {
-			r.PassPercentage = float32(r.Successes) / float32(r.Successes+r.Failures) * 100
-			aggregateResult.Results[k] = r
+			if r.Successes+r.Failures > 0 {
+				r.PassPercentage = float32(r.Successes) / float32(r.Successes+r.Failures) * 100
+				aggregateResult.Results[k] = r
+			}
 		}
 		aggregateResults[k] = aggregateResult
 	}
 }
 
-func generateSortedResults(aggregateResult map[string]AggregateResult) map[string]SortedAggregateResult {
+func generateSortedResults(aggregateResult map[string]AggregateResult, opts *options) map[string]SortedAggregateResult {
 	sorted := make(map[string]SortedAggregateResult)
 
 	for k, v := range aggregateResult {
@@ -366,9 +324,13 @@ func generateSortedResults(aggregateResult map[string]AggregateResult) map[strin
 		}
 
 		for _, result := range v.Results {
-			s := sorted[k]
-			s.Results = append(s.Results, result)
-			sorted[k] = s
+			// strip out tests are more than 99% successful
+			if result.PassPercentage < opts.SuccessThreshold {
+				s := sorted[k]
+				s.Results = append(s.Results, result)
+				sorted[k] = s
+			}
+
 		}
 		// sort from lowest to highest
 		sort.SliceStable(sorted[k].Results, func(i, j int) bool {
@@ -380,17 +342,17 @@ func generateSortedResults(aggregateResult map[string]AggregateResult) map[strin
 
 }
 
-func printReport() {
+func printReport(opts *options) {
 
 	computePercentages(ByAll)
 	computePercentages(ByPlatform)
 	computePercentages(ByJob)
 	computePercentages(BySig)
 
-	byAll := generateSortedResults(ByAll)
-	byPlatform := generateSortedResults(ByPlatform)
-	byJob := generateSortedResults(ByJob)
-	bySig := generateSortedResults(BySig)
+	byAll := generateSortedResults(ByAll, opts)
+	byPlatform := generateSortedResults(ByPlatform, opts)
+	byJob := generateSortedResults(ByJob, opts)
+	bySig := generateSortedResults(BySig, opts)
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(TestReport{
@@ -398,67 +360,20 @@ func printReport() {
 		ByPlatform: byPlatform,
 		ByJob:      byJob,
 		BySig:      bySig})
-
-	/*
-
-		klog.V(4).Infof("====================== Printing test report ======================\n")
-		sigCount := make(map[string]int)
-		var failures []TestMeta
-		for _, meta := range testMeta {
-			failures = append(failures, meta)
-		}
-
-		// sort from highest count to lowest
-		sort.SliceStable(failures, func(i, j int) bool {
-			return failures[i].count > failures[j].count
-		})
-		var report []TestReport
-
-		for _, meta := range failures {
-			klog.V(4).Infof("Test: %s\nCount: %d\nSig: %s\nJobs: %v\n\n", meta.name, meta.count, meta.sig, meta.jobs)
-
-			var jobs []string
-			for k := range meta.jobs {
-				jobs = append(jobs, k)
-			}
-			testReport := TestReport{
-				TestName:        meta.name,
-				OwningSig:       meta.sig,
-				AssociatedBug:   meta.bug,
-				JobsFailedCount: meta.count,
-				JobsFailedNames: jobs,
-			}
-			report = append(report, testReport)
-			if _, ok := sigCount[meta.sig]; !ok {
-				sigCount[meta.sig] = 0
-			}
-			sigCount[meta.sig] += meta.count
-		}
-
-		enc := json.NewEncoder(os.Stdout)
-		enc.Encode(report)
-		for s, c := range sigCount {
-			klog.V(4).Infof("Sig %s is responsible for the top flake in %d job definitions\n", s, c)
-		}
-	*/
 }
 
 type options struct {
-	SampleData string
-	//SortByFlakes   bool
-	//SortByFailures bool
-	FailureCount int
-	Dashboards   []string
-	Lookback     int
-	FindBugs     bool
+	SampleData       string
+	Dashboards       []string
+	Lookback         int
+	FindBugs         bool
+	SuccessThreshold float32
 }
 
 func main() {
 	opt := &options{
-		//SortByFlakes:   false,
-		//SortByFailures: false,
-		FailureCount: 1,
-		Lookback:     14,
+		Lookback:         14,
+		SuccessThreshold: 99,
 	}
 
 	klog.InitFlags(nil)
@@ -466,15 +381,6 @@ func main() {
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
-			/*
-				if opt.SortByFlakes && opt.SortByFailures {
-					klog.Exitf("Cannot set both sort-by-flakes and sort-by-failures")
-				}
-
-				if len(opt.SampleData) > 0 && (opt.SortByFlakes || opt.SortByFailures) {
-					klog.Exitf("Cannot sort tests when using sample data")
-				}
-			*/
 			if err := opt.Run(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -482,11 +388,9 @@ func main() {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&opt.SampleData, "sample-data", opt.SampleData, "Path to sample testgrid data from local disk")
-	//flags.BoolVar(&opt.SortByFlakes, "sort-by-flakes", opt.SortByFlakes, "Sort tests by flakiness")
-	//flags.BoolVar(&opt.SortByFailures, "sort-by-failures", opt.SortByFailures, "Sort tests by failures")
-	flags.IntVar(&opt.FailureCount, "failure-count", opt.FailureCount, "Number of test failures to report on per test job")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
-	flags.IntVar(&opt.FailureCount, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
+	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
+	flags.Float32Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
@@ -506,7 +410,7 @@ func (o *options) Run() error {
 			klog.Errorf("Error fetching job details for %s: %v\n", o.SampleData, err)
 		}
 		processJobDetails(details, o, testMeta)
-		printReport()
+		printReport(o)
 		return nil
 	}
 	if len(o.Dashboards) == 0 {
@@ -533,18 +437,7 @@ func (o *options) Run() error {
 		}
 	}
 
-	printReport()
+	printReport(o)
 
 	return nil
 }
-
-/*
-https://testgrid.k8s.io/redhat-openshift-informing
-
-
-release page:
-https://testgrid.k8s.io/redhat-openshift-informing/summary
-
-job:
-https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing/table?tab=release-openshift-ocp-installer-e2e-aws-4.4&width=10&exclude-filter-by-regex=Monitor%5Cscluster&exclude-filter-by-regex=%5Eoperator.Run%20template.*container%20test%24&dashboard=redhat-openshift-ocp-release-4.4-informing
-*/
