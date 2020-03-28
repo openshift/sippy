@@ -275,7 +275,7 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 			meta = TestMeta{
 				name:     test.Name,
 				jobs:     make(map[string]interface{}),
-				platform: findPlatform(test.Name),
+				platform: findPlatform(job.Name),
 				sig:      findSig(test.Name),
 			}
 			if opts.FindBugs {
