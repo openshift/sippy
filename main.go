@@ -327,8 +327,8 @@ func generateSortedResults(aggregateResult map[string]AggregateResult, opts *opt
 
 		for _, result := range v.Results {
 			// strip out tests are more than N% successful
-			// strip out tests that have less than 11 total runs
-			if (result.Successes+result.Failures > 10) && result.PassPercentage < opts.SuccessThreshold {
+			// strip out tests that have less than N total runs
+			if (result.Successes+result.Failures >= opts.MinRuns) && result.PassPercentage < opts.SuccessThreshold {
 				s := sorted[k]
 				s.Results = append(s.Results, result)
 				sorted[k] = s
@@ -372,12 +372,14 @@ type options struct {
 	FindBugs         bool
 	SuccessThreshold float32
 	JobFilter        string
+	MinRuns          int
 }
 
 func main() {
 	opt := &options{
 		Lookback:         14,
 		SuccessThreshold: 99,
+		MinRuns:          10,
 	}
 
 	klog.InitFlags(nil)
@@ -397,6 +399,7 @@ func main() {
 	flags.Float32Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
+	flags.IntVar(&opt.MinRuns, "min-runs", opt.MinRuns, "Ignore tests with less than this number of runs")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
