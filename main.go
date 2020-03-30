@@ -65,12 +65,11 @@ type SortedAggregateResult struct {
 }
 
 type TestMeta struct {
-	name     string
-	count    int
-	jobs     map[string]interface{}
-	sig      string
-	bug      string
-	platform string
+	name  string
+	count int
+	jobs  map[string]interface{}
+	sig   string
+	bug   string
 }
 
 type AggregateResult struct {
@@ -215,7 +214,7 @@ func computeLookback(lookback int, timestamps []int) int {
 	return 0
 }
 
-func processTest(job string, test testgrid.Test, meta TestMeta, cols int) {
+func processTest(job, platform string, test testgrid.Test, meta TestMeta, cols int) {
 	col := 0
 	passed := 0
 	failed := 0
@@ -236,7 +235,7 @@ func processTest(job string, test testgrid.Test, meta TestMeta, cols int) {
 
 	addTestResult("all", ByAll, test.Name, meta, passed, failed)
 	addTestResult(job, ByJob, test.Name, meta, passed, failed)
-	addTestResult(meta.platform, ByPlatform, test.Name, meta, passed, failed)
+	addTestResult(platform, ByPlatform, test.Name, meta, passed, failed)
 	addTestResult(meta.sig, BySig, test.Name, meta, passed, failed)
 }
 
@@ -277,10 +276,9 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 		meta, ok := testMeta[test.Name]
 		if !ok {
 			meta = TestMeta{
-				name:     test.Name,
-				jobs:     make(map[string]interface{}),
-				platform: findPlatform(job.Name),
-				sig:      findSig(test.Name),
+				name: test.Name,
+				jobs: make(map[string]interface{}),
+				sig:  findSig(test.Name),
 			}
 			if opts.FindBugs {
 				meta.bug = findBug(test.Name)
@@ -296,7 +294,7 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 		// update test metadata
 		testMeta[test.Name] = meta
 
-		processTest(job.Name, test, meta, cols)
+		processTest(job.Name, findPlatform(job.Name), test, meta, cols)
 
 	}
 }
