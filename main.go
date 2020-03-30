@@ -326,6 +326,10 @@ func generateSortedResults(aggregateResult map[string]AggregateResult, opts *opt
 		}
 
 		for _, result := range v.Results {
+			// ignore the "Overall" test.
+			if result.Name == "Overall" {
+				continue
+			}
 			// strip out tests are more than N% successful
 			// strip out tests that have less than N total runs
 			if (result.Successes+result.Failures >= opts.MinRuns) && result.PassPercentage < opts.SuccessThreshold {
