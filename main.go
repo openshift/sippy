@@ -88,7 +88,11 @@ type Result struct {
 	Bug            string  `json:"Bug"`
 }
 
-func jobHasBadStatus(status string) bool {
+func jobMatters(jobName, status string, filter *regexp.Regexp) bool {
+	if filter != nil && !filter.MatchString(jobName) {
+		return false
+	}
+
 	switch status {
 	case "FAILING", "FLAKY":
 		return true
@@ -324,8 +328,9 @@ func generateSortedResults(aggregateResult map[string]AggregateResult, opts *opt
 		}
 
 		for _, result := range v.Results {
-			// strip out tests are more than 99% successful
-			if result.PassPercentage < opts.SuccessThreshold {
+			// strip out tests are more than N% successful
+			// strip out tests that have less than 11 total runs
+			if (result.Successes+result.Failures > 10) && result.PassPercentage < opts.SuccessThreshold {
 				s := sorted[k]
 				s.Results = append(s.Results, result)
 				sorted[k] = s
@@ -368,6 +373,7 @@ type options struct {
 	Lookback         int
 	FindBugs         bool
 	SuccessThreshold float32
+	JobFilter        string
 }
 
 func main() {
@@ -392,6 +398,7 @@ func main() {
 	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
 	flags.Float32Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
+	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -424,8 +431,12 @@ func (o *options) Run() error {
 			continue
 		}
 
+		var jobFilter *regexp.Regexp
+		if len(o.JobFilter) > 0 {
+			jobFilter = regexp.MustCompile(o.JobFilter)
+		}
 		for jobName, job := range jobs {
-			if jobHasBadStatus(job.OverallStatus) {
+			if jobMatters(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				details, err := fetchJobDetails(dashboard, jobName, o)
 				if err != nil {
