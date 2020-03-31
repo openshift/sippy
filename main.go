@@ -304,12 +304,16 @@ func computePercentages(AggregateTestResults map[string]AggregateTestResult) {
 
 		if AggregateTestResult.Successes+AggregateTestResult.Failures > 0 {
 			AggregateTestResult.PassPercentage = float32(AggregateTestResult.Successes) / float32(AggregateTestResult.Successes+AggregateTestResult.Failures) * 100
+		} else {
+			AggregateTestResult.PassPercentage = 100.0
 		}
 		for k, r := range AggregateTestResult.TestResults {
 			if r.Successes+r.Failures > 0 {
 				r.PassPercentage = float32(r.Successes) / float32(r.Successes+r.Failures) * 100
-				AggregateTestResult.TestResults[k] = r
+			} else {
+				r.PassPercentage = 100.0
 			}
+			AggregateTestResult.TestResults[k] = r
 		}
 		AggregateTestResults[k] = AggregateTestResult
 	}
