@@ -9,6 +9,9 @@ type JobDetails struct {
 	Name       string
 	Tests      []Test `json:"tests"`
 	Timestamps []int  `json:"timestamps"`
+	// append to https://prow.svc.ci.openshift.org/view/gcs and suffix with changelist element to view job run details
+	Query       string   `json:"query"`
+	ChangeLists []string `json:"changelists"`
 }
 
 type Test struct {

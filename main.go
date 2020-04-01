@@ -48,6 +48,8 @@ var (
 	ByJob      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
 	ByPlatform map[string]AggregateTestResult = make(map[string]AggregateTestResult)
 	BySig      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
+
+	FailureClusters map[string]JobRunResult = make(map[string]JobRunResult)
 )
 
 type TestMeta struct {
@@ -59,10 +61,11 @@ type TestMeta struct {
 }
 
 type TestReport struct {
-	All        map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob      map[string]SortedAggregateTestResult `json:"byJob`
-	BySig      map[string]SortedAggregateTestResult `json:"bySig`
+	All             map[string]SortedAggregateTestResult `json:"all"`
+	ByPlatform      map[string]SortedAggregateTestResult `json:"byPlatform`
+	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
+	BySig           map[string]SortedAggregateTestResult `json:"bySig`
+	FailureClusters map[string]JobRunResult              `json:"failureClusters"`
 }
 
 type SortedAggregateTestResult struct {
@@ -85,6 +88,13 @@ type TestResult struct {
 	Failures       int     `json:"failures"`
 	PassPercentage float32 `json:"PassPercentage"`
 	Bug            string  `json:"Bug"`
+}
+
+type JobRunResult struct {
+	Job          string   `json:"job"`
+	Url          string   `json:"url"`
+	TestFailures int      `json:"testFailures"`
+	TestNames    []string `json:"TestNames"`
 }
 
 func jobMatters(jobName, status string, filter *regexp.Regexp) bool {
@@ -214,27 +224,41 @@ func computeLookback(lookback int, timestamps []int) int {
 	return 0
 }
 
-func processTest(job, platform string, test testgrid.Test, meta TestMeta, cols int) {
+func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta TestMeta, cols int) {
+	if test.Name == "Overall" {
+		return
+	}
 	col := 0
 	passed := 0
 	failed := 0
-	total := 0
 	for _, result := range test.Statuses {
-		col += result.Count
 		switch result.Value {
 		case 1:
 			passed += result.Count
 		case 12:
 			failed += result.Count
+			for i := col; i < col+result.Count; i++ {
+				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+				jrr, ok := FailureClusters[joburl]
+				if !ok {
+					jrr = JobRunResult{
+						Job: job.Name,
+						Url: joburl,
+					}
+				}
+				jrr.TestNames = append(jrr.TestNames, test.Name)
+				jrr.TestFailures++
+				FailureClusters[joburl] = jrr
+			}
 		}
-		total += result.Count
+		col += result.Count
 		if col > cols {
 			break
 		}
 	}
 
 	addTestResult("all", ByAll, test.Name, meta, passed, failed)
-	addTestResult(job, ByJob, test.Name, meta, passed, failed)
+	addTestResult(job.Name, ByJob, test.Name, meta, passed, failed)
 	addTestResult(platform, ByPlatform, test.Name, meta, passed, failed)
 	addTestResult(meta.sig, BySig, test.Name, meta, passed, failed)
 }
@@ -294,7 +318,7 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 		// update test metadata
 		testMeta[test.Name] = meta
 
-		processTest(job.Name, findPlatform(job.Name), test, meta, cols)
+		processTest(job, findPlatform(job.Name), test, meta, cols)
 
 	}
 }
@@ -330,10 +354,6 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 		}
 
 		for _, result := range v.TestResults {
-			// ignore the "Overall" test.
-			if result.Name == "Overall" {
-				continue
-			}
 			// strip out tests are more than N% successful
 			// strip out tests that have less than N total runs
 			if (result.Successes+result.Failures >= opts.MinRuns) && result.PassPercentage < opts.SuccessThreshold {
@@ -348,9 +368,22 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 			return sorted[k].TestResults[i].PassPercentage < sorted[k].TestResults[j].PassPercentage
 		})
 	}
-
 	return sorted
+}
 
+func filterFailureClusters(opts *options, jrr map[string]JobRunResult) map[string]JobRunResult {
+	filteredJrr := make(map[string]JobRunResult)
+	// -1 means don't do this reporting.
+	if opts.FailureClusterThreshold < 0 {
+		return filteredJrr
+	}
+	for k, v := range jrr {
+		if v.TestFailures > opts.FailureClusterThreshold {
+			filteredJrr[k] = v
+		}
+
+	}
+	return filteredJrr
 }
 
 func prepareTestReport(opts *options) TestReport {
@@ -364,11 +397,15 @@ func prepareTestReport(opts *options) TestReport {
 	byJob := generateSortedResults(ByJob, opts)
 	bySig := generateSortedResults(BySig, opts)
 
+	filteredFailureClusters := filterFailureClusters(opts, FailureClusters)
+
 	return TestReport{
-		All:        byAll,
-		ByPlatform: byPlatform,
-		ByJob:      byJob,
-		BySig:      bySig}
+		All:             byAll,
+		ByPlatform:      byPlatform,
+		ByJob:           byJob,
+		BySig:           bySig,
+		FailureClusters: filteredFailureClusters,
+	}
 
 }
 
@@ -445,25 +482,33 @@ func printTextReport(report TestReport) {
 		}
 	}
 
+	fmt.Println("\n\n\n================== Clustered Test Failures ==================")
+	for url, group := range report.FailureClusters {
+		fmt.Printf("Job url: %s\n", url)
+		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
+	}
+
 }
 
 type options struct {
-	SampleData       string
-	Dashboards       []string
-	Lookback         int
-	FindBugs         bool
-	SuccessThreshold float32
-	JobFilter        string
-	MinRuns          int
-	Output           string
+	SampleData              string
+	Dashboards              []string
+	Lookback                int
+	FindBugs                bool
+	SuccessThreshold        float32
+	JobFilter               string
+	MinRuns                 int
+	Output                  string
+	FailureClusterThreshold int
 }
 
 func main() {
 	opt := &options{
-		Lookback:         14,
-		SuccessThreshold: 99,
-		MinRuns:          10,
-		Output:           "json",
+		Lookback:                14,
+		SuccessThreshold:        99,
+		MinRuns:                 10,
+		Output:                  "json",
+		FailureClusterThreshold: -1,
 	}
 
 	klog.InitFlags(nil)
@@ -484,6 +529,7 @@ func main() {
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.IntVar(&opt.MinRuns, "min-runs", opt.MinRuns, "Ignore tests with less than this number of runs")
+	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
