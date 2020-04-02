@@ -51,7 +51,7 @@ var (
 	ByPlatform map[string]AggregateTestResult = make(map[string]AggregateTestResult)
 	BySig      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
 
-	FailureClusters map[string]JobRunResult = make(map[string]JobRunResult)
+	FailureGroups map[string]JobRunResult = make(map[string]JobRunResult)
 )
 
 type TestMeta struct {
@@ -63,26 +63,26 @@ type TestMeta struct {
 }
 
 type TestReport struct {
-	All             map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform      map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
-	BySig           map[string]SortedAggregateTestResult `json:"bySig`
-	FailureClusters []JobRunResult                       `json:"failureClusters"`
-	JobPassRate     []JobResult                          `json:"jobPassRate"`
+	All           map[string]SortedAggregateTestResult `json:"all"`
+	ByPlatform    map[string]SortedAggregateTestResult `json:"byPlatform`
+	ByJob         map[string]SortedAggregateTestResult `json:"byJob`
+	BySig         map[string]SortedAggregateTestResult `json:"bySig`
+	FailureGroups []JobRunResult                       `json:"failureGroups"`
+	JobPassRate   []JobResult                          `json:"jobPassRate"`
 }
 
 type SortedAggregateTestResult struct {
 	Successes          int          `json:"successes"`
 	Failures           int          `json:"failures"`
-	TestPassPercentage float32      `json:"TestPassPercentage"`
+	TestPassPercentage float32      `json:"testPassPercentage"`
 	TestResults        []TestResult `json:"results"`
 }
 
 type AggregateTestResult struct {
 	Successes          int                   `json:"successes"`
 	Failures           int                   `json:"failures"`
-	TestPassPercentage float32               `json:"TestPassPercentage"`
-	JobPassPercentage  float32               `json:"JobPassPercentage"`
+	TestPassPercentage float32               `json:"testPassPercentage"`
+	JobPassPercentage  float32               `json:"jobPassPercentage"`
 	TestResults        map[string]TestResult `json:"results"`
 }
 
@@ -90,22 +90,22 @@ type TestResult struct {
 	Name           string  `json:"name"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
-	PassPercentage float32 `json:"PassPercentage"`
-	Bug            string  `json:"Bug"`
+	PassPercentage float32 `json:"passPercentage"`
+	Bug            string  `json:"bug"`
 }
 
 type JobRunResult struct {
 	Job          string   `json:"job"`
 	Url          string   `json:"url"`
 	TestFailures int      `json:"testFailures"`
-	TestNames    []string `json:"TestNames"`
-	Failed       bool     `json:"Failed"`
+	TestNames    []string `json:"testNames"`
+	Failed       bool     `json:"failed"`
 }
 
 type JobResult struct {
 	Name           string  `json:"name"`
-	Failures       int     `json:"testFailures"`
-	Successes      int     `json:"testSuccesses"`
+	Failures       int     `json:"sailures"`
+	Successes      int     `json:"successes"`
 	PassPercentage float32 `json:"PassPercentage"`
 }
 
@@ -282,7 +282,7 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 			passed += result.Count
 			for i := col; i < col+result.Count; i++ {
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := FailureClusters[joburl]
+				jrr, ok := FailureGroups[joburl]
 				if !ok {
 					jrr = JobRunResult{
 						Job: job.Name,
@@ -290,25 +290,25 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 					}
 				}
 				jrr.TestNames = append(jrr.TestNames, test.Name)
-				FailureClusters[joburl] = jrr
+				FailureGroups[joburl] = jrr
 			}
 		case 12:
 			failed += result.Count
 			for i := col; i < col+result.Count; i++ {
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := FailureClusters[joburl]
+				jrr, ok := FailureGroups[joburl]
 				if !ok {
 					jrr = JobRunResult{
 						Job: job.Name,
 						Url: joburl,
 					}
 				}
-				jrr.TestNames = append(jrr.TestNames, test.Name)
+				//jrr.TestNames = append(jrr.TestNames, test.Name)
 				jrr.TestFailures++
 				if test.Name == "Overall" {
 					jrr.Failed = true
 				}
-				FailureClusters[joburl] = jrr
+				FailureGroups[joburl] = jrr
 			}
 		}
 		col += result.Count
@@ -430,7 +430,7 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 	return sorted
 }
 
-func filterFailureClusters(opts *options, jrr map[string]JobRunResult) []JobRunResult {
+func filterFailureGroups(opts *options, jrr map[string]JobRunResult) []JobRunResult {
 	filteredJrr := []JobRunResult{}
 	// -1 means don't do this reporting.
 	if opts.FailureClusterThreshold < 0 {
@@ -496,16 +496,16 @@ func prepareTestReport(opts *options) TestReport {
 	byJob := generateSortedResults(ByJob, opts)
 	bySig := generateSortedResults(BySig, opts)
 
-	filteredFailureClusters := filterFailureClusters(opts, FailureClusters)
-	jobPassRate := computeJobPassRate(opts, FailureClusters)
+	filteredFailureGroups := filterFailureGroups(opts, FailureGroups)
+	jobPassRate := computeJobPassRate(opts, FailureGroups)
 
 	return TestReport{
-		All:             byAll,
-		ByPlatform:      byPlatform,
-		ByJob:           byJob,
-		BySig:           bySig,
-		FailureClusters: filteredFailureClusters,
-		JobPassRate:     jobPassRate,
+		All:           byAll,
+		ByPlatform:    byPlatform,
+		ByJob:         byJob,
+		BySig:         bySig,
+		FailureGroups: filteredFailureGroups,
+		JobPassRate:   jobPassRate,
 	}
 
 }
@@ -584,7 +584,7 @@ func printTextReport(report TestReport) {
 	}
 
 	fmt.Println("\n\n\n================== Clustered Test Failures ==================")
-	for _, group := range report.FailureClusters {
+	for _, group := range report.FailureGroups {
 		fmt.Printf("Job url: %s\n", group.Url)
 		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
 	}
