@@ -100,6 +100,7 @@ type JobRunResult struct {
 	TestFailures int      `json:"testFailures"`
 	TestNames    []string `json:"testNames"`
 	Failed       bool     `json:"failed"`
+	Succeeded    bool     `json:"succeeded"`
 }
 
 type JobResult struct {
@@ -276,6 +277,7 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 	col := 0
 	passed := 0
 	failed := 0
+
 	for _, result := range test.Statuses {
 		switch result.Value {
 		case 1:
@@ -290,6 +292,9 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 					}
 				}
 				jrr.TestNames = append(jrr.TestNames, test.Name)
+				if test.Name == "Overall" {
+					jrr.Succeeded = true
+				}
 				FailureGroups[joburl] = jrr
 			}
 		case 12:
@@ -462,7 +467,7 @@ func computeJobPassRate(opts *options, jrr map[string]JobRunResult) []JobResult 
 		}
 		if run.Failed {
 			job.Failures++
-		} else {
+		} else if run.Succeeded {
 			job.Successes++
 		}
 		jobsMap[run.Job] = job
@@ -592,6 +597,8 @@ func printTextReport(report TestReport) {
 	fmt.Println("\n\n\n================== Job Pass Rates ==================")
 	for _, job := range report.JobPassRate {
 		fmt.Printf("Job: %s\n", job.Name)
+		fmt.Printf("Job Successes: %d\n", job.Successes)
+		fmt.Printf("Job Failures: %d\n", job.Failures)
 		fmt.Printf("Job Pass Percentage: %f\n\n", job.PassPercentage)
 	}
 
