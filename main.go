@@ -219,7 +219,7 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (testgrid.JobDeta
 		Name: jobName,
 	}
 
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s&exclude-filter-by-regex=Monitor%%5Cscluster&exclude-filter-by-regex=%%5Eoperator.Run%%20template.*container%%20test%%24", dashboard, jobName)
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s", dashboard, jobName)
 
 	var buf *bytes.Buffer
 	if len(opts.LocalData) != 0 {
