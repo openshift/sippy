@@ -65,7 +65,7 @@ type TestReport struct {
 	ByPlatform      map[string]SortedAggregateTestResult `json:"byPlatform`
 	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
 	BySig           map[string]SortedAggregateTestResult `json:"bySig`
-	FailureClusters map[string]JobRunResult              `json:"failureClusters"`
+	FailureClusters []JobRunResult                       `json:"failureClusters"`
 }
 
 type SortedAggregateTestResult struct {
@@ -371,18 +371,23 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 	return sorted
 }
 
-func filterFailureClusters(opts *options, jrr map[string]JobRunResult) map[string]JobRunResult {
-	filteredJrr := make(map[string]JobRunResult)
+func filterFailureClusters(opts *options, jrr map[string]JobRunResult) []JobRunResult {
+	filteredJrr := []JobRunResult{}
 	// -1 means don't do this reporting.
 	if opts.FailureClusterThreshold < 0 {
 		return filteredJrr
 	}
-	for k, v := range jrr {
+	for _, v := range jrr {
 		if v.TestFailures > opts.FailureClusterThreshold {
-			filteredJrr[k] = v
+			filteredJrr = append(filteredJrr, v)
 		}
-
 	}
+
+	// sort from highest to lowest
+	sort.SliceStable(filteredJrr, func(i, j int) bool {
+		return filteredJrr[i].TestFailures > filteredJrr[j].TestFailures
+	})
+
 	return filteredJrr
 }
 
@@ -483,8 +488,8 @@ func printTextReport(report TestReport) {
 	}
 
 	fmt.Println("\n\n\n================== Clustered Test Failures ==================")
-	for url, group := range report.FailureClusters {
-		fmt.Printf("Job url: %s\n", url)
+	for _, group := range report.FailureClusters {
+		fmt.Printf("Job url: %s\n", group.Url)
 		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
 	}
 
