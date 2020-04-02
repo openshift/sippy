@@ -66,20 +66,22 @@ type TestReport struct {
 	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
 	BySig           map[string]SortedAggregateTestResult `json:"bySig`
 	FailureClusters []JobRunResult                       `json:"failureClusters"`
+	JobPassRate     []JobResult                          `json:"jobPassRate"`
 }
 
 type SortedAggregateTestResult struct {
-	Successes      int          `json:"successes"`
-	Failures       int          `json:"failures"`
-	PassPercentage float32      `json:"PassPercentage"`
-	TestResults    []TestResult `json:"results"`
+	Successes          int          `json:"successes"`
+	Failures           int          `json:"failures"`
+	TestPassPercentage float32      `json:"TestPassPercentage"`
+	TestResults        []TestResult `json:"results"`
 }
 
 type AggregateTestResult struct {
-	Successes      int                   `json:"successes"`
-	Failures       int                   `json:"failures"`
-	PassPercentage float32               `json:"PassPercentage"`
-	TestResults    map[string]TestResult `json:"results"`
+	Successes          int                   `json:"successes"`
+	Failures           int                   `json:"failures"`
+	TestPassPercentage float32               `json:"TestPassPercentage"`
+	JobPassPercentage  float32               `json:"JobPassPercentage"`
+	TestResults        map[string]TestResult `json:"results"`
 }
 
 type TestResult struct {
@@ -95,6 +97,14 @@ type JobRunResult struct {
 	Url          string   `json:"url"`
 	TestFailures int      `json:"testFailures"`
 	TestNames    []string `json:"TestNames"`
+	Failed       bool     `json:"Failed"`
+}
+
+type JobResult struct {
+	Name           string  `json:"name"`
+	Failures       int     `json:"testFailures"`
+	Successes      int     `json:"testSuccesses"`
+	PassPercentage float32 `json:"PassPercentage"`
 }
 
 func jobMatters(jobName, status string, filter *regexp.Regexp) bool {
@@ -225,9 +235,6 @@ func computeLookback(lookback int, timestamps []int) int {
 }
 
 func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta TestMeta, cols int) {
-	if test.Name == "Overall" {
-		return
-	}
 	col := 0
 	passed := 0
 	failed := 0
@@ -235,6 +242,18 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 		switch result.Value {
 		case 1:
 			passed += result.Count
+			for i := col; i < col+result.Count; i++ {
+				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+				jrr, ok := FailureClusters[joburl]
+				if !ok {
+					jrr = JobRunResult{
+						Job: job.Name,
+						Url: joburl,
+					}
+				}
+				jrr.TestNames = append(jrr.TestNames, test.Name)
+				FailureClusters[joburl] = jrr
+			}
 		case 12:
 			failed += result.Count
 			for i := col; i < col+result.Count; i++ {
@@ -248,6 +267,9 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 				}
 				jrr.TestNames = append(jrr.TestNames, test.Name)
 				jrr.TestFailures++
+				if test.Name == "Overall" {
+					jrr.Failed = true
+				}
 				FailureClusters[joburl] = jrr
 			}
 		}
@@ -325,11 +347,10 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 
 func computePercentages(AggregateTestResults map[string]AggregateTestResult) {
 	for k, AggregateTestResult := range AggregateTestResults {
-
 		if AggregateTestResult.Successes+AggregateTestResult.Failures > 0 {
-			AggregateTestResult.PassPercentage = float32(AggregateTestResult.Successes) / float32(AggregateTestResult.Successes+AggregateTestResult.Failures) * 100
+			AggregateTestResult.TestPassPercentage = float32(AggregateTestResult.Successes) / float32(AggregateTestResult.Successes+AggregateTestResult.Failures) * 100
 		} else {
-			AggregateTestResult.PassPercentage = 100.0
+			AggregateTestResult.TestPassPercentage = 100.0
 		}
 		for k, r := range AggregateTestResult.TestResults {
 			if r.Successes+r.Failures > 0 {
@@ -348,9 +369,9 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 
 	for k, v := range AggregateTestResult {
 		sorted[k] = SortedAggregateTestResult{
-			Failures:       v.Failures,
-			Successes:      v.Successes,
-			PassPercentage: v.PassPercentage,
+			Failures:           v.Failures,
+			Successes:          v.Successes,
+			TestPassPercentage: v.TestPassPercentage,
 		}
 
 		for _, result := range v.TestResults {
@@ -391,6 +412,41 @@ func filterFailureClusters(opts *options, jrr map[string]JobRunResult) []JobRunR
 	return filteredJrr
 }
 
+func computeJobPassRate(opts *options, jrr map[string]JobRunResult) []JobResult {
+	jobsMap := make(map[string]JobResult)
+
+	for _, run := range jrr {
+		job, ok := jobsMap[run.Job]
+		if !ok {
+			job = JobResult{
+				Name: run.Job,
+			}
+		}
+		if run.Failed {
+			job.Failures++
+		} else {
+			job.Successes++
+		}
+		jobsMap[run.Job] = job
+	}
+	jobs := []JobResult{}
+	for _, job := range jobsMap {
+		if job.Successes+job.Failures > 0 {
+			job.PassPercentage = float32(job.Successes) / float32(job.Successes+job.Failures) * 100
+		} else {
+			job.PassPercentage = 100.0
+		}
+		jobs = append(jobs, job)
+	}
+
+	// sort from lowest to highest
+	sort.SliceStable(jobs, func(i, j int) bool {
+		return jobs[i].PassPercentage < jobs[j].PassPercentage
+	})
+
+	return jobs
+}
+
 func prepareTestReport(opts *options) TestReport {
 	computePercentages(ByAll)
 	computePercentages(ByPlatform)
@@ -403,6 +459,7 @@ func prepareTestReport(opts *options) TestReport {
 	bySig := generateSortedResults(BySig, opts)
 
 	filteredFailureClusters := filterFailureClusters(opts, FailureClusters)
+	jobPassRate := computeJobPassRate(opts, FailureClusters)
 
 	return TestReport{
 		All:             byAll,
@@ -410,6 +467,7 @@ func prepareTestReport(opts *options) TestReport {
 		ByJob:           byJob,
 		BySig:           bySig,
 		FailureClusters: filteredFailureClusters,
+		JobPassRate:     jobPassRate,
 	}
 
 }
@@ -433,13 +491,13 @@ func printTextReport(report TestReport) {
 	all := report.All["all"]
 	//	fmt.Printf("Passing test runs: %d\n", all.Successes)
 	//	fmt.Printf("Failing test runs: %d\n", all.Failures)
-	fmt.Printf("Percentage: %f\n", all.PassPercentage)
+	fmt.Printf("Test Pass Percentage: %f\n", all.TestPassPercentage)
 
 	for _, test := range all.TestResults {
 		fmt.Printf("\tTest Name: %s\n", test.Name)
 		//		fmt.Printf("\tPassed: %d\n", test.Successes)
 		//		fmt.Printf("\tFailed: %d\n", test.Failures)
-		fmt.Printf("\tPercentage: %f\n", test.PassPercentage)
+		fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
 	}
 
 	fmt.Println("\n\n\n================== Summary By Platform ==================")
@@ -447,13 +505,13 @@ func printTextReport(report TestReport) {
 		fmt.Printf("\nPlatform: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Percentage: %f\n", by.PassPercentage)
+		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
 
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tPercentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
 		}
 	}
 
@@ -462,13 +520,13 @@ func printTextReport(report TestReport) {
 		fmt.Printf("\nJob: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Percentage: %f\n", by.PassPercentage)
+		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
 
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tPercentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
 		}
 	}
 
@@ -477,13 +535,13 @@ func printTextReport(report TestReport) {
 		fmt.Printf("\nSig: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Percentage: %f\n", by.PassPercentage)
+		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
 
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tPercentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
 		}
 	}
 
@@ -491,6 +549,12 @@ func printTextReport(report TestReport) {
 	for _, group := range report.FailureClusters {
 		fmt.Printf("Job url: %s\n", group.Url)
 		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
+	}
+
+	fmt.Println("\n\n\n================== Job Pass Rates ==================")
+	for _, job := range report.JobPassRate {
+		fmt.Printf("Job: %s\n", job.Name)
+		fmt.Printf("Job Pass Percentage: %f\n\n", job.PassPercentage)
 	}
 
 }
