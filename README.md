@@ -1,4 +1,6 @@
-# ci-investigator
+# Sippy
+
+CIPI (Continuous Integration Private Investigator) aka Sippy.
 
 A tool to process the job results from https://testgrid.k8s.io/
 
@@ -17,35 +19,15 @@ https://testgrid.k8s.io/redhat-openshift-ocp-release-4.2-blocking
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.1-blocking
 ```
 
-For each job, finds the top N test failures as sorted by other flakiness or failures, based on command line arguments.
+Reports on which tests fail most frequently along different dimensions:
 
-For each top failing test, attempts to find a bugzilla that includes the test name.
+* overall
+* by job
+* by platform (e.g. aws, gcp, etc)
+* by sig (sig ownership of the test)
 
-Final report is sorted by number of jobs that have experienced the particular test failure.
+Also reports on:
+* Job runs that had large groups of test failures in a single run (generally indicative of a fundamental issue rather than a test problem)
+* Job pass rates (which jobs are failing frequently, which are not, in sorted order)
 
-Data reported, for each top failing test:
-
-* The test name
-* The sig that owns the test
-* The number of jobs that are reporting this as a top failure/flake
-* The names of the jobs that reported it as a top failure/flake
-* The associated bug, if one was found
-
-Example output:
-```
-[
-  {
-    "testName": "operator.Create the release image containing all images built by this job",
-    "owningSig": "sig-unknown",
-    "jobsFailedCount": 5,
-    "jobsFailedNames": [
-      "release-openshift-origin-installer-e2e-aws-serial-4.5",
-      "release-openshift-ocp-installer-e2e-aws-serial-4.5",
-      "release-openshift-ocp-installer-e2e-azure-serial-4.3",
-      "release-openshift-ocp-installer-e2e-aws-upi-4.2",
-      "release-openshift-origin-installer-e2e-aws-4.2"
-    ],
-    "associatedBug": "no bug found"
-  }
-]
-```
+Can filter based on time ranges, job names, and various thresholds.  See `./sippy -h`
