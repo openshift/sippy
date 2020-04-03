@@ -261,20 +261,28 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (testgrid.JobDeta
 
 }
 
-func computeLookback(lookback int, timestamps []int) int {
+func computeLookback(startday, lookback int, timestamps []int) (int, int) {
 
-	stop := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
-
+	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
+	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
+	start := -1
+	//fmt.Printf("start:\t%d\nend:\t%d\n", startTs, stopTs)
 	for i, t := range timestamps {
-		if int64(t) < stop {
-			return i
+		//fmt.Printf("comparing:%d\n%d\n%d\n", i, t, startTs)
+		if int64(t) < startTs && start == -1 {
+			start = i
+			//fmt.Printf("set start to %d\n", start)
+		}
+		if int64(t) < stopTs {
+			//fmt.Printf("Col range %d to %d\n", start, i)
+			return start, i
 		}
 	}
-	return 0
+	return start, len(timestamps)
 }
 
-func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta TestMeta, cols int) {
-	col := 0
+func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta TestMeta, startCol, endCol int) {
+	col := startCol
 	passed := 0
 	failed := 0
 
@@ -282,7 +290,8 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 		switch result.Value {
 		case 1:
 			passed += result.Count
-			for i := col; i < col+result.Count; i++ {
+			for i := col; i < col+result.Count && i < endCol; i++ {
+				//fmt.Printf("job:%s\ntest:%s\nstart: %d\nend:%d\ncol:%d\nresultCount:%d\ni:%d\n", job.Name, test.Name, startCol, endCol, col, result.Count, i)
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := FailureGroups[joburl]
 				if !ok {
@@ -299,7 +308,8 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 			}
 		case 12:
 			failed += result.Count
-			for i := col; i < col+result.Count; i++ {
+			for i := col; i < col+result.Count && i < endCol; i++ {
+				//fmt.Printf("job:%s\ntest:%s\nstart: %d\nend:%d\ncol:%d\nresultCount:%d\ni:%d\n", job.Name, test.Name, startCol, endCol, col, result.Count, i)
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := FailureGroups[joburl]
 				if !ok {
@@ -317,7 +327,7 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 			}
 		}
 		col += result.Count
-		if col > cols {
+		if col > endCol {
 			break
 		}
 	}
@@ -357,7 +367,8 @@ func addTestResult(categoryKey string, categories map[string]AggregateTestResult
 
 func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[string]TestMeta) {
 
-	cols := computeLookback(opts.Lookback, job.Timestamps)
+	//fmt.Printf("computing lookback for job %s\n", job.Name)
+	startCol, endCol := computeLookback(opts.StartDay, opts.Lookback, job.Timestamps)
 
 	for _, test := range job.Tests {
 		klog.V(2).Infof("Analyzing results from job %s for test %s\n", job.Name, test.Name)
@@ -383,7 +394,7 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 		// update test metadata
 		testMeta[test.Name] = meta
 
-		processTest(job, findPlatform(job.Name), test, meta, cols)
+		processTest(job, findPlatform(job.Name), test, meta, startCol, endCol)
 
 	}
 }
@@ -607,6 +618,7 @@ func printTextReport(report TestReport) {
 type options struct {
 	LocalData               string
 	Dashboards              []string
+	StartDay                int
 	Lookback                int
 	FindBugs                bool
 	SuccessThreshold        float32
@@ -624,6 +636,7 @@ func main() {
 		MinRuns:                 10,
 		Output:                  "json",
 		FailureClusterThreshold: 10,
+		StartDay:                0,
 	}
 
 	klog.InitFlags(nil)
@@ -639,6 +652,7 @@ func main() {
 	flags := cmd.Flags()
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
+	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
 	flags.Float32Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
