@@ -266,15 +266,11 @@ func computeLookback(startday, lookback int, timestamps []int) (int, int) {
 	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
 	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
 	start := -1
-	//fmt.Printf("start:\t%d\nend:\t%d\n", startTs, stopTs)
 	for i, t := range timestamps {
-		//fmt.Printf("comparing:%d\n%d\n%d\n", i, t, startTs)
 		if int64(t) < startTs && start == -1 {
 			start = i
-			//fmt.Printf("set start to %d\n", start)
 		}
 		if int64(t) < stopTs {
-			//fmt.Printf("Col range %d to %d\n", start, i)
 			return start, i
 		}
 	}
@@ -291,25 +287,6 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 		case 1:
 			passed += result.Count
 			for i := col; i < col+result.Count && i < endCol; i++ {
-				//fmt.Printf("job:%s\ntest:%s\nstart: %d\nend:%d\ncol:%d\nresultCount:%d\ni:%d\n", job.Name, test.Name, startCol, endCol, col, result.Count, i)
-				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := FailureGroups[joburl]
-				if !ok {
-					jrr = JobRunResult{
-						Job: job.Name,
-						Url: joburl,
-					}
-				}
-				jrr.TestNames = append(jrr.TestNames, test.Name)
-				if test.Name == "Overall" {
-					jrr.Succeeded = true
-				}
-				FailureGroups[joburl] = jrr
-			}
-		case 12:
-			failed += result.Count
-			for i := col; i < col+result.Count && i < endCol; i++ {
-				//fmt.Printf("job:%s\ntest:%s\nstart: %d\nend:%d\ncol:%d\nresultCount:%d\ni:%d\n", job.Name, test.Name, startCol, endCol, col, result.Count, i)
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := FailureGroups[joburl]
 				if !ok {
@@ -319,6 +296,23 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 					}
 				}
 				//jrr.TestNames = append(jrr.TestNames, test.Name)
+				if test.Name == "Overall" {
+					jrr.Succeeded = true
+				}
+				FailureGroups[joburl] = jrr
+			}
+		case 12:
+			failed += result.Count
+			for i := col; i < col+result.Count && i < endCol; i++ {
+				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+				jrr, ok := FailureGroups[joburl]
+				if !ok {
+					jrr = JobRunResult{
+						Job: job.Name,
+						Url: joburl,
+					}
+				}
+				jrr.TestNames = append(jrr.TestNames, test.Name)
 				jrr.TestFailures++
 				if test.Name == "Overall" {
 					jrr.Failed = true
@@ -367,7 +361,6 @@ func addTestResult(categoryKey string, categories map[string]AggregateTestResult
 
 func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[string]TestMeta) {
 
-	//fmt.Printf("computing lookback for job %s\n", job.Name)
 	startCol, endCol := computeLookback(opts.StartDay, opts.Lookback, job.Timestamps)
 
 	for _, test := range job.Tests {
@@ -603,6 +596,7 @@ func printTextReport(report TestReport) {
 	for _, group := range report.FailureGroups {
 		fmt.Printf("Job url: %s\n", group.Url)
 		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
+		break
 	}
 
 	fmt.Println("\n\n\n================== Job Pass Rates ==================")
