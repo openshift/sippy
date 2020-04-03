@@ -596,7 +596,6 @@ func printTextReport(report TestReport) {
 	for _, group := range report.FailureGroups {
 		fmt.Printf("Job url: %s\n", group.Url)
 		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
-		break
 	}
 
 	fmt.Println("\n\n\n================== Job Pass Rates ==================")
