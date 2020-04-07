@@ -23,16 +23,16 @@ import (
 
 var (
 	defaultDashboards []string = []string{
-		//		"redhat-openshift-ocp-release-4.5-informing",
+		//"redhat-openshift-ocp-release-4.5-informing",
 		"redhat-openshift-ocp-release-4.4-informing",
-		//		"redhat-openshift-ocp-release-4.3-informing",
-		//		"redhat-openshift-ocp-release-4.2-informing",
-		//		"redhat-openshift-ocp-release-4.1-informing",
-		//		"redhat-openshift-ocp-release-4.5-blocking",
+		//"redhat-openshift-ocp-release-4.3-informing",
+		//"redhat-openshift-ocp-release-4.2-informing",
+		//"redhat-openshift-ocp-release-4.1-informing",
+		//"redhat-openshift-ocp-release-4.5-blocking",
 		"redhat-openshift-ocp-release-4.4-blocking",
-		//		"redhat-openshift-ocp-release-4.3-blocking",
-		//		"redhat-openshift-ocp-release-4.2-blocking",
-		//		"redhat-openshift-ocp-release-4.1-blocking",
+		//"redhat-openshift-ocp-release-4.3-blocking",
+		//"redhat-openshift-ocp-release-4.2-blocking",
+		//"redhat-openshift-ocp-release-4.1-blocking",
 	}
 	sigRegex      *regexp.Regexp = regexp.MustCompile(`\[(sig-.*?)\]`)
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
@@ -82,7 +82,6 @@ type AggregateTestResult struct {
 	Successes          int                   `json:"successes"`
 	Failures           int                   `json:"failures"`
 	TestPassPercentage float32               `json:"testPassPercentage"`
-	JobPassPercentage  float32               `json:"jobPassPercentage"`
 	TestResults        map[string]TestResult `json:"results"`
 }
 
@@ -105,7 +104,7 @@ type JobRunResult struct {
 
 type JobResult struct {
 	Name           string  `json:"name"`
-	Failures       int     `json:"sailures"`
+	Failures       int     `json:"failures"`
 	Successes      int     `json:"successes"`
 	PassPercentage float32 `json:"PassPercentage"`
 }
@@ -167,9 +166,12 @@ func findPlatform(name string) string {
 		return "metal"
 	case ovirtRegex.MatchString(name):
 		return "ovirt"
+	case ovirtRegex.MatchString(name):
+		return "ovirt"
 	case vsphereRegex.MatchString(name):
 		return "vsphere"
 	}
+	klog.V(2).Infof("unknown platform for job: %s\n", name)
 	return "unknown platform"
 }
 
@@ -265,6 +267,7 @@ func computeLookback(startday, lookback int, timestamps []int) (int, int) {
 
 	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
 	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
+	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
 	start := -1
 	for i, t := range timestamps {
 		if int64(t) < startTs && start == -1 {
@@ -281,12 +284,11 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 	col := startCol
 	passed := 0
 	failed := 0
-
 	for _, result := range test.Statuses {
 		switch result.Value {
 		case 1:
-			passed += result.Count
 			for i := col; i < col+result.Count && i < endCol; i++ {
+				passed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := FailureGroups[joburl]
 				if !ok {
@@ -295,15 +297,15 @@ func processTest(job testgrid.JobDetails, platform string, test testgrid.Test, m
 						Url: joburl,
 					}
 				}
-				//jrr.TestNames = append(jrr.TestNames, test.Name)
+				jrr.TestNames = append(jrr.TestNames, test.Name)
 				if test.Name == "Overall" {
 					jrr.Succeeded = true
 				}
 				FailureGroups[joburl] = jrr
 			}
 		case 12:
-			failed += result.Count
 			for i := col; i < col+result.Count && i < endCol; i++ {
+				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := FailureGroups[joburl]
 				if !ok {
@@ -394,17 +396,9 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 
 func computePercentages(AggregateTestResults map[string]AggregateTestResult) {
 	for k, AggregateTestResult := range AggregateTestResults {
-		if AggregateTestResult.Successes+AggregateTestResult.Failures > 0 {
-			AggregateTestResult.TestPassPercentage = float32(AggregateTestResult.Successes) / float32(AggregateTestResult.Successes+AggregateTestResult.Failures) * 100
-		} else {
-			AggregateTestResult.TestPassPercentage = 100.0
-		}
+		AggregateTestResult.TestPassPercentage = percent(AggregateTestResult.Successes, AggregateTestResult.Failures)
 		for k, r := range AggregateTestResult.TestResults {
-			if r.Successes+r.Failures > 0 {
-				r.PassPercentage = float32(r.Successes) / float32(r.Successes+r.Failures) * 100
-			} else {
-				r.PassPercentage = 100.0
-			}
+			r.PassPercentage = percent(r.Successes, r.Failures)
 			AggregateTestResult.TestResults[k] = r
 		}
 		AggregateTestResults[k] = AggregateTestResult
@@ -478,11 +472,7 @@ func computeJobPassRate(opts *options, jrr map[string]JobRunResult) []JobResult 
 	}
 	jobs := []JobResult{}
 	for _, job := range jobsMap {
-		if job.Successes+job.Failures > 0 {
-			job.PassPercentage = float32(job.Successes) / float32(job.Successes+job.Failures) * 100
-		} else {
-			job.PassPercentage = 100.0
-		}
+		job.PassPercentage = percent(job.Successes, job.Failures)
 		jobs = append(jobs, job)
 	}
 
@@ -536,15 +526,20 @@ func printJsonReport(report TestReport) {
 func printTextReport(report TestReport) {
 	fmt.Println("================== Summary Across All Jobs ==================")
 	all := report.All["all"]
-	//	fmt.Printf("Passing test runs: %d\n", all.Successes)
-	//	fmt.Printf("Failing test runs: %d\n", all.Failures)
+	fmt.Printf("Passing test runs: %d\n", all.Successes)
+	fmt.Printf("Failing test runs: %d\n", all.Failures)
 	fmt.Printf("Test Pass Percentage: %f\n", all.TestPassPercentage)
-
+	testCount := 0
+	testSuccesses := 0
+	testFailures := 0
 	for _, test := range all.TestResults {
 		fmt.Printf("\tTest Name: %s\n", test.Name)
 		//		fmt.Printf("\tPassed: %d\n", test.Successes)
 		//		fmt.Printf("\tFailed: %d\n", test.Failures)
 		fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
+		testCount++
+		testSuccesses += test.Successes
+		testFailures += test.Failures
 	}
 
 	fmt.Println("\n\n\n================== Summary By Platform ==================")
@@ -553,13 +548,13 @@ func printTextReport(report TestReport) {
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
 		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
-
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
 			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
 		}
+
 	}
 
 	fmt.Println("\n\n\n================== Summary By Job ==================")
@@ -568,7 +563,6 @@ func printTextReport(report TestReport) {
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
 		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
-
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
@@ -583,7 +577,6 @@ func printTextReport(report TestReport) {
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
 		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
-
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
@@ -599,13 +592,52 @@ func printTextReport(report TestReport) {
 	}
 
 	fmt.Println("\n\n\n================== Job Pass Rates ==================")
+	jobSuccesses := 0
+	jobFailures := 0
+	jobCount := 0
+	jobRunsByPlatform := make(map[string]JobResult)
+
 	for _, job := range report.JobPassRate {
+		p := findPlatform(job.Name)
+		j := jobRunsByPlatform[p]
+		j.Successes += job.Successes
+		j.Failures += job.Failures
+		jobRunsByPlatform[p] = j
 		fmt.Printf("Job: %s\n", job.Name)
 		fmt.Printf("Job Successes: %d\n", job.Successes)
 		fmt.Printf("Job Failures: %d\n", job.Failures)
 		fmt.Printf("Job Pass Percentage: %f\n\n", job.PassPercentage)
+		jobSuccesses += job.Successes
+		jobFailures += job.Failures
+		jobCount++
+	}
+	fmt.Println("")
+	for k, v := range jobRunsByPlatform {
+		fmt.Printf("Platform: %s\n", k)
+		fmt.Printf("Job Succeses: %d\n", v.Successes)
+		fmt.Printf("Job Failures: %d\n", v.Failures)
+		fmt.Printf("Platform Job Pass Percentage: %f\n\n", percent(v.Successes, v.Failures))
 	}
 
+	fmt.Println("")
+
+	fmt.Printf("Total Jobs: %d\n", jobCount)
+	fmt.Printf("Total Job Successes: %d\n", jobSuccesses)
+	fmt.Printf("Total Job Failures: %d\n", jobFailures)
+	fmt.Printf("Total Job Pass Percentage: %f\n\n", percent(jobSuccesses, jobFailures))
+
+	fmt.Printf("Total Tests: %d\n", testCount)
+	fmt.Printf("Total Test Successes: %d\n", testSuccesses)
+	fmt.Printf("Total Test Failures: %d\n", testFailures)
+	fmt.Printf("Total Test Pass Percentage: %f\n", percent(testSuccesses, testFailures))
+
+}
+
+func percent(success, failure int) float32 {
+	if success+failure == 0 {
+		return 100.0
+	}
+	return float32(success) / float32(success+failure) * 100.0
 }
 
 type options struct {
