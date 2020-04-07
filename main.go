@@ -222,7 +222,7 @@ func fetchJobDetails(dashboard, jobName string, opts *options) (testgrid.JobDeta
 		Name: jobName,
 	}
 
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?tab=%s", dashboard, jobName)
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
 
 	var buf *bytes.Buffer
 	if len(opts.LocalData) != 0 {
