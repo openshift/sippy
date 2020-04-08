@@ -575,7 +575,7 @@ func printReport(opts *options) {
 	case "text":
 		printTextReport(r)
 	case "dashboard":
-		printDashboardReport(r)
+		printDashboardReport(opts, r)
 	}
 }
 func printJsonReport(report TestReport) {
@@ -583,7 +583,7 @@ func printJsonReport(report TestReport) {
 	enc.Encode(report)
 }
 
-func printDashboardReport(report TestReport) {
+func printDashboardReport(opts *options, report TestReport) {
 	fmt.Println("================== Summary Across All Jobs ==================")
 	all := report.All["all"]
 	fmt.Printf("Passing test runs: %d\n", all.Successes)
@@ -594,11 +594,12 @@ func printDashboardReport(report TestReport) {
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
-		if !ignoreTestRegex.MatchString(test.Name) {
-			fmt.Printf("\tTest Name: %s\n", test.Name)
-			//		fmt.Printf("\tPassed: %d\n", test.Successes)
-			//		fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
+		if !ignoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > opts.MinRuns {
+			fmt.Printf("Test Name: %s\n", test.Name)
+			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n\n", test.PassPercentage, test.Successes+test.Failures)
+			if test.Successes+test.Failures < 10 {
+				fmt.Printf("WARNING: Only %d runs for this test\n", test.Successes+test.Failures)
+			}
 			count++
 		}
 	}
