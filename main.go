@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -268,9 +269,9 @@ func computeLookback(startday, lookback int, timestamps []int) (int, int) {
 	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
 	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
 	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
-	start := -1
+	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
 	for i, t := range timestamps {
-		if int64(t) < startTs && start == -1 {
+		if int64(t) < startTs && i < start {
 			start = i
 		}
 		if int64(t) < stopTs {
@@ -364,9 +365,8 @@ func addTestResult(categoryKey string, categories map[string]AggregateTestResult
 func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[string]TestMeta) {
 
 	startCol, endCol := computeLookback(opts.StartDay, opts.Lookback, job.Timestamps)
-
 	for _, test := range job.Tests {
-		klog.V(2).Infof("Analyzing results from job %s for test %s\n", job.Name, test.Name)
+		klog.V(2).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 
 		meta, ok := testMeta[test.Name]
 		if !ok {
