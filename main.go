@@ -24,16 +24,16 @@ import (
 
 var (
 	defaultDashboards []string = []string{
-		//"redhat-openshift-ocp-release-4.5-informing",
-		"redhat-openshift-ocp-release-4.4-informing",
-		//"redhat-openshift-ocp-release-4.3-informing",
-		//"redhat-openshift-ocp-release-4.2-informing",
-		//"redhat-openshift-ocp-release-4.1-informing",
 		//"redhat-openshift-ocp-release-4.5-blocking",
+		//"redhat-openshift-ocp-release-4.5-informing",
 		"redhat-openshift-ocp-release-4.4-blocking",
+		"redhat-openshift-ocp-release-4.4-informing",
 		//"redhat-openshift-ocp-release-4.3-blocking",
+		//"redhat-openshift-ocp-release-4.3-informing",
 		//"redhat-openshift-ocp-release-4.2-blocking",
+		//"redhat-openshift-ocp-release-4.2-informing",
 		//"redhat-openshift-ocp-release-4.1-blocking",
+		//"redhat-openshift-ocp-release-4.1-informing",
 	}
 	sigRegex      *regexp.Regexp = regexp.MustCompile(`\[(sig-.*?)\]`)
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
@@ -47,10 +47,11 @@ var (
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 
-	ByAll      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
-	ByJob      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
-	ByPlatform map[string]AggregateTestResult = make(map[string]AggregateTestResult)
-	BySig      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
+	ignoreTestRegex *regexp.Regexp                 = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall`)
+	ByAll           map[string]AggregateTestResult = make(map[string]AggregateTestResult)
+	ByJob           map[string]AggregateTestResult = make(map[string]AggregateTestResult)
+	ByPlatform      map[string]AggregateTestResult = make(map[string]AggregateTestResult)
+	BySig           map[string]AggregateTestResult = make(map[string]AggregateTestResult)
 
 	FailureGroups map[string]JobRunResult = make(map[string]JobRunResult)
 )
@@ -75,14 +76,14 @@ type TestReport struct {
 type SortedAggregateTestResult struct {
 	Successes          int          `json:"successes"`
 	Failures           int          `json:"failures"`
-	TestPassPercentage float32      `json:"testPassPercentage"`
+	TestPassPercentage float64      `json:"testPassPercentage"`
 	TestResults        []TestResult `json:"results"`
 }
 
 type AggregateTestResult struct {
 	Successes          int                   `json:"successes"`
 	Failures           int                   `json:"failures"`
-	TestPassPercentage float32               `json:"testPassPercentage"`
+	TestPassPercentage float64               `json:"testPassPercentage"`
 	TestResults        map[string]TestResult `json:"results"`
 }
 
@@ -90,7 +91,7 @@ type TestResult struct {
 	Name           string  `json:"name"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
-	PassPercentage float32 `json:"passPercentage"`
+	PassPercentage float64 `json:"passPercentage"`
 	Bug            string  `json:"bug"`
 }
 
@@ -105,9 +106,10 @@ type JobRunResult struct {
 
 type JobResult struct {
 	Name           string  `json:"name"`
+	Platform       string  `json:"platform"`
 	Failures       int     `json:"failures"`
 	Successes      int     `json:"successes"`
-	PassPercentage float32 `json:"PassPercentage"`
+	PassPercentage float64 `json:"PassPercentage"`
 }
 
 func jobMatters(jobName, status string, filter *regexp.Regexp) bool {
@@ -394,12 +396,19 @@ func processJobDetails(job testgrid.JobDetails, opts *options, testMeta map[stri
 	}
 }
 
+func percent(success, failure int) float64 {
+	if success+failure == 0 {
+		return math.NaN()
+	}
+	return float64(success) / float64(success+failure) * 100.0
+}
+
 func computePercentages(AggregateTestResults map[string]AggregateTestResult) {
 	for k, AggregateTestResult := range AggregateTestResults {
 		AggregateTestResult.TestPassPercentage = percent(AggregateTestResult.Successes, AggregateTestResult.Failures)
-		for k, r := range AggregateTestResult.TestResults {
+		for k2, r := range AggregateTestResult.TestResults {
 			r.PassPercentage = percent(r.Successes, r.Failures)
-			AggregateTestResult.TestResults[k] = r
+			AggregateTestResult.TestResults[k2] = r
 		}
 		AggregateTestResults[k] = AggregateTestResult
 	}
@@ -431,6 +440,55 @@ func generateSortedResults(AggregateTestResult map[string]AggregateTestResult, o
 		})
 	}
 	return sorted
+}
+
+func summarizeJobsByPlatform(report TestReport) []JobResult {
+	jobRunsByPlatform := make(map[string]JobResult)
+	platformResults := []JobResult{}
+
+	for _, job := range report.JobPassRate {
+		p := findPlatform(job.Name)
+		j := jobRunsByPlatform[p]
+		j.Successes += job.Successes
+		j.Failures += job.Failures
+		j.Platform = p
+		jobRunsByPlatform[p] = j
+	}
+
+	for _, platform := range jobRunsByPlatform {
+
+		platform.PassPercentage = percent(platform.Successes, platform.Failures)
+		platformResults = append(platformResults, platform)
+	}
+	// sort from lowest to highest
+	sort.SliceStable(platformResults, func(i, j int) bool {
+		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
+	})
+	return platformResults
+}
+
+func summarizeJobsByName(report TestReport) []JobResult {
+	jobRunsByName := make(map[string]JobResult)
+	jobResults := []JobResult{}
+
+	for _, job := range report.JobPassRate {
+		j := jobRunsByName[job.Name]
+		j.Name = job.Name
+		j.Successes += job.Successes
+		j.Failures += job.Failures
+		jobRunsByName[job.Name] = j
+	}
+
+	for _, job := range jobRunsByName {
+
+		job.PassPercentage = percent(job.Successes, job.Failures)
+		jobResults = append(jobResults, job)
+	}
+	// sort from lowest to highest
+	sort.SliceStable(jobResults, func(i, j int) bool {
+		return jobResults[i].PassPercentage < jobResults[j].PassPercentage
+	})
+	return jobResults
 }
 
 func filterFailureGroups(opts *options, jrr map[string]JobRunResult) []JobRunResult {
@@ -516,6 +574,8 @@ func printReport(opts *options) {
 		printJsonReport(r)
 	case "text":
 		printTextReport(r)
+	case "dashboard":
+		printDashboardReport(r)
 	}
 }
 func printJsonReport(report TestReport) {
@@ -523,12 +583,70 @@ func printJsonReport(report TestReport) {
 	enc.Encode(report)
 }
 
-func printTextReport(report TestReport) {
+func printDashboardReport(report TestReport) {
 	fmt.Println("================== Summary Across All Jobs ==================")
 	all := report.All["all"]
 	fmt.Printf("Passing test runs: %d\n", all.Successes)
 	fmt.Printf("Failing test runs: %d\n", all.Failures)
-	fmt.Printf("Test Pass Percentage: %f\n", all.TestPassPercentage)
+	fmt.Printf("Test Pass Percentage: %0.2f\n", all.TestPassPercentage)
+
+	fmt.Println("\n\n================== Top 10 Most Frequently Failing Tests ==================")
+	count := 0
+	for i := 0; count < 10 && i < len(all.TestResults); i++ {
+		test := all.TestResults[i]
+		if !ignoreTestRegex.MatchString(test.Name) {
+			fmt.Printf("\tTest Name: %s\n", test.Name)
+			//		fmt.Printf("\tPassed: %d\n", test.Successes)
+			//		fmt.Printf("\tFailed: %d\n", test.Failures)
+			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
+			count++
+		}
+	}
+
+	fmt.Println("\n\n================== Top 10 Most Frequently Failing Jobs ==================")
+	jobRunsByName := summarizeJobsByName(report)
+
+	for i, v := range jobRunsByName {
+		fmt.Printf("Job: %s\n", v.Name)
+		fmt.Printf("Job Pass Percentage: %0.2f%% (%d runs)\n", percent(v.Successes, v.Failures), v.Successes+v.Failures)
+		if v.Successes+v.Failures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+		}
+		fmt.Printf("\n")
+		if i == 9 {
+			break
+		}
+	}
+
+	fmt.Println("\n\n================== Clustered Test Failures ==================")
+	count = 0
+	for _, group := range report.FailureGroups {
+		count += group.TestFailures
+	}
+	if len(report.FailureGroups) != 0 {
+		fmt.Printf("%d Clustered Test Failures with an average size of %d and median of %d\n", len(report.FailureGroups), count/len(report.FailureGroups), report.FailureGroups[len(report.FailureGroups)/2].TestFailures)
+	} else {
+		fmt.Printf("No clustered test failures observed")
+	}
+
+	fmt.Println("\n\n================== Summary By Platform ==================")
+	jobsByPlatform := summarizeJobsByPlatform(report)
+	for _, v := range jobsByPlatform {
+		fmt.Printf("Platform: %s\n", v.Platform)
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", percent(v.Successes, v.Failures), v.Successes+v.Failures)
+		if v.Successes+v.Failures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+		}
+		fmt.Printf("\n")
+	}
+}
+
+func printTextReport(report TestReport) {
+	fmt.Println("================== Test Summary Across All Jobs ==================")
+	all := report.All["all"]
+	fmt.Printf("Passing test runs: %d\n", all.Successes)
+	fmt.Printf("Failing test runs: %d\n", all.Failures)
+	fmt.Printf("Test Pass Percentage: %0.2f\n", all.TestPassPercentage)
 	testCount := 0
 	testSuccesses := 0
 	testFailures := 0
@@ -536,108 +654,104 @@ func printTextReport(report TestReport) {
 		fmt.Printf("\tTest Name: %s\n", test.Name)
 		//		fmt.Printf("\tPassed: %d\n", test.Successes)
 		//		fmt.Printf("\tFailed: %d\n", test.Failures)
-		fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
+		fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		testCount++
 		testSuccesses += test.Successes
 		testFailures += test.Failures
 	}
 
-	fmt.Println("\n\n\n================== Summary By Platform ==================")
+	fmt.Println("\n\n\n================== Test Summary By Platform ==================")
 	for key, by := range report.ByPlatform {
-		fmt.Printf("\nPlatform: %s\n", key)
+		fmt.Printf("Platform: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
+		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
-
+		fmt.Println("")
 	}
 
-	fmt.Println("\n\n\n================== Summary By Job ==================")
+	fmt.Println("\n\n\n================== Test Summary By Job ==================")
 	for key, by := range report.ByJob {
-		fmt.Printf("\nJob: %s\n", key)
+		fmt.Printf("Job: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
+		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
+		fmt.Println("")
 	}
 
-	fmt.Println("\n\n\n================== Summary By Sig ==================")
+	fmt.Println("\n\n\n================== Test Summary By Sig ==================")
 	for key, by := range report.BySig {
 		fmt.Printf("\nSig: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %f\n", by.TestPassPercentage)
+		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
 			//			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tTest Pass Percentage: %f\n", test.PassPercentage)
+			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
+		fmt.Println("")
 	}
 
 	fmt.Println("\n\n\n================== Clustered Test Failures ==================")
 	for _, group := range report.FailureGroups {
 		fmt.Printf("Job url: %s\n", group.Url)
-		fmt.Printf("Number of test failures: %d\n", group.TestFailures)
+		fmt.Printf("Number of test failures: %d\n\n", group.TestFailures)
 	}
 
 	fmt.Println("\n\n\n================== Job Pass Rates ==================")
 	jobSuccesses := 0
 	jobFailures := 0
 	jobCount := 0
-	jobRunsByPlatform := make(map[string]JobResult)
 
 	for _, job := range report.JobPassRate {
-		p := findPlatform(job.Name)
-		j := jobRunsByPlatform[p]
-		j.Successes += job.Successes
-		j.Failures += job.Failures
-		jobRunsByPlatform[p] = j
 		fmt.Printf("Job: %s\n", job.Name)
 		fmt.Printf("Job Successes: %d\n", job.Successes)
 		fmt.Printf("Job Failures: %d\n", job.Failures)
-		fmt.Printf("Job Pass Percentage: %f\n\n", job.PassPercentage)
+		fmt.Printf("Job Pass Percentage: %0.2f\n\n", job.PassPercentage)
 		jobSuccesses += job.Successes
 		jobFailures += job.Failures
 		jobCount++
 	}
-	fmt.Println("")
-	for k, v := range jobRunsByPlatform {
-		fmt.Printf("Platform: %s\n", k)
+
+	fmt.Println("\n\n================== Job Summary By Platform ==================")
+	jobsByPlatform := summarizeJobsByPlatform(report)
+	for _, v := range jobsByPlatform {
+		fmt.Printf("Platform: %s\n", v.Platform)
 		fmt.Printf("Job Succeses: %d\n", v.Successes)
 		fmt.Printf("Job Failures: %d\n", v.Failures)
-		fmt.Printf("Platform Job Pass Percentage: %f\n\n", percent(v.Successes, v.Failures))
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", percent(v.Successes, v.Failures), v.Successes+v.Failures)
+		if v.Successes+v.Failures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+		}
+		fmt.Printf("\n")
 	}
 
 	fmt.Println("")
 
+	fmt.Println("\n\n================== Overall Summary ==================")
 	fmt.Printf("Total Jobs: %d\n", jobCount)
 	fmt.Printf("Total Job Successes: %d\n", jobSuccesses)
 	fmt.Printf("Total Job Failures: %d\n", jobFailures)
-	fmt.Printf("Total Job Pass Percentage: %f\n\n", percent(jobSuccesses, jobFailures))
+	fmt.Printf("Total Job Pass Percentage: %0.2f\n\n", percent(jobSuccesses, jobFailures))
 
 	fmt.Printf("Total Tests: %d\n", testCount)
 	fmt.Printf("Total Test Successes: %d\n", testSuccesses)
 	fmt.Printf("Total Test Failures: %d\n", testFailures)
-	fmt.Printf("Total Test Pass Percentage: %f\n", percent(testSuccesses, testFailures))
+	fmt.Printf("Total Test Pass Percentage: %0.2f\n", percent(testSuccesses, testFailures))
 
-}
-
-func percent(success, failure int) float32 {
-	if success+failure == 0 {
-		return 100.0
-	}
-	return float32(success) / float32(success+failure) * 100.0
 }
 
 type options struct {
@@ -646,7 +760,7 @@ type options struct {
 	StartDay                int
 	Lookback                int
 	FindBugs                bool
-	SuccessThreshold        float32
+	SuccessThreshold        float64
 	JobFilter               string
 	MinRuns                 int
 	Output                  string
@@ -679,7 +793,7 @@ func main() {
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
-	flags.Float32Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
+	flags.Float64Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.Download, "download", opt.Download, "Download testgrid data to directory specified for use with --local-data")
