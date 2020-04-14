@@ -26,6 +26,9 @@ var (
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
+
+	// ignored for top 10 failing test reporting only.
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall`)
 )
 
 type TestMeta struct {

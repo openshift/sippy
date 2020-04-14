@@ -1,3 +1,3 @@
-sippy: *.go
+all:
 	go build -mod=vendor .
 

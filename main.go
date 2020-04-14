@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
+	"github.com/bparees/sippy/pkg/html"
 	"github.com/bparees/sippy/pkg/testgrid"
 	"github.com/bparees/sippy/pkg/util"
 )
@@ -32,9 +33,6 @@ var (
 		//"redhat-openshift-ocp-release-4.1-blocking",
 		//"redhat-openshift-ocp-release-4.1-informing",
 	}
-
-	// ignored for top 10 failing test reporting only.
-	ignoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall`)
 )
 
 type RawData struct {
@@ -300,7 +298,7 @@ func (a *Analyzer) printDashboardReport() {
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
-		if !ignoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinRuns {
+		if !util.IgnoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinRuns {
 			fmt.Printf("Test Name: %s\n", test.Name)
 			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
 			if test.Successes+test.Failures < 10 {
@@ -462,17 +460,17 @@ func (a *Analyzer) printTextReport() {
 }
 
 func (a *Analyzer) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-
+	html.PrintHtmlReport(w, req, a.Report)
 }
 
 func (a *Analyzer) serve() {
 	http.DefaultServeMux.HandleFunc("/", a.printHtmlReport)
-	go func() {
-		klog.Infof("Serving reports on %s ", a.Options.ListenAddr)
-		if err := http.ListenAndServe(a.Options.ListenAddr, nil); err != nil {
-			klog.Exitf("Server exited: %v", err)
-		}
-	}()
+	//go func() {
+	klog.Infof("Serving reports on %s ", a.Options.ListenAddr)
+	if err := http.ListenAndServe(a.Options.ListenAddr, nil); err != nil {
+		klog.Exitf("Server exited: %v", err)
+	}
+	//}()
 }
 
 type Options struct {
@@ -536,6 +534,11 @@ func main() {
 }
 
 func (o *Options) Run() error {
+	switch o.Output {
+	case "json", "text":
+	default:
+		return fmt.Errorf("invalid output type: %s\n", o.Output)
+	}
 
 	if len(o.Dashboards) == 0 {
 		o.Dashboards = defaultDashboards
@@ -559,6 +562,8 @@ func (o *Options) Run() error {
 
 	if o.Server {
 		analyzer.analyze()
+		analyzer.prepareTestReport()
+		analyzer.serve()
 	}
 
 	return nil
