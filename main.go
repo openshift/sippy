@@ -596,11 +596,12 @@ func printDashboardReport(opts *options, report TestReport) {
 		test := all.TestResults[i]
 		if !ignoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > opts.MinRuns {
 			fmt.Printf("Test Name: %s\n", test.Name)
-			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n\n", test.PassPercentage, test.Successes+test.Failures)
+			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
 			if test.Successes+test.Failures < 10 {
 				fmt.Printf("WARNING: Only %d runs for this test\n", test.Successes+test.Failures)
 			}
 			count++
+			fmt.Printf("\n")
 		}
 	}
 
@@ -755,6 +756,16 @@ func printTextReport(report TestReport) {
 
 }
 
+func serve(opt *options) {
+	http.DefaultServeMux.Handle("/", nil)
+	go func() {
+		klog.Infof("Serving reports on %s ", opt.ListenAddr)
+		if err := http.ListenAndServe(opt.ListenAddr, nil); err != nil {
+			klog.Exitf("Server exited: %v", err)
+		}
+	}()
+}
+
 type options struct {
 	LocalData               string
 	Dashboards              []string
@@ -767,6 +778,8 @@ type options struct {
 	Output                  string
 	FailureClusterThreshold int
 	Download                string
+	ListenAddr              string
+	Server                  bool
 }
 
 func main() {
@@ -777,6 +790,7 @@ func main() {
 		Output:                  "json",
 		FailureClusterThreshold: 10,
 		StartDay:                0,
+		ListenAddr:              ":8080",
 	}
 
 	klog.InitFlags(nil)
@@ -801,6 +815,8 @@ func main() {
 	flags.IntVar(&opt.MinRuns, "min-runs", opt.MinRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
+	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
+	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -810,13 +826,8 @@ func main() {
 	}
 }
 
-func (o *options) Run() error {
-
+func analyze(o *options) {
 	testMeta := make(map[string]TestMeta)
-	if len(o.Dashboards) == 0 {
-		o.Dashboards = defaultDashboards
-	}
-
 	for _, dashboard := range o.Dashboards {
 		jobs, err := fetchJobSummaries(dashboard, o)
 		if err != nil {
@@ -840,8 +851,22 @@ func (o *options) Run() error {
 			}
 		}
 	}
+}
 
-	printReport(o)
+func (o *options) Run() error {
+
+	if len(o.Dashboards) == 0 {
+		o.Dashboards = defaultDashboards
+	}
+
+	if !o.Server {
+		analyze(o)
+		printReport(o)
+	}
+
+	if o.Server {
+		analyze(o)
+	}
 
 	return nil
 }
