@@ -65,6 +65,7 @@ func (a *Analyzer) fetchJobSummaries(dashboard string) (map[string]testgrid.JobS
 		}
 		buf = bytes.NewBuffer([]byte{})
 		io.Copy(buf, resp.Body)
+		a.LastUpdateTime = time.Now()
 	}
 
 	if len(a.Options.Download) != 0 {

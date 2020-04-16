@@ -1,0 +1,20 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: sippy
+    app.kubernetes.io/component: sippy
+    app.kubernetes.io/instance: sippy
+  name: sippy
+  namespace: bparees
+spec:
+  port:
+    targetPort: 8080
+  subdomain: ""
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: sippy
+    weight: 100
+  wildcardPolicy: None
