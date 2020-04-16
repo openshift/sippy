@@ -46,6 +46,7 @@ type TestReport struct {
 	BySig         map[string]SortedAggregateTestResult `json:"bySig`
 	FailureGroups []JobRunResult                       `json:"failureGroups"`
 	JobPassRate   []JobResult                          `json:"jobPassRate"`
+	Timestamp     time.Time                            `json:"timestamp"`
 }
 
 type SortedAggregateTestResult struct {

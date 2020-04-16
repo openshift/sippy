@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -21,18 +22,7 @@ import (
 )
 
 var (
-	defaultDashboards []string = []string{
-		//"redhat-openshift-ocp-release-4.5-blocking",
-		//"redhat-openshift-ocp-release-4.5-informing",
-		"redhat-openshift-ocp-release-4.4-blocking",
-		"redhat-openshift-ocp-release-4.4-informing",
-		//"redhat-openshift-ocp-release-4.3-blocking",
-		//"redhat-openshift-ocp-release-4.3-informing",
-		//"redhat-openshift-ocp-release-4.2-blocking",
-		//"redhat-openshift-ocp-release-4.2-informing",
-		//"redhat-openshift-ocp-release-4.1-blocking",
-		//"redhat-openshift-ocp-release-4.1-informing",
-	}
+	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
 )
 
 type RawData struct {
@@ -41,12 +31,14 @@ type RawData struct {
 	ByPlatform    map[string]util.AggregateTestResult
 	BySig         map[string]util.AggregateTestResult
 	FailureGroups map[string]util.JobRunResult
+	JobDetails    []testgrid.JobDetails
 }
 
 type Analyzer struct {
-	RawData RawData
-	Options *Options
-	Report  util.TestReport
+	RawData        RawData
+	Options        *Options
+	Report         util.TestReport
+	LastUpdateTime time.Time
 }
 
 func (a *Analyzer) fetchJobSummaries(dashboard string) (map[string]testgrid.JobSummary, error) {
@@ -61,6 +53,8 @@ func (a *Analyzer) fetchJobSummaries(dashboard string) (map[string]testgrid.JobS
 			return jobs, fmt.Errorf("Could not read local data file %s: %v", filename, err)
 		}
 		buf = bytes.NewBuffer(b)
+		f, _ := os.Stat(filename)
+		a.LastUpdateTime = f.ModTime()
 	} else {
 		resp, err := http.Get(url)
 		if err != nil {
@@ -222,26 +216,56 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[strin
 
 func (a *Analyzer) analyze() {
 	testMeta := make(map[string]util.TestMeta)
-	for _, dashboard := range a.Options.Dashboards {
-		jobs, err := a.fetchJobSummaries(dashboard)
+
+	for _, details := range a.RawData.JobDetails {
+		klog.V(2).Infof("processing test details for job %s\n", details.Name)
+		a.processJobDetails(details, testMeta)
+	}
+}
+
+func (a *Analyzer) loadData() {
+	var jobFilter *regexp.Regexp
+	if len(a.Options.JobFilter) > 0 {
+		jobFilter = regexp.MustCompile(a.Options.JobFilter)
+	}
+
+	for _, release := range a.Options.Releases {
+
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
+		blockingJobs, err := a.fetchJobSummaries(dashboard)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
 
-		var jobFilter *regexp.Regexp
-		if len(a.Options.JobFilter) > 0 {
-			jobFilter = regexp.MustCompile(a.Options.JobFilter)
-		}
-		for jobName, job := range jobs {
+		for jobName, job := range blockingJobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				details, err := a.fetchJobDetails(dashboard, jobName)
 				if err != nil {
 					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
+				} else {
+					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
 				}
-				a.processJobDetails(details, testMeta)
-				klog.V(4).Infoln("\n\n================================================================================")
+			}
+		}
+
+		dashboard = fmt.Sprintf(dashboardTemplate, release, "informing")
+		informingJobs, err := a.fetchJobSummaries(dashboard)
+		if err != nil {
+			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+
+		for jobName, job := range informingJobs {
+			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
+				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				details, err := a.fetchJobDetails(dashboard, jobName)
+				if err != nil {
+					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
+				} else {
+					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+				}
 			}
 		}
 	}
@@ -268,6 +292,7 @@ func (a *Analyzer) prepareTestReport() {
 		BySig:         bySig,
 		FailureGroups: filteredFailureGroups,
 		JobPassRate:   jobPassRate,
+		Timestamp:     a.LastUpdateTime,
 	}
 }
 
@@ -459,15 +484,27 @@ func (a *Analyzer) printTextReport() {
 	fmt.Printf("Total Test Pass Percentage: %0.2f\n", util.Percent(testSuccesses, testFailures))
 }
 
-func (a *Analyzer) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-	html.PrintHtmlReport(w, req, a.Report)
+type Server struct {
+	analyzers map[string]Analyzer
 }
 
-func (a *Analyzer) serve() {
-	http.DefaultServeMux.HandleFunc("/", a.printHtmlReport)
+func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
+
+	release := req.URL.Query().Get("release")
+	if _, ok := s.analyzers[release]; !ok {
+		w.Header().Set("Content-Type", "text/html;charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Invalid release identifier: %s", release)
+		return
+	}
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report)
+}
+
+func (s *Server) serve(opts *Options) {
+	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
 	//go func() {
-	klog.Infof("Serving reports on %s ", a.Options.ListenAddr)
-	if err := http.ListenAndServe(a.Options.ListenAddr, nil); err != nil {
+	klog.Infof("Serving reports on %s ", opts.ListenAddr)
+	if err := http.ListenAndServe(opts.ListenAddr, nil); err != nil {
 		klog.Exitf("Server exited: %v", err)
 	}
 	//}()
@@ -475,7 +512,7 @@ func (a *Analyzer) serve() {
 
 type Options struct {
 	LocalData               string
-	Dashboards              []string
+	Releases                []string
 	StartDay                int
 	Lookback                int
 	FindBugs                bool
@@ -498,6 +535,7 @@ func main() {
 		FailureClusterThreshold: 10,
 		StartDay:                0,
 		ListenAddr:              ":8080",
+		Releases:                []string{"4.4"},
 	}
 
 	klog.InitFlags(nil)
@@ -512,7 +550,7 @@ func main() {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
-	flags.StringArrayVar(&opt.Dashboards, "dashboard", []string{}, "Which dashboards to analyze (one per arg instance)")
+	flags.StringArrayVar(&opt.Releases, "release", opt.Releases, "Which releases to analyze (one per arg instance)")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
 	flags.Float64Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
@@ -540,30 +578,46 @@ func (o *Options) Run() error {
 		return fmt.Errorf("invalid output type: %s\n", o.Output)
 	}
 
-	if len(o.Dashboards) == 0 {
-		o.Dashboards = defaultDashboards
-	}
-
-	analyzer := Analyzer{
-		Options: o,
-		RawData: RawData{
-			ByAll:         make(map[string]util.AggregateTestResult),
-			ByJob:         make(map[string]util.AggregateTestResult),
-			ByPlatform:    make(map[string]util.AggregateTestResult),
-			BySig:         make(map[string]util.AggregateTestResult),
-			FailureGroups: make(map[string]util.JobRunResult),
-		},
-	}
-
 	if !o.Server {
+		analyzer := Analyzer{
+			Options: o,
+			RawData: RawData{
+				ByAll:         make(map[string]util.AggregateTestResult),
+				ByJob:         make(map[string]util.AggregateTestResult),
+				ByPlatform:    make(map[string]util.AggregateTestResult),
+				BySig:         make(map[string]util.AggregateTestResult),
+				FailureGroups: make(map[string]util.JobRunResult),
+			},
+		}
+
+		analyzer.loadData()
 		analyzer.analyze()
 		analyzer.printReport()
 	}
 
 	if o.Server {
-		analyzer.analyze()
-		analyzer.prepareTestReport()
-		analyzer.serve()
+		server := Server{
+			analyzers: make(map[string]Analyzer),
+		}
+		for _, release := range o.Releases {
+			optCopy := *o
+			optCopy.Releases = []string{release}
+			analyzer := Analyzer{
+				Options: &optCopy,
+				RawData: RawData{
+					ByAll:         make(map[string]util.AggregateTestResult),
+					ByJob:         make(map[string]util.AggregateTestResult),
+					ByPlatform:    make(map[string]util.AggregateTestResult),
+					BySig:         make(map[string]util.AggregateTestResult),
+					FailureGroups: make(map[string]util.JobRunResult),
+				},
+			}
+			analyzer.loadData()
+			analyzer.analyze()
+			analyzer.prepareTestReport()
+			server.analyzers[release] = analyzer
+		}
+		server.serve(o)
 	}
 
 	return nil

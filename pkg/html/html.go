@@ -33,6 +33,7 @@ const htmlPageStart = `
 
 const htmlPageEnd = `
 </div>
+Data current as of: %s
 </body>
 </html>
 `
@@ -154,5 +155,5 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report util.TestR
 	}
 
 	//w.Write(result)
-	fmt.Fprintf(w, htmlPageEnd)
+	fmt.Fprintf(w, htmlPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }
