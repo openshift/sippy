@@ -41,52 +41,53 @@ type Analyzer struct {
 	LastUpdateTime time.Time
 }
 
-func (a *Analyzer) fetchJobSummaries(dashboard string) (map[string]testgrid.JobSummary, error) {
+func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid.JobSummary, time.Time, error) {
 	jobs := make(map[string]testgrid.JobSummary)
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
 
 	var buf *bytes.Buffer
-	if len(a.Options.LocalData) != 0 {
-		filename := a.Options.LocalData + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return jobs, fmt.Errorf("Could not read local data file %s: %v", filename, err)
-		}
-		buf = bytes.NewBuffer(b)
-		f, _ := os.Stat(filename)
-		a.LastUpdateTime = f.ModTime()
-	} else {
-		resp, err := http.Get(url)
-		if err != nil {
-			return jobs, err
-		}
-		if resp.StatusCode != 200 {
-			return jobs, fmt.Errorf("Non-200 response code fetching job summary: %v", resp)
-		}
-		buf = bytes.NewBuffer([]byte{})
-		io.Copy(buf, resp.Body)
-		a.LastUpdateTime = time.Now()
-	}
-
-	if len(a.Options.Download) != 0 {
-		filename := a.Options.Download + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
-		f, err := os.Create(filename)
-		if err != nil {
-			return jobs, err
-		}
-		f.Write(buf.Bytes())
-	}
-
-	err := json.NewDecoder(buf).Decode(&jobs)
+	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return jobs, time.Time{}, fmt.Errorf("Could not read local data file %s: %v", filename, err)
+	}
+	buf = bytes.NewBuffer(b)
+	f, _ := os.Stat(filename)
+	f.ModTime()
+
+	err = json.NewDecoder(buf).Decode(&jobs)
+	if err != nil {
+		return nil, time.Time{}, err
 	}
 
-	return jobs, nil
+	return jobs, f.ModTime(), nil
 
 }
 
-func (a *Analyzer) fetchJobDetails(dashboard, jobName string) (testgrid.JobDetails, error) {
+func downloadJobSummaries(dashboard string, storagePath string) error {
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Non-200 response code fetching job summary: %v", resp)
+	}
+	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	io.Copy(buf, resp.Body)
+
+	_, err = f.Write(buf.Bytes())
+	return err
+}
+
+func loadJobDetails(dashboard, jobName, storagePath string) (testgrid.JobDetails, error) {
 	details := testgrid.JobDetails{
 		Name: jobName,
 	}
@@ -94,42 +95,46 @@ func (a *Analyzer) fetchJobDetails(dashboard, jobName string) (testgrid.JobDetai
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
 
 	var buf *bytes.Buffer
-	if len(a.Options.LocalData) != 0 {
-		filename := a.Options.LocalData + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return details, fmt.Errorf("Could not read local data file %s: %v", filename, err)
-		}
-		buf = bytes.NewBuffer(b)
-
-	} else {
-		resp, err := http.Get(url)
-		if err != nil {
-			return details, err
-		}
-		if resp.StatusCode != 200 {
-			return details, fmt.Errorf("Non-200 response code fetching job details: %v", resp)
-		}
-		buf = bytes.NewBuffer([]byte{})
-		io.Copy(buf, resp.Body)
+	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return details, fmt.Errorf("Could not read local data file %s: %v", filename, err)
 	}
+	buf = bytes.NewBuffer(b)
 
-	if len(a.Options.Download) != 0 {
-		filename := a.Options.Download + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
-		f, err := os.Create(filename)
-		if err != nil {
-			return details, err
-		}
-		f.Write(buf.Bytes())
-	}
-
-	err := json.NewDecoder(buf).Decode(&details)
+	err = json.NewDecoder(buf).Decode(&details)
 	if err != nil {
 		return details, err
 	}
+
 	return details, nil
+
 }
 
+func downloadJobDetails(dashboard, jobName, storagePath string) error {
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Non-200 response code fetching job details: %v", resp)
+	}
+
+	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	io.Copy(buf, resp.Body)
+
+	_, err = f.Write(buf.Bytes())
+	return err
+
+}
 func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta util.TestMeta, startCol, endCol int) {
 	col := startCol
 	passed := 0
@@ -224,27 +229,27 @@ func (a *Analyzer) analyze() {
 	}
 }
 
-func (a *Analyzer) loadData() {
+func (a *Analyzer) loadData(releases []string, storagePath string) {
 	var jobFilter *regexp.Regexp
 	if len(a.Options.JobFilter) > 0 {
 		jobFilter = regexp.MustCompile(a.Options.JobFilter)
 	}
 
-	for _, release := range a.Options.Releases {
+	for _, release := range releases {
 
 		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
-		blockingJobs, err := a.fetchJobSummaries(dashboard)
+		blockingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
-			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
+			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
-
+		a.LastUpdateTime = ts
 		for jobName, job := range blockingJobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
-				details, err := a.fetchJobDetails(dashboard, jobName)
+				details, err := loadJobDetails(dashboard, jobName, storagePath)
 				if err != nil {
-					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
+					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
 					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
 				}
@@ -252,7 +257,63 @@ func (a *Analyzer) loadData() {
 		}
 
 		dashboard = fmt.Sprintf(dashboardTemplate, release, "informing")
-		informingJobs, err := a.fetchJobSummaries(dashboard)
+		informingJobs, _, err := loadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error load dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+
+		for jobName, job := range informingJobs {
+			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
+				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				details, err := loadJobDetails(dashboard, jobName, storagePath)
+				if err != nil {
+					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
+				} else {
+					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+				}
+			}
+		}
+	}
+}
+
+func downloadData(releases []string, filter string, storagePath string) {
+	var jobFilter *regexp.Regexp
+	if len(filter) > 0 {
+		jobFilter = regexp.MustCompile(filter)
+	}
+
+	for _, release := range releases {
+
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
+		err := downloadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+		blockingJobs, _, err := loadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+
+		for jobName, job := range blockingJobs {
+			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
+				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				err := downloadJobDetails(dashboard, jobName, storagePath)
+				if err != nil {
+					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
+				}
+			}
+		}
+
+		dashboard = fmt.Sprintf(dashboardTemplate, release, "informing")
+		err = downloadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+		informingJobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
@@ -261,11 +322,9 @@ func (a *Analyzer) loadData() {
 		for jobName, job := range informingJobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
-				details, err := a.fetchJobDetails(dashboard, jobName)
+				err := downloadJobDetails(dashboard, jobName, storagePath)
 				if err != nil {
 					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
-				} else {
-					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
 				}
 			}
 		}
@@ -522,7 +581,7 @@ type Options struct {
 	MinRuns                 int
 	Output                  string
 	FailureClusterThreshold int
-	Download                string
+	FetchData               string
 	ListenAddr              string
 	Server                  bool
 }
@@ -557,7 +616,7 @@ func main() {
 	flags.Float64Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
-	flags.StringVar(&opt.Download, "download", opt.Download, "Download testgrid data to directory specified for use with --local-data")
+	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
 	flags.IntVar(&opt.MinRuns, "min-runs", opt.MinRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
@@ -574,11 +633,15 @@ func main() {
 
 func (o *Options) Run() error {
 	switch o.Output {
-	case "json", "text":
+	case "json", "text", "dashboard":
 	default:
 		return fmt.Errorf("invalid output type: %s\n", o.Output)
 	}
 
+	if len(o.FetchData) != 0 {
+		downloadData(o.Releases, o.JobFilter, o.FetchData)
+		return nil
+	}
 	if !o.Server {
 		analyzer := Analyzer{
 			Options: o,
@@ -591,7 +654,7 @@ func (o *Options) Run() error {
 			},
 		}
 
-		analyzer.loadData()
+		analyzer.loadData(o.Releases, o.LocalData)
 		analyzer.analyze()
 		analyzer.printReport()
 	}
@@ -601,10 +664,8 @@ func (o *Options) Run() error {
 			analyzers: make(map[string]Analyzer),
 		}
 		for _, release := range o.Releases {
-			optCopy := *o
-			optCopy.Releases = []string{release}
 			analyzer := Analyzer{
-				Options: &optCopy,
+				Options: o,
 				RawData: RawData{
 					ByAll:         make(map[string]util.AggregateTestResult),
 					ByJob:         make(map[string]util.AggregateTestResult),
@@ -613,7 +674,7 @@ func (o *Options) Run() error {
 					FailureGroups: make(map[string]util.JobRunResult),
 				},
 			}
-			analyzer.loadData()
+			analyzer.loadData([]string{release}, "")
 			analyzer.analyze()
 			analyzer.prepareTestReport()
 			server.analyzers[release] = analyzer

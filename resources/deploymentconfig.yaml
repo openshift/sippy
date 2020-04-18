@@ -46,20 +46,29 @@ spec:
         command:
         - /tmp/src/sippy
         args:
-        - --download
-        - /tmp
+        - --local-data
+        - /data
         - --release
         - "4.5"
         - --release
         - "4.4"
         - --release
         - "4.3"
+        - --release
+        - "4.2"
         - --server
+        volumeMounts:
+        - mountPath: /data
+          name: data
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: sippy
   test: false
   triggers:
   - type: ConfigChange
