@@ -39,12 +39,27 @@ Data current as of: %s
 `
 
 const dashboardPageHtml = `
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<style>
+#table td, #table th {
+	border: 
+}
+</style>
+
 <h1>CI Release Health Summary</h1>
 
-<p>================== Summary Across All Jobs ==================
-<p>
-{{ summaryAcrossAllJobs .All }}
+{{ summaryAcrossAllJobs .Current.All .Prev.All }}
 
+{{ failureGroups .Current.FailureGroups .Prev.FailureGroups }}
+
+{{ summaryJobsByPlatform .Current .Prev }}
+
+{{ summaryTopFailingTests .Current.All .Prev.All }}
+
+{{ summaryTopFailingJobs .Current .Prev }}
+`
+
+/*
 <p>================== Clustered Test Failures ==================
 <p>
 {{ failureGroups .FailureGroups }}
@@ -62,80 +77,219 @@ const dashboardPageHtml = `
 <p>
 {{ summaryTopFailingJobs . }}
 `
-
-func summaryAcrossAllJobs(result map[string]util.SortedAggregateTestResult) string {
+*/
+func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult) string {
 
 	all := result["all"]
-	s := fmt.Sprintf("Total test runs: %d\n", all.Successes+all.Failures)
-	s = s + fmt.Sprintf("Test Pass Percentage: %0.2f\n", all.TestPassPercentage)
+	allPrev := resultPrev["all"]
+	summary := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center">Summary Across All Jobs</th>			
+		</tr>
+		<tr>
+			<th/><th>Latest 7 days</th><th>Previous 7 days</th>
+		</tr>
+		<tr>
+			<td>Test executions: </td><td>%d</td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Test Pass Percentage: </td><td>%0.2f</td><td>%0.2f</td>
+		</tr>
+	</table>`
+	s := fmt.Sprintf(summary, all.Successes+all.Failures, allPrev.Successes+allPrev.Failures, all.TestPassPercentage, allPrev.TestPassPercentage)
 	return s
 }
 
-func failureGroups(failureGroups []util.JobRunResult) string {
-	count := 0
-	s := ""
+func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult) string {
+	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {
 		count += group.TestFailures
 	}
-	if len(failureGroups) != 0 {
-		s = fmt.Sprintf("%d Clustered Test Failures with an average size of %d and median of %d\n", len(failureGroups), count/len(failureGroups), failureGroups[len(failureGroups)/2].TestFailures)
-	} else {
-		s = fmt.Sprintf("No clustered test failures observed")
+	for _, group := range failureGroupsPrev {
+		countPrev += group.TestFailures
 	}
+	if len(failureGroups) != 0 {
+		median = failureGroups[len(failureGroups)/2].TestFailures
+		avg = count / len(failureGroups)
+	}
+	if len(failureGroupsPrev) != 0 {
+		medianPrev = failureGroupsPrev[len(failureGroupsPrev)/2].TestFailures
+		avgPrev = count / len(failureGroupsPrev)
+	}
+
+	groups := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center">Failure Groupings</th>			
+		</tr>
+		<tr>
+			<th/><th>Latest 7 days</th><th>Previous 7 days</th>
+		</tr>
+		<tr>
+			<td>Job Runs with a Failure Group: </td><td>%d</td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Average Failure Group Size: </td><td>%d</td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Median Failure Group Size: </td><td>%d</td><td>%d</td>
+		</tr>
+	</table>`
+	s := fmt.Sprintf(groups, count, countPrev, avg, avgPrev, median, medianPrev)
 	return s
 }
 
-func summaryJobsByPlatform(report util.TestReport) string {
-	jobsByPlatform := util.SummarizeJobsByPlatform(report)
-	s := ""
+func getPrevPlatform(platform string, jobsByPlatform []util.JobResult) *util.JobResult {
 	for _, v := range jobsByPlatform {
-		s += fmt.Sprintf("<p>")
-		s += fmt.Sprintf("Platform: %s\n", v.Platform)
-		s += fmt.Sprintf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			s += fmt.Sprintf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+		if v.Platform == platform {
+			return &v
 		}
 	}
+	return nil
+}
+
+func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
+	jobsByPlatform := util.SummarizeJobsByPlatform(report)
+	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
+
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center">Job Pass Rates By Platform</th>
+		</tr>
+		<tr>
+			<th>Platform</th><th>Latest 7 days</th><th>Previous 7 days</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+		</tr>
+	`
+	for _, v := range jobsByPlatform {
+		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
+		if prev != nil {
+			s = s + fmt.Sprintf(template, v.Platform,
+				util.Percent(v.Successes, v.Failures),
+				v.Successes+v.Failures,
+				util.Percent(prev.Successes, prev.Failures),
+				prev.Successes+prev.Failures,
+			)
+		} else {
+			s = s + fmt.Sprintf(template, v.Platform,
+				util.Percent(v.Successes, v.Failures),
+				v.Successes+v.Failures,
+				-1, -1,
+			)
+		}
+	}
+	s = s + "</table>"
 	return s
 }
 
-func summaryTopFailingTests(result map[string]util.SortedAggregateTestResult) string {
+func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
+	for _, v := range testResults {
+		if v.Name == test {
+			return &v
+		}
+	}
+	return nil
+}
+
+func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTestResult) string {
 	all := result["all"]
+	allPrev := resultPrev["all"]
+
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center">Top Failing Tests</th>
+		</tr>
+		<tr>
+			<th colspan=2 class="text-center">Latest 7 Days</th><th colspan=2 class="text-center">Previous 7 Days</th>
+		</tr>
+		<tr>
+			<th>Test Name</th><th>Pass Rate</th><th>Test Name</th><th>Pass Rate</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
+		</tr>
+	`
+
 	count := 0
-	s := ""
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
 		if !util.IgnoreTestRegex.MatchString(test.Name) {
-			s += fmt.Sprintf("<p>")
-			s += fmt.Sprintf("Test Name: %s\n", test.Name)
-			s += fmt.Sprintf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
-			if test.Successes+test.Failures < 10 {
-				s += fmt.Sprintf("WARNING: Only %d runs for this test\n", test.Successes+test.Failures)
+			testPrev := getPrevTest(test.Name, allPrev.TestResults)
+			if testPrev != nil {
+				s += fmt.Sprintf(template, test.Name, test.PassPercentage, test.Successes+test.Failures, testPrev.Name, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+			} else {
+				s += fmt.Sprintf(template, test.Name, test.PassPercentage, test.Successes+test.Failures, "NA", -1.0, -1)
 			}
 			count++
 		}
 	}
+	s = s + "</table>"
 	return s
 }
 
-func summaryTopFailingJobs(report util.TestReport) string {
-	jobRunsByName := util.SummarizeJobsByName(report)
-
-	s := ""
-	for i, v := range jobRunsByName {
-		s += fmt.Sprintf("<p>")
-		s += fmt.Sprintf("Job: %s\n", v.Name)
-		s += fmt.Sprintf("Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			s += fmt.Sprintf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
-		}
-		if i == 9 {
-			break
+func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
+	for _, v := range jobRunsByJob {
+		if v.Name == job {
+			return &v
 		}
 	}
+	return nil
+}
+
+func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
+	jobRunsByName := util.SummarizeJobsByName(report)
+	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
+
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center">Job Pass Rates By Job Name</th>
+		</tr>
+		<tr>
+			<th>Name</th><th>Latest 7 days</th><th>Previous 7 days</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+		</tr>
+	`
+	for _, v := range jobRunsByName {
+		prev := getPrevJob(v.Name, jobRunsByNamePrev)
+		if prev != nil {
+			s = s + fmt.Sprintf(template, v.Name,
+				util.Percent(v.Successes, v.Failures),
+				v.Successes+v.Failures,
+				util.Percent(prev.Successes, prev.Failures),
+				prev.Successes+prev.Failures,
+			)
+		} else {
+			s = s + fmt.Sprintf(template, v.Name,
+				util.Percent(v.Successes, v.Failures),
+				v.Successes+v.Failures,
+				-1, -1,
+			)
+		}
+	}
+	s = s + "</table>"
 	return s
 }
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report util.TestReport) {
+
+type TestReports struct {
+	Current util.TestReport
+	Prev    util.TestReport
+}
+
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport) {
 
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
@@ -150,7 +304,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report util.TestR
 		},
 	).Parse(dashboardPageHtml))
 
-	if err := dashboardPage.Execute(w, report); err != nil {
+	if err := dashboardPage.Execute(w, TestReports{report, prevReport}); err != nil {
 		klog.Errorf("Unable to render page: %v", err)
 	}
 

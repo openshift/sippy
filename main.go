@@ -39,6 +39,7 @@ type Analyzer struct {
 	Options        *Options
 	Report         util.TestReport
 	LastUpdateTime time.Time
+	Release        string
 }
 
 func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid.JobSummary, time.Time, error) {
@@ -557,11 +558,34 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Invalid release identifier: %s", release)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report)
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report)
+}
+
+func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
+	klog.Infof("Refreshing data")
+	for k, analyzer := range s.analyzers {
+		analyzer.RawData = RawData{
+			ByAll:         make(map[string]util.AggregateTestResult),
+			ByJob:         make(map[string]util.AggregateTestResult),
+			ByPlatform:    make(map[string]util.AggregateTestResult),
+			BySig:         make(map[string]util.AggregateTestResult),
+			FailureGroups: make(map[string]util.JobRunResult),
+		}
+
+		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
+		analyzer.analyze()
+		analyzer.prepareTestReport()
+		s.analyzers[k] = analyzer
+	}
+
+	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	klog.Infof("Refresh complete")
 }
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
 	klog.Infof("Serving reports on %s ", opts.ListenAddr)
 	if err := http.ListenAndServe(opts.ListenAddr, nil); err != nil {
@@ -664,7 +688,9 @@ func (o *Options) Run() error {
 			analyzers: make(map[string]Analyzer),
 		}
 		for _, release := range o.Releases {
+			// most recent 7 day period (days 0-7)
 			analyzer := Analyzer{
+				Release: release,
 				Options: o,
 				RawData: RawData{
 					ByAll:         make(map[string]util.AggregateTestResult),
@@ -674,10 +700,30 @@ func (o *Options) Run() error {
 					FailureGroups: make(map[string]util.JobRunResult),
 				},
 			}
-			analyzer.loadData([]string{release}, "")
+			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
 			analyzer.prepareTestReport()
 			server.analyzers[release] = analyzer
+
+			// prior 7 day period (days 7-14)
+			optCopy := *o
+			optCopy.Lookback = 14
+			optCopy.StartDay = 7
+			analyzer = Analyzer{
+				Release: release,
+				Options: &optCopy,
+				RawData: RawData{
+					ByAll:         make(map[string]util.AggregateTestResult),
+					ByJob:         make(map[string]util.AggregateTestResult),
+					ByPlatform:    make(map[string]util.AggregateTestResult),
+					BySig:         make(map[string]util.AggregateTestResult),
+					FailureGroups: make(map[string]util.JobRunResult),
+				},
+			}
+			analyzer.loadData([]string{release}, o.LocalData)
+			analyzer.analyze()
+			analyzer.prepareTestReport()
+			server.analyzers[release+"-prev"] = analyzer
 		}
 		server.serve(o)
 	}
