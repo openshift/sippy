@@ -21,7 +21,6 @@ spec:
   source:
     git:
       uri: https://github.com/bparees/sippy
-      ref: webserver
     type: Git
   strategy:
     dockerStrategy: {}

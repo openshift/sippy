@@ -136,7 +136,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult) string 
 			<td>Median Failure Group Size: </td><td>%d</td><td>%d</td>
 		</tr>
 	</table>`
-	s := fmt.Sprintf(groups, count, countPrev, avg, avgPrev, median, medianPrev)
+	s := fmt.Sprintf(groups, len(failureGroups), len(failureGroupsPrev), avg, avgPrev, median, medianPrev)
 	return s
 }
 
