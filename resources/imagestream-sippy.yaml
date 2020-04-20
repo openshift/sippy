@@ -1,0 +1,13 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  annotations:
+    openshift.io/generated-by: OpenShiftNewApp
+  labels:
+    app: sippy
+    app.kubernetes.io/component: sippy
+    app.kubernetes.io/instance: sippy
+  name: sippy
+spec:
+  lookupPolicy:
+    local: false

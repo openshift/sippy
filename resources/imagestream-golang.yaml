@@ -1,0 +1,21 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    app: lunchbot
+    app.kubernetes.io/component: lunchbot
+    app.kubernetes.io/instance: lunchbot
+  name: go-toolset-7-centos7
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+  - annotations:
+      openshift.io/imported-from: centos/go-toolset-7-centos7:latest
+    from:
+      kind: DockerImage
+      name: centos/go-toolset-7-centos7:latest
+    importPolicy: {}
+    name: latest
+    referencePolicy:
+      type: Source
