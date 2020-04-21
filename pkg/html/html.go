@@ -208,6 +208,11 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
+	naTemplate := `
+		<tr>
+			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td>
+		</tr>
+	`
 
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
@@ -222,7 +227,7 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 			if testPrev != nil {
 				s += fmt.Sprintf(template, test.Name, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 			} else {
-				s += fmt.Sprintf(template, test.Name, known, test.PassPercentage, test.Successes+test.Failures, -1.0, -1)
+				s += fmt.Sprintf(naTemplate, test.Name, known, test.PassPercentage, test.Successes+test.Failures, "NA")
 			}
 		}
 	}
