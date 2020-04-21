@@ -28,7 +28,7 @@ var (
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 
 	// ignored for top 10 failing test reporting only.
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall`)
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall|job.initialize|Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available`)
 )
 
 type TestMeta struct {

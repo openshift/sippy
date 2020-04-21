@@ -59,25 +59,6 @@ const dashboardPageHtml = `
 {{ summaryTopFailingJobs .Current .Prev }}
 `
 
-/*
-<p>================== Clustered Test Failures ==================
-<p>
-{{ failureGroups .FailureGroups }}
-
-<p>================== Summary By Platform ==================
-<p>
-{{ summaryJobsByPlatform . }}
-
-<p>================== Top Failing Tests ==================
-<p>
-{{ summaryTopFailingTests .All }}
-
-
-<p>================== Top Failing Jobs ==================
-<p>
-{{ summaryTopFailingJobs . }}
-`
-*/
 func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult) string {
 
 	all := result["all"]
