@@ -185,18 +185,18 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center">Top Failing Tests</th>
+			<th colspan=4 class="text-center">Top Failing Tests</th>
 		</tr>
 		<tr>
-			<th colspan=2 class="text-center">Latest 7 Days</th><th colspan=2 class="text-center">Previous 7 Days</th>
+			<th colspan=2/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>Pass Rate</th><th>Test Name</th><th>Pass Rate</th>
+			<th>Test Name</th><th>Known Issue</th><th>Pass Rate</th><th>Pass Rate</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 
@@ -204,13 +204,17 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
 		if !util.IgnoreTestRegex.MatchString(test.Name) {
+			known := "Yes"
+			if !util.KnownIssueTestRegex.MatchString(test.Name) {
+				count++
+				known = "No"
+			}
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
 			if testPrev != nil {
-				s += fmt.Sprintf(template, test.Name, test.PassPercentage, test.Successes+test.Failures, testPrev.Name, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+				s += fmt.Sprintf(template, test.Name, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 			} else {
-				s += fmt.Sprintf(template, test.Name, test.PassPercentage, test.Successes+test.Failures, "NA", -1.0, -1)
+				s += fmt.Sprintf(template, test.Name, known, test.PassPercentage, test.Successes+test.Failures, -1.0, -1)
 			}
-			count++
 		}
 	}
 	s = s + "</table>"
