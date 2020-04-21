@@ -46,7 +46,13 @@ const dashboardPageHtml = `
 }
 </style>
 
-<h1>CI Release Health Summary</h1>
+<h1 class=text-center>CI Release Health Summary</h1>
+
+<p class="small mb-3">
+	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
+	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a> | 
+	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
+</p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All }}
 
@@ -57,16 +63,19 @@ const dashboardPageHtml = `
 {{ summaryTopFailingTests .Current.All .Prev.All }}
 
 {{ summaryTopFailingJobs .Current .Prev }}
+
+{{ failureGroupList .Current }}
 `
 
 func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult) string {
 
 	all := result["all"]
 	allPrev := resultPrev["all"]
+
 	summary := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center">Summary Across All Jobs</th>			
+			<th colspan=3 class="text-center"><a class="text-dark" id="SummaryAcrossAllJobs" href="#SummaryAcrossAllJobs">Summary Across All Jobs</a></th>			
 		</tr>
 		<tr>
 			<th/><th>Latest 7 days</th><th>Previous 7 days</th>
@@ -102,7 +111,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult) string 
 	groups := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center">Failure Groupings</th>			
+			<th colspan=3 class="text-center"><a class="text-dark" id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a></th>
 		</tr>
 		<tr>
 			<th/><th>Latest 7 days</th><th>Previous 7 days</th>
@@ -137,7 +146,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center">Job Pass Rates By Platform</th>
+			<th colspan=3 class="text-center"><a class="text-dark" id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
 		</tr>
 		<tr>
 			<th>Platform</th><th>Latest 7 days</th><th>Previous 7 days</th>
@@ -185,7 +194,7 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center">Top Failing Tests</th>
+			<th colspan=4 class="text-center"><a class="text-dark" id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
@@ -237,7 +246,7 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center">Job Pass Rates By Job Name</th>
+			<th colspan=3 class="text-center"><a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest 7 days</th><th>Previous 7 days</th>
@@ -269,6 +278,28 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 	return s
 }
 
+func failureGroupList(report util.TestReport) string {
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" id="JobRunsWithFailureGroups" href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a></th>
+		</tr>
+		<tr>
+			<th>Job</th><th>Failed Test Count</th>
+		</tr>
+	`
+
+	template := `
+	<tr>
+		<td><a href=%s>%s</a></td><td>%d</td>
+	</tr>`
+	for _, fg := range report.FailureGroups {
+		s += fmt.Sprintf(template, fg.Url, fg.Job, fg.TestFailures)
+	}
+	s = s + "</table>"
+	return s
+}
+
 type TestReports struct {
 	Current util.TestReport
 	Prev    util.TestReport
@@ -286,6 +317,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryJobsByPlatform":  summaryJobsByPlatform,
 			"summaryTopFailingTests": summaryTopFailingTests,
 			"summaryTopFailingJobs":  summaryTopFailingJobs,
+			"failureGroupList":       failureGroupList,
 		},
 	).Parse(dashboardPageHtml))
 
