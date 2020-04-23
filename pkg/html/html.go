@@ -234,8 +234,7 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 
 			//testSearchUrl := html.EscapeString(escapeRegex.ReplaceAllString(test.Name, ".*?"))
 			testSearchUrl := html.EscapeString(regexp.QuoteMeta(test.Name))
-			//https://search.svc.ci.openshift.org/?search=forcePull+should&maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job
-			testLink := fmt.Sprintf("<a href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
+			testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
 			if testPrev != nil {
 				s += fmt.Sprintf(template, testLink, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
@@ -272,7 +271,7 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 	`
 	template := `
 		<tr>
-			<td><a href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	for _, v := range jobRunsByName {
