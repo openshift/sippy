@@ -2,7 +2,9 @@ package html
 
 import (
 	"fmt"
+	"html"
 	"net/http"
+	"regexp"
 	"text/template"
 
 	"k8s.io/klog"
@@ -10,7 +12,12 @@ import (
 	"github.com/bparees/sippy/pkg/util"
 )
 
-const htmlPageStart = `
+var (
+	escapeRegex *regexp.Regexp = regexp.MustCompile(`\[.*?\]`)
+)
+
+const (
+	htmlPageStart = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -31,14 +38,14 @@ const htmlPageStart = `
 <div class="container">
 `
 
-const htmlPageEnd = `
+	htmlPageEnd = `
 </div>
 Data current as of: %s
 </body>
 </html>
 `
 
-const dashboardPageHtml = `
+	dashboardPageHtml = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -66,6 +73,7 @@ const dashboardPageHtml = `
 
 {{ failureGroupList .Current }}
 `
+)
 
 func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult) string {
 
@@ -223,11 +231,15 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 				count++
 				known = "No"
 			}
+
+			testSearchUrl := html.EscapeString(escapeRegex.ReplaceAllString(test.Name, ".*?"))
+			//https://search.svc.ci.openshift.org/?search=forcePull+should&maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job
+			testLink := fmt.Sprintf("<a href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
 			if testPrev != nil {
-				s += fmt.Sprintf(template, test.Name, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+				s += fmt.Sprintf(template, testLink, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 			} else {
-				s += fmt.Sprintf(naTemplate, test.Name, known, test.PassPercentage, test.Successes+test.Failures, "NA")
+				s += fmt.Sprintf(naTemplate, testLink, known, test.PassPercentage, test.Successes+test.Failures, "NA")
 			}
 		}
 	}
