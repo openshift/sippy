@@ -107,10 +107,13 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgrid.JobDetails
 	if err != nil {
 		return details, err
 	}
-
+	details.TestGridUrl = fmt.Sprintf("https://testgrid.k8s.io/%s#%s", dashboard, jobName)
 	return details, nil
-
 }
+
+// https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing/table?&show-stale-tests=&tab=release-openshift-origin-installer-e2e-azure-compact-4.4
+
+// https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing#release-openshift-origin-installer-e2e-azure-compact-4.4&show-stale-tests=&sort-by-failures=
 
 func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
@@ -149,8 +152,9 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 				jrr, ok := a.RawData.FailureGroups[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
-						Job: job.Name,
-						Url: joburl,
+						Job:            job.Name,
+						Url:            joburl,
+						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
 				jrr.TestNames = append(jrr.TestNames, test.Name)
@@ -166,8 +170,9 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 				jrr, ok := a.RawData.FailureGroups[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
-						Job: job.Name,
-						Url: joburl,
+						Job:            job.Name,
+						Url:            joburl,
+						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
 				jrr.TestNames = append(jrr.TestNames, test.Name)

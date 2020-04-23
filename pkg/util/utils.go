@@ -74,12 +74,13 @@ type TestResult struct {
 }
 
 type JobRunResult struct {
-	Job          string   `json:"job"`
-	Url          string   `json:"url"`
-	TestFailures int      `json:"testFailures"`
-	TestNames    []string `json:"testNames"`
-	Failed       bool     `json:"failed"`
-	Succeeded    bool     `json:"succeeded"`
+	Job            string   `json:"job"`
+	Url            string   `json:"url"`
+	TestGridJobUrl string   `json:"url"`
+	TestFailures   int      `json:"testFailures"`
+	TestNames      []string `json:"testNames"`
+	Failed         bool     `json:"failed"`
+	Succeeded      bool     `json:"succeeded"`
 }
 
 type JobResult struct {
@@ -88,6 +89,7 @@ type JobResult struct {
 	Failures       int     `json:"failures"`
 	Successes      int     `json:"successes"`
 	PassPercentage float64 `json:"PassPercentage"`
+	TestGridUrl    string  `json:"TestGridUrl"`
 }
 
 func Percent(success, failure int) float64 {
@@ -163,7 +165,8 @@ func ComputeJobPassRate(jrr map[string]JobRunResult) []JobResult {
 		job, ok := jobsMap[run.Job]
 		if !ok {
 			job = JobResult{
-				Name: run.Job,
+				Name:        run.Job,
+				TestGridUrl: run.TestGridJobUrl,
 			}
 		}
 		if run.Failed {
@@ -329,6 +332,7 @@ func SummarizeJobsByName(report TestReport) []JobResult {
 	for _, job := range report.JobPassRate {
 		j := jobRunsByName[job.Name]
 		j.Name = job.Name
+		j.TestGridUrl = job.TestGridUrl
 		j.Successes += job.Successes
 		j.Failures += job.Failures
 		jobRunsByName[job.Name] = j

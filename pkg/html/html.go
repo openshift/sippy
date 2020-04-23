@@ -272,20 +272,20 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td><a href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	for _, v := range jobRunsByName {
 		prev := getPrevJob(v.Name, jobRunsByNamePrev)
 		if prev != nil {
-			s = s + fmt.Sprintf(template, v.Name,
+			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
 				util.Percent(v.Successes, v.Failures),
 				v.Successes+v.Failures,
 				util.Percent(prev.Successes, prev.Failures),
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(template, v.Name,
+			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
 				util.Percent(v.Successes, v.Failures),
 				v.Successes+v.Failures,
 				-1, -1,
