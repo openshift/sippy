@@ -232,7 +232,8 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 				known = "No"
 			}
 
-			testSearchUrl := html.EscapeString(escapeRegex.ReplaceAllString(test.Name, ".*?"))
+			//testSearchUrl := html.EscapeString(escapeRegex.ReplaceAllString(test.Name, ".*?"))
+			testSearchUrl := html.EscapeString(regexp.QuoteMeta(test.Name))
 			//https://search.svc.ci.openshift.org/?search=forcePull+should&maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job
 			testLink := fmt.Sprintf("<a href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=junit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
