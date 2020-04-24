@@ -1,5 +1,7 @@
 # Sippy
 
+<img src=https://raw.github.com/bparees/sippy/master/sippy.svg height=100 width=100>
+
 CIPI (Continuous Integration Private Investigator) aka Sippy.
 
 A tool to process the job results from https://testgrid.k8s.io/
