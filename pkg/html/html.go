@@ -19,7 +19,7 @@ var (
 const (
 	up   = `<i class="fa fa-arrow-up" style="font-size:28px;color:green"></i>`
 	down = `<i class="fa fa-arrow-down" style="font-size:28px;color:red"></i>`
-	flat = `<i class="fa fa-arrows-h" style="font-size:28px;color:black"></i>`
+	flat = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
 
 	htmlPageStart = `
 <!DOCTYPE html>
@@ -177,9 +177,13 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
 			arrow := flat
-			if p > pprev+5 {
+			delta := 5.0
+			if v.Successes+v.Failures > 80 {
+				delta = 2
+			}
+			if p > pprev+delta {
 				arrow = up
-			} else if p < pprev-5 {
+			} else if p < pprev-delta {
 				arrow = down
 			}
 			s = s + fmt.Sprintf(template, v.Platform,
@@ -254,9 +258,13 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 
 			if testPrev != nil {
 				arrow := flat
-				if test.PassPercentage > testPrev.PassPercentage+5 {
+				delta := 5.0
+				if test.Successes+test.Failures > 80 {
+					delta = 2
+				}
+				if test.PassPercentage > testPrev.PassPercentage+delta {
 					arrow = up
-				} else if test.PassPercentage < testPrev.PassPercentage-5 {
+				} else if test.PassPercentage < testPrev.PassPercentage-delta {
 					arrow = down
 				}
 
@@ -303,9 +311,13 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
 			arrow := flat
-			if v.PassPercentage > prev.PassPercentage+5 {
+			delta := 5.0
+			if v.Successes+v.Failures > 80 {
+				delta = 2
+			}
+			if v.PassPercentage > prev.PassPercentage+delta {
 				arrow = up
-			} else if v.PassPercentage < prev.PassPercentage-5 {
+			} else if v.PassPercentage < prev.PassPercentage-delta {
 				arrow = down
 			}
 			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
