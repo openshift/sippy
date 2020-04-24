@@ -19,6 +19,7 @@ var (
 const (
 	up   = `<i class="fa fa-arrow-up" style="font-size:28px;color:green"></i>`
 	down = `<i class="fa fa-arrow-down" style="font-size:28px;color:red"></i>`
+	flat = `<i class="fa fa-arrows-h" style="font-size:28px;color:black"></i>`
 
 	htmlPageStart = `
 <!DOCTYPE html>
@@ -161,12 +162,12 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
 		</tr>
 		<tr>
-			<th>Platform</th><th/><th>Latest 7 days</th><th>Previous 7 days</th>
+			<th>Platform</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 
@@ -175,13 +176,16 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
-			arrow := down
-			if p > pprev {
+			arrow := flat
+			if p > pprev+5 {
 				arrow = up
+			} else if p < pprev-5 {
+				arrow = down
 			}
-			s = s + fmt.Sprintf(template, v.Platform, arrow,
+			s = s + fmt.Sprintf(template, v.Platform,
 				p,
 				v.Successes+v.Failures,
+				arrow,
 				pprev,
 				prev.Successes+prev.Failures,
 			)
@@ -219,12 +223,12 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 			<th colspan=3/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>Known Issue</th><th/><th>Pass Rate</th><th>Pass Rate</th>
+			<th>Test Name</th><th>Known Issue</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	naTemplate := `
@@ -249,11 +253,14 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
 
 			if testPrev != nil {
-				arrow := down
-				if test.PassPercentage > testPrev.PassPercentage {
+				arrow := flat
+				if test.PassPercentage > testPrev.PassPercentage+5 {
 					arrow = up
+				} else if test.PassPercentage < testPrev.PassPercentage-5 {
+					arrow = down
 				}
-				s += fmt.Sprintf(template, testLink, known, arrow, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+
+				s += fmt.Sprintf(template, testLink, known, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 			} else {
 				s += fmt.Sprintf(naTemplate, testLink, known, test.PassPercentage, test.Successes+test.Failures, "NA")
 			}
@@ -282,12 +289,12 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
 		</tr>
 		<tr>
-			<th>Name</th><th/><th>Latest 7 days</th><th>Previous 7 days</th>
+			<th>Name</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	for _, v := range jobRunsByName {
@@ -295,13 +302,16 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
-			arrow := down
-			if v.PassPercentage > prev.PassPercentage {
+			arrow := flat
+			if v.PassPercentage > prev.PassPercentage+5 {
 				arrow = up
+			} else if v.PassPercentage < prev.PassPercentage-5 {
+				arrow = down
 			}
-			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name, arrow,
+			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
 				p,
 				v.Successes+v.Failures,
+				arrow,
 				pprev,
 				prev.Successes+prev.Failures,
 			)
