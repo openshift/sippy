@@ -17,12 +17,16 @@ var (
 )
 
 const (
+	up   = `<i class="fa fa-arrow-up" style="font-size:28px;color:green"></i>`
+	down = `<i class="fa fa-arrow-down" style="font-size:28px;color:red"></i>`
+
 	htmlPageStart = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8"><title>%s</title>
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <style>
 @media (max-width: 992px) {
@@ -154,29 +158,36 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
 		</tr>
 		<tr>
-			<th>Platform</th><th>Latest 7 days</th><th>Previous 7 days</th>
+			<th>Platform</th><th/><th>Latest 7 days</th><th>Previous 7 days</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
+
 	for _, v := range jobsByPlatform {
 		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
+		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
-			s = s + fmt.Sprintf(template, v.Platform,
-				util.Percent(v.Successes, v.Failures),
+			pprev := util.Percent(prev.Successes, prev.Failures)
+			arrow := down
+			if p > pprev {
+				arrow = up
+			}
+			s = s + fmt.Sprintf(template, v.Platform, arrow,
+				p,
 				v.Successes+v.Failures,
-				util.Percent(prev.Successes, prev.Failures),
+				pprev,
 				prev.Successes+prev.Failures,
 			)
 		} else {
 			s = s + fmt.Sprintf(template, v.Platform,
-				util.Percent(v.Successes, v.Failures),
+				p,
 				v.Successes+v.Failures,
 				-1, -1,
 			)
@@ -202,23 +213,23 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
 		</tr>
 		<tr>
-			<th colspan=2/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
+			<th colspan=3/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>Known Issue</th><th>Pass Rate</th><th>Pass Rate</th>
+			<th>Test Name</th><th>Known Issue</th><th/><th>Pass Rate</th><th>Pass Rate</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	naTemplate := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td>
+			<td>%s</td><td>%s</td><td/><td>%0.2f%% (%d runs)</td><td>%s</td>
 		</tr>
 	`
 
@@ -236,8 +247,13 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 			testSearchUrl := html.EscapeString(regexp.QuoteMeta(test.Name))
 			testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 			testPrev := getPrevTest(test.Name, allPrev.TestResults)
+
 			if testPrev != nil {
-				s += fmt.Sprintf(template, testLink, known, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+				arrow := down
+				if test.PassPercentage > testPrev.PassPercentage {
+					arrow = up
+				}
+				s += fmt.Sprintf(template, testLink, known, arrow, test.PassPercentage, test.Successes+test.Failures, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 			} else {
 				s += fmt.Sprintf(naTemplate, testLink, known, test.PassPercentage, test.Successes+test.Failures, "NA")
 			}
@@ -263,24 +279,30 @@ func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
 		</tr>
 		<tr>
-			<th>Name</th><th>Latest 7 days</th><th>Previous 7 days</th>
+			<th>Name</th><th/><th>Latest 7 days</th><th>Previous 7 days</th>
 		</tr>
 	`
 	template := `
 		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
+			<td><a target="_blank" href="%s">%s</a></td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 	for _, v := range jobRunsByName {
 		prev := getPrevJob(v.Name, jobRunsByNamePrev)
+		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
-			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
-				util.Percent(v.Successes, v.Failures),
+			pprev := util.Percent(prev.Successes, prev.Failures)
+			arrow := down
+			if v.PassPercentage > prev.PassPercentage {
+				arrow = up
+			}
+			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name, arrow,
+				p,
 				v.Successes+v.Failures,
-				util.Percent(prev.Successes, prev.Failures),
+				pprev,
 				prev.Successes+prev.Failures,
 			)
 		} else {
