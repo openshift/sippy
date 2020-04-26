@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	gohtml "html"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -337,6 +338,27 @@ func downloadData(releases []string, filter string, storagePath string) {
 	}
 }
 
+func getTopFailingTests(result map[string]util.SortedAggregateTestResult) []*util.TestResult {
+	topTests := []*util.TestResult{}
+	all := result["all"]
+	count := 0
+	for i := 0; count < 10 && i < len(all.TestResults); i++ {
+		test := all.TestResults[i]
+		test.Bug = util.FindBug(test.Name)
+		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
+		test.SearchLink = testLink
+
+		topTests = append(topTests, &test)
+		// we want the top ten test failures that don't have bugs associated.
+		// top test failures w/ bugs will be listed, but don't count towards the top ten.
+		if len(test.Bug) == 0 {
+			count++
+		}
+	}
+	return topTests
+}
+
 func (a *Analyzer) prepareTestReport() {
 	util.ComputePercentages(a.RawData.ByAll)
 	util.ComputePercentages(a.RawData.ByPlatform)
@@ -351,14 +373,16 @@ func (a *Analyzer) prepareTestReport() {
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.FailureGroups, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.FailureGroups)
 
+	topFailingTests := getTopFailingTests(byAll)
 	a.Report = util.TestReport{
-		All:           byAll,
-		ByPlatform:    byPlatform,
-		ByJob:         byJob,
-		BySig:         bySig,
-		FailureGroups: filteredFailureGroups,
-		JobPassRate:   jobPassRate,
-		Timestamp:     a.LastUpdateTime,
+		All:             byAll,
+		ByPlatform:      byPlatform,
+		ByJob:           byJob,
+		BySig:           bySig,
+		FailureGroups:   filteredFailureGroups,
+		JobPassRate:     jobPassRate,
+		Timestamp:       a.LastUpdateTime,
+		TopFailingTests: topFailingTests,
 	}
 }
 

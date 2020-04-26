@@ -72,7 +72,7 @@ Data current as of: %s
 
 {{ summaryJobsByPlatform .Current .Prev }}
 
-{{ summaryTopFailingTests .Current.All .Prev.All }}
+{{ summaryTopFailingTests .Current.TopFailingTests .Prev.All }}
 
 {{ summaryTopFailingJobs .Current .Prev }}
 
@@ -214,20 +214,20 @@ func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
 	return nil
 }
 
-func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTestResult) string {
-	all := result["all"]
+func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult) string {
 	allPrev := resultPrev["all"]
 
+	// test name | bug | pass rate | higher/lower | pass rate
 	s := `
 	<table class="table">
 		<tr>
 			<th colspan=5 class="text-center"><a class="text-dark" id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
 		</tr>
 		<tr>
-			<th colspan=3/><th class="text-center">Latest 7 Days</th><th class="text-center">Previous 7 Days</th>
+			<th colspan=2/><th class="text-center">Latest 7 Days</th><th/><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>Known Issue</th><th>Pass Rate</th><th/><th>Pass Rate</th>
+			<th>Test Name</th><th>Known Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
 	`
 	template := `
@@ -237,41 +237,35 @@ func summaryTopFailingTests(result, resultPrev map[string]util.SortedAggregateTe
 	`
 	naTemplate := `
 		<tr>
-			<td>%s</td><td>%s</td><td/><td>%0.2f%% (%d runs)</td><td>%s</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
 		</tr>
 	`
 
-	count := 0
-	for i := 0; count < 10 && i < len(all.TestResults); i++ {
-		test := all.TestResults[i]
-		if !util.IgnoreTestRegex.MatchString(test.Name) {
-			known := "Yes"
-			if !util.KnownIssueTestRegex.MatchString(test.Name) {
-				count++
-				known = "No"
+	for _, test := range topFailingTests {
+		testSearchUrl := html.EscapeString(regexp.QuoteMeta(test.Name))
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
+		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+
+		bug := ""
+		if len(test.Bug) != 0 {
+			bug = fmt.Sprintf("<a href=%s>BZ</a>", test.Bug)
+		}
+
+		if testPrev != nil {
+			arrow := flat
+			delta := 5.0
+			if test.Successes+test.Failures > 80 {
+				delta = 2
+			}
+			if test.PassPercentage > testPrev.PassPercentage+delta {
+				arrow = up
+			} else if test.PassPercentage < testPrev.PassPercentage-delta {
+				arrow = down
 			}
 
-			//testSearchUrl := html.EscapeString(escapeRegex.ReplaceAllString(test.Name, ".*?"))
-			testSearchUrl := html.EscapeString(regexp.QuoteMeta(test.Name))
-			testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
-			testPrev := getPrevTest(test.Name, allPrev.TestResults)
-
-			if testPrev != nil {
-				arrow := flat
-				delta := 5.0
-				if test.Successes+test.Failures > 80 {
-					delta = 2
-				}
-				if test.PassPercentage > testPrev.PassPercentage+delta {
-					arrow = up
-				} else if test.PassPercentage < testPrev.PassPercentage-delta {
-					arrow = down
-				}
-
-				s += fmt.Sprintf(template, testLink, known, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
-			} else {
-				s += fmt.Sprintf(naTemplate, testLink, known, test.PassPercentage, test.Successes+test.Failures, "NA")
-			}
+			s += fmt.Sprintf(template, testLink, bug, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+		} else {
+			s += fmt.Sprintf(naTemplate, testLink, bug, test.PassPercentage, test.Successes+test.Failures)
 		}
 	}
 	s = s + "</table>"

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
-	"strings"
+	//	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -42,13 +42,14 @@ type TestMeta struct {
 }
 
 type TestReport struct {
-	All           map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform    map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob         map[string]SortedAggregateTestResult `json:"byJob`
-	BySig         map[string]SortedAggregateTestResult `json:"bySig`
-	FailureGroups []JobRunResult                       `json:"failureGroups"`
-	JobPassRate   []JobResult                          `json:"jobPassRate"`
-	Timestamp     time.Time                            `json:"timestamp"`
+	All             map[string]SortedAggregateTestResult `json:"all"`
+	ByPlatform      map[string]SortedAggregateTestResult `json:"byPlatform`
+	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
+	BySig           map[string]SortedAggregateTestResult `json:"bySig`
+	FailureGroups   []JobRunResult                       `json:"failureGroups"`
+	JobPassRate     []JobResult                          `json:"jobPassRate"`
+	Timestamp       time.Time                            `json:"timestamp"`
+	TopFailingTests []*TestResult                        `json:"topFailingTests"`
 }
 
 type SortedAggregateTestResult struct {
@@ -71,6 +72,7 @@ type TestResult struct {
 	Failures       int     `json:"failures"`
 	PassPercentage float64 `json:"passPercentage"`
 	Bug            string  `json:"bug"`
+	SearchLink     string  `json:"searchLink"`
 }
 
 type JobRunResult struct {
@@ -252,8 +254,7 @@ func FindPlatform(name string) string {
 }
 
 func FindBug(testName string) string {
-	testName = strings.ReplaceAll(testName, "[", "\\[")
-	testName = strings.ReplaceAll(testName, "]", "\\]")
+	testName = regexp.QuoteMeta(testName)
 	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
 
 	query := url.QueryEscape(testName)
@@ -262,15 +263,17 @@ func FindBug(testName string) string {
 		return fmt.Sprintf("error during bug retrieval: %v", err)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Sprintf("Non-200 response code doing bug search: %v", resp)
+		//return fmt.Sprintf("Non-200 response code doing bug search: %v", resp)
+		return ""
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	match := bugzillaRegex.FindStringSubmatch(string(body))
 	if len(match) > 1 {
+		klog.V(4).Infof("found bug: %s", match[1])
 		return match[1]
 	}
 
-	return "no bug found"
+	return ""
 }
 
 func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, meta TestMeta, passed, failed int) {
