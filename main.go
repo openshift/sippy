@@ -343,7 +343,11 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) []*uti
 	all := result["all"]
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
+
 		test := all.TestResults[i]
+		if util.IgnoreTestRegex.MatchString(test.Name) {
+			continue
+		}
 		test.Bug = util.FindBug(test.Name)
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
