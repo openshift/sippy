@@ -249,8 +249,10 @@ func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[s
 		testPrev := getPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
-		if len(test.Bug) != 0 {
+		if len(test.Bug) != 0 && test.Bug != "error" {
 			bug = fmt.Sprintf("<a href=%s>BZ</a>", test.Bug)
+		} else if test.Bug == "error" {
+			bug = "Search Failed"
 		} else {
 			searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 			bug = fmt.Sprintf("<a href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[1]s&comment=test:%%0A%[1]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%s>Open a bug</a>", url.QueryEscape(test.Name), url.QueryEscape(searchUrl))

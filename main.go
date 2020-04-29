@@ -356,7 +356,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) []*uti
 		topTests = append(topTests, &test)
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if len(test.Bug) == 0 {
+		if len(test.Bug) == 0 || test.Bug == "error" {
 			count++
 		}
 	}

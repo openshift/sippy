@@ -261,11 +261,11 @@ func FindBug(testName string) string {
 	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/?search=%s&maxAge=48h&context=-1&type=bug", query))
 	if err != nil {
 		//return fmt.Sprintf("error during bug retrieval: %v", err)
-		return ""
+		return "error"
 	}
 	if resp.StatusCode != 200 {
 		//return fmt.Sprintf("Non-200 response code doing bug search: %v", resp)
-		return ""
+		return "error"
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	match := bugzillaRegex.FindStringSubmatch(string(body))
