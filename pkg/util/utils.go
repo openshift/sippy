@@ -258,7 +258,7 @@ func FindBug(testName string) string {
 	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
 
 	query := url.QueryEscape(testName)
-	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/?search=%s&maxAge=48h&context=-1&type=bug", query))
+	resp, err := http.Get(fmt.Sprintf("https://search-clayton-ci-search.apps.build01.ci.devcluster.openshift.com/?search=%s&maxAge=48h&context=-1&type=bug", query))
 	if err != nil {
 		//return fmt.Sprintf("error during bug retrieval: %v", err)
 		return "error"
