@@ -75,7 +75,7 @@ Data current as of: %s
 
 {{ summaryTopFailingTests .Current.TopFailingTests .Prev.All }}
 
-{{ summaryTopFailingJobs .Current .Prev }}
+{{ summaryJobPassRatesByJobName .Current .Prev }}
 
 {{ failureGroupList .Current }}
 `
@@ -288,7 +288,7 @@ func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
 	return nil
 }
 
-func summaryTopFailingJobs(report, reportPrev util.TestReport) string {
+func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -374,12 +374,12 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
-			"summaryAcrossAllJobs":   summaryAcrossAllJobs,
-			"failureGroups":          failureGroups,
-			"summaryJobsByPlatform":  summaryJobsByPlatform,
-			"summaryTopFailingTests": summaryTopFailingTests,
-			"summaryTopFailingJobs":  summaryTopFailingJobs,
-			"failureGroupList":       failureGroupList,
+			"summaryAcrossAllJobs":         summaryAcrossAllJobs,
+			"failureGroups":                failureGroups,
+			"summaryJobsByPlatform":        summaryJobsByPlatform,
+			"summaryTopFailingTests":       summaryTopFailingTests,
+			"summaryJobPassRatesByJobName": summaryJobPassRatesByJobName,
+			"failureGroupList":             failureGroupList,
 		},
 	).Parse(dashboardPageHtml))
 
