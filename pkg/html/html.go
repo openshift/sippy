@@ -64,7 +64,8 @@ Data current as of: %s
 <p class="small mb-3">
 	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
 	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a> | 
-	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
+	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
+	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
 </p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All }}
@@ -76,6 +77,8 @@ Data current as of: %s
 {{ summaryTopFailingTests .Current.TopFailingTests .Prev.All }}
 
 {{ summaryJobPassRatesByJobName .Current .Prev }}
+
+{{ canaryTestFailures .Current.All }}
 
 {{ failureGroupList .Current }}
 `
@@ -125,7 +128,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult) string 
 	groups := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a></th>
+			<th colspan=3 class="text-center"><a class="text-dark" title="Statistics on how often we see a cluster of test failures in a single run.  Such clusters are indicative of cluster infrastructure problems that impact many tests and should be investigated.  See below for a link to specific jobs that show large clusters of test failures."  id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a></th>
 		</tr>
 		<tr>
 			<th/><th>Latest 7 days</th><th>Previous 7 days</th>
@@ -160,7 +163,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms." id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
 		</tr>
 		<tr>
 			<th>Platform</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
@@ -222,7 +225,7 @@ func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[s
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests, sorted by passing rate.  If a bug references this test, it is linked.  If no bug is found, the link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest 7 Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -295,7 +298,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated." id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
@@ -340,11 +343,41 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 	return s
 }
 
+func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string {
+	all := result["all"].TestResults
+
+	// test name | bug | pass rate | higher/lower | pass rate
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Tests which historically pass but failed in a job run.  Job run should be investigated because these historically stable tests were probably disrupted by a major cluster bug." id="CanaryTestFailures" href="#CanaryTestFailures">Canary Test Failures</a></th>
+		</tr>
+		<tr>
+			<th>Test Name</th><th>Pass Rate</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td>%s</td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
+		</tr>
+	`
+
+	for i := len(all) - 1; i > len(all)-10; i-- {
+		test := all[i]
+		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+
+		s += fmt.Sprintf(template, testLink, test.PassPercentage, test.Successes+test.Failures)
+	}
+	s = s + "</table>"
+	return s
+}
 func failureGroupList(report util.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=2 class="text-center"><a class="text-dark" id="JobRunsWithFailureGroups" href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a></th>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Job runs where a large number of tests failed.  This is usually indicative of a cluster infrastructure problem, not a test issue, and should be investigated as such." id="JobRunsWithFailureGroups" href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a></th>
 		</tr>
 		<tr>
 			<th>Job</th><th>Failed Test Count</th>
@@ -379,6 +412,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryJobsByPlatform":        summaryJobsByPlatform,
 			"summaryTopFailingTests":       summaryTopFailingTests,
 			"summaryJobPassRatesByJobName": summaryJobPassRatesByJobName,
+			"canaryTestFailures":           canaryTestFailures,
 			"failureGroupList":             failureGroupList,
 		},
 	).Parse(dashboardPageHtml))

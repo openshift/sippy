@@ -646,7 +646,7 @@ type Options struct {
 func main() {
 	opt := &Options{
 		Lookback:                14,
-		SuccessThreshold:        99,
+		SuccessThreshold:        99.99,
 		MinRuns:                 10,
 		Output:                  "json",
 		FailureClusterThreshold: 10,
