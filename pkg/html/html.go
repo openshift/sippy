@@ -358,7 +358,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
+			<td>%s</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
 
