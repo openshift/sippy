@@ -338,11 +338,14 @@ func downloadData(releases []string, filter string, storagePath string) {
 	}
 }
 
-func getTopFailingTests(result map[string]util.SortedAggregateTestResult) []*util.TestResult {
-	topTests := []*util.TestResult{}
+// returns top ten failing tests w/o a bug and top ten with a bug(in that order)
+func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*util.TestResult, []*util.TestResult) {
+	topTestsWithoutBug := []*util.TestResult{}
+	topTestsWithBug := []*util.TestResult{}
 	all := result["all"]
-	count := 0
-	for i := 0; count < 10 && i < len(all.TestResults); i++ {
+	withoutbugcount := 0
+	withbugcount := 0
+	for i := 0; (withbugcount < 10 || withoutbugcount < 10) && i < len(all.TestResults); i++ {
 
 		test := all.TestResults[i]
 		if util.IgnoreTestRegex.MatchString(test.Name) {
@@ -352,18 +355,20 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) []*uti
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 		test.SearchLink = testLink
-
-		topTests = append(topTests, &test)
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
 		if len(test.Bug) == 0 || test.Bug == "error" {
-			count++
+			topTestsWithoutBug = append(topTestsWithoutBug, &test)
+			withoutbugcount++
+		} else {
+			topTestsWithBug = append(topTestsWithBug, &test)
+			withbugcount++
 		}
 	}
-	return topTests
+	return topTestsWithoutBug, topTestsWithBug
 }
 
-func (a *Analyzer) prepareTestReport() {
+func (a *Analyzer) prepareTestReport(prev bool) {
 	util.ComputePercentages(a.RawData.ByAll)
 	util.ComputePercentages(a.RawData.ByPlatform)
 	util.ComputePercentages(a.RawData.ByJob)
@@ -377,21 +382,26 @@ func (a *Analyzer) prepareTestReport() {
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.FailureGroups, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.FailureGroups)
 
-	topFailingTests := getTopFailingTests(byAll)
 	a.Report = util.TestReport{
-		All:             byAll,
-		ByPlatform:      byPlatform,
-		ByJob:           byJob,
-		BySig:           bySig,
-		FailureGroups:   filteredFailureGroups,
-		JobPassRate:     jobPassRate,
-		Timestamp:       a.LastUpdateTime,
-		TopFailingTests: topFailingTests,
+		All:           byAll,
+		ByPlatform:    byPlatform,
+		ByJob:         byJob,
+		BySig:         bySig,
+		FailureGroups: filteredFailureGroups,
+		JobPassRate:   jobPassRate,
+		Timestamp:     a.LastUpdateTime,
 	}
+
+	if !prev {
+		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll)
+		a.Report.TopFailingTestsWithBug = topFailingTestsWithBug
+		a.Report.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
+	}
+
 }
 
 func (a *Analyzer) printReport() {
-	a.prepareTestReport()
+	a.prepareTestReport(false)
 	switch a.Options.Output {
 	case "json":
 		a.printJsonReport()
@@ -607,7 +617,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
 		analyzer.analyze()
-		analyzer.prepareTestReport()
+		analyzer.prepareTestReport(strings.Contains(k, "-prev"))
 		s.analyzers[k] = analyzer
 	}
 
@@ -735,7 +745,7 @@ func (o *Options) Run() error {
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
-			analyzer.prepareTestReport()
+			analyzer.prepareTestReport(false)
 			server.analyzers[release] = analyzer
 
 			// prior 7 day period (days 7-14)
@@ -755,7 +765,7 @@ func (o *Options) Run() error {
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
-			analyzer.prepareTestReport()
+			analyzer.prepareTestReport(true)
 			server.analyzers[release+"-prev"] = analyzer
 		}
 		server.serve(o)

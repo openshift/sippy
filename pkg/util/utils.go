@@ -30,7 +30,7 @@ var (
 	// ignored for top 10 failing test reporting only.
 	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
 	// Tests we are already tracking an issue for
-	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
+//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
 
 type TestMeta struct {
@@ -42,14 +42,15 @@ type TestMeta struct {
 }
 
 type TestReport struct {
-	All             map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform      map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob           map[string]SortedAggregateTestResult `json:"byJob`
-	BySig           map[string]SortedAggregateTestResult `json:"bySig`
-	FailureGroups   []JobRunResult                       `json:"failureGroups"`
-	JobPassRate     []JobResult                          `json:"jobPassRate"`
-	Timestamp       time.Time                            `json:"timestamp"`
-	TopFailingTests []*TestResult                        `json:"topFailingTests"`
+	All                       map[string]SortedAggregateTestResult `json:"all"`
+	ByPlatform                map[string]SortedAggregateTestResult `json:"byPlatform`
+	ByJob                     map[string]SortedAggregateTestResult `json:"byJob`
+	BySig                     map[string]SortedAggregateTestResult `json:"bySig`
+	FailureGroups             []JobRunResult                       `json:"failureGroups"`
+	JobPassRate               []JobResult                          `json:"jobPassRate"`
+	Timestamp                 time.Time                            `json:"timestamp"`
+	TopFailingTestsWithBug    []*TestResult                        `json:"topFailingTestsWithBug"`
+	TopFailingTestsWithoutBug []*TestResult                        `json:"topFailingTestsWithoutBug"`
 }
 
 type SortedAggregateTestResult struct {
@@ -261,7 +262,7 @@ func FindBug(testName string) string {
 	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
 
 	query := url.QueryEscape(testName)
-	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/?search=%s&maxAge=48h&context=-1&type=bug", query))
+	resp, err := http.Get(fmt.Sprintf("https://search-test-1.apps.build01.ci.devcluster.openshift.com/search?search=%s&maxAge=48h&context=-1&type=bug", query))
 	if err != nil {
 		//return fmt.Sprintf("error during bug retrieval: %v", err)
 		return "error"

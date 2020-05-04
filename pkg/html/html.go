@@ -74,7 +74,7 @@ Data current as of: %s
 
 {{ summaryJobsByPlatform .Current .Prev }}
 
-{{ summaryTopFailingTests .Current.TopFailingTests .Prev.All }}
+{{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All }}
 
 {{ summaryJobPassRatesByJobName .Current .Prev }}
 
@@ -218,20 +218,20 @@ func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
 	return nil
 }
 
-func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult) string {
+func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult) string {
 	allPrev := resultPrev["all"]
 
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests, sorted by passing rate.  If a bug references this test, it is linked.  If no bug is found, the link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTests" href="#TopFailingTests">Top Failing Tests Without A Bug</a></th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest 7 Days</th><th/><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>Known Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
+			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
 	`
 	template := `
@@ -245,16 +245,14 @@ func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[s
 		</tr>
 	`
 
-	for _, test := range topFailingTests {
+	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
 		testPrev := getPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
-		if len(test.Bug) != 0 && test.Bug != "error" {
-			bug = fmt.Sprintf("<a href=%s>BZ</a>", test.Bug)
-		} else if test.Bug == "error" {
+		if test.Bug == "error" {
 			bug = "Search Failed"
 		} else {
 			searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
@@ -272,12 +270,40 @@ func summaryTopFailingTests(topFailingTests []*util.TestResult, resultPrev map[s
 			} else if test.PassPercentage < testPrev.PassPercentage-delta {
 				arrow = down
 			}
-
 			s += fmt.Sprintf(template, testLink, bug, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 		} else {
 			s += fmt.Sprintf(naTemplate, testLink, bug, test.PassPercentage, test.Successes+test.Failures)
 		}
 	}
+
+	s += `<tr>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.">Top Failing Tests With A Bug</a></th>
+		  </tr>`
+
+	for _, test := range topFailingTestsWithBug {
+		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+
+		bug := fmt.Sprintf("<a href=%s>BZ</a>", test.Bug)
+		if testPrev != nil {
+			arrow := flat
+			delta := 5.0
+			if test.Successes+test.Failures > 80 {
+				delta = 2
+			}
+			if test.PassPercentage > testPrev.PassPercentage+delta {
+				arrow = up
+			} else if test.PassPercentage < testPrev.PassPercentage-delta {
+				arrow = down
+			}
+			s += fmt.Sprintf(template, testLink, bug, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+		} else {
+			s += fmt.Sprintf(naTemplate, testLink, bug, test.PassPercentage, test.Successes+test.Failures)
+		}
+	}
+
 	s = s + "</table>"
 	return s
 }
