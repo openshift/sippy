@@ -210,9 +210,7 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[strin
 				Sig:  util.FindSig(test.Name),
 			}
 			if a.Options.FindBugs {
-				meta.Bug = util.FindBug(test.Name)
-			} else {
-				meta.Bug = "Bug search not requested"
+				meta.BugList, meta.BugErr = util.FindBug(test.Name)
 			}
 		}
 		meta.Count++
@@ -345,19 +343,21 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*ut
 	all := result["all"]
 	withoutbugcount := 0
 	withbugcount := 0
-	for i := 0; (withbugcount < 10 || withoutbugcount < 10) && i < len(all.TestResults); i++ {
+	// look at the top 50 failing tests, try to create a list of the top 10 failures with bugs and without bugs.
+	// limit to 50 so we don't hammer search.svc.ci too hard if we can't find 10 failures with bugs in the first 50.
+	for i := 0; (withbugcount < 10 || withoutbugcount < 10) && i < 50 && i < len(all.TestResults); i++ {
 
 		test := all.TestResults[i]
 		if util.IgnoreTestRegex.MatchString(test.Name) {
 			continue
 		}
-		test.Bug = util.FindBug(test.Name)
+		test.BugList, test.BugErr = util.FindBug(test.Name)
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 		test.SearchLink = testLink
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if len(test.Bug) == 0 || test.Bug == "error" {
+		if len(test.BugList) == 0 || test.BugErr != nil {
 			topTestsWithoutBug = append(topTestsWithoutBug, &test)
 			withoutbugcount++
 		} else {

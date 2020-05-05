@@ -2,7 +2,8 @@ package util
 
 import (
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
+	"encoding/json"
 	"math"
 	"net/http"
 	"net/url"
@@ -34,11 +35,12 @@ var (
 )
 
 type TestMeta struct {
-	Name  string
-	Count int
-	Jobs  map[string]interface{}
-	Sig   string
-	Bug   string
+	Name    string
+	Count   int
+	Jobs    map[string]interface{}
+	Sig     string
+	BugList []string
+	BugErr  error
 }
 
 type TestReport struct {
@@ -68,12 +70,13 @@ type AggregateTestResult struct {
 }
 
 type TestResult struct {
-	Name           string  `json:"name"`
-	Successes      int     `json:"successes"`
-	Failures       int     `json:"failures"`
-	PassPercentage float64 `json:"passPercentage"`
-	Bug            string  `json:"bug"`
-	SearchLink     string  `json:"searchLink"`
+	Name           string   `json:"name"`
+	Successes      int      `json:"successes"`
+	Failures       int      `json:"failures"`
+	PassPercentage float64  `json:"passPercentage"`
+	BugList        []string `json:"BugList"`
+	BugErr         error    `json:"BugErr"`
+	SearchLink     string   `json:"searchLink"`
 }
 
 type JobRunResult struct {
@@ -93,6 +96,13 @@ type JobResult struct {
 	Successes      int     `json:"successes"`
 	PassPercentage float64 `json:"PassPercentage"`
 	TestGridUrl    string  `json:"TestGridUrl"`
+}
+
+type BugList map[string]BugResult
+
+type BugResult map[string][]Bug
+
+type Bug struct {
 }
 
 func Percent(success, failure int) float64 {
@@ -257,28 +267,32 @@ func FindPlatform(name string) string {
 	return "unknown platform"
 }
 
-func FindBug(testName string) string {
+func FindBug(testName string) ([]string, error) {
 	testName = regexp.QuoteMeta(testName)
-	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
+	klog.V(2).Infof("Searching bugs for test name: %s\n", testName)
 
+	bugs := []string{}
 	query := url.QueryEscape(testName)
-	resp, err := http.Get(fmt.Sprintf("https://search-test-1.apps.build01.ci.devcluster.openshift.com/search?search=%s&maxAge=48h&context=-1&type=bug", query))
+	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/search?search=%s&maxAge=48h&context=-1&type=bug", query))
 	if err != nil {
-		//return fmt.Sprintf("error during bug retrieval: %v", err)
-		return "error"
+		e := fmt.Errorf("error during bug search: %v", err)
+		klog.Errorf(e.Error())
+		return bugs, e
 	}
 	if resp.StatusCode != 200 {
-		//return fmt.Sprintf("Non-200 response code doing bug search: %v", resp)
-		return "error"
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	match := bugzillaRegex.FindStringSubmatch(string(body))
-	if len(match) > 1 {
-		klog.V(4).Infof("found bug: %s", match[1])
-		return match[1]
+		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
+		klog.Errorf(e.Error())
+		return bugs, e
 	}
 
-	return ""
+	//body, err := ioutil.ReadAll(resp.Body)
+	bugList := BugList{}
+	err = json.NewDecoder(resp.Body).Decode(&bugList)
+	for k := range bugList {
+		bugs = append(bugs, k)
+	}
+	klog.V(2).Infof("Found bugs: %v", bugs)
+	return bugs, nil
 }
 
 func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, meta TestMeta, passed, failed int) {
@@ -301,7 +315,8 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 	result.Name = testName
 	result.Successes += passed
 	result.Failures += failed
-	result.Bug = meta.Bug
+	result.BugList = meta.BugList
+	result.BugErr = meta.BugErr
 
 	category.TestResults[testName] = result
 

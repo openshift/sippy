@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"text/template"
 
 	"k8s.io/klog"
@@ -252,7 +253,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		testPrev := getPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
-		if test.Bug == "error" {
+		if test.BugErr != nil {
 			bug = "Search Failed"
 		} else {
 			searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
@@ -278,7 +279,10 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 
 	s += `<tr>
 			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.">Top Failing Tests With A Bug</a></th>
-		  </tr>`
+		  </tr>
+		<tr>
+			<th>Test Name</th><th>BZ</th><th>Pass Rate</th><th/><th>Pass Rate</th>
+		</tr>`
 
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
@@ -286,7 +290,12 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
 		testPrev := getPrevTest(test.Name, allPrev.TestResults)
 
-		bug := fmt.Sprintf("<a href=%s>BZ</a>", test.Bug)
+		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
+		bug := ""
+		for _, b := range test.BugList {
+			bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
+			bug += fmt.Sprintf("<a href=%s>%s</a> ", b, bugID)
+		}
 		if testPrev != nil {
 			arrow := flat
 			delta := 5.0
