@@ -24,6 +24,7 @@ import (
 
 var (
 	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
+	TagStripRegex     = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*\]`)
 )
 
 type RawData struct {
@@ -203,8 +204,11 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[string]util.TestMeta) {
 
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.Lookback, job.Timestamps)
-	for _, test := range job.Tests {
+	for i, test := range job.Tests {
 		klog.V(2).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+
+		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
+		job.Tests[i] = test
 
 		meta, ok := testMeta[test.Name]
 		if !ok {
