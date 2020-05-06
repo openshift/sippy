@@ -202,6 +202,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 			s = s + fmt.Sprintf(template, v.Platform,
 				p,
 				v.Successes+v.Failures,
+				"",
 				-1, -1,
 			)
 		}
@@ -344,6 +345,13 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
 		</tr>
 	`
+
+	naTemplate := `
+		<tr>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
+		</tr>
+	`
+
 	for _, v := range jobRunsByName {
 		prev := getPrevJob(v.Name, jobRunsByNamePrev)
 		p := util.Percent(v.Successes, v.Failures)
@@ -367,10 +375,9 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
-				util.Percent(v.Successes, v.Failures),
+			s = s + fmt.Sprintf(naTemplate, v.TestGridUrl, v.Name,
+				p,
 				v.Successes+v.Failures,
-				-1, -1,
 			)
 		}
 	}

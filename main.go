@@ -141,10 +141,17 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 
 }
 func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta util.TestMeta, startCol, endCol int) {
-	col := startCol
+	col := 0
 	passed := 0
 	failed := 0
 	for _, result := range test.Statuses {
+		if col > endCol {
+			break
+		}
+		if col < startCol {
+			col += result.Count
+			continue
+		}
 		switch result.Value {
 		case 1:
 			for i := col; i < col+result.Count && i < endCol; i++ {
@@ -185,9 +192,6 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 			}
 		}
 		col += result.Count
-		if col > endCol {
-			break
-		}
 	}
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, meta, passed, failed)
@@ -487,8 +491,8 @@ func (a *Analyzer) printTextReport() {
 	testFailures := 0
 	for _, test := range all.TestResults {
 		fmt.Printf("\tTest Name: %s\n", test.Name)
-		//		fmt.Printf("\tPassed: %d\n", test.Successes)
-		//		fmt.Printf("\tFailed: %d\n", test.Failures)
+		fmt.Printf("\tPassed: %d\n", test.Successes)
+		fmt.Printf("\tFailed: %d\n", test.Failures)
 		fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		testCount++
 		testSuccesses += test.Successes
@@ -503,8 +507,8 @@ func (a *Analyzer) printTextReport() {
 		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
-			//			fmt.Printf("\tPassed: %d\n", test.Successes)
-			//			fmt.Printf("\tFailed: %d\n", test.Failures)
+			fmt.Printf("\tPassed: %d\n", test.Successes)
+			fmt.Printf("\tFailed: %d\n", test.Failures)
 			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
 		fmt.Println("")
@@ -518,8 +522,8 @@ func (a *Analyzer) printTextReport() {
 		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
-			//			fmt.Printf("\tPassed: %d\n", test.Successes)
-			//			fmt.Printf("\tFailed: %d\n", test.Failures)
+			fmt.Printf("\tPassed: %d\n", test.Successes)
+			fmt.Printf("\tFailed: %d\n", test.Failures)
 			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
 		fmt.Println("")
@@ -655,7 +659,7 @@ type Options struct {
 
 func main() {
 	opt := &Options{
-		Lookback:                14,
+		Lookback:                7,
 		SuccessThreshold:        99.99,
 		MinRuns:                 10,
 		Output:                  "json",
