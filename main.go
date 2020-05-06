@@ -343,9 +343,9 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*ut
 	all := result["all"]
 	withoutbugcount := 0
 	withbugcount := 0
-	// look at the top 50 failing tests, try to create a list of the top 10 failures with bugs and without bugs.
-	// limit to 50 so we don't hammer search.svc.ci too hard if we can't find 10 failures with bugs in the first 50.
-	for i := 0; (withbugcount < 10 || withoutbugcount < 10) && i < 50 && i < len(all.TestResults); i++ {
+	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
+	// limit to 100 so we don't hammer search.svc.ci too hard if we can't find 20 failures with bugs in the first 100.
+	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
 
 		test := all.TestResults[i]
 		if util.IgnoreTestRegex.MatchString(test.Name) {
@@ -357,10 +357,10 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*ut
 		test.SearchLink = testLink
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if len(test.BugList) == 0 || test.BugErr != nil {
+		if (len(test.BugList) == 0 || test.BugErr != nil) && withoutbugcount < 10 {
 			topTestsWithoutBug = append(topTestsWithoutBug, &test)
 			withoutbugcount++
-		} else {
+		} else if len(test.BugList) > 0 && withbugcount < 20 {
 			topTestsWithBug = append(topTestsWithBug, &test)
 			withbugcount++
 		}
