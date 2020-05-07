@@ -11,5 +11,5 @@ while [ true ]; do
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
-  sleep 43200  # 12 hours
+  sleep 21600  # 6 hours
 done
