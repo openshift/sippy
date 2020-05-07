@@ -172,7 +172,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 
@@ -238,12 +238,12 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 	naTemplate := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
+			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
 		</tr>
 	`
 
@@ -342,13 +342,13 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 	`
 	template := `
 		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td>%s</td><td>%0.2f%% (%d runs)</td>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 
 	naTemplate := `
 		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% (%d runs)</td><td/><td>NA</td>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
 		</tr>
 	`
 
@@ -400,7 +400,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string
 	`
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% (%d runs)</td>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 
