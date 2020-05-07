@@ -149,13 +149,27 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 		if col > endCol {
 			break
 		}
+
+		// the test results are run length encoded(e.g. "6 passes, 5 failures, 7 passes"), but since we are searching for a test result
+		// from a specific time period, it's possible a particular run of results overlaps the start-point
+		// for the time period we care about.  So we need to iterate each encoded run until we get to the column
+		// we care about(a column which falls within the timestamp range we care about, then start the analysis with the remaining
+		// columns in the run.
+		remaining := result.Count
 		if col < startCol {
-			col += result.Count
+			for i := 0; i < result.Count && col < startCol; i++ {
+				col++
+				remaining--
+			}
+		}
+		// if after iterating above we still aren't within the column range we care about, don't do any analysis
+		// on this run of results.
+		if col < startCol {
 			continue
 		}
 		switch result.Value {
 		case 1:
-			for i := col; i < col+result.Count && i < endCol; i++ {
+			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := a.RawData.FailureGroups[joburl]
@@ -173,7 +187,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 				a.RawData.FailureGroups[joburl] = jrr
 			}
 		case 12:
-			for i := col; i < col+result.Count && i < endCol; i++ {
+			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := a.RawData.FailureGroups[joburl]
@@ -192,7 +206,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 				a.RawData.FailureGroups[joburl] = jrr
 			}
 		}
-		col += result.Count
+		col += remaining
 	}
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, meta, passed, failed)
