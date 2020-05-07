@@ -19,9 +19,11 @@ var (
 )
 
 const (
-	up   = `<i class="fa fa-arrow-up" style="font-size:28px;color:green"></i>`
-	down = `<i class="fa fa-arrow-down" style="font-size:28px;color:red"></i>`
-	flat = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
+	up       = `<i class="fa fa-arrow-up" title="Increased %0.2f%%" style="font-size:28px;color:green"></i>`
+	down     = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
+	flatup   = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
+	flatdown = `<i class="fa fa-arrows-h" title="Decreased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
+	flat     = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
 
 	htmlPageStart = `
 <!DOCTYPE html>
@@ -181,15 +183,19 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
-			arrow := flat
+			arrow := ""
 			delta := 5.0
 			if v.Successes+v.Failures > 80 {
 				delta = 2
 			}
 			if p > pprev+delta {
-				arrow = up
+				arrow = fmt.Sprintf(up, p-pprev)
 			} else if p < pprev-delta {
-				arrow = down
+				arrow = fmt.Sprintf(down, pprev-p)
+			} else if p > pprev {
+				arrow = fmt.Sprintf(flatup, p-pprev)
+			} else {
+				arrow = fmt.Sprintf(flatdown, pprev-p)
 			}
 			s = s + fmt.Sprintf(template, v.Platform,
 				p,
@@ -262,16 +268,22 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		}
 
 		if testPrev != nil {
-			arrow := flat
+			arrow := ""
 			delta := 5.0
 			if test.Successes+test.Failures > 80 {
 				delta = 2
 			}
+
 			if test.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = up
+				arrow = fmt.Sprintf(up, test.PassPercentage-testPrev.PassPercentage)
 			} else if test.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = down
+				arrow = fmt.Sprintf(down, testPrev.PassPercentage-test.PassPercentage)
+			} else if test.PassPercentage > testPrev.PassPercentage {
+				arrow = fmt.Sprintf(flatup, test.PassPercentage-testPrev.PassPercentage)
+			} else {
+				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-test.PassPercentage)
 			}
+
 			s += fmt.Sprintf(template, testLink, bug, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 		} else {
 			s += fmt.Sprintf(naTemplate, testLink, bug, test.PassPercentage, test.Successes+test.Failures)
@@ -298,7 +310,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 			bug += fmt.Sprintf("<a href=%s>%s</a> ", b, bugID)
 		}
 		if testPrev != nil {
-			arrow := flat
+			arrow := ""
 			delta := 5.0
 			if test.Successes+test.Failures > 80 {
 				delta = 2
@@ -308,6 +320,17 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 			} else if test.PassPercentage < testPrev.PassPercentage-delta {
 				arrow = down
 			}
+
+			if test.PassPercentage > testPrev.PassPercentage+delta {
+				arrow = fmt.Sprintf(up, test.PassPercentage-testPrev.PassPercentage)
+			} else if test.PassPercentage < testPrev.PassPercentage-delta {
+				arrow = fmt.Sprintf(down, testPrev.PassPercentage-test.PassPercentage)
+			} else if test.PassPercentage > testPrev.PassPercentage {
+				arrow = fmt.Sprintf(flatup, test.PassPercentage-testPrev.PassPercentage)
+			} else {
+				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-test.PassPercentage)
+			}
+
 			s += fmt.Sprintf(template, testLink, bug, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 		} else {
 			s += fmt.Sprintf(naTemplate, testLink, bug, test.PassPercentage, test.Successes+test.Failures)
@@ -357,16 +380,22 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
 			pprev := util.Percent(prev.Successes, prev.Failures)
-			arrow := flat
+			arrow := ""
 			delta := 5.0
 			if v.Successes+v.Failures > 80 {
 				delta = 2
 			}
+
 			if v.PassPercentage > prev.PassPercentage+delta {
-				arrow = up
+				arrow = fmt.Sprintf(up, v.PassPercentage-prev.PassPercentage)
 			} else if v.PassPercentage < prev.PassPercentage-delta {
-				arrow = down
+				arrow = fmt.Sprintf(down, prev.PassPercentage-v.PassPercentage)
+			} else if v.PassPercentage > prev.PassPercentage {
+				arrow = fmt.Sprintf(flatup, v.PassPercentage-prev.PassPercentage)
+			} else {
+				arrow = fmt.Sprintf(flatdown, prev.PassPercentage-v.PassPercentage)
 			}
+
 			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
 				p,
 				v.Successes+v.Failures,
