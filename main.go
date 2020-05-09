@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -612,6 +613,7 @@ func (a *Analyzer) printTextReport() {
 
 type Server struct {
 	analyzers map[string]Analyzer
+	options   *Options
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
@@ -648,8 +650,80 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refresh complete")
 }
 
+func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
+
+	release := "4.5"
+	t := req.URL.Query().Get("release")
+	if t != "" {
+		release = t
+	}
+
+	startDay := 0
+	t = req.URL.Query().Get("startDay")
+	if t != "" {
+		startDay, _ = strconv.Atoi(t)
+	}
+
+	endDay := 7
+	t = req.URL.Query().Get("endDay")
+	if t != "" {
+		endDay, _ = strconv.Atoi(t)
+	}
+
+	successThreshold := 98.0
+	t = req.URL.Query().Get("successThreshold")
+	if t != "" {
+		successThreshold, _ = strconv.ParseFloat(t, 64)
+	}
+
+	jobFilter := ""
+	t = req.URL.Query().Get("jobFilter")
+	if t != "" {
+		jobFilter = t
+	}
+
+	minRuns := 10
+	t = req.URL.Query().Get("minRuns")
+	if t != "" {
+		minRuns, _ = strconv.Atoi(t)
+	}
+
+	fct := 10
+	t = req.URL.Query().Get("failureClusterThreshold")
+	if t != "" {
+		fct, _ = strconv.Atoi(t)
+	}
+
+	opt := &Options{
+		StartDay:                startDay,
+		Lookback:                endDay,
+		SuccessThreshold:        successThreshold,
+		JobFilter:               jobFilter,
+		MinRuns:                 minRuns,
+		FailureClusterThreshold: fct,
+	}
+
+	analyzer := Analyzer{
+		Release: release,
+		Options: opt,
+		RawData: RawData{
+			ByAll:         make(map[string]util.AggregateTestResult),
+			ByJob:         make(map[string]util.AggregateTestResult),
+			ByPlatform:    make(map[string]util.AggregateTestResult),
+			BySig:         make(map[string]util.AggregateTestResult),
+			FailureGroups: make(map[string]util.JobRunResult),
+		},
+	}
+	analyzer.loadData([]string{release}, s.options.LocalData)
+	analyzer.analyze()
+	analyzer.prepareTestReport(false)
+	html.PrintDetailedReport(w, req, analyzer.Report)
+
+}
+
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	//http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
 	klog.Infof("Serving reports on %s ", opts.ListenAddr)
@@ -751,6 +825,7 @@ func (o *Options) Run() error {
 	if o.Server {
 		server := Server{
 			analyzers: make(map[string]Analyzer),
+			options:   o,
 		}
 		for _, release := range o.Releases {
 			// most recent 7 day period (days 0-7)
