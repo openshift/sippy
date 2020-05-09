@@ -50,6 +50,9 @@ const (
 	htmlPageEnd = `
 </div>
 Data current as of: %s
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </body>
 </html>
 `
@@ -172,9 +175,16 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 			<th>Platform</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`
+
 	template := `
 		<tr>
-			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+			<td><button class="btn btn-primary" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">%[1]s</button></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
+
+	testTemplate := `
+		<tr class="collapse %s">
+			<td/><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 
@@ -210,6 +220,18 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 				v.Successes+v.Failures,
 				"",
 				-1, -1,
+			)
+		}
+
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
+		platformTests := report.ByPlatform[v.Platform]
+		for _, test := range platformTests.TestResults {
+			if util.IgnoreTestRegex.MatchString(test.Name) {
+				continue
+			}
+			s = s + fmt.Sprintf(testTemplate, v.Platform, test.Name,
+				test.PassPercentage,
+				test.Successes+test.Failures,
 			)
 		}
 	}
@@ -494,4 +516,236 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	//w.Write(result)
 	fmt.Fprintf(w, htmlPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
+}
+
+const detailedPageHtml = `
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+<style>
+#table td, #table th {
+	border: 
+}
+</style>
+
+<h1 class=text-center>CI Release Health Details</h1>
+
+<p class="small mb-3">
+	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
+	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a> | 
+	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
+	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
+</p>
+
+{{ detailedAcrossAllJobs .Current.All }}
+
+{{ detailedFailureGroups .Current.FailureGroups }}
+
+{{ detailedJobsByPlatform .Current }}
+
+{{ detailedTopFailingTests .Current.TopFailingTestsWithoutBug }}
+
+{{ detailedJobPassRatesByJobName .Current }}
+
+{{ canaryTestFailures .Current.All }}
+
+{{ failureGroupList .Current }}
+`
+
+func detailedAcrossAllJobs(result map[string]util.SortedAggregateTestResult) string {
+
+	all := result["all"]
+
+	summary := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" id="SummaryAcrossAllJobs" href="#SummaryAcrossAllJobs">Summary Across All Jobs</a></th>			
+		</tr>
+		<tr>
+			<td>Test executions: </td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Test Pass Percentage: </td><td>%0.2f</td>
+		</tr>
+	</table>`
+	s := fmt.Sprintf(summary, all.Successes+all.Failures, all.TestPassPercentage)
+	return s
+}
+
+func detailedFailureGroups(failureGroups []util.JobRunResult) string {
+	count, median, avg := 0, 0, 0
+	for _, group := range failureGroups {
+		count += group.TestFailures
+	}
+	if len(failureGroups) != 0 {
+		median = failureGroups[len(failureGroups)/2].TestFailures
+		avg = count / len(failureGroups)
+	}
+
+	groups := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Statistics on how often we see a cluster of test failures in a single run.  Such clusters are indicative of cluster infrastructure problems that impact many tests and should be investigated.  See below for a link to specific jobs that show large clusters of test failures."  id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a></th>
+		</tr>
+		<tr>
+			<th/><th>Latest 7 days</th>
+		</tr>
+		<tr>
+			<td>Job Runs with a Failure Group: </td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Average Failure Group Size: </td><td>%d</td>
+		</tr>
+		<tr>
+			<td>Median Failure Group Size: </td><td>%d</td>
+		</tr>
+	</table>`
+	s := fmt.Sprintf(groups, len(failureGroups), avg, median)
+	return s
+}
+
+func detailedJobsByPlatform(report util.TestReport) string {
+	jobsByPlatform := util.SummarizeJobsByPlatform(report)
+
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms." id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
+		</tr>
+	`
+	platformTemplate := `
+		<tr>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
+	testTemplate := `
+		<tr>
+			<td/><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
+
+	for _, platformJobs := range jobsByPlatform {
+		s = s + `<tr>
+					<th>Platform</th><th>Job Pass Rate</th>
+				 </tr>`
+		passRate := util.Percent(platformJobs.Successes, platformJobs.Failures)
+		s = s + fmt.Sprintf(platformTemplate, platformJobs.Platform,
+			passRate,
+			platformJobs.Successes+platformJobs.Failures,
+		)
+
+		s = s + `<tr>
+					<th/><th>Test Name</th><th>Pass Rate</th>
+				 </tr>`
+		platformTests := report.ByPlatform[platformJobs.Platform]
+		for _, test := range platformTests.TestResults {
+			if util.IgnoreTestRegex.MatchString(test.Name) {
+				continue
+			}
+			s = s + fmt.Sprintf(testTemplate, test.Name,
+				test.PassPercentage,
+				test.Successes+test.Failures,
+			)
+		}
+
+	}
+
+	/*
+		for key, platform := range report.ByPlatform {
+			s = s + `<tr>
+						<th>Platform</th><th>Test Pass Rate</th>
+					 </tr>`
+			s = s + fmt.Sprintf(platformTemplate, key,
+				platform.TestPassPercentage,
+				platform.Successes+platform.Failures,
+			)
+			s = s + `<tr>
+						<th/><th>Test Name</th><th>Pass Rate</th>
+					 </tr>`
+			for _, test := range platform.TestResults {
+				s = s + fmt.Sprintf(testTemplate, test.Name,
+					test.PassPercentage,
+					test.Successes+test.Failures,
+				)
+			}
+		}
+	*/
+	s = s + "</table>"
+	return s
+}
+
+func detailedTopFailingTests(topFailingTests []*util.TestResult) string {
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Most frequently failing tests, sorted by passing rate." id="TopFailingTests" href="#TopFailingTests">Top Failing Tests</a></th>
+		</tr>
+		<tr>
+			<th>Test Name</th><th>Pass Rate</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
+	for _, test := range topFailingTests {
+		s += fmt.Sprintf(template, test.Name, test.PassPercentage, test.Successes+test.Failures)
+
+	}
+
+	s = s + "</table>"
+	return s
+}
+
+func detailedJobPassRatesByJobName(report util.TestReport) string {
+	jobRunsByName := util.SummarizeJobsByName(report)
+
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated." id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
+		</tr>
+		<tr>
+			<th>Name</th><th>Latest 7 days</th>
+		</tr>
+	`
+	template := `
+		<tr>
+			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
+
+	for _, v := range jobRunsByName {
+		p := util.Percent(v.Successes, v.Failures)
+		s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
+			p,
+			v.Successes+v.Failures,
+		)
+	}
+	s = s + "</table>"
+	return s
+}
+
+func PrintDetailedReport(w http.ResponseWriter, req *http.Request, report util.TestReport) {
+
+	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
+	fmt.Fprintf(w, htmlPageStart, "Release CI Health Detailed Report")
+
+	var detailedPage = template.Must(template.New("detailedPage").Funcs(
+		template.FuncMap{
+			"detailedAcrossAllJobs":         detailedAcrossAllJobs,
+			"detailedFailureGroups":         detailedFailureGroups,
+			"detailedJobsByPlatform":        detailedJobsByPlatform,
+			"detailedTopFailingTests":       detailedTopFailingTests,
+			"detailedJobPassRatesByJobName": detailedJobPassRatesByJobName,
+			"canaryTestFailures":            canaryTestFailures,
+			"failureGroupList":              failureGroupList,
+		},
+	).Parse(detailedPageHtml))
+
+	if err := detailedPage.Execute(w, TestReports{report, util.TestReport{}}); err != nil {
+		klog.Errorf("Unable to render page: %v", err)
+	}
+
+	fmt.Fprintf(w, htmlPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
+
 }
