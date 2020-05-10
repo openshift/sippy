@@ -44,6 +44,7 @@ type TestMeta struct {
 }
 
 type TestReport struct {
+	Release                   string                               `json:"release"`
 	All                       map[string]SortedAggregateTestResult `json:"all"`
 	ByPlatform                map[string]SortedAggregateTestResult `json:"byPlatform`
 	ByJob                     map[string]SortedAggregateTestResult `json:"byJob`

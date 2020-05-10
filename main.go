@@ -406,6 +406,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	jobPassRate := util.ComputeJobPassRate(a.RawData.FailureGroups)
 
 	a.Report = util.TestReport{
+		Release:       a.Release,
 		All:           byAll,
 		ByPlatform:    byPlatform,
 		ByJob:         byJob,

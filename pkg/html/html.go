@@ -88,6 +88,24 @@ Data current as of: %s
 
 {{ failureGroupList .Current }}
 `
+
+	// 1 encoded job name
+	// 2 test name
+	// 3 job name
+	// 4 release
+	// 5 encoded test name
+	testGroupTemplate = `
+		<tr class="collapse %s">
+			<td/>
+			<td>
+			%s
+			<p>
+			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s.*%[4]s&search=%[5]s">Job Search</a>
+			<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%[5]s">Bug Search</a>
+			</td>
+			<td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+		</tr>
+	`
 )
 
 func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult) string {
@@ -176,15 +194,23 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 		</tr>
 	`
 
-	template := `
+	jobGroupTemplate := `
 		<tr>
-			<td><button class="btn btn-primary" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">%[1]s</button></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
-		</tr>
-	`
 
-	testTemplate := `
-		<tr class="collapse %s">
-			<td/><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+			<td>
+				%[1]s
+				<p>
+				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
+			</td>
+			<td>
+				%0.2f%% <span class="text-nowrap">(%d runs)</span>
+			</td>
+			<td>
+				%s
+			</td>
+			<td>
+				%0.2f%% <span class="text-nowrap">(%d runs)</span>
+			</td>
 		</tr>
 	`
 
@@ -207,7 +233,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 			} else {
 				arrow = fmt.Sprintf(flatdown, pprev-p)
 			}
-			s = s + fmt.Sprintf(template, v.Platform,
+			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
 				p,
 				v.Successes+v.Failures,
 				arrow,
@@ -215,7 +241,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(template, v.Platform,
+			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
 				p,
 				v.Successes+v.Failures,
 				"",
@@ -229,7 +255,9 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport) string {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
-			s = s + fmt.Sprintf(testTemplate, v.Platform, test.Name,
+			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+
+			s = s + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, v.Platform, report.Release, encodedTestName,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
@@ -385,17 +413,42 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 			<th>Name</th><th>Latest 7 days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`
+
 	template := `
-		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
-		</tr>
-	`
+			<tr>
+				<td>
+					<a target="_blank" href="%s">%s</a>
+					<p>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
+				</td>
+				<td>
+					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td>
+					%s
+				</td>
+				<td>
+					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				</td>
+			</tr>
+		`
 
 	naTemplate := `
-		<tr>
-			<td><a target="_blank" href="%s">%s</a></td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
-		</tr>
-	`
+			<tr>
+				<td>
+					<a target="_blank" href="%s">%s</a>
+					<p>
+					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
+				</td>
+				<td>
+					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td/>
+				<td>
+					NA
+				</td>
+			</tr>
+		`
 
 	for _, v := range jobRunsByName {
 		prev := getPrevJob(v.Name, jobRunsByNamePrev)
@@ -418,7 +471,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 				arrow = fmt.Sprintf(flatdown, prev.PassPercentage-v.PassPercentage)
 			}
 
-			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name,
+			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
 				p,
 				v.Successes+v.Failures,
 				arrow,
@@ -431,7 +484,22 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport) string {
 				v.Successes+v.Failures,
 			)
 		}
+
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
+		jobTests := report.ByJob[v.Name]
+		for _, test := range jobTests.TestResults {
+			if util.IgnoreTestRegex.MatchString(test.Name) {
+				continue
+			}
+			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+			s = s + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, "", encodedTestName,
+				test.PassPercentage,
+				test.Successes+test.Failures,
+			)
+		}
+
 	}
+
 	s = s + "</table>"
 	return s
 }
