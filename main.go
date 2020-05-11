@@ -218,7 +218,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 
 func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[string]util.TestMeta) {
 
-	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.Lookback, job.Timestamps)
+	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	for i, test := range job.Tests {
 		klog.V(2).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 
@@ -626,7 +626,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Invalid release identifier: %s", release)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report)
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay)
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
@@ -697,7 +697,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	opt := &Options{
 		StartDay:                startDay,
-		Lookback:                endDay,
+		EndDay:                  endDay,
 		SuccessThreshold:        successThreshold,
 		JobFilter:               jobFilter,
 		MinRuns:                 minRuns,
@@ -718,13 +718,33 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	analyzer.loadData([]string{release}, s.options.LocalData)
 	analyzer.analyze()
 	analyzer.prepareTestReport(false)
-	html.PrintDetailedReport(w, req, analyzer.Report)
+
+	// prior 7 day period (days 7-14)
+	optCopy := *opt
+	optCopy.EndDay = 14
+	optCopy.StartDay = 7
+	prevAnalyzer := Analyzer{
+		Release: release,
+		Options: &optCopy,
+		RawData: RawData{
+			ByAll:         make(map[string]util.AggregateTestResult),
+			ByJob:         make(map[string]util.AggregateTestResult),
+			ByPlatform:    make(map[string]util.AggregateTestResult),
+			BySig:         make(map[string]util.AggregateTestResult),
+			FailureGroups: make(map[string]util.JobRunResult),
+		},
+	}
+	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
+	prevAnalyzer.analyze()
+	prevAnalyzer.prepareTestReport(true)
+
+	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay)
 
 }
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
-	//http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
+	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
 	klog.Infof("Serving reports on %s ", opts.ListenAddr)
@@ -738,7 +758,7 @@ type Options struct {
 	LocalData               string
 	Releases                []string
 	StartDay                int
-	Lookback                int
+	EndDay                  int
 	FindBugs                bool
 	SuccessThreshold        float64
 	JobFilter               string
@@ -752,7 +772,7 @@ type Options struct {
 
 func main() {
 	opt := &Options{
-		Lookback:                7,
+		EndDay:                  7,
 		SuccessThreshold:        99.99,
 		MinRuns:                 10,
 		Output:                  "json",
@@ -776,7 +796,7 @@ func main() {
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringArrayVar(&opt.Releases, "release", opt.Releases, "Which releases to analyze (one per arg instance)")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
-	flags.IntVar(&opt.Lookback, "lookback", opt.Lookback, "Number of previous days worth of job runs to analyze")
+	flags.IntVar(&opt.EndDay, "end-day", opt.EndDay, "Look at job runs going back to this day")
 	flags.Float64Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
@@ -848,7 +868,7 @@ func (o *Options) Run() error {
 
 			// prior 7 day period (days 7-14)
 			optCopy := *o
-			optCopy.Lookback = 14
+			optCopy.EndDay = 14
 			optCopy.StartDay = 7
 			analyzer = Analyzer{
 				Release: release,

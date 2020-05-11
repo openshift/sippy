@@ -1,6 +1,8 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/timeout: 2m
   labels:
     app: sippy
     app.kubernetes.io/component: sippy
