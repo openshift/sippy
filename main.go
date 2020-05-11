@@ -397,10 +397,10 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	util.ComputePercentages(a.RawData.ByJob)
 	util.ComputePercentages(a.RawData.BySig)
 
-	byAll := util.GenerateSortedResults(a.RawData.ByAll, a.Options.MinRuns, a.Options.SuccessThreshold)
-	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinRuns, a.Options.SuccessThreshold)
-	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinRuns, a.Options.SuccessThreshold)
-	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinRuns, a.Options.SuccessThreshold)
+	byAll := util.GenerateSortedResults(a.RawData.ByAll, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.FailureGroups, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.FailureGroups)
@@ -451,7 +451,7 @@ func (a *Analyzer) printDashboardReport() {
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
-		if !util.IgnoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinRuns {
+		if !util.IgnoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinTestRuns {
 			fmt.Printf("Test Name: %s\n", test.Name)
 			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
 			if test.Successes+test.Failures < 10 {
@@ -671,10 +671,10 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		endDay, _ = strconv.Atoi(t)
 	}
 
-	successThreshold := 98.0
-	t = req.URL.Query().Get("successThreshold")
+	testSuccessThreshold := 98.0
+	t = req.URL.Query().Get("testSuccessThreshold")
 	if t != "" {
-		successThreshold, _ = strconv.ParseFloat(t, 64)
+		testSuccessThreshold, _ = strconv.ParseFloat(t, 64)
 	}
 
 	jobFilter := ""
@@ -683,10 +683,10 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		jobFilter = t
 	}
 
-	minRuns := 10
-	t = req.URL.Query().Get("minRuns")
+	minTestRuns := 10
+	t = req.URL.Query().Get("minTestRuns")
 	if t != "" {
-		minRuns, _ = strconv.Atoi(t)
+		minTestRuns, _ = strconv.Atoi(t)
 	}
 
 	fct := 10
@@ -698,9 +698,9 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	opt := &Options{
 		StartDay:                startDay,
 		EndDay:                  endDay,
-		SuccessThreshold:        successThreshold,
+		TestSuccessThreshold:    testSuccessThreshold,
 		JobFilter:               jobFilter,
-		MinRuns:                 minRuns,
+		MinTestRuns:             minTestRuns,
 		FailureClusterThreshold: fct,
 	}
 
@@ -760,9 +760,9 @@ type Options struct {
 	StartDay                int
 	EndDay                  int
 	FindBugs                bool
-	SuccessThreshold        float64
+	TestSuccessThreshold    float64
 	JobFilter               string
-	MinRuns                 int
+	MinTestRuns             int
 	Output                  string
 	FailureClusterThreshold int
 	FetchData               string
@@ -773,8 +773,8 @@ type Options struct {
 func main() {
 	opt := &Options{
 		EndDay:                  7,
-		SuccessThreshold:        99.99,
-		MinRuns:                 10,
+		TestSuccessThreshold:    99.99,
+		MinTestRuns:             10,
 		Output:                  "json",
 		FailureClusterThreshold: 10,
 		StartDay:                0,
@@ -797,11 +797,11 @@ func main() {
 	flags.StringArrayVar(&opt.Releases, "release", opt.Releases, "Which releases to analyze (one per arg instance)")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	flags.IntVar(&opt.EndDay, "end-day", opt.EndDay, "Look at job runs going back to this day")
-	flags.Float64Var(&opt.SuccessThreshold, "success-threshold", opt.SuccessThreshold, "Filter results for tests that are more than this percent successful")
+	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
-	flags.IntVar(&opt.MinRuns, "min-runs", opt.MinRuns, "Ignore tests with less than this number of runs")
+	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
