@@ -719,10 +719,10 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	analyzer.analyze()
 	analyzer.prepareTestReport(false)
 
-	// prior 7 day period (days 7-14)
+	// prior 7 day period
 	optCopy := *opt
-	optCopy.EndDay = 14
-	optCopy.StartDay = 7
+	optCopy.StartDay = endDay + 1
+	optCopy.EndDay = endDay + 8
 	prevAnalyzer := Analyzer{
 		Release: release,
 		Options: &optCopy,
