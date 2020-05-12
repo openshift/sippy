@@ -78,11 +78,11 @@ Data current as of: %s
 
 {{ failureGroups .Current.FailureGroups .Prev.FailureGroups .EndDay }}
 
-{{ summaryJobsByPlatform .Current .Prev .EndDay }}
+{{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount }}
 
 {{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay }}
 
-{{ summaryJobPassRatesByJobName .Current .Prev .EndDay }}
+{{ summaryJobPassRatesByJobName .Current .Prev .EndDay .JobTestCount }}
 
 {{ canaryTestFailures .Current.All }}
 
@@ -180,7 +180,7 @@ func getPrevPlatform(platform string, jobsByPlatform []util.JobResult) *util.Job
 	return nil
 }
 
-func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay int) string {
+func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
@@ -249,18 +249,32 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay int) strin
 			)
 		}
 
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
 		platformTests := report.ByPlatform[v.Platform]
+		count := jobTestCount
+		rowCount := 0
+		rows := ""
 		for _, test := range platformTests.TestResults {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
+			if count == 0 {
+				break
+			}
+			count--
+
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-			s = s + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, v.Platform, report.Release, encodedTestName,
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, v.Platform, report.Release, encodedTestName,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
+			rowCount++
+		}
+		if rowCount > 0 {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
+			s = s + rows
+		} else {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
 		}
 	}
 	s = s + "</table>"
@@ -401,7 +415,7 @@ func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
 	return nil
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay int) string {
+func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -486,17 +500,32 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay int
 			)
 		}
 
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
 		jobTests := report.ByJob[v.Name]
+		count := jobTestCount
+		rowCount := 0
+		rows := ""
 		for _, test := range jobTests.TestResults {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
+			if count == 0 {
+				break
+			}
+			count--
+
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			s = s + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, "", encodedTestName,
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, "", encodedTestName,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
+			rowCount++
+		}
+
+		if rowCount > 0 {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
+			s = s + rows
+		} else {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
 		}
 
 	}
@@ -558,12 +587,13 @@ func failureGroupList(report util.TestReport) string {
 }
 
 type TestReports struct {
-	Current util.TestReport
-	Prev    util.TestReport
-	EndDay  int
+	Current      util.TestReport
+	Prev         util.TestReport
+	EndDay       int
+	JobTestCount int
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
 
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
@@ -580,7 +610,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 		},
 	).Parse(dashboardPageHtml))
 
-	if err := dashboardPage.Execute(w, TestReports{report, prevReport, endDay}); err != nil {
+	if err := dashboardPage.Execute(w, TestReports{report, prevReport, endDay, jobTestCount}); err != nil {
 		klog.Errorf("Unable to render page: %v", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	gohtml "html"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -617,18 +618,6 @@ type Server struct {
 	options   *Options
 }
 
-func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-
-	release := req.URL.Query().Get("release")
-	if _, ok := s.analyzers[release]; !ok {
-		w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Invalid release identifier: %s", release)
-		return
-	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay)
-}
-
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
 	for k, analyzer := range s.analyzers {
@@ -649,6 +638,18 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	klog.Infof("Refresh complete")
+}
+
+func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
+
+	release := req.URL.Query().Get("release")
+	if _, ok := s.analyzers[release]; !ok {
+		w.Header().Set("Content-Type", "text/html;charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Invalid release identifier: %s", release)
+		return
+	}
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, math.MaxInt32)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
@@ -695,6 +696,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		fct, _ = strconv.Atoi(t)
 	}
 
+	jobTestCount := math.MaxInt32
+	t = req.URL.Query().Get("jobTestCount")
+	if t != "" {
+		jobTestCount, _ = strconv.Atoi(t)
+	}
+
 	opt := &Options{
 		StartDay:                startDay,
 		EndDay:                  endDay,
@@ -738,7 +745,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	prevAnalyzer.analyze()
 	prevAnalyzer.prepareTestReport(true)
 
-	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay)
+	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
 
 }
 
