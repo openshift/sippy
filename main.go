@@ -649,7 +649,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Invalid release identifier: %s", release)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, math.MaxInt32)
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {

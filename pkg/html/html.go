@@ -96,8 +96,7 @@ Data current as of: %s
 	// 5 encoded test name
 	testGroupTemplate = `
 		<tr class="collapse %s">
-			<td/>
-			<td>
+			<td colspan=2>
 			%s
 			<p>
 			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s.*%[4]s&search=%[5]s">Job Search</a>
@@ -253,12 +252,14 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 		count := jobTestCount
 		rowCount := 0
 		rows := ""
+		additionalMatches := 0
 		for _, test := range platformTests.TestResults {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
 			if count == 0 {
-				break
+				additionalMatches++
+				continue
 			}
 			count--
 
@@ -270,8 +271,11 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			)
 			rowCount++
 		}
+		if additionalMatches > 0 {
+			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, v.Platform, additionalMatches)
+		}
 		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
 			s = s + rows
 		} else {
 			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
@@ -504,12 +508,14 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 		count := jobTestCount
 		rowCount := 0
 		rows := ""
+		additionalMatches := 0
 		for _, test := range jobTests.TestResults {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
 			if count == 0 {
-				break
+				additionalMatches++
+				continue
 			}
 			count--
 
@@ -521,8 +527,11 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			rowCount++
 		}
 
+		if additionalMatches > 0 {
+			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, strings.ReplaceAll(v.Name, ".", ""), additionalMatches)
+		}
 		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td/><td class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
 			s = s + rows
 		} else {
 			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
