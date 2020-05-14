@@ -333,7 +333,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 			bug = "Search Failed"
 		} else {
 			searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-			bug = fmt.Sprintf("<a href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[1]s&comment=test:%%0A%[1]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%s>Open a bug</a>", url.QueryEscape(test.Name), url.QueryEscape(searchUrl))
+			bug = fmt.Sprintf("<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[1]s&comment=test:%%0A%[1]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%s>Open a bug</a>", url.QueryEscape(test.Name), url.QueryEscape(searchUrl))
 		}
 
 		if testPrev != nil {
@@ -376,7 +376,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		bug := ""
 		for _, b := range test.BugList {
 			bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-			bug += fmt.Sprintf("<a href=%s>%s</a> ", b, bugID)
+			bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
 		}
 		if testPrev != nil {
 			arrow := ""
@@ -586,7 +586,7 @@ func failureGroupList(report util.TestReport) string {
 
 	template := `
 	<tr>
-		<td><a href=%s>%s</a></td><td>%d</td>
+		<td><a target="_blank" href=%s>%s</a></td><td>%d</td>
 	</tr>`
 	for _, fg := range report.FailureGroups {
 		s += fmt.Sprintf(template, fg.Url, fg.Job, fg.TestFailures)
