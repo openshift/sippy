@@ -243,8 +243,8 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
 				p,
 				v.Successes+v.Failures,
-				"",
-				-1, -1,
+				"NA",
+				-1.0, -1,
 			)
 		}
 
@@ -457,7 +457,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				<td>
 					<a target="_blank" href="%s">%s</a>
 					<p>
-					<button class="btn btn-primary" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% <span class="text-nowrap">(%d runs)</span>
@@ -498,7 +498,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(naTemplate, v.TestGridUrl, v.Name,
+			s = s + fmt.Sprintf(naTemplate, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
 				p,
 				v.Successes+v.Failures,
 			)
