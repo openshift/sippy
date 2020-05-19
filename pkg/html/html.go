@@ -195,7 +195,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 
 	jobGroupTemplate := `
 		<tr>
-
 			<td>
 				%[1]s
 				<p>
@@ -212,6 +211,23 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			</td>
 		</tr>
 	`
+
+	naTemplate := `
+			<tr>
+				<td>
+					%[1]s
+					<p>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
+				</td>
+				<td>
+					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td/>
+				<td>
+					NA
+				</td>
+			</tr>
+		`
 
 	for _, v := range jobsByPlatform {
 		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
@@ -240,11 +256,9 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
+			s = s + fmt.Sprintf(naTemplate, v.Platform,
 				p,
 				v.Successes+v.Failures,
-				"NA",
-				-1.0, -1,
 			)
 		}
 
