@@ -27,6 +27,7 @@ var (
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
+	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 
 	// ignored for top 10 failing test reporting only.
 	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
@@ -245,27 +246,38 @@ func FindSig(name string) string {
 	return "sig-unknown"
 }
 
-func FindPlatform(name string) string {
-	switch {
-	case awsRegex.MatchString(name):
-		return "aws"
-	case azureRegex.MatchString(name):
-		return "azure"
-	case gcpRegex.MatchString(name):
-		return "gcp"
-	case openstackRegex.MatchString(name):
-		return "openstack"
-	case metalRegex.MatchString(name):
-		return "metal"
-	case ovirtRegex.MatchString(name):
-		return "ovirt"
-	case ovirtRegex.MatchString(name):
-		return "ovirt"
-	case vsphereRegex.MatchString(name):
-		return "vsphere"
+func FindPlatform(name string) []string {
+	platforms := []string{}
+	if awsRegex.MatchString(name) {
+		platforms = append(platforms, "aws")
 	}
-	klog.V(2).Infof("unknown platform for job: %s\n", name)
-	return "unknown platform"
+	if azureRegex.MatchString(name) {
+		platforms = append(platforms, "azure")
+	}
+	if gcpRegex.MatchString(name) {
+		platforms = append(platforms, "gcp")
+	}
+	if openstackRegex.MatchString(name) {
+		platforms = append(platforms, "openstack")
+	}
+	if metalRegex.MatchString(name) {
+		platforms = append(platforms, "metal")
+	}
+	if ovirtRegex.MatchString(name) {
+		platforms = append(platforms, "ovirt")
+	}
+	if vsphereRegex.MatchString(name) {
+		platforms = append(platforms, "vsphere")
+	}
+	if upgradeRegex.MatchString(name) {
+		platforms = append(platforms, "upgrade")
+	}
+
+	if len(platforms) == 0 {
+		klog.V(2).Infof("unknown platform for job: %s\n", name)
+		return []string{"unknown platform"}
+	}
+	return platforms
 }
 
 func FindBug(testName string) ([]string, error) {
@@ -329,12 +341,14 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 	platformResults := []JobResult{}
 
 	for _, job := range report.JobPassRate {
-		p := FindPlatform(job.Name)
-		j := jobRunsByPlatform[p]
-		j.Successes += job.Successes
-		j.Failures += job.Failures
-		j.Platform = p
-		jobRunsByPlatform[p] = j
+		platforms := FindPlatform(job.Name)
+		for _, p := range platforms {
+			j := jobRunsByPlatform[p]
+			j.Successes += job.Successes
+			j.Failures += job.Failures
+			j.Platform = p
+			jobRunsByPlatform[p] = j
+		}
 	}
 
 	for _, platform := range jobRunsByPlatform {

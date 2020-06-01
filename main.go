@@ -143,7 +143,7 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
-func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test testgrid.Test, meta util.TestMeta, startCol, endCol int) {
+func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, meta util.TestMeta, startCol, endCol int) {
 	col := 0
 	passed := 0
 	failed := 0
@@ -213,7 +213,9 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platform string, test te
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, meta, passed, failed)
 	util.AddTestResult(job.Name, a.RawData.ByJob, test.Name, meta, passed, failed)
-	util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, meta, passed, failed)
+	for _, platform := range platforms {
+		util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, meta, passed, failed)
+	}
 	util.AddTestResult(meta.Sig, a.RawData.BySig, test.Name, meta, passed, failed)
 }
 
