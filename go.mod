@@ -1,4 +1,4 @@
-module github.com/bparees/sippy
+module github.com/openshift/sippy
 
 go 1.12
 

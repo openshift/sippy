@@ -1,6 +1,6 @@
 # Sippy
 
-<img src=https://raw.github.com/bparees/sippy/master/sippy.svg height=100 width=100>
+<img src=https://raw.github.com/openshift/sippy/master/sippy.svg height=100 width=100>
 
 CIPI (Continuous Integration Private Investigator) aka Sippy.
 

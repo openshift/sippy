@@ -19,9 +19,9 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
-	"github.com/bparees/sippy/pkg/html"
-	"github.com/bparees/sippy/pkg/testgrid"
-	"github.com/bparees/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/html"
+	"github.com/openshift/sippy/pkg/testgrid"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 var (
