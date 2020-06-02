@@ -50,10 +50,17 @@ Sippy can generate custom reports on a per request basis via:
 http://localhost:8080/detailed?release=4.5&parm1=foo&param2=bar
 
 Valid parameters include:
-startDay - how many days back in history to start looking at job runs
-endDay - how many days back in history to stop looking at job runs
-testSuccessThreshold - ignore tests that have a passing percentage higher than this value
-jobFilter - ignore jobs with names that match this value
-minTestRuns - ignore tests that ran fewer than this many times either overall, or within each job or grouping
-failureClusterThreshold - minimum number of test failures in a single job run to be considered a failure cluster/grouping
-jobTestCount - number of failing tests to report on for each job definition
+
+* `startDay` - how many days back in history to start looking at job runs
+
+* `endDay` - how many days back in history to stop looking at job runs
+
+* `testSuccessThreshold` - ignore tests that have a passing percentage higher than this value
+
+* `jobFilter` - ignore jobs with names that match this value
+
+* `minTestRuns` - ignore tests that ran fewer than this many times either overall, or within each job or grouping
+
+* `failureClusterThreshold` - minimum number of test failures in a single job run to be considered a failure cluster/grouping
+
+* `jobTestCount` - number of failing tests to report on for each job definition
