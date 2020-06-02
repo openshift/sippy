@@ -104,16 +104,15 @@ Data current as of: %s
 
 	// 1 encoded job name
 	// 2 test name
-	// 3 job name
-	// 4 release
-	// 5 encoded test name
+	// 3 job name regex
+	// 4 encoded test name
 	testGroupTemplate = `
 		<tr class="collapse %s">
 			<td colspan=2>
 			%s
 			<p>
-			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s.*%[4]s&search=%[5]s">Job Search</a>
-			<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%[5]s">Bug Search</a>
+			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s&search=%[4]s">Job Search</a>
+			<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%[4]s">Bug Search</a>
 			</td>
 			<td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
@@ -291,8 +290,8 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			count--
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, v.Platform, report.Release, encodedTestName,
+			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, jobQuery, encodedTestName,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
@@ -547,7 +546,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			count--
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, "", encodedTestName,
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, encodedTestName,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)

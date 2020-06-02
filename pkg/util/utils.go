@@ -25,6 +25,7 @@ var (
 	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp-`)
 	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
+	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
@@ -260,9 +261,17 @@ func FindPlatform(name string) []string {
 	if openstackRegex.MatchString(name) {
 		platforms = append(platforms, "openstack")
 	}
-	if metalRegex.MatchString(name) {
+
+	// Without support for negative lookbacks in the native
+	// regexp library, it's easiest to differentiate these
+	// two by seeing if it's metal-ipi, and then fall through
+	// to check if it's UPI metal.
+	if metalIPIRegex.MatchString(name) {
+		platforms = append(platforms, "metal-ipi")
+	} else if metalRegex.MatchString(name) {
 		platforms = append(platforms, "metal")
 	}
+
 	if ovirtRegex.MatchString(name) {
 		platforms = append(platforms, "ovirt")
 	}
