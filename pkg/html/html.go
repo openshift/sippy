@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+
 	//"html"
 	"net/http"
 	"net/url"
@@ -45,6 +46,16 @@ const (
 
 <body>
 <div class="container">
+`
+
+	landingHtmlPageEnd = `
+</div>
+<p>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+</html>
 `
 
 	htmlPageEnd = `
@@ -616,6 +627,18 @@ type TestReports struct {
 	Prev         util.TestReport
 	EndDay       int
 	JobTestCount int
+}
+
+func WriteLandingPage(w http.ResponseWriter, releases []string) {
+	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
+	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	w.WriteHeader(http.StatusNotFound)
+	releaseLinks := make([]string, len(releases))
+	for i := range releases {
+		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, releases[i])
+	}
+	fmt.Fprintf(w, "<h1 class='text-center'>CI Release Health Summary</h1><p><ul>%s</ul></p>", strings.Join(releaseLinks, "\n"))
+	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
