@@ -646,9 +646,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 
 	release := req.URL.Query().Get("release")
 	if _, ok := s.analyzers[release]; !ok {
-		w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Invalid release identifier: %s", release)
+		html.WriteLandingPage(w, s.options.Releases)
 		return
 	}
 	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
