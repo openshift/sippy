@@ -36,9 +36,11 @@ Can filter based on time ranges, job names, and various thresholds.  See `./sipp
 
 ## Typical usage
 
+```
 # Fetch the latest data.  Rerun this periodically to get new data.
 $ ./sippy --fetch-data /some/dir --release X.Y
 $ ./sippy --server --local-data /some/dir --release X.Y
+```
 
 Browse to http://localhost:8080/?release=X.Y to see the report.
 
