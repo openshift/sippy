@@ -25,7 +25,7 @@ spec:
         deploymentconfig: sippy
     spec:
       containers:      
-      - image: docker.io/bparees/sippy
+      - image: docker.io/openshift/sippy
         imagePullPolicy: Always
         name: sippy
         ports:
@@ -57,7 +57,7 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-      - image: docker.io/bparees/sippy
+      - image: docker.io/openshift/sippy
         imagePullPolicy: Always
         name: fetchdata
         ports:

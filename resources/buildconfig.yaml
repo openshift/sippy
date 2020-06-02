@@ -20,7 +20,7 @@ spec:
   runPolicy: Serial
   source:
     git:
-      uri: https://github.com/bparees/sippy
+      uri: https://github.com/openshift/sippy
     type: Git
   strategy:
     dockerStrategy: {}
