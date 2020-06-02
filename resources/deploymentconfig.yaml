@@ -49,6 +49,8 @@ spec:
         - "4.4"
         - --release
         - "4.3"
+        - --release
+        - "4.2"
         - --end-day
         - "7"
         - --server

@@ -7,7 +7,7 @@ sleep 600 # 10 minutes
 while [ true ]; do
   echo "Fetching new testgrid data"
   rm -rf /data/*
-  /tmp/src/sippy --fetch-data /data --release 4.3 --release 4.4 --release 4.5 --release 4.6 -v 4
+  /tmp/src/sippy --fetch-data /data --release 4.2 --release 4.3 --release 4.4 --release 4.5 --release 4.6 -v 4
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"

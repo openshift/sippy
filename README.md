@@ -33,3 +33,27 @@ Also reports on:
 * Job pass rates (which jobs are failing frequently, which are not, in sorted order)
 
 Can filter based on time ranges, job names, and various thresholds.  See `./sippy -h`
+
+## Typical usage
+
+# Fetch the latest data.  Rerun this periodically to get new data.
+$ ./sippy --fetch-data /some/dir --release X.Y
+$ ./sippy --server --local-data /some/dir --release X.Y
+
+Browse to http://localhost:8080/?release=X.Y to see the report.
+
+To force sippy to reload data from disk (Such as after rerunning fetch data): http://localhost:8080/refresh
+
+## Detailed usage
+Sippy can generate custom reports on a per request basis via:
+
+http://localhost:8080/detailed?release=4.5&parm1=foo&param2=bar
+
+Valid parameters include:
+startDay - how many days back in history to start looking at job runs
+endDay - how many days back in history to stop looking at job runs
+testSuccessThreshold - ignore tests that have a passing percentage higher than this value
+jobFilter - ignore jobs with names that match this value
+minTestRuns - ignore tests that ran fewer than this many times either overall, or within each job or grouping
+failureClusterThreshold - minimum number of test failures in a single job run to be considered a failure cluster/grouping
+jobTestCount - number of failing tests to report on for each job definition
