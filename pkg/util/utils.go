@@ -31,7 +31,7 @@ var (
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 
 	// ignored for top 10 failing test reporting only.
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
 	// Tests we are already tracking an issue for
 //	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
