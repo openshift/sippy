@@ -9,16 +9,16 @@ A tool to process the job results from https://testgrid.k8s.io/
 Analyzes any job with a status of `FLAKY` or `FAILING` as reported on the following dashboards:
 
 ```
+https://testgrid.k8s.io/redhat-openshift-ocp-release-4.6-informing
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.5-informing
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.3-informing
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.2-informing
-https://testgrid.k8s.io/redhat-openshift-ocp-release-4.1-informing
+https://testgrid.k8s.io/redhat-openshift-ocp-release-4.6-blocking
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.5-blocking
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-blocking
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.3-blocking
 https://testgrid.k8s.io/redhat-openshift-ocp-release-4.2-blocking
-https://testgrid.k8s.io/redhat-openshift-ocp-release-4.1-blocking
 ```
 
 Reports on which tests fail most frequently along different dimensions:
