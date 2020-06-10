@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"regexp/syntax"
 	"sort"
-	//	"strings"
+	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -30,19 +31,25 @@ var (
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 
-	// ignored for top 10 failing test reporting only.
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
+	// ignored for top 10 failing test reporting
+	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
+	// have bugs associated, but we don't want the entire run marked as an unknown failure if one of them fails)
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import a release payload|operator.Run template|Monitor cluster while tests execute|Overall|job.initialize`)
 	// Tests we are already tracking an issue for
-//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
+	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
+
+	// TestBugCache is a map of test names to known bugs tied to those tests
+	TestBugCache map[string][]string = make(map[string][]string)
 )
 
 type TestMeta struct {
-	Name    string
-	Count   int
-	Jobs    map[string]interface{}
-	Sig     string
-	BugList []string
-	BugErr  error
+	Name       string
+	Count      int
+	Jobs       map[string]interface{}
+	Sig        string
+	BugList    []string
+	BugErr     error
+	BugFetched bool
 }
 
 type TestReport struct {
@@ -83,22 +90,25 @@ type TestResult struct {
 }
 
 type JobRunResult struct {
-	Job            string   `json:"job"`
-	Url            string   `json:"url"`
-	TestGridJobUrl string   `json:"url"`
-	TestFailures   int      `json:"testFailures"`
-	TestNames      []string `json:"testNames"`
-	Failed         bool     `json:"failed"`
-	Succeeded      bool     `json:"succeeded"`
+	Job                string   `json:"job"`
+	Url                string   `json:"url"`
+	TestGridJobUrl     string   `json:"url"`
+	TestFailures       int      `json:"testFailures"`
+	FailedTestNames    []string `json:"failedTestNames"`
+	Failed             bool     `json:"failed"`
+	HasUnknownFailures bool     `json:"hasUnknownFailures"`
+	Succeeded          bool     `json:"succeeded"`
 }
 
 type JobResult struct {
-	Name           string  `json:"name"`
-	Platform       string  `json:"platform"`
-	Failures       int     `json:"failures"`
-	Successes      int     `json:"successes"`
-	PassPercentage float64 `json:"PassPercentage"`
-	TestGridUrl    string  `json:"TestGridUrl"`
+	Name                            string  `json:"name"`
+	Platform                        string  `json:"platform"`
+	Failures                        int     `json:"failures"`
+	KnownFailures                   int     `json:"knownFailures"`
+	Successes                       int     `json:"successes"`
+	PassPercentage                  float64 `json:"PassPercentage"`
+	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
+	TestGridUrl                     string  `json:"TestGridUrl"`
 }
 
 type BugList map[string]BugResult
@@ -191,11 +201,15 @@ func ComputeJobPassRate(jrr map[string]JobRunResult) []JobResult {
 		} else if run.Succeeded {
 			job.Successes++
 		}
+		if run.Failed && !run.HasUnknownFailures {
+			job.KnownFailures++
+		}
 		jobsMap[run.Job] = job
 	}
 	jobs := []JobResult{}
 	for _, job := range jobsMap {
 		job.PassPercentage = Percent(job.Successes, job.Failures)
+		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 		jobs = append(jobs, job)
 	}
 
@@ -289,9 +303,9 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-func FindBug(testName string) ([]string, error) {
+func FindBug(testName string) ([]string, bool, error) {
 	testName = regexp.QuoteMeta(testName)
-	klog.V(2).Infof("Searching bugs for test name: %s\n", testName)
+	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
 
 	bugs := []string{}
 	query := url.QueryEscape(testName)
@@ -299,12 +313,12 @@ func FindBug(testName string) ([]string, error) {
 	if err != nil {
 		e := fmt.Errorf("error during bug search: %v", err)
 		klog.Errorf(e.Error())
-		return bugs, e
+		return bugs, false, e
 	}
 	if resp.StatusCode != 200 {
 		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
 		klog.Errorf(e.Error())
-		return bugs, e
+		return bugs, false, e
 	}
 
 	//body, err := ioutil.ReadAll(resp.Body)
@@ -314,12 +328,91 @@ func FindBug(testName string) ([]string, error) {
 		bugs = append(bugs, k)
 	}
 	klog.V(2).Infof("Found bugs: %v", bugs)
-	return bugs, nil
+	return bugs, true, nil
 }
+
+func FindBugs(testNames []string) (map[string][]string, error) {
+	searchResults := make(map[string][]string)
+
+	query := []string{}
+	for _, testName := range testNames {
+		testName = regexp.QuoteMeta(testName)
+		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
+		query = append(query, fmt.Sprintf("search=%s", url.QueryEscape(testName)))
+	}
+	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/search?%s&maxAge=48h&context=-1&type=bug", strings.Join(query, "&")))
+	if err != nil {
+		e := fmt.Errorf("error during bug search: %v", err)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
+	if resp.StatusCode != 200 {
+		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
+
+	//body, err := ioutil.ReadAll(resp.Body)
+	bugList := BugList{}
+	err = json.NewDecoder(resp.Body).Decode(&bugList)
+
+	for bugId, bugResult := range bugList {
+		for searchString := range bugResult {
+			// reverse the regex escaping we did earlier, so we get back the pure test name string.
+			r, _ := syntax.Parse(searchString, 0)
+			searchString = string(r.Rune)
+			searchResults[searchString] = append(searchResults[searchString], bugId)
+		}
+	}
+	klog.V(2).Infof("Found bugs: %v", searchResults)
+	return searchResults, nil
+}
+
+/*
+func FindBugs(testNames []string) (map[string][]string, error) {
+	searchResults := make(map[string][]string)
+
+	v := url.Values{}
+	v.Set("type", "bug")
+	v.Set("context", "-1")
+	for _, testName := range testNames {
+		testName = regexp.QuoteMeta(testName)
+		klog.V(2).Infof("Searching bugs for test name: %s\n", testName)
+		v.Add("search", testName)
+	}
+
+	resp, err := http.PostForm("https://search.svc.ci.openshift.org/search", v)
+	if err != nil {
+		e := fmt.Errorf("error during bug search: %v", err)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
+	if resp.StatusCode != 200 {
+		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
+
+	//body, err := ioutil.ReadAll(resp.Body)
+	bugList := BugList{}
+	err = json.NewDecoder(resp.Body).Decode(&bugList)
+
+	for bugId, bugResult := range bugList {
+		for searchString := range bugResult {
+			// reverse the regex escaping we did earlier, so we get back the pure test name string.
+			r, _ := syntax.Parse(searchString, 0)
+			searchString = string(r.Rune)
+			searchResults[searchString] = append(searchResults[searchString], bugId)
+		}
+	}
+	klog.V(2).Infof("Found bugs: %v", searchResults)
+	return searchResults, nil
+}
+*/
 
 func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, meta TestMeta, passed, failed int) {
 
-	klog.V(2).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
+	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
 	if !ok {
 		category = AggregateTestResult{
@@ -337,7 +430,6 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 	result.Name = testName
 	result.Successes += passed
 	result.Failures += failed
-	result.BugList = meta.BugList
 	result.BugErr = meta.BugErr
 
 	category.TestResults[testName] = result
@@ -355,6 +447,7 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 			j := jobRunsByPlatform[p]
 			j.Successes += job.Successes
 			j.Failures += job.Failures
+			j.KnownFailures += job.KnownFailures
 			j.Platform = p
 			jobRunsByPlatform[p] = j
 		}
@@ -363,6 +456,7 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 	for _, platform := range jobRunsByPlatform {
 
 		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
+		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
 		platformResults = append(platformResults, platform)
 	}
 	// sort from lowest to highest
@@ -382,12 +476,14 @@ func SummarizeJobsByName(report TestReport) []JobResult {
 		j.TestGridUrl = job.TestGridUrl
 		j.Successes += job.Successes
 		j.Failures += job.Failures
+		j.KnownFailures += job.KnownFailures
 		jobRunsByName[job.Name] = j
 	}
 
 	for _, job := range jobRunsByName {
 
 		job.PassPercentage = Percent(job.Successes, job.Failures)
+		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 		jobResults = append(jobResults, job)
 	}
 	// sort from lowest to highest
