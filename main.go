@@ -182,7 +182,6 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
-				jrr.TestNames = append(jrr.TestNames, test.Name)
 				if test.Name == "Overall" {
 					jrr.Succeeded = true
 				}
@@ -200,7 +199,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
-				jrr.TestNames = append(jrr.TestNames, test.Name)
+				jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 				jrr.TestFailures++
 				if test.Name == "Overall" {
 					jrr.Failed = true
@@ -223,7 +222,7 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[strin
 
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	for i, test := range job.Tests {
-		klog.V(2).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
@@ -234,9 +233,6 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[strin
 				Name: test.Name,
 				Jobs: make(map[string]interface{}),
 				Sig:  util.FindSig(test.Name),
-			}
-			if a.Options.FindBugs {
-				meta.BugList, meta.BugErr = util.FindBug(test.Name)
 			}
 		}
 		meta.Count++
@@ -255,8 +251,71 @@ func (a *Analyzer) analyze() {
 	testMeta := make(map[string]util.TestMeta)
 
 	for _, details := range a.RawData.JobDetails {
+		/*
+			if !strings.Contains(details.Name, "sdn-network-stress") {
+				continue
+			}
+		*/
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
 		a.processJobDetails(details, testMeta)
+	}
+
+	failedTestNames := make(map[string]interface{})
+	for _, jobrun := range a.RawData.FailureGroups {
+		for _, t := range jobrun.FailedTestNames {
+			if _, ok := failedTestNames[t]; !ok {
+				failedTestNames[t] = struct{}{}
+			}
+		}
+	}
+
+	batchCount := 0
+	batchNames := []string{}
+	c := 0
+	for t := range failedTestNames {
+		if _, found := util.TestBugCache[t]; found {
+			c++
+			continue
+		}
+		c++
+		batchNames = append(batchNames, t)
+		// we're going to lookup bugs for this test, so put an entry into the map.
+		// if we find a bug for this test, the entry will be replaced with the actual
+		// array of bugs.  if not, this serves as a placeholder so we know not to look
+		// it up again in the future.
+		util.TestBugCache[t] = []string{}
+		batchCount++
+
+		if batchCount > 25 {
+			r, _ := util.FindBugs(batchNames)
+			for k, v := range r {
+				util.TestBugCache[k] = v
+			}
+			batchNames = []string{}
+			batchCount = 0
+		}
+	}
+	if batchCount > 0 {
+		r, _ := util.FindBugs(batchNames)
+		for k, v := range r {
+			util.TestBugCache[k] = v
+		}
+	}
+	for runIdx, jobrun := range a.RawData.FailureGroups {
+		for _, t := range jobrun.FailedTestNames {
+			if util.IgnoreTestRegex.MatchString(t) {
+				// note, if a job run has only ignored tests (such as because setup failed) it will be counted
+				// as "HasUnknownFailures=false", meaning it will count as a success in the "pass rate including
+				// known failures" percentage.  This is good because it ignores infrastructure issues, it is bad
+				// because if the install flat out fails, the run will be counted as successful in that metric.
+				continue
+			}
+			if bugs, found := util.TestBugCache[t]; !found || len(bugs) == 0 {
+				jobrun.HasUnknownFailures = true
+				a.RawData.FailureGroups[runIdx] = jobrun
+				break
+			}
+		}
 	}
 }
 
@@ -377,7 +436,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*ut
 		if util.IgnoreTestRegex.MatchString(test.Name) {
 			continue
 		}
-		test.BugList, test.BugErr = util.FindBug(test.Name)
+		test.BugList = util.TestBugCache[test.Name]
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 		test.SearchLink = testLink
@@ -622,6 +681,8 @@ type Server struct {
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
+	util.TestBugCache = make(map[string][]string)
+
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
 			ByAll:         make(map[string]util.AggregateTestResult),
@@ -766,7 +827,6 @@ type Options struct {
 	Releases                []string
 	StartDay                int
 	EndDay                  int
-	FindBugs                bool
 	TestSuccessThreshold    float64
 	JobFilter               string
 	MinTestRuns             int
@@ -805,7 +865,6 @@ func main() {
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	flags.IntVar(&opt.EndDay, "end-day", opt.EndDay, "Look at job runs going back to this day")
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
-	flags.BoolVar(&opt.FindBugs, "find-bugs", opt.FindBugs, "Attempt to find a bug that matches a failing test")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")

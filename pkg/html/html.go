@@ -106,13 +106,16 @@ Data current as of: %s
 	// 2 test name
 	// 3 job name regex
 	// 4 encoded test name
+	// 5 bug list/bug search
+	// 6 pass rate
+	// 7 number of runs
 	testGroupTemplate = `
 		<tr class="collapse %s">
 			<td colspan=2>
 			%s
 			<p>
 			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s&search=%[4]s">Job Search</a>
-			<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%[4]s">Bug Search</a>
+			%s
 			</td>
 			<td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
@@ -198,7 +201,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms." id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
 		</tr>
 		<tr>
 			<th>Platform</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
@@ -213,13 +216,13 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
 			</td>
 			<td>
-				%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
 			</td>
 			<td>
 				%s
 			</td>
 			<td>
-				%0.2f%% <span class="text-nowrap">(%d runs)</span>
+				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
 			</td>
 		</tr>
 	`
@@ -232,7 +235,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
 				</td>
 				<td>
-					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+					%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
 				</td>
 				<td/>
 				<td>
@@ -243,9 +246,9 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 
 	for _, v := range jobsByPlatform {
 		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
-		p := util.Percent(v.Successes, v.Failures)
+		p := v.PassPercentage
 		if prev != nil {
-			pprev := util.Percent(prev.Successes, prev.Failures)
+			pprev := prev.PassPercentage
 			arrow := ""
 			delta := 5.0
 			if v.Successes+v.Failures > 80 {
@@ -261,15 +264,18 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				arrow = fmt.Sprintf(flatdown, pprev-p)
 			}
 			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
-				p,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
 				arrow,
-				pprev,
+				prev.PassPercentage,
+				prev.PassPercentageWithKnownFailures,
 				prev.Successes+prev.Failures,
 			)
 		} else {
 			s = s + fmt.Sprintf(naTemplate, v.Platform,
-				p,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
 			)
 		}
@@ -291,7 +297,23 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""), test.Name, jobQuery, encodedTestName,
+
+			bug := "Associated Bugs: "
+			bugList := util.TestBugCache[test.Name]
+			for _, b := range bugList {
+				bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
+				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
+			}
+			if len(bugList) == 0 {
+				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
+				bug = fmt.Sprintf(bug, encodedTestName)
+			}
+
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
+				test.Name,
+				jobQuery,
+				encodedTestName,
+				bug,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
@@ -453,7 +475,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated." id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
@@ -468,13 +490,13 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
 				</td>
 				<td>
-					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
 				</td>
 				<td>
 					%s
 				</td>
 				<td>
-					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
 				</td>
 			</tr>
 		`
@@ -487,7 +509,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
 				</td>
 				<td>
-					%0.2f%% <span class="text-nowrap">(%d runs)</span>
+					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
 				</td>
 				<td/>
 				<td>
@@ -498,9 +520,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 
 	for _, v := range jobRunsByName {
 		prev := getPrevJob(v.Name, jobRunsByNamePrev)
-		p := util.Percent(v.Successes, v.Failures)
 		if prev != nil {
-			pprev := util.Percent(prev.Successes, prev.Failures)
 			arrow := ""
 			delta := 5.0
 			if v.Successes+v.Failures > 80 {
@@ -518,15 +538,18 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			}
 
 			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
-				p,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
 				arrow,
-				pprev,
+				prev.PassPercentage,
+				prev.PassPercentageWithKnownFailures,
 				prev.Successes+prev.Failures,
 			)
 		} else {
 			s = s + fmt.Sprintf(naTemplate, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
-				p,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
 			)
 		}
@@ -547,7 +570,23 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			count--
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""), test.Name, v.Name, encodedTestName,
+
+			bug := "Associated Bugs: "
+			bugList := util.TestBugCache[test.Name]
+			for _, b := range bugList {
+				bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
+				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
+			}
+			if len(bugList) == 0 {
+				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
+				bug = fmt.Sprintf(bug, encodedTestName)
+			}
+
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""),
+				test.Name,
+				v.Name,
+				encodedTestName,
+				bug,
 				test.PassPercentage,
 				test.Successes+test.Failures,
 			)
