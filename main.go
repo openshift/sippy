@@ -30,12 +30,13 @@ var (
 )
 
 type RawData struct {
-	ByAll         map[string]util.AggregateTestResult
-	ByJob         map[string]util.AggregateTestResult
-	ByPlatform    map[string]util.AggregateTestResult
-	BySig         map[string]util.AggregateTestResult
-	FailureGroups map[string]util.JobRunResult
-	JobDetails    []testgrid.JobDetails
+	ByAll       map[string]util.AggregateTestResult
+	ByJob       map[string]util.AggregateTestResult
+	ByPlatform  map[string]util.AggregateTestResult
+	BySig       map[string]util.AggregateTestResult
+	JobRuns     map[string]util.JobRunResult
+	JobDetails  []testgrid.JobDetails
+	BugFailures map[string]util.Bug
 }
 
 type Analyzer struct {
@@ -174,7 +175,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.FailureGroups[joburl]
+				jrr, ok := a.RawData.JobRuns[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
 						Job:            job.Name,
@@ -185,13 +186,13 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				if test.Name == "Overall" {
 					jrr.Succeeded = true
 				}
-				a.RawData.FailureGroups[joburl] = jrr
+				a.RawData.JobRuns[joburl] = jrr
 			}
 		case 12:
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.FailureGroups[joburl]
+				jrr, ok := a.RawData.JobRuns[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
 						Job:            job.Name,
@@ -204,7 +205,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				if test.Name == "Overall" {
 					jrr.Failed = true
 				}
-				a.RawData.FailureGroups[joburl] = jrr
+				a.RawData.JobRuns[joburl] = jrr
 			}
 		}
 		col += remaining
@@ -261,7 +262,7 @@ func (a *Analyzer) analyze() {
 	}
 
 	failedTestNames := make(map[string]interface{})
-	for _, jobrun := range a.RawData.FailureGroups {
+	for _, jobrun := range a.RawData.JobRuns {
 		for _, t := range jobrun.FailedTestNames {
 			if _, ok := failedTestNames[t]; !ok {
 				failedTestNames[t] = struct{}{}
@@ -283,7 +284,7 @@ func (a *Analyzer) analyze() {
 		// if we find a bug for this test, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
-		util.TestBugCache[t] = []string{}
+		util.TestBugCache[t] = []util.Bug{}
 		batchCount++
 
 		if batchCount > 25 {
@@ -301,7 +302,7 @@ func (a *Analyzer) analyze() {
 			util.TestBugCache[k] = v
 		}
 	}
-	for runIdx, jobrun := range a.RawData.FailureGroups {
+	for runIdx, jobrun := range a.RawData.JobRuns {
 		for _, t := range jobrun.FailedTestNames {
 			if util.IgnoreTestRegex.MatchString(t) {
 				// note, if a job run has only ignored tests (such as because setup failed) it will be counted
@@ -312,8 +313,18 @@ func (a *Analyzer) analyze() {
 			}
 			if bugs, found := util.TestBugCache[t]; !found || len(bugs) == 0 {
 				jobrun.HasUnknownFailures = true
-				a.RawData.FailureGroups[runIdx] = jobrun
-				break
+				a.RawData.JobRuns[runIdx] = jobrun
+				//break
+			} else {
+				for _, bug := range bugs {
+					if b, found := a.RawData.BugFailures[bug.Url]; found {
+						b.FailureCount++
+						a.RawData.BugFailures[bug.Url] = b
+					} else {
+						bug.FailureCount = 1
+						a.RawData.BugFailures[bug.Url] = bug
+					}
+				}
 			}
 		}
 	}
@@ -464,18 +475,21 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
-	filteredFailureGroups := util.FilterFailureGroups(a.RawData.FailureGroups, a.Options.FailureClusterThreshold)
-	jobPassRate := util.ComputeJobPassRate(a.RawData.FailureGroups)
+	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
+	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
+
+	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
 
 	a.Report = util.TestReport{
-		Release:       a.Release,
-		All:           byAll,
-		ByPlatform:    byPlatform,
-		ByJob:         byJob,
-		BySig:         bySig,
-		FailureGroups: filteredFailureGroups,
-		JobPassRate:   jobPassRate,
-		Timestamp:     a.LastUpdateTime,
+		Release:            a.Release,
+		All:                byAll,
+		ByPlatform:         byPlatform,
+		ByJob:              byJob,
+		BySig:              bySig,
+		FailureGroups:      filteredFailureGroups,
+		JobPassRate:        jobPassRate,
+		Timestamp:          a.LastUpdateTime,
+		BugsByFailureCount: bugFailureCounts,
 	}
 
 	if !prev {
@@ -681,15 +695,16 @@ type Server struct {
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
-	util.TestBugCache = make(map[string][]string)
+	util.TestBugCache = make(map[string][]util.Bug)
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
-			ByAll:         make(map[string]util.AggregateTestResult),
-			ByJob:         make(map[string]util.AggregateTestResult),
-			ByPlatform:    make(map[string]util.AggregateTestResult),
-			BySig:         make(map[string]util.AggregateTestResult),
-			FailureGroups: make(map[string]util.JobRunResult),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -776,11 +791,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: opt,
 		RawData: RawData{
-			ByAll:         make(map[string]util.AggregateTestResult),
-			ByJob:         make(map[string]util.AggregateTestResult),
-			ByPlatform:    make(map[string]util.AggregateTestResult),
-			BySig:         make(map[string]util.AggregateTestResult),
-			FailureGroups: make(map[string]util.JobRunResult),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		},
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
@@ -795,11 +811,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: &optCopy,
 		RawData: RawData{
-			ByAll:         make(map[string]util.AggregateTestResult),
-			ByJob:         make(map[string]util.AggregateTestResult),
-			ByPlatform:    make(map[string]util.AggregateTestResult),
-			BySig:         make(map[string]util.AggregateTestResult),
-			FailureGroups: make(map[string]util.JobRunResult),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		},
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
@@ -896,11 +913,12 @@ func (o *Options) Run() error {
 		analyzer := Analyzer{
 			Options: o,
 			RawData: RawData{
-				ByAll:         make(map[string]util.AggregateTestResult),
-				ByJob:         make(map[string]util.AggregateTestResult),
-				ByPlatform:    make(map[string]util.AggregateTestResult),
-				BySig:         make(map[string]util.AggregateTestResult),
-				FailureGroups: make(map[string]util.JobRunResult),
+				ByAll:       make(map[string]util.AggregateTestResult),
+				ByJob:       make(map[string]util.AggregateTestResult),
+				ByPlatform:  make(map[string]util.AggregateTestResult),
+				BySig:       make(map[string]util.AggregateTestResult),
+				JobRuns:     make(map[string]util.JobRunResult),
+				BugFailures: make(map[string]util.Bug),
 			},
 		}
 
@@ -920,11 +938,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: o,
 				RawData: RawData{
-					ByAll:         make(map[string]util.AggregateTestResult),
-					ByJob:         make(map[string]util.AggregateTestResult),
-					ByPlatform:    make(map[string]util.AggregateTestResult),
-					BySig:         make(map[string]util.AggregateTestResult),
-					FailureGroups: make(map[string]util.JobRunResult),
+					ByAll:       make(map[string]util.AggregateTestResult),
+					ByJob:       make(map[string]util.AggregateTestResult),
+					ByPlatform:  make(map[string]util.AggregateTestResult),
+					BySig:       make(map[string]util.AggregateTestResult),
+					JobRuns:     make(map[string]util.JobRunResult),
+					BugFailures: make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
@@ -940,11 +959,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: &optCopy,
 				RawData: RawData{
-					ByAll:         make(map[string]util.AggregateTestResult),
-					ByJob:         make(map[string]util.AggregateTestResult),
-					ByPlatform:    make(map[string]util.AggregateTestResult),
-					BySig:         make(map[string]util.AggregateTestResult),
-					FailureGroups: make(map[string]util.JobRunResult),
+					ByAll:       make(map[string]util.AggregateTestResult),
+					ByJob:       make(map[string]util.AggregateTestResult),
+					ByPlatform:  make(map[string]util.AggregateTestResult),
+					BySig:       make(map[string]util.AggregateTestResult),
+					JobRuns:     make(map[string]util.JobRunResult),
+					BugFailures: make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)

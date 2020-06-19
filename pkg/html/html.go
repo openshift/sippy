@@ -80,11 +80,12 @@ Data current as of: %s
 
 <h1 class=text-center>CI Release Health Summary</h1>
 
-<p class="small mb-3">
+<p class="small mb-3 text-nowrap">
 	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
-	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a> | 
+	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a>
+	         <br> 
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
-	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
+	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a>
 </p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All .EndDay }}
@@ -100,6 +101,8 @@ Data current as of: %s
 {{ canaryTestFailures .Current.All }}
 
 {{ failureGroupList .Current }}
+
+{{ testImpactingBugs .Current.BugsByFailureCount }}
 `
 
 	// 1 encoded job name
@@ -301,8 +304,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			bug := "Associated Bugs: "
 			bugList := util.TestBugCache[test.Name]
 			for _, b := range bugList {
-				bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
+				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
 			}
 			if len(bugList) == 0 {
 				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
@@ -424,8 +426,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
 		bug := ""
 		for _, b := range test.BugList {
-			bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-			bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
+			bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
 		}
 		if testPrev != nil {
 			arrow := ""
@@ -574,8 +575,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			bug := "Associated Bugs: "
 			bugList := util.TestBugCache[test.Name]
 			for _, b := range bugList {
-				bugID := strings.TrimPrefix(b, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b, bugID)
+				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
 			}
 			if len(bugList) == 0 {
 				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
@@ -661,6 +661,26 @@ func failureGroupList(report util.TestReport) string {
 	return s
 }
 
+func testImpactingBugs(testImpactingBugs []util.Bug) string {
+	// test name | bug | pass rate | higher/lower | pass rate
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=2 class="text-center"><a class="text-dark" title="Bugs which contain references to one or more failing tests, sorted by number of times the referenced tests failed." id="TestImpactingBugs" href="#TestImpactingBugs">Test Impacting Bugs</a></th>
+		</tr>
+		<tr>
+			<th>Bug</th><th>Failure Count</th>
+		</tr>
+	`
+
+	for _, bug := range testImpactingBugs {
+		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%s</a></td><td>%d</td></tr> ", bug.Url, bug.Summary, bug.FailureCount)
+	}
+
+	s = s + "</table>"
+	return s
+}
+
 type TestReports struct {
 	Current      util.TestReport
 	Prev         util.TestReport
@@ -670,8 +690,8 @@ type TestReports struct {
 
 func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 	w.WriteHeader(http.StatusNotFound)
+	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 	releaseLinks := make([]string, len(releases))
 	for i := range releases {
 		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, releases[i])
@@ -694,6 +714,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryJobPassRatesByJobName": summaryJobPassRatesByJobName,
 			"canaryTestFailures":           canaryTestFailures,
 			"failureGroupList":             failureGroupList,
+			"testImpactingBugs":            testImpactingBugs,
 		},
 	).Parse(dashboardPageHtml))
 
