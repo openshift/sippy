@@ -39,7 +39,7 @@ var (
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 
 	// TestBugCache is a map of test names to known bugs tied to those tests
-	TestBugCache map[string][]string = make(map[string][]string)
+	TestBugCache map[string][]Bug = make(map[string][]Bug)
 )
 
 type TestMeta struct {
@@ -63,6 +63,7 @@ type TestReport struct {
 	Timestamp                 time.Time                            `json:"timestamp"`
 	TopFailingTestsWithBug    []*TestResult                        `json:"topFailingTestsWithBug"`
 	TopFailingTestsWithoutBug []*TestResult                        `json:"topFailingTestsWithoutBug"`
+	BugsByFailureCount        []Bug                                `json:"bugsByFailureCount"`
 }
 
 type SortedAggregateTestResult struct {
@@ -80,13 +81,13 @@ type AggregateTestResult struct {
 }
 
 type TestResult struct {
-	Name           string   `json:"name"`
-	Successes      int      `json:"successes"`
-	Failures       int      `json:"failures"`
-	PassPercentage float64  `json:"passPercentage"`
-	BugList        []string `json:"BugList"`
-	BugErr         error    `json:"BugErr"`
-	SearchLink     string   `json:"searchLink"`
+	Name           string  `json:"name"`
+	Successes      int     `json:"successes"`
+	Failures       int     `json:"failures"`
+	PassPercentage float64 `json:"passPercentage"`
+	BugList        []Bug   `json:"BugList"`
+	BugErr         error   `json:"BugErr"`
+	SearchLink     string  `json:"searchLink"`
 }
 
 type JobRunResult struct {
@@ -116,6 +117,10 @@ type BugList map[string]BugResult
 type BugResult map[string][]Bug
 
 type Bug struct {
+	Summary      string `json:"name"`
+	ID           string
+	Url          string
+	FailureCount int32
 }
 
 func Percent(success, failure int) float64 {
@@ -163,6 +168,18 @@ func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, m
 		})
 	}
 	return sorted
+}
+
+func GenerateSortedBugFailureCounts(bugs map[string]Bug) []Bug {
+	sortedBugs := []Bug{}
+	for _, bug := range bugs {
+		sortedBugs = append(sortedBugs, bug)
+	}
+	// sort from highest to lowest
+	sort.SliceStable(sortedBugs, func(i, j int) bool {
+		return sortedBugs[i].FailureCount > sortedBugs[j].FailureCount
+	})
+	return sortedBugs
 }
 
 func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold int) []JobRunResult {
@@ -331,8 +348,8 @@ func FindBug(testName string) ([]string, bool, error) {
 	return bugs, true, nil
 }
 
-func FindBugs(testNames []string) (map[string][]string, error) {
-	searchResults := make(map[string][]string)
+func FindBugs(testNames []string) (map[string][]Bug, error) {
+	searchResults := make(map[string][]Bug)
 
 	query := []string{}
 	for _, testName := range testNames {
@@ -356,12 +373,14 @@ func FindBugs(testNames []string) (map[string][]string, error) {
 	bugList := BugList{}
 	err = json.NewDecoder(resp.Body).Decode(&bugList)
 
-	for bugId, bugResult := range bugList {
-		for searchString := range bugResult {
+	for bugUrl, bugResult := range bugList {
+		for searchString, results := range bugResult {
 			// reverse the regex escaping we did earlier, so we get back the pure test name string.
 			r, _ := syntax.Parse(searchString, 0)
 			searchString = string(r.Rune)
-			searchResults[searchString] = append(searchResults[searchString], bugId)
+			results[0].Url = bugUrl
+			results[0].ID = strings.TrimPrefix(bugUrl, "https://bugzilla.redhat.com/show_bug.cgi?id=")
+			searchResults[searchString] = append(searchResults[searchString], results[0])
 		}
 	}
 	klog.V(2).Infof("Found bugs: %v", searchResults)
