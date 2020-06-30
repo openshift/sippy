@@ -82,8 +82,9 @@ Data current as of: %s
 
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
-	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTests">Top Failing Tests</a>
+	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
 	         <br> 
+			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
 	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a>
 </p>
@@ -351,7 +352,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTests" href="#TopFailingTests">Top Failing Tests Without A Bug</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a></th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -410,12 +411,15 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		}
 	}
 
-	s += `<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.">Top Failing Tests With A Bug</a></th>
+	s += fmt.Sprintf(`<tr>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate." id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a></th>
 		  </tr>
 		<tr>
+			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
+		</tr>
+		<tr>
 			<th>Test Name</th><th>BZ</th><th>Pass Rate</th><th/><th>Pass Rate</th>
-		</tr>`
+		</tr>`, endDay)
 
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
