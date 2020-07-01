@@ -287,7 +287,7 @@ func (a *Analyzer) analyze() {
 		util.TestBugCache[t] = []util.Bug{}
 		batchCount++
 
-		if batchCount > 25 {
+		if batchCount > 15 {
 			r, _ := util.FindBugs(batchNames)
 			for k, v := range r {
 				util.TestBugCache[k] = v
