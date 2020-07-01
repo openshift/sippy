@@ -348,6 +348,8 @@ func FindBug(testName string) ([]string, bool, error) {
 	return bugs, true, nil
 }
 
+// GET
+/*
 func FindBugs(testNames []string) (map[string][]Bug, error) {
 	searchResults := make(map[string][]Bug)
 
@@ -386,21 +388,22 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 	klog.V(2).Infof("Found bugs: %v", searchResults)
 	return searchResults, nil
 }
+*/
 
-/*
-func FindBugs(testNames []string) (map[string][]string, error) {
-	searchResults := make(map[string][]string)
+// POST
+func FindBugs(testNames []string) (map[string][]Bug, error) {
+	searchResults := make(map[string][]Bug)
 
 	v := url.Values{}
 	v.Set("type", "bug")
 	v.Set("context", "-1")
 	for _, testName := range testNames {
 		testName = regexp.QuoteMeta(testName)
-		klog.V(2).Infof("Searching bugs for test name: %s\n", testName)
+		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
 		v.Add("search", testName)
 	}
 
-	resp, err := http.PostForm("https://search.svc.ci.openshift.org/search", v)
+	resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search: %v", err)
 		klog.Errorf(e.Error())
@@ -412,22 +415,22 @@ func FindBugs(testNames []string) (map[string][]string, error) {
 		return searchResults, e
 	}
 
-	//body, err := ioutil.ReadAll(resp.Body)
 	bugList := BugList{}
 	err = json.NewDecoder(resp.Body).Decode(&bugList)
 
-	for bugId, bugResult := range bugList {
-		for searchString := range bugResult {
+	for bugUrl, bugResult := range bugList {
+		for searchString, results := range bugResult {
 			// reverse the regex escaping we did earlier, so we get back the pure test name string.
 			r, _ := syntax.Parse(searchString, 0)
 			searchString = string(r.Rune)
-			searchResults[searchString] = append(searchResults[searchString], bugId)
+			results[0].Url = bugUrl
+			results[0].ID = strings.TrimPrefix(bugUrl, "https://bugzilla.redhat.com/show_bug.cgi?id=")
+			searchResults[searchString] = append(searchResults[searchString], results[0])
 		}
 	}
 	klog.V(2).Infof("Found bugs: %v", searchResults)
 	return searchResults, nil
 }
-*/
 
 func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, meta TestMeta, passed, failed int) {
 
