@@ -171,7 +171,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 			continue
 		}
 		switch result.Value {
-		case 1:
+		case 1, 13: // success, flake(failed one or more times but ultimately succeeded)
 			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
@@ -188,7 +188,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				}
 				a.RawData.JobRuns[joburl] = jrr
 			}
-		case 12:
+		case 12: // failure
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
