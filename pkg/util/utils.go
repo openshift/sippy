@@ -403,7 +403,8 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		v.Add("search", testName)
 	}
 
-	resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
+	//resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
+	resp, err := http.PostForm("https://search.ci.openshift.org/search", v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search: %v", err)
 		klog.Errorf(e.Error())
