@@ -1,0 +1,258 @@
+{
+    "release_health_data": {
+        "summary_all_jobs": {
+            "test_executions": {
+                "latest_7_days": 20938,
+                "prev_7_days": 298423
+            },
+            "test_pass_percentage": {
+                "latest_7_days": 99.98,
+                "prev_7_days": 95.67
+            }
+        },
+        "failure_groupings": {
+            "job_runs_with_a_failure_group": {
+                "latest_7_days": 56,
+                "prev_7_days": 34
+            },
+            "average_failure_group_size": {
+                "latest_7_days": 34,
+                "prev_7_days": 45
+            },
+            "median_failure_group_size": {
+                "latest_7_days": 9,
+                "prev_7_days": 5689
+            }
+        },
+        "job_pass_rate_by_platform": [
+            {
+                "platform": "openstack",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "projected_percentage": 89,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "projected_percentage": 87,
+                    "runs": 67
+                },
+                "failing_tests": [
+                    {
+                        "test_name": "testname-jobpass1",
+                        "pass_rate": {
+                            "percentage": 42,
+                            "runs": 678
+                        },
+                        "bugs": [
+                            {
+                                "id": 923794087,
+                                "url": "url.com"
+                            },
+                            {
+                                "id": 290803223,
+                                "url": "url.com"
+                            }
+                        ]
+                    },
+                    {
+                        "test_name": "testname-jobpass2",
+                        "pass_rate": {
+                            "percentage": 99.9,
+                            "runs": 298
+                        },
+                        "bugs": [
+                            {
+                                "id": 923794087,
+                                "url": "url.com"
+                            },
+                            {
+                                "id": 290803223,
+                                "url": "url.com"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "platform": "vsphere",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "runs": 67
+                }
+            }
+        ],
+        "top_failing_tests_without_a_bug": [
+            {
+                "test_name": "foobar_success1",
+                "url": "url.com",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "runs": 67
+                }
+            },
+            {
+                "test_name": "foobar_success2",
+                "url": "url.com",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "runs": 67
+                }
+            }
+        ],
+        "top_failing_tests_with_a_bug": [
+            {
+                "test_name": "foobar_fail1",
+                "url": "url.com",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "runs": 67
+                },
+                "bugs": [
+                    {
+                        "id": 20984032,
+                        "url": "url.com"
+                    },
+                    {
+                        "id": 2098402092,
+                        "url": "url.com"
+                    }
+                ]
+            },
+            {
+                "test_name": "foobar_fail2",
+                "url": "url.com",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "runs": 67
+                },
+                "bugs": [
+                    {
+                        "id": 20984032,
+                        "url": "url.com"
+                    },
+                    {
+                        "id": 2098402092,
+                        "url": "url.com"
+                    }
+                ]
+            }
+        ],
+        "job_pass_rates_by_job_name": [
+            {
+                "name": "release-name1",
+                "url": "url.com",
+                "latest_7_days": {
+                    "percentage": 29,
+                    "projected_percentage": 89,
+                    "runs": 0
+                },
+                "prev_7_days": {
+                    "percentage": 69,
+                    "projected_percentage": 89,
+                    "runs": 67
+                },
+                "failing_tests": [
+                    {
+                        "test_name": "testname-jobpass1",
+                        "pass_rate": {
+                            "percentage": 42,
+                            "runs": 678
+                        },
+                        "bugs": [
+                            {
+                                "id": 923794087,
+                                "url": "url.com"
+                            },
+                            {
+                                "id": 290803223,
+                                "url": "url.com"
+                            }
+                        ]
+                    },
+                    {
+                        "test_name": "testname-jobpass2",
+                        "pass_rate": {
+                            "percentage": 99.9,
+                            "runs": 298
+                        },
+                        "bugs": [
+                            {
+                                "id": 923794087,
+                                "url": "url.com"
+                            },
+                            {
+                                "id": 290803223,
+                                "url": "url.com"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "canary_test_failures": [
+            {
+                "test_name": "testname1",
+                "url": "url.com",
+                "pass_rate": {
+                    "percentage": 99.9,
+                    "runs": 678
+                }
+            },
+            {
+                "test_name": "testname2",
+                "url": "url.com",
+                "pass_rate": {
+                    "percentage": 99.9,
+                    "runs": 1099
+                }
+            }
+        ],
+        "job_runs_with_failure_groups": [
+            {
+                "job": "release-openshift-blah1",
+                "url": "url.com",
+                "failed_test_count": 1999
+            },
+            {
+                "job": "release-openshift-blah2",
+                "url": "url.com",
+                "failed_test_count": 42
+            }
+        ],
+        "test_impacting_bugs": [
+            {
+                "bug": "bugzilla-1",
+                "url": "url.com",
+                "summary": "lorem ipsum",
+                "failure_count": 353
+            },
+            {
+                "bug": "bugzilla-187",
+                "url": "url.com",
+                "summary": "sit amer doloret",
+                "failure_count": 657
+            }
+        ]
+    }
+}
