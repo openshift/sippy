@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -99,7 +100,7 @@ type FailingTestBug struct {
 type JobSummaryPlatform struct {
 	Platform     string              `json:"platform"`
 	PassRates    map[string]PassRate `json:"passRates"`
-	FailingTests []FailingTestBug    `json:"failingTests"`
+	FailingTests []FailingTest       `json:"failingTests"`
 }
 
 // summary across all job
@@ -221,13 +222,13 @@ func jsonSummaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTe
 
 			testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 
-			failingTest:= FailingTest{
+			failingTest := FailingTest{
 				Name: test.Name,
-				Url: testLink,
+				Url:  testLink,
 				PassRate: PassRate{
 					Percentage: test.PassPercentage,
-					Runs: test.Successes+test.Failures,
-				}
+					Runs:       test.Successes + test.Failures,
+				},
 				Bugs: bugList,
 			}
 
@@ -457,23 +458,27 @@ func jsonTestImpactingBugs(testImpactingBugs []util.Bug) []util.Bug {
 // follows conventions from jsonapi.org
 func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
 
+	data := html.TestReports{report, prevReport, endDay, jobTestCount}
+
 	jsonObject := map[string]interface{}{
-		"releaseHealthData":{
-			"summaryAllJobs": jsonSummaryAcrossAllJobs(),
-			"failureGroupings": jsonFailureGroups(),
-			"jobPassRateByPlatform": jsonSummaryJobsByPlatform(),
-			"topFailingTestsWithoutBug": jsonSummaryTopFailingTestsWithoutBug(),
-			"topFailingTestsWithBug": jsonSummaryTopFailingTestsWithBug(),
-			"jobPassRatesByName": jsonSusummaryJobPassRatesByJobName(),
-			"canaryTestFailures": jsonCanaryTestFailures(),
-			"jobRunsWithFailureGroups": jsonFailureGroupList(),
-			"testImpactingBugs": jsonTestImpactingBugs(),
+		"releaseHealthData": {
+			"summaryAllJobs":            jsonSummaryAcrossAllJobs(data.Current.All, data.Prev.All, data.EndDay),
+			"failureGroupings":          jsonFailureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
+			"jobPassRateByPlatform":     jsonSummaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+			"topFailingTestsWithoutBug": jsonSummaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.All, data.EndDay),
+			"topFailingTestsWithBug":    jsonSummaryTopFailingTestsWithBug(data.Current.topFailingTestsWithBug, data.Prev.All, data.EndDay),
+			"jobPassRatesByName":        jsonSusummaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+			"canaryTestFailures":        jsonCanaryTestFailures(data.Current.All),
+			"jobRunsWithFailureGroups":  jsonFailureGroupList(data.Current),
+			"testImpactingBugs":         jsonTestImpactingBugs(data.Current.BugsByFailureCount),
 		},
 	}
 
 	enc := json.NewEncoder(w)
-	enc.Encode(jsonObject)
+	err := enc.Encode(jsonObject)
+	if err != nil {
+		// klog.Errorf("unable to render json %v", err)
+		fmt.Printf("unable to render json %v", err)
+	}
 
 }
-
-

@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/jsonAPI"
+
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
@@ -735,6 +737,15 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
+func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	if _, ok := s.analyzers[release]; !ok {
+		fmt.Println("must specify a release")
+		return
+	}
+	jsonAPI.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+}
+
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	release := "4.5"
@@ -836,6 +847,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/getJSON", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
