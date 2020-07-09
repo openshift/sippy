@@ -70,6 +70,13 @@ Data current as of: %s
 </html>
 `
 
+	bugLookupWarning = `
+<div  style="background-color:pink" class="jumbotron">
+  <h1>Warning: Bugzilla Lookup Error</h1>
+  <p>At least one error was encountered looking up existing bugs for failing tests.  Some test failures may have
+  associated bugs that are not listed below. Lookup error: %s</p>
+</div>
+`
 	dashboardPageHtml = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
@@ -718,6 +725,9 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	if util.TestBugCacheErr != nil {
+		fmt.Fprintf(w, bugLookupWarning, util.TestBugCacheErr)
+	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
