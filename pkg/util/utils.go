@@ -94,12 +94,12 @@ type TestResult struct {
 type JobRunResult struct {
 	Job                string   `json:"job"`
 	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"url,omitempty"`
+	TestGridJobUrl     string   `json:"url"`
 	TestFailures       int      `json:"testFailures"`
-	FailedTestNames    []string `json:"failedTestNames,omitempty"`
-	Failed             bool     `json:"failed,omitempty"`
-	HasUnknownFailures bool     `json:"hasUnknownFailures,omitempty"`
-	Succeeded          bool     `json:"succeeded,omitempty"`
+	FailedTestNames    []string `json:"failedTestNames"`
+	Failed             bool     `json:"failed"`
+	HasUnknownFailures bool     `json:"hasUnknownFailures"`
+	Succeeded          bool     `json:"succeeded"`
 }
 
 type JobResult struct {
@@ -118,10 +118,37 @@ type BugList map[string]BugResult
 type BugResult map[string][]Bug
 
 type Bug struct {
-	Summary      string `json:"summary"`
+	Summary      string `json:"summary,omitempty"`
 	ID           string `json:"id"`
 	Url          string `json:"url"`
-	FailureCount int32  `json:"failureCount"`
+	FailureCount int32  `json:"failureCount,omitempty"`
+}
+
+func GetPrevTest(test string, testResults []TestResult) *TestResult {
+	for _, v := range testResults {
+		if v.Name == test {
+			return &v
+		}
+	}
+	return nil
+}
+
+func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
+	for _, v := range jobRunsByJob {
+		if v.Name == job {
+			return &v
+		}
+	}
+	return nil
+}
+
+func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
+	for _, v := range jobsByPlatform {
+		if v.Platform == platform {
+			return &v
+		}
+	}
+	return nil
 }
 
 func Percent(success, failure int) float64 {
@@ -406,7 +433,9 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		v.Add("search", testName)
 	}
 
-	resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
+	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
+	searchUrl := "https://search.ci.openshift.org/search"
+	resp, err := http.PostForm(searchUrl, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
 		klog.Errorf(e.Error())

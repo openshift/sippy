@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/jsonAPI"
+
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
@@ -735,6 +737,23 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
+func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, ok := s.analyzers[release]; !ok {
+		// return a 404 error along with the list of available releases in the detail section
+		errMsg := map[string]interface{}{
+			"code":   "404",
+			"detail": fmt.Sprintf("list of releases: %v", s.options.Releases),
+		}
+		errMsgBytes, _ := json.Marshal(errMsg)
+		w.WriteHeader(404)
+		w.Write(errMsgBytes)
+		return
+	}
+	jsonAPI.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+}
+
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	release := "4.5"
@@ -836,6 +855,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
