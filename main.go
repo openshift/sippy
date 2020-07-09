@@ -288,18 +288,24 @@ func (a *Analyzer) analyze() {
 		batchCount++
 
 		if batchCount > 50 {
-			r, _ := util.FindBugs(batchNames)
+			r, err := util.FindBugs(batchNames)
 			for k, v := range r {
 				util.TestBugCache[k] = v
+			}
+			if err != nil {
+				util.TestBugCacheErr = err
 			}
 			batchNames = []string{}
 			batchCount = 0
 		}
 	}
 	if batchCount > 0 {
-		r, _ := util.FindBugs(batchNames)
+		r, err := util.FindBugs(batchNames)
 		for k, v := range r {
 			util.TestBugCache[k] = v
+		}
+		if err != nil {
+			util.TestBugCacheErr = err
 		}
 	}
 	for runIdx, jobrun := range a.RawData.JobRuns {
@@ -696,6 +702,7 @@ type Server struct {
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
 	util.TestBugCache = make(map[string][]util.Bug)
+	util.TestBugCacheErr = nil
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{

@@ -39,7 +39,8 @@ var (
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 
 	// TestBugCache is a map of test names to known bugs tied to those tests
-	TestBugCache map[string][]Bug = make(map[string][]Bug)
+	TestBugCache    map[string][]Bug = make(map[string][]Bug)
+	TestBugCacheErr error
 )
 
 type TestMeta struct {
@@ -320,6 +321,7 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
+/*
 func FindBug(testName string) ([]string, bool, error) {
 	testName = regexp.QuoteMeta(testName)
 	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
@@ -347,6 +349,7 @@ func FindBug(testName string) ([]string, bool, error) {
 	klog.V(2).Infof("Found bugs: %v", bugs)
 	return bugs, true, nil
 }
+*/
 
 // GET
 /*
@@ -403,15 +406,16 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		v.Add("search", testName)
 	}
 
-	//resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
-	resp, err := http.PostForm("https://search.ci.openshift.org/search", v)
+	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
+	searchUrl := "https://search.ci.openshift.org/search"
+	resp, err := http.PostForm(searchUrl, v)
 	if err != nil {
-		e := fmt.Errorf("error during bug search: %v", err)
+		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
 		klog.Errorf(e.Error())
 		return searchResults, e
 	}
 	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
+		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchUrl, resp.Status)
 		klog.Errorf(e.Error())
 		return searchResults, e
 	}
