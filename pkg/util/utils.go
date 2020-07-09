@@ -94,12 +94,12 @@ type TestResult struct {
 type JobRunResult struct {
 	Job                string   `json:"job"`
 	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"url"`
+	TestGridJobUrl     string   `json:"url,omitempty"`
 	TestFailures       int      `json:"testFailures"`
-	FailedTestNames    []string `json:"failedTestNames"`
-	Failed             bool     `json:"failed"`
-	HasUnknownFailures bool     `json:"hasUnknownFailures"`
-	Succeeded          bool     `json:"succeeded"`
+	FailedTestNames    []string `json:"failedTestNames,omitempty"`
+	Failed             bool     `json:"failed,omitempty"`
+	HasUnknownFailures bool     `json:"hasUnknownFailures,omitempty"`
+	Succeeded          bool     `json:"succeeded,omitempty"`
 }
 
 type JobResult struct {
@@ -118,10 +118,10 @@ type BugList map[string]BugResult
 type BugResult map[string][]Bug
 
 type Bug struct {
-	Summary      string `json:"name"`
-	ID           string
-	Url          string
-	FailureCount int32
+	Summary      string `json:"summary"`
+	ID           string `json:"id"`
+	Url          string `json:"url"`
+	FailureCount int32  `json:"failureCount"`
 }
 
 func Percent(success, failure int) float64 {
@@ -406,9 +406,7 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		v.Add("search", testName)
 	}
 
-	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
-	searchUrl := "https://search.ci.openshift.org/search"
-	resp, err := http.PostForm(searchUrl, v)
+	resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
 		klog.Errorf(e.Error())
