@@ -96,10 +96,10 @@ type JobRunResult struct {
 	Url                string   `json:"url"`
 	TestGridJobUrl     string   `json:"url"`
 	TestFailures       int      `json:"testFailures"`
-	FailedTestNames    []string `json:"failedTestName"`
+	FailedTestNames    []string `json:"failedTestNames"`
 	Failed             bool     `json:"failed"`
 	HasUnknownFailures bool     `json:"hasUnknownFailures"`
-	Succeeded          bool     `json:"succeeded,omitempty"`
+	Succeeded          bool     `json:"succeeded"`
 }
 
 type JobResult struct {
