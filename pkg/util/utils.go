@@ -118,7 +118,7 @@ type BugList map[string]BugResult
 type BugResult map[string][]Bug
 
 type Bug struct {
-	Summary      string `json:"summary,omitempty"`
+	Summary      string `json:"name,omitempty"`
 	ID           string `json:"id"`
 	Url          string `json:"url"`
 	FailureCount int32  `json:"failureCount,omitempty"`
@@ -149,6 +149,27 @@ func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
 		}
 	}
 	return nil
+}
+
+// ComputeFailureGroupStats computes count, median, and average number of failuregroups
+// returns count, countPrev, median, medianPrev, avg, avgPrev
+func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []JobRunResult) (int, int, int, int, int, int) {
+	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
+	for _, group := range failureGroups {
+		count += group.TestFailures
+	}
+	for _, group := range failureGroupsPrev {
+		countPrev += group.TestFailures
+	}
+	if len(failureGroups) != 0 {
+		median = failureGroups[len(failureGroups)/2].TestFailures
+		avg = count / len(failureGroups)
+	}
+	if len(failureGroupsPrev) != 0 {
+		medianPrev = failureGroupsPrev[len(failureGroupsPrev)/2].TestFailures
+		avgPrev = count / len(failureGroupsPrev)
+	}
+	return count, countPrev, median, medianPrev, avg, avgPrev
 }
 
 func Percent(success, failure int) float64 {
