@@ -847,7 +847,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
-	http.DefaultServeMux.HandleFunc("/getJSON", s.printJSONReport)
+	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
