@@ -441,6 +441,10 @@ func jsonCanaryTestFailures(result map[string]util.SortedAggregateTestResult) []
 
 	var canaryFailures []CanaryTestFailInstance
 
+	if len(all) <= 0 {
+		return nil
+	}
+
 	for i := len(all) - 1; i > len(all)-10; i-- {
 		test := all[i]
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
@@ -479,7 +483,12 @@ func jsonTestImpactingBugs(testImpactingBugs []util.Bug) []util.Bug {
 // follows conventions from jsonapi.org
 func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
 
-	data := html.TestReports{report, prevReport, endDay, jobTestCount}
+	data := html.TestReports{
+		Current:      report,
+		Prev:         prevReport,
+		EndDay:       endDay,
+		JobTestCount: jobTestCount,
+		Release:      report.Release}
 
 	jsonObject := map[string]interface{}{
 		"releaseHealthData": map[string]interface{}{

@@ -406,6 +406,8 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		v.Add("search", testName)
 	}
 
+	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
+	searchUrl := "https://search.ci.openshift.org/search"
 	resp, err := http.PostForm("https://search.apps.build01.ci.devcluster.openshift.com/search", v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
