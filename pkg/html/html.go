@@ -158,21 +158,8 @@ func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTest
 }
 
 func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay int) string {
-	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
-	for _, group := range failureGroups {
-		count += group.TestFailures
-	}
-	for _, group := range failureGroupsPrev {
-		countPrev += group.TestFailures
-	}
-	if len(failureGroups) != 0 {
-		median = failureGroups[len(failureGroups)/2].TestFailures
-		avg = count / len(failureGroups)
-	}
-	if len(failureGroupsPrev) != 0 {
-		medianPrev = failureGroupsPrev[len(failureGroupsPrev)/2].TestFailures
-		avgPrev = count / len(failureGroupsPrev)
-	}
+
+	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	groups := `
 	<table class="table">
