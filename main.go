@@ -739,8 +739,16 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if _, ok := s.analyzers[release]; !ok {
-		fmt.Println("must specify a release")
+		// return a 404 error along with the list of available releases in the detail section
+		errMsg := map[string]interface{}{
+			"code":   "404",
+			"detail": fmt.Sprintf("list of releases: %v", s.options.Releases),
+		}
+		errMsgBytes, _ := json.Marshal(errMsg)
+		w.WriteHeader(404)
+		w.Write(errMsgBytes)
 		return
 	}
 	jsonAPI.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
