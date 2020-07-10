@@ -16,11 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/jsonAPI"
-
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgrid"
 	"github.com/openshift/sippy/pkg/util"
@@ -751,7 +750,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		w.Write(errMsgBytes)
 		return
 	}
-	jsonAPI.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	api.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
