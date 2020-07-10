@@ -124,6 +124,33 @@ type Bug struct {
 	FailureCount int32  `json:"failureCount,omitempty"`
 }
 
+func GetPrevTest(test string, testResults []TestResult) *TestResult {
+	for _, v := range testResults {
+		if v.Name == test {
+			return &v
+		}
+	}
+	return nil
+}
+
+func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
+	for _, v := range jobRunsByJob {
+		if v.Name == job {
+			return &v
+		}
+	}
+	return nil
+}
+
+func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
+	for _, v := range jobsByPlatform {
+		if v.Platform == platform {
+			return &v
+		}
+	}
+	return nil
+}
+
 func Percent(success, failure int) float64 {
 	if success+failure == 0 {
 		//return math.NaN()

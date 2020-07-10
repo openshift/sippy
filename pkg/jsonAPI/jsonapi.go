@@ -11,35 +11,6 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-// NOTE: these functions are mirrored in html.go
-// Copied over here as a quick fix
-func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
-	for _, v := range testResults {
-		if v.Name == test {
-			return &v
-		}
-	}
-	return nil
-}
-
-func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
-	for _, v := range jobRunsByJob {
-		if v.Name == job {
-			return &v
-		}
-	}
-	return nil
-}
-
-func getPrevPlatform(platform string, jobsByPlatform []util.JobResult) *util.JobResult {
-	for _, v := range jobsByPlatform {
-		if v.Platform == platform {
-			return &v
-		}
-	}
-	return nil
-}
-
 // PassRate describes statistics on a pass rate
 type PassRate struct {
 	Percentage          float64 `json:"percentage"`
@@ -180,7 +151,7 @@ func jsonSummaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTe
 	var jobSummariesByPlatform []JobSummaryPlatform
 
 	for _, v := range jobsByPlatform {
-		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
+		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 
 		var jobSummaryPlatform JobSummaryPlatform
 
@@ -258,7 +229,7 @@ func jsonSummaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		var failedTestWithBug FailingTestBug
 
@@ -313,7 +284,7 @@ func jsonSummaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.Test
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		var failedTestWithoutBug FailingTestBug
 
@@ -361,7 +332,7 @@ func jsonSummaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay
 	var passRatesSlice []PassRatesByJobName
 
 	for _, v := range jobRunsByName {
-		prev := getPrevJob(v.Name, jobRunsByNamePrev)
+		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
 
 		var newJobPassRate PassRatesByJobName
 

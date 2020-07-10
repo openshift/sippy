@@ -196,15 +196,6 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	return s
 }
 
-func getPrevPlatform(platform string, jobsByPlatform []util.JobResult) *util.JobResult {
-	for _, v := range jobsByPlatform {
-		if v.Platform == platform {
-			return &v
-		}
-	}
-	return nil
-}
-
 func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
@@ -256,7 +247,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 		`
 
 	for _, v := range jobsByPlatform {
-		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
+		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 		p := v.PassPercentage
 		if prev != nil {
 			pprev := prev.PassPercentage
@@ -343,15 +334,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	return s
 }
 
-func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
-	for _, v := range testResults {
-		if v.Name == test {
-			return &v
-		}
-	}
-	return nil
-}
-
 func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
 	allPrev := resultPrev["all"]
 
@@ -384,7 +366,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
 		if test.BugErr != nil {
@@ -441,7 +423,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
 		bug := ""
@@ -478,15 +460,6 @@ FIXME: Provide a snippet of the test failure or error from the job log
 
 	s = s + "</table>"
 	return s
-}
-
-func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
-	for _, v := range jobRunsByJob {
-		if v.Name == job {
-			return &v
-		}
-	}
-	return nil
 }
 
 func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
@@ -540,7 +513,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 		`
 
 	for _, v := range jobRunsByName {
-		prev := getPrevJob(v.Name, jobRunsByNamePrev)
+		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
 		if prev != nil {
 			arrow := ""
 			delta := 5.0
