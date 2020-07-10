@@ -192,12 +192,11 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			}
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			// NOTE: not really sure what this represents
-			// jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
+			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
 
 			bugList := util.TestBugCache[test.Name]
 
-			testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
+			testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%s&search=%s", jobQuery, encodedTestName)
 
 			failingTest := FailingTest{
 				Name: test.Name,
@@ -368,18 +367,12 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			}
 		}
 
-		// FIXME: not sure if I need this
-		count := jobTestCount
 		// deleted additionalCount since we want the API to return everything
 		jobTests := report.ByJob[v.Name]
 		for _, test := range jobTests.TestResults {
 			if util.IgnoreTestRegex.MatchString(test.Name) {
 				continue
 			}
-			if count == 0 {
-				continue
-			}
-			count--
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
@@ -398,7 +391,6 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			newJobPassRate.FailingTests = append(newJobPassRate.FailingTests, failingTest)
 		}
 
-		// NOTE - not sure if this needs to be declared as a pointer so future modifications are made by reference
 		passRatesSlice = append(passRatesSlice, newJobPassRate)
 
 	}

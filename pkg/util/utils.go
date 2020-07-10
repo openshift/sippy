@@ -118,7 +118,7 @@ type BugList map[string]BugResult
 type BugResult map[string][]Bug
 
 type Bug struct {
-	Summary      string `json:"summary,omitempty"`
+	Summary      string `json:"name,omitempty"`
 	ID           string `json:"id"`
 	Url          string `json:"url"`
 	FailureCount int32  `json:"failureCount,omitempty"`
