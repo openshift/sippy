@@ -749,7 +749,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		startDay, _ = strconv.Atoi(t)
 	}
 
-	endDay := 7
+	endDay := startDay + 7
 	t = req.URL.Query().Get("endDay")
 	if t != "" {
 		endDay, _ = strconv.Atoi(t)
