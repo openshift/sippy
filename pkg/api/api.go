@@ -172,32 +172,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			}
 		}
 
-		platformTests := report.ByPlatform[v.Platform]
-		for _, test := range platformTests.TestResults {
-			if util.IgnoreTestRegex.MatchString(test.Name) {
-				continue
-			}
-
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
-
-			bugList := util.TestBugCache[test.Name]
-
-			testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%s&search=%s", jobQuery, encodedTestName)
-
-			failingTest := FailingTest{
-				Name: test.Name,
-				Url:  testLink,
-				PassRate: PassRate{
-					Percentage: test.PassPercentage,
-					Runs:       test.Successes + test.Failures,
-				},
-				Bugs: bugList,
-			}
-
-			jobSummaryPlatform.FailingTests = append(jobSummaryPlatform.FailingTests, failingTest)
-		}
-
 		jobSummariesByPlatform = append(jobSummariesByPlatform, jobSummaryPlatform)
 	}
 	return jobSummariesByPlatform
@@ -352,30 +326,6 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 					},
 				},
 			}
-		}
-
-		// deleted additionalCount since we want the API to return everything
-		jobTests := report.ByJob[v.Name]
-		for _, test := range jobTests.TestResults {
-			if util.IgnoreTestRegex.MatchString(test.Name) {
-				continue
-			}
-
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-
-			bugList := util.TestBugCache[test.Name]
-
-			failingTest := FailingTest{
-				Name: test.Name,
-				Url:  fmt.Sprintf("https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName),
-				PassRate: PassRate{
-					Percentage: test.PassPercentage,
-					Runs:       test.Successes + test.Failures,
-				},
-				Bugs: bugList,
-			}
-
-			newJobPassRate.FailingTests = append(newJobPassRate.FailingTests, failingTest)
 		}
 
 		passRatesSlice = append(passRatesSlice, newJobPassRate)
