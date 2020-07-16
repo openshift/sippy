@@ -391,6 +391,7 @@ func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 	}
 
 	enc := json.NewEncoder(w)
+	enc.SetIndent("", "    ")
 	err := enc.Encode(jsonObject)
 	if err != nil {
 		klog.Errorf("unable to render json %v", err)
