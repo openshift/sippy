@@ -19,7 +19,7 @@ type PassRate struct {
 	Runs                int     `json:"runs"`
 }
 
-// SummaryAcrossAllJobs describes the category failuregroups
+// SummaryAcrossAllJobs describes the category summaryacrossalljobs
 // valid keys are latestXDays, and prevXDays
 type SummaryAcrossAllJobs struct {
 	TestExecutions     map[string]int     `json:"testExecutions"`
@@ -44,19 +44,9 @@ type CanaryTestFailInstance struct {
 
 // PassRatesByJobName is responsible for the section job pass rates by job name
 type PassRatesByJobName struct {
-	Name         string              `json:"name"`
-	Url          string              `json:"url"`
-	PassRates    map[string]PassRate `json:"passRates"`
-	FailingTests []FailingTest       `json:"failingTests"`
-}
-
-// FailingTest describes one single instance of a failed test and associated bugs
-// passRate may include projected pass rate (float64), percentage (float64), and number of runs (int)
-type FailingTest struct {
-	Name     string     `json:"name"`
-	Url      string     `json:"url"`
-	PassRate PassRate   `json:"passRate"`
-	Bugs     []util.Bug `json:"bugs"`
+	Name      string              `json:"name"`
+	Url       string              `json:"url"`
+	PassRates map[string]PassRate `json:"passRates"`
 }
 
 // FailingTestBug describes a single instance of failed test with bug or failed test without bug
@@ -68,11 +58,10 @@ type FailingTestBug struct {
 	Bugs      []util.Bug          `json:"bugs,omitempty"`
 }
 
-// JobSummaryPlatformdescribes a single platform and its associated jobs, their pass rates, and failing tests
+// JobSummaryPlatform describes a single platform and its associated jobs, their pass rates, and failing tests
 type JobSummaryPlatform struct {
-	Platform     string              `json:"platform"`
-	PassRates    map[string]PassRate `json:"passRates"`
-	FailingTests []FailingTest       `json:"failingTests"`
+	Platform  string              `json:"platform"`
+	PassRates map[string]PassRate `json:"passRates"`
 }
 
 // FailureGroup describes a single failure group - does not show the associated failed job names
@@ -189,7 +178,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
+		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		var failedTestWithBug FailingTestBug
@@ -244,7 +233,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
+		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		var failedTestWithoutBug FailingTestBug
@@ -352,7 +341,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) []Cana
 		canaryFailures = append(canaryFailures,
 			CanaryTestFailInstance{
 				Name: test.Name,
-				Url:  fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName),
+				Url:  fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName),
 				PassRate: PassRate{
 					Percentage: test.PassPercentage,
 					Runs:       test.Successes + test.Failures,
@@ -402,6 +391,7 @@ func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 	}
 
 	enc := json.NewEncoder(w)
+	enc.SetIndent("", "    ")
 	err := enc.Encode(jsonObject)
 	if err != nil {
 		klog.Errorf("unable to render json %v", err)
