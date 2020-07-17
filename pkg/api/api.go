@@ -20,14 +20,14 @@ type PassRate struct {
 }
 
 // SummaryAcrossAllJobs describes the category summaryacrossalljobs
-// valid keys are latestXDays, and prevXDays
+// valid keys are latest and prev
 type SummaryAcrossAllJobs struct {
 	TestExecutions     map[string]int     `json:"testExecutions"`
 	TestPassPercentage map[string]float64 `json:"testPassPercentage"`
 }
 
 // FailureGroups describes the category failuregroups
-// valid keys are latestXDays, and prevXDays
+// valid keys are latest and prev
 type FailureGroups struct {
 	JobRunsWithFailureGroup map[string]int `json:"jobRunsWithFailureGroup"`
 	AvgFailureGroupSize     map[string]int `json:"avgFailureGroupSize"`
@@ -76,17 +76,14 @@ func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTest
 	all := result["all"]
 	allPrev := resultPrev["all"]
 
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
-
 	summary := SummaryAcrossAllJobs{
 		TestExecutions: map[string]int{
-			latestDays: all.Successes + all.Failures,
-			prevDays:   allPrev.Successes + allPrev.Failures,
+			"latest": all.Successes + all.Failures,
+			"prev":   allPrev.Successes + allPrev.Failures,
 		},
 		TestPassPercentage: map[string]float64{
-			latestDays: all.TestPassPercentage,
-			prevDays:   allPrev.TestPassPercentage,
+			"latest": all.TestPassPercentage,
+			"prev":   allPrev.TestPassPercentage,
 		},
 	}
 
@@ -98,21 +95,18 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
-
 	failureGroupStruct := FailureGroups{
 		JobRunsWithFailureGroup: map[string]int{
-			latestDays: len(failureGroups),
-			prevDays:   len(failureGroupsPrev),
+			"latest": len(failureGroups),
+			"prev":   len(failureGroupsPrev),
 		},
 		AvgFailureGroupSize: map[string]int{
-			latestDays: avg,
-			prevDays:   avgPrev,
+			"latest": avg,
+			"prev":   avgPrev,
 		},
 		MedianFailureGroupSize: map[string]int{
-			latestDays: median,
-			prevDays:   medianPrev,
+			"latest": median,
+			"prev":   medianPrev,
 		},
 	}
 	return &failureGroupStruct
@@ -121,9 +115,6 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) []JobSummaryPlatform {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
-
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
 
 	var jobSummariesByPlatform []JobSummaryPlatform
 
@@ -136,12 +127,12 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			jobSummaryPlatform = JobSummaryPlatform{
 				Platform: v.Platform,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
-					prevDays: PassRate{
+					"prev": PassRate{
 						Percentage:          prev.PassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
@@ -152,7 +143,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			jobSummaryPlatform = JobSummaryPlatform{
 				Platform: v.Platform,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
@@ -169,8 +160,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 // top failing tests with a bug
 func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int) []FailingTestBug {
 
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
 	var topFailingTests []FailingTestBug
 
 	allPrev := resultPrev["all"]
@@ -188,11 +177,11 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 				Name: test.Name,
 				Url:  testLink,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
-					prevDays: PassRate{
+					"prev": PassRate{
 						Percentage: testPrev.PassPercentage,
 						Runs:       testPrev.Successes + test.Failures,
 					},
@@ -204,7 +193,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 				Name: test.Name,
 				Url:  testLink,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
@@ -222,9 +211,6 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 
 // top failing tests without a bug
 func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int) []FailingTestBug {
-
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
 
 	allPrev := resultPrev["all"]
 
@@ -244,11 +230,11 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 				Name: test.Name,
 				Url:  testLink,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
-					prevDays: PassRate{
+					"prev": PassRate{
 						Percentage: testPrev.PassPercentage,
 						Runs:       testPrev.Successes + testPrev.Failures,
 					},
@@ -260,7 +246,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 				Name: test.Name,
 				Url:  testLink,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
@@ -274,8 +260,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 }
 
 func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) []PassRatesByJobName {
-	latestDays := fmt.Sprintf("latest%dDays", endDay)
-	prevDays := "prev7Days"
+
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -291,12 +276,12 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				Name: v.Name,
 				Url:  v.TestGridUrl,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
-					prevDays: PassRate{
+					"prev": PassRate{
 						Percentage:          prev.PassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
@@ -308,7 +293,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				Name: v.Name,
 				Url:  v.TestGridUrl,
 				PassRates: map[string]PassRate{
-					latestDays: PassRate{
+					"latest": PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
