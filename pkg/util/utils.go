@@ -2,7 +2,7 @@ package util
 
 import (
 	"fmt"
-	//"io/ioutil"
+	//	"io/ioutil"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"regexp/syntax"
 	"sort"
-	"strings"
+	//	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -113,15 +113,29 @@ type JobResult struct {
 	TestGridUrl                     string  `json:"TestGridUrl"`
 }
 
-type BugList map[string]BugResult
+type Search struct {
+	Results Results `json:"results"`
+}
 
-type BugResult map[string][]Bug
+// search string is the key
+type Results map[string]Result
+
+type Result struct {
+	Matches []Match `json:"matches"`
+}
+
+type Match struct {
+	Bug Bug `json:"bugInfo"`
+}
 
 type Bug struct {
-	Summary      string `json:"name,omitempty"`
-	ID           string `json:"id"`
-	Url          string `json:"url"`
-	FailureCount int32  `json:"failureCount,omitempty"`
+	ID             int64     `json:"id"`
+	Status         string    `json:"status"`
+	LastChangeTime time.Time `json:"last_change_time"`
+	Summary        string    `json:"summary"`
+	TargetRelease  []string  `json:"target_release"`
+	Url            string    `json:"url"`
+	FailureCount   int32     `json:"failureCount,omitempty"`
 }
 
 func GetPrevTest(test string, testResults []TestResult) *TestResult {
@@ -369,79 +383,6 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-/*
-func FindBug(testName string) ([]string, bool, error) {
-	testName = regexp.QuoteMeta(testName)
-	klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
-
-	bugs := []string{}
-	query := url.QueryEscape(testName)
-	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/search?search=%s&maxAge=48h&context=-1&type=bug", query))
-	if err != nil {
-		e := fmt.Errorf("error during bug search: %v", err)
-		klog.Errorf(e.Error())
-		return bugs, false, e
-	}
-	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
-		klog.Errorf(e.Error())
-		return bugs, false, e
-	}
-
-	//body, err := ioutil.ReadAll(resp.Body)
-	bugList := BugList{}
-	err = json.NewDecoder(resp.Body).Decode(&bugList)
-	for k := range bugList {
-		bugs = append(bugs, k)
-	}
-	klog.V(2).Infof("Found bugs: %v", bugs)
-	return bugs, true, nil
-}
-*/
-
-// GET
-/*
-func FindBugs(testNames []string) (map[string][]Bug, error) {
-	searchResults := make(map[string][]Bug)
-
-	query := []string{}
-	for _, testName := range testNames {
-		testName = regexp.QuoteMeta(testName)
-		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
-		query = append(query, fmt.Sprintf("search=%s", url.QueryEscape(testName)))
-	}
-	resp, err := http.Get(fmt.Sprintf("https://search.svc.ci.openshift.org/search?%s&maxAge=48h&context=-1&type=bug", strings.Join(query, "&")))
-	if err != nil {
-		e := fmt.Errorf("error during bug search: %v", err)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search: %v", resp)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-
-	//body, err := ioutil.ReadAll(resp.Body)
-	bugList := BugList{}
-	err = json.NewDecoder(resp.Body).Decode(&bugList)
-
-	for bugUrl, bugResult := range bugList {
-		for searchString, results := range bugResult {
-			// reverse the regex escaping we did earlier, so we get back the pure test name string.
-			r, _ := syntax.Parse(searchString, 0)
-			searchString = string(r.Rune)
-			results[0].Url = bugUrl
-			results[0].ID = strings.TrimPrefix(bugUrl, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-			searchResults[searchString] = append(searchResults[searchString], results[0])
-		}
-	}
-	klog.V(2).Infof("Found bugs: %v", searchResults)
-	return searchResults, nil
-}
-*/
-
-// POST
 func FindBugs(testNames []string) (map[string][]Bug, error) {
 	searchResults := make(map[string][]Bug)
 
@@ -455,7 +396,7 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 	}
 
 	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
-	searchUrl := "https://search.ci.openshift.org/search"
+	searchUrl := "https://search.ci.openshift.org/v2/search"
 	resp, err := http.PostForm(searchUrl, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
@@ -468,19 +409,28 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 		return searchResults, e
 	}
 
-	bugList := BugList{}
-	err = json.NewDecoder(resp.Body).Decode(&bugList)
+	search := Search{}
+	err = json.NewDecoder(resp.Body).Decode(&search)
 
-	for bugUrl, bugResult := range bugList {
-		for searchString, results := range bugResult {
-			// reverse the regex escaping we did earlier, so we get back the pure test name string.
-			r, _ := syntax.Parse(searchString, 0)
-			searchString = string(r.Rune)
-			results[0].Url = bugUrl
-			results[0].ID = strings.TrimPrefix(bugUrl, "https://bugzilla.redhat.com/show_bug.cgi?id=")
-			searchResults[searchString] = append(searchResults[searchString], results[0])
+	for search, result := range search.Results {
+		// reverse the regex escaping we did earlier, so we get back the pure test name string.
+		r, _ := syntax.Parse(search, 0)
+		search = string(r.Rune)
+		for _, match := range result.Matches {
+			bug := match.Bug
+			bug.Url = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
+
+			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
+			// (or the bug was incorrectly verified and needs to be revisited)
+			if bug.Status == "VERIFIED" {
+				if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
+					continue
+				}
+			}
+			searchResults[search] = append(searchResults[search], bug)
 		}
 	}
+
 	klog.V(2).Infof("Found bugs: %v", searchResults)
 	return searchResults, nil
 }
