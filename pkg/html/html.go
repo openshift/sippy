@@ -20,11 +20,12 @@ var (
 )
 
 const (
-	up       = `<i class="fa fa-arrow-up" title="Increased %0.2f%%" style="font-size:28px;color:green"></i>`
-	down     = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
-	flatup   = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
-	flatdown = `<i class="fa fa-arrows-h" title="Decreased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
-	flat     = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
+	BugSearchUrl = "https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
+	up           = `<i class="fa fa-arrow-up" title="Increased %0.2f%%" style="font-size:28px;color:green"></i>`
+	down         = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
+	flatup       = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
+	flatdown     = `<i class="fa fa-arrows-h" title="Decreased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
+	flat         = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
 
 	htmlPageStart = `
 <!DOCTYPE html>
@@ -158,21 +159,8 @@ func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTest
 }
 
 func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay int) string {
-	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
-	for _, group := range failureGroups {
-		count += group.TestFailures
-	}
-	for _, group := range failureGroupsPrev {
-		countPrev += group.TestFailures
-	}
-	if len(failureGroups) != 0 {
-		median = failureGroups[len(failureGroups)/2].TestFailures
-		avg = count / len(failureGroups)
-	}
-	if len(failureGroupsPrev) != 0 {
-		medianPrev = failureGroupsPrev[len(failureGroupsPrev)/2].TestFailures
-		avgPrev = count / len(failureGroupsPrev)
-	}
+
+	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	groups := `
 	<table class="table">
@@ -194,15 +182,6 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	</table>`
 	s := fmt.Sprintf(groups, endDay, len(failureGroups), len(failureGroupsPrev), avg, avgPrev, median, medianPrev)
 	return s
-}
-
-func getPrevPlatform(platform string, jobsByPlatform []util.JobResult) *util.JobResult {
-	for _, v := range jobsByPlatform {
-		if v.Platform == platform {
-			return &v
-		}
-	}
-	return nil
 }
 
 func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
@@ -256,7 +235,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 		`
 
 	for _, v := range jobsByPlatform {
-		prev := getPrevPlatform(v.Platform, jobsByPlatformPrev)
+		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 		p := v.PassPercentage
 		if prev != nil {
 			pprev := prev.PassPercentage
@@ -343,15 +322,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	return s
 }
 
-func getPrevTest(test string, testResults []util.TestResult) *util.TestResult {
-	for _, v := range testResults {
-		if v.Name == test {
-			return &v
-		}
-	}
-	return nil
-}
-
 func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
 	allPrev := resultPrev["all"]
 
@@ -384,7 +354,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
 		if test.BugErr != nil {
@@ -441,7 +411,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
-		testPrev := getPrevTest(test.Name, allPrev.TestResults)
+		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
 		bug := ""
@@ -478,15 +448,6 @@ FIXME: Provide a snippet of the test failure or error from the job log
 
 	s = s + "</table>"
 	return s
-}
-
-func getPrevJob(job string, jobRunsByJob []util.JobResult) *util.JobResult {
-	for _, v := range jobRunsByJob {
-		if v.Name == job {
-			return &v
-		}
-	}
-	return nil
 }
 
 func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
@@ -540,7 +501,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 		`
 
 	for _, v := range jobRunsByName {
-		prev := getPrevJob(v.Name, jobRunsByNamePrev)
+		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
 		if prev != nil {
 			arrow := ""
 			delta := 5.0

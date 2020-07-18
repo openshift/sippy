@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgrid"
 	"github.com/openshift/sippy/pkg/util"
@@ -735,6 +736,23 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
+func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, ok := s.analyzers[release]; !ok {
+		// return a 404 error along with the list of available releases in the detail section
+		errMsg := map[string]interface{}{
+			"code":   "404",
+			"detail": fmt.Sprintf("No valid release specified, valid releases are: %v", s.options.Releases),
+		}
+		errMsgBytes, _ := json.Marshal(errMsg)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write(errMsgBytes)
+		return
+	}
+	api.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+}
+
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	release := "4.5"
@@ -836,6 +854,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) serve(opts *Options) {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	//go func() {
