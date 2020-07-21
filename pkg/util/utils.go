@@ -134,6 +134,7 @@ type Bug struct {
 	LastChangeTime time.Time `json:"last_change_time"`
 	Summary        string    `json:"summary"`
 	TargetRelease  []string  `json:"target_release"`
+	Component      []string  `json:"component"`
 	Url            string    `json:"url"`
 	FailureCount   int32     `json:"failureCount,omitempty"`
 }

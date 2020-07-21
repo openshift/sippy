@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -94,7 +95,8 @@ Data current as of: %s
 	         <br> 
 			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
-	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a>
+	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
+	         <a href="#TestImpactingComponents">Test Impacting Components</a>
 </p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All .EndDay }}
@@ -112,6 +114,9 @@ Data current as of: %s
 {{ failureGroupList .Current }}
 
 {{ testImpactingBugs .Current.BugsByFailureCount }}
+
+{{ testImpactingComponents .Current.BugsByFailureCount }}
+
 `
 
 	// 1 encoded job name
@@ -653,7 +658,6 @@ func failureGroupList(report util.TestReport) string {
 }
 
 func testImpactingBugs(testImpactingBugs []util.Bug) string {
-	// test name | bug | pass rate | higher/lower | pass rate
 	s := `
 	<table class="table">
 		<tr>
@@ -666,6 +670,63 @@ func testImpactingBugs(testImpactingBugs []util.Bug) string {
 
 	for _, bug := range testImpactingBugs {
 		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount)
+	}
+
+	s = s + "</table>"
+	return s
+}
+
+func testImpactingComponents(testImpactingBugs []util.Bug) string {
+	s := `
+	<table class="table">
+		<tr>
+			<th colspan=3 class="text-center"><a class="text-dark" title="Bugzilla Components which have bugs associated with one or more test failures, with a count of how many test failures the bug(s) are associated with." id="TestImpactingComponents" href="#TestImpactingComponents">Test Impacting Components</a></th>
+		</tr>
+		<tr>
+			<th>Component</th><th>Failure Count</th><th>Bug Count</th>
+		</tr>
+	`
+
+	type Component struct {
+		name         string
+		bugCount     int32
+		failureCount int32
+		bugIds       []int64
+		bugUrls      []string
+	}
+	components := make(map[string]Component)
+	for _, bug := range testImpactingBugs {
+		for _, component := range bug.Component {
+			if c, found := components[component]; !found {
+				components[component] = Component{component, 1, bug.FailureCount, []int64{bug.ID}, []string{bug.Url}}
+			} else {
+				c.bugCount++
+				c.failureCount += bug.FailureCount
+				c.bugUrls = append(c.bugUrls, bug.Url)
+				c.bugIds = append(c.bugIds, bug.ID)
+				components[component] = c
+			}
+		}
+	}
+
+	sorted := []Component{}
+	for _, v := range components {
+		sorted = append(sorted, v)
+	}
+
+	// sort highest to lowest
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].failureCount > sorted[j].failureCount
+	})
+
+	for _, c := range sorted {
+
+		links := ""
+		for i, url := range c.bugUrls {
+			links += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", url, c.bugIds[i])
+		}
+
+		s += fmt.Sprintf("<tr><td>%s</td><td>%d</td><td>%d: %s</td></tr> ", c.name, c.failureCount, c.bugCount, links)
 	}
 
 	s = s + "</table>"
@@ -710,6 +771,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"canaryTestFailures":           canaryTestFailures,
 			"failureGroupList":             failureGroupList,
 			"testImpactingBugs":            testImpactingBugs,
+			"testImpactingComponents":      testImpactingComponents,
 		},
 	).Parse(dashboardPageHtml))
 
