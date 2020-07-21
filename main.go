@@ -318,21 +318,29 @@ func (a *Analyzer) analyze() {
 				// because if the install flat out fails, the run will be counted as successful in that metric.
 				continue
 			}
-			if bugs, found := util.TestBugCache[t]; !found || len(bugs) == 0 {
-				jobrun.HasUnknownFailures = true
-				a.RawData.JobRuns[runIdx] = jobrun
-				//break
-			} else {
-				for _, bug := range bugs {
-					if b, found := a.RawData.BugFailures[bug.Url]; found {
-						b.FailureCount++
-						a.RawData.BugFailures[bug.Url] = b
-					} else {
-						bug.FailureCount = 1
-						a.RawData.BugFailures[bug.Url] = bug
+			bugs := util.TestBugCache[t]
+			isKnownFailure := false
+			for _, bug := range bugs {
+				for _, r := range bug.TargetRelease {
+					if strings.HasPrefix(r, a.Release) {
+						if b, found := a.RawData.BugFailures[bug.Url]; found {
+							b.FailureCount++
+							a.RawData.BugFailures[bug.Url] = b
+						} else {
+							bug.FailureCount = 1
+							a.RawData.BugFailures[bug.Url] = bug
+						}
+						isKnownFailure = true
+						break
 					}
 				}
+
 			}
+			if !isKnownFailure {
+				jobrun.HasUnknownFailures = true
+				a.RawData.JobRuns[runIdx] = jobrun
+			}
+
 		}
 	}
 }
@@ -440,7 +448,7 @@ func downloadData(releases []string, filter string, storagePath string) {
 }
 
 // returns top ten failing tests w/o a bug and top ten with a bug(in that order)
-func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*util.TestResult, []*util.TestResult) {
+func getTopFailingTests(result map[string]util.SortedAggregateTestResult, release string) ([]*util.TestResult, []*util.TestResult) {
 	topTestsWithoutBug := []*util.TestResult{}
 	topTestsWithBug := []*util.TestResult{}
 	all := result["all"]
@@ -453,6 +461,16 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult) ([]*ut
 		test := all.TestResults[i]
 		if util.IgnoreTestRegex.MatchString(test.Name) {
 			continue
+		}
+
+		bugs := util.TestBugCache[test.Name]
+		for _, bug := range bugs {
+			for _, r := range bug.TargetRelease {
+				if strings.HasPrefix(r, release) {
+					test.BugList = append(test.BugList, bug)
+					break
+				}
+			}
 		}
 		test.BugList = util.TestBugCache[test.Name]
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
@@ -500,7 +518,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	}
 
 	if !prev {
-		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll)
+		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release)
 		a.Report.TopFailingTestsWithBug = topFailingTestsWithBug
 		a.Report.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
 	}

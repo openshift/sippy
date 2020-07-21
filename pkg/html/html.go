@@ -291,7 +291,12 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			bug := "Associated Bugs: "
 			bugList := util.TestBugCache[test.Name]
 			for _, b := range bugList {
-				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
+				for _, r := range b.TargetRelease {
+					if strings.HasPrefix(r, report.Release) {
+						bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", b.Url, b.ID)
+						break
+					}
+				}
 			}
 			if len(bugList) == 0 {
 				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
@@ -416,7 +421,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
 		bug := ""
 		for _, b := range test.BugList {
-			bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
+			bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", b.Url, b.ID)
 		}
 		if testPrev != nil {
 			arrow := ""
@@ -556,7 +561,12 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			bug := "Associated Bugs: "
 			bugList := util.TestBugCache[test.Name]
 			for _, b := range bugList {
-				bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%s</a> ", b.Url, b.ID)
+				for _, r := range b.TargetRelease {
+					if strings.HasPrefix(r, report.Release) {
+						bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", b.Url, b.ID)
+						break
+					}
+				}
 			}
 			if len(bugList) == 0 {
 				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
@@ -655,7 +665,7 @@ func testImpactingBugs(testImpactingBugs []util.Bug) string {
 	`
 
 	for _, bug := range testImpactingBugs {
-		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%s</a></td><td>%d</td></tr> ", bug.Url, bug.Summary, bug.FailureCount)
+		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount)
 	}
 
 	s = s + "</table>"
