@@ -23,7 +23,7 @@ var (
 	// platform regexes
 	awsRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-aws-`)
 	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
-	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp-`)
+	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)

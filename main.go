@@ -371,8 +371,9 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				}
 			}
 		}
-
-		dashboard = fmt.Sprintf(dashboardTemplate, release, "informing")
+	}
+	for _, release := range releases {
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
 		informingJobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error load dashboard page %s: %v\n", dashboard, err)
@@ -422,9 +423,12 @@ func downloadData(releases []string, filter string, storagePath string) {
 				}
 			}
 		}
+	}
 
-		dashboard = fmt.Sprintf(dashboardTemplate, release, "informing")
-		err = downloadJobSummaries(dashboard, storagePath)
+	for _, release := range releases {
+
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
+		err := downloadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
