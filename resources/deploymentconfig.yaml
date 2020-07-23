@@ -51,6 +51,8 @@ spec:
         - "4.3"
         - --release
         - "4.2"
+        - --release
+        - "3.11"
         - --end-day
         - "7"
         - --server

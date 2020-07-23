@@ -624,7 +624,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string
 		</tr>
 	`
 
-	for i := len(all) - 1; i > len(all)-10; i-- {
+	for i := len(all) - 1; i >= 0 && i > len(all)-10; i-- {
 		test := all[i]
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
