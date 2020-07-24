@@ -367,22 +367,19 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
-		if test.BugErr != nil {
-			bug = "Search Failed"
-		} else {
-			searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-			exampleJob :=
-				`
+
+		searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
+		exampleJob :=
+			`
 FIXME: Replace this paragraph with a particular job URI from the search results to ground discussion.  A given test may fail for several reasons, and this bug should be scoped to one of those reasons.  Ideally you'd pick a job showing the most-common reason, but since that's hard to determine, you may also chose to pick a job at random.  Release-gating jobs (release-openshift-...) should be preferred over presubmits (pull-ci-...) because they are closer to the released product and less likely to have in-flight code changes that complicate analysis.
 
 FIXME: Provide a snippet of the test failure or error from the job log
 `
-			short_desc := test.Name
-			if len(short_desc) > 255 {
-				short_desc = short_desc[:255]
-			}
-			bug = fmt.Sprintf("<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s>Open a bug</a>", url.QueryEscape(short_desc), url.QueryEscape(test.Name), url.QueryEscape(searchUrl), url.QueryEscape(exampleJob), release)
+		short_desc := test.Name
+		if len(short_desc) > 255 {
+			short_desc = short_desc[:255]
 		}
+		bug = fmt.Sprintf("<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s>Open a bug</a>", url.QueryEscape(short_desc), url.QueryEscape(test.Name), url.QueryEscape(searchUrl), url.QueryEscape(exampleJob), release)
 
 		if testPrev != nil {
 			arrow := ""
@@ -661,15 +658,15 @@ func testImpactingBugs(testImpactingBugs []util.Bug) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=2 class="text-center"><a class="text-dark" title="Bugs which contain references to one or more failing tests, sorted by number of times the referenced tests failed." id="TestImpactingBugs" href="#TestImpactingBugs">Test Impacting Bugs</a></th>
+			<th colspan=3 class="text-center"><a class="text-dark" title="Bugs which contain references to one or more failing tests, sorted by number of times the referenced tests failed." id="TestImpactingBugs" href="#TestImpactingBugs">Test Impacting Bugs</a></th>
 		</tr>
 		<tr>
-			<th>Bug</th><th>Failure Count</th>
+			<th>Bug</th><th>Failure Count</th><th>Flake Count</th>
 		</tr>
 	`
 
 	for _, bug := range testImpactingBugs {
-		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount)
+		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount, bug.FlakeCount)
 	}
 
 	s = s + "</table>"
@@ -680,17 +677,18 @@ func testImpactingComponents(testImpactingBugs []util.Bug) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" title="Bugzilla Components which have bugs associated with one or more test failures, with a count of how many test failures the bug(s) are associated with." id="TestImpactingComponents" href="#TestImpactingComponents">Test Impacting Components</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla Components which have bugs associated with one or more test failures, with a count of how many test failures the bug(s) are associated with." id="TestImpactingComponents" href="#TestImpactingComponents">Test Impacting Components</a></th>
 		</tr>
 		<tr>
-			<th>Component</th><th>Failure Count</th><th>Bug Count</th>
+			<th>Component</th><th>Failure Count</th><th>Flake Count</th><th>Bug Count</th>
 		</tr>
 	`
 
 	type Component struct {
 		name         string
-		bugCount     int32
-		failureCount int32
+		bugCount     int
+		failureCount int
+		flakeCount   int
 		bugIds       []int64
 		bugUrls      []string
 	}
@@ -698,10 +696,11 @@ func testImpactingComponents(testImpactingBugs []util.Bug) string {
 	for _, bug := range testImpactingBugs {
 		for _, component := range bug.Component {
 			if c, found := components[component]; !found {
-				components[component] = Component{component, 1, bug.FailureCount, []int64{bug.ID}, []string{bug.Url}}
+				components[component] = Component{component, 1, bug.FailureCount, bug.FlakeCount, []int64{bug.ID}, []string{bug.Url}}
 			} else {
 				c.bugCount++
 				c.failureCount += bug.FailureCount
+				c.flakeCount += bug.FlakeCount
 				c.bugUrls = append(c.bugUrls, bug.Url)
 				c.bugIds = append(c.bugIds, bug.ID)
 				components[component] = c
@@ -726,7 +725,7 @@ func testImpactingComponents(testImpactingBugs []util.Bug) string {
 			links += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", url, c.bugIds[i])
 		}
 
-		s += fmt.Sprintf("<tr><td>%s</td><td>%d</td><td>%d: %s</td></tr> ", c.name, c.failureCount, c.bugCount, links)
+		s += fmt.Sprintf("<tr><td>%s</td><td>%d</td><td>%d</td><td>%d: %s</td></tr> ", c.name, c.failureCount, c.flakeCount, c.bugCount, links)
 	}
 
 	s = s + "</table>"

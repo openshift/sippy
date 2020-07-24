@@ -43,16 +43,6 @@ var (
 	TestBugCacheErr error
 )
 
-type TestMeta struct {
-	Name       string
-	Count      int
-	Jobs       map[string]interface{}
-	Sig        string
-	BugList    []string
-	BugErr     error
-	BugFetched bool
-}
-
 type TestReport struct {
 	Release                   string                               `json:"release"`
 	All                       map[string]SortedAggregateTestResult `json:"all"`
@@ -85,9 +75,9 @@ type TestResult struct {
 	Name           string  `json:"name"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
+	Flakes         int     `json:"flakes"`
 	PassPercentage float64 `json:"passPercentage"`
 	BugList        []Bug   `json:"BugList"`
-	BugErr         error   `json:"BugErr"`
 	SearchLink     string  `json:"searchLink"`
 }
 
@@ -136,7 +126,8 @@ type Bug struct {
 	TargetRelease  []string  `json:"target_release"`
 	Component      []string  `json:"component"`
 	Url            string    `json:"url"`
-	FailureCount   int32     `json:"failureCount,omitempty"`
+	FailureCount   int       `json:"failureCount,omitempty"`
+	FlakeCount     int       `json:"flakeCount,omitempty"`
 }
 
 func GetPrevTest(test string, testResults []TestResult) *TestResult {
@@ -436,7 +427,7 @@ func FindBugs(testNames []string) (map[string][]Bug, error) {
 	return searchResults, nil
 }
 
-func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, meta TestMeta, passed, failed int) {
+func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
@@ -456,7 +447,7 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 	result.Name = testName
 	result.Successes += passed
 	result.Failures += failed
-	result.BugErr = meta.BugErr
+	result.Flakes += flaked
 
 	category.TestResults[testName] = result
 
