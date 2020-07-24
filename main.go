@@ -145,10 +145,11 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
-func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, meta util.TestMeta, startCol, endCol int) {
+func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, sig string, startCol, endCol int) {
 	col := 0
 	passed := 0
 	failed := 0
+	flaked := 0
 	for _, result := range test.Statuses {
 		if col > endCol {
 			break
@@ -175,6 +176,9 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 		case 1, 13: // success, flake(failed one or more times but ultimately succeeded)
 			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
+				if result.Value == 13 {
+					flaked++
+				}
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := a.RawData.JobRuns[joburl]
 				if !ok {
@@ -212,15 +216,15 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 		col += remaining
 	}
 
-	util.AddTestResult("all", a.RawData.ByAll, test.Name, meta, passed, failed)
-	util.AddTestResult(job.Name, a.RawData.ByJob, test.Name, meta, passed, failed)
+	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
+	util.AddTestResult(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
 	for _, platform := range platforms {
-		util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, meta, passed, failed)
+		util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, passed, failed, flaked)
 	}
-	util.AddTestResult(meta.Sig, a.RawData.BySig, test.Name, meta, passed, failed)
+	util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
-func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[string]util.TestMeta) {
+func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
 
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	for i, test := range job.Tests {
@@ -229,37 +233,15 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails, testMeta map[strin
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
 
-		meta, ok := testMeta[test.Name]
-		if !ok {
-			meta = util.TestMeta{
-				Name: test.Name,
-				Jobs: make(map[string]interface{}),
-				Sig:  util.FindSig(test.Name),
-			}
-		}
-		meta.Count++
-		if _, ok := meta.Jobs[job.Name]; !ok {
-			meta.Jobs[job.Name] = struct{}{}
-		}
-
-		// update test metadata
-		testMeta[test.Name] = meta
-
-		a.processTest(job, util.FindPlatform(job.Name), test, meta, startCol, endCol)
+		a.processTest(job, util.FindPlatform(job.Name), test, util.FindSig(test.Name), startCol, endCol)
 	}
 }
 
 func (a *Analyzer) analyze() {
-	testMeta := make(map[string]util.TestMeta)
 
 	for _, details := range a.RawData.JobDetails {
-		/*
-			if !strings.Contains(details.Name, "sdn-network-stress") {
-				continue
-			}
-		*/
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
-		a.processJobDetails(details, testMeta)
+		a.processJobDetails(details)
 	}
 
 	failedTestNames := make(map[string]interface{})
@@ -309,6 +291,37 @@ func (a *Analyzer) analyze() {
 			util.TestBugCacheErr = err
 		}
 	}
+
+	// for every test that failed in some job run, look up the bug(s) associated w/ the test
+	// and attribute the number of times the test failed+flaked to that bug(s)
+	for t := range failedTestNames {
+		if util.IgnoreTestRegex.MatchString(t) {
+			continue
+		}
+		if result, found := a.RawData.ByAll["all"].TestResults[t]; found {
+			bugs := util.TestBugCache[t]
+			for _, bug := range bugs {
+				for _, r := range bug.TargetRelease {
+					if strings.HasPrefix(r, a.Release) {
+						if b, found := a.RawData.BugFailures[bug.Url]; found {
+							b.FailureCount += result.Failures
+							b.FlakeCount += result.Flakes
+							a.RawData.BugFailures[bug.Url] = b
+						} else {
+							bug.FailureCount = result.Failures
+							bug.FlakeCount = result.Flakes
+							a.RawData.BugFailures[bug.Url] = bug
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// for every job run, check if all the test failures in the run can be attributed to
+	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
+	// would have passed if all our bugs were fixed.
 	for runIdx, jobrun := range a.RawData.JobRuns {
 		for _, t := range jobrun.FailedTestNames {
 			if util.IgnoreTestRegex.MatchString(t) {
@@ -323,13 +336,6 @@ func (a *Analyzer) analyze() {
 			for _, bug := range bugs {
 				for _, r := range bug.TargetRelease {
 					if strings.HasPrefix(r, a.Release) {
-						if b, found := a.RawData.BugFailures[bug.Url]; found {
-							b.FailureCount++
-							a.RawData.BugFailures[bug.Url] = b
-						} else {
-							bug.FailureCount = 1
-							a.RawData.BugFailures[bug.Url] = bug
-						}
 						isKnownFailure = true
 						break
 					}
@@ -482,7 +488,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 		test.SearchLink = testLink
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if (len(test.BugList) == 0 || test.BugErr != nil) && withoutbugcount < 10 {
+		if len(test.BugList) == 0 && withoutbugcount < 10 {
 			topTestsWithoutBug = append(topTestsWithoutBug, &test)
 			withoutbugcount++
 		} else if len(test.BugList) > 0 && withbugcount < 20 {
