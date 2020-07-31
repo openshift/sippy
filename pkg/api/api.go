@@ -350,10 +350,7 @@ func failureGroupList(report util.TestReport) []FailureGroup {
 	return failureGroups
 }
 
-// PrintJSONReport prints the json format of the report
-// follows conventions from jsonapi.org
-func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
-
+func formatJSONReport(report, prevReport util.TestReport, endDay, jobTestCount int) map[string]interface{} {
 	data := html.TestReports{
 		Current:      report,
 		Prev:         prevReport,
@@ -362,24 +359,32 @@ func PrintJSONReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 		Release:      report.Release}
 
 	jsonObject := map[string]interface{}{
-		"releaseHealthData": map[string]interface{}{
-			"summaryAllJobs":            summaryAcrossAllJobs(data.Current.All, data.Prev.All, data.EndDay),
-			"failureGroupings":          failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
-			"jobPassRateByPlatform":     summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
-			"topFailingTestsWithoutBug": summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.All, data.EndDay),
-			"topFailingTestsWithBug":    summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.All, data.EndDay),
-			"jobPassRatesByName":        summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
-			"canaryTestFailures":        canaryTestFailures(data.Current.All),
-			"jobRunsWithFailureGroups":  failureGroupList(data.Current),
-			"testImpactingBugs":         data.Current.BugsByFailureCount,
-		},
+		"summaryAllJobs":            summaryAcrossAllJobs(data.Current.All, data.Prev.All, data.EndDay),
+		"failureGroupings":          failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
+		"jobPassRateByPlatform":     summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"topFailingTestsWithoutBug": summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.All, data.EndDay),
+		"topFailingTestsWithBug":    summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.All, data.EndDay),
+		"jobPassRatesByName":        summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"canaryTestFailures":        canaryTestFailures(data.Current.All),
+		"jobRunsWithFailureGroups":  failureGroupList(data.Current),
+		"testImpactingBugs":         data.Current.BugsByFailureCount,
 	}
+	return jsonObject
+}
 
+// PrintJSONReport prints json format of the reports
+func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports map[string][]util.TestReport, endDay, jobTestCount int) {
+	reportObjects := make(map[string]interface{})
+	for _, reports := range releaseReports {
+		report := reports[0]
+		prevReport := reports[1]
+		reportObjects[report.Release] = formatJSONReport(report, prevReport, endDay, jobTestCount)
+	}
 	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "    ")
-	err := enc.Encode(jsonObject)
+	err := enc.Encode(reportObjects)
 	if err != nil {
 		klog.Errorf("unable to render json %v", err)
 	}
-
 }

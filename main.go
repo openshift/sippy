@@ -767,7 +767,21 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if _, ok := s.analyzers[release]; !ok {
+	releaseReports := make(map[string][]util.TestReport)
+	if release == "all" {
+		// return all available json reports
+		// store [currentReport, prevReport] in a slice
+		for _, r := range s.options.Releases {
+			if _, ok := s.analyzers[r]; ok {
+				releaseReports[r] = []util.TestReport{s.analyzers[r].Report, s.analyzers[r+"-prev"].Report}
+			} else {
+				klog.Errorf("unable to load test report for release version %s", r)
+				continue
+			}
+		}
+		api.PrintJSONReport(w, req, releaseReports, s.options.EndDay, 15)
+		return
+	} else if _, ok := s.analyzers[release]; !ok {
 		// return a 404 error along with the list of available releases in the detail section
 		errMsg := map[string]interface{}{
 			"code":   "404",
@@ -778,7 +792,8 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		w.Write(errMsgBytes)
 		return
 	}
-	api.PrintJSONReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	releaseReports[release] = []util.TestReport{s.analyzers[release].Report, s.analyzers[release+"-prev"].Report}
+	api.PrintJSONReport(w, req, releaseReports, s.options.EndDay, 15)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
