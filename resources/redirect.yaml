@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sippy-redirect-config
+  namespace: bparees
+data:
+  "default.conf": |
+    server {
+      listen 8080;
+      return 302 $scheme://sippy.ci.openshift.org$request_uri;
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sippy-redirect
+  name: sippy-redirect
+  namespace: bparees
+spec:
+  selector:
+    matchLabels:
+      component: sippy-redirect
+  template:
+    metadata:
+      labels:
+        component: sippy-redirect
+    spec:
+      containers:
+      - image: nginxinc/nginx-unprivileged:1.17
+        name: nginx
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: config
+        configMap:
+          name: sippy-redirect-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: sippy-redirect
+  name: sippy-redirect
+  namespace: bparees
+spec:
+  ports:
+  - name: main
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    component: sippy-redirect
+  sessionAffinity: None
+  type: ClusterIP
+---
+kind: Route
+apiVersion: v1
+metadata:
+  name: sippy-redirect
+  namespace: bparees
+spec:
+  host: sippy-bparees.svc.ci.openshift.org
+  tls:
+    termination: Edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: sippy-redirect

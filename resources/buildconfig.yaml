@@ -28,6 +28,3 @@ spec:
   successfulBuildsHistoryLimit: 5
   triggers:
   - type: ConfigChange
-  - imageChange:
-      lastTriggeredImageID: centos/go-toolset-7-centos7@sha256:f515aea549980c0d2595fc9b7a9cc2e5822be952889a200f2bb9954619ceafe3
-    type: ImageChange
