@@ -465,7 +465,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 	withoutbugcount := 0
 	withbugcount := 0
 	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
-	// limit to 100 so we don't hammer search.svc.ci too hard if we can't find 20 failures with bugs in the first 100.
+	// limit to 100 so we don't hammer search.ci too hard if we can't find 20 failures with bugs in the first 100.
 	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
 
 		test := all.TestResults[i]
@@ -483,7 +483,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 			}
 		}
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 		test.SearchLink = testLink
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
