@@ -21,7 +21,7 @@ var (
 )
 
 const (
-	BugSearchUrl = "https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
+	BugSearchUrl = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
 	up           = `<i class="fa fa-arrow-up" title="Increased %0.2f%%" style="font-size:28px;color:green"></i>`
 	down         = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
 	flatup       = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
@@ -131,7 +131,7 @@ Data current as of: %s
 			<td colspan=2>
 			%s
 			<p>
-			<a target="_blank" href="https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s&search=%[4]s">Job Search</a>
+			<a target="_blank" href="https://search.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s&search=%[4]s">Job Search</a>
 			%s
 			</td>
 			<td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
@@ -304,7 +304,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				}
 			}
 			if len(bugList) == 0 {
-				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
+				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
 				bug = fmt.Sprintf(bug, encodedTestName)
 			}
 
@@ -363,12 +363,12 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
 
-		searchUrl := fmt.Sprintf("https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
+		searchUrl := fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 		exampleJob :=
 			`
 FIXME: Replace this paragraph with a particular job URI from the search results to ground discussion.  A given test may fail for several reasons, and this bug should be scoped to one of those reasons.  Ideally you'd pick a job showing the most-common reason, but since that's hard to determine, you may also chose to pick a job at random.  Release-gating jobs (release-openshift-...) should be preferred over presubmits (pull-ci-...) because they are closer to the released product and less likely to have in-flight code changes that complicate analysis.
@@ -417,7 +417,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
@@ -571,7 +571,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				}
 			}
 			if len(bugList) == 0 {
-				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.svc.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
+				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
 				bug = fmt.Sprintf(bug, encodedTestName)
 			}
 
@@ -625,7 +625,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string
 		test := all[i]
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.svc.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
 
 		s += fmt.Sprintf(template, testLink, test.PassPercentage, test.Successes+test.Failures)
 	}
