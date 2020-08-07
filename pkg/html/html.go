@@ -363,7 +363,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		bug := ""
@@ -417,7 +417,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
 		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
