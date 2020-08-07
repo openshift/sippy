@@ -30,11 +30,12 @@ var (
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
+	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
 
 	// ignored for top 10 failing test reporting
 	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
 	// have bugs associated, but we don't want the entire run marked as an unknown failure if one of them fails)
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize`)
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize`)
 	// Tests we are already tracking an issue for
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 
@@ -366,6 +367,9 @@ func FindPlatform(name string) []string {
 	}
 	if upgradeRegex.MatchString(name) {
 		platforms = append(platforms, "upgrade")
+	}
+	if serialRegex.MatchString(name) {
+		platforms = append(platforms, "serial")
 	}
 
 	if len(platforms) == 0 {
