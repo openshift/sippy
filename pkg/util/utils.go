@@ -374,7 +374,7 @@ func FindPlatform(name string) []string {
 		platforms = append(platforms, "serial")
 	}
 	if ppc64leRegex.MatchString(name) {
-		platforms = append(platforms, "PowerPC")
+		platforms = append(platforms, "ppc64le")
 	}
 	if s390xRegex.MatchString(name) {
 		platforms = append(platforms, "s390x")
