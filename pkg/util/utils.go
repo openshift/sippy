@@ -31,6 +31,8 @@ var (
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
+	ppc64leRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-ppc64le-`)
+	s390xRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-s390x-`)
 
 	// ignored for top 10 failing test reporting
 	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
@@ -370,6 +372,12 @@ func FindPlatform(name string) []string {
 	}
 	if serialRegex.MatchString(name) {
 		platforms = append(platforms, "serial")
+	}
+	if ppc64leRegex.MatchString(name) {
+		platforms = append(platforms, "PowerPC")
+	}
+	if s390xRegex.MatchString(name) {
+		platforms = append(platforms, "s390x")
 	}
 
 	if len(platforms) == 0 {
