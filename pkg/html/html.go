@@ -204,11 +204,11 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	`, endDay)
 
 	jobGroupTemplate := `
-		<tr>
+		<tr class="%s">
 			<td>
-				%[1]s
+				%[2]s
 				<p>
-				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
+				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
 			</td>
 			<td>
 				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
@@ -223,11 +223,11 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	`
 
 	naTemplate := `
-			<tr>
+			<tr class="%s">
 				<td>
-					%[1]s
+					%[2]s
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[1]s" aria-expanded="false" aria-controls="%[1]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
@@ -242,6 +242,11 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	for _, v := range jobsByPlatform {
 		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 		p := v.PassPercentage
+		rowColor := ""
+		if p == 0 {
+			rowColor = "table-danger"
+		}
+
 		if prev != nil {
 			pprev := prev.PassPercentage
 			arrow := ""
@@ -258,7 +263,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			} else {
 				arrow = fmt.Sprintf(flatdown, pprev-p)
 			}
-			s = s + fmt.Sprintf(jobGroupTemplate, v.Platform,
+			s = s + fmt.Sprintf(jobGroupTemplate, rowColor, v.Platform,
 				v.PassPercentage,
 				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
@@ -268,7 +273,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(naTemplate, v.Platform,
+			s = s + fmt.Sprintf(naTemplate, rowColor, v.Platform,
 				v.PassPercentage,
 				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
@@ -472,11 +477,11 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 	`, endDay)
 
 	template := `
-			<tr>
+			<tr class="%s">
 				<td>
 					<a target="_blank" href="%s">%s</a>
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -491,11 +496,11 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 		`
 
 	naTemplate := `
-			<tr>
+			<tr class="%s">
 				<td>
 					<a target="_blank" href="%s">%s</a>
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -509,6 +514,10 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 
 	for _, v := range jobRunsByName {
 		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
+		rowColor := ""
+		if v.PassPercentage == 0 {
+			rowColor = "table-danger"
+		}
 		if prev != nil {
 			arrow := ""
 			delta := 5.0
@@ -525,8 +534,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 			} else {
 				arrow = fmt.Sprintf(flatdown, prev.PassPercentage-v.PassPercentage)
 			}
-
-			s = s + fmt.Sprintf(template, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
+			s = s + fmt.Sprintf(template, rowColor, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
 				v.PassPercentage,
 				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
@@ -536,7 +544,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				prev.Successes+prev.Failures,
 			)
 		} else {
-			s = s + fmt.Sprintf(naTemplate, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
+			s = s + fmt.Sprintf(naTemplate, rowColor, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
 				v.PassPercentage,
 				v.PassPercentageWithKnownFailures,
 				v.Successes+v.Failures,
