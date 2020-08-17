@@ -225,10 +225,25 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 }
 
 func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
+	const genericUpgradeFailureTest = `[sig-arch][Feature:ClusterUpgrade] Cluster should remain functional during upgrade [Disruptive] [Serial] [Suite:openshift]`
 
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+		if test.Name == genericUpgradeFailureTest{
+			is45 := strings.Contains(job.Name, "to-4.5")
+			is44 := strings.Contains(job.Name, "to-4.4")
+			is43 := strings.Contains(job.Name, "to-4.3")
+			is42 := strings.Contains(job.Name, "to-4.2")
+			is41 := strings.Contains(job.Name, "to-4.1")
+			// in 4.6 and later, we separated junit so we no longer have to have the overly broad test.
+			hasSeparatedUpgradeJunit := !(is45 || is44 || is43 || is42 || is41)
+			// TODO after we get to 4.10, we no longer have to check because every level we support will have the split junit.
+			if hasSeparatedUpgradeJunit {
+				klog.V(2).Infof("skipping %q because it is overly broad\n", test.Name)
+				continue
+			}
+		}
 
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
