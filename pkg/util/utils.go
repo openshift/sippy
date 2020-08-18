@@ -22,11 +22,13 @@ var (
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
 
 	// platform regexes
+	ocpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ocp-`)
+	originRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-origin-`)
 	awsRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-aws-`)
 	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
 	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
-	fipRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-fips-`)
+	fipsRegex      *regexp.Regexp = regexp.MustCompile(`(?i)-fips-`)
 	ovnRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)
@@ -341,6 +343,12 @@ func FindSig(name string) string {
 
 func FindPlatform(name string) []string {
 	platforms := []string{}
+	if ocpRegex.MatchString(name) {
+		platforms = append(platforms, "ocp")
+	}
+	if originRegex.MatchString(name) {
+		platforms = append(platforms, "origin")
+	}
 	if awsRegex.MatchString(name) {
 		platforms = append(platforms, "aws")
 	}
@@ -379,7 +387,7 @@ func FindPlatform(name string) []string {
 	if ovnRegex.MatchString(name) {
 		platforms = append(platforms, "ovn")
 	}
-	if ovnRegex.MatchString(name) {
+	if fipsRegex.MatchString(name) {
 		platforms = append(platforms, "fips")
 	}
 	if ppc64leRegex.MatchString(name) {
