@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"regexp/syntax"
 	"sort"
+
 	//	"strings"
 	"time"
 
@@ -25,7 +26,8 @@ var (
 	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
 	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
-	ovnRegex *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
+	fipRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-fips-`)
+	ovnRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
@@ -376,6 +378,9 @@ func FindPlatform(name string) []string {
 	}
 	if ovnRegex.MatchString(name) {
 		platforms = append(platforms, "ovn")
+	}
+	if ovnRegex.MatchString(name) {
+		platforms = append(platforms, "fips")
 	}
 	if ppc64leRegex.MatchString(name) {
 		platforms = append(platforms, "ppc64le")
