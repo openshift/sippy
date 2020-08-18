@@ -103,7 +103,7 @@ Data current as of: %s
 
 {{ failureGroups .Current.FailureGroups .Prev.FailureGroups .EndDay }}
 
-{{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount }}
+{{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
 {{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
 
@@ -189,7 +189,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	return s
 }
 
-func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
+func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
@@ -309,8 +309,7 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				}
 			}
 			if len(bugList) == 0 {
-				bug = `<a style="padding-left: 20px" target="_blank" href="https://search.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
-				bug = fmt.Sprintf(bug, encodedTestName)
+				bug = openABugHTML(test.Name, release)
 			}
 
 			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
@@ -335,6 +334,37 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	}
 	s = s + "</table>"
 	return s
+}
+
+func openABugHTML(testName, release string) string {
+	short_desc := testName
+	if len(short_desc) > 255 {
+		short_desc = short_desc[:255]
+	}
+	searchURL := testToSearchURL(testName)
+
+	exampleJob :=
+		`
+FIXME: Replace this paragraph with a particular job URI from the search results to ground discussion.  A given test may fail for several reasons, and this bug should be scoped to one of those reasons.  Ideally you'd pick a job showing the most-common reason, but since that's hard to determine, you may also chose to pick a job at random.  Release-gating jobs (release-openshift-...) should be preferred over presubmits (pull-ci-...) because they are closer to the released product and less likely to have in-flight code changes that complicate analysis.
+
+FIXME: Provide a snippet of the test failure or error from the job log
+`
+
+	bug := fmt.Sprintf(
+		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s>Open a bug</a>",
+		url.QueryEscape(short_desc),
+		url.QueryEscape(testName),
+		url.QueryEscape(searchURL),
+		url.QueryEscape(exampleJob),
+		release)
+
+	return bug
+}
+
+// testName is the non-encoded test.Name
+func testToSearchURL(testName string) string {
+	encodedTestName := url.QueryEscape(regexp.QuoteMeta(testName))
+	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
 func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
@@ -371,20 +401,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
-		bug := ""
-
-		searchUrl := fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-		exampleJob :=
-			`
-FIXME: Replace this paragraph with a particular job URI from the search results to ground discussion.  A given test may fail for several reasons, and this bug should be scoped to one of those reasons.  Ideally you'd pick a job showing the most-common reason, but since that's hard to determine, you may also chose to pick a job at random.  Release-gating jobs (release-openshift-...) should be preferred over presubmits (pull-ci-...) because they are closer to the released product and less likely to have in-flight code changes that complicate analysis.
-
-FIXME: Provide a snippet of the test failure or error from the job log
-`
-		short_desc := test.Name
-		if len(short_desc) > 255 {
-			short_desc = short_desc[:255]
-		}
-		bug = fmt.Sprintf("<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s>Open a bug</a>", url.QueryEscape(short_desc), url.QueryEscape(test.Name), url.QueryEscape(searchUrl), url.QueryEscape(exampleJob), release)
+		bug := openABugHTML(test.Name, release)
 
 		if testPrev != nil {
 			arrow := ""
