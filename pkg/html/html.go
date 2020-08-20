@@ -396,6 +396,12 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	`
 
 	for _, test := range topFailingTestsWithoutBug {
+		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
+		// but don't bother creating the noise in the UI for a one-off/long tail.
+		if (test.Failures + test.Flakes) == 1 {
+			continue
+		}
+
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
@@ -437,6 +443,12 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 		</tr>`, endDay)
 
 	for _, test := range topFailingTestsWithBug {
+		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
+		// but don't bother creating the noise in the UI for a one-off/long tail.
+		if (test.Failures + test.Flakes) == 1 {
+			continue
+		}
+
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
