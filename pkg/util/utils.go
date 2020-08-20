@@ -42,7 +42,7 @@ var (
 	// ignored for top 10 failing test reporting
 	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
 	// have bugs associated, but we don't want the entire run marked as an unknown failure if one of them fails)
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
+	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`^Run template.*container test|^Import the release payload|^Import a release payload|^Build image.*from the repository$|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 	// Tests we are already tracking an issue for
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 

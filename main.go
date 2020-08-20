@@ -27,7 +27,7 @@ import (
 
 var (
 	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-	TagStripRegex     = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*\]`)
+	TagStripRegex     = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*\]|^operator\.`)
 )
 
 type RawData struct {
