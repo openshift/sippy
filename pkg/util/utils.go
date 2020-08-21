@@ -57,6 +57,8 @@ type TestReport struct {
 	ByPlatform                map[string]SortedAggregateTestResult `json:"byPlatform`
 	ByJob                     map[string]SortedAggregateTestResult `json:"byJob`
 	BySig                     map[string]SortedAggregateTestResult `json:"bySig`
+	InstallByPlatform         map[string]SortedAggregateTestResult `json:"installByPlatform`
+	UpgradeByPlatform         map[string]SortedAggregateTestResult `json:"upgradeByPlatform`
 	FailureGroups             []JobRunResult                       `json:"failureGroups"`
 	JobPassRate               []JobResult                          `json:"jobPassRate"`
 	Timestamp                 time.Time                            `json:"timestamp"`
@@ -501,6 +503,54 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 
 	for _, platform := range jobRunsByPlatform {
 
+		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
+		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
+		platformResults = append(platformResults, platform)
+	}
+	// sort from lowest to highest
+	sort.SliceStable(platformResults, func(i, j int) bool {
+		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
+	})
+	return platformResults
+}
+
+func SummarizeInstallByPlatform(report TestReport) []JobResult {
+	jobRunsByPlatform := make(map[string]JobResult)
+	platformResults := []JobResult{}
+
+	for platform, installs := range report.InstallByPlatform {
+		j := jobRunsByPlatform[platform]
+		j.Successes += installs.Successes
+		j.Failures += installs.Failures
+		j.Platform = platform
+		jobRunsByPlatform[platform] = j
+	}
+
+	for _, platform := range jobRunsByPlatform {
+		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
+		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
+		platformResults = append(platformResults, platform)
+	}
+	// sort from lowest to highest
+	sort.SliceStable(platformResults, func(i, j int) bool {
+		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
+	})
+	return platformResults
+}
+
+func SummarizeUpgradeByPlatform(report TestReport) []JobResult {
+	jobRunsByPlatform := make(map[string]JobResult)
+	platformResults := []JobResult{}
+
+	for platform, installs := range report.UpgradeByPlatform {
+		j := jobRunsByPlatform[platform]
+		j.Successes += installs.Successes
+		j.Failures += installs.Failures
+		j.Platform = platform
+		jobRunsByPlatform[platform] = j
+	}
+
+	for _, platform := range jobRunsByPlatform {
 		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
 		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
 		platformResults = append(platformResults, platform)

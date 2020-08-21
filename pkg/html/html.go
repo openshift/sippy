@@ -91,7 +91,9 @@ Data current as of: %s
 
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
-	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
+	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> |
+	         <a href="#InstallRatesByPlatform">Install Rates By Platform</a> |
+	         <a href="#UpgradeRatesByPlatform">Upgrade Rates By Platform</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
 	         <br> 
 			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
@@ -104,6 +106,8 @@ Data current as of: %s
 {{ failureGroups .Current.FailureGroups .Prev.FailureGroups .EndDay }}
 
 {{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
+
+{{ summaryUpgradeByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
 {{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
 
@@ -336,6 +340,152 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	return s
 }
 
+func summaryUpgradeInfraByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
+	jobsByPlatform := util.SummarizeUpgradeByPlatform(report)
+	jobsByPlatformPrev := util.SummarizeUpgradeByPlatform(reportPrev)
+
+	s := fmt.Sprintf(`
+	<table class="table">
+		<tr>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="UpgradeRatesByPlatform" href="#UpgradeRatesByPlatform">Upgrade Rates By Platform</a></th>
+		</tr>
+		<tr>
+			<th>Platform</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+		</tr>
+	`, endDay)
+
+	jobGroupTemplate := `
+		<tr class="%s">
+			<td>
+				%[2]s
+				<p>
+				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
+			</td>
+			<td>
+				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
+			</td>
+			<td>
+				%s
+			</td>
+			<td>
+				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
+			</td>
+		</tr>
+	`
+
+	naTemplate := `
+			<tr class="%s">
+				<td>
+					%[2]s
+					<p>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
+				</td>
+				<td>
+					%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td/>
+				<td>
+					NA
+				</td>
+			</tr>
+		`
+
+	for _, v := range jobsByPlatform {
+		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
+		p := v.PassPercentage
+		rowColor := ""
+		if p == 0 {
+			rowColor = "table-danger"
+		}
+
+		if prev != nil {
+			pprev := prev.PassPercentage
+			arrow := ""
+			delta := 5.0
+			if v.Successes+v.Failures > 80 {
+				delta = 2
+			}
+			if p > pprev+delta {
+				arrow = fmt.Sprintf(up, p-pprev)
+			} else if p < pprev-delta {
+				arrow = fmt.Sprintf(down, pprev-p)
+			} else if p > pprev {
+				arrow = fmt.Sprintf(flatup, p-pprev)
+			} else {
+				arrow = fmt.Sprintf(flatdown, pprev-p)
+			}
+			s = s + fmt.Sprintf(jobGroupTemplate, rowColor, v.Platform,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
+				v.Successes+v.Failures,
+				arrow,
+				prev.PassPercentage,
+				prev.PassPercentageWithKnownFailures,
+				prev.Successes+prev.Failures,
+			)
+		} else {
+			s = s + fmt.Sprintf(naTemplate, rowColor, v.Platform,
+				v.PassPercentage,
+				v.PassPercentageWithKnownFailures,
+				v.Successes+v.Failures,
+			)
+		}
+
+		platformTests := report.ByPlatform[v.Platform]
+		count := jobTestCount
+		rowCount := 0
+		rows := ""
+		additionalMatches := 0
+		for _, test := range platformTests.TestResults {
+			if util.IgnoreTestRegex.MatchString(test.Name) {
+				continue
+			}
+			if count == 0 {
+				additionalMatches++
+				continue
+			}
+			count--
+
+			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
+
+			bug := "Associated Bugs: "
+			bugList := util.TestBugCache[test.Name]
+			for _, b := range bugList {
+				for _, r := range b.TargetRelease {
+					if strings.HasPrefix(r, report.Release) {
+						bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", b.Url, b.ID)
+						break
+					}
+				}
+			}
+			if len(bugList) == 0 {
+				bug = openABugHTML(test.Name, release)
+			}
+
+			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
+				test.Name,
+				jobQuery,
+				encodedTestName,
+				bug,
+				test.PassPercentage,
+				test.Successes+test.Failures,
+			)
+			rowCount++
+		}
+		if additionalMatches > 0 {
+			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, v.Platform, additionalMatches)
+		}
+		if rowCount > 0 {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
+			s = s + rows
+		} else {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
+		}
+	}
+	s = s + "</table>"
+	return s
+}
 func openABugHTML(testName, release string) string {
 	short_desc := testName
 	if len(short_desc) > 255 {
@@ -802,6 +952,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryAcrossAllJobs":         summaryAcrossAllJobs,
 			"failureGroups":                failureGroups,
 			"summaryJobsByPlatform":        summaryJobsByPlatform,
+			"summaryUpgradeByPlatform":     summaryUpgradeInfraByPlatform,
 			"summaryTopFailingTests":       summaryTopFailingTests,
 			"summaryJobPassRatesByJobName": summaryJobPassRatesByJobName,
 			"canaryTestFailures":           canaryTestFailures,

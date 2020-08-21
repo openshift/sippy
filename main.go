@@ -31,13 +31,16 @@ var (
 )
 
 type RawData struct {
-	ByAll       map[string]util.AggregateTestResult
-	ByJob       map[string]util.AggregateTestResult
-	ByPlatform  map[string]util.AggregateTestResult
-	BySig       map[string]util.AggregateTestResult
-	JobRuns     map[string]util.JobRunResult
-	JobDetails  []testgrid.JobDetails
-	BugFailures map[string]util.Bug
+	ByAll             map[string]util.AggregateTestResult
+	ByJob             map[string]util.AggregateTestResult
+	ByPlatform        map[string]util.AggregateTestResult
+	BySig             map[string]util.AggregateTestResult
+	InstallByPlatform map[string]util.AggregateTestResult
+	UpgradeByPlatform map[string]util.AggregateTestResult
+	InfraByPlatform   map[string]util.AggregateTestResult
+	JobRuns           map[string]util.JobRunResult
+	JobDetails        []testgrid.JobDetails
+	BugFailures       map[string]util.Bug
 }
 
 type Analyzer struct {
@@ -145,11 +148,11 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
-func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, sig string, startCol, endCol int) {
+
+func getPassFailedFlaked(job testgrid.JobDetails, test testgrid.Test, startCol, endCol int) (passed int, failed int, flaked int, jrrMap map[string]util.JobRunResult) {
+	jrrMap = map[string]util.JobRunResult{}
+
 	col := 0
-	passed := 0
-	failed := 0
-	flaked := 0
 	for _, result := range test.Statuses {
 		if col > endCol {
 			break
@@ -180,7 +183,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 					flaked++
 				}
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := jrrMap[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
 						Job:            job.Name,
@@ -191,13 +194,13 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				if test.Name == "Overall" {
 					jrr.Succeeded = true
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				jrrMap[joburl] = jrr
 			}
 		case 12: // failure
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := jrrMap[joburl]
 				if !ok {
 					jrr = util.JobRunResult{
 						Job:            job.Name,
@@ -210,10 +213,29 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				if test.Name == "Overall" {
 					jrr.Failed = true
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				jrrMap[joburl] = jrr
 			}
 		}
 		col += remaining
+	}
+
+	return passed, failed, flaked, jrrMap
+}
+
+func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, sig string, startCol, endCol int) {
+	passed, failed, flaked, jrrMap := getPassFailedFlaked(job, test, startCol, endCol)
+	for joburl, jrr := range jrrMap {
+		existingJRR, ok := a.RawData.JobRuns[joburl]
+		if !ok {
+			a.RawData.JobRuns[joburl] = jrr
+			continue
+		}
+
+		existingJRR.TestFailures += jrr.TestFailures
+		existingJRR.FailedTestNames = append(existingJRR.FailedTestNames, jrr.FailedTestNames...)
+		existingJRR.Succeeded = existingJRR.Succeeded || jrr.Succeeded
+		existingJRR.Failed = existingJRR.Failed || jrr.Failed
+		a.RawData.JobRuns[joburl] = existingJRR
 	}
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
@@ -225,20 +247,48 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 }
 
 func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
-
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
+
+	platforms := util.FindPlatform(job.Name)
+	if isJobUpgrade(job) {
+		if passed, failed, flaked := didJobUpgrade(job, startCol, endCol); passed > 0 || failed > 0 || flaked > 0 {
+			for _, platform := range platforms {
+				util.AddTestResult(platform, a.RawData.UpgradeByPlatform, "upgrade", passed, failed, flaked)
+			}
+			util.AddTestResult("all", a.RawData.UpgradeByPlatform, "upgrade", passed, failed, flaked)
+
+		}
+	}
+
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
 
-		a.processTest(job, util.FindPlatform(job.Name), test, util.FindSig(test.Name), startCol, endCol)
+		a.processTest(job, platforms, test, util.FindSig(test.Name), startCol, endCol)
 	}
 }
 
-func (a *Analyzer) analyze() {
+func isJobUpgrade(job testgrid.JobDetails) bool {
+	if strings.Contains(job.Name, "-upgrade-") {
+		return true
+	}
+	return false
+}
 
+func didJobUpgrade(job testgrid.JobDetails, startcol, endCol int) (passed int, failed int, flaked int) {
+	for _, test := range job.Tests {
+		if test.Name != `[sig-cluster-lifecycle] Cluster completes upgrade` {
+			continue
+		}
+		passed, failed, flaked, _ := getPassFailedFlaked(job, test, startcol, endCol)
+		return passed, failed, flaked
+	}
+	return 0, 0, 0
+}
+
+func (a *Analyzer) analyze() {
 	for _, details := range a.RawData.JobDetails {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
 		a.processJobDetails(details)
@@ -508,6 +558,8 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	installByPlatform := util.GenerateSortedResults(a.RawData.InstallByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	upgradeByPlatform := util.GenerateSortedResults(a.RawData.UpgradeByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
@@ -520,6 +572,8 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 		ByPlatform:         byPlatform,
 		ByJob:              byJob,
 		BySig:              bySig,
+		InstallByPlatform:  installByPlatform,
+		UpgradeByPlatform:  upgradeByPlatform,
 		FailureGroups:      filteredFailureGroups,
 		JobPassRate:        jobPassRate,
 		Timestamp:          a.LastUpdateTime,
@@ -734,12 +788,15 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:             make(map[string]util.AggregateTestResult),
+			ByJob:             make(map[string]util.AggregateTestResult),
+			ByPlatform:        make(map[string]util.AggregateTestResult),
+			InstallByPlatform: make(map[string]util.AggregateTestResult),
+			UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+			InfraByPlatform:   make(map[string]util.AggregateTestResult),
+			BySig:             make(map[string]util.AggregateTestResult),
+			JobRuns:           make(map[string]util.JobRunResult),
+			BugFailures:       make(map[string]util.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -858,12 +915,15 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: opt,
 		RawData: RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:             make(map[string]util.AggregateTestResult),
+			ByJob:             make(map[string]util.AggregateTestResult),
+			ByPlatform:        make(map[string]util.AggregateTestResult),
+			BySig:             make(map[string]util.AggregateTestResult),
+			InstallByPlatform: make(map[string]util.AggregateTestResult),
+			UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+			InfraByPlatform:   make(map[string]util.AggregateTestResult),
+			JobRuns:           make(map[string]util.JobRunResult),
+			BugFailures:       make(map[string]util.Bug),
 		},
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
@@ -878,12 +938,15 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: &optCopy,
 		RawData: RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:             make(map[string]util.AggregateTestResult),
+			ByJob:             make(map[string]util.AggregateTestResult),
+			ByPlatform:        make(map[string]util.AggregateTestResult),
+			InstallByPlatform: make(map[string]util.AggregateTestResult),
+			UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+			InfraByPlatform:   make(map[string]util.AggregateTestResult),
+			BySig:             make(map[string]util.AggregateTestResult),
+			JobRuns:           make(map[string]util.JobRunResult),
+			BugFailures:       make(map[string]util.Bug),
 		},
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
@@ -981,12 +1044,15 @@ func (o *Options) Run() error {
 		analyzer := Analyzer{
 			Options: o,
 			RawData: RawData{
-				ByAll:       make(map[string]util.AggregateTestResult),
-				ByJob:       make(map[string]util.AggregateTestResult),
-				ByPlatform:  make(map[string]util.AggregateTestResult),
-				BySig:       make(map[string]util.AggregateTestResult),
-				JobRuns:     make(map[string]util.JobRunResult),
-				BugFailures: make(map[string]util.Bug),
+				ByAll:             make(map[string]util.AggregateTestResult),
+				ByJob:             make(map[string]util.AggregateTestResult),
+				ByPlatform:        make(map[string]util.AggregateTestResult),
+				BySig:             make(map[string]util.AggregateTestResult),
+				InstallByPlatform: make(map[string]util.AggregateTestResult),
+				UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+				InfraByPlatform:   make(map[string]util.AggregateTestResult),
+				JobRuns:           make(map[string]util.JobRunResult),
+				BugFailures:       make(map[string]util.Bug),
 			},
 		}
 
@@ -1006,12 +1072,15 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: o,
 				RawData: RawData{
-					ByAll:       make(map[string]util.AggregateTestResult),
-					ByJob:       make(map[string]util.AggregateTestResult),
-					ByPlatform:  make(map[string]util.AggregateTestResult),
-					BySig:       make(map[string]util.AggregateTestResult),
-					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					ByAll:             make(map[string]util.AggregateTestResult),
+					ByJob:             make(map[string]util.AggregateTestResult),
+					ByPlatform:        make(map[string]util.AggregateTestResult),
+					BySig:             make(map[string]util.AggregateTestResult),
+					InstallByPlatform: make(map[string]util.AggregateTestResult),
+					UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+					InfraByPlatform:   make(map[string]util.AggregateTestResult),
+					JobRuns:           make(map[string]util.JobRunResult),
+					BugFailures:       make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
@@ -1027,12 +1096,15 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: &optCopy,
 				RawData: RawData{
-					ByAll:       make(map[string]util.AggregateTestResult),
-					ByJob:       make(map[string]util.AggregateTestResult),
-					ByPlatform:  make(map[string]util.AggregateTestResult),
-					BySig:       make(map[string]util.AggregateTestResult),
-					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					ByAll:             make(map[string]util.AggregateTestResult),
+					ByJob:             make(map[string]util.AggregateTestResult),
+					ByPlatform:        make(map[string]util.AggregateTestResult),
+					BySig:             make(map[string]util.AggregateTestResult),
+					InstallByPlatform: make(map[string]util.AggregateTestResult),
+					UpgradeByPlatform: make(map[string]util.AggregateTestResult),
+					InfraByPlatform:   make(map[string]util.AggregateTestResult),
+					JobRuns:           make(map[string]util.JobRunResult),
+					BugFailures:       make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
