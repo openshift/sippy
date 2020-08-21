@@ -37,6 +37,7 @@ var (
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
 	ppc64leRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-ppc64le-`)
+	rtRegex        *regexp.Regexp = regexp.MustCompile(`(?i)-rt-`)
 	s390xRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-s390x-`)
 
 	// ignored for top 10 failing test reporting
@@ -395,6 +396,9 @@ func FindPlatform(name string) []string {
 	}
 	if s390xRegex.MatchString(name) {
 		platforms = append(platforms, "s390x")
+	}
+	if rtRegex.MatchString(name) {
+		platforms = append(platforms, "rt")
 	}
 
 	if len(platforms) == 0 {
