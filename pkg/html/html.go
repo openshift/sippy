@@ -91,7 +91,7 @@ Data current as of: %s
 
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
-	         <a href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
+	         <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
 	         <br> 
 			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
@@ -196,10 +196,10 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given platform, sorted by passing rate percentage.  Platforms at the top of this list have unreliable CI jobs or the product is unreliable on those platforms.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="JobPassRatesByPlatform" href="#JobPassRatesByPlatform">Job Pass Rates By Platform</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given variant, sorted by passing rate percentage.  Variants at the top of this list have unreliable CI jobs or the product is unreliable in those variants.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="JobPassRatesByVariant" href="#JobPassRatesByVariant">Job Pass Rates By Variant</a></th>
 		</tr>
 		<tr>
-			<th>Platform</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+			<th>Variant</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`, endDay)
 
