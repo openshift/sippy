@@ -45,7 +45,7 @@ const (
 }
 
 .error {
-	background-color: #f52a2a;
+	background-color: #f5969b;
 }
 </style>
 </head>
