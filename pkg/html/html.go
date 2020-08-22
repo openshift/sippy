@@ -43,6 +43,10 @@ const (
     max-width: none;
   }
 }
+
+.error {
+	background-color: #f52a2a;
+}
 </style>
 </head>
 
@@ -243,8 +247,15 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 		p := v.PassPercentage
 		rowColor := ""
-		if p == 0 {
+		switch {
+		case p > 75:
+			rowColor = "table-success"
+		case p > 30:
+			rowColor = "table-warning"
+		case p > 0:
 			rowColor = "table-danger"
+		default:
+			rowColor = "error"
 		}
 
 		if prev != nil {
@@ -544,9 +555,17 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 	for _, v := range jobRunsByName {
 		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
 		rowColor := ""
-		if v.PassPercentage == 0 {
+		switch {
+		case v.PassPercentage > 75:
+			rowColor = "table-success"
+		case v.PassPercentage > 30:
+			rowColor = "table-warning"
+		case v.PassPercentage > 0:
 			rowColor = "table-danger"
+		default:
+			rowColor = "error"
 		}
+
 		if prev != nil {
 			arrow := ""
 			delta := 5.0
