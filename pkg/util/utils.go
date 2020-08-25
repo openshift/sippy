@@ -22,23 +22,24 @@ var (
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
 
 	// platform regexes
-	ocpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ocp-`)
-	originRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-origin-`)
 	awsRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-aws-`)
 	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
-	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
-	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
 	fipsRegex      *regexp.Regexp = regexp.MustCompile(`(?i)-fips-`)
-	ovnRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
 	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
 	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)
+	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
+	ocpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ocp-`)
+	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
+	originRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-origin-`)
 	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
-	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
-	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
-	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
+	ovnRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
+	proxyRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-proxy`)
 	ppc64leRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-ppc64le-`)
 	rtRegex        *regexp.Regexp = regexp.MustCompile(`(?i)-rt-`)
 	s390xRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-s390x-`)
+	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
+	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
+	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 
 	// ignored for top 10 failing test reporting
 	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
@@ -419,6 +420,9 @@ func FindPlatform(name string) []string {
 	}
 	if rtRegex.MatchString(name) {
 		platforms = append(platforms, "rt")
+	}
+	if proxyRegex.MatchString(name) {
+		platforms = append(platforms, "proxy")
 	}
 
 	if len(platforms) == 0 {
