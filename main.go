@@ -188,8 +188,21 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
-				if test.Name == "Overall" {
+				switch {
+				case test.Name == "Overall":
 					jrr.Succeeded = true
+				case strings.HasPrefix(test.Name, "operator install "):
+					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
+						Name:  test.Name[len("operator install "):],
+						State: util.Success,
+					})
+				case strings.HasPrefix(test.Name, "Operator upgrade "):
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
+						Name:  test.Name[len("Operator upgrade "):],
+						State: util.Success,
+					})
+				case strings.HasSuffix(test.Name, "container setup"):
+					jrr.SetupStatus = util.Success
 				}
 				a.RawData.JobRuns[joburl] = jrr
 			}
@@ -207,8 +220,21 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				}
 				jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 				jrr.TestFailures++
-				if test.Name == "Overall" {
+				switch {
+				case test.Name == "Overall":
 					jrr.Failed = true
+				case strings.HasPrefix(test.Name, "operator install "):
+					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
+						Name:  test.Name[len("operator install "):],
+						State: util.Failure,
+					})
+				case strings.HasPrefix(test.Name, "Operator upgrade "):
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
+						Name:  test.Name[len("Operator upgrade "):],
+						State: util.Failure,
+					})
+				case strings.HasSuffix(test.Name, "container setup"):
+					jrr.SetupStatus = util.Failure
 				}
 				a.RawData.JobRuns[joburl] = jrr
 			}
@@ -225,16 +251,88 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 }
 
 func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
-
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
+	platforms := util.FindPlatform(job.Name)
+
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
 
-		a.processTest(job, util.FindPlatform(job.Name), test, util.FindSig(test.Name), startCol, endCol)
+		a.processTest(job, platforms, test, util.FindSig(test.Name), startCol, endCol)
 	}
+
+	type synthenticTestResult struct {
+		name string
+		pass int
+		fail int
+	}
+	isUpgrade := strings.Contains(job.Name, "upgrade")
+	for jrrKey, jrr := range a.RawData.JobRuns {
+		if jrr.Job != job.Name {
+			continue
+		}
+		syntheticTests := map[string]*synthenticTestResult{
+			util.InstallTestName:        &synthenticTestResult{name: util.InstallTestName},
+			util.UpgradeTestName:        &synthenticTestResult{name: util.UpgradeTestName},
+			util.InfrastructureTestName: &synthenticTestResult{name: util.InfrastructureTestName},
+		}
+
+		installFailed := false
+		for _, operator := range jrr.InstallOperators {
+			if operator.State == util.Failure {
+				installFailed = true
+				break
+			}
+		}
+		upgradeFailed := false
+		for _, operator := range jrr.UpgradeOperators {
+			if operator.State == util.Failure {
+				upgradeFailed = true
+				break
+			}
+		}
+		setupFailed := jrr.SetupStatus != util.Success
+
+		if installFailed {
+			jrr.TestFailures++
+			jrr.FailedTestNames = append(jrr.FailedTestNames, util.InstallTestName)
+			syntheticTests[util.InstallTestName].fail = 1
+		} else {
+			if !setupFailed { // this will be an undercount, but we only want to count installs that actually worked.
+				syntheticTests[util.InstallTestName].pass = 1
+			}
+		}
+		if setupFailed && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
+			jrr.TestFailures++
+			jrr.FailedTestNames = append(jrr.FailedTestNames, util.InfrastructureTestName)
+			syntheticTests[util.InfrastructureTestName].fail = 1
+		} else {
+			syntheticTests[util.InfrastructureTestName].pass = 1
+		}
+		if isUpgrade && !setupFailed && !installFailed { // only record upgrade status if we were able to attempt the upgrade
+			if upgradeFailed || len(jrr.UpgradeOperators) == 0 {
+				jrr.TestFailures++
+				jrr.FailedTestNames = append(jrr.FailedTestNames, util.UpgradeTestName)
+				syntheticTests[util.UpgradeTestName].fail = 1
+			} else {
+				syntheticTests[util.UpgradeTestName].pass = 1
+			}
+		}
+
+		for testName, result := range syntheticTests {
+			util.AddTestResult("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
+			util.AddTestResult(job.Name, a.RawData.ByJob, testName, result.pass, result.fail, 0)
+			for _, platform := range platforms {
+				util.AddTestResult(platform, a.RawData.ByPlatform, testName, result.pass, result.fail, 0)
+			}
+			//util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
+		}
+
+		a.RawData.JobRuns[jrrKey] = jrr
+	}
+
 }
 
 func (a *Analyzer) analyze() {

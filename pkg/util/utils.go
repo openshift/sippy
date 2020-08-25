@@ -99,6 +99,26 @@ type JobRunResult struct {
 	Failed             bool     `json:"failed"`
 	HasUnknownFailures bool     `json:"hasUnknownFailures"`
 	Succeeded          bool     `json:"succeeded"`
+
+	// SetupStatus can be "", "Success", "Failure"
+	SetupStatus      string          `json:"setupStatus"`
+	InstallOperators []OperatorState `json:"installOperators"`
+	UpgradeOperators []OperatorState `json:"upgradeOperators"`
+}
+
+const (
+	InfrastructureTestName = `[sig-sippy] infrastructure should work`
+	InstallTestName        = `[sig-sippy] install should work`
+	UpgradeTestName        = `[sig-sippy] upgrade should work`
+
+	Success = "Success"
+	Failure = "Failure"
+)
+
+type OperatorState struct {
+	Name string `json:"name"`
+	// OperatorState can be "", "Success", "Failure"
+	State string `json:"state"`
 }
 
 type JobResult struct {
