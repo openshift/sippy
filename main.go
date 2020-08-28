@@ -16,13 +16,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"k8s.io/klog"
-
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgrid"
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/util/sets"
+	"github.com/spf13/cobra"
+	"k8s.io/klog"
 )
 
 var (
@@ -263,16 +263,22 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
 		a.processTest(job, platforms, test, util.FindSig(test.Name), startCol, endCol)
 	}
 
+}
+
+// createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
+// and potentially producing synthentic test results and aggregations to better inform sippy.
+// This needs to be called after all the JobDetails have been processed.
+func (a *Analyzer) createSyntheticTests() {
+	// make a pass to fill in install, upgrade, and infra synthentic tests.
 	type synthenticTestResult struct {
 		name string
 		pass int
 		fail int
 	}
-	isUpgrade := strings.Contains(job.Name, "upgrade")
 	for jrrKey, jrr := range a.RawData.JobRuns {
-		if jrr.Job != job.Name {
-			continue
-		}
+		platforms := util.FindPlatform(jrr.Job)
+		isUpgrade := strings.Contains(jrr.Job, "upgrade")
+
 		syntheticTests := map[string]*synthenticTestResult{
 			util.InstallTestName:        &synthenticTestResult{name: util.InstallTestName},
 			util.UpgradeTestName:        &synthenticTestResult{name: util.UpgradeTestName},
@@ -323,7 +329,7 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
 
 		for testName, result := range syntheticTests {
 			util.AddTestResult("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
-			util.AddTestResult(job.Name, a.RawData.ByJob, testName, result.pass, result.fail, 0)
+			util.AddTestResult(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
 			for _, platform := range platforms {
 				util.AddTestResult(platform, a.RawData.ByPlatform, testName, result.pass, result.fail, 0)
 			}
@@ -332,25 +338,18 @@ func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
 
 		a.RawData.JobRuns[jrrKey] = jrr
 	}
-
 }
 
-func (a *Analyzer) analyze() {
-
-	for _, details := range a.RawData.JobDetails {
-		klog.V(2).Infof("processing test details for job %s\n", details.Name)
-		a.processJobDetails(details)
+func getFailedTestNamesFromJobRuns(jobRuns map[string]util.JobRunResult) sets.String {
+	failedTestNames := sets.NewString()
+	for _, jobrun := range jobRuns {
+		failedTestNames.Insert(jobrun.FailedTestNames...)
 	}
+	return failedTestNames
+}
 
-	failedTestNames := make(map[string]interface{})
-	for _, jobrun := range a.RawData.JobRuns {
-		for _, t := range jobrun.FailedTestNames {
-			if _, ok := failedTestNames[t]; !ok {
-				failedTestNames[t] = struct{}{}
-			}
-		}
-	}
-
+// updates a global variable with the bug mapping based on current failures.
+func updateGlobalBugCache(failedTestNames sets.String) {
 	batchCount := 0
 	batchNames := []string{}
 	c := 0
@@ -389,10 +388,23 @@ func (a *Analyzer) analyze() {
 			util.TestBugCacheErr = err
 		}
 	}
+}
+
+func (a *Analyzer) analyze() {
+	for _, details := range a.RawData.JobDetails {
+		klog.V(2).Infof("processing test details for job %s\n", details.Name)
+		a.processJobDetails(details)
+	}
+
+	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
+	a.createSyntheticTests()
+
+	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRuns)
+	updateGlobalBugCache(failedTestNamesAcrossAllJobRuns)
 
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
 	// and attribute the number of times the test failed+flaked to that bug(s)
-	for t := range failedTestNames {
+	for t := range failedTestNamesAcrossAllJobRuns {
 		if util.IgnoreTestRegex.MatchString(t) {
 			continue
 		}
@@ -447,6 +459,9 @@ func (a *Analyzer) analyze() {
 
 		}
 	}
+
+	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
+	//  This is only known after the bugs are associated with the fail tests.
 }
 
 func (a *Analyzer) loadData(releases []string, storagePath string) {
