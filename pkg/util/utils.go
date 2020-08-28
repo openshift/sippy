@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+
 	//	"io/ioutil"
 	"encoding/json"
 	"math"
@@ -54,17 +55,19 @@ var (
 )
 
 type TestReport struct {
-	Release                   string                               `json:"release"`
-	All                       map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform                map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob                     map[string]SortedAggregateTestResult `json:"byJob`
-	BySig                     map[string]SortedAggregateTestResult `json:"bySig`
-	FailureGroups             []JobRunResult                       `json:"failureGroups"`
-	JobPassRate               []JobResult                          `json:"jobPassRate"`
-	Timestamp                 time.Time                            `json:"timestamp"`
-	TopFailingTestsWithBug    []*TestResult                        `json:"topFailingTestsWithBug"`
-	TopFailingTestsWithoutBug []*TestResult                        `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []Bug                                `json:"bugsByFailureCount"`
+	Release             string                               `json:"release"`
+	All                 map[string]SortedAggregateTestResult `json:"all"`
+	ByPlatform          map[string]SortedAggregateTestResult `json:"byPlatform`
+	ByJob               map[string]SortedAggregateTestResult `json:"byJob`
+	BySig               map[string]SortedAggregateTestResult `json:"bySig`
+	ByBugzillaComponent map[string]SortedAggregateTestResult `json:"byBugzillaComponent`
+
+	FailureGroups             []JobRunResult `json:"failureGroups"`
+	JobPassRate               []JobResult    `json:"jobPassRate"`
+	Timestamp                 time.Time      `json:"timestamp"`
+	TopFailingTestsWithBug    []*TestResult  `json:"topFailingTestsWithBug"`
+	TopFailingTestsWithoutBug []*TestResult  `json:"topFailingTestsWithoutBug"`
+	BugsByFailureCount        []Bug          `json:"bugsByFailureCount"`
 }
 
 type SortedAggregateTestResult struct {
@@ -83,6 +86,7 @@ type AggregateTestResult struct {
 
 type TestResult struct {
 	Name           string  `json:"name"`
+	Sig            string  `json:"sig"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
 	Flakes         int     `json:"flakes"`
@@ -100,6 +104,9 @@ type JobRunResult struct {
 	Failed             bool     `json:"failed"`
 	HasUnknownFailures bool     `json:"hasUnknownFailures"`
 	Succeeded          bool     `json:"succeeded"`
+
+	// FailingComponents holds a list of the components whose tests failed (not flaked, failed) in this JobRun
+	FailingBugzillaComponents []string `json:"failingComponents"`
 
 	// SetupStatus can be "", "Success", "Failure"
 	SetupStatus      string          `json:"setupStatus"`
