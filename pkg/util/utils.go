@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strings"
 
 	//	"io/ioutil"
 	"encoding/json"
@@ -115,12 +116,24 @@ type JobRunResult struct {
 	Succeeded          bool     `json:"succeeded"`
 
 	// FailingComponents holds a list of the components whose tests failed (not flaked, failed) in this JobRun
-	FailingBugzillaComponents []string `json:"failingComponents"`
+	FailingBugzillaComponents map[string]*BugzillaComponentFailure `json:"failingComponents"`
 
 	// SetupStatus can be "", "Success", "Failure"
 	SetupStatus      string          `json:"setupStatus"`
 	InstallOperators []OperatorState `json:"installOperators"`
 	UpgradeOperators []OperatorState `json:"upgradeOperators"`
+}
+
+type BugzillaComponentFailure struct {
+	ComponentName string
+
+	Failures map[BugzillaTestFailure]int32
+}
+
+type BugzillaTestFailure struct {
+	TestName   string
+	BugID      int64
+	BugSummary string
 }
 
 const (
@@ -149,6 +162,17 @@ type JobResult struct {
 	TestGridUrl                     string  `json:"TestGridUrl"`
 }
 
+type BugzillaResult struct {
+	Name                            string  `json:"name"`
+	Job                             string  `json:"job"`
+	Failures                        int     `json:"failures"`
+	KnownFailures                   int     `json:"knownFailures"`
+	Successes                       int     `json:"successes"`
+	PassPercentage                  float64 `json:"PassPercentage"`
+	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
+	TestGridUrl                     string  `json:"TestGridUrl"`
+}
+
 type SortedBugzillaComponentResult struct {
 	Name string `json:"name"`
 
@@ -159,10 +183,13 @@ type BugzillaJobResult struct {
 	JobName           string `json:"jobName"`
 	BugzillaComponent string `json:"bugzillaComponent"`
 
-	FailuresByThisBugzillaComponent int `json:"failuresByThisBugzillaComponent"`
+	Failures                        BugzillaComponentFailure `json:"failures"`
+	FailuresByThisBugzillaComponent int                      `json:"failuresByThisBugzillaComponent"`
 	// This one is phrased as a failure percentage because we don't know a success percentage since we don't know how many times it actually ran
-	// we only know how many times its tests failed.
-	FailPercentageByThisBugzillaComponent int `json:"passPercentageByThisBugzillaComponent"`
+	// we only know how many times its tests failed and how often the job ran.  This is more useful for some types of analysis anyway: "how often
+	// does a sig cause a job to fail".
+	FailPercentageByThisBugzillaComponent float64 `json:"failPercentageByThisBugzillaComponent"`
+	TotalRuns                             int
 }
 
 type Search struct {
@@ -309,7 +336,7 @@ func GenerateJobFailuresByBugzillaComponent(jobRuns map[string]JobRunResult) map
 	}
 
 	for _, jrr := range jobRuns {
-		for _, bzComponent := range jrr.FailingBugzillaComponents {
+		for bzComponent, bzFailureDetails := range jrr.FailingBugzillaComponents {
 			jobToResults, ok := bzComponentToJobToResults[bzComponent]
 			if !ok {
 				jobToResults = map[string]BugzillaJobResult{}
@@ -319,12 +346,23 @@ func GenerateJobFailuresByBugzillaComponent(jobRuns map[string]JobRunResult) map
 				results = BugzillaJobResult{
 					JobName:           jrr.Job,
 					BugzillaComponent: bzComponent,
+					Failures: BugzillaComponentFailure{
+						ComponentName: bzComponent,
+						Failures:      map[BugzillaTestFailure]int32{},
+					},
+				}
+			}
+			results.Failures.ComponentName = bzComponent
+			if bzFailureDetails != nil {
+				for k, v := range bzFailureDetails.Failures {
+					results.Failures.Failures[k] = results.Failures.Failures[k] + v
 				}
 			}
 			results.FailuresByThisBugzillaComponent += 1
 
 			totalRuns := jobRunTotals[jrr.Job]
-			results.FailPercentageByThisBugzillaComponent = (results.FailuresByThisBugzillaComponent / totalRuns) * 100.0
+			results.FailPercentageByThisBugzillaComponent = float64(results.FailuresByThisBugzillaComponent*100.0) / float64(totalRuns)
+			results.TotalRuns = totalRuns
 
 			jobToResults[jrr.Job] = results
 			bzComponentToJobToResults[bzComponent] = jobToResults
@@ -680,4 +718,35 @@ func SummarizeJobsByName(report TestReport) []JobResult {
 		return jobResults[i].PassPercentage < jobResults[j].PassPercentage
 	})
 	return jobResults
+}
+
+func SummarizeJobsFailuresByBugzillaComponent(report TestReport) []SortedBugzillaComponentResult {
+	bzComponentResults := []SortedBugzillaComponentResult{}
+
+	for _, bzJobFailures := range report.JobFailuresByBugzillaComponent {
+		bzComponentResults = append(bzComponentResults, bzJobFailures)
+	}
+	// sort from highest to lowest
+	sort.SliceStable(bzComponentResults, func(i, j int) bool {
+		if bzComponentResults[i].JobsFailed[0].FailPercentageByThisBugzillaComponent > bzComponentResults[j].JobsFailed[0].FailPercentageByThisBugzillaComponent {
+			return true
+		}
+		if bzComponentResults[i].JobsFailed[0].FailPercentageByThisBugzillaComponent < bzComponentResults[j].JobsFailed[0].FailPercentageByThisBugzillaComponent {
+			return false
+		}
+		if strings.Compare(strings.ToLower(bzComponentResults[i].Name), strings.ToLower(bzComponentResults[j].Name)) < 0 {
+			return true
+		}
+		return false
+	})
+	return bzComponentResults
+}
+
+func GetPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []SortedBugzillaComponentResult) *SortedBugzillaComponentResult {
+	for _, v := range bugzillaJobFailures {
+		if v.Name == bzComponent {
+			return &v
+		}
+	}
+	return nil
 }
