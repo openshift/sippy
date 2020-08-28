@@ -83,71 +83,88 @@ var (
 		"Windows Containers",
 	)
 
-	OperatorToBugzillaComponent = map[string]string{}
+	operatorToBugzillaComponent = map[string]string{}
 
-	// SigToBugzillaComponent holds `sig-foo` (from '[sig-foo]' label in a test) as keys and maps them to the "most correct" BZ component
-	SigToBugzillaComponent = map[string]string{}
+	// sigToBugzillaComponent holds `sig-foo` (from '[sig-foo]' label in a test) as keys and maps them to the "most correct" BZ component
+	sigToBugzillaComponent = map[string]string{}
 )
 
 func init() {
-	Must(addOperatorMapping("authentication", "apiserver-auth"))
-	Must(addOperatorMapping("cloud-credential", "Cloud Credential Operator"))
-	Must(addOperatorMapping("cluster-autoscaler", "Cloud Compute"))
-	Must(addOperatorMapping("config-operator", "config-operator"))
-	Must(addOperatorMapping("console", "foo"))
-	Must(addOperatorMapping("csi-snapshot-controller", "Storage"))
-	Must(addOperatorMapping("dns", "DNS"))
-	Must(addOperatorMapping("etcd", "Etcd"))
-	Must(addOperatorMapping("ingress", "Routing"))
-	Must(addOperatorMapping("image-registry", "Image Registry"))
-	Must(addOperatorMapping("insights", "Insights Operator"))
-	Must(addOperatorMapping("kube-apiserver", "kube-apiserver"))
-	Must(addOperatorMapping("kube-controller-manager", "kube-controller-manager"))
-	Must(addOperatorMapping("kube-scheduler", "kube-scheduler"))
-	Must(addOperatorMapping("kube-storage-version-migrator", "kube-storage-version-migrator"))
-	Must(addOperatorMapping("machine-api", "Cloud Compute"))
-	Must(addOperatorMapping("machine-approver", "Cloud Compute"))
-	Must(addOperatorMapping("machine-config", "Machine Config Operator"))
-	Must(addOperatorMapping("marketplace", "OLM"))
-	Must(addOperatorMapping("monitoring", "Monitoring"))
-	Must(addOperatorMapping("network", "Networking"))
-	Must(addOperatorMapping("node-tuning", "Node Tuning Operator"))
-	Must(addOperatorMapping("openshift-apiserver", "openshift-apiserver"))
-	Must(addOperatorMapping("openshift-controller-manager", "openshift-controller-manager"))
-	Must(addOperatorMapping("openshift-samples", "Samples"))
-	Must(addOperatorMapping("operator-lifecycle-manager", "OLM"))
-	Must(addOperatorMapping("operator-lifecycle-manager-catalog", "OLM"))
-	Must(addOperatorMapping("operator-lifecycle-manager-packageserver", "OLM"))
-	Must(addOperatorMapping("service-ca", "service-ca"))
-	Must(addOperatorMapping("storage", "Storage"))
+	must(addOperatorMapping("authentication", "apiserver-auth"))
+	must(addOperatorMapping("cloud-credential", "Cloud Credential Operator"))
+	must(addOperatorMapping("cluster-autoscaler", "Cloud Compute"))
+	must(addOperatorMapping("config-operator", "config-operator"))
+	must(addOperatorMapping("console", "Management Console"))
+	must(addOperatorMapping("csi-snapshot-controller", "Storage"))
+	must(addOperatorMapping("dns", "DNS"))
+	must(addOperatorMapping("etcd", "Etcd"))
+	must(addOperatorMapping("ingress", "Routing"))
+	must(addOperatorMapping("image-registry", "Image Registry"))
+	must(addOperatorMapping("insights", "Insights Operator"))
+	must(addOperatorMapping("kube-apiserver", "kube-apiserver"))
+	must(addOperatorMapping("kube-controller-manager", "kube-controller-manager"))
+	must(addOperatorMapping("kube-scheduler", "kube-scheduler"))
+	must(addOperatorMapping("kube-storage-version-migrator", "kube-storage-version-migrator"))
+	must(addOperatorMapping("machine-api", "Cloud Compute"))
+	must(addOperatorMapping("machine-approver", "Cloud Compute"))
+	must(addOperatorMapping("machine-config", "Machine Config Operator"))
+	must(addOperatorMapping("marketplace", "OLM"))
+	must(addOperatorMapping("monitoring", "Monitoring"))
+	must(addOperatorMapping("network", "Networking"))
+	must(addOperatorMapping("node-tuning", "Node Tuning Operator"))
+	must(addOperatorMapping("openshift-apiserver", "openshift-apiserver"))
+	must(addOperatorMapping("openshift-controller-manager", "openshift-controller-manager"))
+	must(addOperatorMapping("openshift-samples", "Samples"))
+	must(addOperatorMapping("operator-lifecycle-manager", "OLM"))
+	must(addOperatorMapping("operator-lifecycle-manager-catalog", "OLM"))
+	must(addOperatorMapping("operator-lifecycle-manager-packageserver", "OLM"))
+	must(addOperatorMapping("service-ca", "service-ca"))
+	must(addOperatorMapping("storage", "Storage"))
 
-	Must(addOperatorMapping("sig-cli", "oc"))
-	Must(addOperatorMapping("sig-api-machinery", "kube-apiserver"))
-	Must(addOperatorMapping("sig-apps", "kube-controller-manager"))
-	Must(addOperatorMapping("sig-arch", "Unknown"))
-	Must(addOperatorMapping("sig-auth", "apiserver-auth"))
-	Must(addOperatorMapping("sig-builds", "Build"))
-	Must(addOperatorMapping("sig-cli", "oc"))
-	Must(addOperatorMapping("sig-cluster-lifecycle", "Unknown"))
-	Must(addOperatorMapping("sig-devex", "Build"))
-	Must(addOperatorMapping("sig-imageregistry", "Image Registry"))
-	Must(addOperatorMapping("sig-network", "Networking"))
-	Must(addOperatorMapping("sig-node", "Node"))
-	Must(addOperatorMapping("sig-operator", "OLM"))
-	Must(addOperatorMapping("sig-storage", "Storage"))
+	must(addSigMapping("sig-cli", "oc"))
+	must(addSigMapping("sig-api-machinery", "kube-apiserver"))
+	must(addSigMapping("sig-apps", "kube-controller-manager"))
+	must(addSigMapping("sig-arch", "Unknown"))
+	must(addSigMapping("sig-auth", "apiserver-auth"))
+	must(addSigMapping("sig-builds", "Build"))
+	must(addSigMapping("sig-cli", "oc"))
+	must(addSigMapping("sig-cluster-lifecycle", "Unknown"))
+	must(addSigMapping("sig-devex", "Build"))
+	must(addSigMapping("sig-imageregistry", "Image Registry"))
+	must(addSigMapping("sig-network", "Networking"))
+	must(addSigMapping("sig-node", "Node"))
+	must(addSigMapping("sig-operator", "OLM"))
+	must(addSigMapping("sig-storage", "Storage"))
+	must(addSigMapping("sig-unknown", "Unknown"))
 }
 
-func Must(err error) {
+func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func GetBugzillaComponentForOperator(operator string) string {
+	ret, ok := operatorToBugzillaComponent[operator]
+	if !ok {
+		return "Unknown"
+	}
+	return ret
+}
+
+func GetBugzillaComponentForSig(sig string) string {
+	ret, ok := operatorToBugzillaComponent[sig]
+	if !ok {
+		return "Unknown"
+	}
+	return ret
 }
 
 func addOperatorMapping(operator, bugzillaComponent string) error {
 	if !ValidBugzillaComponents.Has(bugzillaComponent) {
 		return fmt.Errorf("%q is not a valid bugzilla component")
 	}
-	OperatorToBugzillaComponent[operator] = bugzillaComponent
+	operatorToBugzillaComponent[operator] = bugzillaComponent
 	return nil
 }
 
@@ -155,6 +172,6 @@ func addSigMapping(sig, bugzillaComponent string) error {
 	if !ValidBugzillaComponents.Has(bugzillaComponent) {
 		return fmt.Errorf("%q is not a valid bugzilla component")
 	}
-	SigToBugzillaComponent[sig] = bugzillaComponent
+	sigToBugzillaComponent[sig] = bugzillaComponent
 	return nil
 }

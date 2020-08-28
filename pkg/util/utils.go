@@ -54,6 +54,11 @@ var (
 	TestBugCacheErr error
 )
 
+const (
+	OperatorInstallPrefix = "operator install "
+	OperatorUpgradePrefix = "Operator upgrade "
+)
+
 type TestReport struct {
 	Release             string                               `json:"release"`
 	All                 map[string]SortedAggregateTestResult `json:"all"`
@@ -68,6 +73,8 @@ type TestReport struct {
 	TopFailingTestsWithBug    []*TestResult  `json:"topFailingTestsWithBug"`
 	TopFailingTestsWithoutBug []*TestResult  `json:"topFailingTestsWithoutBug"`
 	BugsByFailureCount        []Bug          `json:"bugsByFailureCount"`
+
+	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
 }
 
 type SortedAggregateTestResult struct {
@@ -96,10 +103,12 @@ type TestResult struct {
 }
 
 type JobRunResult struct {
-	Job                string   `json:"job"`
-	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"testGridJobUrl"`
-	TestFailures       int      `json:"testFailures"`
+	Job            string `json:"job"`
+	Url            string `json:"url"`
+	TestGridJobUrl string `json:"testGridJobUrl"`
+	TestFailures   int    `json:"testFailures"`
+
+	// FailedTestNames are the tests that actually failed (not flaked)
 	FailedTestNames    []string `json:"failedTestNames"`
 	Failed             bool     `json:"failed"`
 	HasUnknownFailures bool     `json:"hasUnknownFailures"`
@@ -138,6 +147,22 @@ type JobResult struct {
 	PassPercentage                  float64 `json:"PassPercentage"`
 	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
 	TestGridUrl                     string  `json:"TestGridUrl"`
+}
+
+type SortedBugzillaComponentResult struct {
+	Name string `json:"name"`
+
+	JobsFailed []BugzillaJobResult `json:"jobsFailed"`
+}
+
+type BugzillaJobResult struct {
+	JobName           string `json:"jobName"`
+	BugzillaComponent string `json:"bugzillaComponent"`
+
+	FailuresByThisBugzillaComponent int `json:"failuresByThisBugzillaComponent"`
+	// This one is phrased as a failure percentage because we don't know a success percentage since we don't know how many times it actually ran
+	// we only know how many times its tests failed.
+	FailPercentageByThisBugzillaComponent int `json:"passPercentageByThisBugzillaComponent"`
 }
 
 type Search struct {
@@ -272,6 +297,56 @@ func GenerateSortedBugFailureCounts(bugs map[string]Bug) []Bug {
 		return sortedBugs[i].FailureCount > sortedBugs[j].FailureCount
 	})
 	return sortedBugs
+}
+
+func GenerateJobFailuresByBugzillaComponent(jobRuns map[string]JobRunResult) map[string]SortedBugzillaComponentResult {
+	bzComponentToJobToResults := map[string]map[string]BugzillaJobResult{}
+
+	// we need job run totals to determine success rates
+	jobRunTotals := map[string]int{}
+	for _, jrr := range jobRuns {
+		jobRunTotals[jrr.Job] = jobRunTotals[jrr.Job] + 1
+	}
+
+	for _, jrr := range jobRuns {
+		for _, bzComponent := range jrr.FailingBugzillaComponents {
+			jobToResults, ok := bzComponentToJobToResults[bzComponent]
+			if !ok {
+				jobToResults = map[string]BugzillaJobResult{}
+			}
+			results, ok := jobToResults[jrr.Job]
+			if !ok {
+				results = BugzillaJobResult{
+					JobName:           jrr.Job,
+					BugzillaComponent: bzComponent,
+				}
+			}
+			results.FailuresByThisBugzillaComponent += 1
+
+			totalRuns := jobRunTotals[jrr.Job]
+			results.FailPercentageByThisBugzillaComponent = (results.FailuresByThisBugzillaComponent / totalRuns) * 100.0
+
+			jobToResults[jrr.Job] = results
+			bzComponentToJobToResults[bzComponent] = jobToResults
+		}
+	}
+
+	bzComponentToSortedBugzillaJobResult := map[string]SortedBugzillaComponentResult{}
+	for bzComponent, jobToResults := range bzComponentToJobToResults {
+		jobsFailed := []BugzillaJobResult{}
+		for _, result := range jobToResults {
+			jobsFailed = append(jobsFailed, result)
+		}
+		// sort from highest to lowest
+		sort.SliceStable(jobsFailed, func(i, j int) bool {
+			return jobsFailed[i].FailPercentageByThisBugzillaComponent > jobsFailed[j].FailPercentageByThisBugzillaComponent
+		})
+		bzComponentToSortedBugzillaJobResult[bzComponent] = SortedBugzillaComponentResult{
+			Name:       bzComponent,
+			JobsFailed: jobsFailed,
+		}
+	}
+	return bzComponentToSortedBugzillaJobResult
 }
 
 func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold int) []JobRunResult {
@@ -514,6 +589,39 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 	result.Flakes += flaked
 
 	category.TestResults[testName] = result
+
+	categories[categoryKey] = category
+}
+
+// SetTestResult doesn't aggregate, it directly assigns the pass, failed, flaked
+func SetTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {
+	klog.V(4).Infof("Setting test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
+	category, ok := categories[categoryKey]
+	if !ok {
+		category = AggregateTestResult{
+			TestResults: make(map[string]TestResult),
+		}
+	}
+
+	result, ok := category.TestResults[testName]
+	if !ok {
+		result = TestResult{}
+	}
+	result.Name = testName
+	result.Successes = passed
+	result.Failures = failed
+	result.Flakes = flaked
+
+	category.TestResults[testName] = result
+
+	categorySuccess := 0
+	categoryFailure := 0
+	for _, testResult := range category.TestResults {
+		categorySuccess += testResult.Successes
+		categoryFailure += testResult.Failures
+	}
+	category.Successes = categorySuccess
+	category.Failures = categoryFailure
 
 	categories[categoryKey] = category
 }
