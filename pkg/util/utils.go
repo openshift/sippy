@@ -39,10 +39,6 @@ var (
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 
-	// ignored for top 10 failing test reporting
-	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
-	// have bugs associated, but we don't want the entire run marked as an unknown failure if one of them fails)
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 	// Tests we are already tracking an issue for
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
@@ -194,7 +190,7 @@ func ComputePercentages(AggregateTestResults map[string]AggregateTestResult) {
 	}
 }
 
-func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, minRuns int, successThreshold float64) map[string]SortedAggregateTestResult {
+func GenerateSortedAndFilteredResults(AggregateTestResult map[string]AggregateTestResult, minRuns int, successThreshold float64) map[string]SortedAggregateTestResult {
 	sorted := make(map[string]SortedAggregateTestResult)
 
 	for k, v := range AggregateTestResult {
@@ -206,14 +202,19 @@ func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, m
 
 		for _, result := range v.TestResults {
 			// strip out tests are more than N% successful
+			if result.PassPercentage > successThreshold {
+				continue
+			}
 			// strip out tests that have less than N total runs
-			if (result.Successes+result.Failures >= minRuns) && result.PassPercentage < successThreshold {
-				s := sorted[k]
-				s.TestResults = append(s.TestResults, result)
-				sorted[k] = s
+			if result.Successes+result.Failures < minRuns {
+				continue
 			}
 
+			s := sorted[k]
+			s.TestResults = append(s.TestResults, result)
+			sorted[k] = s
 		}
+
 		// sort from lowest to highest
 		sort.SliceStable(sorted[k].TestResults, func(i, j int) bool {
 			return sorted[k].TestResults[i].PassPercentage < sorted[k].TestResults[j].PassPercentage

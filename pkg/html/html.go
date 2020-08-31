@@ -295,9 +295,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 		rows := ""
 		additionalMatches := 0
 		for _, testResult := range platformTests.TestResults {
-			if util.IgnoreTestRegex.MatchString(testResult.Name) {
-				continue
-			}
 			if count == 0 {
 				additionalMatches++
 				continue
@@ -563,9 +560,6 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 		rows := ""
 		additionalMatches := 0
 		for _, test := range jobTests.TestResults {
-			if util.IgnoreTestRegex.MatchString(test.Name) {
-				continue
-			}
 			if count == 0 {
 				additionalMatches++
 				continue

@@ -149,7 +149,18 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
+
+// ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
+var ignoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
+
 func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, test testgridv1.Test, sig string, startCol, endCol int) {
+	// strip out tests that don't have predictive or diagnostic value
+	// we have to know about overall to be able to set the global success or failure.
+	// we have to know about container setup to be able to set infra failures
+	if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") && ignoreTestRegex.MatchString(test.Name) {
+		return
+	}
+
 	col := 0
 	passed := 0
 	failed := 0
@@ -222,8 +233,13 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
-				jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
-				jrr.TestFailures++
+				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
+				// which we use to set various JobRunResult markers
+				if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") {
+					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
+					jrr.TestFailures++
+				}
+
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
@@ -244,6 +260,12 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 			}
 		}
 		col += remaining
+	}
+
+	// our aggregation and markers are correctly set above.  We allowed these two tests to be checked, but we don't want
+	// actual results for them
+	if test.Name == "Overall" || strings.HasSuffix(test.Name, "container setup") {
+		return
 	}
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
@@ -396,9 +418,6 @@ func (a *Analyzer) analyze() {
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
 	// and attribute the number of times the test failed+flaked to that bug(s)
 	for testName := range failedTestNamesAcrossAllJobRuns {
-		if util.IgnoreTestRegex.MatchString(testName) {
-			continue
-		}
 		if result, found := a.RawData.ByAll["all"].TestResults[testName]; found {
 			bugs := a.BugCache.ListBugs(a.Release, "", testName)
 			for _, bug := range bugs {
@@ -420,13 +439,6 @@ func (a *Analyzer) analyze() {
 	// would have passed if all our bugs were fixed.
 	for runIdx, jobrun := range a.RawData.JobRuns {
 		for _, testName := range jobrun.FailedTestNames {
-			if util.IgnoreTestRegex.MatchString(testName) {
-				// note, if a job run has only ignored tests (such as because setup failed) it will be counted
-				// as "HasUnknownFailures=false", meaning it will count as a success in the "pass rate including
-				// known failures" percentage.  This is good because it ignores infrastructure issues, it is bad
-				// because if the install flat out fails, the run will be counted as successful in that metric.
-				continue
-			}
 			bugs := a.BugCache.ListBugs(a.Release, "", testName)
 			isKnownFailure := len(bugs) > 0
 			if !isKnownFailure {
@@ -563,12 +575,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
 	// limit to 100 so we don't hammer search.ci too hard if we can't find 20 failures with bugs in the first 100.
 	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
-
 		test := all.TestResults[i]
-		if util.IgnoreTestRegex.MatchString(test.Name) {
-			continue
-		}
-
 		test.BugList = bugCache.ListBugs(release, "", test.Name)
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
@@ -587,10 +594,10 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 }
 
 func (a *Analyzer) prepareTestReport(prev bool) {
-	byAll := util.GenerateSortedResults(a.RawData.ByAll, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byAll := util.GenerateSortedAndFilteredResults(a.RawData.ByAll, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byPlatform := util.GenerateSortedAndFilteredResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byJob := util.GenerateSortedAndFilteredResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	bySig := util.GenerateSortedAndFilteredResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
@@ -644,7 +651,7 @@ func (a *Analyzer) printDashboardReport() {
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
-		if !util.IgnoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinTestRuns {
+		if (test.Successes + test.Failures) > a.Options.MinTestRuns {
 			fmt.Printf("Test Name: %s\n", test.Name)
 			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
 			if test.Successes+test.Failures < 10 {
