@@ -10,7 +10,6 @@ import (
 	"text/template"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
@@ -106,11 +105,11 @@ Data current as of: %s
 
 {{ failureGroups .Current.FailureGroups .Prev.FailureGroups .EndDay }}
 
-{{ summaryJobsByPlatform .BugCache .Current .Prev .EndDay .JobTestCount .Release }}
+{{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
-{{ summaryTopFailingTests .BugCache .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
+{{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
 
-{{ summaryJobPassRatesByJobName .BugCache .Current .Prev .EndDay .JobTestCount }}
+{{ summaryJobPassRatesByJobName .Current .Prev .EndDay .JobTestCount }}
 
 {{ canaryTestFailures .Current.All }}
 
@@ -192,7 +191,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	return s
 }
 
-func summaryJobsByPlatform(bugCache buganalysis.BugCache, report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
+func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
@@ -295,8 +294,8 @@ func summaryJobsByPlatform(bugCache buganalysis.BugCache, report, reportPrev uti
 		rowCount := 0
 		rows := ""
 		additionalMatches := 0
-		for _, test := range platformTests.TestResults {
-			if util.IgnoreTestRegex.MatchString(test.Name) {
+		for _, testResult := range platformTests.TestResults {
+			if util.IgnoreTestRegex.MatchString(testResult.Name) {
 				continue
 			}
 			if count == 0 {
@@ -305,18 +304,18 @@ func summaryJobsByPlatform(bugCache buganalysis.BugCache, report, reportPrev uti
 			}
 			count--
 
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+			encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
 			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
 
-			bugHTML := bugHTMLForTest(bugCache, report.Release, "", test.Name)
+			bugHTML := bugHTMLForTest(testResult.BugList, report.Release, "", testResult.Name)
 
 			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
-				test.Name,
+				testResult.Name,
 				jobQuery,
 				encodedTestName,
 				bugHTML,
-				test.PassPercentage,
-				test.Successes+test.Failures,
+				testResult.PassPercentage,
+				testResult.Successes+testResult.Failures,
 			)
 			rowCount++
 		}
@@ -340,7 +339,7 @@ func testToSearchURL(testName string) string {
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
-func summaryTopFailingTests(bugCache buganalysis.BugCache, topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
+func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
 	allPrev := resultPrev["all"]
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -368,40 +367,40 @@ func summaryTopFailingTests(bugCache buganalysis.BugCache, topFailingTestsWithou
 		</tr>
 	`
 
-	for _, test := range topFailingTestsWithoutBug {
+	for _, testResult := range topFailingTestsWithoutBug {
 		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
 		// but don't bother creating the noise in the UI for a one-off/long tail.
-		if (test.Failures + test.Flakes) == 1 {
+		if (testResult.Failures + testResult.Flakes) == 1 {
 			continue
 		}
 
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+		encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
-		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.Name)
+		testPrev := util.GetPrevTest(testResult.Name, allPrev.TestResults)
 
-		bugHTML := bugHTMLForTest(bugCache, release, "", test.Name)
+		bugHTML := bugHTMLForTest(testResult.BugList, release, "", testResult.Name)
 
 		if testPrev != nil {
 			arrow := ""
 			delta := 5.0
-			if test.Successes+test.Failures > 80 {
+			if testResult.Successes+testResult.Failures > 80 {
 				delta = 2
 			}
 
-			if test.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, test.PassPercentage-testPrev.PassPercentage)
-			} else if test.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, testPrev.PassPercentage-test.PassPercentage)
-			} else if test.PassPercentage > testPrev.PassPercentage {
-				arrow = fmt.Sprintf(flatup, test.PassPercentage-testPrev.PassPercentage)
+			if testResult.PassPercentage > testPrev.PassPercentage+delta {
+				arrow = fmt.Sprintf(up, testResult.PassPercentage-testPrev.PassPercentage)
+			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
+				arrow = fmt.Sprintf(down, testPrev.PassPercentage-testResult.PassPercentage)
+			} else if testResult.PassPercentage > testPrev.PassPercentage {
+				arrow = fmt.Sprintf(flatup, testResult.PassPercentage-testPrev.PassPercentage)
 			} else {
-				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-test.PassPercentage)
+				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-testResult.PassPercentage)
 			}
 
-			s += fmt.Sprintf(template, testLink, bugHTML, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+			s += fmt.Sprintf(template, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 		} else {
-			s += fmt.Sprintf(naTemplate, testLink, bugHTML, test.PassPercentage, test.Successes+test.Failures)
+			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures)
 		}
 	}
 
@@ -415,45 +414,45 @@ func summaryTopFailingTests(bugCache buganalysis.BugCache, topFailingTestsWithou
 			<th>Test Name</th><th>BZ</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>`, endDay)
 
-	for _, test := range topFailingTestsWithBug {
+	for _, testResult := range topFailingTestsWithBug {
 		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
 		// but don't bother creating the noise in the UI for a one-off/long tail.
-		if (test.Failures + test.Flakes) == 1 {
+		if (testResult.Failures + testResult.Flakes) == 1 {
 			continue
 		}
 
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+		encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, test.Name)
-		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.Name)
+		testPrev := util.GetPrevTest(testResult.Name, allPrev.TestResults)
 
-		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", test.Name, test.BugList)
-		bugHTML := bugHTMLForTest(bugCache, release, "", test.Name)
+		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", testResult.Name, testResult.BugList)
+		bugHTML := bugHTMLForTest(testResult.BugList, release, "", testResult.Name)
 		if testPrev != nil {
 			arrow := ""
 			delta := 5.0
-			if test.Successes+test.Failures > 80 {
+			if testResult.Successes+testResult.Failures > 80 {
 				delta = 2
 			}
-			if test.PassPercentage > testPrev.PassPercentage+delta {
+			if testResult.PassPercentage > testPrev.PassPercentage+delta {
 				arrow = up
-			} else if test.PassPercentage < testPrev.PassPercentage-delta {
+			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
 				arrow = down
 			}
 
-			if test.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, test.PassPercentage-testPrev.PassPercentage)
-			} else if test.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, testPrev.PassPercentage-test.PassPercentage)
-			} else if test.PassPercentage > testPrev.PassPercentage {
-				arrow = fmt.Sprintf(flatup, test.PassPercentage-testPrev.PassPercentage)
+			if testResult.PassPercentage > testPrev.PassPercentage+delta {
+				arrow = fmt.Sprintf(up, testResult.PassPercentage-testPrev.PassPercentage)
+			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
+				arrow = fmt.Sprintf(down, testPrev.PassPercentage-testResult.PassPercentage)
+			} else if testResult.PassPercentage > testPrev.PassPercentage {
+				arrow = fmt.Sprintf(flatup, testResult.PassPercentage-testPrev.PassPercentage)
 			} else {
-				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-test.PassPercentage)
+				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-testResult.PassPercentage)
 			}
 
-			s += fmt.Sprintf(template, testLink, bugHTML, test.PassPercentage, test.Successes+test.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
+			s += fmt.Sprintf(template, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
 		} else {
-			s += fmt.Sprintf(naTemplate, testLink, bugHTML, test.PassPercentage, test.Successes+test.Failures)
+			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures)
 		}
 	}
 
@@ -461,7 +460,7 @@ func summaryTopFailingTests(bugCache buganalysis.BugCache, topFailingTestsWithou
 	return s
 }
 
-func summaryJobPassRatesByJobName(bugCache buganalysis.BugCache, report, reportPrev util.TestReport, endDay, jobTestCount int) string {
+func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -574,7 +573,7 @@ func summaryJobPassRatesByJobName(bugCache buganalysis.BugCache, report, reportP
 			count--
 
 			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			bugHTML := bugHTMLForTest(bugCache, report.Release, "", test.Name)
+			bugHTML := bugHTMLForTest(test.BugList, report.Release, "", test.Name)
 
 			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""),
 				test.Name,
@@ -734,7 +733,6 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 }
 
 type TestReports struct {
-	BugCache     buganalysis.BugCache
 	Current      util.TestReport
 	Prev         util.TestReport
 	EndDay       int
@@ -754,12 +752,9 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, bugCache buganalysis.BugCache, report, prevReport util.TestReport, endDay, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
-	if err := bugCache.LastUpdateError(); err != nil {
-		fmt.Fprintf(w, bugLookupWarning, err)
-	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
@@ -776,7 +771,6 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, bugCache buganaly
 	).Parse(dashboardPageHtml))
 
 	if err := dashboardPage.Execute(w, TestReports{
-		BugCache:     bugCache,
 		Current:      report,
 		Prev:         prevReport,
 		EndDay:       endDay,

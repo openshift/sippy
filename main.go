@@ -352,6 +352,24 @@ func getFailedTestNamesFromJobRuns(jobRuns map[string]util.JobRunResult) sets.St
 	return failedTestNames
 }
 
+func completeBugs(data map[string]util.AggregateTestResult, release string, bugCache buganalysis.BugCache) {
+	for k1, aggregatedTestResult := range data {
+		modified := false
+		for k2, testResult := range aggregatedTestResult.TestResults {
+			if testResult.Flakes == 0 && testResult.Failures == 0 {
+				continue
+			}
+			modified = true
+			testResult.BugList = bugCache.ListBugs(release, "", testResult.Name)
+			aggregatedTestResult.TestResults[k2] = testResult
+		}
+		if modified {
+			data[k1] = aggregatedTestResult
+		}
+	}
+
+}
+
 func (a *Analyzer) analyze() {
 	for _, details := range a.RawData.JobDetails {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
@@ -361,8 +379,19 @@ func (a *Analyzer) analyze() {
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
 	a.createSyntheticTests()
 
+	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
 	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRuns)
-	a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
+	err := a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
+	if err != nil {
+		// TODO find a better way to expose this
+		klog.Error(err)
+	}
+
+	// now that we have primed the bug cache, we have enough information to fill in the bug list on every test result
+	completeBugs(a.RawData.ByAll, a.Release, a.BugCache)
+	completeBugs(a.RawData.ByJob, a.Release, a.BugCache)
+	completeBugs(a.RawData.ByPlatform, a.Release, a.BugCache)
+	completeBugs(a.RawData.BySig, a.Release, a.BugCache)
 
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
 	// and attribute the number of times the test failed+flaked to that bug(s)
@@ -407,6 +436,12 @@ func (a *Analyzer) analyze() {
 
 		}
 	}
+
+	// now that we have all the totals, we can calculate percentages
+	util.ComputePercentages(a.RawData.ByAll)
+	util.ComputePercentages(a.RawData.ByPlatform)
+	util.ComputePercentages(a.RawData.ByJob)
+	util.ComputePercentages(a.RawData.BySig)
 
 	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
 	//  This is only known after the bugs are associated with the fail tests.
@@ -552,11 +587,6 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 }
 
 func (a *Analyzer) prepareTestReport(prev bool) {
-	util.ComputePercentages(a.RawData.ByAll)
-	util.ComputePercentages(a.RawData.ByPlatform)
-	util.ComputePercentages(a.RawData.ByJob)
-	util.ComputePercentages(a.RawData.BySig)
-
 	byAll := util.GenerateSortedResults(a.RawData.ByAll, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
@@ -812,7 +842,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		html.WriteLandingPage(w, s.options.Releases)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].BugCache, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
@@ -944,7 +974,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	prevAnalyzer.analyze()
 	prevAnalyzer.prepareTestReport(true)
 
-	html.PrintHtmlReport(w, req, analyzer.BugCache, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
+	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
 
 }
 

@@ -21,7 +21,7 @@ import (
 // It is stateful though, so for a time after clearing the data will not be up to date until the Update is called
 type BugCache interface {
 	ListBugs(release, platform, testName string) []bugsv1.Bug
-	UpdateForFailedTests(failedTestNames ...string)
+	UpdateForFailedTests(failedTestNames ...string) error
 
 	Clear()
 	// LastUpdateError returns the last update error, if one exists
@@ -41,10 +41,11 @@ func NewBugCache() BugCache {
 }
 
 // updates a global variable with the bug mapping based on current failures.
-func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) {
+func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	var lastUpdateError error
 	batchCount := 0
 	batchNames := []string{}
 	for _, testName := range failedTestNames {
@@ -65,7 +66,7 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) {
 				c.cache[k] = v
 			}
 			if err != nil {
-				c.lastUpdateError = err
+				lastUpdateError = err
 			}
 			batchNames = []string{}
 			batchCount = 0
@@ -77,11 +78,12 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) {
 			c.cache[k] = v
 		}
 		if err != nil {
-			c.lastUpdateError = err
+			lastUpdateError = err
 		}
 	}
 
-	c.lastUpdateError = nil
+	c.lastUpdateError = lastUpdateError
+	return lastUpdateError
 }
 
 func (c *bugCache) Clear() {

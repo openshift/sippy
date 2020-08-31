@@ -5,7 +5,6 @@ import (
 	"net/url"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/buganalysis"
 )
 
 func bugLink(bug bugsv1.Bug) string {
@@ -14,8 +13,7 @@ func bugLink(bug bugsv1.Bug) string {
 
 // bugHTMLForTest release and testName are required.  platform is options, if specified it excludes test that have a
 // different platform specified, but includes bugs without any platform
-func bugHTMLForTest(bugCache buganalysis.BugCache, release, platform, testName string) string {
-	bugList := bugCache.ListBugs(release, platform, testName)
+func bugHTMLForTest(bugList []bugsv1.Bug, release, platform, testName string) string {
 	if len(bugList) == 0 {
 		return openABugHTML(testName, release)
 	}
