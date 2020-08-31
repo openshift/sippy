@@ -194,12 +194,12 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
+				case strings.HasPrefix(test.Name, "operator install "):
 					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
 						Name:  test.Name[len("operator install "):],
 						State: util.Success,
 					})
-				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
+				case strings.HasPrefix(test.Name, "Operator upgrade "):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
 						State: util.Success,
@@ -226,12 +226,12 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
+				case strings.HasPrefix(test.Name, "operator install "):
 					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
 						Name:  test.Name[len("operator install "):],
 						State: util.Failure,
 					})
-				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
+				case strings.HasPrefix(test.Name, "Operator upgrade "):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
 						State: util.Failure,
@@ -393,77 +393,6 @@ func updateGlobalBugCache(failedTestNames sets.String) {
 	}
 }
 
-func (a *Analyzer) identifyJobRunBugzillaFailer() {
-	for jrrKey, jrr := range a.RawData.JobRuns {
-		failingBugzillaComponents := sets.NewString()
-
-		for _, failedTest := range jrr.FailedTestNames {
-			// If the failed test has a bug associated, use that bug to identify the BZ component.
-			// Each bug that matches has its BZ component added.
-			foundBZ := false
-			for _, bug := range util.TestBugCache[failedTest] {
-				bzComponent := bug.Component[0]
-				failingBugzillaComponents.Insert(bzComponent)
-				foundBZ = true
-
-				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-					util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-				}
-			}
-			if foundBZ {
-				continue
-			}
-
-			// If we didn't have a bug, use the test name itself to identify a likely victim/blame
-			switch {
-			case strings.HasPrefix(failedTest, util.OperatorInstallPrefix) || strings.HasPrefix(failedTest, util.OperatorUpgradePrefix):
-				// these are handled by checking operator, no work on the string.
-			case failedTest == "Overall": // this test has no predictive value, do not assign
-
-			// TODO may have to add a case to cover all non-predictive tests
-
-			default:
-				bzComponent := util.GetBugzillaComponentForSig(util.FindSig(failedTest))
-				failingBugzillaComponents.Insert(bzComponent)
-				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-					util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-				}
-			}
-		}
-		for _, operator := range jrr.InstallOperators {
-			if operator.State == util.Success {
-				continue
-			}
-			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failingBugzillaComponents.Insert(bzComponent)
-
-			failedTest := util.OperatorInstallPrefix + operator.Name
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-			}
-		}
-		for _, operator := range jrr.UpgradeOperators {
-			if operator.State == util.Success {
-				continue
-			}
-			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failingBugzillaComponents.Insert(bzComponent)
-
-			failedTest := util.OperatorUpgradePrefix + operator.Name
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-			}
-		}
-
-		if jrr.SetupStatus != util.Success {
-			failingBugzillaComponents.Insert("Test Infrastructure")
-		}
-
-		jrr.FailingBugzillaComponents = failingBugzillaComponents.List()
-		a.RawData.JobRuns[jrrKey] = jrr
-	}
-}
-
 func (a *Analyzer) analyze() {
 	for _, details := range a.RawData.JobDetails {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
@@ -534,8 +463,8 @@ func (a *Analyzer) analyze() {
 		}
 	}
 
-	// determine while bugzilla components failed each job run. This is only known after the bugs are associated with the fail tests.
-	a.identifyJobRunBugzillaFailer()
+	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
+	//  This is only known after the bugs are associated with the fail tests.
 }
 
 func (a *Analyzer) loadData(releases []string, storagePath string) {
@@ -702,8 +631,6 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
 
-	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRuns)
-
 	a.Report = util.TestReport{
 		Release:             a.Release,
 		All:                 byAll,
@@ -716,8 +643,6 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 		JobPassRate:        jobPassRate,
 		Timestamp:          a.LastUpdateTime,
 		BugsByFailureCount: bugFailureCounts,
-
-		JobFailuresByBugzillaComponent: bugzillaComponentResults,
 	}
 
 	if !prev {
