@@ -18,9 +18,9 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
-	"github.com/openshift/sippy/pkg/testgrid"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ type RawData struct {
 	ByPlatform  map[string]util.AggregateTestResult
 	BySig       map[string]util.AggregateTestResult
 	JobRuns     map[string]util.JobRunResult
-	JobDetails  []testgrid.JobDetails
+	JobDetails  []testgridv1.JobDetails
 	BugFailures map[string]bugsv1.Bug
 }
 
@@ -52,8 +52,8 @@ type Analyzer struct {
 	BugCache buganalysis.BugCache
 }
 
-func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid.JobSummary, time.Time, error) {
-	jobs := make(map[string]testgrid.JobSummary)
+func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
+	jobs := make(map[string]testgridv1.JobSummary)
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
 
 	var buf *bytes.Buffer
@@ -98,8 +98,8 @@ func downloadJobSummaries(dashboard string, storagePath string) error {
 	return err
 }
 
-func loadJobDetails(dashboard, jobName, storagePath string) (testgrid.JobDetails, error) {
-	details := testgrid.JobDetails{
+func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetails, error) {
+	details := testgridv1.JobDetails{
 		Name: jobName,
 	}
 
@@ -149,7 +149,7 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
-func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, sig string, startCol, endCol int) {
+func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, test testgridv1.Test, sig string, startCol, endCol int) {
 	col := 0
 	passed := 0
 	failed := 0
@@ -254,7 +254,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 	util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
-func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
+func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	platforms := util.FindPlatform(job.Name)
 
