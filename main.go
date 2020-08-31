@@ -31,10 +31,13 @@ var (
 )
 
 type RawData struct {
-	ByAll       map[string]util.AggregateTestResult
-	ByJob       map[string]util.AggregateTestResult
-	ByPlatform  map[string]util.AggregateTestResult
-	BySig       map[string]util.AggregateTestResult
+	ByAll      map[string]util.AggregateTestResult
+	ByJob      map[string]util.AggregateTestResult
+	ByPlatform map[string]util.AggregateTestResult
+	BySig      map[string]util.AggregateTestResult
+	// ByBugzillaComponent has keys that are a best guess of the bugzilla component which is causing the failing test.
+	ByBugzillaComponent map[string]util.AggregateTestResult
+
 	JobRuns     map[string]util.JobRunResult
 	JobDetails  []testgrid.JobDetails
 	BugFailures map[string]util.Bug
@@ -191,12 +194,12 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, "operator install "):
+				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
 					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
 						Name:  test.Name[len("operator install "):],
 						State: util.Success,
 					})
-				case strings.HasPrefix(test.Name, "Operator upgrade "):
+				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
 						State: util.Success,
@@ -223,12 +226,12 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case strings.HasPrefix(test.Name, "operator install "):
+				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
 					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
 						Name:  test.Name[len("operator install "):],
 						State: util.Failure,
 					})
-				case strings.HasPrefix(test.Name, "Operator upgrade "):
+				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
 						State: util.Failure,
@@ -390,6 +393,113 @@ func updateGlobalBugCache(failedTestNames sets.String) {
 	}
 }
 
+func (a *Analyzer) identifyJobRunBugzillaFailer() {
+	for jrrKey, jrr := range a.RawData.JobRuns {
+		if jrr.Succeeded { // we only care about failures.
+			continue
+		}
+
+		failingBugzillaComponents := map[string]*util.BugzillaComponentFailure{}
+
+		for _, failedTest := range jrr.FailedTestNames {
+			// some tests are skipped
+			switch {
+			case strings.HasPrefix(failedTest, util.OperatorInstallPrefix) || strings.HasPrefix(failedTest, util.OperatorUpgradePrefix):
+				// these are handled by checking operator, no work on the string.
+				continue
+			case util.IgnoreTestRegex.MatchString(failedTest): // this test has no predictive value, do not assign
+				// If the failed test has a bug associated, use that bug to identify the BZ component.
+				continue
+			case failedTest == "Overall":
+				// this test has no predictive power.  it just means the run failed.
+				continue
+			}
+
+			// Each bug that matches has its BZ component added.
+			foundBZ := false
+			for _, bug := range util.TestBugCache[failedTest] {
+				matchedRelease := false
+				for _, bugRelease := range bug.TargetRelease {
+					if strings.HasPrefix(bugRelease, a.Release) {
+						matchedRelease = true
+						break
+					}
+				}
+				if !matchedRelease {
+					continue
+				}
+				bzComponent := bug.Component[0]
+				addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, bug)
+				foundBZ = true
+
+				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
+					util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+				}
+			}
+			if foundBZ {
+				continue
+			}
+
+			// If we didn't have a bug, use the test name itself to identify a likely victim/blame
+			bzComponent := util.GetBugzillaComponentForSig(util.FindSig(failedTest))
+			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
+			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
+				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+			}
+		}
+		for _, operator := range jrr.InstallOperators {
+			if operator.State == util.Success {
+				continue
+			}
+			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
+			failedTest := util.OperatorInstallPrefix + operator.Name
+			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
+
+			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
+				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+			}
+		}
+		for _, operator := range jrr.UpgradeOperators {
+			if operator.State == util.Success {
+				continue
+			}
+			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
+			failedTest := util.OperatorUpgradePrefix + operator.Name
+			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
+
+			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
+				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+			}
+		}
+
+		if jrr.SetupStatus != util.Success && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
+			addFailingBZComponent(&failingBugzillaComponents, "Test Infrastructure", "setup", util.Bug{})
+		}
+
+		jrr.FailingBugzillaComponents = failingBugzillaComponents
+		a.RawData.JobRuns[jrrKey] = jrr
+	}
+}
+
+func addFailingBZComponent(failingBugzillaComponents *map[string]*util.BugzillaComponentFailure, bzComponent, testName string, bug util.Bug) {
+	failure, ok := (*failingBugzillaComponents)[bzComponent]
+	if !ok {
+		failure = &util.BugzillaComponentFailure{
+			ComponentName: bzComponent,
+			Failures:      map[util.BugzillaTestFailure]int32{},
+		}
+	}
+
+	testFailure := util.BugzillaTestFailure{
+		TestName:   testName,
+		BugID:      bug.ID,
+		BugSummary: bug.Summary,
+	}
+	failure.Failures[testFailure] = failure.Failures[testFailure] + 1
+
+	(*failingBugzillaComponents)[bzComponent] = failure
+}
+
 func (a *Analyzer) analyze() {
 	for _, details := range a.RawData.JobDetails {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
@@ -460,8 +570,8 @@ func (a *Analyzer) analyze() {
 		}
 	}
 
-	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
-	//  This is only known after the bugs are associated with the fail tests.
+	// determine while bugzilla components failed each job run. This is only known after the bugs are associated with the fail tests.
+	a.identifyJobRunBugzillaFailer()
 }
 
 func (a *Analyzer) loadData(releases []string, storagePath string) {
@@ -621,22 +731,29 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byBugzillaComponent := util.GenerateSortedResults(a.RawData.ByBugzillaComponent, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
 
+	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRuns)
+
 	a.Report = util.TestReport{
-		Release:            a.Release,
-		All:                byAll,
-		ByPlatform:         byPlatform,
-		ByJob:              byJob,
-		BySig:              bySig,
+		Release:             a.Release,
+		All:                 byAll,
+		ByPlatform:          byPlatform,
+		ByJob:               byJob,
+		BySig:               bySig,
+		ByBugzillaComponent: byBugzillaComponent,
+
 		FailureGroups:      filteredFailureGroups,
 		JobPassRate:        jobPassRate,
 		Timestamp:          a.LastUpdateTime,
 		BugsByFailureCount: bugFailureCounts,
+
+		JobFailuresByBugzillaComponent: bugzillaComponentResults,
 	}
 
 	if !prev {
@@ -847,12 +964,13 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:               make(map[string]util.AggregateTestResult),
+			ByJob:               make(map[string]util.AggregateTestResult),
+			ByPlatform:          make(map[string]util.AggregateTestResult),
+			BySig:               make(map[string]util.AggregateTestResult),
+			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+			JobRuns:             make(map[string]util.JobRunResult),
+			BugFailures:         make(map[string]util.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -971,12 +1089,13 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: opt,
 		RawData: RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:               make(map[string]util.AggregateTestResult),
+			ByJob:               make(map[string]util.AggregateTestResult),
+			ByPlatform:          make(map[string]util.AggregateTestResult),
+			BySig:               make(map[string]util.AggregateTestResult),
+			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+			JobRuns:             make(map[string]util.JobRunResult),
+			BugFailures:         make(map[string]util.Bug),
 		},
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
@@ -991,12 +1110,13 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: &optCopy,
 		RawData: RawData{
-			ByAll:       make(map[string]util.AggregateTestResult),
-			ByJob:       make(map[string]util.AggregateTestResult),
-			ByPlatform:  make(map[string]util.AggregateTestResult),
-			BySig:       make(map[string]util.AggregateTestResult),
-			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			ByAll:               make(map[string]util.AggregateTestResult),
+			ByJob:               make(map[string]util.AggregateTestResult),
+			ByPlatform:          make(map[string]util.AggregateTestResult),
+			BySig:               make(map[string]util.AggregateTestResult),
+			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+			JobRuns:             make(map[string]util.JobRunResult),
+			BugFailures:         make(map[string]util.Bug),
 		},
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
@@ -1094,12 +1214,13 @@ func (o *Options) Run() error {
 		analyzer := Analyzer{
 			Options: o,
 			RawData: RawData{
-				ByAll:       make(map[string]util.AggregateTestResult),
-				ByJob:       make(map[string]util.AggregateTestResult),
-				ByPlatform:  make(map[string]util.AggregateTestResult),
-				BySig:       make(map[string]util.AggregateTestResult),
-				JobRuns:     make(map[string]util.JobRunResult),
-				BugFailures: make(map[string]util.Bug),
+				ByAll:               make(map[string]util.AggregateTestResult),
+				ByJob:               make(map[string]util.AggregateTestResult),
+				ByPlatform:          make(map[string]util.AggregateTestResult),
+				BySig:               make(map[string]util.AggregateTestResult),
+				ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+				JobRuns:             make(map[string]util.JobRunResult),
+				BugFailures:         make(map[string]util.Bug),
 			},
 		}
 
@@ -1119,12 +1240,13 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: o,
 				RawData: RawData{
-					ByAll:       make(map[string]util.AggregateTestResult),
-					ByJob:       make(map[string]util.AggregateTestResult),
-					ByPlatform:  make(map[string]util.AggregateTestResult),
-					BySig:       make(map[string]util.AggregateTestResult),
-					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					ByAll:               make(map[string]util.AggregateTestResult),
+					ByJob:               make(map[string]util.AggregateTestResult),
+					ByPlatform:          make(map[string]util.AggregateTestResult),
+					BySig:               make(map[string]util.AggregateTestResult),
+					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+					JobRuns:             make(map[string]util.JobRunResult),
+					BugFailures:         make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
@@ -1140,12 +1262,13 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: &optCopy,
 				RawData: RawData{
-					ByAll:       make(map[string]util.AggregateTestResult),
-					ByJob:       make(map[string]util.AggregateTestResult),
-					ByPlatform:  make(map[string]util.AggregateTestResult),
-					BySig:       make(map[string]util.AggregateTestResult),
-					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					ByAll:               make(map[string]util.AggregateTestResult),
+					ByJob:               make(map[string]util.AggregateTestResult),
+					ByPlatform:          make(map[string]util.AggregateTestResult),
+					BySig:               make(map[string]util.AggregateTestResult),
+					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
+					JobRuns:             make(map[string]util.JobRunResult),
+					BugFailures:         make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
