@@ -100,8 +100,7 @@ Data current as of: %s
 			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
 	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
 	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
-	         <a href="#TestImpactingComponents">Test Impacting Components</a> |
-	         <a href="#BZToWorstJobImpact">Bugzilla Components to Worst Job Impact</a>
+	         <a href="#TestImpactingComponents">Test Impacting Components</a>
 </p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All .EndDay }}
@@ -121,8 +120,6 @@ Data current as of: %s
 {{ testImpactingBugs .Current.BugsByFailureCount }}
 
 {{ testImpactingComponents .Current.BugsByFailureCount }}
-
-{{ summaryJobsFailuresByBugzillaComponent .Current .Prev .EndDay .JobTestCount .Release }}
 
 `
 
@@ -344,201 +341,6 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 			s = s + rows
 		} else {
 			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
-		}
-	}
-	s = s + "</table>"
-	return s
-}
-
-func summaryJobsFailuresByBugzillaComponent(report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
-	failuresByBugzillaComponent := util.SummarizeJobsFailuresByBugzillaComponent(report)
-	failuresByBugzillaComponentPrev := util.SummarizeJobsFailuresByBugzillaComponent(reportPrev)
-
-	s := fmt.Sprintf(`
-	<table class="table">
-		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla components ranked by maximum fail percentage of any job." id="BZToWorstJobImpact" href="#BZToWorstJobImpact">Bugzilla Components to Worst Job Impact</a></th>
-		</tr>
-		<tr>
-			<th>Variant</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
-		</tr>
-	`, endDay)
-
-	bzGroupTemplate := `
-		<tr class="%s">
-			<td>
-				%[2]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Jobs</button>
-			</td>
-			<td>
-				%0.2f%% <span class="text-nowrap">(%d runs)</span>
-			</td>
-			<td>
-				%s
-			</td>
-			<td>
-				%0.2f%% <span class="text-nowrap">(%d runs)</span>
-			</td>
-		</tr>
-	`
-
-	naTemplate := `
-			<tr class="%s">
-				<td>
-					%[2]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Jobs</button>
-				</td>
-				<td>
-					%0.2f%% <span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	bzFailingJobTemplate := `
-			<tr class="collapse %s">
-				<td>
-					%[2]s -- %[3]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% <span class="text-nowrap">(%d/%d failed/total)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	for _, v := range failuresByBugzillaComponent {
-		safeBZJob := fmt.Sprintf("%s---component", v.Name)
-		safeBZJob = strings.ReplaceAll(safeBZJob, ".", "")
-		safeBZJob = strings.ReplaceAll(safeBZJob, " ", "")
-
-		prev := util.GetPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
-		highestFailPercentage := v.JobsFailed[0].FailPercentageByThisBugzillaComponent
-		lowestPassPercentage := 100 - highestFailPercentage
-		rowColor := ""
-		switch {
-		case lowestPassPercentage > 85:
-			rowColor = "table-success"
-		case lowestPassPercentage > 70:
-			rowColor = "table-warning"
-		case lowestPassPercentage > 0:
-			rowColor = "table-danger"
-		default:
-			rowColor = "error"
-		}
-
-		if prev != nil {
-			previousHighestFailPercentage := prev.JobsFailed[0].FailPercentageByThisBugzillaComponent
-			previousLowestPassPercentage := 100 - previousHighestFailPercentage
-			arrow := ""
-
-			delta := 5.0
-			if v.JobsFailed[0].TotalRuns > 80 {
-				delta = 2
-			}
-			if lowestPassPercentage > previousLowestPassPercentage+delta {
-				arrow = up
-			} else if lowestPassPercentage < previousLowestPassPercentage-delta {
-				arrow = down
-			}
-
-			if lowestPassPercentage > previousLowestPassPercentage+delta {
-				arrow = fmt.Sprintf(up, lowestPassPercentage-previousLowestPassPercentage)
-			} else if lowestPassPercentage < previousLowestPassPercentage-delta {
-				arrow = fmt.Sprintf(down, previousLowestPassPercentage-lowestPassPercentage)
-			} else if lowestPassPercentage > previousLowestPassPercentage {
-				arrow = fmt.Sprintf(flatup, lowestPassPercentage-previousLowestPassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, previousLowestPassPercentage-lowestPassPercentage)
-			}
-
-			s = s + fmt.Sprintf(bzGroupTemplate,
-				rowColor,
-				v.Name,
-				safeBZJob,
-				lowestPassPercentage,
-				-1,
-				arrow,
-				previousLowestPassPercentage,
-				-1,
-			)
-		} else {
-			s = s + fmt.Sprintf(naTemplate,
-				rowColor,
-				v.Name,
-				safeBZJob,
-				lowestPassPercentage,
-				-1,
-			)
-		}
-
-		count := 0
-		for _, failingJob := range v.JobsFailed {
-			bzJobTuple := fmt.Sprintf("%s---%s", v.Name, failingJob.JobName)
-			bzJobTuple = strings.ReplaceAll(bzJobTuple, ".", "")
-			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
-
-			// only show the worst ten jobs
-			if count > 10 {
-				break
-			}
-			count++
-			s = s + fmt.Sprintf(bzFailingJobTemplate,
-				safeBZJob,
-				v.Name,
-				failingJob.JobName,
-				bzJobTuple,
-				100.0-failingJob.FailPercentageByThisBugzillaComponent,
-				failingJob.FailuresByThisBugzillaComponent,
-				failingJob.TotalRuns,
-			)
-
-			rows := ""
-			for info, count := range failingJob.Failures.Failures {
-				encodedTestName := url.QueryEscape(regexp.QuoteMeta(info.TestName))
-				jobQuery := fmt.Sprintf("%s", report.Release)
-
-				bug := "Associated Bugs: "
-				bugList := util.TestBugCache[info.TestName]
-				for _, b := range bugList {
-					for _, r := range b.TargetRelease {
-						if strings.HasPrefix(r, report.Release) {
-							bug += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", b.Url, b.ID)
-							break
-						}
-					}
-				}
-				if len(bugList) == 0 {
-					bug = `<a style="padding-left: 20px" target="_blank" href="https://search.ci.openshift.org/?context=1&type=bug&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s">Bug Search</a>`
-					bug = fmt.Sprintf(bug, encodedTestName)
-				}
-
-				rows = rows + fmt.Sprintf(testGroupTemplate, bzJobTuple,
-					info.TestName,
-					jobQuery,
-					encodedTestName,
-					bug,
-					100.0-(float32(count)/float32(failingJob.TotalRuns)*100.0),
-					failingJob.TotalRuns,
-				)
-			}
-
-			if len(rows) > 0 {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, bzJobTuple)
-				s = s + rows
-			} else {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, bzJobTuple)
-			}
 		}
 	}
 	s = s + "</table>"
@@ -1016,16 +818,15 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
-			"summaryAcrossAllJobs":                   summaryAcrossAllJobs,
-			"failureGroups":                          failureGroups,
-			"summaryJobsByPlatform":                  summaryJobsByPlatform,
-			"summaryTopFailingTests":                 summaryTopFailingTests,
-			"summaryJobPassRatesByJobName":           summaryJobPassRatesByJobName,
-			"canaryTestFailures":                     canaryTestFailures,
-			"failureGroupList":                       failureGroupList,
-			"testImpactingBugs":                      testImpactingBugs,
-			"testImpactingComponents":                testImpactingComponents,
-			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
+			"summaryAcrossAllJobs":         summaryAcrossAllJobs,
+			"failureGroups":                failureGroups,
+			"summaryJobsByPlatform":        summaryJobsByPlatform,
+			"summaryTopFailingTests":       summaryTopFailingTests,
+			"summaryJobPassRatesByJobName": summaryJobPassRatesByJobName,
+			"canaryTestFailures":           canaryTestFailures,
+			"failureGroupList":             failureGroupList,
+			"testImpactingBugs":            testImpactingBugs,
+			"testImpactingComponents":      testImpactingComponents,
 		},
 	).Parse(dashboardPageHtml))
 

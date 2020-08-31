@@ -395,41 +395,15 @@ func updateGlobalBugCache(failedTestNames sets.String) {
 
 func (a *Analyzer) identifyJobRunBugzillaFailer() {
 	for jrrKey, jrr := range a.RawData.JobRuns {
-		if jrr.Succeeded { // we only care about failures.
-			continue
-		}
-
-		failingBugzillaComponents := map[string]*util.BugzillaComponentFailure{}
+		failingBugzillaComponents := sets.NewString()
 
 		for _, failedTest := range jrr.FailedTestNames {
-			// some tests are skipped
-			switch {
-			case strings.HasPrefix(failedTest, util.OperatorInstallPrefix) || strings.HasPrefix(failedTest, util.OperatorUpgradePrefix):
-				// these are handled by checking operator, no work on the string.
-				continue
-			case util.IgnoreTestRegex.MatchString(failedTest): // this test has no predictive value, do not assign
-				// If the failed test has a bug associated, use that bug to identify the BZ component.
-				continue
-			case failedTest == "Overall":
-				// this test has no predictive power.  it just means the run failed.
-				continue
-			}
-
+			// If the failed test has a bug associated, use that bug to identify the BZ component.
 			// Each bug that matches has its BZ component added.
 			foundBZ := false
 			for _, bug := range util.TestBugCache[failedTest] {
-				matchedRelease := false
-				for _, bugRelease := range bug.TargetRelease {
-					if strings.HasPrefix(bugRelease, a.Release) {
-						matchedRelease = true
-						break
-					}
-				}
-				if !matchedRelease {
-					continue
-				}
 				bzComponent := bug.Component[0]
-				addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, bug)
+				failingBugzillaComponents.Insert(bzComponent)
 				foundBZ = true
 
 				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
@@ -441,10 +415,19 @@ func (a *Analyzer) identifyJobRunBugzillaFailer() {
 			}
 
 			// If we didn't have a bug, use the test name itself to identify a likely victim/blame
-			bzComponent := util.GetBugzillaComponentForSig(util.FindSig(failedTest))
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+			switch {
+			case strings.HasPrefix(failedTest, util.OperatorInstallPrefix) || strings.HasPrefix(failedTest, util.OperatorUpgradePrefix):
+				// these are handled by checking operator, no work on the string.
+			case failedTest == "Overall": // this test has no predictive value, do not assign
+
+			// TODO may have to add a case to cover all non-predictive tests
+
+			default:
+				bzComponent := util.GetBugzillaComponentForSig(util.FindSig(failedTest))
+				failingBugzillaComponents.Insert(bzComponent)
+				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
+					util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
+				}
 			}
 		}
 		for _, operator := range jrr.InstallOperators {
@@ -452,9 +435,9 @@ func (a *Analyzer) identifyJobRunBugzillaFailer() {
 				continue
 			}
 			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failedTest := util.OperatorInstallPrefix + operator.Name
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
+			failingBugzillaComponents.Insert(bzComponent)
 
+			failedTest := util.OperatorInstallPrefix + operator.Name
 			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
 				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
 			}
@@ -464,40 +447,21 @@ func (a *Analyzer) identifyJobRunBugzillaFailer() {
 				continue
 			}
 			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failedTest := util.OperatorUpgradePrefix + operator.Name
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
+			failingBugzillaComponents.Insert(bzComponent)
 
+			failedTest := util.OperatorUpgradePrefix + operator.Name
 			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
 				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
 			}
 		}
 
-		if jrr.SetupStatus != util.Success && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
-			addFailingBZComponent(&failingBugzillaComponents, "Test Infrastructure", "setup", util.Bug{})
+		if jrr.SetupStatus != util.Success {
+			failingBugzillaComponents.Insert("Test Infrastructure")
 		}
 
-		jrr.FailingBugzillaComponents = failingBugzillaComponents
+		jrr.FailingBugzillaComponents = failingBugzillaComponents.List()
 		a.RawData.JobRuns[jrrKey] = jrr
 	}
-}
-
-func addFailingBZComponent(failingBugzillaComponents *map[string]*util.BugzillaComponentFailure, bzComponent, testName string, bug util.Bug) {
-	failure, ok := (*failingBugzillaComponents)[bzComponent]
-	if !ok {
-		failure = &util.BugzillaComponentFailure{
-			ComponentName: bzComponent,
-			Failures:      map[util.BugzillaTestFailure]int32{},
-		}
-	}
-
-	testFailure := util.BugzillaTestFailure{
-		TestName:   testName,
-		BugID:      bug.ID,
-		BugSummary: bug.Summary,
-	}
-	failure.Failures[testFailure] = failure.Failures[testFailure] + 1
-
-	(*failingBugzillaComponents)[bzComponent] = failure
 }
 
 func (a *Analyzer) analyze() {
