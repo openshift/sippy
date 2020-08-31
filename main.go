@@ -31,13 +31,10 @@ var (
 )
 
 type RawData struct {
-	ByAll      map[string]util.AggregateTestResult
-	ByJob      map[string]util.AggregateTestResult
-	ByPlatform map[string]util.AggregateTestResult
-	BySig      map[string]util.AggregateTestResult
-	// ByBugzillaComponent has keys that are a best guess of the bugzilla component which is causing the failing test.
-	ByBugzillaComponent map[string]util.AggregateTestResult
-
+	ByAll       map[string]util.AggregateTestResult
+	ByJob       map[string]util.AggregateTestResult
+	ByPlatform  map[string]util.AggregateTestResult
+	BySig       map[string]util.AggregateTestResult
 	JobRuns     map[string]util.JobRunResult
 	JobDetails  []testgrid.JobDetails
 	BugFailures map[string]util.Bug
@@ -624,7 +621,6 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byBugzillaComponent := util.GenerateSortedResults(a.RawData.ByBugzillaComponent, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
 	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
@@ -632,13 +628,11 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
 
 	a.Report = util.TestReport{
-		Release:             a.Release,
-		All:                 byAll,
-		ByPlatform:          byPlatform,
-		ByJob:               byJob,
-		BySig:               bySig,
-		ByBugzillaComponent: byBugzillaComponent,
-
+		Release:            a.Release,
+		All:                byAll,
+		ByPlatform:         byPlatform,
+		ByJob:              byJob,
+		BySig:              bySig,
 		FailureGroups:      filteredFailureGroups,
 		JobPassRate:        jobPassRate,
 		Timestamp:          a.LastUpdateTime,
@@ -853,13 +847,12 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -978,13 +971,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: opt,
 		RawData: RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		},
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
@@ -999,13 +991,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: &optCopy,
 		RawData: RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+			ByAll:       make(map[string]util.AggregateTestResult),
+			ByJob:       make(map[string]util.AggregateTestResult),
+			ByPlatform:  make(map[string]util.AggregateTestResult),
+			BySig:       make(map[string]util.AggregateTestResult),
+			JobRuns:     make(map[string]util.JobRunResult),
+			BugFailures: make(map[string]util.Bug),
 		},
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
@@ -1103,13 +1094,12 @@ func (o *Options) Run() error {
 		analyzer := Analyzer{
 			Options: o,
 			RawData: RawData{
-				ByAll:               make(map[string]util.AggregateTestResult),
-				ByJob:               make(map[string]util.AggregateTestResult),
-				ByPlatform:          make(map[string]util.AggregateTestResult),
-				BySig:               make(map[string]util.AggregateTestResult),
-				ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-				JobRuns:             make(map[string]util.JobRunResult),
-				BugFailures:         make(map[string]util.Bug),
+				ByAll:       make(map[string]util.AggregateTestResult),
+				ByJob:       make(map[string]util.AggregateTestResult),
+				ByPlatform:  make(map[string]util.AggregateTestResult),
+				BySig:       make(map[string]util.AggregateTestResult),
+				JobRuns:     make(map[string]util.JobRunResult),
+				BugFailures: make(map[string]util.Bug),
 			},
 		}
 
@@ -1129,13 +1119,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: o,
 				RawData: RawData{
-					ByAll:               make(map[string]util.AggregateTestResult),
-					ByJob:               make(map[string]util.AggregateTestResult),
-					ByPlatform:          make(map[string]util.AggregateTestResult),
-					BySig:               make(map[string]util.AggregateTestResult),
-					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-					JobRuns:             make(map[string]util.JobRunResult),
-					BugFailures:         make(map[string]util.Bug),
+					ByAll:       make(map[string]util.AggregateTestResult),
+					ByJob:       make(map[string]util.AggregateTestResult),
+					ByPlatform:  make(map[string]util.AggregateTestResult),
+					BySig:       make(map[string]util.AggregateTestResult),
+					JobRuns:     make(map[string]util.JobRunResult),
+					BugFailures: make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
@@ -1151,13 +1140,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: &optCopy,
 				RawData: RawData{
-					ByAll:               make(map[string]util.AggregateTestResult),
-					ByJob:               make(map[string]util.AggregateTestResult),
-					ByPlatform:          make(map[string]util.AggregateTestResult),
-					BySig:               make(map[string]util.AggregateTestResult),
-					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-					JobRuns:             make(map[string]util.JobRunResult),
-					BugFailures:         make(map[string]util.Bug),
+					ByAll:       make(map[string]util.AggregateTestResult),
+					ByJob:       make(map[string]util.AggregateTestResult),
+					ByPlatform:  make(map[string]util.AggregateTestResult),
+					BySig:       make(map[string]util.AggregateTestResult),
+					JobRuns:     make(map[string]util.JobRunResult),
+					BugFailures: make(map[string]util.Bug),
 				},
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
