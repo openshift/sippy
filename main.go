@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgrid"
 	"github.com/openshift/sippy/pkg/util"
@@ -37,7 +39,7 @@ type RawData struct {
 	BySig       map[string]util.AggregateTestResult
 	JobRuns     map[string]util.JobRunResult
 	JobDetails  []testgrid.JobDetails
-	BugFailures map[string]util.Bug
+	BugFailures map[string]bugsv1.Bug
 }
 
 type Analyzer struct {
@@ -46,6 +48,8 @@ type Analyzer struct {
 	Report         util.TestReport
 	LastUpdateTime time.Time
 	Release        string
+
+	BugCache buganalysis.BugCache
 }
 
 func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid.JobSummary, time.Time, error) {
@@ -348,48 +352,6 @@ func getFailedTestNamesFromJobRuns(jobRuns map[string]util.JobRunResult) sets.St
 	return failedTestNames
 }
 
-// updates a global variable with the bug mapping based on current failures.
-func updateGlobalBugCache(failedTestNames sets.String) {
-	batchCount := 0
-	batchNames := []string{}
-	c := 0
-	for t := range failedTestNames {
-		if _, found := util.TestBugCache[t]; found {
-			c++
-			continue
-		}
-		c++
-		batchNames = append(batchNames, t)
-		// we're going to lookup bugs for this test, so put an entry into the map.
-		// if we find a bug for this test, the entry will be replaced with the actual
-		// array of bugs.  if not, this serves as a placeholder so we know not to look
-		// it up again in the future.
-		util.TestBugCache[t] = []util.Bug{}
-		batchCount++
-
-		if batchCount > 50 {
-			r, err := util.FindBugs(batchNames)
-			for k, v := range r {
-				util.TestBugCache[k] = v
-			}
-			if err != nil {
-				util.TestBugCacheErr = err
-			}
-			batchNames = []string{}
-			batchCount = 0
-		}
-	}
-	if batchCount > 0 {
-		r, err := util.FindBugs(batchNames)
-		for k, v := range r {
-			util.TestBugCache[k] = v
-		}
-		if err != nil {
-			util.TestBugCacheErr = err
-		}
-	}
-}
-
 func (a *Analyzer) analyze() {
 	for _, details := range a.RawData.JobDetails {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
@@ -400,30 +362,25 @@ func (a *Analyzer) analyze() {
 	a.createSyntheticTests()
 
 	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRuns)
-	updateGlobalBugCache(failedTestNamesAcrossAllJobRuns)
+	a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
 
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
 	// and attribute the number of times the test failed+flaked to that bug(s)
-	for t := range failedTestNamesAcrossAllJobRuns {
-		if util.IgnoreTestRegex.MatchString(t) {
+	for testName := range failedTestNamesAcrossAllJobRuns {
+		if util.IgnoreTestRegex.MatchString(testName) {
 			continue
 		}
-		if result, found := a.RawData.ByAll["all"].TestResults[t]; found {
-			bugs := util.TestBugCache[t]
+		if result, found := a.RawData.ByAll["all"].TestResults[testName]; found {
+			bugs := a.BugCache.ListBugs(a.Release, "", testName)
 			for _, bug := range bugs {
-				for _, r := range bug.TargetRelease {
-					if strings.HasPrefix(r, a.Release) {
-						if b, found := a.RawData.BugFailures[bug.Url]; found {
-							b.FailureCount += result.Failures
-							b.FlakeCount += result.Flakes
-							a.RawData.BugFailures[bug.Url] = b
-						} else {
-							bug.FailureCount = result.Failures
-							bug.FlakeCount = result.Flakes
-							a.RawData.BugFailures[bug.Url] = bug
-						}
-						break
-					}
+				if b, found := a.RawData.BugFailures[bug.Url]; found {
+					b.FailureCount += result.Failures
+					b.FlakeCount += result.Flakes
+					a.RawData.BugFailures[bug.Url] = b
+				} else {
+					bug.FailureCount = result.Failures
+					bug.FlakeCount = result.Flakes
+					a.RawData.BugFailures[bug.Url] = bug
 				}
 			}
 		}
@@ -433,25 +390,16 @@ func (a *Analyzer) analyze() {
 	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
 	// would have passed if all our bugs were fixed.
 	for runIdx, jobrun := range a.RawData.JobRuns {
-		for _, t := range jobrun.FailedTestNames {
-			if util.IgnoreTestRegex.MatchString(t) {
+		for _, testName := range jobrun.FailedTestNames {
+			if util.IgnoreTestRegex.MatchString(testName) {
 				// note, if a job run has only ignored tests (such as because setup failed) it will be counted
 				// as "HasUnknownFailures=false", meaning it will count as a success in the "pass rate including
 				// known failures" percentage.  This is good because it ignores infrastructure issues, it is bad
 				// because if the install flat out fails, the run will be counted as successful in that metric.
 				continue
 			}
-			bugs := util.TestBugCache[t]
-			isKnownFailure := false
-			for _, bug := range bugs {
-				for _, r := range bug.TargetRelease {
-					if strings.HasPrefix(r, a.Release) {
-						isKnownFailure = true
-						break
-					}
-				}
-
-			}
+			bugs := a.BugCache.ListBugs(a.Release, "", testName)
+			isKnownFailure := len(bugs) > 0
 			if !isKnownFailure {
 				jobrun.HasUnknownFailures = true
 				a.RawData.JobRuns[runIdx] = jobrun
@@ -571,7 +519,7 @@ func downloadData(releases []string, filter string, storagePath string) {
 }
 
 // returns top ten failing tests w/o a bug and top ten with a bug(in that order)
-func getTopFailingTests(result map[string]util.SortedAggregateTestResult, release string) ([]*util.TestResult, []*util.TestResult) {
+func getTopFailingTests(result map[string]util.SortedAggregateTestResult, release string, bugCache buganalysis.BugCache) ([]*util.TestResult, []*util.TestResult) {
 	topTestsWithoutBug := []*util.TestResult{}
 	topTestsWithBug := []*util.TestResult{}
 	all := result["all"]
@@ -586,15 +534,7 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 			continue
 		}
 
-		bugs := util.TestBugCache[test.Name]
-		for _, bug := range bugs {
-			for _, r := range bug.TargetRelease {
-				if strings.HasPrefix(r, release) {
-					test.BugList = append(test.BugList, bug)
-					break
-				}
-			}
-		}
+		test.BugList = bugCache.ListBugs(release, "", test.Name)
 		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
 		test.SearchLink = testLink
@@ -640,7 +580,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	}
 
 	if !prev {
-		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release)
+		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release, a.BugCache)
 		a.Report.TopFailingTestsWithBug = topFailingTestsWithBug
 		a.Report.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
 	}
@@ -836,14 +776,14 @@ func (a *Analyzer) printTextReport() {
 }
 
 type Server struct {
+	bugCache  buganalysis.BugCache
 	analyzers map[string]Analyzer
 	options   *Options
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
-	util.TestBugCache = make(map[string][]util.Bug)
-	util.TestBugCacheErr = nil
+	s.bugCache.Clear()
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
@@ -852,7 +792,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:  make(map[string]util.AggregateTestResult),
 			BySig:       make(map[string]util.AggregateTestResult),
 			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			BugFailures: make(map[string]bugsv1.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -867,13 +807,12 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-
 	release := req.URL.Query().Get("release")
 	if _, ok := s.analyzers[release]; !ok {
 		html.WriteLandingPage(w, s.options.Releases)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	html.PrintHtmlReport(w, req, s.analyzers[release].BugCache, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
@@ -976,8 +915,9 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:  make(map[string]util.AggregateTestResult),
 			BySig:       make(map[string]util.AggregateTestResult),
 			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			BugFailures: make(map[string]bugsv1.Bug),
 		},
+		BugCache: s.bugCache,
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
 	analyzer.analyze()
@@ -996,14 +936,15 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:  make(map[string]util.AggregateTestResult),
 			BySig:       make(map[string]util.AggregateTestResult),
 			JobRuns:     make(map[string]util.JobRunResult),
-			BugFailures: make(map[string]util.Bug),
+			BugFailures: make(map[string]bugsv1.Bug),
 		},
+		BugCache: s.bugCache,
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
 	prevAnalyzer.analyze()
 	prevAnalyzer.prepareTestReport(true)
 
-	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
+	html.PrintHtmlReport(w, req, analyzer.BugCache, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
 
 }
 
@@ -1099,8 +1040,9 @@ func (o *Options) Run() error {
 				ByPlatform:  make(map[string]util.AggregateTestResult),
 				BySig:       make(map[string]util.AggregateTestResult),
 				JobRuns:     make(map[string]util.JobRunResult),
-				BugFailures: make(map[string]util.Bug),
+				BugFailures: make(map[string]bugsv1.Bug),
 			},
+			BugCache: buganalysis.NewBugCache(),
 		}
 
 		analyzer.loadData(o.Releases, o.LocalData)
@@ -1110,6 +1052,7 @@ func (o *Options) Run() error {
 
 	if o.Server {
 		server := Server{
+			bugCache:  buganalysis.NewBugCache(),
 			analyzers: make(map[string]Analyzer),
 			options:   o,
 		}
@@ -1124,8 +1067,9 @@ func (o *Options) Run() error {
 					ByPlatform:  make(map[string]util.AggregateTestResult),
 					BySig:       make(map[string]util.AggregateTestResult),
 					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					BugFailures: make(map[string]bugsv1.Bug),
 				},
+				BugCache: server.bugCache,
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
@@ -1145,8 +1089,9 @@ func (o *Options) Run() error {
 					ByPlatform:  make(map[string]util.AggregateTestResult),
 					BySig:       make(map[string]util.AggregateTestResult),
 					JobRuns:     make(map[string]util.JobRunResult),
-					BugFailures: make(map[string]util.Bug),
+					BugFailures: make(map[string]bugsv1.Bug),
 				},
+				BugCache: server.bugCache,
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()

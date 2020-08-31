@@ -1,14 +1,12 @@
 package util
 
 import (
-	"fmt"
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+
 	//	"io/ioutil"
-	"encoding/json"
+
 	"math"
-	"net/http"
-	"net/url"
 	"regexp"
-	"regexp/syntax"
 	"sort"
 
 	//	"strings"
@@ -47,10 +45,6 @@ var (
 	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 	// Tests we are already tracking an issue for
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
-
-	// TestBugCache is a map of test names to known bugs tied to those tests
-	TestBugCache    map[string][]Bug = make(map[string][]Bug)
-	TestBugCacheErr error
 )
 
 type TestReport struct {
@@ -64,7 +58,7 @@ type TestReport struct {
 	Timestamp                 time.Time                            `json:"timestamp"`
 	TopFailingTestsWithBug    []*TestResult                        `json:"topFailingTestsWithBug"`
 	TopFailingTestsWithoutBug []*TestResult                        `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []Bug                                `json:"bugsByFailureCount"`
+	BugsByFailureCount        []bugsv1.Bug                         `json:"bugsByFailureCount"`
 }
 
 type SortedAggregateTestResult struct {
@@ -82,13 +76,13 @@ type AggregateTestResult struct {
 }
 
 type TestResult struct {
-	Name           string  `json:"name"`
-	Successes      int     `json:"successes"`
-	Failures       int     `json:"failures"`
-	Flakes         int     `json:"flakes"`
-	PassPercentage float64 `json:"passPercentage"`
-	BugList        []Bug   `json:"BugList"`
-	SearchLink     string  `json:"searchLink"`
+	Name           string       `json:"name"`
+	Successes      int          `json:"successes"`
+	Failures       int          `json:"failures"`
+	Flakes         int          `json:"flakes"`
+	PassPercentage float64      `json:"passPercentage"`
+	BugList        []bugsv1.Bug `json:"BugList"`
+	SearchLink     string       `json:"searchLink"`
 }
 
 type JobRunResult struct {
@@ -131,33 +125,6 @@ type JobResult struct {
 	PassPercentage                  float64 `json:"PassPercentage"`
 	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
 	TestGridUrl                     string  `json:"TestGridUrl"`
-}
-
-type Search struct {
-	Results Results `json:"results"`
-}
-
-// search string is the key
-type Results map[string]Result
-
-type Result struct {
-	Matches []Match `json:"matches"`
-}
-
-type Match struct {
-	Bug Bug `json:"bugInfo"`
-}
-
-type Bug struct {
-	ID             int64     `json:"id"`
-	Status         string    `json:"status"`
-	LastChangeTime time.Time `json:"last_change_time"`
-	Summary        string    `json:"summary"`
-	TargetRelease  []string  `json:"target_release"`
-	Component      []string  `json:"component"`
-	Url            string    `json:"url"`
-	FailureCount   int       `json:"failureCount,omitempty"`
-	FlakeCount     int       `json:"flakeCount,omitempty"`
 }
 
 func GetPrevTest(test string, testResults []TestResult) *TestResult {
@@ -255,8 +222,8 @@ func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, m
 	return sorted
 }
 
-func GenerateSortedBugFailureCounts(bugs map[string]Bug) []Bug {
-	sortedBugs := []Bug{}
+func GenerateSortedBugFailureCounts(bugs map[string]bugsv1.Bug) []bugsv1.Bug {
+	sortedBugs := []bugsv1.Bug{}
 	for _, bug := range bugs {
 		sortedBugs = append(sortedBugs, bug)
 	}
@@ -430,58 +397,6 @@ func FindPlatform(name string) []string {
 		return []string{"unknown platform"}
 	}
 	return platforms
-}
-
-func FindBugs(testNames []string) (map[string][]Bug, error) {
-	searchResults := make(map[string][]Bug)
-
-	v := url.Values{}
-	v.Set("type", "bug")
-	v.Set("context", "-1")
-	for _, testName := range testNames {
-		testName = regexp.QuoteMeta(testName)
-		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
-		v.Add("search", testName)
-	}
-
-	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
-	searchUrl := "https://search.ci.openshift.org/v2/search"
-	resp, err := http.PostForm(searchUrl, v)
-	if err != nil {
-		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchUrl, resp.Status)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-
-	search := Search{}
-	err = json.NewDecoder(resp.Body).Decode(&search)
-
-	for search, result := range search.Results {
-		// reverse the regex escaping we did earlier, so we get back the pure test name string.
-		r, _ := syntax.Parse(search, 0)
-		search = string(r.Rune)
-		for _, match := range result.Matches {
-			bug := match.Bug
-			bug.Url = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
-
-			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
-			// (or the bug was incorrectly verified and needs to be revisited)
-			if bug.Status == "VERIFIED" {
-				if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
-					continue
-				}
-			}
-			searchResults[search] = append(searchResults[search], bug)
-		}
-	}
-
-	klog.V(2).Infof("Found bugs: %v", searchResults)
-	return searchResults, nil
 }
 
 func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {

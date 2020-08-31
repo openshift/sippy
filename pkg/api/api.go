@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
@@ -55,7 +56,7 @@ type FailingTestBug struct {
 	Name      string              `json:"name"`
 	Url       string              `json:"url"`
 	PassRates map[string]PassRate `json:"passRates"`
-	Bugs      []util.Bug          `json:"bugs,omitempty"`
+	Bugs      []bugsv1.Bug        `json:"bugs,omitempty"`
 }
 
 // JobSummaryPlatform describes a single platform and its associated jobs, their pass rates, and failing tests
