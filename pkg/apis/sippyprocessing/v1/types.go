@@ -22,14 +22,18 @@ type TestReport struct {
 	TopFailingTestsWithBug    []*TestResult  `json:"topFailingTestsWithBug"`
 	TopFailingTestsWithoutBug []*TestResult  `json:"topFailingTestsWithoutBug"`
 	BugsByFailureCount        []bugsv1.Bug   `json:"bugsByFailureCount"`
+
+	// JobFailuresByBugzillaComponent are keyed by bugzilla components
+	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
 }
 
 // SortedAggregateTestsResult
 type SortedAggregateTestsResult struct {
-	Successes          int          `json:"successes"`
-	Failures           int          `json:"failures"`
-	TestPassPercentage float64      `json:"testPassPercentage"`
-	TestResults        []TestResult `json:"results"`
+	Successes          int     `json:"successes"`
+	Failures           int     `json:"failures"`
+	TestPassPercentage float64 `json:"testPassPercentage"`
+	// TestResults holds the values for individual runs of this test sorted by.....
+	TestResults []TestResult `json:"results"`
 }
 
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
@@ -69,4 +73,28 @@ type JobResult struct {
 	PassPercentage                  float64 `json:"PassPercentage"`
 	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
 	TestGridUrl                     string  `json:"TestGridUrl"`
+}
+
+type SortedBugzillaComponentResult struct {
+	Name string `json:"name"`
+
+	JobsFailed []BugzillaJobResult `json:"jobsFailed"`
+}
+
+// BugzillaJobResult is a summary of bugzilla component/job tuple.
+type BugzillaJobResult struct {
+	JobName           string `json:"jobName"`
+	BugzillaComponent string `json:"bugzillaComponent"`
+
+	// NumberOfJobRunsFailed is the number of job runs that had failures caused by this bugzilla component
+	NumberOfJobRunsFailed int `json:"numberOfJobRunsFailed"`
+	// This one is phrased as a failure percentage because we don't know a success percentage since we don't know how many times it actually ran
+	// we only know how many times its tests failed and how often the job ran.  This is more useful for some types of analysis anyway: "how often
+	// does a sig cause a job to fail".
+	FailPercentage float64 `json:"failPercentage"`
+	// TotalRuns is the number of runs this Job has run total.
+	TotalRuns int `json:"totalRuns"`
+
+	// Failures are a full list of the failures by this BZ component in the given job.
+	Failures []TestResult `json:"failures"`
 }

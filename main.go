@@ -199,14 +199,14 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, "operator install "):
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
 					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len("operator install "):],
+						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
 						State: testgridanalysisapi.Success,
 					})
-				case strings.HasPrefix(test.Name, "Operator upgrade "):
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len("Operator upgrade "):],
+						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
 						State: testgridanalysisapi.Success,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
@@ -236,14 +236,14 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case strings.HasPrefix(test.Name, "operator install "):
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
 					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len("operator install "):],
+						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
 						State: testgridanalysisapi.Failure,
 					})
-				case strings.HasPrefix(test.Name, "Operator upgrade "):
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len("Operator upgrade "):],
+						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
 						State: testgridanalysisapi.Failure,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
@@ -530,17 +530,19 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, a.BugCache, a.Release)
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobRunResults, byAll, a.BugCache, a.Release)
+	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRunResults, byJob)
 
 	a.Report = sippyprocessingv1.TestReport{
-		Release:            a.Release,
-		All:                byAll,
-		ByPlatform:         byPlatform,
-		ByJob:              byJob,
-		BySig:              bySig,
-		FailureGroups:      filteredFailureGroups,
-		JobPassRate:        jobPassRate,
-		Timestamp:          a.LastUpdateTime,
-		BugsByFailureCount: bugFailureCounts,
+		Release:                        a.Release,
+		All:                            byAll,
+		ByPlatform:                     byPlatform,
+		ByJob:                          byJob,
+		BySig:                          bySig,
+		FailureGroups:                  filteredFailureGroups,
+		JobPassRate:                    jobPassRate,
+		Timestamp:                      a.LastUpdateTime,
+		BugsByFailureCount:             bugFailureCounts,
+		JobFailuresByBugzillaComponent: bugzillaComponentResults,
 	}
 
 	if !prev {

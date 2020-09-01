@@ -60,6 +60,9 @@ type OperatorState struct {
 }
 
 const (
+	OperatorInstallPrefix = "operator install "
+	OperatorUpgradePrefix = "Operator upgrade "
+
 	InfrastructureTestName = `[sig-sippy] infrastructure should work`
 	InstallTestName        = `[sig-sippy] install should work`
 	UpgradeTestName        = `[sig-sippy] upgrade should work`
