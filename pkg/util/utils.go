@@ -8,12 +8,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/openshift/sippy/pkg/util/sets"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	rawdatav1 "github.com/openshift/sippy/pkg/apis/rawdata/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"k8s.io/klog"
 )
 
@@ -102,7 +101,7 @@ func Percent(success, failure int) float64 {
 }
 
 func SummarizeTestResults(
-	aggregateTestResult map[string]rawdatav1.AggregateTestsResult,
+	aggregateTestResult map[string]testgridanalysisapi.AggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
@@ -162,7 +161,7 @@ func SummarizeTestResults(
 }
 
 func GenerateSortedBugFailureCounts(
-	allJobRuns map[string]rawdatav1.RawJobRunResult,
+	allJobRuns map[string]testgridanalysisapi.RawJobRunResult,
 	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
@@ -204,7 +203,7 @@ func GenerateSortedBugFailureCounts(
 }
 
 func FilterFailureGroups(
-	rawJRRs map[string]rawdatav1.RawJobRunResult,
+	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
 	failureClusterThreshold int,
@@ -243,7 +242,7 @@ func FilterFailureGroups(
 }
 
 func areAllFailuresKnown(
-	rawJRR rawdatav1.RawJobRunResult,
+	rawJRR testgridanalysisapi.RawJobRunResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) bool {
@@ -263,7 +262,7 @@ func areAllFailuresKnown(
 }
 
 func SummarizeJobRunResults(
-	rawJRRs map[string]rawdatav1.RawJobRunResult,
+	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) []sippyprocessingv1.JobResult {
@@ -411,19 +410,19 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-func AddTestResult(categoryKey string, categories map[string]rawdatav1.AggregateTestsResult, testName string, passed, failed, flaked int) {
+func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
 	if !ok {
-		category = rawdatav1.AggregateTestsResult{
-			RawTestResults: make(map[string]rawdatav1.RawTestResult),
+		category = testgridanalysisapi.AggregateTestsResult{
+			RawTestResults: make(map[string]testgridanalysisapi.RawTestResult),
 		}
 	}
 
 	result, ok := category.RawTestResults[testName]
 	if !ok {
-		result = rawdatav1.RawTestResult{}
+		result = testgridanalysisapi.RawTestResult{}
 	}
 	result.Name = testName
 	result.Successes += passed
