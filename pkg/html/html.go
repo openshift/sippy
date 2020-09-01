@@ -9,6 +9,8 @@ import (
 	"strings"
 	"text/template"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
@@ -141,7 +143,7 @@ Data current as of: %s
 	`
 )
 
-func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult, endDay int) string {
+func summaryAcrossAllJobs(result, resultPrev map[string]v1.SortedAggregateTestResult, endDay int) string {
 
 	all := result["all"]
 	allPrev := resultPrev["all"]
@@ -165,7 +167,7 @@ func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTest
 	return s
 }
 
-func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay int) string {
+func failureGroups(failureGroups, failureGroupsPrev []v1.JobRunResult, endDay int) string {
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
@@ -191,7 +193,7 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	return s
 }
 
-func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int, release string) string {
+func summaryJobsByPlatform(report, reportPrev v1.TestReport, endDay, jobTestCount int, release string) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
@@ -336,7 +338,7 @@ func testToSearchURL(testName string) string {
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
-func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int, release string) string {
+func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*v1.TestResult, resultPrev map[string]v1.SortedAggregateTestResult, endDay int, release string) string {
 	allPrev := resultPrev["all"]
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -457,7 +459,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	return s
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) string {
+func summaryJobPassRatesByJobName(report, reportPrev v1.TestReport, endDay, jobTestCount int) string {
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -596,7 +598,7 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 	return s
 }
 
-func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string {
+func canaryTestFailures(result map[string]v1.SortedAggregateTestResult) string {
 	all := result["all"].TestResults
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -626,7 +628,7 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) string
 	s = s + "</table>"
 	return s
 }
-func failureGroupList(report util.TestReport) string {
+func failureGroupList(report v1.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
@@ -727,8 +729,8 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 }
 
 type TestReports struct {
-	Current      util.TestReport
-	Prev         util.TestReport
+	Current      v1.TestReport
+	Prev         v1.TestReport
 	EndDay       int
 	JobTestCount int
 	Release      string
@@ -746,7 +748,7 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport util.TestReport, endDay, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport v1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 

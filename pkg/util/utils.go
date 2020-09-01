@@ -2,6 +2,7 @@ package util
 
 import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 
 	//	"io/ioutil"
 
@@ -43,87 +44,7 @@ var (
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
 
-type TestReport struct {
-	Release                   string                               `json:"release"`
-	All                       map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform                map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob                     map[string]SortedAggregateTestResult `json:"byJob`
-	BySig                     map[string]SortedAggregateTestResult `json:"bySig`
-	FailureGroups             []JobRunResult                       `json:"failureGroups"`
-	JobPassRate               []JobResult                          `json:"jobPassRate"`
-	Timestamp                 time.Time                            `json:"timestamp"`
-	TopFailingTestsWithBug    []*TestResult                        `json:"topFailingTestsWithBug"`
-	TopFailingTestsWithoutBug []*TestResult                        `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []bugsv1.Bug                         `json:"bugsByFailureCount"`
-}
-
-type SortedAggregateTestResult struct {
-	Successes          int          `json:"successes"`
-	Failures           int          `json:"failures"`
-	TestPassPercentage float64      `json:"testPassPercentage"`
-	TestResults        []TestResult `json:"results"`
-}
-
-type AggregateTestResult struct {
-	Successes          int                   `json:"successes"`
-	Failures           int                   `json:"failures"`
-	TestPassPercentage float64               `json:"testPassPercentage"`
-	TestResults        map[string]TestResult `json:"results"`
-}
-
-type TestResult struct {
-	Name           string       `json:"name"`
-	Successes      int          `json:"successes"`
-	Failures       int          `json:"failures"`
-	Flakes         int          `json:"flakes"`
-	PassPercentage float64      `json:"passPercentage"`
-	BugList        []bugsv1.Bug `json:"BugList"`
-	SearchLink     string       `json:"searchLink"`
-}
-
-type JobRunResult struct {
-	Job                string   `json:"job"`
-	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"testGridJobUrl"`
-	TestFailures       int      `json:"testFailures"`
-	FailedTestNames    []string `json:"failedTestNames"`
-	Failed             bool     `json:"failed"`
-	HasUnknownFailures bool     `json:"hasUnknownFailures"`
-	Succeeded          bool     `json:"succeeded"`
-
-	// SetupStatus can be "", "Success", "Failure"
-	SetupStatus      string          `json:"setupStatus"`
-	InstallOperators []OperatorState `json:"installOperators"`
-	UpgradeOperators []OperatorState `json:"upgradeOperators"`
-}
-
-const (
-	InfrastructureTestName = `[sig-sippy] infrastructure should work`
-	InstallTestName        = `[sig-sippy] install should work`
-	UpgradeTestName        = `[sig-sippy] upgrade should work`
-
-	Success = "Success"
-	Failure = "Failure"
-)
-
-type OperatorState struct {
-	Name string `json:"name"`
-	// OperatorState can be "", "Success", "Failure"
-	State string `json:"state"`
-}
-
-type JobResult struct {
-	Name                            string  `json:"name"`
-	Platform                        string  `json:"platform"`
-	Failures                        int     `json:"failures"`
-	KnownFailures                   int     `json:"knownFailures"`
-	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"PassPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"TestGridUrl"`
-}
-
-func GetPrevTest(test string, testResults []TestResult) *TestResult {
+func GetPrevTest(test string, testResults []v1.TestResult) *v1.TestResult {
 	for _, v := range testResults {
 		if v.Name == test {
 			return &v
@@ -132,7 +53,7 @@ func GetPrevTest(test string, testResults []TestResult) *TestResult {
 	return nil
 }
 
-func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
+func GetPrevJob(job string, jobRunsByJob []v1.JobResult) *v1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v
@@ -141,7 +62,7 @@ func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
 	return nil
 }
 
-func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
+func GetPrevPlatform(platform string, jobsByPlatform []v1.JobResult) *v1.JobResult {
 	for _, v := range jobsByPlatform {
 		if v.Platform == platform {
 			return &v
@@ -152,7 +73,7 @@ func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
 
 // ComputeFailureGroupStats computes count, median, and average number of failuregroups
 // returns count, countPrev, median, medianPrev, avg, avgPrev
-func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []JobRunResult) (int, int, int, int, int, int) {
+func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []v1.JobRunResult) (int, int, int, int, int, int) {
 	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {
 		count += group.TestFailures
@@ -179,7 +100,7 @@ func Percent(success, failure int) float64 {
 	return float64(success) / float64(success+failure) * 100.0
 }
 
-func ComputePercentages(AggregateTestResults map[string]AggregateTestResult) {
+func ComputePercentages(AggregateTestResults map[string]v1.AggregateTestResult) {
 	for k, AggregateTestResult := range AggregateTestResults {
 		AggregateTestResult.TestPassPercentage = Percent(AggregateTestResult.Successes, AggregateTestResult.Failures)
 		for k2, r := range AggregateTestResult.TestResults {
@@ -190,11 +111,11 @@ func ComputePercentages(AggregateTestResults map[string]AggregateTestResult) {
 	}
 }
 
-func GenerateSortedAndFilteredResults(AggregateTestResult map[string]AggregateTestResult, minRuns int, successThreshold float64) map[string]SortedAggregateTestResult {
-	sorted := make(map[string]SortedAggregateTestResult)
+func GenerateSortedAndFilteredResults(AggregateTestResult map[string]v1.AggregateTestResult, minRuns int, successThreshold float64) map[string]v1.SortedAggregateTestResult {
+	sorted := make(map[string]v1.SortedAggregateTestResult)
 
 	for k, v := range AggregateTestResult {
-		sorted[k] = SortedAggregateTestResult{
+		sorted[k] = v1.SortedAggregateTestResult{
 			Failures:           v.Failures,
 			Successes:          v.Successes,
 			TestPassPercentage: v.TestPassPercentage,
@@ -235,8 +156,8 @@ func GenerateSortedBugFailureCounts(bugs map[string]bugsv1.Bug) []bugsv1.Bug {
 	return sortedBugs
 }
 
-func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold int) []JobRunResult {
-	filteredJrr := []JobRunResult{}
+func FilterFailureGroups(jrr map[string]v1.JobRunResult, failureClusterThreshold int) []v1.JobRunResult {
+	filteredJrr := []v1.JobRunResult{}
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr
@@ -255,13 +176,13 @@ func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold in
 	return filteredJrr
 }
 
-func ComputeJobPassRate(jrr map[string]JobRunResult) []JobResult {
-	jobsMap := make(map[string]JobResult)
+func ComputeJobPassRate(jrr map[string]v1.JobRunResult) []v1.JobResult {
+	jobsMap := make(map[string]v1.JobResult)
 
 	for _, run := range jrr {
 		job, ok := jobsMap[run.Job]
 		if !ok {
-			job = JobResult{
+			job = v1.JobResult{
 				Name:        run.Job,
 				TestGridUrl: run.TestGridJobUrl,
 			}
@@ -276,7 +197,7 @@ func ComputeJobPassRate(jrr map[string]JobRunResult) []JobResult {
 		}
 		jobsMap[run.Job] = job
 	}
-	jobs := []JobResult{}
+	jobs := []v1.JobResult{}
 	for _, job := range jobsMap {
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
@@ -400,13 +321,13 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {
+func AddTestResult(categoryKey string, categories map[string]v1.AggregateTestResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
 	if !ok {
-		category = AggregateTestResult{
-			TestResults: make(map[string]TestResult),
+		category = v1.AggregateTestResult{
+			TestResults: make(map[string]v1.TestResult),
 		}
 	}
 
@@ -415,7 +336,7 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 
 	result, ok := category.TestResults[testName]
 	if !ok {
-		result = TestResult{}
+		result = v1.TestResult{}
 	}
 	result.Name = testName
 	result.Successes += passed
@@ -427,9 +348,9 @@ func AddTestResult(categoryKey string, categories map[string]AggregateTestResult
 	categories[categoryKey] = category
 }
 
-func SummarizeJobsByPlatform(report TestReport) []JobResult {
-	jobRunsByPlatform := make(map[string]JobResult)
-	platformResults := []JobResult{}
+func SummarizeJobsByPlatform(report v1.TestReport) []v1.JobResult {
+	jobRunsByPlatform := make(map[string]v1.JobResult)
+	platformResults := []v1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		platforms := FindPlatform(job.Name)
@@ -456,9 +377,9 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 	return platformResults
 }
 
-func SummarizeJobsByName(report TestReport) []JobResult {
-	jobRunsByName := make(map[string]JobResult)
-	jobResults := []JobResult{}
+func SummarizeJobsByName(report v1.TestReport) []v1.JobResult {
+	jobRunsByName := make(map[string]v1.JobResult)
+	jobResults := []v1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		j := jobRunsByName[job.Name]
