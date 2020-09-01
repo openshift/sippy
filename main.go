@@ -34,13 +34,14 @@ var (
 )
 
 type RawData struct {
-	ByAll       map[string]rawdatav1.AggregateTestsResult
-	ByJob       map[string]rawdatav1.AggregateTestsResult
-	ByPlatform  map[string]rawdatav1.AggregateTestsResult
-	BySig       map[string]rawdatav1.AggregateTestsResult
-	JobRuns     map[string]sippyprocessingv1.JobRunResult
-	JobDetails  []testgridv1.JobDetails
-	BugFailures map[string]bugsv1.Bug
+	ByAll      map[string]rawdatav1.AggregateTestsResult
+	ByJob      map[string]rawdatav1.AggregateTestsResult
+	ByPlatform map[string]rawdatav1.AggregateTestsResult
+	BySig      map[string]rawdatav1.AggregateTestsResult
+	// JobRunResults is a map keyed by job URL point to results for an individual JobRun
+	JobRunResults map[string]rawdatav1.RawJobRunResult
+	JobDetails    []testgridv1.JobDetails
+	BugFailures   map[string]bugsv1.Bug
 }
 
 type Analyzer struct {
@@ -196,9 +197,9 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 					flaked++
 				}
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := a.RawData.JobRunResults[joburl]
 				if !ok {
-					jrr = sippyprocessingv1.JobRunResult{
+					jrr = rawdatav1.RawJobRunResult{
 						Job:            job.Name,
 						Url:            joburl,
 						TestGridJobUrl: job.TestGridUrl,
@@ -208,27 +209,27 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 				case test.Name == "Overall":
 					jrr.Succeeded = true
 				case strings.HasPrefix(test.Name, "operator install "):
-					jrr.InstallOperators = append(jrr.InstallOperators, sippyprocessingv1.OperatorState{
+					jrr.InstallOperators = append(jrr.InstallOperators, rawdatav1.OperatorState{
 						Name:  test.Name[len("operator install "):],
-						State: sippyprocessingv1.Success,
+						State: rawdatav1.Success,
 					})
 				case strings.HasPrefix(test.Name, "Operator upgrade "):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, sippyprocessingv1.OperatorState{
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, rawdatav1.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
-						State: sippyprocessingv1.Success,
+						State: rawdatav1.Success,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = sippyprocessingv1.Success
+					jrr.SetupStatus = rawdatav1.Success
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				a.RawData.JobRunResults[joburl] = jrr
 			}
 		case 12: // failure
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := a.RawData.JobRunResults[joburl]
 				if !ok {
-					jrr = sippyprocessingv1.JobRunResult{
+					jrr = rawdatav1.RawJobRunResult{
 						Job:            job.Name,
 						Url:            joburl,
 						TestGridJobUrl: job.TestGridUrl,
@@ -245,19 +246,19 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 				case test.Name == "Overall":
 					jrr.Failed = true
 				case strings.HasPrefix(test.Name, "operator install "):
-					jrr.InstallOperators = append(jrr.InstallOperators, sippyprocessingv1.OperatorState{
+					jrr.InstallOperators = append(jrr.InstallOperators, rawdatav1.OperatorState{
 						Name:  test.Name[len("operator install "):],
-						State: sippyprocessingv1.Failure,
+						State: rawdatav1.Failure,
 					})
 				case strings.HasPrefix(test.Name, "Operator upgrade "):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, sippyprocessingv1.OperatorState{
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, rawdatav1.OperatorState{
 						Name:  test.Name[len("Operator upgrade "):],
-						State: sippyprocessingv1.Failure,
+						State: rawdatav1.Failure,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = sippyprocessingv1.Failure
+					jrr.SetupStatus = rawdatav1.Failure
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				a.RawData.JobRunResults[joburl] = jrr
 			}
 		}
 		col += remaining
@@ -302,55 +303,55 @@ func (a *Analyzer) createSyntheticTests() {
 		pass int
 		fail int
 	}
-	for jrrKey, jrr := range a.RawData.JobRuns {
+	for jrrKey, jrr := range a.RawData.JobRunResults {
 		platforms := util.FindPlatform(jrr.Job)
 		isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 		syntheticTests := map[string]*synthenticTestResult{
-			sippyprocessingv1.InstallTestName:        &synthenticTestResult{name: sippyprocessingv1.InstallTestName},
-			sippyprocessingv1.UpgradeTestName:        &synthenticTestResult{name: sippyprocessingv1.UpgradeTestName},
-			sippyprocessingv1.InfrastructureTestName: &synthenticTestResult{name: sippyprocessingv1.InfrastructureTestName},
+			rawdatav1.InstallTestName:        &synthenticTestResult{name: rawdatav1.InstallTestName},
+			rawdatav1.UpgradeTestName:        &synthenticTestResult{name: rawdatav1.UpgradeTestName},
+			rawdatav1.InfrastructureTestName: &synthenticTestResult{name: rawdatav1.InfrastructureTestName},
 		}
 
 		installFailed := false
 		for _, operator := range jrr.InstallOperators {
-			if operator.State == sippyprocessingv1.Failure {
+			if operator.State == rawdatav1.Failure {
 				installFailed = true
 				break
 			}
 		}
 		upgradeFailed := false
 		for _, operator := range jrr.UpgradeOperators {
-			if operator.State == sippyprocessingv1.Failure {
+			if operator.State == rawdatav1.Failure {
 				upgradeFailed = true
 				break
 			}
 		}
-		setupFailed := jrr.SetupStatus != sippyprocessingv1.Success
+		setupFailed := jrr.SetupStatus != rawdatav1.Success
 
 		if installFailed {
 			jrr.TestFailures++
-			jrr.FailedTestNames = append(jrr.FailedTestNames, sippyprocessingv1.InstallTestName)
-			syntheticTests[sippyprocessingv1.InstallTestName].fail = 1
+			jrr.FailedTestNames = append(jrr.FailedTestNames, rawdatav1.InstallTestName)
+			syntheticTests[rawdatav1.InstallTestName].fail = 1
 		} else {
 			if !setupFailed { // this will be an undercount, but we only want to count installs that actually worked.
-				syntheticTests[sippyprocessingv1.InstallTestName].pass = 1
+				syntheticTests[rawdatav1.InstallTestName].pass = 1
 			}
 		}
 		if setupFailed && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
 			jrr.TestFailures++
-			jrr.FailedTestNames = append(jrr.FailedTestNames, sippyprocessingv1.InfrastructureTestName)
-			syntheticTests[sippyprocessingv1.InfrastructureTestName].fail = 1
+			jrr.FailedTestNames = append(jrr.FailedTestNames, rawdatav1.InfrastructureTestName)
+			syntheticTests[rawdatav1.InfrastructureTestName].fail = 1
 		} else {
-			syntheticTests[sippyprocessingv1.InfrastructureTestName].pass = 1
+			syntheticTests[rawdatav1.InfrastructureTestName].pass = 1
 		}
 		if isUpgrade && !setupFailed && !installFailed { // only record upgrade status if we were able to attempt the upgrade
 			if upgradeFailed || len(jrr.UpgradeOperators) == 0 {
 				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, sippyprocessingv1.UpgradeTestName)
-				syntheticTests[sippyprocessingv1.UpgradeTestName].fail = 1
+				jrr.FailedTestNames = append(jrr.FailedTestNames, rawdatav1.UpgradeTestName)
+				syntheticTests[rawdatav1.UpgradeTestName].fail = 1
 			} else {
-				syntheticTests[sippyprocessingv1.UpgradeTestName].pass = 1
+				syntheticTests[rawdatav1.UpgradeTestName].pass = 1
 			}
 		}
 
@@ -363,11 +364,11 @@ func (a *Analyzer) createSyntheticTests() {
 			//util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 		}
 
-		a.RawData.JobRuns[jrrKey] = jrr
+		a.RawData.JobRunResults[jrrKey] = jrr
 	}
 }
 
-func getFailedTestNamesFromJobRuns(jobRuns map[string]sippyprocessingv1.JobRunResult) sets.String {
+func getFailedTestNamesFromJobRuns(jobRuns map[string]rawdatav1.RawJobRunResult) sets.String {
 	failedTestNames := sets.NewString()
 	for _, jobrun := range jobRuns {
 		failedTestNames.Insert(jobrun.FailedTestNames...)
@@ -385,7 +386,7 @@ func (a *Analyzer) analyze() {
 	a.createSyntheticTests()
 
 	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
-	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRuns)
+	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRunResults)
 	err := a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
 	if err != nil {
 		// TODO find a better way to expose this
@@ -408,21 +409,6 @@ func (a *Analyzer) analyze() {
 					a.RawData.BugFailures[bug.Url] = bug
 				}
 			}
-		}
-	}
-
-	// for every job run, check if all the test failures in the run can be attributed to
-	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
-	// would have passed if all our bugs were fixed.
-	for runIdx, jobrun := range a.RawData.JobRuns {
-		for _, testName := range jobrun.FailedTestNames {
-			bugs := a.BugCache.ListBugs(a.Release, "", testName)
-			isKnownFailure := len(bugs) > 0
-			if !isKnownFailure {
-				jobrun.HasUnknownFailures = true
-				a.RawData.JobRuns[runIdx] = jobrun
-			}
-
 		}
 	}
 
@@ -568,8 +554,8 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	byJob := util.SummarizeTestResults(a.RawData.ByJob, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 	bySig := util.SummarizeTestResults(a.RawData.BySig, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
-	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
-	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
+	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRunResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
+	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, a.BugCache, a.Release)
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
 
@@ -793,12 +779,12 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = RawData{
-			ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-			BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-			JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-			BugFailures: make(map[string]bugsv1.Bug),
+			ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+			BugFailures:   make(map[string]bugsv1.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -916,12 +902,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: opt,
 		RawData: RawData{
-			ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-			BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-			JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-			BugFailures: make(map[string]bugsv1.Bug),
+			ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+			BugFailures:   make(map[string]bugsv1.Bug),
 		},
 		BugCache: s.bugCache,
 	}
@@ -937,12 +923,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Release: release,
 		Options: &optCopy,
 		RawData: RawData{
-			ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-			ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-			BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-			JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-			BugFailures: make(map[string]bugsv1.Bug),
+			ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+			BugFailures:   make(map[string]bugsv1.Bug),
 		},
 		BugCache: s.bugCache,
 	}
@@ -1041,12 +1027,12 @@ func (o *Options) Run() error {
 		analyzer := Analyzer{
 			Options: o,
 			RawData: RawData{
-				ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-				ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-				ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-				BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-				JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-				BugFailures: make(map[string]bugsv1.Bug),
+				ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+				ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+				ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+				BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+				JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+				BugFailures:   make(map[string]bugsv1.Bug),
 			},
 			BugCache: buganalysis.NewBugCache(),
 		}
@@ -1068,12 +1054,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: o,
 				RawData: RawData{
-					ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-					ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-					ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-					BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-					JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-					BugFailures: make(map[string]bugsv1.Bug),
+					ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+					ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+					ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+					BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+					JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+					BugFailures:   make(map[string]bugsv1.Bug),
 				},
 				BugCache: server.bugCache,
 			}
@@ -1090,12 +1076,12 @@ func (o *Options) Run() error {
 				Release: release,
 				Options: &optCopy,
 				RawData: RawData{
-					ByAll:       make(map[string]rawdatav1.AggregateTestsResult),
-					ByJob:       make(map[string]rawdatav1.AggregateTestsResult),
-					ByPlatform:  make(map[string]rawdatav1.AggregateTestsResult),
-					BySig:       make(map[string]rawdatav1.AggregateTestsResult),
-					JobRuns:     make(map[string]sippyprocessingv1.JobRunResult),
-					BugFailures: make(map[string]bugsv1.Bug),
+					ByAll:         make(map[string]rawdatav1.AggregateTestsResult),
+					ByJob:         make(map[string]rawdatav1.AggregateTestsResult),
+					ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
+					BySig:         make(map[string]rawdatav1.AggregateTestsResult),
+					JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
+					BugFailures:   make(map[string]bugsv1.Bug),
 				},
 				BugCache: server.bugCache,
 			}

@@ -171,16 +171,35 @@ func GenerateSortedBugFailureCounts(bugs map[string]bugsv1.Bug) []bugsv1.Bug {
 	return sortedBugs
 }
 
-func FilterFailureGroups(jrr map[string]sippyprocessingv1.JobRunResult, failureClusterThreshold int) []sippyprocessingv1.JobRunResult {
+func FilterFailureGroups(
+	rawJRRs map[string]rawdatav1.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+	failureClusterThreshold int,
+) []sippyprocessingv1.JobRunResult {
 	filteredJrr := []sippyprocessingv1.JobRunResult{}
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr
 	}
-	for _, v := range jrr {
-		if v.TestFailures > failureClusterThreshold {
-			filteredJrr = append(filteredJrr, v)
+	for _, rawJRR := range rawJRRs {
+		if rawJRR.TestFailures < failureClusterThreshold {
+			continue
 		}
+
+		allFailuresKnown := areAllFailuresKnown(rawJRR, bugCache, release)
+		hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
+
+		filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
+			Job:                rawJRR.Job,
+			Url:                rawJRR.Url,
+			TestGridJobUrl:     rawJRR.TestGridJobUrl,
+			TestFailures:       rawJRR.TestFailures,
+			FailedTestNames:    rawJRR.FailedTestNames,
+			Failed:             rawJRR.Failed,
+			HasUnknownFailures: hasUnknownFailure,
+			Succeeded:          rawJRR.Succeeded,
+		})
 	}
 
 	// sort from highest to lowest
@@ -191,26 +210,50 @@ func FilterFailureGroups(jrr map[string]sippyprocessingv1.JobRunResult, failureC
 	return filteredJrr
 }
 
-func ComputeJobPassRate(jrr map[string]sippyprocessingv1.JobRunResult) []sippyprocessingv1.JobResult {
+func areAllFailuresKnown(
+	rawJRR rawdatav1.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question,
+) bool {
+	// check if all the test failures in the run can be attributed to
+	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
+	// would have passed if all our bugs were fixed.
+	allFailuresKnown := true
+	for _, testName := range rawJRR.FailedTestNames {
+		bugs := bugCache.ListBugs(release, "", testName)
+		isKnownFailure := len(bugs) > 0
+		if !isKnownFailure {
+			allFailuresKnown = false
+			break
+		}
+	}
+	return allFailuresKnown
+}
+
+func SummarizeJobRunResults(
+	rawJRRs map[string]rawdatav1.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question,
+) []sippyprocessingv1.JobResult {
 	jobsMap := make(map[string]sippyprocessingv1.JobResult)
 
-	for _, run := range jrr {
-		job, ok := jobsMap[run.Job]
+	for _, rawJRR := range rawJRRs {
+		job, ok := jobsMap[rawJRR.Job]
 		if !ok {
 			job = sippyprocessingv1.JobResult{
-				Name:        run.Job,
-				TestGridUrl: run.TestGridJobUrl,
+				Name:        rawJRR.Job,
+				TestGridUrl: rawJRR.TestGridJobUrl,
 			}
 		}
-		if run.Failed {
+		if rawJRR.Failed {
 			job.Failures++
-		} else if run.Succeeded {
+		} else if rawJRR.Succeeded {
 			job.Successes++
 		}
-		if run.Failed && !run.HasUnknownFailures {
+		if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
 			job.KnownFailures++
 		}
-		jobsMap[run.Job] = job
+		jobsMap[rawJRR.Job] = job
 	}
 	jobs := []sippyprocessingv1.JobResult{}
 	for _, job := range jobsMap {
