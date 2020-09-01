@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	rawdatav1 "github.com/openshift/sippy/pkg/apis/rawdata/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
@@ -40,8 +39,6 @@ type RawData struct {
 	BySig      map[string]rawdatav1.AggregateTestsResult
 	// JobRunResults is a map keyed by job URL point to results for an individual JobRun
 	JobRunResults map[string]rawdatav1.RawJobRunResult
-
-	BugFailures map[string]bugsv1.Bug
 }
 
 type Analyzer struct {
@@ -396,25 +393,6 @@ func (a *Analyzer) analyze() {
 		klog.Error(err)
 	}
 
-	// for every test that failed in some job run, look up the bug(s) associated w/ the test
-	// and attribute the number of times the test failed+flaked to that bug(s)
-	for testName := range failedTestNamesAcrossAllJobRuns {
-		if result, found := a.RawData.ByAll["all"].RawTestResults[testName]; found {
-			bugs := a.BugCache.ListBugs(a.Release, "", testName)
-			for _, bug := range bugs {
-				if b, found := a.RawData.BugFailures[bug.Url]; found {
-					b.FailureCount += result.Failures
-					b.FlakeCount += result.Flakes
-					a.RawData.BugFailures[bug.Url] = b
-				} else {
-					bug.FailureCount = result.Failures
-					bug.FlakeCount = result.Flakes
-					a.RawData.BugFailures[bug.Url] = bug
-				}
-			}
-		}
-	}
-
 	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
 	//  This is only known after the bugs are associated with the fail tests.
 }
@@ -560,7 +538,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRunResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
 	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, a.BugCache, a.Release)
 
-	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
+	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobRunResults, byAll, a.BugCache, a.Release)
 
 	a.Report = sippyprocessingv1.TestReport{
 		Release:            a.Release,
@@ -787,7 +765,6 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-			BugFailures:   make(map[string]bugsv1.Bug),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -910,7 +887,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-			BugFailures:   make(map[string]bugsv1.Bug),
 		},
 		BugCache: s.bugCache,
 	}
@@ -931,7 +907,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 			BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 			JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-			BugFailures:   make(map[string]bugsv1.Bug),
 		},
 		BugCache: s.bugCache,
 	}
@@ -1035,7 +1010,6 @@ func (o *Options) Run() error {
 				ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 				BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 				JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-				BugFailures:   make(map[string]bugsv1.Bug),
 			},
 			BugCache: buganalysis.NewBugCache(),
 		}
@@ -1062,7 +1036,6 @@ func (o *Options) Run() error {
 					ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 					BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 					JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-					BugFailures:   make(map[string]bugsv1.Bug),
 				},
 				BugCache: server.bugCache,
 			}
@@ -1084,7 +1057,6 @@ func (o *Options) Run() error {
 					ByPlatform:    make(map[string]rawdatav1.AggregateTestsResult),
 					BySig:         make(map[string]rawdatav1.AggregateTestsResult),
 					JobRunResults: make(map[string]rawdatav1.RawJobRunResult),
-					BugFailures:   make(map[string]bugsv1.Bug),
 				},
 				BugCache: server.bugCache,
 			}

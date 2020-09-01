@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/openshift/sippy/pkg/util/sets"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	rawdatav1 "github.com/openshift/sippy/pkg/apis/rawdata/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -159,7 +161,37 @@ func SummarizeTestResults(
 	return sorted
 }
 
-func GenerateSortedBugFailureCounts(bugs map[string]bugsv1.Bug) []bugsv1.Bug {
+func GenerateSortedBugFailureCounts(
+	allJobRuns map[string]rawdatav1.RawJobRunResult,
+	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+) []bugsv1.Bug {
+	bugs := map[string]bugsv1.Bug{}
+
+	failedTestNamesAcrossAllJobRuns := sets.NewString()
+	for _, jobrun := range allJobRuns {
+		failedTestNamesAcrossAllJobRuns.Insert(jobrun.FailedTestNames...)
+	}
+
+	// for every test that failed in some job run, look up the bug(s) associated w/ the test
+	// and attribute the number of times the test failed+flaked to that bug(s)
+	for _, testResult := range byAll["all"].TestResults {
+		testName := testResult.Name
+		bugList := bugCache.ListBugs(release, "", testName)
+		for _, bug := range bugList {
+			if b, found := bugs[bug.Url]; found {
+				b.FailureCount += testResult.Failures
+				b.FlakeCount += testResult.Flakes
+				bugs[bug.Url] = b
+			} else {
+				bug.FailureCount = testResult.Failures
+				bug.FlakeCount = testResult.Flakes
+				bugs[bug.Url] = bug
+			}
+		}
+	}
+
 	sortedBugs := []bugsv1.Bug{}
 	for _, bug := range bugs {
 		sortedBugs = append(sortedBugs, bug)
