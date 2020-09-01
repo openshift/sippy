@@ -40,11 +40,14 @@ type RawData struct {
 	BySig      map[string]rawdatav1.AggregateTestsResult
 	// JobRunResults is a map keyed by job URL point to results for an individual JobRun
 	JobRunResults map[string]rawdatav1.RawJobRunResult
-	JobDetails    []testgridv1.JobDetails
-	BugFailures   map[string]bugsv1.Bug
+
+	BugFailures map[string]bugsv1.Bug
 }
 
 type Analyzer struct {
+	// TestGridJobInfo contains the data consumed from testgrid
+	TestGridJobInfo []testgridv1.JobDetails
+
 	RawData        RawData
 	Options        *Options
 	Report         sippyprocessingv1.TestReport
@@ -377,7 +380,7 @@ func getFailedTestNamesFromJobRuns(jobRuns map[string]rawdatav1.RawJobRunResult)
 }
 
 func (a *Analyzer) analyze() {
-	for _, details := range a.RawData.JobDetails {
+	for _, details := range a.TestGridJobInfo {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
 		a.processJobDetails(details)
 	}
@@ -438,7 +441,7 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
 				}
 			}
 		}
@@ -458,7 +461,7 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
 				}
 			}
 		}
