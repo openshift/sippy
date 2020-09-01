@@ -9,9 +9,8 @@ import (
 	"strings"
 	"text/template"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
@@ -143,7 +142,7 @@ Data current as of: %s
 	`
 )
 
-func summaryAcrossAllJobs(result, resultPrev map[string]v1.SortedAggregateTestResult, endDay int) string {
+func summaryAcrossAllJobs(result, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int) string {
 
 	all := result["all"]
 	allPrev := resultPrev["all"]
@@ -167,7 +166,7 @@ func summaryAcrossAllJobs(result, resultPrev map[string]v1.SortedAggregateTestRe
 	return s
 }
 
-func failureGroups(failureGroups, failureGroupsPrev []v1.JobRunResult, endDay int) string {
+func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult, endDay int) string {
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
@@ -193,7 +192,7 @@ func failureGroups(failureGroups, failureGroupsPrev []v1.JobRunResult, endDay in
 	return s
 }
 
-func summaryJobsByPlatform(report, reportPrev v1.TestReport, endDay, jobTestCount int, release string) string {
+func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int, release string) string {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
@@ -338,7 +337,7 @@ func testToSearchURL(testName string) string {
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
-func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*v1.TestResult, resultPrev map[string]v1.SortedAggregateTestResult, endDay int, release string) string {
+func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*sippyprocessingv1.TestResult, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int, release string) string {
 	allPrev := resultPrev["all"]
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -459,7 +458,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	return s
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev v1.TestReport, endDay, jobTestCount int) string {
+func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int) string {
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
@@ -598,7 +597,7 @@ func summaryJobPassRatesByJobName(report, reportPrev v1.TestReport, endDay, jobT
 	return s
 }
 
-func canaryTestFailures(result map[string]v1.SortedAggregateTestResult) string {
+func canaryTestFailures(result map[string]sippyprocessingv1.SortedAggregateTestsResult) string {
 	all := result["all"].TestResults
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -628,7 +627,7 @@ func canaryTestFailures(result map[string]v1.SortedAggregateTestResult) string {
 	s = s + "</table>"
 	return s
 }
-func failureGroupList(report v1.TestReport) string {
+func failureGroupList(report sippyprocessingv1.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
@@ -729,8 +728,8 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 }
 
 type TestReports struct {
-	Current      v1.TestReport
-	Prev         v1.TestReport
+	Current      sippyprocessingv1.TestReport
+	Prev         sippyprocessingv1.TestReport
 	EndDay       int
 	JobTestCount int
 	Release      string
@@ -748,7 +747,7 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport v1.TestReport, endDay, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 

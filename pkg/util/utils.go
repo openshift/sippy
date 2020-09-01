@@ -1,18 +1,17 @@
 package util
 
 import (
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
-	//	"io/ioutil"
-
+	"fmt"
+	gohtml "html"
 	"math"
 	"regexp"
 	"sort"
-
-	//	"strings"
 	"time"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	rawdatav1 "github.com/openshift/sippy/pkg/apis/rawdata/v1"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/buganalysis"
 	"k8s.io/klog"
 )
 
@@ -44,7 +43,7 @@ var (
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
 
-func GetPrevTest(test string, testResults []v1.TestResult) *v1.TestResult {
+func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippyprocessingv1.TestResult {
 	for _, v := range testResults {
 		if v.Name == test {
 			return &v
@@ -53,7 +52,7 @@ func GetPrevTest(test string, testResults []v1.TestResult) *v1.TestResult {
 	return nil
 }
 
-func GetPrevJob(job string, jobRunsByJob []v1.JobResult) *v1.JobResult {
+func GetPrevJob(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v
@@ -62,7 +61,7 @@ func GetPrevJob(job string, jobRunsByJob []v1.JobResult) *v1.JobResult {
 	return nil
 }
 
-func GetPrevPlatform(platform string, jobsByPlatform []v1.JobResult) *v1.JobResult {
+func GetPrevPlatform(platform string, jobsByPlatform []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobsByPlatform {
 		if v.Platform == platform {
 			return &v
@@ -73,7 +72,7 @@ func GetPrevPlatform(platform string, jobsByPlatform []v1.JobResult) *v1.JobResu
 
 // ComputeFailureGroupStats computes count, median, and average number of failuregroups
 // returns count, countPrev, median, medianPrev, avg, avgPrev
-func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []v1.JobRunResult) (int, int, int, int, int, int) {
+func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) (int, int, int, int, int, int) {
 	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {
 		count += group.TestFailures
@@ -100,41 +99,57 @@ func Percent(success, failure int) float64 {
 	return float64(success) / float64(success+failure) * 100.0
 }
 
-func ComputePercentages(AggregateTestResults map[string]v1.AggregateTestResult) {
-	for k, AggregateTestResult := range AggregateTestResults {
-		AggregateTestResult.TestPassPercentage = Percent(AggregateTestResult.Successes, AggregateTestResult.Failures)
-		for k2, r := range AggregateTestResult.TestResults {
-			r.PassPercentage = Percent(r.Successes, r.Failures)
-			AggregateTestResult.TestResults[k2] = r
-		}
-		AggregateTestResults[k] = AggregateTestResult
-	}
-}
+func SummarizeTestResults(
+	aggregateTestResult map[string]rawdatav1.AggregateTestsResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+	minRuns int, // indicates how many runs are required for a test is included in overall percentages
+	// TODO deads2k wants to eliminate the successThreshold
+	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
+) map[string]sippyprocessingv1.SortedAggregateTestsResult {
+	sorted := make(map[string]sippyprocessingv1.SortedAggregateTestsResult)
 
-func GenerateSortedAndFilteredResults(AggregateTestResult map[string]v1.AggregateTestResult, minRuns int, successThreshold float64) map[string]v1.SortedAggregateTestResult {
-	sorted := make(map[string]v1.SortedAggregateTestResult)
+	for k, v := range aggregateTestResult {
+		sorted[k] = sippyprocessingv1.SortedAggregateTestsResult{}
 
-	for k, v := range AggregateTestResult {
-		sorted[k] = v1.SortedAggregateTestResult{
-			Failures:           v.Failures,
-			Successes:          v.Successes,
-			TestPassPercentage: v.TestPassPercentage,
-		}
+		passedCount := 0
+		failedCount := 0
+		for _, rawTestResult := range v.RawTestResults {
+			passPercentage := Percent(rawTestResult.Successes, rawTestResult.Failures)
 
-		for _, result := range v.TestResults {
 			// strip out tests are more than N% successful
-			if result.PassPercentage > successThreshold {
+			if passPercentage > successThreshold {
 				continue
 			}
 			// strip out tests that have less than N total runs
-			if result.Successes+result.Failures < minRuns {
+			if rawTestResult.Successes+rawTestResult.Failures < minRuns {
 				continue
 			}
 
+			passedCount += rawTestResult.Successes
+			failedCount += rawTestResult.Failures
+
+			testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(rawTestResult.Name))
+			testSearchLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, rawTestResult.Name)
+
 			s := sorted[k]
-			s.TestResults = append(s.TestResults, result)
+			s.TestResults = append(s.TestResults, sippyprocessingv1.TestResult{
+				Name:           rawTestResult.Name,
+				Successes:      rawTestResult.Successes,
+				Failures:       rawTestResult.Failures,
+				Flakes:         rawTestResult.Flakes,
+				PassPercentage: passPercentage,
+				BugList:        bugCache.ListBugs(release, "", rawTestResult.Name),
+				SearchLink:     testSearchLink,
+			})
 			sorted[k] = s
 		}
+
+		s := sorted[k]
+		s.Successes = passedCount
+		s.Failures = failedCount
+		s.TestPassPercentage = Percent(passedCount, failedCount)
+		sorted[k] = s
 
 		// sort from lowest to highest
 		sort.SliceStable(sorted[k].TestResults, func(i, j int) bool {
@@ -156,8 +171,8 @@ func GenerateSortedBugFailureCounts(bugs map[string]bugsv1.Bug) []bugsv1.Bug {
 	return sortedBugs
 }
 
-func FilterFailureGroups(jrr map[string]v1.JobRunResult, failureClusterThreshold int) []v1.JobRunResult {
-	filteredJrr := []v1.JobRunResult{}
+func FilterFailureGroups(jrr map[string]sippyprocessingv1.JobRunResult, failureClusterThreshold int) []sippyprocessingv1.JobRunResult {
+	filteredJrr := []sippyprocessingv1.JobRunResult{}
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr
@@ -176,13 +191,13 @@ func FilterFailureGroups(jrr map[string]v1.JobRunResult, failureClusterThreshold
 	return filteredJrr
 }
 
-func ComputeJobPassRate(jrr map[string]v1.JobRunResult) []v1.JobResult {
-	jobsMap := make(map[string]v1.JobResult)
+func ComputeJobPassRate(jrr map[string]sippyprocessingv1.JobRunResult) []sippyprocessingv1.JobResult {
+	jobsMap := make(map[string]sippyprocessingv1.JobResult)
 
 	for _, run := range jrr {
 		job, ok := jobsMap[run.Job]
 		if !ok {
-			job = v1.JobResult{
+			job = sippyprocessingv1.JobResult{
 				Name:        run.Job,
 				TestGridUrl: run.TestGridJobUrl,
 			}
@@ -197,7 +212,7 @@ func ComputeJobPassRate(jrr map[string]v1.JobRunResult) []v1.JobResult {
 		}
 		jobsMap[run.Job] = job
 	}
-	jobs := []v1.JobResult{}
+	jobs := []sippyprocessingv1.JobResult{}
 	for _, job := range jobsMap {
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
@@ -321,36 +336,33 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-func AddTestResult(categoryKey string, categories map[string]v1.AggregateTestResult, testName string, passed, failed, flaked int) {
+func AddTestResult(categoryKey string, categories map[string]rawdatav1.AggregateTestsResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
 	if !ok {
-		category = v1.AggregateTestResult{
-			TestResults: make(map[string]v1.TestResult),
+		category = rawdatav1.AggregateTestsResult{
+			RawTestResults: make(map[string]rawdatav1.RawTestResult),
 		}
 	}
 
-	category.Successes += passed
-	category.Failures += failed
-
-	result, ok := category.TestResults[testName]
+	result, ok := category.RawTestResults[testName]
 	if !ok {
-		result = v1.TestResult{}
+		result = rawdatav1.RawTestResult{}
 	}
 	result.Name = testName
 	result.Successes += passed
 	result.Failures += failed
 	result.Flakes += flaked
 
-	category.TestResults[testName] = result
+	category.RawTestResults[testName] = result
 
 	categories[categoryKey] = category
 }
 
-func SummarizeJobsByPlatform(report v1.TestReport) []v1.JobResult {
-	jobRunsByPlatform := make(map[string]v1.JobResult)
-	platformResults := []v1.JobResult{}
+func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
+	jobRunsByPlatform := make(map[string]sippyprocessingv1.JobResult)
+	platformResults := []sippyprocessingv1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		platforms := FindPlatform(job.Name)
@@ -377,9 +389,9 @@ func SummarizeJobsByPlatform(report v1.TestReport) []v1.JobResult {
 	return platformResults
 }
 
-func SummarizeJobsByName(report v1.TestReport) []v1.JobResult {
-	jobRunsByName := make(map[string]v1.JobResult)
-	jobResults := []v1.JobResult{}
+func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
+	jobRunsByName := make(map[string]sippyprocessingv1.JobResult)
+	jobResults := []sippyprocessingv1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		j := jobRunsByName[job.Name]

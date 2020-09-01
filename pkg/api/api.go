@@ -17,7 +17,7 @@ import (
 )
 
 // summary across all job
-func summaryAcrossAllJobs(result, resultPrev map[string]v12.SortedAggregateTestResult, endDay int) *v1.SummaryAcrossAllJobs {
+func summaryAcrossAllJobs(result, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) *v1.SummaryAcrossAllJobs {
 	all := result["all"]
 	allPrev := resultPrev["all"]
 
@@ -103,7 +103,7 @@ func summaryJobsByPlatform(report, reportPrev v12.TestReport, endDay, jobTestCou
 }
 
 // top failing tests with a bug
-func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestResult, endDay int) []v1.FailingTestBug {
+func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) []v1.FailingTestBug {
 
 	var topFailingTests []v1.FailingTestBug
 
@@ -155,7 +155,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*v12.TestResult, res
 }
 
 // top failing tests without a bug
-func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestResult, endDay int) []v1.FailingTestBug {
+func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) []v1.FailingTestBug {
 
 	allPrev := resultPrev["all"]
 
@@ -256,7 +256,7 @@ func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, job
 }
 
 // canaryTestFailures section
-func canaryTestFailures(result map[string]v12.SortedAggregateTestResult) []v1.CanaryTestFailInstance {
+func canaryTestFailures(result map[string]v12.SortedAggregateTestsResult) []v1.CanaryTestFailInstance {
 	all := result["all"].TestResults
 
 	var canaryFailures []v1.CanaryTestFailInstance
