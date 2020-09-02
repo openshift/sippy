@@ -42,7 +42,8 @@ type Analyzer struct {
 	LastUpdateTime time.Time
 	Release        string
 
-	BugCache buganalysis.BugCache
+	BugCache         buganalysis.BugCache
+	analysisWarnings []string
 }
 
 func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
@@ -380,12 +381,9 @@ func (a *Analyzer) analyze() {
 	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRunResults)
 	err := a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
 	if err != nil {
-		// TODO find a better way to expose this
 		klog.Error(err)
+		a.analysisWarnings = append(a.analysisWarnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
-
-	// TODO iterate over jobRuns to determine while bugzilla components failed each job run
-	//  This is only known after the bugs are associated with the fail tests.
 }
 
 func (a *Analyzer) loadData(releases []string, storagePath string) {
@@ -543,6 +541,8 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 		Timestamp:                      a.LastUpdateTime,
 		BugsByFailureCount:             bugFailureCounts,
 		JobFailuresByBugzillaComponent: bugzillaComponentResults,
+
+		AnalysisWarnings: a.analysisWarnings,
 	}
 
 	if !prev {

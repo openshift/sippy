@@ -1,8 +1,7 @@
+// These types are used to decode information from ci-search, but we don't want to expose these for anyone else.
 package internal
 
 import bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-
-// These types are used to decode information from bugzilla, but we don't want to expose these for anyone else.
 
 type Search struct {
 	Results Results `json:"results"`

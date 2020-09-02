@@ -25,6 +25,9 @@ type TestReport struct {
 
 	// JobFailuresByBugzillaComponent are keyed by bugzilla components
 	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
+
+	// AnalysisWarnings is a free-form list of warnings to be displayed on sippy test reports
+	AnalysisWarnings []string `json:"analysisWarnings"`
 }
 
 // SortedAggregateTestsResult

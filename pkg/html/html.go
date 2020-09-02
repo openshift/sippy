@@ -77,9 +77,8 @@ Data current as of: %s
 
 	bugLookupWarning = `
 <div  style="background-color:pink" class="jumbotron">
-  <h1>Warning: Bugzilla Lookup Error</h1>
-  <p>At least one error was encountered looking up existing bugs for failing tests.  Some test failures may have
-  associated bugs that are not listed below. Lookup error: %s</p>
+  <h1>Warning: Analysis Error</h1>
+  <p>%s</p>
 </div>
 `
 	dashboardPageHtml = `
@@ -936,6 +935,9 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	for _, analysisWarning := range report.AnalysisWarnings {
+		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
+	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{

@@ -2,7 +2,7 @@ package v1
 
 import "time"
 
-// Bug is used to represent bugs in some serialized content.  It also appears to be used internally for data tracking
+// Bug is used to represent bugs in some serialized content.  It also tracks some additional metadata.
 type Bug struct {
 	BugzillaBug  `json:",inline"`
 	Url          string `json:"url"`
