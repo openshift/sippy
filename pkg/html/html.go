@@ -935,6 +935,9 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	for _, analysisWarning := range prevReport.AnalysisWarnings {
+		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
+	}
 	for _, analysisWarning := range report.AnalysisWarnings {
 		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
 	}
