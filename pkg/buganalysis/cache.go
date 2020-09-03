@@ -46,40 +46,32 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 	defer c.lock.Unlock()
 
 	var lastUpdateError error
-	batchCount := 0
-	batchNames := []string{}
-	for _, testName := range failedTestNames {
+	batchTestNames := []string{}
+	for i, testName := range failedTestNames {
 		if _, found := c.cache[testName]; found {
 			continue
 		}
-		batchNames = append(batchNames, testName)
+		batchTestNames = append(batchTestNames, testName)
 		// we're going to lookup bugs for this test, so put an entry into the map.
 		// if we find a bug for this test, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
 		c.cache[testName] = []bugsv1.Bug{}
-		batchCount++
 
-		if batchCount > 50 {
-			r, err := findBugs(batchNames)
-			for k, v := range r {
-				c.cache[k] = v
-			}
-			if err != nil {
-				lastUpdateError = err
-			}
-			batchNames = []string{}
-			batchCount = 0
+		// continue building our batch until we have a largish set to check
+		onLastItem := (i + 1) == len(failedTestNames)
+		if !onLastItem && len(batchTestNames) <= 50 {
+			continue
 		}
-	}
-	if batchCount > 0 {
-		r, err := findBugs(batchNames)
+
+		r, err := findBugs(batchTestNames)
 		for k, v := range r {
 			c.cache[k] = v
 		}
 		if err != nil {
 			lastUpdateError = err
 		}
+		batchTestNames = []string{}
 	}
 
 	c.lastUpdateError = lastUpdateError
@@ -135,7 +127,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	searchUrl := "https://search.ci.openshift.org/v2/search"
 	resp, err := http.PostForm(searchUrl, v)
 	if err != nil {
-		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
+		e := fmt.Errorf("error during bug search against %s: %w", searchUrl, err)
 		klog.Errorf(e.Error())
 		return searchResults, e
 	}

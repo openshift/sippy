@@ -8,7 +8,7 @@ import (
 )
 
 func bugLink(bug bugsv1.Bug) string {
-	return fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", bug.Url, bug.ID)
+	return fmt.Sprintf(`<a target="_blank" href="%s">%d</a> `, bug.Url, bug.ID)
 }
 
 // bugHTMLForTest release and testName are required.  platform is options, if specified it excludes test that have a
