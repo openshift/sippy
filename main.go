@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	gohtml "html"
 	"io"
 	"io/ioutil"
 	"math"
@@ -17,8 +16,11 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
+	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
-	"github.com/openshift/sippy/pkg/testgrid"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/spf13/cobra"
@@ -30,29 +32,22 @@ var (
 	TagStripRegex     = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*\]`)
 )
 
-type RawData struct {
-	ByAll      map[string]util.AggregateTestResult
-	ByJob      map[string]util.AggregateTestResult
-	ByPlatform map[string]util.AggregateTestResult
-	BySig      map[string]util.AggregateTestResult
-	// ByBugzillaComponent has keys that are a best guess of the bugzilla component which is causing the failing test.
-	ByBugzillaComponent map[string]util.AggregateTestResult
-
-	JobRuns     map[string]util.JobRunResult
-	JobDetails  []testgrid.JobDetails
-	BugFailures map[string]util.Bug
-}
-
 type Analyzer struct {
-	RawData        RawData
+	// TestGridJobInfo contains the data consumed from testgrid
+	TestGridJobInfo []testgridv1.JobDetails
+
+	RawData        testgridanalysisapi.RawData
 	Options        *Options
-	Report         util.TestReport
+	Report         sippyprocessingv1.TestReport
 	LastUpdateTime time.Time
 	Release        string
+
+	BugCache         buganalysis.BugCache
+	analysisWarnings []string
 }
 
-func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid.JobSummary, time.Time, error) {
-	jobs := make(map[string]testgrid.JobSummary)
+func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
+	jobs := make(map[string]testgridv1.JobSummary)
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
 
 	var buf *bytes.Buffer
@@ -97,8 +92,8 @@ func downloadJobSummaries(dashboard string, storagePath string) error {
 	return err
 }
 
-func loadJobDetails(dashboard, jobName, storagePath string) (testgrid.JobDetails, error) {
-	details := testgrid.JobDetails{
+func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetails, error) {
+	details := testgridv1.JobDetails{
 		Name: jobName,
 	}
 
@@ -148,7 +143,18 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	return err
 
 }
-func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test testgrid.Test, sig string, startCol, endCol int) {
+
+// ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
+var ignoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
+
+func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, test testgridv1.Test, sig string, startCol, endCol int) {
+	// strip out tests that don't have predictive or diagnostic value
+	// we have to know about overall to be able to set the global success or failure.
+	// we have to know about container setup to be able to set infra failures
+	if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") && ignoreTestRegex.MatchString(test.Name) {
+		return
+	}
+
 	col := 0
 	passed := 0
 	failed := 0
@@ -183,9 +189,9 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 					flaked++
 				}
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := a.RawData.JobRunResults[joburl]
 				if !ok {
-					jrr = util.JobRunResult{
+					jrr = testgridanalysisapi.RawJobRunResult{
 						Job:            job.Name,
 						Url:            joburl,
 						TestGridJobUrl: job.TestGridUrl,
@@ -194,55 +200,66 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
-						Name:  test.Name[len("operator install "):],
-						State: util.Success,
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
+					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
+						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
+						State: testgridanalysisapi.Success,
 					})
-				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
-						Name:  test.Name[len("Operator upgrade "):],
-						State: util.Success,
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
+						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
+						State: testgridanalysisapi.Success,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = util.Success
+					jrr.SetupStatus = testgridanalysisapi.Success
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				a.RawData.JobRunResults[joburl] = jrr
 			}
 		case 12: // failure
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := a.RawData.JobRuns[joburl]
+				jrr, ok := a.RawData.JobRunResults[joburl]
 				if !ok {
-					jrr = util.JobRunResult{
+					jrr = testgridanalysisapi.RawJobRunResult{
 						Job:            job.Name,
 						Url:            joburl,
 						TestGridJobUrl: job.TestGridUrl,
 					}
 				}
-				jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
-				jrr.TestFailures++
+				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
+				// which we use to set various JobRunResult markers
+				if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") {
+					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
+					jrr.TestFailures++
+				}
+
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case strings.HasPrefix(test.Name, util.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, util.OperatorState{
-						Name:  test.Name[len("operator install "):],
-						State: util.Failure,
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
+					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
+						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
+						State: testgridanalysisapi.Failure,
 					})
-				case strings.HasPrefix(test.Name, util.OperatorUpgradePrefix):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, util.OperatorState{
-						Name:  test.Name[len("Operator upgrade "):],
-						State: util.Failure,
+				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
+					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
+						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
+						State: testgridanalysisapi.Failure,
 					})
 				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = util.Failure
+					jrr.SetupStatus = testgridanalysisapi.Failure
 				}
-				a.RawData.JobRuns[joburl] = jrr
+				a.RawData.JobRunResults[joburl] = jrr
 			}
 		}
 		col += remaining
+	}
+
+	// our aggregation and markers are correctly set above.  We allowed these two tests to be checked, but we don't want
+	// actual results for them
+	if test.Name == "Overall" || strings.HasSuffix(test.Name, "container setup") {
+		return
 	}
 
 	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
@@ -253,7 +270,7 @@ func (a *Analyzer) processTest(job testgrid.JobDetails, platforms []string, test
 	util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
-func (a *Analyzer) processJobDetails(job testgrid.JobDetails) {
+func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
 	platforms := util.FindPlatform(job.Name)
 
@@ -278,55 +295,55 @@ func (a *Analyzer) createSyntheticTests() {
 		pass int
 		fail int
 	}
-	for jrrKey, jrr := range a.RawData.JobRuns {
+	for jrrKey, jrr := range a.RawData.JobRunResults {
 		platforms := util.FindPlatform(jrr.Job)
 		isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 		syntheticTests := map[string]*synthenticTestResult{
-			util.InstallTestName:        &synthenticTestResult{name: util.InstallTestName},
-			util.UpgradeTestName:        &synthenticTestResult{name: util.UpgradeTestName},
-			util.InfrastructureTestName: &synthenticTestResult{name: util.InfrastructureTestName},
+			testgridanalysisapi.InstallTestName:        &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
+			testgridanalysisapi.UpgradeTestName:        &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName},
+			testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 		}
 
 		installFailed := false
 		for _, operator := range jrr.InstallOperators {
-			if operator.State == util.Failure {
+			if operator.State == testgridanalysisapi.Failure {
 				installFailed = true
 				break
 			}
 		}
 		upgradeFailed := false
 		for _, operator := range jrr.UpgradeOperators {
-			if operator.State == util.Failure {
+			if operator.State == testgridanalysisapi.Failure {
 				upgradeFailed = true
 				break
 			}
 		}
-		setupFailed := jrr.SetupStatus != util.Success
+		setupFailed := jrr.SetupStatus != testgridanalysisapi.Success
 
 		if installFailed {
 			jrr.TestFailures++
-			jrr.FailedTestNames = append(jrr.FailedTestNames, util.InstallTestName)
-			syntheticTests[util.InstallTestName].fail = 1
+			jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InstallTestName)
+			syntheticTests[testgridanalysisapi.InstallTestName].fail = 1
 		} else {
 			if !setupFailed { // this will be an undercount, but we only want to count installs that actually worked.
-				syntheticTests[util.InstallTestName].pass = 1
+				syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
 			}
 		}
 		if setupFailed && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
 			jrr.TestFailures++
-			jrr.FailedTestNames = append(jrr.FailedTestNames, util.InfrastructureTestName)
-			syntheticTests[util.InfrastructureTestName].fail = 1
+			jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InfrastructureTestName)
+			syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
 		} else {
-			syntheticTests[util.InfrastructureTestName].pass = 1
+			syntheticTests[testgridanalysisapi.InfrastructureTestName].pass = 1
 		}
 		if isUpgrade && !setupFailed && !installFailed { // only record upgrade status if we were able to attempt the upgrade
 			if upgradeFailed || len(jrr.UpgradeOperators) == 0 {
 				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, util.UpgradeTestName)
-				syntheticTests[util.UpgradeTestName].fail = 1
+				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.UpgradeTestName)
+				syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
 			} else {
-				syntheticTests[util.UpgradeTestName].pass = 1
+				syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
 			}
 		}
 
@@ -339,11 +356,11 @@ func (a *Analyzer) createSyntheticTests() {
 			//util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 		}
 
-		a.RawData.JobRuns[jrrKey] = jrr
+		a.RawData.JobRunResults[jrrKey] = jrr
 	}
 }
 
-func getFailedTestNamesFromJobRuns(jobRuns map[string]util.JobRunResult) sets.String {
+func getFailedTestNamesFromJobRuns(jobRuns map[string]testgridanalysisapi.RawJobRunResult) sets.String {
 	failedTestNames := sets.NewString()
 	for _, jobrun := range jobRuns {
 		failedTestNames.Insert(jobrun.FailedTestNames...)
@@ -351,157 +368,8 @@ func getFailedTestNamesFromJobRuns(jobRuns map[string]util.JobRunResult) sets.St
 	return failedTestNames
 }
 
-// updates a global variable with the bug mapping based on current failures.
-func updateGlobalBugCache(failedTestNames sets.String) {
-	batchCount := 0
-	batchNames := []string{}
-	c := 0
-	for t := range failedTestNames {
-		if _, found := util.TestBugCache[t]; found {
-			c++
-			continue
-		}
-		c++
-		batchNames = append(batchNames, t)
-		// we're going to lookup bugs for this test, so put an entry into the map.
-		// if we find a bug for this test, the entry will be replaced with the actual
-		// array of bugs.  if not, this serves as a placeholder so we know not to look
-		// it up again in the future.
-		util.TestBugCache[t] = []util.Bug{}
-		batchCount++
-
-		if batchCount > 50 {
-			r, err := util.FindBugs(batchNames)
-			for k, v := range r {
-				util.TestBugCache[k] = v
-			}
-			if err != nil {
-				util.TestBugCacheErr = err
-			}
-			batchNames = []string{}
-			batchCount = 0
-		}
-	}
-	if batchCount > 0 {
-		r, err := util.FindBugs(batchNames)
-		for k, v := range r {
-			util.TestBugCache[k] = v
-		}
-		if err != nil {
-			util.TestBugCacheErr = err
-		}
-	}
-}
-
-func (a *Analyzer) identifyJobRunBugzillaFailer() {
-	for jrrKey, jrr := range a.RawData.JobRuns {
-		if jrr.Succeeded { // we only care about failures.
-			continue
-		}
-
-		failingBugzillaComponents := map[string]*util.BugzillaComponentFailure{}
-
-		for _, failedTest := range jrr.FailedTestNames {
-			// some tests are skipped
-			switch {
-			case strings.HasPrefix(failedTest, util.OperatorInstallPrefix) || strings.HasPrefix(failedTest, util.OperatorUpgradePrefix):
-				// these are handled by checking operator, no work on the string.
-				continue
-			case util.IgnoreTestRegex.MatchString(failedTest): // this test has no predictive value, do not assign
-				// If the failed test has a bug associated, use that bug to identify the BZ component.
-				continue
-			case failedTest == "Overall":
-				// this test has no predictive power.  it just means the run failed.
-				continue
-			}
-
-			// Each bug that matches has its BZ component added.
-			foundBZ := false
-			for _, bug := range util.TestBugCache[failedTest] {
-				matchedRelease := false
-				for _, bugRelease := range bug.TargetRelease {
-					if strings.HasPrefix(bugRelease, a.Release) {
-						matchedRelease = true
-						break
-					}
-				}
-				if !matchedRelease {
-					continue
-				}
-				bzComponent := bug.Component[0]
-				addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, bug)
-				foundBZ = true
-
-				if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-					util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-				}
-			}
-			if foundBZ {
-				continue
-			}
-
-			// If we didn't have a bug, use the test name itself to identify a likely victim/blame
-			bzComponent := util.GetBugzillaComponentForSig(util.FindSig(failedTest))
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-			}
-		}
-		for _, operator := range jrr.InstallOperators {
-			if operator.State == util.Success {
-				continue
-			}
-			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failedTest := util.OperatorInstallPrefix + operator.Name
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
-
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-			}
-		}
-		for _, operator := range jrr.UpgradeOperators {
-			if operator.State == util.Success {
-				continue
-			}
-			bzComponent := util.GetBugzillaComponentForOperator(operator.Name)
-			failedTest := util.OperatorUpgradePrefix + operator.Name
-			addFailingBZComponent(&failingBugzillaComponents, bzComponent, failedTest, util.Bug{})
-
-			if result, found := a.RawData.ByAll["all"].TestResults[failedTest]; found {
-				util.SetTestResult(bzComponent, a.RawData.ByBugzillaComponent, failedTest, result.Successes, result.Failures, result.Flakes)
-			}
-		}
-
-		if jrr.SetupStatus != util.Success && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
-			addFailingBZComponent(&failingBugzillaComponents, "Test Infrastructure", "setup", util.Bug{})
-		}
-
-		jrr.FailingBugzillaComponents = failingBugzillaComponents
-		a.RawData.JobRuns[jrrKey] = jrr
-	}
-}
-
-func addFailingBZComponent(failingBugzillaComponents *map[string]*util.BugzillaComponentFailure, bzComponent, testName string, bug util.Bug) {
-	failure, ok := (*failingBugzillaComponents)[bzComponent]
-	if !ok {
-		failure = &util.BugzillaComponentFailure{
-			ComponentName: bzComponent,
-			Failures:      map[util.BugzillaTestFailure]int32{},
-		}
-	}
-
-	testFailure := util.BugzillaTestFailure{
-		TestName:   testName,
-		BugID:      bug.ID,
-		BugSummary: bug.Summary,
-	}
-	failure.Failures[testFailure] = failure.Failures[testFailure] + 1
-
-	(*failingBugzillaComponents)[bzComponent] = failure
-}
-
 func (a *Analyzer) analyze() {
-	for _, details := range a.RawData.JobDetails {
+	for _, details := range a.TestGridJobInfo {
 		klog.V(2).Infof("processing test details for job %s\n", details.Name)
 		a.processJobDetails(details)
 	}
@@ -509,69 +377,13 @@ func (a *Analyzer) analyze() {
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
 	a.createSyntheticTests()
 
-	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRuns)
-	updateGlobalBugCache(failedTestNamesAcrossAllJobRuns)
-
-	// for every test that failed in some job run, look up the bug(s) associated w/ the test
-	// and attribute the number of times the test failed+flaked to that bug(s)
-	for t := range failedTestNamesAcrossAllJobRuns {
-		if util.IgnoreTestRegex.MatchString(t) {
-			continue
-		}
-		if result, found := a.RawData.ByAll["all"].TestResults[t]; found {
-			bugs := util.TestBugCache[t]
-			for _, bug := range bugs {
-				for _, r := range bug.TargetRelease {
-					if strings.HasPrefix(r, a.Release) {
-						if b, found := a.RawData.BugFailures[bug.Url]; found {
-							b.FailureCount += result.Failures
-							b.FlakeCount += result.Flakes
-							a.RawData.BugFailures[bug.Url] = b
-						} else {
-							bug.FailureCount = result.Failures
-							bug.FlakeCount = result.Flakes
-							a.RawData.BugFailures[bug.Url] = bug
-						}
-						break
-					}
-				}
-			}
-		}
+	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
+	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobRuns(a.RawData.JobRunResults)
+	err := a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
+	if err != nil {
+		klog.Error(err)
+		a.analysisWarnings = append(a.analysisWarnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
-
-	// for every job run, check if all the test failures in the run can be attributed to
-	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
-	// would have passed if all our bugs were fixed.
-	for runIdx, jobrun := range a.RawData.JobRuns {
-		for _, t := range jobrun.FailedTestNames {
-			if util.IgnoreTestRegex.MatchString(t) {
-				// note, if a job run has only ignored tests (such as because setup failed) it will be counted
-				// as "HasUnknownFailures=false", meaning it will count as a success in the "pass rate including
-				// known failures" percentage.  This is good because it ignores infrastructure issues, it is bad
-				// because if the install flat out fails, the run will be counted as successful in that metric.
-				continue
-			}
-			bugs := util.TestBugCache[t]
-			isKnownFailure := false
-			for _, bug := range bugs {
-				for _, r := range bug.TargetRelease {
-					if strings.HasPrefix(r, a.Release) {
-						isKnownFailure = true
-						break
-					}
-				}
-
-			}
-			if !isKnownFailure {
-				jobrun.HasUnknownFailures = true
-				a.RawData.JobRuns[runIdx] = jobrun
-			}
-
-		}
-	}
-
-	// determine while bugzilla components failed each job run. This is only known after the bugs are associated with the fail tests.
-	a.identifyJobRunBugzillaFailer()
 }
 
 func (a *Analyzer) loadData(releases []string, storagePath string) {
@@ -596,7 +408,7 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
 				}
 			}
 		}
@@ -616,7 +428,7 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.RawData.JobDetails = append(a.RawData.JobDetails, details)
+					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
 				}
 			}
 		}
@@ -681,33 +493,18 @@ func downloadData(releases []string, filter string, storagePath string) {
 }
 
 // returns top ten failing tests w/o a bug and top ten with a bug(in that order)
-func getTopFailingTests(result map[string]util.SortedAggregateTestResult, release string) ([]*util.TestResult, []*util.TestResult) {
-	topTestsWithoutBug := []*util.TestResult{}
-	topTestsWithBug := []*util.TestResult{}
+func getTopFailingTests(result map[string]sippyprocessingv1.SortedAggregateTestsResult, release string, bugCache buganalysis.BugCache) ([]*sippyprocessingv1.TestResult, []*sippyprocessingv1.TestResult) {
+	topTestsWithoutBug := []*sippyprocessingv1.TestResult{}
+	topTestsWithBug := []*sippyprocessingv1.TestResult{}
 	all := result["all"]
 	withoutbugcount := 0
 	withbugcount := 0
 	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
 	// limit to 100 so we don't hammer search.ci too hard if we can't find 20 failures with bugs in the first 100.
 	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
-
 		test := all.TestResults[i]
-		if util.IgnoreTestRegex.MatchString(test.Name) {
-			continue
-		}
+		test.BugList = bugCache.ListBugs(release, "", test.Name)
 
-		bugs := util.TestBugCache[test.Name]
-		for _, bug := range bugs {
-			for _, r := range bug.TargetRelease {
-				if strings.HasPrefix(r, release) {
-					test.BugList = append(test.BugList, bug)
-					break
-				}
-			}
-		}
-		testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(test.Name))
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, test.Name)
-		test.SearchLink = testLink
 		// we want the top ten test failures that don't have bugs associated.
 		// top test failures w/ bugs will be listed, but don't count towards the top ten.
 		if len(test.BugList) == 0 && withoutbugcount < 10 {
@@ -722,42 +519,34 @@ func getTopFailingTests(result map[string]util.SortedAggregateTestResult, releas
 }
 
 func (a *Analyzer) prepareTestReport(prev bool) {
-	util.ComputePercentages(a.RawData.ByAll)
-	util.ComputePercentages(a.RawData.ByPlatform)
-	util.ComputePercentages(a.RawData.ByJob)
-	util.ComputePercentages(a.RawData.BySig)
+	byAll := util.SummarizeTestResults(a.RawData.ByAll, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byPlatform := util.SummarizeTestResults(a.RawData.ByPlatform, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	byJob := util.SummarizeTestResults(a.RawData.ByJob, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	bySig := util.SummarizeTestResults(a.RawData.BySig, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
-	byAll := util.GenerateSortedResults(a.RawData.ByAll, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byPlatform := util.GenerateSortedResults(a.RawData.ByPlatform, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byJob := util.GenerateSortedResults(a.RawData.ByJob, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	bySig := util.GenerateSortedResults(a.RawData.BySig, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byBugzillaComponent := util.GenerateSortedResults(a.RawData.ByBugzillaComponent, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
+	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRunResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
+	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, a.BugCache, a.Release)
 
-	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRuns, a.Options.FailureClusterThreshold)
-	jobPassRate := util.ComputeJobPassRate(a.RawData.JobRuns)
+	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobRunResults, byAll, a.BugCache, a.Release)
+	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRunResults, byJob)
 
-	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.BugFailures)
-
-	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRuns)
-
-	a.Report = util.TestReport{
-		Release:             a.Release,
-		All:                 byAll,
-		ByPlatform:          byPlatform,
-		ByJob:               byJob,
-		BySig:               bySig,
-		ByBugzillaComponent: byBugzillaComponent,
-
-		FailureGroups:      filteredFailureGroups,
-		JobPassRate:        jobPassRate,
-		Timestamp:          a.LastUpdateTime,
-		BugsByFailureCount: bugFailureCounts,
-
+	a.Report = sippyprocessingv1.TestReport{
+		Release:                        a.Release,
+		All:                            byAll,
+		ByPlatform:                     byPlatform,
+		ByJob:                          byJob,
+		BySig:                          bySig,
+		FailureGroups:                  filteredFailureGroups,
+		JobPassRate:                    jobPassRate,
+		Timestamp:                      a.LastUpdateTime,
+		BugsByFailureCount:             bugFailureCounts,
 		JobFailuresByBugzillaComponent: bugzillaComponentResults,
+
+		AnalysisWarnings: a.analysisWarnings,
 	}
 
 	if !prev {
-		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release)
+		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release, a.BugCache)
 		a.Report.TopFailingTestsWithBug = topFailingTestsWithBug
 		a.Report.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
 	}
@@ -791,7 +580,7 @@ func (a *Analyzer) printDashboardReport() {
 	count := 0
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
-		if !util.IgnoreTestRegex.MatchString(test.Name) && (test.Successes+test.Failures) > a.Options.MinTestRuns {
+		if (test.Successes + test.Failures) > a.Options.MinTestRuns {
 			fmt.Printf("Test Name: %s\n", test.Name)
 			fmt.Printf("Test Pass Percentage: %0.2f (%d runs)\n", test.PassPercentage, test.Successes+test.Failures)
 			if test.Successes+test.Failures < 10 {
@@ -953,24 +742,22 @@ func (a *Analyzer) printTextReport() {
 }
 
 type Server struct {
+	bugCache  buganalysis.BugCache
 	analyzers map[string]Analyzer
 	options   *Options
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
-	util.TestBugCache = make(map[string][]util.Bug)
-	util.TestBugCacheErr = nil
+	s.bugCache.Clear()
 
 	for k, analyzer := range s.analyzers {
-		analyzer.RawData = RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+		analyzer.RawData = testgridanalysisapi.RawData{
+			ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+			BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
@@ -985,7 +772,6 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-
 	release := req.URL.Query().Get("release")
 	if _, ok := s.analyzers[release]; !ok {
 		html.WriteLandingPage(w, s.options.Releases)
@@ -997,13 +783,13 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	releaseReports := make(map[string][]util.TestReport)
+	releaseReports := make(map[string][]sippyprocessingv1.TestReport)
 	if release == "all" {
 		// return all available json reports
 		// store [currentReport, prevReport] in a slice
 		for _, r := range s.options.Releases {
 			if _, ok := s.analyzers[r]; ok {
-				releaseReports[r] = []util.TestReport{s.analyzers[r].Report, s.analyzers[r+"-prev"].Report}
+				releaseReports[r] = []sippyprocessingv1.TestReport{s.analyzers[r].Report, s.analyzers[r+"-prev"].Report}
 			} else {
 				klog.Errorf("unable to load test report for release version %s", r)
 				continue
@@ -1022,7 +808,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		w.Write(errMsgBytes)
 		return
 	}
-	releaseReports[release] = []util.TestReport{s.analyzers[release].Report, s.analyzers[release+"-prev"].Report}
+	releaseReports[release] = []sippyprocessingv1.TestReport{s.analyzers[release].Report, s.analyzers[release+"-prev"].Report}
 	api.PrintJSONReport(w, req, releaseReports, s.options.EndDay, 15)
 }
 
@@ -1088,15 +874,14 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	analyzer := Analyzer{
 		Release: release,
 		Options: opt,
-		RawData: RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+		RawData: testgridanalysisapi.RawData{
+			ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+			BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 		},
+		BugCache: s.bugCache,
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
 	analyzer.analyze()
@@ -1109,15 +894,14 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	prevAnalyzer := Analyzer{
 		Release: release,
 		Options: &optCopy,
-		RawData: RawData{
-			ByAll:               make(map[string]util.AggregateTestResult),
-			ByJob:               make(map[string]util.AggregateTestResult),
-			ByPlatform:          make(map[string]util.AggregateTestResult),
-			BySig:               make(map[string]util.AggregateTestResult),
-			ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-			JobRuns:             make(map[string]util.JobRunResult),
-			BugFailures:         make(map[string]util.Bug),
+		RawData: testgridanalysisapi.RawData{
+			ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+			BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+			JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 		},
+		BugCache: s.bugCache,
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
 	prevAnalyzer.analyze()
@@ -1213,15 +997,14 @@ func (o *Options) Run() error {
 	if !o.Server {
 		analyzer := Analyzer{
 			Options: o,
-			RawData: RawData{
-				ByAll:               make(map[string]util.AggregateTestResult),
-				ByJob:               make(map[string]util.AggregateTestResult),
-				ByPlatform:          make(map[string]util.AggregateTestResult),
-				BySig:               make(map[string]util.AggregateTestResult),
-				ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-				JobRuns:             make(map[string]util.JobRunResult),
-				BugFailures:         make(map[string]util.Bug),
+			RawData: testgridanalysisapi.RawData{
+				ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+				ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+				ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+				BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+				JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 			},
+			BugCache: buganalysis.NewBugCache(),
 		}
 
 		analyzer.loadData(o.Releases, o.LocalData)
@@ -1231,6 +1014,7 @@ func (o *Options) Run() error {
 
 	if o.Server {
 		server := Server{
+			bugCache:  buganalysis.NewBugCache(),
 			analyzers: make(map[string]Analyzer),
 			options:   o,
 		}
@@ -1239,15 +1023,14 @@ func (o *Options) Run() error {
 			analyzer := Analyzer{
 				Release: release,
 				Options: o,
-				RawData: RawData{
-					ByAll:               make(map[string]util.AggregateTestResult),
-					ByJob:               make(map[string]util.AggregateTestResult),
-					ByPlatform:          make(map[string]util.AggregateTestResult),
-					BySig:               make(map[string]util.AggregateTestResult),
-					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-					JobRuns:             make(map[string]util.JobRunResult),
-					BugFailures:         make(map[string]util.Bug),
+				RawData: testgridanalysisapi.RawData{
+					ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+					BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 				},
+				BugCache: server.bugCache,
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
@@ -1261,15 +1044,14 @@ func (o *Options) Run() error {
 			analyzer = Analyzer{
 				Release: release,
 				Options: &optCopy,
-				RawData: RawData{
-					ByAll:               make(map[string]util.AggregateTestResult),
-					ByJob:               make(map[string]util.AggregateTestResult),
-					ByPlatform:          make(map[string]util.AggregateTestResult),
-					BySig:               make(map[string]util.AggregateTestResult),
-					ByBugzillaComponent: make(map[string]util.AggregateTestResult),
-					JobRuns:             make(map[string]util.JobRunResult),
-					BugFailures:         make(map[string]util.Bug),
+				RawData: testgridanalysisapi.RawData{
+					ByAll:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					ByJob:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					ByPlatform:    make(map[string]testgridanalysisapi.AggregateTestsResult),
+					BySig:         make(map[string]testgridanalysisapi.AggregateTestsResult),
+					JobRunResults: make(map[string]testgridanalysisapi.RawJobRunResult),
 				},
+				BugCache: server.bugCache,
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()

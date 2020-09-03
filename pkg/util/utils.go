@@ -2,20 +2,19 @@ package util
 
 import (
 	"fmt"
-	"strings"
-
-	//	"io/ioutil"
-	"encoding/json"
+	gohtml "html"
 	"math"
-	"net/http"
-	"net/url"
 	"regexp"
-	"regexp/syntax"
 	"sort"
-
-	//	"strings"
+	"strings"
 	"time"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/testgridanalysis"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"k8s.io/klog"
 )
 
@@ -43,183 +42,11 @@ var (
 	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
 	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
 
-	// ignored for top 10 failing test reporting
-	// also ignored for doing bug lookup to determine if this is a known failure or not (these failures will typically not
-	// have bugs associated, but we don't want the entire run marked as an unknown failure if one of them fails)
-	IgnoreTestRegex *regexp.Regexp = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 	// Tests we are already tracking an issue for
 	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
-
-	// TestBugCache is a map of test names to known bugs tied to those tests
-	TestBugCache    map[string][]Bug = make(map[string][]Bug)
-	TestBugCacheErr error
 )
 
-const (
-	OperatorInstallPrefix = "operator install "
-	OperatorUpgradePrefix = "Operator upgrade "
-)
-
-type TestReport struct {
-	Release             string                               `json:"release"`
-	All                 map[string]SortedAggregateTestResult `json:"all"`
-	ByPlatform          map[string]SortedAggregateTestResult `json:"byPlatform`
-	ByJob               map[string]SortedAggregateTestResult `json:"byJob`
-	BySig               map[string]SortedAggregateTestResult `json:"bySig`
-	ByBugzillaComponent map[string]SortedAggregateTestResult `json:"byBugzillaComponent`
-
-	FailureGroups             []JobRunResult `json:"failureGroups"`
-	JobPassRate               []JobResult    `json:"jobPassRate"`
-	Timestamp                 time.Time      `json:"timestamp"`
-	TopFailingTestsWithBug    []*TestResult  `json:"topFailingTestsWithBug"`
-	TopFailingTestsWithoutBug []*TestResult  `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []Bug          `json:"bugsByFailureCount"`
-
-	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
-}
-
-type SortedAggregateTestResult struct {
-	Successes          int          `json:"successes"`
-	Failures           int          `json:"failures"`
-	TestPassPercentage float64      `json:"testPassPercentage"`
-	TestResults        []TestResult `json:"results"`
-}
-
-type AggregateTestResult struct {
-	Successes          int                   `json:"successes"`
-	Failures           int                   `json:"failures"`
-	TestPassPercentage float64               `json:"testPassPercentage"`
-	TestResults        map[string]TestResult `json:"results"`
-}
-
-type TestResult struct {
-	Name           string  `json:"name"`
-	Sig            string  `json:"sig"`
-	Successes      int     `json:"successes"`
-	Failures       int     `json:"failures"`
-	Flakes         int     `json:"flakes"`
-	PassPercentage float64 `json:"passPercentage"`
-	BugList        []Bug   `json:"BugList"`
-	SearchLink     string  `json:"searchLink"`
-}
-
-type JobRunResult struct {
-	Job            string `json:"job"`
-	Url            string `json:"url"`
-	TestGridJobUrl string `json:"testGridJobUrl"`
-	TestFailures   int    `json:"testFailures"`
-
-	// FailedTestNames are the tests that actually failed (not flaked)
-	FailedTestNames    []string `json:"failedTestNames"`
-	Failed             bool     `json:"failed"`
-	HasUnknownFailures bool     `json:"hasUnknownFailures"`
-	Succeeded          bool     `json:"succeeded"`
-
-	// FailingComponents holds a list of the components whose tests failed (not flaked, failed) in this JobRun
-	FailingBugzillaComponents map[string]*BugzillaComponentFailure `json:"failingComponents"`
-
-	// SetupStatus can be "", "Success", "Failure"
-	SetupStatus      string          `json:"setupStatus"`
-	InstallOperators []OperatorState `json:"installOperators"`
-	UpgradeOperators []OperatorState `json:"upgradeOperators"`
-}
-
-type BugzillaComponentFailure struct {
-	ComponentName string
-
-	Failures map[BugzillaTestFailure]int32
-}
-
-type BugzillaTestFailure struct {
-	TestName   string
-	BugID      int64
-	BugSummary string
-}
-
-const (
-	InfrastructureTestName = `[sig-sippy] infrastructure should work`
-	InstallTestName        = `[sig-sippy] install should work`
-	UpgradeTestName        = `[sig-sippy] upgrade should work`
-
-	Success = "Success"
-	Failure = "Failure"
-)
-
-type OperatorState struct {
-	Name string `json:"name"`
-	// OperatorState can be "", "Success", "Failure"
-	State string `json:"state"`
-}
-
-type JobResult struct {
-	Name                            string  `json:"name"`
-	Platform                        string  `json:"platform"`
-	Failures                        int     `json:"failures"`
-	KnownFailures                   int     `json:"knownFailures"`
-	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"PassPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"TestGridUrl"`
-}
-
-type BugzillaResult struct {
-	Name                            string  `json:"name"`
-	Job                             string  `json:"job"`
-	Failures                        int     `json:"failures"`
-	KnownFailures                   int     `json:"knownFailures"`
-	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"PassPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"TestGridUrl"`
-}
-
-type SortedBugzillaComponentResult struct {
-	Name string `json:"name"`
-
-	JobsFailed []BugzillaJobResult `json:"jobsFailed"`
-}
-
-type BugzillaJobResult struct {
-	JobName           string `json:"jobName"`
-	BugzillaComponent string `json:"bugzillaComponent"`
-
-	Failures                        BugzillaComponentFailure `json:"failures"`
-	FailuresByThisBugzillaComponent int                      `json:"failuresByThisBugzillaComponent"`
-	// This one is phrased as a failure percentage because we don't know a success percentage since we don't know how many times it actually ran
-	// we only know how many times its tests failed and how often the job ran.  This is more useful for some types of analysis anyway: "how often
-	// does a sig cause a job to fail".
-	FailPercentageByThisBugzillaComponent float64 `json:"failPercentageByThisBugzillaComponent"`
-	TotalRuns                             int
-}
-
-type Search struct {
-	Results Results `json:"results"`
-}
-
-// search string is the key
-type Results map[string]Result
-
-type Result struct {
-	Matches []Match `json:"matches"`
-}
-
-type Match struct {
-	Bug Bug `json:"bugInfo"`
-}
-
-type Bug struct {
-	ID             int64     `json:"id"`
-	Status         string    `json:"status"`
-	LastChangeTime time.Time `json:"last_change_time"`
-	Summary        string    `json:"summary"`
-	TargetRelease  []string  `json:"target_release"`
-	Component      []string  `json:"component"`
-	Url            string    `json:"url"`
-	FailureCount   int       `json:"failureCount,omitempty"`
-	FlakeCount     int       `json:"flakeCount,omitempty"`
-}
-
-func GetPrevTest(test string, testResults []TestResult) *TestResult {
+func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippyprocessingv1.TestResult {
 	for _, v := range testResults {
 		if v.Name == test {
 			return &v
@@ -228,7 +55,7 @@ func GetPrevTest(test string, testResults []TestResult) *TestResult {
 	return nil
 }
 
-func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
+func GetPrevJob(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v
@@ -237,7 +64,7 @@ func GetPrevJob(job string, jobRunsByJob []JobResult) *JobResult {
 	return nil
 }
 
-func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
+func GetPrevPlatform(platform string, jobsByPlatform []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobsByPlatform {
 		if v.Platform == platform {
 			return &v
@@ -248,7 +75,7 @@ func GetPrevPlatform(platform string, jobsByPlatform []JobResult) *JobResult {
 
 // ComputeFailureGroupStats computes count, median, and average number of failuregroups
 // returns count, countPrev, median, medianPrev, avg, avgPrev
-func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []JobRunResult) (int, int, int, int, int, int) {
+func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) (int, int, int, int, int, int) {
 	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {
 		count += group.TestFailures
@@ -275,37 +102,58 @@ func Percent(success, failure int) float64 {
 	return float64(success) / float64(success+failure) * 100.0
 }
 
-func ComputePercentages(AggregateTestResults map[string]AggregateTestResult) {
-	for k, AggregateTestResult := range AggregateTestResults {
-		AggregateTestResult.TestPassPercentage = Percent(AggregateTestResult.Successes, AggregateTestResult.Failures)
-		for k2, r := range AggregateTestResult.TestResults {
-			r.PassPercentage = Percent(r.Successes, r.Failures)
-			AggregateTestResult.TestResults[k2] = r
-		}
-		AggregateTestResults[k] = AggregateTestResult
-	}
-}
+func SummarizeTestResults(
+	aggregateTestResult map[string]testgridanalysisapi.AggregateTestsResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+	minRuns int, // indicates how many runs are required for a test is included in overall percentages
+	// TODO deads2k wants to eliminate the successThreshold
+	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
+) map[string]sippyprocessingv1.SortedAggregateTestsResult {
+	sorted := make(map[string]sippyprocessingv1.SortedAggregateTestsResult)
 
-func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, minRuns int, successThreshold float64) map[string]SortedAggregateTestResult {
-	sorted := make(map[string]SortedAggregateTestResult)
+	for k, v := range aggregateTestResult {
+		sorted[k] = sippyprocessingv1.SortedAggregateTestsResult{}
 
-	for k, v := range AggregateTestResult {
-		sorted[k] = SortedAggregateTestResult{
-			Failures:           v.Failures,
-			Successes:          v.Successes,
-			TestPassPercentage: v.TestPassPercentage,
-		}
+		passedCount := 0
+		failedCount := 0
+		for _, rawTestResult := range v.RawTestResults {
+			passPercentage := Percent(rawTestResult.Successes, rawTestResult.Failures)
 
-		for _, result := range v.TestResults {
 			// strip out tests are more than N% successful
+			if passPercentage > successThreshold {
+				continue
+			}
 			// strip out tests that have less than N total runs
-			if (result.Successes+result.Failures >= minRuns) && result.PassPercentage < successThreshold {
-				s := sorted[k]
-				s.TestResults = append(s.TestResults, result)
-				sorted[k] = s
+			if rawTestResult.Successes+rawTestResult.Failures < minRuns {
+				continue
 			}
 
+			passedCount += rawTestResult.Successes
+			failedCount += rawTestResult.Failures
+
+			testSearchUrl := gohtml.EscapeString(regexp.QuoteMeta(rawTestResult.Name))
+			testSearchLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=48h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", testSearchUrl, rawTestResult.Name)
+
+			s := sorted[k]
+			s.TestResults = append(s.TestResults, sippyprocessingv1.TestResult{
+				Name:           rawTestResult.Name,
+				Successes:      rawTestResult.Successes,
+				Failures:       rawTestResult.Failures,
+				Flakes:         rawTestResult.Flakes,
+				PassPercentage: passPercentage,
+				BugList:        bugCache.ListBugs(release, "", rawTestResult.Name),
+				SearchLink:     testSearchLink,
+			})
+			sorted[k] = s
 		}
+
+		s := sorted[k]
+		s.Successes = passedCount
+		s.Failures = failedCount
+		s.TestPassPercentage = Percent(passedCount, failedCount)
+		sorted[k] = s
+
 		// sort from lowest to highest
 		sort.SliceStable(sorted[k].TestResults, func(i, j int) bool {
 			return sorted[k].TestResults[i].PassPercentage < sorted[k].TestResults[j].PassPercentage
@@ -314,8 +162,38 @@ func GenerateSortedResults(AggregateTestResult map[string]AggregateTestResult, m
 	return sorted
 }
 
-func GenerateSortedBugFailureCounts(bugs map[string]Bug) []Bug {
-	sortedBugs := []Bug{}
+func GenerateSortedBugFailureCounts(
+	allJobRuns map[string]testgridanalysisapi.RawJobRunResult,
+	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+) []bugsv1.Bug {
+	bugs := map[string]bugsv1.Bug{}
+
+	failedTestNamesAcrossAllJobRuns := sets.NewString()
+	for _, jobrun := range allJobRuns {
+		failedTestNamesAcrossAllJobRuns.Insert(jobrun.FailedTestNames...)
+	}
+
+	// for every test that failed in some job run, look up the bug(s) associated w/ the test
+	// and attribute the number of times the test failed+flaked to that bug(s)
+	for _, testResult := range byAll["all"].TestResults {
+		testName := testResult.Name
+		bugList := bugCache.ListBugs(release, "", testName)
+		for _, bug := range bugList {
+			if b, found := bugs[bug.Url]; found {
+				b.FailureCount += testResult.Failures
+				b.FlakeCount += testResult.Flakes
+				bugs[bug.Url] = b
+			} else {
+				bug.FailureCount = testResult.Failures
+				bug.FlakeCount = testResult.Flakes
+				bugs[bug.Url] = bug
+			}
+		}
+	}
+
+	sortedBugs := []bugsv1.Bug{}
 	for _, bug := range bugs {
 		sortedBugs = append(sortedBugs, bug)
 	}
@@ -326,77 +204,35 @@ func GenerateSortedBugFailureCounts(bugs map[string]Bug) []Bug {
 	return sortedBugs
 }
 
-func GenerateJobFailuresByBugzillaComponent(jobRuns map[string]JobRunResult) map[string]SortedBugzillaComponentResult {
-	bzComponentToJobToResults := map[string]map[string]BugzillaJobResult{}
-
-	// we need job run totals to determine success rates
-	jobRunTotals := map[string]int{}
-	for _, jrr := range jobRuns {
-		jobRunTotals[jrr.Job] = jobRunTotals[jrr.Job] + 1
-	}
-
-	for _, jrr := range jobRuns {
-		for bzComponent, bzFailureDetails := range jrr.FailingBugzillaComponents {
-			jobToResults, ok := bzComponentToJobToResults[bzComponent]
-			if !ok {
-				jobToResults = map[string]BugzillaJobResult{}
-			}
-			results, ok := jobToResults[jrr.Job]
-			if !ok {
-				results = BugzillaJobResult{
-					JobName:           jrr.Job,
-					BugzillaComponent: bzComponent,
-					Failures: BugzillaComponentFailure{
-						ComponentName: bzComponent,
-						Failures:      map[BugzillaTestFailure]int32{},
-					},
-				}
-			}
-			results.Failures.ComponentName = bzComponent
-			if bzFailureDetails != nil {
-				for k, v := range bzFailureDetails.Failures {
-					results.Failures.Failures[k] = results.Failures.Failures[k] + v
-				}
-			}
-			results.FailuresByThisBugzillaComponent += 1
-
-			totalRuns := jobRunTotals[jrr.Job]
-			results.FailPercentageByThisBugzillaComponent = float64(results.FailuresByThisBugzillaComponent*100.0) / float64(totalRuns)
-			results.TotalRuns = totalRuns
-
-			jobToResults[jrr.Job] = results
-			bzComponentToJobToResults[bzComponent] = jobToResults
-		}
-	}
-
-	bzComponentToSortedBugzillaJobResult := map[string]SortedBugzillaComponentResult{}
-	for bzComponent, jobToResults := range bzComponentToJobToResults {
-		jobsFailed := []BugzillaJobResult{}
-		for _, result := range jobToResults {
-			jobsFailed = append(jobsFailed, result)
-		}
-		// sort from highest to lowest
-		sort.SliceStable(jobsFailed, func(i, j int) bool {
-			return jobsFailed[i].FailPercentageByThisBugzillaComponent > jobsFailed[j].FailPercentageByThisBugzillaComponent
-		})
-		bzComponentToSortedBugzillaJobResult[bzComponent] = SortedBugzillaComponentResult{
-			Name:       bzComponent,
-			JobsFailed: jobsFailed,
-		}
-	}
-	return bzComponentToSortedBugzillaJobResult
-}
-
-func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold int) []JobRunResult {
-	filteredJrr := []JobRunResult{}
+func FilterFailureGroups(
+	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question
+	failureClusterThreshold int,
+) []sippyprocessingv1.JobRunResult {
+	filteredJrr := []sippyprocessingv1.JobRunResult{}
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr
 	}
-	for _, v := range jrr {
-		if v.TestFailures > failureClusterThreshold {
-			filteredJrr = append(filteredJrr, v)
+	for _, rawJRR := range rawJRRs {
+		if rawJRR.TestFailures < failureClusterThreshold {
+			continue
 		}
+
+		allFailuresKnown := areAllFailuresKnown(rawJRR, bugCache, release)
+		hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
+
+		filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
+			Job:                rawJRR.Job,
+			Url:                rawJRR.Url,
+			TestGridJobUrl:     rawJRR.TestGridJobUrl,
+			TestFailures:       rawJRR.TestFailures,
+			FailedTestNames:    rawJRR.FailedTestNames,
+			Failed:             rawJRR.Failed,
+			HasUnknownFailures: hasUnknownFailure,
+			Succeeded:          rawJRR.Succeeded,
+		})
 	}
 
 	// sort from highest to lowest
@@ -407,28 +243,52 @@ func FilterFailureGroups(jrr map[string]JobRunResult, failureClusterThreshold in
 	return filteredJrr
 }
 
-func ComputeJobPassRate(jrr map[string]JobRunResult) []JobResult {
-	jobsMap := make(map[string]JobResult)
+func areAllFailuresKnown(
+	rawJRR testgridanalysisapi.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question,
+) bool {
+	// check if all the test failures in the run can be attributed to
+	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
+	// would have passed if all our bugs were fixed.
+	allFailuresKnown := true
+	for _, testName := range rawJRR.FailedTestNames {
+		bugs := bugCache.ListBugs(release, "", testName)
+		isKnownFailure := len(bugs) > 0
+		if !isKnownFailure {
+			allFailuresKnown = false
+			break
+		}
+	}
+	return allFailuresKnown
+}
 
-	for _, run := range jrr {
-		job, ok := jobsMap[run.Job]
+func SummarizeJobRunResults(
+	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question,
+) []sippyprocessingv1.JobResult {
+	jobsMap := make(map[string]sippyprocessingv1.JobResult)
+
+	for _, rawJRR := range rawJRRs {
+		job, ok := jobsMap[rawJRR.Job]
 		if !ok {
-			job = JobResult{
-				Name:        run.Job,
-				TestGridUrl: run.TestGridJobUrl,
+			job = sippyprocessingv1.JobResult{
+				Name:        rawJRR.Job,
+				TestGridUrl: rawJRR.TestGridJobUrl,
 			}
 		}
-		if run.Failed {
+		if rawJRR.Failed {
 			job.Failures++
-		} else if run.Succeeded {
+		} else if rawJRR.Succeeded {
 			job.Successes++
 		}
-		if run.Failed && !run.HasUnknownFailures {
+		if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
 			job.KnownFailures++
 		}
-		jobsMap[run.Job] = job
+		jobsMap[rawJRR.Job] = job
 	}
-	jobs := []JobResult{}
+	jobs := []sippyprocessingv1.JobResult{}
 	for _, job := range jobsMap {
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
@@ -552,121 +412,33 @@ func FindPlatform(name string) []string {
 	return platforms
 }
 
-func FindBugs(testNames []string) (map[string][]Bug, error) {
-	searchResults := make(map[string][]Bug)
-
-	v := url.Values{}
-	v.Set("type", "bug")
-	v.Set("context", "-1")
-	for _, testName := range testNames {
-		testName = regexp.QuoteMeta(testName)
-		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
-		v.Add("search", testName)
-	}
-
-	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
-	searchUrl := "https://search.ci.openshift.org/v2/search"
-	resp, err := http.PostForm(searchUrl, v)
-	if err != nil {
-		e := fmt.Errorf("error during bug search against %s: %s", searchUrl, err)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchUrl, resp.Status)
-		klog.Errorf(e.Error())
-		return searchResults, e
-	}
-
-	search := Search{}
-	err = json.NewDecoder(resp.Body).Decode(&search)
-
-	for search, result := range search.Results {
-		// reverse the regex escaping we did earlier, so we get back the pure test name string.
-		r, _ := syntax.Parse(search, 0)
-		search = string(r.Rune)
-		for _, match := range result.Matches {
-			bug := match.Bug
-			bug.Url = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
-
-			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
-			// (or the bug was incorrectly verified and needs to be revisited)
-			if bug.Status == "VERIFIED" {
-				if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
-					continue
-				}
-			}
-			searchResults[search] = append(searchResults[search], bug)
-		}
-	}
-
-	klog.V(2).Infof("Found bugs: %v", searchResults)
-	return searchResults, nil
-}
-
-func AddTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {
+func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
 	if !ok {
-		category = AggregateTestResult{
-			TestResults: make(map[string]TestResult),
+		category = testgridanalysisapi.AggregateTestsResult{
+			RawTestResults: make(map[string]testgridanalysisapi.RawTestResult),
 		}
 	}
 
-	category.Successes += passed
-	category.Failures += failed
-
-	result, ok := category.TestResults[testName]
+	result, ok := category.RawTestResults[testName]
 	if !ok {
-		result = TestResult{}
+		result = testgridanalysisapi.RawTestResult{}
 	}
 	result.Name = testName
 	result.Successes += passed
 	result.Failures += failed
 	result.Flakes += flaked
 
-	category.TestResults[testName] = result
+	category.RawTestResults[testName] = result
 
 	categories[categoryKey] = category
 }
 
-// SetTestResult doesn't aggregate, it directly assigns the pass, failed, flaked
-func SetTestResult(categoryKey string, categories map[string]AggregateTestResult, testName string, passed, failed, flaked int) {
-	klog.V(4).Infof("Setting test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
-	category, ok := categories[categoryKey]
-	if !ok {
-		category = AggregateTestResult{
-			TestResults: make(map[string]TestResult),
-		}
-	}
-
-	result, ok := category.TestResults[testName]
-	if !ok {
-		result = TestResult{}
-	}
-	result.Name = testName
-	result.Successes = passed
-	result.Failures = failed
-	result.Flakes = flaked
-
-	category.TestResults[testName] = result
-
-	categorySuccess := 0
-	categoryFailure := 0
-	for _, testResult := range category.TestResults {
-		categorySuccess += testResult.Successes
-		categoryFailure += testResult.Failures
-	}
-	category.Successes = categorySuccess
-	category.Failures = categoryFailure
-
-	categories[categoryKey] = category
-}
-
-func SummarizeJobsByPlatform(report TestReport) []JobResult {
-	jobRunsByPlatform := make(map[string]JobResult)
-	platformResults := []JobResult{}
+func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
+	jobRunsByPlatform := make(map[string]sippyprocessingv1.JobResult)
+	platformResults := []sippyprocessingv1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		platforms := FindPlatform(job.Name)
@@ -693,9 +465,9 @@ func SummarizeJobsByPlatform(report TestReport) []JobResult {
 	return platformResults
 }
 
-func SummarizeJobsByName(report TestReport) []JobResult {
-	jobRunsByName := make(map[string]JobResult)
-	jobResults := []JobResult{}
+func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
+	jobRunsByName := make(map[string]sippyprocessingv1.JobResult)
+	jobResults := []sippyprocessingv1.JobResult{}
 
 	for _, job := range report.JobPassRate {
 		j := jobRunsByName[job.Name]
@@ -720,18 +492,18 @@ func SummarizeJobsByName(report TestReport) []JobResult {
 	return jobResults
 }
 
-func SummarizeJobsFailuresByBugzillaComponent(report TestReport) []SortedBugzillaComponentResult {
-	bzComponentResults := []SortedBugzillaComponentResult{}
+func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestReport) []sippyprocessingv1.SortedBugzillaComponentResult {
+	bzComponentResults := []sippyprocessingv1.SortedBugzillaComponentResult{}
 
 	for _, bzJobFailures := range report.JobFailuresByBugzillaComponent {
 		bzComponentResults = append(bzComponentResults, bzJobFailures)
 	}
 	// sort from highest to lowest
 	sort.SliceStable(bzComponentResults, func(i, j int) bool {
-		if bzComponentResults[i].JobsFailed[0].FailPercentageByThisBugzillaComponent > bzComponentResults[j].JobsFailed[0].FailPercentageByThisBugzillaComponent {
+		if bzComponentResults[i].JobsFailed[0].FailPercentage > bzComponentResults[j].JobsFailed[0].FailPercentage {
 			return true
 		}
-		if bzComponentResults[i].JobsFailed[0].FailPercentageByThisBugzillaComponent < bzComponentResults[j].JobsFailed[0].FailPercentageByThisBugzillaComponent {
+		if bzComponentResults[i].JobsFailed[0].FailPercentage < bzComponentResults[j].JobsFailed[0].FailPercentage {
 			return false
 		}
 		if strings.Compare(strings.ToLower(bzComponentResults[i].Name), strings.ToLower(bzComponentResults[j].Name)) < 0 {
@@ -742,11 +514,173 @@ func SummarizeJobsFailuresByBugzillaComponent(report TestReport) []SortedBugzill
 	return bzComponentResults
 }
 
-func GetPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []SortedBugzillaComponentResult) *SortedBugzillaComponentResult {
+func GetPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyprocessingv1.SortedBugzillaComponentResult) *sippyprocessingv1.SortedBugzillaComponentResult {
 	for _, v := range bugzillaJobFailures {
 		if v.Name == bzComponent {
 			return &v
 		}
 	}
 	return nil
+}
+
+func GenerateJobFailuresByBugzillaComponent(
+	allJobRuns map[string]testgridanalysisapi.RawJobRunResult,
+	jobToTestResults map[string]sippyprocessingv1.SortedAggregateTestsResult,
+) map[string]sippyprocessingv1.SortedBugzillaComponentResult {
+
+	// we need job run totals to determine success rates
+	jobRunTotals := map[string]int{}
+	// we need to separate jobRuns by job
+	// TODO maybe reorganize raw like this
+	jobRunsByJob := map[string][]testgridanalysisapi.RawJobRunResult{}
+	for _, rawJRR := range allJobRuns {
+		jobRunTotals[rawJRR.Job] = jobRunTotals[rawJRR.Job] + 1
+		jobRunsByJob[rawJRR.Job] = append(jobRunsByJob[rawJRR.Job], rawJRR)
+	}
+
+	bzComponentToBZJobResults := map[string][]sippyprocessingv1.BugzillaJobResult{}
+	for job, jobRunResults := range jobRunsByJob {
+		curr := generateJobFailuresByBugzillaComponent(job, jobRunResults, jobToTestResults[job].TestResults)
+		// each job will be distinct, so we merely need to append
+		for bzComponent, bzJobResult := range curr {
+			bzComponentToBZJobResults[bzComponent] = append(bzComponentToBZJobResults[bzComponent], bzJobResult)
+		}
+	}
+
+	sortedResults := map[string]sippyprocessingv1.SortedBugzillaComponentResult{}
+	for bzComponent, jobResults := range bzComponentToBZJobResults {
+		// sort from least passing to most passing
+		// we expect these lists to be small, so the sort isn't awful
+		sort.SliceStable(jobResults, func(i, j int) bool {
+			return jobResults[i].FailPercentage > jobResults[j].FailPercentage
+		})
+		sortedResults[bzComponent] = sippyprocessingv1.SortedBugzillaComponentResult{
+			Name:       bzComponent,
+			JobsFailed: jobResults,
+		}
+	}
+
+	return sortedResults
+}
+
+// returns bz component to bzJob
+func generateJobFailuresByBugzillaComponent(
+	jobName string,
+	jobRuns []testgridanalysisapi.RawJobRunResult,
+	jobTestResults []sippyprocessingv1.TestResult,
+) map[string]sippyprocessingv1.BugzillaJobResult {
+
+	bzComponentToFailedJobRuns := map[string]sets.String{}
+	bzToTestNameToTestResult := map[string]map[string]sippyprocessingv1.TestResult{}
+	failedTestCount := 0
+	foundTestCount := 0
+	for _, rawJRR := range jobRuns {
+		failedTestCount += len(rawJRR.FailedTestNames)
+		for _, testName := range rawJRR.FailedTestNames {
+			testResult, foundTest := getTestResultForJob(jobTestResults, testName)
+			if !foundTest {
+				continue
+			}
+			foundTestCount++
+
+			bzComponents := getBugzillaComponentsFromTestResult(testResult)
+			for _, bzComponent := range bzComponents {
+				// set the failed runs so we know which jobs failed
+				failedJobRuns, ok := bzComponentToFailedJobRuns[bzComponent]
+				if !ok {
+					failedJobRuns = sets.String{}
+				}
+				failedJobRuns.Insert(rawJRR.Url)
+				bzComponentToFailedJobRuns[bzComponent] = failedJobRuns
+				////////////////////////////////
+
+				// set the filtered test result
+				testNameToTestResult, ok := bzToTestNameToTestResult[bzComponent]
+				if !ok {
+					testNameToTestResult = map[string]sippyprocessingv1.TestResult{}
+				}
+				testNameToTestResult[testName] = getTestResultFilteredByComponent(testResult, bzComponent)
+				bzToTestNameToTestResult[bzComponent] = testNameToTestResult
+				////////////////////////////////
+			}
+		}
+	}
+
+	bzComponentToBZJobResult := map[string]sippyprocessingv1.BugzillaJobResult{}
+	for bzComponent, failedJobRuns := range bzComponentToFailedJobRuns {
+		totalRuns := len(jobRuns)
+		numFailedJobRuns := len(failedJobRuns)
+		failPercentage := float64(numFailedJobRuns*100) / float64(totalRuns)
+
+		bzJobTestResult := []sippyprocessingv1.TestResult{}
+		for _, testResult := range bzToTestNameToTestResult[bzComponent] {
+			bzJobTestResult = append(bzJobTestResult, testResult)
+		}
+		// sort from least passing to most passing
+		sort.SliceStable(bzJobTestResult, func(i, j int) bool {
+			return bzJobTestResult[i].PassPercentage < bzJobTestResult[j].PassPercentage
+		})
+
+		bzComponentToBZJobResult[bzComponent] = sippyprocessingv1.BugzillaJobResult{
+			JobName:               jobName,
+			BugzillaComponent:     bzComponent,
+			NumberOfJobRunsFailed: numFailedJobRuns,
+			FailPercentage:        failPercentage,
+			TotalRuns:             totalRuns,
+			Failures:              bzJobTestResult,
+		}
+	}
+
+	return bzComponentToBZJobResult
+}
+
+func getBugzillaComponentsFromTestResult(testResult sippyprocessingv1.TestResult) []string {
+	bzComponents := sets.String{}
+	bugList := testResult.BugList
+	for _, bug := range bugList {
+		bzComponents.Insert(bug.Component[0])
+	}
+	if len(bzComponents) > 0 {
+		return bzComponents.List()
+	}
+
+	// If we didn't have a bug, use the test name itself to identify a likely victim/blame
+	switch {
+	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix):
+		operatorName := testResult.Name[len(testgridanalysisapi.OperatorInstallPrefix):]
+		return []string{testgridanalysis.GetBugzillaComponentForOperator(operatorName)}
+
+	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix):
+		operatorName := testResult.Name[len(testgridanalysisapi.OperatorUpgradePrefix):]
+		return []string{testgridanalysis.GetBugzillaComponentForOperator(operatorName)}
+
+	default:
+		return []string{testgridanalysis.GetBugzillaComponentForSig(FindSig(testResult.Name))}
+	}
+
+}
+
+func getTestResultForJob(jobTestResults []sippyprocessingv1.TestResult, testName string) (sippyprocessingv1.TestResult, bool) {
+	for _, testResult := range jobTestResults {
+		if testResult.Name == testName {
+			return testResult, true
+		}
+	}
+	return sippyprocessingv1.TestResult{
+		Name:           "if-seen-report-bug---" + testName,
+		PassPercentage: 200.0,
+	}, false
+}
+
+func getTestResultFilteredByComponent(testResult sippyprocessingv1.TestResult, bzComponent string) sippyprocessingv1.TestResult {
+	ret := testResult
+	ret.BugList = []bugsv1.Bug{}
+	for i := range testResult.BugList {
+		bug := testResult.BugList[i]
+		if bug.Component[0] == bzComponent {
+			ret.BugList = append(ret.BugList, bug)
+		}
+	}
+
+	return ret
 }

@@ -7,76 +7,21 @@ import (
 	"net/url"
 	"regexp"
 
+	v12 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
 
-// PassRate describes statistics on a pass rate
-type PassRate struct {
-	Percentage          float64 `json:"percentage"`
-	ProjectedPercentage float64 `json:"projectedPercentage,omitempty"`
-	Runs                int     `json:"runs"`
-}
-
-// SummaryAcrossAllJobs describes the category summaryacrossalljobs
-// valid keys are latest and prev
-type SummaryAcrossAllJobs struct {
-	TestExecutions     map[string]int     `json:"testExecutions"`
-	TestPassPercentage map[string]float64 `json:"testPassPercentage"`
-}
-
-// FailureGroups describes the category failuregroups
-// valid keys are latest and prev
-type FailureGroups struct {
-	JobRunsWithFailureGroup map[string]int `json:"jobRunsWithFailureGroup"`
-	AvgFailureGroupSize     map[string]int `json:"avgFailureGroupSize"`
-	MedianFailureGroupSize  map[string]int `json:"medianFailureGroupSize"`
-}
-
-// CanaryTestFailInstance describes one single instance of a canary test failure
-// passRate should have percentage (float64) and number of runs (int)
-type CanaryTestFailInstance struct {
-	Name     string   `json:"name"`
-	Url      string   `json:"url"`
-	PassRate PassRate `json:"passRate"`
-}
-
-// PassRatesByJobName is responsible for the section job pass rates by job name
-type PassRatesByJobName struct {
-	Name      string              `json:"name"`
-	Url       string              `json:"url"`
-	PassRates map[string]PassRate `json:"passRates"`
-}
-
-// FailingTestBug describes a single instance of failed test with bug or failed test without bug
-// differs from failingtest in that it includes pass rates for previous days and latest days
-type FailingTestBug struct {
-	Name      string              `json:"name"`
-	Url       string              `json:"url"`
-	PassRates map[string]PassRate `json:"passRates"`
-	Bugs      []util.Bug          `json:"bugs,omitempty"`
-}
-
-// JobSummaryPlatform describes a single platform and its associated jobs, their pass rates, and failing tests
-type JobSummaryPlatform struct {
-	Platform  string              `json:"platform"`
-	PassRates map[string]PassRate `json:"passRates"`
-}
-
-// FailureGroup describes a single failure group - does not show the associated failed job names
-type FailureGroup struct {
-	Job          string `json:"job"`
-	Url          string `json:"url"`
-	TestFailures int    `json:"testFailures"`
-}
-
 // summary across all job
-func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTestResult, endDay int) *SummaryAcrossAllJobs {
+func summaryAcrossAllJobs(result, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) *v1.SummaryAcrossAllJobs {
 	all := result["all"]
 	allPrev := resultPrev["all"]
 
-	summary := SummaryAcrossAllJobs{
+	summary := v1.SummaryAcrossAllJobs{
 		TestExecutions: map[string]int{
 			"latest": all.Successes + all.Failures,
 			"prev":   allPrev.Successes + allPrev.Failures,
@@ -91,11 +36,11 @@ func summaryAcrossAllJobs(result, resultPrev map[string]util.SortedAggregateTest
 }
 
 // stats on failure groups
-func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay int) *FailureGroups {
+func failureGroups(failureGroups, failureGroupsPrev []v12.JobRunResult, endDay int) *v1.FailureGroups {
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
-	failureGroupStruct := FailureGroups{
+	failureGroupStruct := v1.FailureGroups{
 		JobRunsWithFailureGroup: map[string]int{
 			"latest": len(failureGroups),
 			"prev":   len(failureGroupsPrev),
@@ -112,27 +57,27 @@ func failureGroups(failureGroups, failureGroupsPrev []util.JobRunResult, endDay 
 	return &failureGroupStruct
 }
 
-func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCount int) []JobSummaryPlatform {
+func summaryJobsByPlatform(report, reportPrev v12.TestReport, endDay, jobTestCount int) []v1.JobSummaryPlatform {
 	jobsByPlatform := util.SummarizeJobsByPlatform(report)
 	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
 
-	var jobSummariesByPlatform []JobSummaryPlatform
+	var jobSummariesByPlatform []v1.JobSummaryPlatform
 
 	for _, v := range jobsByPlatform {
 		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
 
-		var jobSummaryPlatform JobSummaryPlatform
+		var jobSummaryPlatform v1.JobSummaryPlatform
 
 		if prev != nil {
-			jobSummaryPlatform = JobSummaryPlatform{
+			jobSummaryPlatform = v1.JobSummaryPlatform{
 				Platform: v.Platform,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
-					"prev": PassRate{
+					"prev": v1.PassRate{
 						Percentage:          prev.PassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
@@ -140,10 +85,10 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 				},
 			}
 		} else {
-			jobSummaryPlatform = JobSummaryPlatform{
+			jobSummaryPlatform = v1.JobSummaryPlatform{
 				Platform: v.Platform,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
@@ -158,9 +103,9 @@ func summaryJobsByPlatform(report, reportPrev util.TestReport, endDay, jobTestCo
 }
 
 // top failing tests with a bug
-func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int) []FailingTestBug {
+func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) []v1.FailingTestBug {
 
-	var topFailingTests []FailingTestBug
+	var topFailingTests []v1.FailingTestBug
 
 	allPrev := resultPrev["all"]
 
@@ -170,18 +115,18 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
-		var failedTestWithBug FailingTestBug
+		var failedTestWithBug v1.FailingTestBug
 
 		if testPrev != nil {
-			failedTestWithBug = FailingTestBug{
+			failedTestWithBug = v1.FailingTestBug{
 				Name: test.Name,
 				Url:  testLink,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
-					"prev": PassRate{
+					"prev": v1.PassRate{
 						Percentage: testPrev.PassPercentage,
 						Runs:       testPrev.Successes + test.Failures,
 					},
@@ -189,11 +134,11 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 				Bugs: test.BugList,
 			}
 		} else {
-			failedTestWithBug = FailingTestBug{
+			failedTestWithBug = v1.FailingTestBug{
 				Name: test.Name,
 				Url:  testLink,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
@@ -210,11 +155,11 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug []*util.TestResult, re
 }
 
 // top failing tests without a bug
-func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResult, resultPrev map[string]util.SortedAggregateTestResult, endDay int) []FailingTestBug {
+func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*v12.TestResult, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) []v1.FailingTestBug {
 
 	allPrev := resultPrev["all"]
 
-	var topFailingTests []FailingTestBug
+	var topFailingTests []v1.FailingTestBug
 
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
@@ -222,19 +167,19 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
 		testPrev := util.GetPrevTest(test.Name, allPrev.TestResults)
 
-		var failedTestWithoutBug FailingTestBug
+		var failedTestWithoutBug v1.FailingTestBug
 
 		if testPrev != nil {
 
-			failedTestWithoutBug = FailingTestBug{
+			failedTestWithoutBug = v1.FailingTestBug{
 				Name: test.Name,
 				Url:  testLink,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
-					"prev": PassRate{
+					"prev": v1.PassRate{
 						Percentage: testPrev.PassPercentage,
 						Runs:       testPrev.Successes + testPrev.Failures,
 					},
@@ -242,11 +187,11 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 			}
 
 		} else {
-			failedTestWithoutBug = FailingTestBug{
+			failedTestWithoutBug = v1.FailingTestBug{
 				Name: test.Name,
 				Url:  testLink,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage: test.PassPercentage,
 						Runs:       test.Successes + test.Failures,
 					},
@@ -259,29 +204,29 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*util.TestResu
 	return topFailingTests
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jobTestCount int) []PassRatesByJobName {
+func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, jobTestCount int) []v1.PassRatesByJobName {
 
 	jobRunsByName := util.SummarizeJobsByName(report)
 	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
 
-	var passRatesSlice []PassRatesByJobName
+	var passRatesSlice []v1.PassRatesByJobName
 
 	for _, v := range jobRunsByName {
 		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
 
-		var newJobPassRate PassRatesByJobName
+		var newJobPassRate v1.PassRatesByJobName
 
 		if prev != nil {
-			newJobPassRate = PassRatesByJobName{
+			newJobPassRate = v1.PassRatesByJobName{
 				Name: v.Name,
 				Url:  v.TestGridUrl,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
-					"prev": PassRate{
+					"prev": v1.PassRate{
 						Percentage:          prev.PassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
@@ -289,11 +234,11 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 				},
 			}
 		} else {
-			newJobPassRate = PassRatesByJobName{
+			newJobPassRate = v1.PassRatesByJobName{
 				Name: v.Name,
 				Url:  v.TestGridUrl,
-				PassRates: map[string]PassRate{
-					"latest": PassRate{
+				PassRates: map[string]v1.PassRate{
+					"latest": v1.PassRate{
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
@@ -311,10 +256,10 @@ func summaryJobPassRatesByJobName(report, reportPrev util.TestReport, endDay, jo
 }
 
 // canaryTestFailures section
-func canaryTestFailures(result map[string]util.SortedAggregateTestResult) []CanaryTestFailInstance {
+func canaryTestFailures(result map[string]v12.SortedAggregateTestsResult) []v1.CanaryTestFailInstance {
 	all := result["all"].TestResults
 
-	var canaryFailures []CanaryTestFailInstance
+	var canaryFailures []v1.CanaryTestFailInstance
 
 	if len(all) <= 0 {
 		return nil
@@ -324,10 +269,10 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) []Cana
 		test := all[i]
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 		canaryFailures = append(canaryFailures,
-			CanaryTestFailInstance{
+			v1.CanaryTestFailInstance{
 				Name: test.Name,
 				Url:  fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName),
-				PassRate: PassRate{
+				PassRate: v1.PassRate{
 					Percentage: test.PassPercentage,
 					Runs:       test.Successes + test.Failures,
 				},
@@ -337,11 +282,11 @@ func canaryTestFailures(result map[string]util.SortedAggregateTestResult) []Cana
 }
 
 // job runs with failure groups
-func failureGroupList(report util.TestReport) []FailureGroup {
+func failureGroupList(report v12.TestReport) []v1.FailureGroup {
 
-	var failureGroups []FailureGroup
+	var failureGroups []v1.FailureGroup
 	for _, fg := range report.FailureGroups {
-		failureGroups = append(failureGroups, FailureGroup{
+		failureGroups = append(failureGroups, v1.FailureGroup{
 			Job:          fg.Job,
 			Url:          fg.Url,
 			TestFailures: fg.TestFailures,
@@ -350,7 +295,7 @@ func failureGroupList(report util.TestReport) []FailureGroup {
 	return failureGroups
 }
 
-func formatJSONReport(report, prevReport util.TestReport, endDay, jobTestCount int) map[string]interface{} {
+func formatJSONReport(report, prevReport v12.TestReport, endDay, jobTestCount int) map[string]interface{} {
 	data := html.TestReports{
 		Current:      report,
 		Prev:         prevReport,
@@ -373,7 +318,7 @@ func formatJSONReport(report, prevReport util.TestReport, endDay, jobTestCount i
 }
 
 // PrintJSONReport prints json format of the reports
-func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports map[string][]util.TestReport, endDay, jobTestCount int) {
+func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports map[string][]v12.TestReport, endDay, jobTestCount int) {
 	reportObjects := make(map[string]interface{})
 	for _, reports := range releaseReports {
 		report := reports[0]

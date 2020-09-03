@@ -1,4 +1,4 @@
-package testgrid
+package v1
 
 // testgrid datastructures
 type JobSummary struct {
