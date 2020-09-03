@@ -35,7 +35,7 @@ type SortedAggregateTestsResult struct {
 	Successes          int     `json:"successes"`
 	Failures           int     `json:"failures"`
 	TestPassPercentage float64 `json:"testPassPercentage"`
-	// TestResults holds the values for individual runs of this test sorted by.....
+	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`
 }
 
@@ -98,6 +98,6 @@ type BugzillaJobResult struct {
 	// TotalRuns is the number of runs this Job has run total.
 	TotalRuns int `json:"totalRuns"`
 
-	// Failures are a full list of the failures by this BZ component in the given job.
+	// Failures are a full list of the failures caused by this BZ component in the given job.
 	Failures []TestResult `json:"failures"`
 }

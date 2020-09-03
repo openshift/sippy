@@ -100,7 +100,7 @@ Data current as of: %s
 	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
 	         <a href="#TestImpactingComponents">Test Impacting Components</a> |
-	         <a href="#BZToWorstJobImpact">Bugzilla Components to Worst Job Impact</a>
+	         <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
 
 {{ summaryAcrossAllJobs .Current.All .Prev.All .EndDay }}
@@ -737,10 +737,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla components ranked by maximum fail percentage of any job." id="BZToWorstJobImpact" href="#BZToWorstJobImpact">Bugzilla Components to Worst Job Impact</a></th>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla components ranked by maximum fail percentage of any job" id="JobImpactingBZComponents" href="#JobImpactingBZComponents">Job Impacting BZ Components</a></th>
 		</tr>
 		<tr>
-			<th>Variant</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+			<th>Component</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`, endDay)
 
@@ -807,9 +807,9 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		lowestPassPercentage := 100 - highestFailPercentage
 		rowColor := ""
 		switch {
-		case lowestPassPercentage > 85:
+		case lowestPassPercentage > 95:
 			rowColor = "table-success"
-		case lowestPassPercentage > 70:
+		case lowestPassPercentage > 90:
 			rowColor = "table-warning"
 		case lowestPassPercentage > 0:
 			rowColor = "table-danger"
@@ -847,7 +847,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				v.Name,
 				safeBZJob,
 				lowestPassPercentage,
-				prev.JobsFailed[0].TotalRuns,
+				v.JobsFailed[0].TotalRuns, // this is the total runs for the current, worst job which matches the pass percentage
 				arrow,
 				previousLowestPassPercentage,
 				prev.JobsFailed[0].TotalRuns,
@@ -858,7 +858,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				v.Name,
 				safeBZJob,
 				lowestPassPercentage,
-				v.JobsFailed[0].TotalRuns,
+				v.JobsFailed[0].TotalRuns, // this is the total runs for the current, worst job which matches the pass percentage
 			)
 		}
 
@@ -880,7 +880,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				bzJobTuple,
 				100.0-failingJob.FailPercentage,
 				failingJob.NumberOfJobRunsFailed,
-				failingJob.TotalRuns,
+				failingJob.TotalRuns, // this is the total runs for the job
 			)
 
 			rows := ""
@@ -935,6 +935,9 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	for _, analysisWarning := range prevReport.AnalysisWarnings {
+		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
+	}
 	for _, analysisWarning := range report.AnalysisWarnings {
 		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
 	}
