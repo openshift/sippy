@@ -35,7 +35,7 @@ type SortedAggregateTestsResult struct {
 	Successes          int     `json:"successes"`
 	Failures           int     `json:"failures"`
 	TestPassPercentage float64 `json:"testPassPercentage"`
-	// TestResults holds the values for individual runs of this test sorted from lowest PassPercentage to highest PassPercentage
+	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`
 }
 
