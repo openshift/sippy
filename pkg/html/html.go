@@ -807,9 +807,9 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		lowestPassPercentage := 100 - highestFailPercentage
 		rowColor := ""
 		switch {
-		case lowestPassPercentage > 85:
+		case lowestPassPercentage > 95:
 			rowColor = "table-success"
-		case lowestPassPercentage > 70:
+		case lowestPassPercentage > 90:
 			rowColor = "table-warning"
 		case lowestPassPercentage > 0:
 			rowColor = "table-danger"
@@ -847,7 +847,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				v.Name,
 				safeBZJob,
 				lowestPassPercentage,
-				prev.JobsFailed[0].TotalRuns,
+				v.JobsFailed[0].TotalRuns, // this is the total runs for the current, worst job which matches the pass percentage
 				arrow,
 				previousLowestPassPercentage,
 				prev.JobsFailed[0].TotalRuns,
