@@ -351,9 +351,6 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 }
 
 func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
-	jobRunsByName := util.SummarizeJobsByName(report)
-	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
-
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -364,8 +361,8 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		</tr>
 	`, endDay)
 
-	for _, currJobResult := range jobRunsByName {
-		prevJobResult := util.GetPrevJob(currJobResult.Name, jobRunsByNamePrev)
+	for _, currJobResult := range report.JobPassRate {
+		prevJobResult := util.GetPrevJob(currJobResult.Name, reportPrev.JobPassRate)
 		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).

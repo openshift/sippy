@@ -469,34 +469,6 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 	return platformResults
 }
 
-func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
-	jobRunsByName := make(map[string]sippyprocessingv1.JobResult)
-	jobResults := []sippyprocessingv1.JobResult{}
-
-	for _, job := range report.JobPassRate {
-		j := jobRunsByName[job.Name]
-		j.Name = job.Name
-		//j.Platform = platform // not present, logically a slice
-		j.TestGridUrl = job.TestGridUrl
-		j.Successes += job.Successes
-		j.Failures += job.Failures
-		j.KnownFailures += job.KnownFailures
-		j.TestResults = job.TestResults
-		jobRunsByName[job.Name] = j
-	}
-
-	for _, job := range jobRunsByName {
-		job.PassPercentage = Percent(job.Successes, job.Failures)
-		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
-		jobResults = append(jobResults, job)
-	}
-	// sort from lowest to highest
-	sort.SliceStable(jobResults, func(i, j int) bool {
-		return jobResults[i].PassPercentage < jobResults[j].PassPercentage
-	})
-	return jobResults
-}
-
 func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestReport) []sippyprocessingv1.SortedBugzillaComponentResult {
 	bzComponentResults := []sippyprocessingv1.SortedBugzillaComponentResult{}
 

@@ -592,9 +592,7 @@ func (a *Analyzer) printDashboardReport() {
 	}
 
 	fmt.Println("\n\n================== Top 10 Most Frequently Failing Jobs ==================")
-	jobRunsByName := util.SummarizeJobsByName(a.Report)
-
-	for i, v := range jobRunsByName {
+	for i, v := range a.Report.JobPassRate {
 		fmt.Printf("Job: %s\n", v.Name)
 		fmt.Printf("Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
 		if v.Successes+v.Failures < 10 {
