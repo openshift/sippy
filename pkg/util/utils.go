@@ -265,6 +265,7 @@ func areAllFailuresKnown(
 
 func SummarizeJobRunResults(
 	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) []sippyprocessingv1.JobResult {
@@ -276,6 +277,7 @@ func SummarizeJobRunResults(
 			job = sippyprocessingv1.JobResult{
 				Name:        rawJRR.Job,
 				TestGridUrl: rawJRR.TestGridJobUrl,
+				TestResults: byJob[rawJRR.Job].TestResults,
 			}
 		}
 		if rawJRR.Failed {
@@ -453,7 +455,6 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 	}
 
 	for _, platform := range jobRunsByPlatform {
-
 		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
 		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
 		platformResults = append(platformResults, platform)
@@ -476,11 +477,11 @@ func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv
 		j.Successes += job.Successes
 		j.Failures += job.Failures
 		j.KnownFailures += job.KnownFailures
+		j.TestResults = job.TestResults
 		jobRunsByName[job.Name] = j
 	}
 
 	for _, job := range jobRunsByName {
-
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 		jobResults = append(jobResults, job)

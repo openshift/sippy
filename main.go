@@ -525,7 +525,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	bySig := util.SummarizeTestResults(a.RawData.BySig, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobRunResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
-	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, a.BugCache, a.Release)
+	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobRunResults, byJob, a.BugCache, a.Release)
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobRunResults, byAll, a.BugCache, a.Release)
 	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobRunResults, byJob)
