@@ -444,13 +444,16 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 
 	for _, job := range report.JobPassRate {
 		platforms := FindPlatform(job.Name)
-		for _, p := range platforms {
-			j := jobRunsByPlatform[p]
+		for _, platform := range platforms {
+			j := jobRunsByPlatform[platform]
+			j.Name = platform
+			j.Platform = platform
+			//j.TestGridUrl = job.TestGridUrl // not present, logically not present for platforms
 			j.Successes += job.Successes
 			j.Failures += job.Failures
 			j.KnownFailures += job.KnownFailures
-			j.Platform = p
-			jobRunsByPlatform[p] = j
+			j.TestResults = report.ByPlatform[platform].TestResults
+			jobRunsByPlatform[platform] = j
 		}
 	}
 
@@ -473,6 +476,7 @@ func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv
 	for _, job := range report.JobPassRate {
 		j := jobRunsByName[job.Name]
 		j.Name = job.Name
+		//j.Platform = platform // not present, logically a slice
 		j.TestGridUrl = job.TestGridUrl
 		j.Successes += job.Successes
 		j.Failures += job.Failures

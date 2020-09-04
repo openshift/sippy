@@ -46,6 +46,8 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	s := ""
 
+	// TODO either make this a template or make this a builder that takes args and then has branches.
+	//  that will fix the funny link that goes nowhere.
 	template := `
 			<tr class="%s">
 				<td>

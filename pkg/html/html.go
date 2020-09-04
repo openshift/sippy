@@ -209,127 +209,16 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 		</tr>
 	`, endDay)
 
-	jobGroupTemplate := `
-		<tr class="%s">
-			<td>
-				%[2]s
-				<p>
-				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
-			</td>
-			<td>
-				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-			</td>
-			<td>
-				%s
-			</td>
-			<td>
-				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-			</td>
-		</tr>
-	`
+	for _, currJobResult := range jobsByPlatform {
+		prevJobResult := util.GetPrevPlatform(currJobResult.Platform, jobsByPlatformPrev)
+		jobHTML := newJobResultRenderer("by-variant", currJobResult, release).
+			withMaxTestResultsToShow(jobTestCount).
+			withPrevious(prevJobResult).
+			toHTML()
 
-	naTemplate := `
-			<tr class="%s">
-				<td>
-					%[2]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	for _, v := range jobsByPlatform {
-		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
-		p := v.PassPercentage
-		rowColor := ""
-		switch {
-		case p > 75:
-			rowColor = "table-success"
-		case p > 30:
-			rowColor = "table-warning"
-		case p > 0:
-			rowColor = "table-danger"
-		default:
-			rowColor = "error"
-		}
-
-		if prev != nil {
-			pprev := prev.PassPercentage
-			arrow := ""
-			delta := 5.0
-			if v.Successes+v.Failures > 80 {
-				delta = 2
-			}
-			if p > pprev+delta {
-				arrow = fmt.Sprintf(up, p-pprev)
-			} else if p < pprev-delta {
-				arrow = fmt.Sprintf(down, pprev-p)
-			} else if p > pprev {
-				arrow = fmt.Sprintf(flatup, p-pprev)
-			} else {
-				arrow = fmt.Sprintf(flatdown, pprev-p)
-			}
-			s = s + fmt.Sprintf(jobGroupTemplate, rowColor, v.Platform,
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-				arrow,
-				prev.PassPercentage,
-				prev.PassPercentageWithKnownFailures,
-				prev.Successes+prev.Failures,
-			)
-		} else {
-			s = s + fmt.Sprintf(naTemplate, rowColor, v.Platform,
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-			)
-		}
-
-		platformTests := report.ByPlatform[v.Platform]
-		count := jobTestCount
-		rowCount := 0
-		rows := ""
-		additionalMatches := 0
-		for _, testResult := range platformTests.TestResults {
-			if count == 0 {
-				additionalMatches++
-				continue
-			}
-			count--
-
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
-			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
-
-			bugHTML := bugHTMLForTest(testResult.BugList, report.Release, "", testResult.Name)
-
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
-				testResult.Name,
-				jobQuery,
-				encodedTestName,
-				bugHTML,
-				testResult.PassPercentage,
-				testResult.Successes+testResult.Failures,
-			)
-			rowCount++
-		}
-		if additionalMatches > 0 {
-			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, v.Platform, additionalMatches)
-		}
-		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
-			s = s + rows
-		} else {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
-		}
+		s += jobHTML
 	}
+
 	s = s + "</table>"
 	return s
 }
