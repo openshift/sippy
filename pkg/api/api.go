@@ -208,7 +208,7 @@ func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, job
 	var passRatesSlice []v1.PassRatesByJobName
 
 	for _, v := range report.JobPassRate {
-		prev := util.GetPrevJob(v.Name, reportPrev.JobPassRate)
+		prev := util.GetJobResultForJobName(v.Name, reportPrev.JobPassRate)
 
 		var newJobPassRate v1.PassRatesByJobName
 

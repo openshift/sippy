@@ -362,7 +362,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 	`, endDay)
 
 	for _, currJobResult := range report.JobPassRate {
-		prevJobResult := util.GetPrevJob(currJobResult.Name, reportPrev.JobPassRate)
+		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.JobPassRate)
 		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).
@@ -555,22 +555,11 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			</tr>
 		`
 
-	bzFailingJobTemplate := `
-			<tr class="collapse %s">
-				<td>
-					%[2]s -- %[3]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% <span class="text-nowrap">(%d/%d failed/total)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
+	colors := colorizationCriteria{
+		minRedPercent:    0,
+		minYellowPercent: 90,
+		minGreenPercent:  95,
+	}
 
 	for _, v := range failuresByBugzillaComponent {
 		safeBZJob := fmt.Sprintf("%s---component", v.Name)
@@ -582,11 +571,11 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		lowestPassPercentage := 100 - highestFailPercentage
 		rowColor := ""
 		switch {
-		case lowestPassPercentage > 95:
+		case lowestPassPercentage > colors.minGreenPercent:
 			rowColor = "table-success"
-		case lowestPassPercentage > 90:
+		case lowestPassPercentage > colors.minYellowPercent:
 			rowColor = "table-warning"
-		case lowestPassPercentage > 0:
+		case lowestPassPercentage > colors.minRedPercent:
 			rowColor = "table-danger"
 		default:
 			rowColor = "error"
@@ -639,48 +628,61 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 
 		count := 0
 		for _, failingJob := range v.JobsFailed {
+			if count > 4 { // only show five
+				break
+			}
+			count++
+
 			bzJobTuple := fmt.Sprintf("%s---%s", v.Name, failingJob.JobName)
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, ".", "")
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
 
-			// only show the worst ten jobs
-			if count > 10 {
-				break
+			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
+			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.JobPassRate)
+
+			// create the synthetic JobResult for display purposes.
+			// TODO with another refactor, we'll be able to tighten this up later.
+			currJobResult := sippyprocessingv1.JobResult{
+				Name:                            failingJob.JobName,
+				Platform:                        "",
+				Failures:                        failingJob.NumberOfJobRunsFailed,
+				KnownFailures:                   0,
+				Successes:                       failingJob.TotalRuns - failingJob.NumberOfJobRunsFailed,
+				PassPercentage:                  100.0 - failingJob.FailPercentage,
+				PassPercentageWithKnownFailures: 0,
+				TestGridUrl:                     fullJobResult.TestGridUrl,
+				TestResults:                     failingJob.Failures,
 			}
-			count++
-			s = s + fmt.Sprintf(bzFailingJobTemplate,
-				safeBZJob,
-				v.Name,
-				failingJob.JobName,
-				bzJobTuple,
-				100.0-failingJob.FailPercentage,
-				failingJob.NumberOfJobRunsFailed,
-				failingJob.TotalRuns, // this is the total runs for the job
-			)
-
-			rows := ""
-			for _, currFailedTestResult := range failingJob.Failures {
-				encodedTestName := url.QueryEscape(regexp.QuoteMeta(currFailedTestResult.Name))
-				jobQuery := fmt.Sprintf("%s", report.Release)
-
-				bugHTML := bugHTMLForTest(currFailedTestResult.BugList, release, "", currFailedTestResult.Name)
-
-				rows = rows + fmt.Sprintf(testGroupTemplate, bzJobTuple,
-					currFailedTestResult.Name,
-					jobQuery,
-					encodedTestName,
-					bugHTML,
-					currFailedTestResult.PassPercentage,
-					currFailedTestResult.Successes+currFailedTestResult.Failures,
-				)
+			var prevJobResult *sippyprocessingv1.JobResult
+			if prev != nil {
+				var prevJob *sippyprocessingv1.BugzillaJobResult
+				for _, prevJobI := range prev.JobsFailed {
+					if prevJobI.JobName == failingJob.JobName {
+						prevJob = &prevJobI
+						break
+					}
+				}
+				if prevJob != nil {
+					prevJobResult = &sippyprocessingv1.JobResult{
+						Name:                            prevJob.JobName,
+						Platform:                        "",
+						Failures:                        prevJob.NumberOfJobRunsFailed,
+						KnownFailures:                   0,
+						Successes:                       prevJob.TotalRuns - prevJob.NumberOfJobRunsFailed,
+						PassPercentage:                  100.0 - prevJob.FailPercentage,
+						PassPercentageWithKnownFailures: 0,
+						TestGridUrl:                     fullJobResult.TestGridUrl,
+						TestResults:                     prevJob.Failures,
+					}
+				}
 			}
 
-			if len(rows) > 0 {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, bzJobTuple)
-				s = s + rows
-			} else {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, bzJobTuple)
-			}
+			jobHTML := newJobResultRenderer("by-bz-component-"+bzJobTuple, currJobResult, release).
+				withPrevious(prevJobResult).
+				withColors(colors).
+				startCollapsedAs(safeBZJob).
+				toHTML()
+			s += jobHTML
 		}
 	}
 	s = s + "</table>"

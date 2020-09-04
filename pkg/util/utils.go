@@ -55,7 +55,7 @@ func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippy
 	return nil
 }
 
-func GetPrevJob(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
+func GetJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v

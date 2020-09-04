@@ -19,6 +19,13 @@ type jobResultRenderBuilder struct {
 
 	release              string
 	maxTestResultsToShow int
+	colors               colorizationCriteria
+	collapsedAs          string
+}
+type colorizationCriteria struct {
+	minRedPercent    float64
+	minYellowPercent float64
+	minGreenPercent  float64
 }
 
 func newJobResultRenderer(sectionBlock string, currJobResult sippyprocessingv1.JobResult, release string) *jobResultRenderBuilder {
@@ -27,6 +34,11 @@ func newJobResultRenderer(sectionBlock string, currJobResult sippyprocessingv1.J
 		currJobResult:        currJobResult,
 		release:              release,
 		maxTestResultsToShow: 10, // just a default, can be overridden
+		colors: colorizationCriteria{
+			minRedPercent:    0,
+			minYellowPercent: 30,
+			minGreenPercent:  75,
+		},
 	}
 }
 
@@ -40,9 +52,20 @@ func (b *jobResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow i
 	return b
 }
 
+func (b *jobResultRenderBuilder) withColors(colors colorizationCriteria) *jobResultRenderBuilder {
+	b.colors = colors
+	return b
+}
+
+func (b *jobResultRenderBuilder) startCollapsedAs(collapsedAs string) *jobResultRenderBuilder {
+	b.collapsedAs = collapsedAs
+	return b
+}
+
 func (b *jobResultRenderBuilder) toHTML() string {
-	collapseName := b.sectionBlock + "---" + b.currJobResult.Name
-	collapseName = strings.ReplaceAll(collapseName, ".", "")
+	safeSectionBlock := strings.ReplaceAll(strings.ReplaceAll(b.sectionBlock, ".", ""), " ", "")
+	collapseName := safeSectionBlock + "---" + b.currJobResult.Name + "---tests"
+	collapseName = strings.ReplaceAll(strings.ReplaceAll(collapseName, ".", ""), " ", "")
 
 	s := ""
 
@@ -86,14 +109,18 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	rowColor := ""
 	switch {
-	case b.currJobResult.PassPercentage > 75:
+	case b.currJobResult.PassPercentage > b.colors.minGreenPercent:
 		rowColor = "table-success"
-	case b.currJobResult.PassPercentage > 30:
+	case b.currJobResult.PassPercentage > b.colors.minYellowPercent:
 		rowColor = "table-warning"
-	case b.currJobResult.PassPercentage > 0:
+	case b.currJobResult.PassPercentage > b.colors.minRedPercent:
 		rowColor = "table-danger"
 	default:
 		rowColor = "error"
+	}
+	class := rowColor
+	if len(b.collapsedAs) > 0 {
+		class += " collapse " + b.collapsedAs
 	}
 
 	if b.prevJobResult != nil {
@@ -112,7 +139,10 @@ func (b *jobResultRenderBuilder) toHTML() string {
 		} else {
 			arrow = fmt.Sprintf(flatdown, b.prevJobResult.PassPercentage-b.currJobResult.PassPercentage)
 		}
-		s = s + fmt.Sprintf(template, rowColor, b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
+
+		s = s + fmt.Sprintf(template,
+			class,
+			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
@@ -122,7 +152,7 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			b.prevJobResult.Successes+b.prevJobResult.Failures,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate, rowColor, b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
+		s = s + fmt.Sprintf(naTemplate, class, b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
