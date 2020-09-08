@@ -272,9 +272,9 @@ func SummarizeJobRunResults(
 	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
-) []sippyprocessingv1.JobResult {
+	numberOfDaysOfData int, // number of days included in report.
+) (jobs []sippyprocessingv1.JobResult, infrequentJobs []sippyprocessingv1.JobResult) {
 
-	jobs := []sippyprocessingv1.JobResult{}
 	for jobName, rawJobResult := range rawJobResults {
 		job := sippyprocessingv1.JobResult{
 			Name:        jobName,
@@ -297,15 +297,24 @@ func SummarizeJobRunResults(
 
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
-		jobs = append(jobs, job)
+
+		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
+			jobs = append(jobs, job)
+		} else {
+			infrequentJobs = append(infrequentJobs, job)
+		}
 	}
 
 	// sort from lowest to highest
 	sort.SliceStable(jobs, func(i, j int) bool {
 		return jobs[i].PassPercentage < jobs[j].PassPercentage
 	})
+	// sort from lowest to highest
+	sort.SliceStable(infrequentJobs, func(i, j int) bool {
+		return infrequentJobs[i].PassPercentage < infrequentJobs[j].PassPercentage
+	})
 
-	return jobs
+	return jobs, infrequentJobs
 }
 
 func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
@@ -445,7 +454,7 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 	jobRunsByPlatform := make(map[string]sippyprocessingv1.JobResult)
 	platformResults := []sippyprocessingv1.JobResult{}
 
-	for _, job := range report.JobPassRate {
+	for _, job := range report.JobResults {
 		platforms := FindPlatform(job.Name)
 		for _, platform := range platforms {
 			j := jobRunsByPlatform[platform]

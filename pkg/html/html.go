@@ -96,7 +96,7 @@ Data current as of: %s
 	         <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
 	         <br/> 
 			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
-	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
+	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
 	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
 	         <a href="#TestImpactingComponents">Test Impacting Components</a> |
@@ -112,6 +112,8 @@ Data current as of: %s
 {{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
 
 {{ summaryJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
+
+{{ summaryInfrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
 {{ canaryTestFailures .Current.All }}
 
@@ -361,9 +363,34 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		</tr>
 	`, endDay)
 
-	for _, currJobResult := range report.JobPassRate {
-		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.JobPassRate)
+	for _, currJobResult := range report.JobResults {
+		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.JobResults)
 		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
+			withMaxTestResultsToShow(jobTestCount).
+			withPrevious(prevJobResult).
+			toHTML()
+
+		s += jobHTML
+	}
+
+	s = s + "</table>"
+	return s
+}
+
+func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
+	s := fmt.Sprintf(`
+	<table class="table">
+		<tr>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job infrequent definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the projected pass rate ignoring runs which failed only due to tests with associated bugs." id="InfrequentJobPassRatesByJobName" href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a></th>
+		</tr>
+		<tr>
+			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+		</tr>
+	`, endDay)
+
+	for _, currJobResult := range report.InfrequentJobResults {
+		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
+		jobHTML := newJobResultRenderer("by-infrequent-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).
 			toHTML()
@@ -638,7 +665,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
-			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.JobPassRate)
+			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.JobResults)
 
 			// create the synthetic JobResult for display purposes.
 			// TODO with another refactor, we'll be able to tighten this up later.
@@ -726,6 +753,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
 			"summaryTopFailingTests":                 summaryTopFailingTests,
 			"summaryJobPassRatesByJobName":           summaryJobPassRatesByJobName,
+			"summaryInfrequentJobPassRatesByJobName": summaryInfrequentJobPassRatesByJobName,
 			"canaryTestFailures":                     canaryTestFailures,
 			"failureGroupList":                       failureGroupList,
 			"testImpactingBugs":                      testImpactingBugs,
