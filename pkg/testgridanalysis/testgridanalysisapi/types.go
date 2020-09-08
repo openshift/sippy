@@ -11,7 +11,16 @@ type RawData struct {
 	ByJob      map[string]AggregateTestsResult
 	ByPlatform map[string]AggregateTestsResult
 	BySig      map[string]AggregateTestsResult
-	// JobRunResults is a map keyed by job URL point to results for an individual JobRun
+
+	// JobResults is a map keyed by job name to results for all runs of a job
+	JobResults map[string]RawJobResult
+}
+
+type RawJobResult struct {
+	JobName        string
+	TestGridJobUrl string
+
+	// JobRunResults is a map from individual job run URL to the results of that job run
 	JobRunResults map[string]RawJobRunResult
 }
 
@@ -37,8 +46,7 @@ type RawTestResult struct {
 // It holds data for an individual run of a given job.
 type RawJobRunResult struct {
 	Job             string
-	Url             string
-	TestGridJobUrl  string
+	JobRunURL       string
 	TestFailures    int
 	FailedTestNames []string
 	Failed          bool

@@ -163,7 +163,7 @@ func SummarizeTestResults(
 }
 
 func GenerateSortedBugFailureCounts(
-	allJobRuns map[string]testgridanalysisapi.RawJobRunResult,
+	allJobResults map[string]testgridanalysisapi.RawJobResult,
 	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
@@ -171,8 +171,10 @@ func GenerateSortedBugFailureCounts(
 	bugs := map[string]bugsv1.Bug{}
 
 	failedTestNamesAcrossAllJobRuns := sets.NewString()
-	for _, jobrun := range allJobRuns {
-		failedTestNamesAcrossAllJobRuns.Insert(jobrun.FailedTestNames...)
+	for _, jobResult := range allJobResults {
+		for _, jobrun := range jobResult.JobRunResults {
+			failedTestNamesAcrossAllJobRuns.Insert(jobrun.FailedTestNames...)
+		}
 	}
 
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
@@ -205,7 +207,7 @@ func GenerateSortedBugFailureCounts(
 }
 
 func FilterFailureGroups(
-	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
 	failureClusterThreshold int,
@@ -215,24 +217,26 @@ func FilterFailureGroups(
 	if failureClusterThreshold < 0 {
 		return filteredJrr
 	}
-	for _, rawJRR := range rawJRRs {
-		if rawJRR.TestFailures < failureClusterThreshold {
-			continue
+	for _, jobResult := range rawJobResults {
+		for _, rawJRR := range jobResult.JobRunResults {
+			if rawJRR.TestFailures < failureClusterThreshold {
+				continue
+			}
+
+			allFailuresKnown := areAllFailuresKnown(rawJRR, bugCache, release)
+			hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
+
+			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
+				Job:                jobResult.JobName,
+				Url:                rawJRR.JobRunURL,
+				TestGridJobUrl:     jobResult.TestGridJobUrl,
+				TestFailures:       rawJRR.TestFailures,
+				FailedTestNames:    rawJRR.FailedTestNames,
+				Failed:             rawJRR.Failed,
+				HasUnknownFailures: hasUnknownFailure,
+				Succeeded:          rawJRR.Succeeded,
+			})
 		}
-
-		allFailuresKnown := areAllFailuresKnown(rawJRR, bugCache, release)
-		hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
-
-		filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
-			Job:                rawJRR.Job,
-			Url:                rawJRR.Url,
-			TestGridJobUrl:     rawJRR.TestGridJobUrl,
-			TestFailures:       rawJRR.TestFailures,
-			FailedTestNames:    rawJRR.FailedTestNames,
-			Failed:             rawJRR.Failed,
-			HasUnknownFailures: hasUnknownFailure,
-			Succeeded:          rawJRR.Succeeded,
-		})
 	}
 
 	// sort from highest to lowest
@@ -264,34 +268,33 @@ func areAllFailuresKnown(
 }
 
 func SummarizeJobRunResults(
-	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) []sippyprocessingv1.JobResult {
-	jobsMap := make(map[string]sippyprocessingv1.JobResult)
 
-	for _, rawJRR := range rawJRRs {
-		job, ok := jobsMap[rawJRR.Job]
-		if !ok {
-			job = sippyprocessingv1.JobResult{
-				Name:        rawJRR.Job,
-				TestGridUrl: rawJRR.TestGridJobUrl,
-				TestResults: byJob[rawJRR.Job].TestResults,
+	jobs := []sippyprocessingv1.JobResult{}
+	for jobName, rawJobResult := range rawJobResults {
+		job := sippyprocessingv1.JobResult{
+			Name:        jobName,
+			TestResults: byJob[jobName].TestResults,
+		}
+
+		for _, rawJRR := range rawJobResult.JobRunResults {
+			// TODO move into RawJobResult
+			job.TestGridUrl = rawJobResult.TestGridJobUrl
+
+			if rawJRR.Failed {
+				job.Failures++
+			} else if rawJRR.Succeeded {
+				job.Successes++
+			}
+			if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
+				job.KnownFailures++
 			}
 		}
-		if rawJRR.Failed {
-			job.Failures++
-		} else if rawJRR.Succeeded {
-			job.Successes++
-		}
-		if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
-			job.KnownFailures++
-		}
-		jobsMap[rawJRR.Job] = job
-	}
-	jobs := []sippyprocessingv1.JobResult{}
-	for _, job := range jobsMap {
+
 		job.PassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 		jobs = append(jobs, job)
@@ -501,23 +504,13 @@ func GetPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyp
 }
 
 func GenerateJobFailuresByBugzillaComponent(
-	allJobRuns map[string]testgridanalysisapi.RawJobRunResult,
+	allJobResults map[string]testgridanalysisapi.RawJobResult,
 	jobToTestResults map[string]sippyprocessingv1.SortedAggregateTestsResult,
 ) map[string]sippyprocessingv1.SortedBugzillaComponentResult {
 
-	// we need job run totals to determine success rates
-	jobRunTotals := map[string]int{}
-	// we need to separate jobRuns by job
-	// TODO maybe reorganize raw like this
-	jobRunsByJob := map[string][]testgridanalysisapi.RawJobRunResult{}
-	for _, rawJRR := range allJobRuns {
-		jobRunTotals[rawJRR.Job] = jobRunTotals[rawJRR.Job] + 1
-		jobRunsByJob[rawJRR.Job] = append(jobRunsByJob[rawJRR.Job], rawJRR)
-	}
-
 	bzComponentToBZJobResults := map[string][]sippyprocessingv1.BugzillaJobResult{}
-	for job, jobRunResults := range jobRunsByJob {
-		curr := generateJobFailuresByBugzillaComponent(job, jobRunResults, jobToTestResults[job].TestResults)
+	for job, jobResult := range allJobResults {
+		curr := generateJobFailuresByBugzillaComponent(job, jobResult.JobRunResults, jobToTestResults[job].TestResults)
 		// each job will be distinct, so we merely need to append
 		for bzComponent, bzJobResult := range curr {
 			bzComponentToBZJobResults[bzComponent] = append(bzComponentToBZJobResults[bzComponent], bzJobResult)
@@ -543,7 +536,7 @@ func GenerateJobFailuresByBugzillaComponent(
 // returns bz component to bzJob
 func generateJobFailuresByBugzillaComponent(
 	jobName string,
-	jobRuns []testgridanalysisapi.RawJobRunResult,
+	jobRuns map[string]testgridanalysisapi.RawJobRunResult,
 	jobTestResults []sippyprocessingv1.TestResult,
 ) map[string]sippyprocessingv1.BugzillaJobResult {
 
@@ -567,7 +560,7 @@ func generateJobFailuresByBugzillaComponent(
 				if !ok {
 					failedJobRuns = sets.String{}
 				}
-				failedJobRuns.Insert(rawJRR.Url)
+				failedJobRuns.Insert(rawJRR.JobRunURL)
 				bzComponentToFailedJobRuns[bzComponent] = failedJobRuns
 				////////////////////////////////
 
