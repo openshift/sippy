@@ -55,7 +55,7 @@ func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippy
 	return nil
 }
 
-func GetPrevJob(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
+func GetJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v
@@ -265,6 +265,7 @@ func areAllFailuresKnown(
 
 func SummarizeJobRunResults(
 	rawJRRs map[string]testgridanalysisapi.RawJobRunResult,
+	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) []sippyprocessingv1.JobResult {
@@ -276,6 +277,7 @@ func SummarizeJobRunResults(
 			job = sippyprocessingv1.JobResult{
 				Name:        rawJRR.Job,
 				TestGridUrl: rawJRR.TestGridJobUrl,
+				TestResults: byJob[rawJRR.Job].TestResults,
 			}
 		}
 		if rawJRR.Failed {
@@ -442,18 +444,20 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 
 	for _, job := range report.JobPassRate {
 		platforms := FindPlatform(job.Name)
-		for _, p := range platforms {
-			j := jobRunsByPlatform[p]
+		for _, platform := range platforms {
+			j := jobRunsByPlatform[platform]
+			j.Name = platform
+			j.Platform = platform
+			//j.TestGridUrl = job.TestGridUrl // not present, logically not present for platforms
 			j.Successes += job.Successes
 			j.Failures += job.Failures
 			j.KnownFailures += job.KnownFailures
-			j.Platform = p
-			jobRunsByPlatform[p] = j
+			j.TestResults = report.ByPlatform[platform].TestResults
+			jobRunsByPlatform[platform] = j
 		}
 	}
 
 	for _, platform := range jobRunsByPlatform {
-
 		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
 		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
 		platformResults = append(platformResults, platform)
@@ -463,33 +467,6 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
 	})
 	return platformResults
-}
-
-func SummarizeJobsByName(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
-	jobRunsByName := make(map[string]sippyprocessingv1.JobResult)
-	jobResults := []sippyprocessingv1.JobResult{}
-
-	for _, job := range report.JobPassRate {
-		j := jobRunsByName[job.Name]
-		j.Name = job.Name
-		j.TestGridUrl = job.TestGridUrl
-		j.Successes += job.Successes
-		j.Failures += job.Failures
-		j.KnownFailures += job.KnownFailures
-		jobRunsByName[job.Name] = j
-	}
-
-	for _, job := range jobRunsByName {
-
-		job.PassPercentage = Percent(job.Successes, job.Failures)
-		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
-		jobResults = append(jobResults, job)
-	}
-	// sort from lowest to highest
-	sort.SliceStable(jobResults, func(i, j int) bool {
-		return jobResults[i].PassPercentage < jobResults[j].PassPercentage
-	})
-	return jobResults
 }
 
 func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestReport) []sippyprocessingv1.SortedBugzillaComponentResult {

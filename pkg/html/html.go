@@ -111,7 +111,7 @@ Data current as of: %s
 
 {{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
 
-{{ summaryJobPassRatesByJobName .Current .Prev .EndDay .JobTestCount }}
+{{ summaryJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
 {{ canaryTestFailures .Current.All }}
 
@@ -209,127 +209,16 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 		</tr>
 	`, endDay)
 
-	jobGroupTemplate := `
-		<tr class="%s">
-			<td>
-				%[2]s
-				<p>
-				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
-			</td>
-			<td>
-				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-			</td>
-			<td>
-				%s
-			</td>
-			<td>
-				%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-			</td>
-		</tr>
-	`
+	for _, currJobResult := range jobsByPlatform {
+		prevJobResult := util.GetPrevPlatform(currJobResult.Platform, jobsByPlatformPrev)
+		jobHTML := newJobResultRenderer("by-variant", currJobResult, release).
+			withMaxTestResultsToShow(jobTestCount).
+			withPrevious(prevJobResult).
+			toHTML()
 
-	naTemplate := `
-			<tr class="%s">
-				<td>
-					%[2]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%) <span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	for _, v := range jobsByPlatform {
-		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
-		p := v.PassPercentage
-		rowColor := ""
-		switch {
-		case p > 75:
-			rowColor = "table-success"
-		case p > 30:
-			rowColor = "table-warning"
-		case p > 0:
-			rowColor = "table-danger"
-		default:
-			rowColor = "error"
-		}
-
-		if prev != nil {
-			pprev := prev.PassPercentage
-			arrow := ""
-			delta := 5.0
-			if v.Successes+v.Failures > 80 {
-				delta = 2
-			}
-			if p > pprev+delta {
-				arrow = fmt.Sprintf(up, p-pprev)
-			} else if p < pprev-delta {
-				arrow = fmt.Sprintf(down, pprev-p)
-			} else if p > pprev {
-				arrow = fmt.Sprintf(flatup, p-pprev)
-			} else {
-				arrow = fmt.Sprintf(flatdown, pprev-p)
-			}
-			s = s + fmt.Sprintf(jobGroupTemplate, rowColor, v.Platform,
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-				arrow,
-				prev.PassPercentage,
-				prev.PassPercentageWithKnownFailures,
-				prev.Successes+prev.Failures,
-			)
-		} else {
-			s = s + fmt.Sprintf(naTemplate, rowColor, v.Platform,
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-			)
-		}
-
-		platformTests := report.ByPlatform[v.Platform]
-		count := jobTestCount
-		rowCount := 0
-		rows := ""
-		additionalMatches := 0
-		for _, testResult := range platformTests.TestResults {
-			if count == 0 {
-				additionalMatches++
-				continue
-			}
-			count--
-
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
-			jobQuery := fmt.Sprintf("%s.*%s|%s.*%s", report.Release, v.Platform, v.Platform, report.Release)
-
-			bugHTML := bugHTMLForTest(testResult.BugList, report.Release, "", testResult.Name)
-
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Platform, ".", ""),
-				testResult.Name,
-				jobQuery,
-				encodedTestName,
-				bugHTML,
-				testResult.PassPercentage,
-				testResult.Successes+testResult.Failures,
-			)
-			rowCount++
-		}
-		if additionalMatches > 0 {
-			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, v.Platform, additionalMatches)
-		}
-		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, v.Platform)
-			s = s + rows
-		} else {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, v.Platform)
-		}
+		s += jobHTML
 	}
+
 	s = s + "</table>"
 	return s
 }
@@ -461,10 +350,7 @@ func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []
 	return s
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int) string {
-	jobRunsByName := util.SummarizeJobsByName(report)
-	jobRunsByNamePrev := util.SummarizeJobsByName(reportPrev)
-
+func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -475,125 +361,14 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		</tr>
 	`, endDay)
 
-	template := `
-			<tr class="%s">
-				<td>
-					<a target="_blank" href="%s">%s</a>
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td>
-					%s
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-			</tr>
-		`
+	for _, currJobResult := range report.JobPassRate {
+		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.JobPassRate)
+		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
+			withMaxTestResultsToShow(jobTestCount).
+			withPrevious(prevJobResult).
+			toHTML()
 
-	naTemplate := `
-			<tr class="%s">
-				<td>
-					<a target="_blank" href="%s">%s</a>
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	for _, v := range jobRunsByName {
-		prev := util.GetPrevJob(v.Name, jobRunsByNamePrev)
-		rowColor := ""
-		switch {
-		case v.PassPercentage > 75:
-			rowColor = "table-success"
-		case v.PassPercentage > 30:
-			rowColor = "table-warning"
-		case v.PassPercentage > 0:
-			rowColor = "table-danger"
-		default:
-			rowColor = "error"
-		}
-
-		if prev != nil {
-			arrow := ""
-			delta := 5.0
-			if v.Successes+v.Failures > 80 {
-				delta = 2
-			}
-
-			if v.PassPercentage > prev.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, v.PassPercentage-prev.PassPercentage)
-			} else if v.PassPercentage < prev.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, prev.PassPercentage-v.PassPercentage)
-			} else if v.PassPercentage > prev.PassPercentage {
-				arrow = fmt.Sprintf(flatup, v.PassPercentage-prev.PassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, prev.PassPercentage-v.PassPercentage)
-			}
-			s = s + fmt.Sprintf(template, rowColor, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-				arrow,
-				prev.PassPercentage,
-				prev.PassPercentageWithKnownFailures,
-				prev.Successes+prev.Failures,
-			)
-		} else {
-			s = s + fmt.Sprintf(naTemplate, rowColor, v.TestGridUrl, v.Name, strings.ReplaceAll(v.Name, ".", ""),
-				v.PassPercentage,
-				v.PassPercentageWithKnownFailures,
-				v.Successes+v.Failures,
-			)
-		}
-
-		jobTests := report.ByJob[v.Name]
-		count := jobTestCount
-		rowCount := 0
-		rows := ""
-		additionalMatches := 0
-		for _, test := range jobTests.TestResults {
-			if count == 0 {
-				additionalMatches++
-				continue
-			}
-			count--
-
-			encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-			bugHTML := bugHTMLForTest(test.BugList, report.Release, "", test.Name)
-
-			rows = rows + fmt.Sprintf(testGroupTemplate, strings.ReplaceAll(v.Name, ".", ""),
-				test.Name,
-				v.Name,
-				encodedTestName,
-				bugHTML,
-				test.PassPercentage,
-				test.Successes+test.Failures,
-			)
-			rowCount++
-		}
-
-		if additionalMatches > 0 {
-			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, strings.ReplaceAll(v.Name, ".", ""), additionalMatches)
-		}
-		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
-			s = s + rows
-		} else {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, strings.ReplaceAll(v.Name, ".", ""))
-		}
-
+		s += jobHTML
 	}
 
 	s = s + "</table>"
@@ -780,22 +555,11 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			</tr>
 		`
 
-	bzFailingJobTemplate := `
-			<tr class="collapse %s">
-				<td>
-					%[2]s -- %[3]s
-					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
-				</td>
-				<td>
-					%0.2f%% <span class="text-nowrap">(%d/%d failed/total)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
+	colors := colorizationCriteria{
+		minRedPercent:    0,
+		minYellowPercent: 90,
+		minGreenPercent:  95,
+	}
 
 	for _, v := range failuresByBugzillaComponent {
 		safeBZJob := fmt.Sprintf("%s---component", v.Name)
@@ -807,11 +571,11 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		lowestPassPercentage := 100 - highestFailPercentage
 		rowColor := ""
 		switch {
-		case lowestPassPercentage > 95:
+		case lowestPassPercentage > colors.minGreenPercent:
 			rowColor = "table-success"
-		case lowestPassPercentage > 90:
+		case lowestPassPercentage > colors.minYellowPercent:
 			rowColor = "table-warning"
-		case lowestPassPercentage > 0:
+		case lowestPassPercentage > colors.minRedPercent:
 			rowColor = "table-danger"
 		default:
 			rowColor = "error"
@@ -864,48 +628,61 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 
 		count := 0
 		for _, failingJob := range v.JobsFailed {
+			if count > 4 { // only show five
+				break
+			}
+			count++
+
 			bzJobTuple := fmt.Sprintf("%s---%s", v.Name, failingJob.JobName)
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, ".", "")
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
 
-			// only show the worst ten jobs
-			if count > 10 {
-				break
+			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
+			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.JobPassRate)
+
+			// create the synthetic JobResult for display purposes.
+			// TODO with another refactor, we'll be able to tighten this up later.
+			currJobResult := sippyprocessingv1.JobResult{
+				Name:                            failingJob.JobName,
+				Platform:                        "",
+				Failures:                        failingJob.NumberOfJobRunsFailed,
+				KnownFailures:                   0,
+				Successes:                       failingJob.TotalRuns - failingJob.NumberOfJobRunsFailed,
+				PassPercentage:                  100.0 - failingJob.FailPercentage,
+				PassPercentageWithKnownFailures: 0,
+				TestGridUrl:                     fullJobResult.TestGridUrl,
+				TestResults:                     failingJob.Failures,
 			}
-			count++
-			s = s + fmt.Sprintf(bzFailingJobTemplate,
-				safeBZJob,
-				v.Name,
-				failingJob.JobName,
-				bzJobTuple,
-				100.0-failingJob.FailPercentage,
-				failingJob.NumberOfJobRunsFailed,
-				failingJob.TotalRuns, // this is the total runs for the job
-			)
-
-			rows := ""
-			for _, currFailedTestResult := range failingJob.Failures {
-				encodedTestName := url.QueryEscape(regexp.QuoteMeta(currFailedTestResult.Name))
-				jobQuery := fmt.Sprintf("%s", report.Release)
-
-				bugHTML := bugHTMLForTest(currFailedTestResult.BugList, release, "", currFailedTestResult.Name)
-
-				rows = rows + fmt.Sprintf(testGroupTemplate, bzJobTuple,
-					currFailedTestResult.Name,
-					jobQuery,
-					encodedTestName,
-					bugHTML,
-					currFailedTestResult.PassPercentage,
-					currFailedTestResult.Successes+currFailedTestResult.Failures,
-				)
+			var prevJobResult *sippyprocessingv1.JobResult
+			if prev != nil {
+				var prevJob *sippyprocessingv1.BugzillaJobResult
+				for _, prevJobI := range prev.JobsFailed {
+					if prevJobI.JobName == failingJob.JobName {
+						prevJob = &prevJobI
+						break
+					}
+				}
+				if prevJob != nil {
+					prevJobResult = &sippyprocessingv1.JobResult{
+						Name:                            prevJob.JobName,
+						Platform:                        "",
+						Failures:                        prevJob.NumberOfJobRunsFailed,
+						KnownFailures:                   0,
+						Successes:                       prevJob.TotalRuns - prevJob.NumberOfJobRunsFailed,
+						PassPercentage:                  100.0 - prevJob.FailPercentage,
+						PassPercentageWithKnownFailures: 0,
+						TestGridUrl:                     fullJobResult.TestGridUrl,
+						TestResults:                     prevJob.Failures,
+					}
+				}
 			}
 
-			if len(rows) > 0 {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, bzJobTuple)
-				s = s + rows
-			} else {
-				s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, bzJobTuple)
-			}
+			jobHTML := newJobResultRenderer("by-bz-component-"+bzJobTuple, currJobResult, release).
+				withPrevious(prevJobResult).
+				withColors(colors).
+				startCollapsedAs(safeBZJob).
+				toHTML()
+			s += jobHTML
 		}
 	}
 	s = s + "</table>"

@@ -76,6 +76,9 @@ type JobResult struct {
 	PassPercentage                  float64 `json:"PassPercentage"`
 	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
 	TestGridUrl                     string  `json:"TestGridUrl"`
+
+	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
+	TestResults []TestResult `json:"results"`
 }
 
 type SortedBugzillaComponentResult struct {
