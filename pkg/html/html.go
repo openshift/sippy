@@ -92,20 +92,12 @@ Data current as of: %s
 <h1 class=text-center>CI Release {{ .Release }} Health Summary</h1>
 
 <p class="small mb-3 text-nowrap">
-	Jump to: <a href="#SummaryAcrossAllJobs">Summary Across All Jobs</a> | <a href="#FailureGroupings">Failure Groupings</a> | 
-	         <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a>
-	         <br/> 
-			 <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> |
-	         <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> | <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> |
-	         <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
+	Jump to: <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a> | <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> | <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> |
+			 <br/>	          
+	         <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
-	         <a href="#TestImpactingComponents">Test Impacting Components</a> |
-	         <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
+             <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
-
-{{ summaryAcrossAllJobs .Current.All .Prev.All .EndDay }}
-
-{{ failureGroups .Current.FailureGroups .Prev.FailureGroups .EndDay }}
 
 {{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
