@@ -207,8 +207,8 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []*v12.TestResul
 func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, jobTestCount int) []v1.PassRatesByJobName {
 	var passRatesSlice []v1.PassRatesByJobName
 
-	for _, v := range report.JobPassRate {
-		prev := util.GetJobResultForJobName(v.Name, reportPrev.JobPassRate)
+	for _, v := range report.JobResults {
+		prev := util.GetJobResultForJobName(v.Name, reportPrev.JobResults)
 
 		var newJobPassRate v1.PassRatesByJobName
 

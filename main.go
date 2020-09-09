@@ -545,7 +545,7 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 	bySig := util.SummarizeTestResults(a.RawData.BySig, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
 
 	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
-	jobPassRate := util.SummarizeJobRunResults(a.RawData.JobResults, byJob, a.BugCache, a.Release)
+	jobResults, infrequentJobResults := util.SummarizeJobRunResults(a.RawData.JobResults, byJob, a.BugCache, a.Release, a.Options.EndDay)
 
 	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobResults, byAll, a.BugCache, a.Release)
 	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobResults, byJob)
@@ -557,7 +557,8 @@ func (a *Analyzer) prepareTestReport(prev bool) {
 		ByJob:                          byJob,
 		BySig:                          bySig,
 		FailureGroups:                  filteredFailureGroups,
-		JobPassRate:                    jobPassRate,
+		JobResults:                     jobResults,
+		InfrequentJobResults:           infrequentJobResults,
 		Timestamp:                      a.LastUpdateTime,
 		BugsByFailureCount:             bugFailureCounts,
 		JobFailuresByBugzillaComponent: bugzillaComponentResults,
@@ -612,7 +613,7 @@ func (a *Analyzer) printDashboardReport() {
 	}
 
 	fmt.Println("\n\n================== Top 10 Most Frequently Failing Jobs ==================")
-	for i, v := range a.Report.JobPassRate {
+	for i, v := range a.Report.JobResults {
 		fmt.Printf("Job: %s\n", v.Name)
 		fmt.Printf("Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
 		if v.Successes+v.Failures < 10 {
@@ -722,7 +723,7 @@ func (a *Analyzer) printTextReport() {
 	jobFailures := 0
 	jobCount := 0
 
-	for _, job := range a.Report.JobPassRate {
+	for _, job := range a.Report.JobResults {
 		fmt.Printf("Job: %s\n", job.Name)
 		fmt.Printf("Job Successes: %d\n", job.Successes)
 		fmt.Printf("Job Failures: %d\n", job.Failures)

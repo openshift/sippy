@@ -16,12 +16,17 @@ type TestReport struct {
 	ByJob      map[string]SortedAggregateTestsResult `json:"byJob`
 	BySig      map[string]SortedAggregateTestsResult `json:"bySig`
 
-	FailureGroups             []JobRunResult `json:"failureGroups"`
-	JobPassRate               []JobResult    `json:"jobPassRate"`
-	Timestamp                 time.Time      `json:"timestamp"`
-	TopFailingTestsWithBug    []*TestResult  `json:"topFailingTestsWithBug"`
-	TopFailingTestsWithoutBug []*TestResult  `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []bugsv1.Bug   `json:"bugsByFailureCount"`
+	FailureGroups []JobRunResult `json:"failureGroups"`
+
+	// JobResults are jobresults for jobs that run more than 1.5 times per day
+	JobResults []JobResult `json:"jobResults"`
+	// InfrequentJobResults are jobresults for jobs that run less than 1.5 times per day
+	InfrequentJobResults []JobResult `json:"infrequentJobResults"`
+
+	Timestamp                 time.Time     `json:"timestamp"`
+	TopFailingTestsWithBug    []*TestResult `json:"topFailingTestsWithBug"`
+	TopFailingTestsWithoutBug []*TestResult `json:"topFailingTestsWithoutBug"`
+	BugsByFailureCount        []bugsv1.Bug  `json:"bugsByFailureCount"`
 
 	// JobFailuresByBugzillaComponent are keyed by bugzilla components
 	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
