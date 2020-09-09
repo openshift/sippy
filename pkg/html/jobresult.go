@@ -109,11 +109,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	rowColor := ""
 	switch {
-	case b.currJobResult.PassPercentage > b.colors.minGreenPercent:
+	case b.currJobResult.TestPassPercentage > b.colors.minGreenPercent:
 		rowColor = "table-success"
-	case b.currJobResult.PassPercentage > b.colors.minYellowPercent:
+	case b.currJobResult.TestPassPercentage > b.colors.minYellowPercent:
 		rowColor = "table-warning"
-	case b.currJobResult.PassPercentage > b.colors.minRedPercent:
+	case b.currJobResult.TestPassPercentage > b.colors.minRedPercent:
 		rowColor = "table-danger"
 	default:
 		rowColor = "error"
@@ -130,30 +130,30 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			delta = 2
 		}
 
-		if b.currJobResult.PassPercentage > b.prevJobResult.PassPercentage+delta {
-			arrow = fmt.Sprintf(up, b.currJobResult.PassPercentage-b.prevJobResult.PassPercentage)
-		} else if b.currJobResult.PassPercentage < b.prevJobResult.PassPercentage-delta {
-			arrow = fmt.Sprintf(down, b.prevJobResult.PassPercentage-b.currJobResult.PassPercentage)
-		} else if b.currJobResult.PassPercentage > b.prevJobResult.PassPercentage {
-			arrow = fmt.Sprintf(flatup, b.currJobResult.PassPercentage-b.prevJobResult.PassPercentage)
+		if b.currJobResult.TestPassPercentage > b.prevJobResult.TestPassPercentage+delta {
+			arrow = fmt.Sprintf(up, b.currJobResult.TestPassPercentage-b.prevJobResult.TestPassPercentage)
+		} else if b.currJobResult.TestPassPercentage < b.prevJobResult.TestPassPercentage-delta {
+			arrow = fmt.Sprintf(down, b.prevJobResult.TestPassPercentage-b.currJobResult.TestPassPercentage)
+		} else if b.currJobResult.TestPassPercentage > b.prevJobResult.TestPassPercentage {
+			arrow = fmt.Sprintf(flatup, b.currJobResult.TestPassPercentage-b.prevJobResult.TestPassPercentage)
 		} else {
-			arrow = fmt.Sprintf(flatdown, b.prevJobResult.PassPercentage-b.currJobResult.PassPercentage)
+			arrow = fmt.Sprintf(flatdown, b.prevJobResult.TestPassPercentage-b.currJobResult.TestPassPercentage)
 		}
 
 		s = s + fmt.Sprintf(template,
 			class,
-			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
-			b.currJobResult.PassPercentage,
+			b.currJobResult.TestGridURL, b.currJobResult.Name, collapseName,
+			b.currJobResult.TestPassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
 			arrow,
-			b.prevJobResult.PassPercentage,
+			b.prevJobResult.TestPassPercentage,
 			b.prevJobResult.PassPercentageWithKnownFailures,
 			b.prevJobResult.Successes+b.prevJobResult.Failures,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate, class, b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
-			b.currJobResult.PassPercentage,
+		s = s + fmt.Sprintf(naTemplate, class, b.currJobResult.TestGridURL, b.currJobResult.Name, collapseName,
+			b.currJobResult.TestPassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
 		)

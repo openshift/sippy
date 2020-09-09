@@ -664,13 +664,15 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			currJobResult := sippyprocessingv1.JobResult{
 				Name:                            failingJob.JobName,
 				Platform:                        "",
-				Failures:                        failingJob.NumberOfJobRunsFailed,
 				KnownFailures:                   0,
-				Successes:                       failingJob.TotalRuns - failingJob.NumberOfJobRunsFailed,
-				PassPercentage:                  100.0 - failingJob.FailPercentage,
 				PassPercentageWithKnownFailures: 0,
-				TestGridUrl:                     fullJobResult.TestGridUrl,
-				TestResults:                     failingJob.Failures,
+				TestGridURL:                     fullJobResult.TestGridURL,
+				SortedAggregateTestsResult: sippyprocessingv1.SortedAggregateTestsResult{
+					Successes:          failingJob.TotalRuns - failingJob.NumberOfJobRunsFailed,
+					Failures:           failingJob.NumberOfJobRunsFailed,
+					TestPassPercentage: 100.0 - failingJob.FailPercentage,
+					TestResults:        failingJob.Failures,
+				},
 			}
 			var prevJobResult *sippyprocessingv1.JobResult
 			if prev != nil {
@@ -685,13 +687,15 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 					prevJobResult = &sippyprocessingv1.JobResult{
 						Name:                            prevJob.JobName,
 						Platform:                        "",
-						Failures:                        prevJob.NumberOfJobRunsFailed,
 						KnownFailures:                   0,
-						Successes:                       prevJob.TotalRuns - prevJob.NumberOfJobRunsFailed,
-						PassPercentage:                  100.0 - prevJob.FailPercentage,
 						PassPercentageWithKnownFailures: 0,
-						TestGridUrl:                     fullJobResult.TestGridUrl,
-						TestResults:                     prevJob.Failures,
+						TestGridURL:                     fullJobResult.TestGridURL,
+						SortedAggregateTestsResult: sippyprocessingv1.SortedAggregateTestsResult{
+							Successes:          prevJob.TotalRuns - prevJob.NumberOfJobRunsFailed,
+							Failures:           prevJob.NumberOfJobRunsFailed,
+							TestPassPercentage: 100.0 - prevJob.FailPercentage,
+							TestResults:        prevJob.Failures,
+						},
 					}
 				}
 			}

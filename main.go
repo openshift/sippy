@@ -727,7 +727,7 @@ func (a *Analyzer) printTextReport() {
 		fmt.Printf("Job: %s\n", job.Name)
 		fmt.Printf("Job Successes: %d\n", job.Successes)
 		fmt.Printf("Job Failures: %d\n", job.Failures)
-		fmt.Printf("Job Pass Percentage: %0.2f\n\n", job.PassPercentage)
+		fmt.Printf("Job Pass Percentage: %0.2f\n\n", job.TestPassPercentage)
 		jobSuccesses += job.Successes
 		jobFailures += job.Failures
 		jobCount++

@@ -64,7 +64,6 @@ type TestResult struct {
 type JobRunResult struct {
 	Job                string   `json:"job"`
 	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"testGridJobUrl"`
 	TestFailures       int      `json:"testFailures"`
 	FailedTestNames    []string `json:"failedTestNames"`
 	Failed             bool     `json:"failed"`
@@ -75,15 +74,11 @@ type JobRunResult struct {
 type JobResult struct {
 	Name                            string  `json:"name"`
 	Platform                        string  `json:"platform"`
-	Failures                        int     `json:"failures"`
 	KnownFailures                   int     `json:"knownFailures"`
-	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"PassPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"TestGridUrl"`
+	PassPercentageWithKnownFailures float64 `json:"passPercentageWithKnownFailures"`
+	TestGridURL                     string  `json:"TestGridURL"`
 
-	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
-	TestResults []TestResult `json:"results"`
+	SortedAggregateTestsResult `json:",inline"`
 }
 
 type SortedBugzillaComponentResult struct {

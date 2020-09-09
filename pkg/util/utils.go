@@ -229,7 +229,6 @@ func FilterFailureGroups(
 			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
 				Job:                jobResult.JobName,
 				Url:                rawJRR.JobRunURL,
-				TestGridJobUrl:     jobResult.TestGridJobUrl,
 				TestFailures:       rawJRR.TestFailures,
 				FailedTestNames:    rawJRR.FailedTestNames,
 				Failed:             rawJRR.Failed,
@@ -278,13 +277,20 @@ func SummarizeJobRunResults(
 	for jobName, rawJobResult := range rawJobResults {
 		job := sippyprocessingv1.JobResult{
 			Name:        jobName,
-			TestResults: byJob[jobName].TestResults,
+			TestGridURL: rawJobResult.TestGridJobUrl,
+			// TODO we cannot directly assign the byJob.TestResults because the success and failure counts there are based
+			//  on the individual test runs, NOT the success and failure of the job, which is desired for this result and is
+			//  actually desired for the ByJob view, but got bugged at some point (or more likely may never have worked) since
+			//  AddTestResult is a per-test statement, not a per-job statement.
+			SortedAggregateTestsResult: sippyprocessingv1.SortedAggregateTestsResult{
+				Successes:          0,
+				Failures:           0,
+				TestPassPercentage: 0,
+				TestResults:        byJob[jobName].TestResults,
+			},
 		}
 
 		for _, rawJRR := range rawJobResult.JobRunResults {
-			// TODO move into RawJobResult
-			job.TestGridUrl = rawJobResult.TestGridJobUrl
-
 			if rawJRR.Failed {
 				job.Failures++
 			} else if rawJRR.Succeeded {
@@ -295,7 +301,7 @@ func SummarizeJobRunResults(
 			}
 		}
 
-		job.PassPercentage = Percent(job.Successes, job.Failures)
+		job.TestPassPercentage = Percent(job.Successes, job.Failures)
 		job.PassPercentageWithKnownFailures = Percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 
 		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
@@ -307,11 +313,11 @@ func SummarizeJobRunResults(
 
 	// sort from lowest to highest
 	sort.SliceStable(jobs, func(i, j int) bool {
-		return jobs[i].PassPercentage < jobs[j].PassPercentage
+		return jobs[i].TestPassPercentage < jobs[j].TestPassPercentage
 	})
 	// sort from lowest to highest
 	sort.SliceStable(infrequentJobs, func(i, j int) bool {
-		return infrequentJobs[i].PassPercentage < infrequentJobs[j].PassPercentage
+		return infrequentJobs[i].TestPassPercentage < infrequentJobs[j].TestPassPercentage
 	})
 
 	return jobs, infrequentJobs
@@ -470,13 +476,13 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 	}
 
 	for _, platform := range jobRunsByPlatform {
-		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
+		platform.TestPassPercentage = Percent(platform.Successes, platform.Failures)
 		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
 		platformResults = append(platformResults, platform)
 	}
 	// sort from lowest to highest
 	sort.SliceStable(platformResults, func(i, j int) bool {
-		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
+		return platformResults[i].TestPassPercentage < platformResults[j].TestPassPercentage
 	})
 	return platformResults
 }

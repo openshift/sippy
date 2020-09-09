@@ -73,12 +73,12 @@ func summaryJobsByPlatform(report, reportPrev v12.TestReport, endDay, jobTestCou
 				Platform: v.Platform,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
+						Percentage:          v.TestPassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
 					"prev": v1.PassRate{
-						Percentage:          prev.PassPercentage,
+						Percentage:          prev.TestPassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
 					},
@@ -89,7 +89,7 @@ func summaryJobsByPlatform(report, reportPrev v12.TestReport, endDay, jobTestCou
 				Platform: v.Platform,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
+						Percentage:          v.TestPassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
@@ -215,15 +215,15 @@ func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, job
 		if prev != nil {
 			newJobPassRate = v1.PassRatesByJobName{
 				Name: v.Name,
-				Url:  v.TestGridUrl,
+				Url:  v.TestGridURL,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
+						Percentage:          v.TestPassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
 					"prev": v1.PassRate{
-						Percentage:          prev.PassPercentage,
+						Percentage:          prev.TestPassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
 						Runs:                prev.Successes + prev.Failures,
 					},
@@ -232,10 +232,10 @@ func summaryJobPassRatesByJobName(report, reportPrev v12.TestReport, endDay, job
 		} else {
 			newJobPassRate = v1.PassRatesByJobName{
 				Name: v.Name,
-				Url:  v.TestGridUrl,
+				Url:  v.TestGridURL,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
+						Percentage:          v.TestPassPercentage,
 						ProjectedPercentage: v.PassPercentageWithKnownFailures,
 						Runs:                v.Successes + v.Failures,
 					},
