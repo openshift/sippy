@@ -16,25 +16,6 @@ import (
 	"k8s.io/klog"
 )
 
-// summary across all job
-func summaryAcrossAllJobs(result, resultPrev map[string]v12.SortedAggregateTestsResult, endDay int) *v1.SummaryAcrossAllJobs {
-	all := result["all"]
-	allPrev := resultPrev["all"]
-
-	summary := v1.SummaryAcrossAllJobs{
-		TestExecutions: map[string]int{
-			"latest": all.Successes + all.Failures,
-			"prev":   allPrev.Successes + allPrev.Failures,
-		},
-		TestPassPercentage: map[string]float64{
-			"latest": all.TestPassPercentage,
-			"prev":   allPrev.TestPassPercentage,
-		},
-	}
-
-	return &summary
-}
-
 // stats on failure groups
 func failureGroups(failureGroups, failureGroupsPrev []v12.JobRunResult, endDay int) *v1.FailureGroups {
 
@@ -300,7 +281,6 @@ func formatJSONReport(report, prevReport v12.TestReport, endDay, jobTestCount in
 		Release:      report.Release}
 
 	jsonObject := map[string]interface{}{
-		"summaryAllJobs":            summaryAcrossAllJobs(data.Current.All, data.Prev.All, data.EndDay),
 		"failureGroupings":          failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
 		"jobPassRateByPlatform":     summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
 		"topFailingTestsWithoutBug": summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.All, data.EndDay),

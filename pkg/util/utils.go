@@ -149,9 +149,6 @@ func SummarizeTestResults(
 		}
 
 		s := sorted[k]
-		s.Successes = passedCount
-		s.Failures = failedCount
-		s.TestPassPercentage = Percent(passedCount, failedCount)
 		sorted[k] = s
 
 		// sort from lowest to highest

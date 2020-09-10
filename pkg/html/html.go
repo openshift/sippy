@@ -139,30 +139,6 @@ Data current as of: %s
 	`
 )
 
-func summaryAcrossAllJobs(result, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int) string {
-
-	all := result["all"]
-	allPrev := resultPrev["all"]
-
-	summary := `
-	<table class="table">
-		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" id="SummaryAcrossAllJobs" href="#SummaryAcrossAllJobs">Summary Across All Jobs</a></th>			
-		</tr>
-		<tr>
-			<th/><th>Latest %d days</th><th>Previous 7 days</th>
-		</tr>
-		<tr>
-			<td>Test executions: </td><td>%d</td><td>%d</td>
-		</tr>
-		<tr>
-			<td>Test Pass Percentage: </td><td>%0.2f</td><td>%0.2f</td>
-		</tr>
-	</table>`
-	s := fmt.Sprintf(summary, endDay, all.Successes+all.Failures, allPrev.Successes+allPrev.Failures, all.TestPassPercentage, allPrev.TestPassPercentage)
-	return s
-}
-
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult, endDay int) string {
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
@@ -740,7 +716,6 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
-			"summaryAcrossAllJobs":                   summaryAcrossAllJobs,
 			"failureGroups":                          failureGroups,
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
 			"summaryTopFailingTests":                 summaryTopFailingTests,

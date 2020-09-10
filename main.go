@@ -591,14 +591,10 @@ func (a *Analyzer) printJsonReport() {
 }
 
 func (a *Analyzer) printDashboardReport() {
-	fmt.Println("================== Summary Across All Jobs ==================")
-	all := a.Report.All["all"]
-	fmt.Printf("Passing test runs: %d\n", all.Successes)
-	fmt.Printf("Failing test runs: %d\n", all.Failures)
-	fmt.Printf("Test Pass Percentage: %0.2f\n", all.TestPassPercentage)
 
 	fmt.Println("\n\n================== Top 10 Most Frequently Failing Tests ==================")
 	count := 0
+	all := a.Report.All["all"]
 	for i := 0; count < 10 && i < len(all.TestResults); i++ {
 		test := all.TestResults[i]
 		if (test.Successes + test.Failures) > a.Options.MinTestRuns {
@@ -649,30 +645,9 @@ func (a *Analyzer) printDashboardReport() {
 }
 
 func (a *Analyzer) printTextReport() {
-	fmt.Println("================== Test Summary Across All Jobs ==================")
-	all := a.Report.All["all"]
-	fmt.Printf("Passing test runs: %d\n", all.Successes)
-	fmt.Printf("Failing test runs: %d\n", all.Failures)
-	fmt.Printf("Test Pass Percentage: %0.2f\n", all.TestPassPercentage)
-	testCount := 0
-	testSuccesses := 0
-	testFailures := 0
-	for _, test := range all.TestResults {
-		fmt.Printf("\tTest Name: %s\n", test.Name)
-		fmt.Printf("\tPassed: %d\n", test.Successes)
-		fmt.Printf("\tFailed: %d\n", test.Failures)
-		fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
-		testCount++
-		testSuccesses += test.Successes
-		testFailures += test.Failures
-	}
-
 	fmt.Println("\n\n\n================== Test Summary By Platform ==================")
 	for key, by := range a.Report.ByPlatform {
 		fmt.Printf("Platform: %s\n", key)
-		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
-		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			fmt.Printf("\tPassed: %d\n", test.Successes)
@@ -685,9 +660,6 @@ func (a *Analyzer) printTextReport() {
 	fmt.Println("\n\n\n================== Test Summary By Job ==================")
 	for key, by := range a.Report.ByJob {
 		fmt.Printf("Job: %s\n", key)
-		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
-		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			fmt.Printf("\tPassed: %d\n", test.Successes)
@@ -700,9 +672,6 @@ func (a *Analyzer) printTextReport() {
 	fmt.Println("\n\n\n================== Test Summary By Sig ==================")
 	for key, by := range a.Report.BySig {
 		fmt.Printf("\nSig: %s\n", key)
-		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
-		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			//			fmt.Printf("\tPassed: %d\n", test.Successes)
@@ -753,11 +722,6 @@ func (a *Analyzer) printTextReport() {
 	fmt.Printf("Total Job Successes: %d\n", jobSuccesses)
 	fmt.Printf("Total Job Failures: %d\n", jobFailures)
 	fmt.Printf("Total Job Pass Percentage: %0.2f\n\n", util.Percent(jobSuccesses, jobFailures))
-
-	fmt.Printf("Total Tests: %d\n", testCount)
-	fmt.Printf("Total Test Successes: %d\n", testSuccesses)
-	fmt.Printf("Total Test Failures: %d\n", testFailures)
-	fmt.Printf("Total Test Pass Percentage: %0.2f\n", util.Percent(testSuccesses, testFailures))
 }
 
 type Server struct {
