@@ -201,36 +201,9 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 	`, endDay)
 
 	for _, currPlatform := range report.ByPlatform {
-		currJobResult := sippyprocessingv1.JobResult{
-			Name:                            currPlatform.PlatformName,
-			Platform:                        currPlatform.PlatformName,
-			Failures:                        currPlatform.JobRunFailures,
-			KnownFailures:                   currPlatform.JobRunKnownFailures,
-			Successes:                       currPlatform.JobRunSuccesses,
-			PassPercentage:                  currPlatform.JobRunPassPercentage,
-			PassPercentageWithKnownFailures: currPlatform.JobRunPassPercentageWithKnownFailures,
-			TestGridUrl:                     "", // no test grid for platforms
-			TestResults:                     currPlatform.AllTestResults,
-		}
-
-		var prevJobResult *sippyprocessingv1.JobResult
-		if prev := util.GetPlatform(currPlatform.PlatformName, reportPrev.ByPlatform); prev != nil {
-			prevJobResult = &sippyprocessingv1.JobResult{
-				Name:                            prev.PlatformName,
-				Platform:                        prev.PlatformName,
-				Failures:                        prev.JobRunFailures,
-				KnownFailures:                   prev.JobRunKnownFailures,
-				Successes:                       prev.JobRunSuccesses,
-				PassPercentage:                  prev.JobRunPassPercentage,
-				PassPercentageWithKnownFailures: prev.JobRunPassPercentageWithKnownFailures,
-				TestGridUrl:                     "", // no test grid for platforms
-				TestResults:                     prev.AllTestResults,
-			}
-		}
-
-		jobHTML := newJobResultRenderer("by-variant", currJobResult, release).
+		jobHTML := newJobAggregationResultRenderer("by-variant", *convertPlatformToAggregationResult(&currPlatform), release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPrevious(convertPlatformToAggregationResult(util.GetPlatform(currPlatform.PlatformName, reportPrev.ByPlatform))).
 			toHTML()
 
 		s += jobHTML
