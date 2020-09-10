@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // PlatformResults
@@ -51,6 +52,7 @@ type jobAggregationResultRenderBuilder struct {
 
 	release              string
 	maxTestResultsToShow int
+	maxJobResultsToShow  int
 	colors               colorizationCriteria
 	collapsedAs          string
 }
@@ -61,6 +63,7 @@ func newJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggre
 		currAggregationResult: currJobResult,
 		release:               release,
 		maxTestResultsToShow:  10, // just a default, can be overridden
+		maxJobResultsToShow:   10, // just a default, can be overridden
 		colors: colorizationCriteria{
 			minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
@@ -76,6 +79,11 @@ func (b *jobAggregationResultRenderBuilder) withPrevious(prevJobResult *jobAggre
 
 func (b *jobAggregationResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow int) *jobAggregationResultRenderBuilder {
 	b.maxTestResultsToShow = maxTestResultsToShow
+	return b
+}
+
+func (b *jobAggregationResultRenderBuilder) withMaxJobResultsToShow(maxJobResultsToShow int) *jobAggregationResultRenderBuilder {
+	b.maxJobResultsToShow = maxJobResultsToShow
 	return b
 }
 
@@ -196,21 +204,56 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		)
 	}
 
-	count := b.maxTestResultsToShow
-	rowCount := 0
-	rows := ""
-	additionalMatches := 0
-	for _, test := range b.currAggregationResult.AllTestResults {
-		if count == 0 {
-			additionalMatches++
+	// now render the individual jobs
+	jobCount := b.maxJobResultsToShow
+	jobRowCount := 0
+	jobRows := ""
+	jobAdditionalMatches := 0
+	for _, job := range b.currAggregationResult.JobResults {
+		if jobCount == 0 {
+			jobAdditionalMatches++
 			continue
 		}
-		count--
+		jobCount--
+
+		var prevJob *sippyprocessingv1.JobResult
+		if b.prevAggregationResult != nil {
+			prevJob = util.GetJobResultForJobName(job.Name, b.prevAggregationResult.JobResults)
+		}
+
+		jobRows = jobRows + newJobResultRenderer(jobsCollapseName, job, b.release).
+			withPrevious(prevJob).
+			withMaxTestResultsToShow(b.maxTestResultsToShow).
+			startCollapsedAs(jobsCollapseName).
+			toHTML()
+
+		jobRowCount++
+	}
+	if jobAdditionalMatches > 0 {
+		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more jobs</td></tr>`, jobsCollapseName, jobAdditionalMatches)
+	}
+	if jobRowCount > 0 {
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
+		s = s + jobRows
+	} else {
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
+	}
+
+	testCount := b.maxTestResultsToShow
+	testRowCount := 0
+	testRows := ""
+	testAdditionalMatches := 0
+	for _, test := range b.currAggregationResult.AllTestResults {
+		if testCount == 0 {
+			testAdditionalMatches++
+			continue
+		}
+		testCount--
 
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 		bugHTML := bugHTMLForTest(test.BugList, b.release, "", test.Name)
 
-		rows = rows + fmt.Sprintf(testGroupTemplate, testsCollapseName,
+		testRows = testRows + fmt.Sprintf(testGroupTemplate, testsCollapseName,
 			test.Name,
 			b.currAggregationResult.AggregationName,
 			encodedTestName,
@@ -218,15 +261,14 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			test.PassPercentage,
 			test.Successes+test.Failures,
 		)
-		rowCount++
+		testRowCount++
 	}
-
-	if additionalMatches > 0 {
-		rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, testsCollapseName, additionalMatches)
+	if testAdditionalMatches > 0 {
+		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, testsCollapseName, testAdditionalMatches)
 	}
-	if rowCount > 0 {
+	if testRowCount > 0 {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
-		s = s + rows
+		s = s + testRows
 	} else {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
 	}

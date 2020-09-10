@@ -37,12 +37,15 @@ func convertRawDataToByPlatform(
 			}
 
 			jobResult := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
-			jobResults = append(jobResults, jobResult)
 			successfulJobRuns += jobResult.Successes
 			failedJobRuns += jobResult.Failures
 			knownFailureJobRuns += jobResult.KnownFailures
 
+			// combined the test results *before* we filter them
 			allPlatformTestResults = combineTestResults(jobResult.TestResults, allPlatformTestResults)
+
+			jobResult.TestResults = filterTestResults(jobResult.TestResults, minRuns, successThreshold)
+			jobResults = append(jobResults, jobResult)
 		}
 
 		filteredPlatformTestResults := filterTestResults(allPlatformTestResults, minRuns, successThreshold)
