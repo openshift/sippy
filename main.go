@@ -588,12 +588,11 @@ func (a *Analyzer) printDashboardReport() {
 	}
 
 	fmt.Println("\n\n================== Summary By Platform ==================")
-	jobsByPlatform := util.SummarizeJobsByPlatform(a.Report)
-	for _, v := range jobsByPlatform {
-		fmt.Printf("Platform: %s\n", v.Platform)
-		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+	for _, v := range a.Report.ByPlatform {
+		fmt.Printf("Platform: %s\n", v.PlatformName)
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", v.JobRunPassPercentage)
+		if v.JobRunSuccesses+v.JobRunFailures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.JobRunSuccesses+v.JobRunFailures)
 		}
 		fmt.Printf("\n")
 	}
@@ -623,8 +622,8 @@ func (a *Analyzer) printTextReport() {
 		fmt.Printf("Platform: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
-		for _, test := range by.TestResults {
+		fmt.Printf("Test Pass Percentage: %0.2f\n", by.JobRunPassPercentage)
+		for _, test := range by.AllTestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			fmt.Printf("\tPassed: %d\n", test.Successes)
 			fmt.Printf("\tFailed: %d\n", test.Failures)
@@ -685,14 +684,13 @@ func (a *Analyzer) printTextReport() {
 	}
 
 	fmt.Println("\n\n================== Job Summary By Platform ==================")
-	jobsByPlatform := util.SummarizeJobsByPlatform(a.Report)
-	for _, v := range jobsByPlatform {
-		fmt.Printf("Platform: %s\n", v.Platform)
-		fmt.Printf("Job Succeses: %d\n", v.Successes)
-		fmt.Printf("Job Failures: %d\n", v.Failures)
-		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+	for _, v := range a.Report.ByPlatform {
+		fmt.Printf("Platform: %s\n", v.PlatformName)
+		fmt.Printf("Job Succeses: %d\n", v.JobRunSuccesses)
+		fmt.Printf("Job Failures: %d\n", v.JobRunFailures)
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", v.JobRunPassPercentage)
+		if v.JobRunSuccesses+v.JobRunFailures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.JobRunSuccesses+v.JobRunFailures)
 		}
 		fmt.Printf("\n")
 	}

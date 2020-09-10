@@ -31,7 +31,7 @@ func PrepareTestReport(
 	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, minRuns, successThreshold)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
-	jobResults, infrequentJobResults := summarizeJobRunResults(rawData.JobResults, byJob, bugCache, release, endDay)
+	jobResults, infrequentJobResults := summarizeJobRunResults(rawData.JobResults, bugCache, release, endDay, minRuns, successThreshold)
 
 	bugFailureCounts := generateSortedBugFailureCounts(rawData.JobResults, byAll, bugCache, release)
 	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, byJob)

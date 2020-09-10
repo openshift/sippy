@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"k8s.io/klog"
@@ -36,9 +34,9 @@ func GetJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResu
 	return nil
 }
 
-func GetPrevPlatform(platform string, jobsByPlatform []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
-	for _, v := range jobsByPlatform {
-		if v.Platform == platform {
+func GetPlatform(platform string, allPlatforms []sippyprocessingv1.PlatformResults) *sippyprocessingv1.PlatformResults {
+	for _, v := range allPlatforms {
+		if v.PlatformName == platform {
 			return &v
 		}
 	}
@@ -131,37 +129,6 @@ func AddTestResult(testResults map[string]testgridanalysisapi.RawTestResult, tes
 	result.Flakes += flaked
 
 	testResults[testName] = result
-}
-
-func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {
-	jobRunsByPlatform := make(map[string]sippyprocessingv1.JobResult)
-	platformResults := []sippyprocessingv1.JobResult{}
-
-	for _, job := range report.JobResults {
-		platforms := testidentification.FindPlatform(job.Name)
-		for _, platform := range platforms {
-			j := jobRunsByPlatform[platform]
-			j.Name = platform
-			j.Platform = platform
-			//j.TestGridUrl = job.TestGridUrl // not present, logically not present for platforms
-			j.Successes += job.Successes
-			j.Failures += job.Failures
-			j.KnownFailures += job.KnownFailures
-			j.TestResults = report.ByPlatform[platform].TestResults
-			jobRunsByPlatform[platform] = j
-		}
-	}
-
-	for _, platform := range jobRunsByPlatform {
-		platform.PassPercentage = Percent(platform.Successes, platform.Failures)
-		platform.PassPercentageWithKnownFailures = Percent(platform.Successes+platform.KnownFailures, platform.Failures-platform.KnownFailures)
-		platformResults = append(platformResults, platform)
-	}
-	// sort from lowest to highest
-	sort.SliceStable(platformResults, func(i, j int) bool {
-		return platformResults[i].PassPercentage < platformResults[j].PassPercentage
-	})
-	return platformResults
 }
 
 func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestReport) []sippyprocessingv1.SortedBugzillaComponentResult {

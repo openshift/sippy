@@ -10,18 +10,23 @@ import (
 
 func summarizeJobRunResults(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 	numberOfDaysOfData int, // number of days included in report.
+	minRuns int, // indicates how many runs are required for a test is included in overall percentages
+	// TODO deads2k wants to eliminate the successThreshold
+	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
 ) (jobs []sippyprocessingv1.JobResult, infrequentJobs []sippyprocessingv1.JobResult) {
 
 	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, byJob, bugCache, release)
+		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
 
 		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
+			job.TestResults = filterTestResults(job.TestResults, minRuns, successThreshold)
 			jobs = append(jobs, job)
 		} else {
+			// for infrequent jobs, we do not filter out on minimum runs
+			job.TestResults = filterTestResults(job.TestResults, 1, successThreshold)
 			infrequentJobs = append(infrequentJobs, job)
 		}
 	}
@@ -34,7 +39,6 @@ func summarizeJobRunResults(
 
 func convertRawJobResultToProcessedJobResult(
 	rawJobResult testgridanalysisapi.RawJobResult,
-	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult, // TODO include TestResults with each RawJobResult
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question,
 ) sippyprocessingv1.JobResult {
@@ -42,7 +46,7 @@ func convertRawJobResultToProcessedJobResult(
 	job := sippyprocessingv1.JobResult{
 		Name:        rawJobResult.JobName,
 		TestGridUrl: rawJobResult.TestGridJobUrl,
-		TestResults: byJob[rawJobResult.JobName].TestResults,
+		TestResults: convertRawTestResultsToProcessedTestResults(rawJobResult.TestResults, bugCache, release),
 	}
 
 	for _, rawJRR := range rawJobResult.JobRunResults {

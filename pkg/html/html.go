@@ -190,9 +190,6 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 }
 
 func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int, release string) string {
-	jobsByPlatform := util.SummarizeJobsByPlatform(report)
-	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
-
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -203,8 +200,34 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 		</tr>
 	`, endDay)
 
-	for _, currJobResult := range jobsByPlatform {
-		prevJobResult := util.GetPrevPlatform(currJobResult.Platform, jobsByPlatformPrev)
+	for _, currPlatform := range report.ByPlatform {
+		currJobResult := sippyprocessingv1.JobResult{
+			Name:                            currPlatform.PlatformName,
+			Platform:                        currPlatform.PlatformName,
+			Failures:                        currPlatform.JobRunFailures,
+			KnownFailures:                   currPlatform.JobRunKnownFailures,
+			Successes:                       currPlatform.JobRunSuccesses,
+			PassPercentage:                  currPlatform.JobRunPassPercentage,
+			PassPercentageWithKnownFailures: currPlatform.JobRunPassPercentageWithKnownFailures,
+			TestGridUrl:                     "", // no test grid for platforms
+			TestResults:                     currPlatform.AllTestResults,
+		}
+
+		var prevJobResult *sippyprocessingv1.JobResult
+		if prev := util.GetPlatform(currPlatform.PlatformName, reportPrev.ByPlatform); prev != nil {
+			prevJobResult = &sippyprocessingv1.JobResult{
+				Name:                            prev.PlatformName,
+				Platform:                        prev.PlatformName,
+				Failures:                        prev.JobRunFailures,
+				KnownFailures:                   prev.JobRunKnownFailures,
+				Successes:                       prev.JobRunSuccesses,
+				PassPercentage:                  prev.JobRunPassPercentage,
+				PassPercentageWithKnownFailures: prev.JobRunPassPercentageWithKnownFailures,
+				TestGridUrl:                     "", // no test grid for platforms
+				TestResults:                     prev.AllTestResults,
+			}
+		}
+
 		jobHTML := newJobResultRenderer("by-variant", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).

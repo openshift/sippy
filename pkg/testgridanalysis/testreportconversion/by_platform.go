@@ -1,6 +1,8 @@
 package testreportconversion
 
 import (
+	"sort"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
@@ -16,14 +18,16 @@ func convertRawDataToByPlatform(
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) map[string]sippyprocessingv1.SortedAggregateTestsResult {
+) []sippyprocessingv1.PlatformResults {
 
-	resultsByPlatform := make(map[string]sippyprocessingv1.SortedAggregateTestsResult)
+	platformResults := []sippyprocessingv1.PlatformResults{}
 	for _, platform := range testidentification.AllPlatforms.List() {
 
 		allPlatformTestResults := []sippyprocessingv1.TestResult{}
+		jobResults := []sippyprocessingv1.JobResult{}
 		successfulJobRuns := 0
 		failedJobRuns := 0
+		knownFailureJobRuns := 0
 
 		// do this the expensive way until we have a unit test.  This allows us to build the full platform result all at once.
 		// TODO if we are too slow, switch this to only build the job results once
@@ -32,29 +36,40 @@ func convertRawDataToByPlatform(
 				continue
 			}
 
-			testResults := convertRawTestResultsToProcessedTestResults(rawJobResult.TestResults, bugCache, release)
-			allPlatformTestResults = combineTestResults(testResults, allPlatformTestResults)
+			jobResult := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
+			jobResults = append(jobResults, jobResult)
+			successfulJobRuns += jobResult.Successes
+			failedJobRuns += jobResult.Failures
+			knownFailureJobRuns += jobResult.KnownFailures
 
-			for _, rawJobRunResult := range rawJobResult.JobRunResults {
-				if rawJobRunResult.Succeeded {
-					successfulJobRuns++
-				}
-				if rawJobRunResult.Failed {
-					failedJobRuns++
-				}
-			}
+			allPlatformTestResults = combineTestResults(jobResult.TestResults, allPlatformTestResults)
 		}
 
 		filteredPlatformTestResults := filterTestResults(allPlatformTestResults, minRuns, successThreshold)
+		sort.Stable(jobsByPassPercentage(jobResults))
 
-		// TODO we should set the successful and failed job
-		resultsByPlatform[platform] = sippyprocessingv1.SortedAggregateTestsResult{
-			Successes:          0, // not used
-			Failures:           0, // not used
-			TestPassPercentage: 0, // not used
-			TestResults:        filteredPlatformTestResults,
-		}
+		platformResults = append(platformResults, sippyprocessingv1.PlatformResults{
+			PlatformName:                          platform,
+			JobRunSuccesses:                       successfulJobRuns,
+			JobRunFailures:                        failedJobRuns,
+			JobRunKnownFailures:                   knownFailureJobRuns,
+			JobRunPassPercentage:                  percent(successfulJobRuns, failedJobRuns),
+			JobRunPassPercentageWithKnownFailures: percent(successfulJobRuns+knownFailureJobRuns, failedJobRuns-knownFailureJobRuns),
+			JobResults:                            jobResults,
+			AllTestResults:                        filteredPlatformTestResults,
+		})
 	}
 
-	return resultsByPlatform
+	sort.Stable(platformsByJobPassPercentage(platformResults))
+
+	return platformResults
+}
+
+// platformsByJobPassPercentage sorts from lowest to highest pass percentage
+type platformsByJobPassPercentage []sippyprocessingv1.PlatformResults
+
+func (a platformsByJobPassPercentage) Len() int      { return len(a) }
+func (a platformsByJobPassPercentage) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a platformsByJobPassPercentage) Less(i, j int) bool {
+	return a[i].JobRunPassPercentage < a[j].JobRunPassPercentage
 }

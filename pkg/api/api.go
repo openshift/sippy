@@ -58,40 +58,37 @@ func failureGroups(failureGroups, failureGroupsPrev []v12.JobRunResult, endDay i
 }
 
 func summaryJobsByPlatform(report, reportPrev v12.TestReport, endDay, jobTestCount int) []v1.JobSummaryPlatform {
-	jobsByPlatform := util.SummarizeJobsByPlatform(report)
-	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
-
 	var jobSummariesByPlatform []v1.JobSummaryPlatform
 
-	for _, v := range jobsByPlatform {
-		prev := util.GetPrevPlatform(v.Platform, jobsByPlatformPrev)
+	for _, v := range report.ByPlatform {
+		prev := util.GetPlatform(v.PlatformName, reportPrev.ByPlatform)
 
 		var jobSummaryPlatform v1.JobSummaryPlatform
 
 		if prev != nil {
 			jobSummaryPlatform = v1.JobSummaryPlatform{
-				Platform: v.Platform,
+				Platform: v.PlatformName,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
-						ProjectedPercentage: v.PassPercentageWithKnownFailures,
-						Runs:                v.Successes + v.Failures,
+						Percentage:          v.JobRunPassPercentage,
+						ProjectedPercentage: v.JobRunPassPercentageWithKnownFailures,
+						Runs:                v.JobRunSuccesses + v.JobRunFailures,
 					},
 					"prev": v1.PassRate{
-						Percentage:          prev.PassPercentage,
-						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
-						Runs:                prev.Successes + prev.Failures,
+						Percentage:          prev.JobRunPassPercentage,
+						ProjectedPercentage: prev.JobRunPassPercentageWithKnownFailures,
+						Runs:                prev.JobRunSuccesses + prev.JobRunFailures,
 					},
 				},
 			}
 		} else {
 			jobSummaryPlatform = v1.JobSummaryPlatform{
-				Platform: v.Platform,
+				Platform: v.PlatformName,
 				PassRates: map[string]v1.PassRate{
 					"latest": v1.PassRate{
-						Percentage:          v.PassPercentage,
-						ProjectedPercentage: v.PassPercentageWithKnownFailures,
-						Runs:                v.Successes + v.Failures,
+						Percentage:          v.JobRunPassPercentage,
+						ProjectedPercentage: v.JobRunPassPercentageWithKnownFailures,
+						Runs:                v.JobRunSuccesses + v.JobRunFailures,
 					},
 				},
 			}

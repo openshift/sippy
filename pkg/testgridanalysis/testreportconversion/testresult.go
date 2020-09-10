@@ -112,5 +112,24 @@ func filterTestResults(
 		filteredResults = append(filteredResults, testResult)
 	}
 
+	return filterSuccessfulTestResults(filteredResults)
+}
+
+func filterSuccessfulTestResults(
+	testResults []sippyprocessingv1.TestResult,
+) []sippyprocessingv1.TestResult {
+
+	filteredResults := []sippyprocessingv1.TestResult{}
+
+	for i := range testResults {
+		testResult := testResults[i]
+		// strip out tests are more than N% successful
+		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > 99.99 {
+			continue
+		}
+
+		filteredResults = append(filteredResults, testResult)
+	}
+
 	return filteredResults
 }
