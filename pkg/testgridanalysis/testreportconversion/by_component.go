@@ -4,9 +4,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -126,14 +127,14 @@ func getBugzillaComponentsFromTestResult(testResult sippyprocessingv1.TestResult
 	switch {
 	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix):
 		operatorName := testResult.Name[len(testgridanalysisapi.OperatorInstallPrefix):]
-		return []string{testgridanalysis.GetBugzillaComponentForOperator(operatorName)}
+		return []string{testidentification.GetBugzillaComponentForOperator(operatorName)}
 
 	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix):
 		operatorName := testResult.Name[len(testgridanalysisapi.OperatorUpgradePrefix):]
-		return []string{testgridanalysis.GetBugzillaComponentForOperator(operatorName)}
+		return []string{testidentification.GetBugzillaComponentForOperator(operatorName)}
 
 	default:
-		return []string{testgridanalysis.GetBugzillaComponentForSig(testgridanalysis.FindSig(testResult.Name))}
+		return []string{testidentification.GetBugzillaComponentForSig(testidentification.FindSig(testResult.Name))}
 	}
 
 }

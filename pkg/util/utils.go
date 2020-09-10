@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"k8s.io/klog"
@@ -14,29 +16,6 @@ import (
 
 var (
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
-
-	// platform regexes
-	awsRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-aws-`)
-	azureRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-azure-`)
-	fipsRegex      *regexp.Regexp = regexp.MustCompile(`(?i)-fips-`)
-	metalRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-metal-`)
-	metalIPIRegex  *regexp.Regexp = regexp.MustCompile(`(?i)-metal-ipi`)
-	gcpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-gcp`)
-	ocpRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ocp-`)
-	openstackRegex *regexp.Regexp = regexp.MustCompile(`(?i)-openstack-`)
-	originRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-origin-`)
-	ovirtRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-ovirt-`)
-	ovnRegex       *regexp.Regexp = regexp.MustCompile(`(?i)-ovn-`)
-	proxyRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-proxy`)
-	ppc64leRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-ppc64le-`)
-	rtRegex        *regexp.Regexp = regexp.MustCompile(`(?i)-rt-`)
-	s390xRegex     *regexp.Regexp = regexp.MustCompile(`(?i)-s390x-`)
-	serialRegex    *regexp.Regexp = regexp.MustCompile(`(?i)-serial-`)
-	upgradeRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-upgrade-`)
-	vsphereRegex   *regexp.Regexp = regexp.MustCompile(`(?i)-vsphere-`)
-
-	// Tests we are already tracking an issue for
-	//	KnownIssueTestRegex *regexp.Regexp = regexp.MustCompile(`Application behind service load balancer with PDB is not disrupted|Kubernetes and OpenShift APIs remain available|Cluster frontend ingress remain available|OpenShift APIs remain available|Kubernetes APIs remain available|Cluster upgrade should maintain a functioning cluster`)
 )
 
 func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippyprocessingv1.TestResult {
@@ -126,75 +105,6 @@ func ComputeLookback(startday, lookback int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-func FindPlatform(name string) []string {
-	platforms := []string{}
-	if ocpRegex.MatchString(name) {
-		platforms = append(platforms, "ocp")
-	}
-	if originRegex.MatchString(name) {
-		platforms = append(platforms, "origin")
-	}
-	if awsRegex.MatchString(name) {
-		platforms = append(platforms, "aws")
-	}
-	if azureRegex.MatchString(name) {
-		platforms = append(platforms, "azure")
-	}
-	if gcpRegex.MatchString(name) {
-		platforms = append(platforms, "gcp")
-	}
-	if openstackRegex.MatchString(name) {
-		platforms = append(platforms, "openstack")
-	}
-
-	// Without support for negative lookbacks in the native
-	// regexp library, it's easiest to differentiate these
-	// two by seeing if it's metal-ipi, and then fall through
-	// to check if it's UPI metal.
-	if metalIPIRegex.MatchString(name) {
-		platforms = append(platforms, "metal-ipi")
-	} else if metalRegex.MatchString(name) {
-		platforms = append(platforms, "metal")
-	}
-
-	if ovirtRegex.MatchString(name) {
-		platforms = append(platforms, "ovirt")
-	}
-	if vsphereRegex.MatchString(name) {
-		platforms = append(platforms, "vsphere")
-	}
-	if upgradeRegex.MatchString(name) {
-		platforms = append(platforms, "upgrade")
-	}
-	if serialRegex.MatchString(name) {
-		platforms = append(platforms, "serial")
-	}
-	if ovnRegex.MatchString(name) {
-		platforms = append(platforms, "ovn")
-	}
-	if fipsRegex.MatchString(name) {
-		platforms = append(platforms, "fips")
-	}
-	if ppc64leRegex.MatchString(name) {
-		platforms = append(platforms, "ppc64le")
-	}
-	if s390xRegex.MatchString(name) {
-		platforms = append(platforms, "s390x")
-	}
-	if rtRegex.MatchString(name) {
-		platforms = append(platforms, "rt")
-	}
-	if proxyRegex.MatchString(name) {
-		platforms = append(platforms, "proxy")
-	}
-
-	if len(platforms) == 0 {
-		klog.V(2).Infof("unknown platform for job: %s\n", name)
-		return []string{"unknown platform"}
-	}
-	return platforms
-}
-
 func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
@@ -224,7 +134,7 @@ func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocess
 	platformResults := []sippyprocessingv1.JobResult{}
 
 	for _, job := range report.JobResults {
-		platforms := FindPlatform(job.Name)
+		platforms := testidentification.FindPlatform(job.Name)
 		for _, platform := range platforms {
 			j := jobRunsByPlatform[platform]
 			j.Name = platform

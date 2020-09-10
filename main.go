@@ -20,8 +20,8 @@ import (
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
-	"github.com/openshift/sippy/pkg/testgridanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -288,7 +288,7 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 
 func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
-	platforms := util.FindPlatform(job.Name)
+	platforms := testidentification.FindPlatform(job.Name)
 
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
@@ -296,7 +296,7 @@ func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
 
-		a.processTest(job, platforms, test, testgridanalysis.FindSig(test.Name), startCol, endCol)
+		a.processTest(job, platforms, test, testidentification.FindSig(test.Name), startCol, endCol)
 	}
 
 }
@@ -313,7 +313,7 @@ func (a *Analyzer) createSyntheticTests() {
 	}
 	for jobName, jobResults := range a.RawData.JobResults {
 		for jrrKey, jrr := range jobResults.JobRunResults {
-			platforms := util.FindPlatform(jrr.Job)
+			platforms := testidentification.FindPlatform(jrr.Job)
 			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{

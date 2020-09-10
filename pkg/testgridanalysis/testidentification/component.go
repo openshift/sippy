@@ -1,4 +1,4 @@
-package testgridanalysis
+package testidentification
 
 import (
 	"fmt"

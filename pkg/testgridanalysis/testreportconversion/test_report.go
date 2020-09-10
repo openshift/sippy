@@ -138,10 +138,7 @@ func summarizeTestResults(
 		s.TestPassPercentage = percent(passedCount, failedCount)
 		sorted[k] = s
 
-		// sort from lowest to highest
-		sort.SliceStable(sorted[k].TestResults, func(i, j int) bool {
-			return sorted[k].TestResults[i].PassPercentage < sorted[k].TestResults[j].PassPercentage
-		})
+		sort.Stable(testResultsByPassPercentage(sorted[k].TestResults))
 	}
 	return sorted
 }
@@ -187,56 +184,6 @@ func filterFailureGroups(
 	return filteredJrr
 }
 
-func summarizeJobRunResults(
-	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	byJob map[string]sippyprocessingv1.SortedAggregateTestsResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
-	numberOfDaysOfData int, // number of days included in report.
-) (jobs []sippyprocessingv1.JobResult, infrequentJobs []sippyprocessingv1.JobResult) {
-
-	for jobName, rawJobResult := range rawJobResults {
-		job := sippyprocessingv1.JobResult{
-			Name:        jobName,
-			TestResults: byJob[jobName].TestResults,
-		}
-
-		for _, rawJRR := range rawJobResult.JobRunResults {
-			// TODO move into RawJobResult
-			job.TestGridUrl = rawJobResult.TestGridJobUrl
-
-			if rawJRR.Failed {
-				job.Failures++
-			} else if rawJRR.Succeeded {
-				job.Successes++
-			}
-			if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
-				job.KnownFailures++
-			}
-		}
-
-		job.PassPercentage = percent(job.Successes, job.Failures)
-		job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
-
-		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
-			jobs = append(jobs, job)
-		} else {
-			infrequentJobs = append(infrequentJobs, job)
-		}
-	}
-
-	// sort from lowest to highest
-	sort.SliceStable(jobs, func(i, j int) bool {
-		return jobs[i].PassPercentage < jobs[j].PassPercentage
-	})
-	// sort from lowest to highest
-	sort.SliceStable(infrequentJobs, func(i, j int) bool {
-		return infrequentJobs[i].PassPercentage < infrequentJobs[j].PassPercentage
-	})
-
-	return jobs, infrequentJobs
-}
-
 func generateSortedBugFailureCounts(
 	allJobResults map[string]testgridanalysisapi.RawJobResult,
 	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
@@ -279,26 +226,6 @@ func generateSortedBugFailureCounts(
 		return sortedBugs[i].FailureCount > sortedBugs[j].FailureCount
 	})
 	return sortedBugs
-}
-
-func areAllFailuresKnown(
-	rawJRR testgridanalysisapi.RawJobRunResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
-) bool {
-	// check if all the test failures in the run can be attributed to
-	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
-	// would have passed if all our bugs were fixed.
-	allFailuresKnown := true
-	for _, testName := range rawJRR.FailedTestNames {
-		bugs := bugCache.ListBugs(release, "", testName)
-		isKnownFailure := len(bugs) > 0
-		if !isKnownFailure {
-			allFailuresKnown = false
-			break
-		}
-	}
-	return allFailuresKnown
 }
 
 func percent(success, failure int) float64 {
