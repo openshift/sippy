@@ -57,8 +57,6 @@ type TestResult struct {
 	// TODO Inside a particular job, only bugs matching the job are present.
 	// TODO Inside a platform, only bugs matching the platform are present.
 	BugList []bugsv1.Bug `json:"bugList"`
-	// TODO fix search link to properly take into account release, job, and platform.
-	SearchLink string `json:"searchLink"`
 }
 
 type JobRunResult struct {
