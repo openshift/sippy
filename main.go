@@ -247,6 +247,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		col += remaining
 	}
 
+	util.AddTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
+
 	return
 }
 
@@ -264,6 +266,7 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 			JobName:        job.Name,
 			TestGridJobUrl: job.TestGridUrl,
 			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
+			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 		}
 	}
 
@@ -278,12 +281,9 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 		return
 	}
 
-	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
-	util.AddTestResult(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
-	for _, platform := range platforms {
-		util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, passed, failed, flaked)
-	}
-	util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
 func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
@@ -313,7 +313,6 @@ func (a *Analyzer) createSyntheticTests() {
 	}
 	for jobName, jobResults := range a.RawData.JobResults {
 		for jrrKey, jrr := range jobResults.JobRunResults {
-			platforms := testidentification.FindPlatform(jrr.Job)
 			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{
@@ -365,12 +364,10 @@ func (a *Analyzer) createSyntheticTests() {
 			}
 
 			for testName, result := range syntheticTests {
-				util.AddTestResult("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
-				util.AddTestResult(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
-				for _, platform := range platforms {
-					util.AddTestResult(platform, a.RawData.ByPlatform, testName, result.pass, result.fail, 0)
-				}
-				//util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
+				util.AddTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
+
+				util.AddTestResultToCategory("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
+				util.AddTestResultToCategory(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
 			}
 
 			jobResults.JobRunResults[jrrKey] = jrr
@@ -728,7 +725,6 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 		analyzer.RawData = testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		}
@@ -850,7 +846,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
@@ -870,7 +865,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
@@ -973,7 +967,6 @@ func (o *Options) Run() error {
 			RawData: testgridanalysisapi.RawData{
 				ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 				ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-				ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 				BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 				JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 			},
@@ -999,7 +992,6 @@ func (o *Options) Run() error {
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},
@@ -1020,7 +1012,6 @@ func (o *Options) Run() error {
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},

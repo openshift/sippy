@@ -1,7 +1,10 @@
 package testidentification
 
 import (
+	"fmt"
 	"regexp"
+
+	"github.com/openshift/sippy/pkg/util/sets"
 
 	"k8s.io/klog"
 )
@@ -26,6 +29,27 @@ var (
 	serialRegex    = regexp.MustCompile(`(?i)-serial-`)
 	upgradeRegex   = regexp.MustCompile(`(?i)-upgrade-`)
 	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere-`)
+
+	AllPlatforms = sets.NewString(
+		"ocp",
+		"origin",
+		"aws",
+		"azure",
+		"gcp",
+		"openstack",
+		"metal-ipi",
+		"metal",
+		"ovirt",
+		"vsphere",
+		"upgrade",
+		"serial",
+		"ovn",
+		"fips",
+		"ppc64le",
+		"s390x",
+		"rt",
+		"proxy",
+	)
 )
 
 func FindPlatform(name string) []string {
@@ -93,6 +117,12 @@ func FindPlatform(name string) []string {
 	if len(platforms) == 0 {
 		klog.V(2).Infof("unknown platform for job: %s\n", name)
 		return []string{"unknown platform"}
+	}
+
+	for _, platform := range platforms {
+		if !AllPlatforms.Has(platform) {
+			panic(fmt.Sprintf("coding error: missing platform: %q", platform))
+		}
 	}
 	return platforms
 }

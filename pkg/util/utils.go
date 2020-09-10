@@ -105,7 +105,7 @@ func ComputeLookback(startday, lookback int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
+func AddTestResultToCategory(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
 
 	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
 	category, ok := categories[categoryKey]
@@ -115,7 +115,13 @@ func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi
 		}
 	}
 
-	result, ok := category.RawTestResults[testName]
+	AddTestResult(category.RawTestResults, testName, passed, failed, flaked)
+
+	categories[categoryKey] = category
+}
+
+func AddTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
+	result, ok := testResults[testName]
 	if !ok {
 		result = testgridanalysisapi.RawTestResult{}
 	}
@@ -124,9 +130,7 @@ func AddTestResult(categoryKey string, categories map[string]testgridanalysisapi
 	result.Failures += failed
 	result.Flakes += flaked
 
-	category.RawTestResults[testName] = result
-
-	categories[categoryKey] = category
+	testResults[testName] = result
 }
 
 func SummarizeJobsByPlatform(report sippyprocessingv1.TestReport) []sippyprocessingv1.JobResult {

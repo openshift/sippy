@@ -7,10 +7,9 @@ package testgridanalysisapi
 // 3. JobRuns contain Tests.
 
 type RawData struct {
-	ByAll      map[string]AggregateTestsResult
-	ByJob      map[string]AggregateTestsResult
-	ByPlatform map[string]AggregateTestsResult
-	BySig      map[string]AggregateTestsResult
+	ByAll map[string]AggregateTestsResult
+	ByJob map[string]AggregateTestsResult
+	BySig map[string]AggregateTestsResult
 
 	// JobResults is a map keyed by job name to results for all runs of a job
 	JobResults map[string]RawJobResult
@@ -22,6 +21,9 @@ type RawJobResult struct {
 
 	// JobRunResults is a map from individual job run URL to the results of that job run
 	JobRunResults map[string]RawJobRunResult
+
+	// TestResults is a map from test.Name to the aggregated results for each run of that test inside the job
+	TestResults map[string]RawTestResult
 }
 
 // AggregateTestsResult is an intermediate datatype that may not have complete or consistent data when interrogated.

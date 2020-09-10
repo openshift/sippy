@@ -26,9 +26,9 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	byAll := summarizeTestResults(rawData.ByAll, bugCache, release, minRuns, successThreshold)
-	byPlatform := summarizeTestResults(rawData.ByPlatform, bugCache, release, minRuns, successThreshold)
 	byJob := summarizeTestResults(rawData.ByJob, bugCache, release, minRuns, successThreshold)
 	bySig := summarizeTestResults(rawData.BySig, bugCache, release, minRuns, successThreshold)
+	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, minRuns, successThreshold)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
 	jobResults, infrequentJobResults := summarizeJobRunResults(rawData.JobResults, byJob, bugCache, release, endDay)
@@ -121,14 +121,8 @@ func summarizeTestResults(
 			failedCount += rawTestResult.Failures
 
 			s := sorted[k]
-			s.TestResults = append(s.TestResults, sippyprocessingv1.TestResult{
-				Name:           rawTestResult.Name,
-				Successes:      rawTestResult.Successes,
-				Failures:       rawTestResult.Failures,
-				Flakes:         rawTestResult.Flakes,
-				PassPercentage: passPercentage,
-				BugList:        bugCache.ListBugs(release, "", rawTestResult.Name),
-			})
+			s.TestResults = append(s.TestResults,
+				convertRawTestResultToProcessedTestResult(rawTestResult, bugCache, release))
 			sorted[k] = s
 		}
 
