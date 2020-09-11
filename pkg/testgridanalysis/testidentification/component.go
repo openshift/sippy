@@ -1,7 +1,8 @@
-package testgridanalysis
+package testidentification
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -87,6 +88,8 @@ var (
 
 	// sigToBugzillaComponent holds `sig-foo` (from '[sig-foo]' label in a test) as keys and maps them to the "most correct" BZ component
 	sigToBugzillaComponent = map[string]string{}
+
+	sigRegex *regexp.Regexp = regexp.MustCompile(`\[(sig-.*?)\]`)
 )
 
 func init() {
@@ -174,4 +177,13 @@ func addSigMapping(sig, bugzillaComponent string) error {
 	}
 	sigToBugzillaComponent[sig] = bugzillaComponent
 	return nil
+}
+
+// find associated sig from test name
+func FindSig(name string) string {
+	match := sigRegex.FindStringSubmatch(name)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return "sig-unknown"
 }

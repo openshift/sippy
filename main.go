@@ -21,6 +21,8 @@ import (
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/spf13/cobra"
@@ -245,6 +247,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		col += remaining
 	}
 
+	util.AddTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
+
 	return
 }
 
@@ -262,6 +266,7 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 			JobName:        job.Name,
 			TestGridJobUrl: job.TestGridUrl,
 			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
+			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 		}
 	}
 
@@ -276,17 +281,14 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 		return
 	}
 
-	util.AddTestResult("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
-	util.AddTestResult(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
-	for _, platform := range platforms {
-		util.AddTestResult(platform, a.RawData.ByPlatform, test.Name, passed, failed, flaked)
-	}
-	util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
+	util.AddTestResultToCategory(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
 func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
-	platforms := util.FindPlatform(job.Name)
+	platforms := testidentification.FindPlatform(job.Name)
 
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
@@ -294,7 +296,7 @@ func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
 		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
 		job.Tests[i] = test
 
-		a.processTest(job, platforms, test, util.FindSig(test.Name), startCol, endCol)
+		a.processTest(job, platforms, test, testidentification.FindSig(test.Name), startCol, endCol)
 	}
 
 }
@@ -311,7 +313,6 @@ func (a *Analyzer) createSyntheticTests() {
 	}
 	for jobName, jobResults := range a.RawData.JobResults {
 		for jrrKey, jrr := range jobResults.JobRunResults {
-			platforms := util.FindPlatform(jrr.Job)
 			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{
@@ -363,12 +364,10 @@ func (a *Analyzer) createSyntheticTests() {
 			}
 
 			for testName, result := range syntheticTests {
-				util.AddTestResult("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
-				util.AddTestResult(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
-				for _, platform := range platforms {
-					util.AddTestResult(platform, a.RawData.ByPlatform, testName, result.pass, result.fail, 0)
-				}
-				//util.AddTestResult(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
+				util.AddTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
+
+				util.AddTestResultToCategory("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
+				util.AddTestResultToCategory(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
 			}
 
 			jobResults.JobRunResults[jrrKey] = jrr
@@ -512,70 +511,22 @@ func downloadData(releases []string, filter string, storagePath string) {
 	}
 }
 
-// returns top ten failing tests w/o a bug and top ten with a bug(in that order)
-func getTopFailingTests(result map[string]sippyprocessingv1.SortedAggregateTestsResult, release string, bugCache buganalysis.BugCache) ([]*sippyprocessingv1.TestResult, []*sippyprocessingv1.TestResult) {
-	topTestsWithoutBug := []*sippyprocessingv1.TestResult{}
-	topTestsWithBug := []*sippyprocessingv1.TestResult{}
-	all := result["all"]
-	withoutbugcount := 0
-	withbugcount := 0
-	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
-	// limit to 100 so we don't hammer search.ci too hard if we can't find 20 failures with bugs in the first 100.
-	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
-		test := all.TestResults[i]
-		test.BugList = bugCache.ListBugs(release, "", test.Name)
-
-		// we want the top ten test failures that don't have bugs associated.
-		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if len(test.BugList) == 0 && withoutbugcount < 10 {
-			topTestsWithoutBug = append(topTestsWithoutBug, &test)
-			withoutbugcount++
-		} else if len(test.BugList) > 0 && withbugcount < 20 {
-			topTestsWithBug = append(topTestsWithBug, &test)
-			withbugcount++
-		}
-	}
-	return topTestsWithoutBug, topTestsWithBug
-}
-
-func (a *Analyzer) prepareTestReport(prev bool) {
-	byAll := util.SummarizeTestResults(a.RawData.ByAll, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byPlatform := util.SummarizeTestResults(a.RawData.ByPlatform, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	byJob := util.SummarizeTestResults(a.RawData.ByJob, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-	bySig := util.SummarizeTestResults(a.RawData.BySig, a.BugCache, a.Release, a.Options.MinTestRuns, a.Options.TestSuccessThreshold)
-
-	filteredFailureGroups := util.FilterFailureGroups(a.RawData.JobResults, a.BugCache, a.Release, a.Options.FailureClusterThreshold)
-	jobResults, infrequentJobResults := util.SummarizeJobRunResults(a.RawData.JobResults, byJob, a.BugCache, a.Release, a.Options.EndDay)
-
-	bugFailureCounts := util.GenerateSortedBugFailureCounts(a.RawData.JobResults, byAll, a.BugCache, a.Release)
-	bugzillaComponentResults := util.GenerateJobFailuresByBugzillaComponent(a.RawData.JobResults, byJob)
-
-	a.Report = sippyprocessingv1.TestReport{
-		Release:                        a.Release,
-		All:                            byAll,
-		ByPlatform:                     byPlatform,
-		ByJob:                          byJob,
-		BySig:                          bySig,
-		FailureGroups:                  filteredFailureGroups,
-		JobResults:                     jobResults,
-		InfrequentJobResults:           infrequentJobResults,
-		Timestamp:                      a.LastUpdateTime,
-		BugsByFailureCount:             bugFailureCounts,
-		JobFailuresByBugzillaComponent: bugzillaComponentResults,
-
-		AnalysisWarnings: a.analysisWarnings,
-	}
-
-	if !prev {
-		topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, a.Release, a.BugCache)
-		a.Report.TopFailingTestsWithBug = topFailingTestsWithBug
-		a.Report.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
-	}
-
+func (a *Analyzer) prepareTestReport() {
+	a.Report = testreportconversion.PrepareTestReport(
+		a.RawData,
+		a.BugCache,
+		a.Release,
+		a.Options.MinTestRuns,
+		a.Options.TestSuccessThreshold,
+		a.Options.EndDay,
+		a.analysisWarnings,
+		a.LastUpdateTime,
+		a.Options.FailureClusterThreshold,
+	)
 }
 
 func (a *Analyzer) printReport() {
-	a.prepareTestReport(false)
+	a.prepareTestReport()
 	switch a.Options.Output {
 	case "json":
 		a.printJsonReport()
@@ -637,12 +588,11 @@ func (a *Analyzer) printDashboardReport() {
 	}
 
 	fmt.Println("\n\n================== Summary By Platform ==================")
-	jobsByPlatform := util.SummarizeJobsByPlatform(a.Report)
-	for _, v := range jobsByPlatform {
-		fmt.Printf("Platform: %s\n", v.Platform)
-		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+	for _, v := range a.Report.ByPlatform {
+		fmt.Printf("Platform: %s\n", v.PlatformName)
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", v.JobRunPassPercentage)
+		if v.JobRunSuccesses+v.JobRunFailures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.JobRunSuccesses+v.JobRunFailures)
 		}
 		fmt.Printf("\n")
 	}
@@ -672,8 +622,8 @@ func (a *Analyzer) printTextReport() {
 		fmt.Printf("Platform: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
-		for _, test := range by.TestResults {
+		fmt.Printf("Test Pass Percentage: %0.2f\n", by.JobRunPassPercentage)
+		for _, test := range by.AllTestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			fmt.Printf("\tPassed: %d\n", test.Successes)
 			fmt.Printf("\tFailed: %d\n", test.Failures)
@@ -734,14 +684,13 @@ func (a *Analyzer) printTextReport() {
 	}
 
 	fmt.Println("\n\n================== Job Summary By Platform ==================")
-	jobsByPlatform := util.SummarizeJobsByPlatform(a.Report)
-	for _, v := range jobsByPlatform {
-		fmt.Printf("Platform: %s\n", v.Platform)
-		fmt.Printf("Job Succeses: %d\n", v.Successes)
-		fmt.Printf("Job Failures: %d\n", v.Failures)
-		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
-		if v.Successes+v.Failures < 10 {
-			fmt.Printf("WARNING: Only %d runs for this job\n", v.Successes+v.Failures)
+	for _, v := range a.Report.ByPlatform {
+		fmt.Printf("Platform: %s\n", v.PlatformName)
+		fmt.Printf("Job Succeses: %d\n", v.JobRunSuccesses)
+		fmt.Printf("Job Failures: %d\n", v.JobRunFailures)
+		fmt.Printf("Platform Job Pass Percentage: %0.2f%% (%d runs)\n", v.JobRunPassPercentage)
+		if v.JobRunSuccesses+v.JobRunFailures < 10 {
+			fmt.Printf("WARNING: Only %d runs for this job\n", v.JobRunSuccesses+v.JobRunFailures)
 		}
 		fmt.Printf("\n")
 	}
@@ -774,14 +723,13 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 		analyzer.RawData = testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		}
 
 		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
 		analyzer.analyze()
-		analyzer.prepareTestReport(strings.Contains(k, "-prev"))
+		analyzer.prepareTestReport()
 		s.analyzers[k] = analyzer
 	}
 
@@ -896,7 +844,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
@@ -904,7 +851,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	analyzer.loadData([]string{release}, s.options.LocalData)
 	analyzer.analyze()
-	analyzer.prepareTestReport(false)
+	analyzer.prepareTestReport()
 
 	// prior 7 day period
 	optCopy := *opt
@@ -916,7 +863,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
@@ -924,7 +870,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
 	prevAnalyzer.analyze()
-	prevAnalyzer.prepareTestReport(true)
+	prevAnalyzer.prepareTestReport()
 
 	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
 
@@ -1019,7 +965,6 @@ func (o *Options) Run() error {
 			RawData: testgridanalysisapi.RawData{
 				ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 				ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-				ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 				BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 				JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 			},
@@ -1045,7 +990,6 @@ func (o *Options) Run() error {
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},
@@ -1053,7 +997,7 @@ func (o *Options) Run() error {
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
-			analyzer.prepareTestReport(false)
+			analyzer.prepareTestReport()
 			server.analyzers[release] = analyzer
 
 			// prior 7 day period (days 7-14)
@@ -1066,7 +1010,6 @@ func (o *Options) Run() error {
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByPlatform: make(map[string]testgridanalysisapi.AggregateTestsResult),
 					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},
@@ -1074,7 +1017,7 @@ func (o *Options) Run() error {
 			}
 			analyzer.loadData([]string{release}, o.LocalData)
 			analyzer.analyze()
-			analyzer.prepareTestReport(true)
+			analyzer.prepareTestReport()
 			server.analyzers[release+"-prev"] = analyzer
 		}
 		server.serve(o)

@@ -10,11 +10,13 @@ import (
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
-	Release    string                                `json:"release"`
-	All        map[string]SortedAggregateTestsResult `json:"all"`
-	ByPlatform map[string]SortedAggregateTestsResult `json:"byPlatform`
-	ByJob      map[string]SortedAggregateTestsResult `json:"byJob`
-	BySig      map[string]SortedAggregateTestsResult `json:"bySig`
+	Release string                                `json:"release"`
+	All     map[string]SortedAggregateTestsResult `json:"all"`
+	ByJob   map[string]SortedAggregateTestsResult `json:"byJob`
+	BySig   map[string]SortedAggregateTestsResult `json:"bySig`
+
+	// ByPlatform organizes jobs and tests by platform, sorted by job pass rate from low to high
+	ByPlatform []PlatformResults `json:"byPlatform`
 
 	FailureGroups []JobRunResult `json:"failureGroups"`
 
@@ -33,6 +35,22 @@ type TestReport struct {
 
 	// AnalysisWarnings is a free-form list of warnings to be displayed on sippy test reports
 	AnalysisWarnings []string `json:"analysisWarnings"`
+}
+
+// PlatformResults
+type PlatformResults struct {
+	PlatformName                          string  `json:"platformName"`
+	JobRunSuccesses                       int     `json:"jobRunSuccesses"`
+	JobRunFailures                        int     `json:"jobRunFailures"`
+	JobRunKnownFailures                   int     `json:"jobRunKnownFailures"`
+	JobRunPassPercentage                  float64 `json:"jobRunPassPercentage"`
+	JobRunPassPercentageWithKnownFailures float64 `json:"jobRunPassPercentageWithKnownFailures"`
+
+	// JobResults for all jobs that match this platform, ordered by lowest PassPercentage to highest
+	JobResults []JobResult `json:"jobResults"`
+
+	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
+	AllTestResults []TestResult `json:"results"`
 }
 
 // SortedAggregateTestsResult
@@ -57,8 +75,6 @@ type TestResult struct {
 	// TODO Inside a particular job, only bugs matching the job are present.
 	// TODO Inside a platform, only bugs matching the platform are present.
 	BugList []bugsv1.Bug `json:"bugList"`
-	// TODO fix search link to properly take into account release, job, and platform.
-	SearchLink string `json:"searchLink"`
 }
 
 type JobRunResult struct {

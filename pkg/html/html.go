@@ -190,9 +190,6 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 }
 
 func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int, release string) string {
-	jobsByPlatform := util.SummarizeJobsByPlatform(report)
-	jobsByPlatformPrev := util.SummarizeJobsByPlatform(reportPrev)
-
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -203,11 +200,10 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 		</tr>
 	`, endDay)
 
-	for _, currJobResult := range jobsByPlatform {
-		prevJobResult := util.GetPrevPlatform(currJobResult.Platform, jobsByPlatformPrev)
-		jobHTML := newJobResultRenderer("by-variant", currJobResult, release).
+	for _, currPlatform := range report.ByPlatform {
+		jobHTML := newJobAggregationResultRenderer("by-variant", *convertPlatformToAggregationResult(&currPlatform), release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPrevious(convertPlatformToAggregationResult(util.GetPlatform(currPlatform.PlatformName, reportPrev.ByPlatform))).
 			toHTML()
 
 		s += jobHTML
