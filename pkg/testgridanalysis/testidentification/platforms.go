@@ -11,49 +11,69 @@ import (
 
 var (
 	// platform regexes
-	awsRegex       = regexp.MustCompile(`(?i)-aws-`)
-	azureRegex     = regexp.MustCompile(`(?i)-azure-`)
-	fipsRegex      = regexp.MustCompile(`(?i)-fips-`)
-	metalRegex     = regexp.MustCompile(`(?i)-metal-`)
+	awsRegex   = regexp.MustCompile(`(?i)-aws-`)
+	azureRegex = regexp.MustCompile(`(?i)-azure-`)
+	fipsRegex  = regexp.MustCompile(`(?i)-fips-`)
+	metalRegex = regexp.MustCompile(`(?i)-metal-`)
+	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex  = regexp.MustCompile(`(?i)-metal-ipi`)
-	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
+	gcpRegex       = regexp.MustCompile(`(?i)-gcp-`)
 	ocpRegex       = regexp.MustCompile(`(?i)-ocp-`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
 	originRegex    = regexp.MustCompile(`(?i)-origin-`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt-`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn-`)
-	proxyRegex     = regexp.MustCompile(`(?i)-proxy`)
-	ppc64leRegex   = regexp.MustCompile(`(?i)-ppc64le-`)
-	rtRegex        = regexp.MustCompile(`(?i)-rt-`)
-	s390xRegex     = regexp.MustCompile(`(?i)-s390x-`)
-	serialRegex    = regexp.MustCompile(`(?i)-serial-`)
-	upgradeRegex   = regexp.MustCompile(`(?i)-upgrade-`)
-	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere-`)
+	// proxy jobs do not have a trailing -version segment
+	proxyRegex   = regexp.MustCompile(`(?i)-proxy`)
+	promoteRegex = regexp.MustCompile(`(?i)^promote-`)
+	ppc64leRegex = regexp.MustCompile(`(?i)-ppc64le-`)
+	rtRegex      = regexp.MustCompile(`(?i)-rt-`)
+	s390xRegex   = regexp.MustCompile(`(?i)-s390x-`)
+	serialRegex  = regexp.MustCompile(`(?i)-serial-`)
+	upgradeRegex = regexp.MustCompile(`(?i)-upgrade-`)
+	// some vsphere jobs do not have a trailing -version segment
+	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
 
 	AllPlatforms = sets.NewString(
-		"ocp",
-		"origin",
 		"aws",
 		"azure",
-		"gcp",
-		"openstack",
-		"metal-ipi",
-		"metal",
-		"ovirt",
-		"vsphere",
-		"upgrade",
-		"serial",
-		"ovn",
 		"fips",
+		"gcp",
+		"ocp",
+		"metal",
+		"metal-ipi",
+		"openstack",
+		"origin",
+		"ovirt",
+		"ovn",
 		"ppc64le",
-		"s390x",
-		"rt",
+		"promote",
 		"proxy",
+		"rt",
+		"s390x",
+		"serial",
+		"upgrade",
+		"vsphere",
 	)
 )
 
 func FindPlatform(name string) []string {
 	platforms := []string{}
+
+	defer func() {
+		for _, platform := range platforms {
+			if !AllPlatforms.Has(platform) {
+				panic(fmt.Sprintf("coding error: missing platform: %q", platform))
+			}
+		}
+	}()
+
+	// if it's a promotion job, it can't be a part of any other variant aggregation
+	if promoteRegex.MatchString(name) {
+		platforms = append(platforms, "promote")
+		return platforms
+	}
+
 	if ocpRegex.MatchString(name) {
 		platforms = append(platforms, "ocp")
 	}
@@ -119,10 +139,5 @@ func FindPlatform(name string) []string {
 		return []string{"unknown platform"}
 	}
 
-	for _, platform := range platforms {
-		if !AllPlatforms.Has(platform) {
-			panic(fmt.Sprintf("coding error: missing platform: %q", platform))
-		}
-	}
 	return platforms
 }
