@@ -114,7 +114,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 					%s
 					<p>
 					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Jobs</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Jobs</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -134,7 +134,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 					%s
 					<p>
 					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Jobs</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Jobs</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
