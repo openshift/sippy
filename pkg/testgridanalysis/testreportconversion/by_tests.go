@@ -81,19 +81,29 @@ func getTopFailingTests(
 				}
 
 				failingTestResult.TestResultAcrossAllJobs = combineTestResult(failingTestResult.TestResultAcrossAllJobs, testResult)
-				failingTestResult.JobResults = append(failingTestResult.JobResults, sippyprocessingv1.FailingTestJobResult{
-					Name:           jobResult.Name,
-					TestFailures:   testResult.Failures,
-					TestSuccesses:  testResult.Successes,
-					PassPercentage: testResult.PassPercentage,
-					TestGridUrl:    jobResult.TestGridUrl,
-				})
+
+				// if the job hasn't run at least 7 times, don't add it to the list
+				if testResult.Failures+testResult.Successes >= 7 && testResult.Failures > 0 {
+					failingTestResult.JobResults = append(failingTestResult.JobResults, sippyprocessingv1.FailingTestJobResult{
+						Name:           jobResult.Name,
+						TestFailures:   testResult.Failures,
+						TestSuccesses:  testResult.Successes,
+						PassPercentage: testResult.PassPercentage,
+						TestGridUrl:    jobResult.TestGridUrl,
+					})
+				}
 				break
 			}
 		}
 		if !testResultFilterFn(failingTestResult.TestResultAcrossAllJobs) {
 			continue
 		}
+
+		// sort the jobResults by most failed first
+		sort.SliceStable(failingTestResult.JobResults, func(i, j int) bool {
+			return failingTestResult.JobResults[i].PassPercentage < failingTestResult.JobResults[j].PassPercentage
+		})
+
 		topTests = append(topTests, failingTestResult)
 	}
 

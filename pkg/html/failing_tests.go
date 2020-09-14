@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"k8s.io/klog"
@@ -119,6 +120,105 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 			s += fmt.Sprintf(template, testLink, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures, arrow, testPrev.TestResultAcrossAllJobs.PassPercentage, testPrev.TestResultAcrossAllJobs.Successes+testPrev.TestResultAcrossAllJobs.Failures)
 		} else {
 			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures)
+		}
+
+		collapseName := "test-result---" + testResult.TestName
+		collapseName = strings.ReplaceAll(strings.ReplaceAll(collapseName, ".", ""), " ", "")
+		// 1 encoded job name
+		// 2 indent depth
+		// 3 test name
+		// 4 job name regex
+		// 5 encoded test name
+		// 6 bug list/bug search
+		// 7 pass rate
+		// 8 number of runs
+		const failingTestJobGroupTemplate = `
+			<tr class="%s">
+				<td style="padding-left:%dpx">
+					<a target="_blank" href="%s">%s</a>
+				</td>
+				<td>
+					%0.2f%%<span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td>
+					%s
+				</td>
+				<td>
+					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
+				</td>
+			</tr>
+	`
+		const failingTestJobGroupTemplateNA = `
+			<tr class="%s">
+				<td style="padding-left:%dpx">
+					<a target="_blank" href="%s">%s</a>
+				</td>
+				<td>
+					%0.2f%%<span class="text-nowrap">(%d runs)</span>
+				</td>
+				<td></td>
+				<td>
+					NA
+				</td>
+			</tr>
+	`
+
+		jobIndentDepth := 50 + 10
+		count := 10
+		rowCount := 0
+		rows := ""
+		additionalMatches := 0
+		for _, failingTestJobResult := range testResult.JobResults {
+			if count == 0 {
+				additionalMatches++
+				continue
+			}
+			count--
+
+			var prevTestJobResult *sippyprocessingv1.FailingTestJobResult
+			if testPrev != nil {
+				for _, prevJobInstance := range testPrev.JobResults {
+					if prevJobInstance.Name == failingTestJobResult.Name {
+						prevTestJobResult = &prevJobInstance
+						break
+					}
+				}
+			}
+
+			if prevTestJobResult != nil {
+				rows = rows + fmt.Sprintf(failingTestJobGroupTemplate,
+					collapseName,
+					jobIndentDepth,
+					failingTestJobResult.TestGridUrl,
+					failingTestJobResult.Name,
+					failingTestJobResult.PassPercentage,
+					failingTestJobResult.TestSuccesses+failingTestJobResult.TestFailures,
+					"arrow",
+					prevTestJobResult.PassPercentage,
+					prevTestJobResult.TestSuccesses+prevTestJobResult.TestFailures,
+				)
+			} else {
+				rows = rows + fmt.Sprintf(failingTestJobGroupTemplateNA,
+					collapseName,
+					jobIndentDepth,
+					failingTestJobResult.TestGridUrl,
+					failingTestJobResult.Name,
+					failingTestJobResult.PassPercentage,
+					failingTestJobResult.TestSuccesses+failingTestJobResult.TestFailures,
+				)
+			}
+			rowCount++
+		}
+
+		if additionalMatches > 0 {
+			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more jobs</td></tr>`, collapseName, jobIndentDepth, additionalMatches)
+		}
+		if rowCount > 0 {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, collapseName, jobIndentDepth)
+			s = s + rows
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, collapseName)
+		} else {
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, collapseName, jobIndentDepth)
 		}
 	}
 
