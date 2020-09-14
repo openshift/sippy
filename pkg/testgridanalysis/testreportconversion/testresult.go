@@ -100,10 +100,6 @@ func filterTestResults(
 			continue
 		}
 
-		// strip out tests are more than N% successful
-		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > successThreshold {
-			continue
-		}
 		// strip out tests that have less than N total runs
 		if testResult.Successes+testResult.Failures < minRuns {
 			continue
@@ -112,11 +108,12 @@ func filterTestResults(
 		filteredResults = append(filteredResults, testResult)
 	}
 
-	return filterSuccessfulTestResults(filteredResults)
+	return filterSuccessfulTestResults(filteredResults, successThreshold)
 }
 
 func filterSuccessfulTestResults(
 	testResults []sippyprocessingv1.TestResult,
+	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
 ) []sippyprocessingv1.TestResult {
 
 	filteredResults := []sippyprocessingv1.TestResult{}
@@ -124,7 +121,7 @@ func filterSuccessfulTestResults(
 	for i := range testResults {
 		testResult := testResults[i]
 		// strip out tests are more than N% successful
-		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > 99.99 {
+		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > successThreshold {
 			continue
 		}
 

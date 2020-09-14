@@ -21,6 +21,7 @@ type jobResultRenderBuilder struct {
 	maxTestResultsToShow int
 	colors               colorizationCriteria
 	collapsedAs          string
+	baseIndentDepth      int
 }
 type colorizationCriteria struct {
 	minRedPercent    float64
@@ -57,6 +58,11 @@ func (b *jobResultRenderBuilder) withColors(colors colorizationCriteria) *jobRes
 	return b
 }
 
+func (b *jobResultRenderBuilder) withIndent(depth int) *jobResultRenderBuilder {
+	b.baseIndentDepth = depth
+	return b
+}
+
 func (b *jobResultRenderBuilder) startCollapsedAs(collapsedAs string) *jobResultRenderBuilder {
 	b.collapsedAs = collapsedAs
 	return b
@@ -73,10 +79,10 @@ func (b *jobResultRenderBuilder) toHTML() string {
 	//  that will fix the funny link that goes nowhere.
 	template := `
 			<tr class="%s">
-				<td>
+				<td style="padding-left:%dpx">
 					<a target="_blank" href="%s">%s</a>
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[5]s" aria-expanded="false" aria-controls="%[5]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -92,10 +98,10 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	naTemplate := `
 			<tr class="%s">
-				<td>
+				<td style="padding-left:%dpx">
 					<a target="_blank" href="%s">%s</a>
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Failing Tests</button>
+					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[5]s" aria-expanded="false" aria-controls="%[5]s">Expand Failing Tests</button>
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -141,7 +147,7 @@ func (b *jobResultRenderBuilder) toHTML() string {
 		}
 
 		s = s + fmt.Sprintf(template,
-			class,
+			class, b.baseIndentDepth*50+10,
 			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
@@ -152,13 +158,16 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			b.prevJobResult.Successes+b.prevJobResult.Failures,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate, class, b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
+		s = s + fmt.Sprintf(naTemplate,
+			class, b.baseIndentDepth*50+10,
+			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
 			b.currJobResult.PassPercentageWithKnownFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
 		)
 	}
 
+	testIndentDepth := (b.baseIndentDepth+1)*50 + 10
 	count := b.maxTestResultsToShow
 	rowCount := 0
 	rows := ""
@@ -173,7 +182,9 @@ func (b *jobResultRenderBuilder) toHTML() string {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 		bugHTML := bugHTMLForTest(test.BugList, b.release, "", test.Name)
 
-		rows = rows + fmt.Sprintf(testGroupTemplate, collapseName,
+		rows = rows + fmt.Sprintf(testGroupTemplate,
+			collapseName,
+			testIndentDepth,
 			test.Name,
 			b.currJobResult.Name,
 			encodedTestName,
@@ -185,13 +196,14 @@ func (b *jobResultRenderBuilder) toHTML() string {
 	}
 
 	if additionalMatches > 0 {
-		rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, collapseName, additionalMatches)
+		rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more tests</td></tr>`, collapseName, testIndentDepth, additionalMatches)
 	}
 	if rowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, collapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, collapseName, testIndentDepth)
 		s = s + rows
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, collapseName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, collapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Tests Matched Filters</td></tr>`, collapseName, testIndentDepth)
 	}
 
 	return s
