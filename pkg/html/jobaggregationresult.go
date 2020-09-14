@@ -225,18 +225,20 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			withPrevious(prevJob).
 			withMaxTestResultsToShow(b.maxTestResultsToShow).
 			startCollapsedAs(jobsCollapseName).
+			withIndent(1).
 			toHTML()
 
 		jobRowCount++
 	}
 	if jobAdditionalMatches > 0 {
-		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more jobs</td></tr>`, jobsCollapseName, jobAdditionalMatches)
+		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more jobs</td></tr>`, jobsCollapseName, jobAdditionalMatches)
 	}
 	if jobRowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
 		s = s + jobRows
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobsCollapseName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
 	}
 
 	testCount := b.maxTestResultsToShow
@@ -253,7 +255,9 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
 		bugHTML := bugHTMLForTest(test.BugList, b.release, "", test.Name)
 
-		testRows = testRows + fmt.Sprintf(testGroupTemplate, testsCollapseName,
+		testRows = testRows + fmt.Sprintf(testGroupTemplate,
+			testsCollapseName,
+			60,
 			test.Name,
 			b.currAggregationResult.AggregationName,
 			encodedTestName,
@@ -264,13 +268,14 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		testRowCount++
 	}
 	if testAdditionalMatches > 0 {
-		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2>Plus %d more tests</td></tr>`, testsCollapseName, testAdditionalMatches)
+		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more tests</td></tr>`, testsCollapseName, testAdditionalMatches)
 	}
 	if testRowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
 		s = s + testRows
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testsCollapseName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
 	}
 
 	return s

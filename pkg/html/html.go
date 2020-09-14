@@ -118,25 +118,6 @@ Data current as of: %s
 {{ summaryJobsFailuresByBugzillaComponent .Current .Prev .EndDay .Release }}
 
 `
-
-	// 1 encoded job name
-	// 2 test name
-	// 3 job name regex
-	// 4 encoded test name
-	// 5 bug list/bug search
-	// 6 pass rate
-	// 7 number of runs
-	testGroupTemplate = `
-		<tr class="collapse %s">
-			<td colspan=2>
-			%s
-			<p>
-			<a target="_blank" href="https://search.ci.openshift.org/?maxAge=168h&context=1&type=junit&maxMatches=5&maxBytes=20971520&groupBy=job&name=%[3]s&search=%[4]s">Job Search</a>
-			%s
-			</td>
-			<td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
-		</tr>
-	`
 )
 
 func summaryAcrossAllJobs(result, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int) string {
@@ -696,6 +677,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				withPrevious(prevJobResult).
 				withColors(colors).
 				startCollapsedAs(safeBZJob).
+				withIndent(1).
 				toHTML()
 			s += jobHTML
 		}

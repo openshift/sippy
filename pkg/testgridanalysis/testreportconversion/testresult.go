@@ -100,10 +100,6 @@ func filterTestResults(
 			continue
 		}
 
-		// strip out tests are more than N% successful
-		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > successThreshold {
-			continue
-		}
 		// strip out tests that have less than N total runs
 		if testResult.Successes+testResult.Failures < minRuns {
 			continue
