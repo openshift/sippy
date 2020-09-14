@@ -10,7 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-// convertRawDataToByPlatform takes the raw data and produces a map of platform names to results
+// convertRawDataToByPlatform takes the raw data and produces a map of platform names to job and test results
 func convertRawDataToByPlatform(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
