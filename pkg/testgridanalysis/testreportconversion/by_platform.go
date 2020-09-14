@@ -15,9 +15,7 @@ func convertRawDataToByPlatform(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
-	minRuns int, // indicates how many runs are required for a test is included in overall percentages
-	// TODO deads2k wants to eliminate the successThreshold
-	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
+	testResultFilterFn testResultFilterFunc,
 ) []sippyprocessingv1.PlatformResults {
 
 	platformResults := []sippyprocessingv1.PlatformResults{}
@@ -44,11 +42,11 @@ func convertRawDataToByPlatform(
 			// combined the test results *before* we filter them
 			allPlatformTestResults = combineTestResults(jobResult.TestResults, allPlatformTestResults)
 
-			jobResult.TestResults = filterTestResults(jobResult.TestResults, minRuns, successThreshold)
+			jobResult.TestResults = testResultFilterFn.filterTestResults(jobResult.TestResults)
 			jobResults = append(jobResults, jobResult)
 		}
 
-		filteredPlatformTestResults := filterTestResults(allPlatformTestResults, minRuns, successThreshold)
+		filteredPlatformTestResults := testResultFilterFn.filterTestResults(allPlatformTestResults)
 		sort.Stable(jobsByPassPercentage(jobResults))
 
 		platformResults = append(platformResults, sippyprocessingv1.PlatformResults{

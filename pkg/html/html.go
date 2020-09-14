@@ -101,7 +101,9 @@ Data current as of: %s
 
 {{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
-{{ summaryTopFailingTests .Current.TopFailingTestsWithoutBug .Current.TopFailingTestsWithBug .Prev.All .EndDay .Release }}
+{{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.TopFailingTestsWithoutBug .EndDay .Release }}
+
+{{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.TopFailingTestsWithBug .EndDay .Release }}
 
 {{ summaryJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
@@ -198,127 +200,6 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 func testToSearchURL(testName string) string {
 	encodedTestName := url.QueryEscape(regexp.QuoteMeta(testName))
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
-}
-
-func summaryTopFailingTests(topFailingTestsWithoutBug, topFailingTestsWithBug []*sippyprocessingv1.TestResult, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int, release string) string {
-	allPrev := resultPrev["all"]
-
-	// test name | bug | pass rate | higher/lower | pass rate
-	s := fmt.Sprintf(`
-	<table class="table">
-		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a></th>
-		</tr>
-		<tr>
-			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
-		</tr>
-		<tr>
-			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
-		</tr>
-	`, endDay)
-
-	template := `
-		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
-		</tr>
-	`
-	naTemplate := `
-		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
-		</tr>
-	`
-
-	for _, testResult := range topFailingTestsWithoutBug {
-		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
-		// but don't bother creating the noise in the UI for a one-off/long tail.
-		if (testResult.Failures + testResult.Flakes) == 1 {
-			continue
-		}
-
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
-
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.Name)
-		testPrev := util.GetPrevTest(testResult.Name, allPrev.TestResults)
-
-		bugHTML := bugHTMLForTest(testResult.BugList, release, "", testResult.Name)
-
-		if testPrev != nil {
-			arrow := ""
-			delta := 5.0
-			if testResult.Successes+testResult.Failures > 80 {
-				delta = 2
-			}
-
-			if testResult.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, testResult.PassPercentage-testPrev.PassPercentage)
-			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, testPrev.PassPercentage-testResult.PassPercentage)
-			} else if testResult.PassPercentage > testPrev.PassPercentage {
-				arrow = fmt.Sprintf(flatup, testResult.PassPercentage-testPrev.PassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-testResult.PassPercentage)
-			}
-
-			s += fmt.Sprintf(template, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
-		} else {
-			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures)
-		}
-	}
-
-	s += fmt.Sprintf(`<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate." id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a></th>
-		  </tr>
-		<tr>
-			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
-		</tr>
-		<tr>
-			<th>Test Name</th><th>BZ</th><th>Pass Rate</th><th/><th>Pass Rate</th>
-		</tr>`, endDay)
-
-	for _, testResult := range topFailingTestsWithBug {
-		// if we only have one failure, don't show it on the glass.  Keep it in the actual data so we can choose how to handle it,
-		// but don't bother creating the noise in the UI for a one-off/long tail.
-		if (testResult.Failures + testResult.Flakes) == 1 {
-			continue
-		}
-
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(testResult.Name))
-
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.Name)
-		testPrev := util.GetPrevTest(testResult.Name, allPrev.TestResults)
-
-		klog.V(2).Infof("processing top failing tests with bug %s, bugs: %v", testResult.Name, testResult.BugList)
-		bugHTML := bugHTMLForTest(testResult.BugList, release, "", testResult.Name)
-		if testPrev != nil {
-			arrow := ""
-			delta := 5.0
-			if testResult.Successes+testResult.Failures > 80 {
-				delta = 2
-			}
-			if testResult.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = up
-			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = down
-			}
-
-			if testResult.PassPercentage > testPrev.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, testResult.PassPercentage-testPrev.PassPercentage)
-			} else if testResult.PassPercentage < testPrev.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, testPrev.PassPercentage-testResult.PassPercentage)
-			} else if testResult.PassPercentage > testPrev.PassPercentage {
-				arrow = fmt.Sprintf(flatup, testResult.PassPercentage-testPrev.PassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, testPrev.PassPercentage-testResult.PassPercentage)
-			}
-
-			s += fmt.Sprintf(template, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures, arrow, testPrev.PassPercentage, testPrev.Successes+testPrev.Failures)
-		} else {
-			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.PassPercentage, testResult.Successes+testResult.Failures)
-		}
-	}
-
-	s = s + "</table>"
-	return s
 }
 
 func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
@@ -721,7 +602,8 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryAcrossAllJobs":                   summaryAcrossAllJobs,
 			"failureGroups":                          failureGroups,
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
-			"summaryTopFailingTests":                 summaryTopFailingTests,
+			"summaryTopFailingTestsWithBug":          summaryTopFailingTestsWithBug,
+			"summaryTopFailingTestsWithoutBug":       summaryTopFailingTestsWithoutBug,
 			"summaryJobPassRatesByJobName":           summaryJobPassRatesByJobName,
 			"summaryInfrequentJobPassRatesByJobName": summaryInfrequentJobPassRatesByJobName,
 			"canaryTestFailures":                     canaryTestFailures,

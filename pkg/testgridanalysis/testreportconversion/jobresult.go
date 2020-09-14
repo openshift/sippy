@@ -8,33 +8,56 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 )
 
-func summarizeJobRunResults(
-	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
+func filterPertinentFrequentJobResults(
+	in []sippyprocessingv1.JobResult,
 	numberOfDaysOfData int, // number of days included in report.
-	minRuns int, // indicates how many runs are required for a test is included in overall percentages
-	// TODO deads2k wants to eliminate the successThreshold
-	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) (jobs []sippyprocessingv1.JobResult, infrequentJobs []sippyprocessingv1.JobResult) {
+	testResultFilterFn testResultFilterFunc,
+) []sippyprocessingv1.JobResult {
+	filtered := []sippyprocessingv1.JobResult{}
 
-	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
-
+	for _, job := range in {
 		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
-			job.TestResults = filterTestResults(job.TestResults, minRuns, successThreshold)
-			jobs = append(jobs, job)
-		} else {
-			// for infrequent jobs, we do not filter out on minimum runs
-			job.TestResults = filterTestResults(job.TestResults, 1, successThreshold)
-			infrequentJobs = append(infrequentJobs, job)
+			job.TestResults = testResultFilterFn.filterTestResults(job.TestResults)
+			filtered = append(filtered, job)
 		}
 	}
 
-	sort.Stable(jobsByPassPercentage(jobs))
-	sort.Stable(jobsByPassPercentage(infrequentJobs))
+	return filtered
+}
 
-	return jobs, infrequentJobs
+func filterPertinentInfrequentJobResults(
+	in []sippyprocessingv1.JobResult,
+	numberOfDaysOfData int, // number of days included in report.
+	testResultFilterFn testResultFilterFunc,
+) []sippyprocessingv1.JobResult {
+	filtered := []sippyprocessingv1.JobResult{}
+
+	for _, job := range in {
+		if job.Successes+job.Failures <= numberOfDaysOfData*3/2 /*time 1.5*/ {
+			job.TestResults = testResultFilterFn.filterTestResults(job.TestResults)
+			filtered = append(filtered, job)
+		}
+	}
+
+	return filtered
+}
+
+// convertRawJobResultsToProcessedJobResults performs no filtering
+func convertRawJobResultsToProcessedJobResults(
+	rawJobResults map[string]testgridanalysisapi.RawJobResult,
+	bugCache buganalysis.BugCache, // required to associate tests with bug
+	release string, // required to limit bugs to those that apply to the release in question,
+) []sippyprocessingv1.JobResult {
+	jobs := []sippyprocessingv1.JobResult{}
+
+	for _, rawJobResult := range rawJobResults {
+		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
+		jobs = append(jobs, job)
+	}
+
+	sort.Stable(jobsByPassPercentage(jobs))
+
+	return jobs
 }
 
 func convertRawJobResultToProcessedJobResult(

@@ -25,10 +25,10 @@ type TestReport struct {
 	// InfrequentJobResults are jobresults for jobs that run less than 1.5 times per day
 	InfrequentJobResults []JobResult `json:"infrequentJobResults"`
 
-	Timestamp                 time.Time     `json:"timestamp"`
-	TopFailingTestsWithBug    []*TestResult `json:"topFailingTestsWithBug"`
-	TopFailingTestsWithoutBug []*TestResult `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []bugsv1.Bug  `json:"bugsByFailureCount"`
+	Timestamp                 time.Time           `json:"timestamp"`
+	TopFailingTestsWithBug    []FailingTestResult `json:"topFailingTestsWithBug"`
+	TopFailingTestsWithoutBug []FailingTestResult `json:"topFailingTestsWithoutBug"`
+	BugsByFailureCount        []bugsv1.Bug        `json:"bugsByFailureCount"`
 
 	// JobFailuresByBugzillaComponent are keyed by bugzilla components
 	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`
@@ -62,6 +62,25 @@ type SortedAggregateTestsResult struct {
 	TestResults []TestResult `json:"results"`
 }
 
+type FailingTestResult struct {
+	TestName string `json:"testName"`
+
+	// TestResultAcrossAllJobs contains the testResult aggregated across all jobs.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
+	TestResultAcrossAllJobs TestResult `json:"results"`
+
+	// JobResults for all jobs that failed on this test ordered by the pass percentage of the test on a given job
+	JobResults []FailingTestJobResult `json:"jobResults"`
+}
+
+// FailingTestJobResult is a job summary for the number of runs failed by this
+type FailingTestJobResult struct {
+	Name           string  `json:"name"`
+	TestFailures   int     `json:"testFailures"`
+	TestSuccesses  int     `json:"testSuccesses"`
+	PassPercentage float64 `json:"passPercentage"`
+	TestGridUrl    string  `json:"testGridUrl"`
+}
+
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
 // always have complete data, not partial data.
 type TestResult struct {
@@ -80,7 +99,6 @@ type TestResult struct {
 type JobRunResult struct {
 	Job                string   `json:"job"`
 	Url                string   `json:"url"`
-	TestGridJobUrl     string   `json:"testGridJobUrl"`
 	TestFailures       int      `json:"testFailures"`
 	FailedTestNames    []string `json:"failedTestNames"`
 	Failed             bool     `json:"failed"`
@@ -94,9 +112,9 @@ type JobResult struct {
 	Failures                        int     `json:"failures"`
 	KnownFailures                   int     `json:"knownFailures"`
 	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"PassPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"PassPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"TestGridUrl"`
+	PassPercentage                  float64 `json:"passPercentage"`
+	PassPercentageWithKnownFailures float64 `json:"passPercentageWithKnownFailures"`
+	TestGridUrl                     string  `json:"testGridUrl"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`

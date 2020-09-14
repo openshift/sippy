@@ -25,13 +25,19 @@ func PrepareTestReport(
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
 ) sippyprocessingv1.TestReport {
 
+	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
+	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, release)
+
+	standardTestResultFilterFn := standardTestResultFilter(minRuns, successThreshold)
+
 	byAll := summarizeTestResults(rawData.ByAll, bugCache, release, minRuns, successThreshold)
 	byJob := summarizeTestResults(rawData.ByJob, bugCache, release, minRuns, successThreshold)
 	bySig := summarizeTestResults(rawData.BySig, bugCache, release, minRuns, successThreshold)
-	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, minRuns, successThreshold)
+	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
-	jobResults, infrequentJobResults := summarizeJobRunResults(rawData.JobResults, bugCache, release, endDay, minRuns, successThreshold)
+	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
+	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
 
 	bugFailureCounts := generateSortedBugFailureCounts(rawData.JobResults, byAll, bugCache, release)
 	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, byJob)
@@ -43,7 +49,7 @@ func PrepareTestReport(
 		ByJob:                          byJob,
 		BySig:                          bySig,
 		FailureGroups:                  filteredFailureGroups,
-		JobResults:                     jobResults,
+		JobResults:                     frequentJobResults,
 		InfrequentJobResults:           infrequentJobResults,
 		Timestamp:                      reportTimestamp,
 		BugsByFailureCount:             bugFailureCounts,
@@ -52,42 +58,10 @@ func PrepareTestReport(
 		AnalysisWarnings: analysisWarnings,
 	}
 
-	topFailingTestsWithoutBug, topFailingTestsWithBug := getTopFailingTests(byAll, release, bugCache)
-	testReport.TopFailingTestsWithBug = topFailingTestsWithBug
-	testReport.TopFailingTestsWithoutBug = topFailingTestsWithoutBug
+	testReport.TopFailingTestsWithBug = getTopFailingTestsWithBug(allJobResults, standardTestResultFilterFn)
+	testReport.TopFailingTestsWithoutBug = getTopFailingTestsWithoutBug(allJobResults, standardTestResultFilterFn)
 
 	return testReport
-}
-
-// returns top ten failing tests w/o a bug and top ten with a bug(in that order)
-func getTopFailingTests(
-	result map[string]sippyprocessingv1.SortedAggregateTestsResult,
-	release string,
-	bugCache buganalysis.BugCache,
-) ([]*sippyprocessingv1.TestResult, []*sippyprocessingv1.TestResult) {
-
-	topTestsWithoutBug := []*sippyprocessingv1.TestResult{}
-	topTestsWithBug := []*sippyprocessingv1.TestResult{}
-	all := result["all"]
-	withoutbugcount := 0
-	withbugcount := 0
-	// look at the top 100 failing tests, try to create a list of the top 20 failures with bugs and without bugs.
-	// limit to 100 so we don't hammer search.ci too hard if we can't find 20 failures with bugs in the first 100.
-	for i := 0; (withbugcount < 20 || withoutbugcount < 10) && i < 100 && i < len(all.TestResults); i++ {
-		test := all.TestResults[i]
-		test.BugList = bugCache.ListBugs(release, "", test.Name)
-
-		// we want the top ten test failures that don't have bugs associated.
-		// top test failures w/ bugs will be listed, but don't count towards the top ten.
-		if len(test.BugList) == 0 && withoutbugcount < 10 {
-			topTestsWithoutBug = append(topTestsWithoutBug, &test)
-			withoutbugcount++
-		} else if len(test.BugList) > 0 && withbugcount < 20 {
-			topTestsWithBug = append(topTestsWithBug, &test)
-			withbugcount++
-		}
-	}
-	return topTestsWithoutBug, topTestsWithBug
 }
 
 func summarizeTestResults(
@@ -160,7 +134,6 @@ func filterFailureGroups(
 			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
 				Job:                jobResult.JobName,
 				Url:                rawJRR.JobRunURL,
-				TestGridJobUrl:     jobResult.TestGridJobUrl,
 				TestFailures:       rawJRR.TestFailures,
 				FailedTestNames:    rawJRR.FailedTestNames,
 				Failed:             rawJRR.Failed,

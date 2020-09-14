@@ -1,6 +1,7 @@
 package testreportconversion
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -52,6 +53,23 @@ func combineTestResults(lhs, rhs []sippyprocessingv1.TestResult) []sippyprocessi
 	return combined
 }
 
+func combineTestResult(lhs, rhs sippyprocessingv1.TestResult) sippyprocessingv1.TestResult {
+	if lhs.Name != rhs.Name {
+		panic(fmt.Sprintf("coding error: %q %q", lhs.Name, rhs.Name))
+	}
+
+	// shallow copy
+	combined := lhs
+	combined.Failures += rhs.Failures
+	combined.Successes += rhs.Successes
+	combined.Flakes += rhs.Flakes
+	combined.PassPercentage = percent(combined.Successes, combined.Failures)
+	// bugs should be the same for now.
+	combined.BugList = rhs.BugList
+
+	return combined
+}
+
 func convertRawTestResultToProcessedTestResult(
 	rawTestResult testgridanalysisapi.RawTestResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
@@ -84,47 +102,64 @@ func convertRawTestResultsToProcessedTestResults(
 	return ret
 }
 
-func filterTestResults(
-	testResults []sippyprocessingv1.TestResult,
+type testResultFilterFunc func(sippyprocessingv1.TestResult) bool
+
+func filterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) testResultFilterFunc {
+	return func(testResult sippyprocessingv1.TestResult) bool {
+		if testResult.PassPercentage > successThreshold {
+			return false
+		}
+		return true
+	}
+}
+
+func filterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
+	if testResult.Name == "Overall" || strings.HasSuffix(testResult.Name, "container setup") {
+		return false
+	}
+	return true
+}
+
+func filterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) testResultFilterFunc {
+	return func(testResult sippyprocessingv1.TestResult) bool {
+		if testResult.Successes+testResult.Failures < minRuns {
+			return false
+		}
+		return true
+	}
+}
+
+func filterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFunc {
+	return func(testResult sippyprocessingv1.TestResult) bool {
+		for _, fn := range fns {
+			if !fn(testResult) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func standardTestResultFilter(
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) []sippyprocessingv1.TestResult {
-
-	filteredResults := []sippyprocessingv1.TestResult{}
-
-	for i := range testResults {
-		testResult := testResults[i]
-		// we filter these our for display
-		if testResult.Name == "Overall" || strings.HasSuffix(testResult.Name, "container setup") {
-			continue
-		}
-
-		// strip out tests that have less than N total runs
-		if testResult.Successes+testResult.Failures < minRuns {
-			continue
-		}
-
-		filteredResults = append(filteredResults, testResult)
-	}
-
-	return filterSuccessfulTestResults(filteredResults, successThreshold)
+) testResultFilterFunc {
+	return filterTestResultsByFilters(
+		filterLowValueTestsByName,
+		filterTooFewTestRuns(minRuns),
+		filterSuccessfulTestResults(successThreshold),
+	)
 }
 
-func filterSuccessfulTestResults(
-	testResults []sippyprocessingv1.TestResult,
-	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) []sippyprocessingv1.TestResult {
-
+func (filterFn testResultFilterFunc) filterTestResults(testResults []sippyprocessingv1.TestResult) []sippyprocessingv1.TestResult {
 	filteredResults := []sippyprocessingv1.TestResult{}
 
 	for i := range testResults {
 		testResult := testResults[i]
-		// strip out tests are more than N% successful
-		if passPercentage := percent(testResult.Successes, testResult.Failures); passPercentage > successThreshold {
+		if !filterFn(testResult) {
 			continue
 		}
-
 		filteredResults = append(filteredResults, testResult)
 	}
 
