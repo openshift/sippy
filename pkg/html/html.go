@@ -104,7 +104,7 @@ Data current as of: %s
 
 {{ summaryInfrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
-{{ canaryTestFailures .Current.All }}
+{{ canaryTestFailures .Current.ByTest .Prev.ByTest }}
 
 {{ failureGroupList .Current }}
 
@@ -116,30 +116,6 @@ Data current as of: %s
 
 `
 )
-
-func summaryAcrossAllJobs(result, resultPrev map[string]sippyprocessingv1.SortedAggregateTestsResult, endDay int) string {
-
-	all := result["all"]
-	allPrev := resultPrev["all"]
-
-	summary := `
-	<table class="table">
-		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" id="SummaryAcrossAllJobs" href="#SummaryAcrossAllJobs">Summary Across All Jobs</a></th>			
-		</tr>
-		<tr>
-			<th/><th>Latest %d days</th><th>Previous 7 days</th>
-		</tr>
-		<tr>
-			<td>Test executions: </td><td>%d</td><td>%d</td>
-		</tr>
-		<tr>
-			<td>Test Pass Percentage: </td><td>%0.2f</td><td>%0.2f</td>
-		</tr>
-	</table>`
-	s := fmt.Sprintf(summary, endDay, all.Successes+all.Failures, allPrev.Successes+allPrev.Failures, all.TestPassPercentage, allPrev.TestPassPercentage)
-	return s
-}
 
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult, endDay int) string {
 
@@ -247,8 +223,7 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 	return s
 }
 
-func canaryTestFailures(result map[string]sippyprocessingv1.SortedAggregateTestsResult) string {
-	all := result["all"].TestResults
+func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) string {
 
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := `
@@ -266,13 +241,25 @@ func canaryTestFailures(result map[string]sippyprocessingv1.SortedAggregateTests
 		</tr>
 	`
 
-	for i := len(all) - 1; i >= 0 && i > len(all)-10; i-- {
+	foundCount := 0
+	for i := len(all) - 1; i >= 0; i-- {
 		test := all[i]
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
+		if test.TestResultAcrossAllJobs.Failures == 0 {
+			continue
+		}
+		foundCount++
+		if foundCount > 10 {
+			break
+		}
 
-		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.Name)
+		// TODO use a standard presentation for the failed test
+		util.GetTestResult(test.TestName, prevAll)
 
-		s += fmt.Sprintf(template, testLink, test.PassPercentage, test.Successes+test.Failures)
+		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
+
+		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.TestName)
+
+		s += fmt.Sprintf(template, testLink, test.TestResultAcrossAllJobs.PassPercentage, test.TestResultAcrossAllJobs.Successes+test.TestResultAcrossAllJobs.Failures)
 	}
 	s = s + "</table>"
 	return s
@@ -578,7 +565,6 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
-			"summaryAcrossAllJobs":                   summaryAcrossAllJobs,
 			"failureGroups":                          failureGroups,
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
 			"summaryTopFailingTestsWithBug":          summaryTopFailingTestsWithBug,

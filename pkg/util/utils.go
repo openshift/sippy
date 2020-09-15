@@ -16,9 +16,9 @@ var (
 	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
 )
 
-func GetPrevTest(test string, testResults []sippyprocessingv1.TestResult) *sippyprocessingv1.TestResult {
+func GetTestResult(test string, testResults []sippyprocessingv1.FailingTestResult) *sippyprocessingv1.FailingTestResult {
 	for _, v := range testResults {
-		if v.Name == test {
+		if v.TestName == test {
 			return &v
 		}
 	}
