@@ -208,8 +208,8 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		</tr>
 	`, endDay)
 
-	for _, currJobResult := range report.JobResults {
-		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.JobResults)
+	for _, currJobResult := range report.FrequentJobResults {
+		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
 		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).
@@ -438,7 +438,6 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		safeBZJob = strings.ReplaceAll(safeBZJob, ".", "")
 		safeBZJob = strings.ReplaceAll(safeBZJob, " ", "")
 
-		prev := util.GetPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
 		highestFailPercentage := v.JobsFailed[0].FailPercentage
 		lowestPassPercentage := 100 - highestFailPercentage
 		rowColor := ""
@@ -453,6 +452,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			rowColor = "error"
 		}
 
+		prev := util.GetPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
 		if prev != nil && len(prev.JobsFailed) > 0 {
 			previousHighestFailPercentage := prev.JobsFailed[0].FailPercentage
 			previousLowestPassPercentage := 100 - previousHighestFailPercentage
@@ -491,7 +491,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
-			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.JobResults)
+			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.FrequentJobResults)
+			if fullJobResult == nil { // if it wasn't in the first, look in the second
+				fullJobResult = util.GetJobResultForJobName(failingJob.JobName, report.InfrequentJobResults)
+			}
 
 			// create the synthetic JobResult for display purposes.
 			// TODO with another refactor, we'll be able to tighten this up later.

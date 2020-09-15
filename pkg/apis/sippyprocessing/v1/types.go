@@ -10,25 +10,30 @@ import (
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
-	Release string                                `json:"release"`
-	All     map[string]SortedAggregateTestsResult `json:"all"`
-	ByJob   map[string]SortedAggregateTestsResult `json:"byJob`
-	BySig   map[string]SortedAggregateTestsResult `json:"bySig`
+	Release   string    `json:"release"`
+	Timestamp time.Time `json:"timestamp"`
+
+	// TODO this appears to be used to reference all tests, but instead we could simply provide an list of tests sorted by pass/fail
+	All map[string]SortedAggregateTestsResult `json:"all"`
 
 	// ByPlatform organizes jobs and tests by platform, sorted by job pass rate from low to high
 	ByPlatform []PlatformResults `json:"byPlatform`
 
 	FailureGroups []JobRunResult `json:"failureGroups"`
 
-	// JobResults are jobresults for jobs that run more than 1.5 times per day
-	JobResults []JobResult `json:"jobResults"`
+	// FrequentJobResults are jobresults for jobs that run more than 1.5 times per day
+	FrequentJobResults []JobResult `json:"frequentJobResults"`
 	// InfrequentJobResults are jobresults for jobs that run less than 1.5 times per day
 	InfrequentJobResults []JobResult `json:"infrequentJobResults"`
 
-	Timestamp                 time.Time           `json:"timestamp"`
-	TopFailingTestsWithBug    []FailingTestResult `json:"topFailingTestsWithBug"`
+	// TopFailingTestsWithBug holds the top 50 failing tests that have bugs, sorted from low to high pass rate
+	TopFailingTestsWithBug []FailingTestResult `json:"topFailingTestsWithBug"`
+	// TopFailingTestsWithoutBug holds the top 50 failing tests that do not have bugs, sorted from low to high pass rate
 	TopFailingTestsWithoutBug []FailingTestResult `json:"topFailingTestsWithoutBug"`
-	BugsByFailureCount        []bugsv1.Bug        `json:"bugsByFailureCount"`
+
+	// BugsByFailureCount lists the bugs by the most frequently failed
+	// TODO add information about which FailingTestResult they reference and provide expansion links to tests and jobs
+	BugsByFailureCount []bugsv1.Bug `json:"bugsByFailureCount"`
 
 	// JobFailuresByBugzillaComponent are keyed by bugzilla components
 	JobFailuresByBugzillaComponent map[string]SortedBugzillaComponentResult `json:"jobFailuresByBugzillaComponent"`

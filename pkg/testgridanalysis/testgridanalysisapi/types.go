@@ -8,8 +8,6 @@ package testgridanalysisapi
 
 type RawData struct {
 	ByAll map[string]AggregateTestsResult
-	ByJob map[string]AggregateTestsResult
-	BySig map[string]AggregateTestsResult
 
 	// JobResults is a map keyed by job name to results for all runs of a job
 	JobResults map[string]RawJobResult
