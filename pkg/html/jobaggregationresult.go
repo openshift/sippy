@@ -185,7 +185,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 	jobRows := ""
 	jobAdditionalMatches := 0
 	for _, job := range b.currAggregationResult.JobResults {
-		if jobCount == 0 {
+		if jobCount <= 0 {
 			jobAdditionalMatches++
 			continue
 		}
@@ -221,7 +221,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 	testRows := ""
 	testAdditionalMatches := 0
 	for _, test := range b.currAggregationResult.AllTestResults {
-		if testCount == 0 {
+		if testCount <= 0 {
 			testAdditionalMatches++
 			continue
 		}

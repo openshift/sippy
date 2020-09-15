@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -823,7 +822,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		fct, _ = strconv.Atoi(t)
 	}
 
-	jobTestCount := math.MaxInt32
+	jobTestCount := 10
 	t = req.URL.Query().Get("jobTestCount")
 	if t != "" {
 		jobTestCount, _ = strconv.Atoi(t)
