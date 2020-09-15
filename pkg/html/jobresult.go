@@ -143,7 +143,7 @@ func (b *jobResultRenderBuilder) toHTML() string {
 	rows := ""
 	additionalMatches := 0
 	for _, test := range b.currJobResult.TestResults {
-		if count == 0 {
+		if count <= 0 {
 			additionalMatches++
 			continue
 		}
