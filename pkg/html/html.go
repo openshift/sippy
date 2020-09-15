@@ -96,9 +96,9 @@ Data current as of: %s
 
 {{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
-{{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.TopFailingTestsWithoutBug .EndDay .Release }}
+{{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .EndDay .Release }}
 
-{{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.TopFailingTestsWithBug .EndDay .Release }}
+{{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.ByTest .EndDay .Release }}
 
 {{ summaryJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
