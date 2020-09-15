@@ -79,7 +79,7 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 }
 
 // top failing tests with a bug
-func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTopFailingTestsWithBug []sippyprocessingv1.FailingTestResult) []sippyv1.FailingTestBug {
+func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sippyprocessingv1.FailingTestResult) []sippyv1.FailingTestBug {
 
 	var topFailingTests []sippyv1.FailingTestBug
 
@@ -87,7 +87,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTopFailingTestsWi
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
-		testPrev := util.GetTestResult(test.TestName, prevTopFailingTestsWithBug)
+		testPrev := util.GetTestResult(test.TestName, prevTestResults)
 
 		var failedTestWithBug sippyv1.FailingTestBug
 
@@ -279,7 +279,7 @@ func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, endDay, j
 		"failureGroupings":          failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
 		"jobPassRateByPlatform":     summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
 		"topFailingTestsWithoutBug": summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.TopFailingTestsWithoutBug),
-		"topFailingTestsWithBug":    summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.TopFailingTestsWithBug),
+		"topFailingTestsWithBug":    summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.ByTest),
 		"jobPassRatesByName":        summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
 		"canaryTestFailures":        canaryTestFailures(data.Current.ByTest),
 		"jobRunsWithFailureGroups":  failureGroupList(data.Current),

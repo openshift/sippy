@@ -675,7 +675,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		html.WriteLandingPage(w, s.options.Releases)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-days-2"].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
 }
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
@@ -781,8 +781,23 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	analyzer.analyze()
 	analyzer.prepareTestReport()
 
-	// prior 7 day period
+	// current 2 day period
 	optCopy := *opt
+	optCopy.EndDay = 2
+	twoDayAnalyzer := Analyzer{
+		Release: release,
+		Options: &optCopy,
+		RawData: testgridanalysisapi.RawData{
+			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
+		},
+		BugCache: s.bugCache,
+	}
+	twoDayAnalyzer.loadData([]string{release}, s.options.LocalData)
+	twoDayAnalyzer.analyze()
+	twoDayAnalyzer.prepareTestReport()
+
+	// prior 7 day period
+	optCopy = *opt
 	optCopy.StartDay = endDay + 1
 	optCopy.EndDay = endDay + 8
 	prevAnalyzer := Analyzer{
@@ -797,7 +812,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	prevAnalyzer.analyze()
 	prevAnalyzer.prepareTestReport()
 
-	html.PrintHtmlReport(w, req, analyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
+	html.PrintHtmlReport(w, req, analyzer.Report, twoDayAnalyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
 
 }
 
@@ -919,8 +934,25 @@ func (o *Options) Run() error {
 			analyzer.prepareTestReport()
 			server.analyzers[release] = analyzer
 
-			// prior 7 day period (days 7-14)
+			// most recent 2 day period (days 0-2)
 			optCopy := *o
+			optCopy.EndDay = 2
+			optCopy.StartDay = 0
+			analyzer = Analyzer{
+				Release: release,
+				Options: o,
+				RawData: testgridanalysisapi.RawData{
+					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
+				},
+				BugCache: server.bugCache,
+			}
+			analyzer.loadData([]string{release}, o.LocalData)
+			analyzer.analyze()
+			analyzer.prepareTestReport()
+			server.analyzers[release+"-days-2"] = analyzer
+
+			// prior 7 day period (days 7-14)
+			optCopy = *o
 			optCopy.EndDay = 14
 			optCopy.StartDay = 7
 			analyzer = Analyzer{

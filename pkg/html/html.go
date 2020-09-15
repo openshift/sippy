@@ -89,7 +89,7 @@ Data current as of: %s
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a> | <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> | <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> |
 			 <br/>	          
-	         <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
+	         <a href="#JobByMostReducedPassRate">Job Pass Rates By Most Reduced Pass Rate</a> | <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
              <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
@@ -100,7 +100,9 @@ Data current as of: %s
 
 {{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.ByTest .EndDay .Release }}
 
-{{ summaryJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
+{{ summaryTopNegativelyMovingJobs .TwoDay.ByJob .Prev.ByJob .JobTestCount .Release }}
+
+{{ summaryFrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
 {{ summaryInfrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
 
@@ -173,7 +175,7 @@ func testToSearchURL(testName string) string {
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
+func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -478,10 +480,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
-			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.FrequentJobResults)
-			if fullJobResult == nil { // if it wasn't in the first, look in the second
-				fullJobResult = util.GetJobResultForJobName(failingJob.JobName, report.InfrequentJobResults)
-			}
+			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.ByJob)
 
 			// create the synthetic JobResult for display purposes.
 			// TODO with another refactor, we'll be able to tighten this up later.
@@ -535,6 +534,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 
 type TestReports struct {
 	Current      sippyprocessingv1.TestReport
+	TwoDay       sippyprocessingv1.TestReport
 	Prev         sippyprocessingv1.TestReport
 	EndDay       int
 	JobTestCount int
@@ -553,7 +553,7 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 	for _, analysisWarning := range prevReport.AnalysisWarnings {
@@ -569,18 +569,20 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, prevRepor
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
 			"summaryTopFailingTestsWithBug":          summaryTopFailingTestsWithBug,
 			"summaryTopFailingTestsWithoutBug":       summaryTopFailingTestsWithoutBug,
-			"summaryJobPassRatesByJobName":           summaryJobPassRatesByJobName,
+			"summaryFrequentJobPassRatesByJobName":   summaryFrequentJobPassRatesByJobName,
 			"summaryInfrequentJobPassRatesByJobName": summaryInfrequentJobPassRatesByJobName,
 			"canaryTestFailures":                     canaryTestFailures,
 			"failureGroupList":                       failureGroupList,
 			"testImpactingBugs":                      testImpactingBugs,
 			"testImpactingComponents":                testImpactingComponents,
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
+			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 		},
 	).Parse(dashboardPageHtml))
 
 	if err := dashboardPage.Execute(w, TestReports{
 		Current:      report,
+		TwoDay:       twoDayReport,
 		Prev:         prevReport,
 		EndDay:       endDay,
 		JobTestCount: jobTestCount,

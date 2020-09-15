@@ -50,6 +50,7 @@ func PrepareTestReport(
 		ByPlatform:    byPlatform,
 		FailureGroups: filteredFailureGroups,
 
+		ByJob:                allJobResults,
 		FrequentJobResults:   frequentJobResults,
 		InfrequentJobResults: infrequentJobResults,
 
