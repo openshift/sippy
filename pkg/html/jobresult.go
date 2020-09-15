@@ -23,11 +23,6 @@ type jobResultRenderBuilder struct {
 	collapsedAs          string
 	baseIndentDepth      int
 }
-type colorizationCriteria struct {
-	minRedPercent    float64
-	minYellowPercent float64
-	minGreenPercent  float64
-}
 
 func newJobResultRenderer(sectionBlock string, currJobResult sippyprocessingv1.JobResult, release string) *jobResultRenderBuilder {
 	return &jobResultRenderBuilder{
@@ -113,38 +108,13 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			</tr>
 		`
 
-	rowColor := ""
-	switch {
-	case b.currJobResult.PassPercentage > b.colors.minGreenPercent:
-		rowColor = "table-success"
-	case b.currJobResult.PassPercentage > b.colors.minYellowPercent:
-		rowColor = "table-warning"
-	case b.currJobResult.PassPercentage > b.colors.minRedPercent:
-		rowColor = "table-danger"
-	default:
-		rowColor = "error"
-	}
-	class := rowColor
+	class := b.colors.getColor(b.currJobResult.PassPercentage)
 	if len(b.collapsedAs) > 0 {
 		class += " collapse " + b.collapsedAs
 	}
 
 	if b.prevJobResult != nil {
-		arrow := ""
-		delta := 5.0
-		if b.currJobResult.Successes+b.currJobResult.Failures > 80 {
-			delta = 2
-		}
-
-		if b.currJobResult.PassPercentage > b.prevJobResult.PassPercentage+delta {
-			arrow = fmt.Sprintf(up, b.currJobResult.PassPercentage-b.prevJobResult.PassPercentage)
-		} else if b.currJobResult.PassPercentage < b.prevJobResult.PassPercentage-delta {
-			arrow = fmt.Sprintf(down, b.prevJobResult.PassPercentage-b.currJobResult.PassPercentage)
-		} else if b.currJobResult.PassPercentage > b.prevJobResult.PassPercentage {
-			arrow = fmt.Sprintf(flatup, b.currJobResult.PassPercentage-b.prevJobResult.PassPercentage)
-		} else {
-			arrow = fmt.Sprintf(flatdown, b.prevJobResult.PassPercentage-b.currJobResult.PassPercentage)
-		}
+		arrow := getArrow(b.currJobResult.Successes+b.currJobResult.Failures, b.currJobResult.PassPercentage, b.prevJobResult.PassPercentage)
 
 		s = s + fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,

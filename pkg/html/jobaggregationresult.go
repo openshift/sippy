@@ -146,38 +146,13 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			</tr>
 		`
 
-	rowColor := ""
-	switch {
-	case b.currAggregationResult.JobRunPassPercentage > b.colors.minGreenPercent:
-		rowColor = "table-success"
-	case b.currAggregationResult.JobRunPassPercentage > b.colors.minYellowPercent:
-		rowColor = "table-warning"
-	case b.currAggregationResult.JobRunPassPercentage > b.colors.minRedPercent:
-		rowColor = "table-danger"
-	default:
-		rowColor = "error"
-	}
-	class := rowColor
+	class := b.colors.getColor(b.currAggregationResult.JobRunPassPercentage)
 	if len(b.collapsedAs) > 0 {
 		class += " collapse " + b.collapsedAs
 	}
 
 	if b.prevAggregationResult != nil {
-		arrow := ""
-		delta := 5.0
-		if b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures > 80 {
-			delta = 2
-		}
-
-		if b.currAggregationResult.JobRunPassPercentage > b.prevAggregationResult.JobRunPassPercentage+delta {
-			arrow = fmt.Sprintf(up, b.currAggregationResult.JobRunPassPercentage-b.prevAggregationResult.JobRunPassPercentage)
-		} else if b.currAggregationResult.JobRunPassPercentage < b.prevAggregationResult.JobRunPassPercentage-delta {
-			arrow = fmt.Sprintf(down, b.prevAggregationResult.JobRunPassPercentage-b.currAggregationResult.JobRunPassPercentage)
-		} else if b.currAggregationResult.JobRunPassPercentage > b.prevAggregationResult.JobRunPassPercentage {
-			arrow = fmt.Sprintf(flatup, b.currAggregationResult.JobRunPassPercentage-b.prevAggregationResult.JobRunPassPercentage)
-		} else {
-			arrow = fmt.Sprintf(flatdown, b.prevAggregationResult.JobRunPassPercentage-b.currAggregationResult.JobRunPassPercentage)
-		}
+		arrow := getArrow(b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures, b.currAggregationResult.JobRunPassPercentage, b.prevAggregationResult.JobRunPassPercentage)
 
 		s = s + fmt.Sprintf(template,
 			class,

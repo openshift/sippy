@@ -60,12 +60,22 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 
 	template := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
+			<td>
+				%s
+				<p/>
+				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Jobs</button>
+			</td>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
 	`
 	naTemplate := `
 		<tr>
-			<td>%s</td><td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
+			<td>
+				%s
+				<p/>
+				<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[2]s" aria-expanded="false" aria-controls="%[2]s">Expand Failing Jobs</button>
+			</td>
+			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td><td/><td>NA</td>
 		</tr>
 	`
 
@@ -93,37 +103,35 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 			}
 		}
 
+		byJobCollapseName := "test-result---" + testResult.TestName
+		byJobCollapseName =
+			strings.ReplaceAll(
+				strings.ReplaceAll(
+					strings.ReplaceAll(
+						strings.ReplaceAll(
+							strings.ReplaceAll(
+								strings.ReplaceAll(
+									strings.ReplaceAll(
+										strings.ReplaceAll(
+											byJobCollapseName, ".", ""),
+										" ", ""),
+									":", ""),
+								"[", ""),
+							"]", ""),
+						"(", ""),
+					")", ""),
+				",", "")
+
 		klog.V(2).Infof("processing top failing tests %s, bugs: %v", testResult.TestName, testResult.TestResultAcrossAllJobs.BugList)
 		bugHTML := bugHTMLForTest(testResult.TestResultAcrossAllJobs.BugList, release, "", testResult.TestResultAcrossAllJobs.Name)
 		if testPrev != nil {
-			arrow := ""
-			delta := 5.0
-			if testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures > 80 {
-				delta = 2
-			}
-			if testResult.TestResultAcrossAllJobs.PassPercentage > testPrev.TestResultAcrossAllJobs.PassPercentage+delta {
-				arrow = up
-			} else if testResult.TestResultAcrossAllJobs.PassPercentage < testPrev.TestResultAcrossAllJobs.PassPercentage-delta {
-				arrow = down
-			}
+			arrow := getArrow(testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures, testResult.TestResultAcrossAllJobs.PassPercentage, testPrev.TestResultAcrossAllJobs.PassPercentage)
 
-			if testResult.TestResultAcrossAllJobs.PassPercentage > testPrev.TestResultAcrossAllJobs.PassPercentage+delta {
-				arrow = fmt.Sprintf(up, testResult.TestResultAcrossAllJobs.PassPercentage-testPrev.TestResultAcrossAllJobs.PassPercentage)
-			} else if testResult.TestResultAcrossAllJobs.PassPercentage < testPrev.TestResultAcrossAllJobs.PassPercentage-delta {
-				arrow = fmt.Sprintf(down, testPrev.TestResultAcrossAllJobs.PassPercentage-testResult.TestResultAcrossAllJobs.PassPercentage)
-			} else if testResult.TestResultAcrossAllJobs.PassPercentage > testPrev.TestResultAcrossAllJobs.PassPercentage {
-				arrow = fmt.Sprintf(flatup, testResult.TestResultAcrossAllJobs.PassPercentage-testPrev.TestResultAcrossAllJobs.PassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, testPrev.TestResultAcrossAllJobs.PassPercentage-testResult.TestResultAcrossAllJobs.PassPercentage)
-			}
-
-			s += fmt.Sprintf(template, testLink, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures, arrow, testPrev.TestResultAcrossAllJobs.PassPercentage, testPrev.TestResultAcrossAllJobs.Successes+testPrev.TestResultAcrossAllJobs.Failures)
+			s += fmt.Sprintf(template, testLink, byJobCollapseName, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures, arrow, testPrev.TestResultAcrossAllJobs.PassPercentage, testPrev.TestResultAcrossAllJobs.Successes+testPrev.TestResultAcrossAllJobs.Failures)
 		} else {
-			s += fmt.Sprintf(naTemplate, testLink, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures)
+			s += fmt.Sprintf(naTemplate, testLink, byJobCollapseName, bugHTML, testResult.TestResultAcrossAllJobs.PassPercentage, testResult.TestResultAcrossAllJobs.Successes+testResult.TestResultAcrossAllJobs.Failures)
 		}
 
-		collapseName := "test-result---" + testResult.TestName
-		collapseName = strings.ReplaceAll(strings.ReplaceAll(collapseName, ".", ""), " ", "")
 		// 1 encoded job name
 		// 2 indent depth
 		// 3 test name
@@ -133,7 +141,7 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 		// 7 pass rate
 		// 8 number of runs
 		const failingTestJobGroupTemplate = `
-			<tr class="%s">
+			<tr class="collapse %s">
 				<td style="padding-left:%dpx">
 					<a target="_blank" href="%s">%s</a>
 				</td>
@@ -144,12 +152,12 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 					%s
 				</td>
 				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
+					%0.2f%%<span class="text-nowrap">(%d runs)</span>
 				</td>
 			</tr>
 	`
 		const failingTestJobGroupTemplateNA = `
-			<tr class="%s">
+			<tr class="collapse %s">
 				<td style="padding-left:%dpx">
 					<a target="_blank" href="%s">%s</a>
 				</td>
@@ -186,20 +194,22 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 			}
 
 			if prevTestJobResult != nil {
+				arrow := getArrow(failingTestJobResult.TestSuccesses+failingTestJobResult.TestFailures, failingTestJobResult.PassPercentage, prevTestJobResult.PassPercentage)
+
 				rows = rows + fmt.Sprintf(failingTestJobGroupTemplate,
-					collapseName,
+					byJobCollapseName,
 					jobIndentDepth,
 					failingTestJobResult.TestGridUrl,
 					failingTestJobResult.Name,
 					failingTestJobResult.PassPercentage,
 					failingTestJobResult.TestSuccesses+failingTestJobResult.TestFailures,
-					"arrow",
+					arrow,
 					prevTestJobResult.PassPercentage,
 					prevTestJobResult.TestSuccesses+prevTestJobResult.TestFailures,
 				)
 			} else {
 				rows = rows + fmt.Sprintf(failingTestJobGroupTemplateNA,
-					collapseName,
+					byJobCollapseName,
 					jobIndentDepth,
 					failingTestJobResult.TestGridUrl,
 					failingTestJobResult.Name,
@@ -211,14 +221,14 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 		}
 
 		if additionalMatches > 0 {
-			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more jobs</td></tr>`, collapseName, jobIndentDepth, additionalMatches)
+			rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more jobs</td></tr>`, byJobCollapseName, jobIndentDepth, additionalMatches)
 		}
 		if rowCount > 0 {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, collapseName, jobIndentDepth)
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, byJobCollapseName, jobIndentDepth)
 			s = s + rows
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, collapseName)
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, byJobCollapseName)
 		} else {
-			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, collapseName, jobIndentDepth)
+			s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, byJobCollapseName, jobIndentDepth)
 		}
 	}
 

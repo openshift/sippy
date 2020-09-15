@@ -21,11 +21,6 @@ var (
 
 const (
 	BugSearchUrl = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
-	up           = `<i class="fa fa-arrow-up" title="Increased %0.2f%%" style="font-size:28px;color:green"></i>`
-	down         = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
-	flatup       = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
-	flatdown     = `<i class="fa fa-arrows-h" title="Decreased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
-	flat         = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
 
 	htmlPageStart = `
 <!DOCTYPE html>
@@ -461,27 +456,8 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		if prev != nil && len(prev.JobsFailed) > 0 {
 			previousHighestFailPercentage := prev.JobsFailed[0].FailPercentage
 			previousLowestPassPercentage := 100 - previousHighestFailPercentage
-			arrow := ""
 
-			delta := 5.0
-			if v.JobsFailed[0].TotalRuns > 80 {
-				delta = 2
-			}
-			if lowestPassPercentage > previousLowestPassPercentage+delta {
-				arrow = up
-			} else if lowestPassPercentage < previousLowestPassPercentage-delta {
-				arrow = down
-			}
-
-			if lowestPassPercentage > previousLowestPassPercentage+delta {
-				arrow = fmt.Sprintf(up, lowestPassPercentage-previousLowestPassPercentage)
-			} else if lowestPassPercentage < previousLowestPassPercentage-delta {
-				arrow = fmt.Sprintf(down, previousLowestPassPercentage-lowestPassPercentage)
-			} else if lowestPassPercentage > previousLowestPassPercentage {
-				arrow = fmt.Sprintf(flatup, lowestPassPercentage-previousLowestPassPercentage)
-			} else {
-				arrow = fmt.Sprintf(flatdown, previousLowestPassPercentage-lowestPassPercentage)
-			}
+			arrow := getArrow(v.JobsFailed[0].TotalRuns, lowestPassPercentage, previousLowestPassPercentage)
 
 			s = s + fmt.Sprintf(bzGroupTemplate,
 				rowColor,
