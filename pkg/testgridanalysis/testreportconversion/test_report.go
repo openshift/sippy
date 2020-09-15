@@ -31,8 +31,6 @@ func PrepareTestReport(
 	standardTestResultFilterFn := standardTestResultFilter(minRuns, successThreshold)
 
 	byAll := summarizeTestResults(rawData.ByAll, bugCache, release, minRuns, successThreshold)
-	byJob := summarizeTestResults(rawData.ByJob, bugCache, release, minRuns, successThreshold)
-	bySig := summarizeTestResults(rawData.BySig, bugCache, release, minRuns, successThreshold)
 	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
@@ -40,16 +38,14 @@ func PrepareTestReport(
 	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
 
 	bugFailureCounts := generateSortedBugFailureCounts(rawData.JobResults, byAll, bugCache, release)
-	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, byJob)
+	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, allJobResults)
 
 	testReport := sippyprocessingv1.TestReport{
 		Release:                        release,
 		All:                            byAll,
 		ByPlatform:                     byPlatform,
-		ByJob:                          byJob,
-		BySig:                          bySig,
 		FailureGroups:                  filteredFailureGroups,
-		JobResults:                     frequentJobResults,
+		FrequentJobResults:             frequentJobResults,
 		InfrequentJobResults:           infrequentJobResults,
 		Timestamp:                      reportTimestamp,
 		BugsByFailureCount:             bugFailureCounts,

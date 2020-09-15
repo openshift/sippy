@@ -281,8 +281,6 @@ func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, te
 	}
 
 	util.AddTestResultToCategory("all", a.RawData.ByAll, test.Name, passed, failed, flaked)
-	util.AddTestResultToCategory(job.Name, a.RawData.ByJob, test.Name, passed, failed, flaked)
-	util.AddTestResultToCategory(sig, a.RawData.BySig, test.Name, passed, failed, flaked)
 }
 
 func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
@@ -366,7 +364,6 @@ func (a *Analyzer) createSyntheticTests() {
 				util.AddTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
 
 				util.AddTestResultToCategory("all", a.RawData.ByAll, testName, result.pass, result.fail, 0)
-				util.AddTestResultToCategory(jrr.Job, a.RawData.ByJob, testName, result.pass, result.fail, 0)
 			}
 
 			jobResults.JobRunResults[jrrKey] = jrr
@@ -563,7 +560,7 @@ func (a *Analyzer) printDashboardReport() {
 	}
 
 	fmt.Println("\n\n================== Top 10 Most Frequently Failing Jobs ==================")
-	for i, v := range a.Report.JobResults {
+	for i, v := range a.Report.FrequentJobResults {
 		fmt.Printf("Job: %s\n", v.Name)
 		fmt.Printf("Job Pass Percentage: %0.2f%% (%d runs)\n", util.Percent(v.Successes, v.Failures), v.Successes+v.Failures)
 		if v.Successes+v.Failures < 10 {
@@ -632,30 +629,15 @@ func (a *Analyzer) printTextReport() {
 	}
 
 	fmt.Println("\n\n\n================== Test Summary By Job ==================")
-	for key, by := range a.Report.ByJob {
+	for key, by := range a.Report.FrequentJobResults {
 		fmt.Printf("Job: %s\n", key)
 		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
 		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
+		fmt.Printf("Job Pass Percentage: %0.2f\n", by.PassPercentage)
 		for _, test := range by.TestResults {
 			fmt.Printf("\tTest Name: %s\n", test.Name)
 			fmt.Printf("\tPassed: %d\n", test.Successes)
 			fmt.Printf("\tFailed: %d\n", test.Failures)
-			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
-		}
-		fmt.Println("")
-	}
-
-	fmt.Println("\n\n\n================== Test Summary By Sig ==================")
-	for key, by := range a.Report.BySig {
-		fmt.Printf("\nSig: %s\n", key)
-		//		fmt.Printf("Passing test runs: %d\n", platform.Successes)
-		//		fmt.Printf("Failing test runs: %d\n", platform.Failures)
-		fmt.Printf("Test Pass Percentage: %0.2f\n", by.TestPassPercentage)
-		for _, test := range by.TestResults {
-			fmt.Printf("\tTest Name: %s\n", test.Name)
-			//			fmt.Printf("\tPassed: %d\n", test.Successes)
-			//			fmt.Printf("\tFailed: %d\n", test.Failures)
 			fmt.Printf("\tTest Pass Percentage: %0.2f\n\n", test.PassPercentage)
 		}
 		fmt.Println("")
@@ -672,7 +654,7 @@ func (a *Analyzer) printTextReport() {
 	jobFailures := 0
 	jobCount := 0
 
-	for _, job := range a.Report.JobResults {
+	for _, job := range a.Report.FrequentJobResults {
 		fmt.Printf("Job: %s\n", job.Name)
 		fmt.Printf("Job Successes: %d\n", job.Successes)
 		fmt.Printf("Job Failures: %d\n", job.Failures)
@@ -721,8 +703,6 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	for k, analyzer := range s.analyzers {
 		analyzer.RawData = testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		}
 
@@ -842,8 +822,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Options: opt,
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
 		BugCache: s.bugCache,
@@ -861,8 +839,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		Options: &optCopy,
 		RawData: testgridanalysisapi.RawData{
 			ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-			BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 		},
 		BugCache: s.bugCache,
@@ -963,8 +939,6 @@ func (o *Options) Run() error {
 			Options: o,
 			RawData: testgridanalysisapi.RawData{
 				ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-				ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-				BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 				JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 			},
 			BugCache: buganalysis.NewBugCache(),
@@ -988,8 +962,6 @@ func (o *Options) Run() error {
 				Options: o,
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},
 				BugCache: server.bugCache,
@@ -1008,8 +980,6 @@ func (o *Options) Run() error {
 				Options: &optCopy,
 				RawData: testgridanalysisapi.RawData{
 					ByAll:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					ByJob:      make(map[string]testgridanalysisapi.AggregateTestsResult),
-					BySig:      make(map[string]testgridanalysisapi.AggregateTestsResult),
 					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
 				},
 				BugCache: server.bugCache,

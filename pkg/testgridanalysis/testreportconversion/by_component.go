@@ -13,17 +13,25 @@ import (
 )
 
 func generateAllJobFailuresByBugzillaComponent(
-	allJobResults map[string]testgridanalysisapi.RawJobResult,
-	jobToTestResults map[string]sippyprocessingv1.SortedAggregateTestsResult,
+	rawJobResults map[string]testgridanalysisapi.RawJobResult,
+	jobResults []sippyprocessingv1.JobResult,
 ) map[string]sippyprocessingv1.SortedBugzillaComponentResult {
 
 	bzComponentToBZJobResults := map[string][]sippyprocessingv1.BugzillaJobResult{}
-	for job, jobResult := range allJobResults {
-		curr := generateJobFailuresByBugzillaComponent(job, jobResult.JobRunResults, jobToTestResults[job].TestResults)
-		// each job will be distinct, so we merely need to append
-		for bzComponent, bzJobResult := range curr {
-			bzComponentToBZJobResults[bzComponent] = append(bzComponentToBZJobResults[bzComponent], bzJobResult)
+	for job, rawJobResult := range rawJobResults {
+		for _, processedJobResult := range jobResults {
+			if processedJobResult.Name != rawJobResult.JobName {
+				continue
+			}
+
+			curr := generateJobFailuresByBugzillaComponent(job, rawJobResult.JobRunResults, processedJobResult.TestResults)
+			// each job will be distinct, so we merely need to append
+			for bzComponent, bzJobResult := range curr {
+				bzComponentToBZJobResults[bzComponent] = append(bzComponentToBZJobResults[bzComponent], bzJobResult)
+			}
+			break
 		}
+
 	}
 
 	sortedResults := map[string]sippyprocessingv1.SortedBugzillaComponentResult{}

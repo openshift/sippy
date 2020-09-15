@@ -202,8 +202,8 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug []sippyprocessin
 func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int) []sippyv1.PassRatesByJobName {
 	var passRatesSlice []sippyv1.PassRatesByJobName
 
-	for _, v := range report.JobResults {
-		prev := util.GetJobResultForJobName(v.Name, reportPrev.JobResults)
+	for _, v := range report.FrequentJobResults {
+		prev := util.GetJobResultForJobName(v.Name, reportPrev.FrequentJobResults)
 
 		var newJobPassRate sippyv1.PassRatesByJobName
 
