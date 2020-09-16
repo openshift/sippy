@@ -7,8 +7,6 @@ package testgridanalysisapi
 // 3. JobRuns contain Tests.
 
 type RawData struct {
-	ByAll map[string]AggregateTestsResult
-
 	// JobResults is a map keyed by job name to results for all runs of a job
 	JobResults map[string]RawJobResult
 }

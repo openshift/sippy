@@ -8,7 +8,6 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func PrepareTestReport(
@@ -27,84 +26,44 @@ func PrepareTestReport(
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, release)
+	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := standardTestResultFilter(minRuns, successThreshold)
 
-	byAll := summarizeTestResults(rawData.ByAll, bugCache, release, minRuns, successThreshold)
 	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
 	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
 
-	bugFailureCounts := generateSortedBugFailureCounts(rawData.JobResults, byAll, bugCache, release)
+	bugFailureCounts := generateSortedBugFailureCounts(allTestResultsByName)
 	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, allJobResults)
 
+	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
+	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
+
 	testReport := sippyprocessingv1.TestReport{
-		Release:                        release,
-		All:                            byAll,
-		ByPlatform:                     byPlatform,
-		FailureGroups:                  filteredFailureGroups,
-		FrequentJobResults:             frequentJobResults,
-		InfrequentJobResults:           infrequentJobResults,
-		Timestamp:                      reportTimestamp,
+		Release:   release,
+		Timestamp: reportTimestamp,
+
+		ByTest:        allTestResultsByName.toOrderedList(),
+		ByPlatform:    byPlatform,
+		FailureGroups: filteredFailureGroups,
+
+		ByJob:                allJobResults,
+		FrequentJobResults:   frequentJobResults,
+		InfrequentJobResults: infrequentJobResults,
+
 		BugsByFailureCount:             bugFailureCounts,
 		JobFailuresByBugzillaComponent: bugzillaComponentResults,
+
+		TopFailingTestsWithBug:    topFailingTestsWithBug,
+		TopFailingTestsWithoutBug: topFailingTestsWithoutBug,
 
 		AnalysisWarnings: analysisWarnings,
 	}
 
-	testReport.TopFailingTestsWithBug = getTopFailingTestsWithBug(allJobResults, standardTestResultFilterFn)
-	testReport.TopFailingTestsWithoutBug = getTopFailingTestsWithoutBug(allJobResults, standardTestResultFilterFn)
-
 	return testReport
-}
-
-func summarizeTestResults(
-	aggregateTestResult map[string]testgridanalysisapi.AggregateTestsResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
-	minRuns int, // indicates how many runs are required for a test is included in overall percentages
-	// TODO deads2k wants to eliminate the successThreshold
-	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) map[string]sippyprocessingv1.SortedAggregateTestsResult {
-	sorted := make(map[string]sippyprocessingv1.SortedAggregateTestsResult)
-
-	for k, v := range aggregateTestResult {
-		sorted[k] = sippyprocessingv1.SortedAggregateTestsResult{}
-
-		passedCount := 0
-		failedCount := 0
-		for _, rawTestResult := range v.RawTestResults {
-			passPercentage := percent(rawTestResult.Successes, rawTestResult.Failures)
-
-			// strip out tests are more than N% successful
-			if passPercentage > successThreshold {
-				continue
-			}
-			// strip out tests that have less than N total runs
-			if rawTestResult.Successes+rawTestResult.Failures < minRuns {
-				continue
-			}
-
-			passedCount += rawTestResult.Successes
-			failedCount += rawTestResult.Failures
-
-			s := sorted[k]
-			s.TestResults = append(s.TestResults,
-				convertRawTestResultToProcessedTestResult(rawTestResult, bugCache, release))
-			sorted[k] = s
-		}
-
-		s := sorted[k]
-		s.Successes = passedCount
-		s.Failures = failedCount
-		s.TestPassPercentage = percent(passedCount, failedCount)
-		sorted[k] = s
-
-		sort.Stable(testResultsByPassPercentage(sorted[k].TestResults))
-	}
-	return sorted
 }
 
 func filterFailureGroups(
@@ -147,34 +106,21 @@ func filterFailureGroups(
 	return filteredJrr
 }
 
-func generateSortedBugFailureCounts(
-	allJobResults map[string]testgridanalysisapi.RawJobResult,
-	byAll map[string]sippyprocessingv1.SortedAggregateTestsResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
-) []bugsv1.Bug {
+func generateSortedBugFailureCounts(allTestResultsByName testResultsByName) []bugsv1.Bug {
 	bugs := map[string]bugsv1.Bug{}
-
-	failedTestNamesAcrossAllJobRuns := sets.NewString()
-	for _, jobResult := range allJobResults {
-		for _, jobrun := range jobResult.JobRunResults {
-			failedTestNamesAcrossAllJobRuns.Insert(jobrun.FailedTestNames...)
-		}
-	}
 
 	// for every test that failed in some job run, look up the bug(s) associated w/ the test
 	// and attribute the number of times the test failed+flaked to that bug(s)
-	for _, testResult := range byAll["all"].TestResults {
-		testName := testResult.Name
-		bugList := bugCache.ListBugs(release, "", testName)
+	for _, testResult := range allTestResultsByName {
+		bugList := testResult.TestResultAcrossAllJobs.BugList
 		for _, bug := range bugList {
 			if b, found := bugs[bug.Url]; found {
-				b.FailureCount += testResult.Failures
-				b.FlakeCount += testResult.Flakes
+				b.FailureCount += testResult.TestResultAcrossAllJobs.Failures
+				b.FlakeCount += testResult.TestResultAcrossAllJobs.Flakes
 				bugs[bug.Url] = b
 			} else {
-				bug.FailureCount = testResult.Failures
-				bug.FlakeCount = testResult.Flakes
+				bug.FailureCount = testResult.TestResultAcrossAllJobs.Failures
+				bug.FlakeCount = testResult.TestResultAcrossAllJobs.Flakes
 				bugs[bug.Url] = bug
 			}
 		}

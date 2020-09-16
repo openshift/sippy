@@ -13,14 +13,16 @@ type TestReport struct {
 	Release   string    `json:"release"`
 	Timestamp time.Time `json:"timestamp"`
 
-	// TODO this appears to be used to reference all tests, but instead we could simply provide an list of tests sorted by pass/fail
-	All map[string]SortedAggregateTestsResult `json:"all"`
-
 	// ByPlatform organizes jobs and tests by platform, sorted by job pass rate from low to high
 	ByPlatform []PlatformResults `json:"byPlatform`
 
+	// ByTest organizes every test ordered by pass rate from low to high.
+	ByTest []FailingTestResult `json:"byTest"`
+
 	FailureGroups []JobRunResult `json:"failureGroups"`
 
+	// ByJob are all the available job results by their job, sorted from low to high pass rate
+	ByJob []JobResult `json:"frequentJobResults"`
 	// FrequentJobResults are jobresults for jobs that run more than 1.5 times per day
 	FrequentJobResults []JobResult `json:"frequentJobResults"`
 	// InfrequentJobResults are jobresults for jobs that run less than 1.5 times per day

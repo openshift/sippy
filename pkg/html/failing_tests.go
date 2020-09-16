@@ -6,11 +6,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/util"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"k8s.io/klog"
 )
 
-func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTopFailingTestsWithBug []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
+func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -25,14 +27,14 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTopFailingTestsWi
 		</tr>
 	`, endDay)
 
-	s += topFailingTestsRows(topFailingTestsWithBug, prevTopFailingTestsWithBug, endDay, release)
+	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 
 	s = s + "</table>"
 
 	return s
 }
 
-func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, prevTopFailingTestsWithBug []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
+func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -47,14 +49,14 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, prevTopFailingTest
 		</tr>
 	`, endDay)
 
-	s += topFailingTestsRows(topFailingTestsWithBug, prevTopFailingTestsWithBug, endDay, release)
+	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 
 	s = s + "</table>"
 
 	return s
 }
 
-func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
+func topFailingTestsRows(topFailingTests, allTests []sippyprocessingv1.FailingTestResult, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
 
@@ -95,13 +97,7 @@ func topFailingTestsRows(topFailingTests, prevTopFailingTests []sippyprocessingv
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.TestName)
 
-		var testPrev *sippyprocessingv1.FailingTestResult
-		for _, prevTestResult := range prevTopFailingTests {
-			if prevTestResult.TestName == testResult.TestName {
-				testPrev = &prevTestResult
-				break
-			}
-		}
+		testPrev := util.GetTestResult(testResult.TestName, allTests)
 
 		byJobCollapseName := "test-result---" + testResult.TestName
 		byJobCollapseName =
