@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strings"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -64,9 +63,7 @@ func (b *jobResultRenderBuilder) startCollapsedAs(collapsedAs string) *jobResult
 }
 
 func (b *jobResultRenderBuilder) toHTML() string {
-	safeSectionBlock := strings.ReplaceAll(strings.ReplaceAll(b.sectionBlock, ".", ""), " ", "")
-	collapseName := safeSectionBlock + "---" + b.currJobResult.Name + "---tests"
-	collapseName = strings.ReplaceAll(strings.ReplaceAll(collapseName, ".", ""), " ", "")
+	collapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.Name + "---tests")
 
 	s := ""
 
