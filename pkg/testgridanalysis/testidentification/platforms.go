@@ -18,9 +18,7 @@ var (
 	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex  = regexp.MustCompile(`(?i)-metal-ipi`)
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp-`)
-	ocpRegex       = regexp.MustCompile(`(?i)-ocp-`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
-	originRegex    = regexp.MustCompile(`(?i)-origin-`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt-`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn-`)
 	// proxy jobs do not have a trailing -version segment
@@ -39,11 +37,9 @@ var (
 		"azure",
 		"fips",
 		"gcp",
-		"ocp",
 		"metal",
 		"metal-ipi",
 		"openstack",
-		"origin",
 		"ovirt",
 		"ovn",
 		"ppc64le",
@@ -74,12 +70,6 @@ func FindPlatform(name string) []string {
 		return platforms
 	}
 
-	if ocpRegex.MatchString(name) {
-		platforms = append(platforms, "ocp")
-	}
-	if originRegex.MatchString(name) {
-		platforms = append(platforms, "origin")
-	}
 	if awsRegex.MatchString(name) {
 		platforms = append(platforms, "aws")
 	}
