@@ -423,9 +423,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 	}
 
 	for _, v := range failuresByBugzillaComponent {
-		safeBZJob := fmt.Sprintf("%s---component", v.Name)
-		safeBZJob = strings.ReplaceAll(safeBZJob, ".", "")
-		safeBZJob = strings.ReplaceAll(safeBZJob, " ", "")
+		safeBZJob := makeSafeForCollapseName(fmt.Sprintf("%s---component", v.Name))
 
 		highestFailPercentage := v.JobsFailed[0].FailPercentage
 		lowestPassPercentage := 100 - highestFailPercentage
@@ -475,9 +473,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			}
 			count++
 
-			bzJobTuple := fmt.Sprintf("%s---%s", v.Name, failingJob.JobName)
-			bzJobTuple = strings.ReplaceAll(bzJobTuple, ".", "")
-			bzJobTuple = strings.ReplaceAll(bzJobTuple, " ", "")
+			bzJobTuple := makeSafeForCollapseName(fmt.Sprintf("%s---%s", v.Name, failingJob.JobName))
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
 			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.ByJob)

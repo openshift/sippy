@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"regexp"
 )
 
 const (
@@ -46,4 +47,10 @@ func (c colorizationCriteria) getColor(passPercentage float64) string {
 	default:
 		return "error"
 	}
+}
+
+var collapseNameRemoveRegex = regexp.MustCompile(`[. ,:\(\)\[\]]`)
+
+func makeSafeForCollapseName(in string) string {
+	return collapseNameRemoveRegex.ReplaceAllString(in, "")
 }

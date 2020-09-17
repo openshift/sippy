@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strings"
 
 	"github.com/openshift/sippy/pkg/util"
 
@@ -99,24 +98,7 @@ func topFailingTestsRows(topFailingTests, allTests []sippyprocessingv1.FailingTe
 
 		testPrev := util.GetTestResult(testResult.TestName, allTests)
 
-		byJobCollapseName := "test-result---" + testResult.TestName
-		byJobCollapseName =
-			strings.ReplaceAll(
-				strings.ReplaceAll(
-					strings.ReplaceAll(
-						strings.ReplaceAll(
-							strings.ReplaceAll(
-								strings.ReplaceAll(
-									strings.ReplaceAll(
-										strings.ReplaceAll(
-											byJobCollapseName, ".", ""),
-										" ", ""),
-									":", ""),
-								"[", ""),
-							"]", ""),
-						"(", ""),
-					")", ""),
-				",", "")
+		byJobCollapseName := makeSafeForCollapseName("test-result---" + testResult.TestName)
 
 		klog.V(2).Infof("processing top failing tests %s, bugs: %v", testResult.TestName, testResult.TestResultAcrossAllJobs.BugList)
 		bugHTML := bugHTMLForTest(testResult.TestResultAcrossAllJobs.BugList, release, "", testResult.TestResultAcrossAllJobs.Name)
