@@ -230,7 +230,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			testsCollapseName,
 			60,
 			test.Name,
-			b.currAggregationResult.AggregationName,
+			getCIJobSubstring(b.currAggregationResult.AggregationName),
 			encodedTestName,
 			bugHTML,
 			test.PassPercentage,
@@ -250,4 +250,18 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 	}
 
 	return s
+}
+
+// aggregationToJobSubsetOverrides provides a mapping to
+var aggregationToJobSubsetOverrides = map[string]string{
+	"metal":       "metal-upi",
+	"realtime":    "rt",
+	"vsphere-ipi": "vsphere",
+}
+
+func getCIJobSubstring(aggregationName string) string {
+	if ret, ok := aggregationToJobSubsetOverrides[aggregationName]; ok {
+		return ret
+	}
+	return aggregationName
 }

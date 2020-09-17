@@ -30,14 +30,15 @@ var (
 	serialRegex  = regexp.MustCompile(`(?i)-serial-`)
 	upgradeRegex = regexp.MustCompile(`(?i)-upgrade-`)
 	// some vsphere jobs do not have a trailing -version segment
-	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
+	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
+	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
 
 	AllPlatforms = sets.NewString(
 		"aws",
 		"azure",
 		"fips",
 		"gcp",
-		"metal",
+		"metal-upi",
 		"metal-ipi",
 		"openstack",
 		"ovirt",
@@ -45,11 +46,12 @@ var (
 		"ppc64le",
 		"promote",
 		"proxy",
-		"rt",
+		"realtime",
 		"s390x",
 		"serial",
 		"upgrade",
-		"vsphere",
+		"vsphere-ipi",
+		"vsphere-upi",
 	)
 )
 
@@ -90,15 +92,18 @@ func FindPlatform(name string) []string {
 	if metalIPIRegex.MatchString(name) {
 		platforms = append(platforms, "metal-ipi")
 	} else if metalRegex.MatchString(name) {
-		platforms = append(platforms, "metal")
+		platforms = append(platforms, "metal-upi")
 	}
 
 	if ovirtRegex.MatchString(name) {
 		platforms = append(platforms, "ovirt")
 	}
-	if vsphereRegex.MatchString(name) {
-		platforms = append(platforms, "vsphere")
+	if vsphereUPIRegex.MatchString(name) {
+		platforms = append(platforms, "vsphere-upi")
+	} else if vsphereRegex.MatchString(name) {
+		platforms = append(platforms, "vsphere-ipi")
 	}
+
 	if upgradeRegex.MatchString(name) {
 		platforms = append(platforms, "upgrade")
 	}
@@ -118,7 +123,7 @@ func FindPlatform(name string) []string {
 		platforms = append(platforms, "s390x")
 	}
 	if rtRegex.MatchString(name) {
-		platforms = append(platforms, "rt")
+		platforms = append(platforms, "realtime")
 	}
 	if proxyRegex.MatchString(name) {
 		platforms = append(platforms, "proxy")
