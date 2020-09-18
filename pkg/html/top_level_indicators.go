@@ -7,6 +7,12 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+var overallInstallUpgradeColors = colorizationCriteria{
+	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+	minYellowPercent: 85, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+	minGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
+}
+
 func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport) string {
 	tableHTML := `
 	<table class="table">
@@ -27,15 +33,9 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport) string 
 	`
 	tableHTMLTemplate := template.Must(template.New("tableHTML").Parse(tableHTML))
 
-	colors := colorizationCriteria{
-		minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-		minYellowPercent: 85, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-		minGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
-	}
-
-	infraColor := colors.getColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
-	installColor := colors.getColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
-	upgradeColor := colors.getColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
+	infraColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
+	installColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
+	upgradeColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
 
 	infraHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Infrastructure, &reportPrev.TopLevelIndicators.Infrastructure)
 	installHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Install, &reportPrev.TopLevelIndicators.Install)

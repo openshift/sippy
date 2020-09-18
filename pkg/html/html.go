@@ -98,6 +98,8 @@ Data current as of: %s
 
 {{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
 
+{{ installOperatorTests .Current .Prev .NumDays .Release }}
+
 {{ summaryCuratedTests .Current .Prev .NumDays .Release }} 
 
 {{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .NumDays .Release }}
@@ -421,6 +423,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 			"topLevelIndicators":                     topLevelIndicators,
+			"installOperatorTests":                   installOperatorTests,
 		},
 	).Parse(dashboardPageHtml))
 

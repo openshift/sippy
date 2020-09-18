@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"text/template"
+
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
 const (
@@ -29,6 +31,20 @@ func getArrow(totalRuns int, currPassPercentage, prevPassPercentage float64) str
 	} else {
 		return fmt.Sprintf(flatdown, prevPassPercentage-currPassPercentage)
 	}
+}
+
+func getArrowForTestResult(curr sippyprocessingv1.TestResult, prev *sippyprocessingv1.TestResult) string {
+	if prev == nil {
+		return flatdown
+	}
+	return getArrow(curr.Successes+curr.Failures, curr.PassPercentage, prev.PassPercentage)
+}
+
+func getArrowForFailedTestResult(curr sippyprocessingv1.FailingTestResult, prev *sippyprocessingv1.FailingTestResult) string {
+	if prev == nil {
+		return flatdown
+	}
+	return getArrow(curr.TestResultAcrossAllJobs.Successes+curr.TestResultAcrossAllJobs.Failures, curr.TestResultAcrossAllJobs.PassPercentage, prev.TestResultAcrossAllJobs.PassPercentage)
 }
 
 type colorizationCriteria struct {

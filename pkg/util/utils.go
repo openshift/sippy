@@ -15,6 +15,15 @@ func FindFailedTestResult(test string, testResults []sippyprocessingv1.FailingTe
 	return nil
 }
 
+func FindTestResult(test string, testResults []sippyprocessingv1.TestResult) *sippyprocessingv1.TestResult {
+	for _, v := range testResults {
+		if v.Name == test {
+			return &v
+		}
+	}
+	return nil
+}
+
 func FindJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
