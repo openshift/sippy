@@ -1,15 +1,12 @@
 package util
 
 import (
-	"math"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"k8s.io/klog"
 )
 
 func FindTestResult(test string, testResults []sippyprocessingv1.FailingTestResult) *sippyprocessingv1.FailingTestResult {
@@ -81,23 +78,6 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 		}
 		return false
 	*/
-}
-
-func ComputeLookback(startday, lookback int, timestamps []int) (int, int) {
-
-	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
-	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
-	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
-	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
-	for i, t := range timestamps {
-		if int64(t) < startTs && i < start {
-			start = i
-		}
-		if int64(t) < stopTs {
-			return start, i
-		}
-	}
-	return start, len(timestamps)
 }
 
 func AddTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
