@@ -2,11 +2,8 @@ package util
 
 import (
 	"regexp"
-	"sort"
-	"strings"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 )
 
 func FindTestResult(test string, testResults []sippyprocessingv1.FailingTestResult) *sippyprocessingv1.FailingTestResult {
@@ -78,39 +75,4 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 		}
 		return false
 	*/
-}
-
-func AddTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
-	result, ok := testResults[testName]
-	if !ok {
-		result = testgridanalysisapi.RawTestResult{}
-	}
-	result.Name = testName
-	result.Successes += passed
-	result.Failures += failed
-	result.Flakes += flaked
-
-	testResults[testName] = result
-}
-
-func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestReport) []sippyprocessingv1.SortedBugzillaComponentResult {
-	bzComponentResults := []sippyprocessingv1.SortedBugzillaComponentResult{}
-
-	for _, bzJobFailures := range report.JobFailuresByBugzillaComponent {
-		bzComponentResults = append(bzComponentResults, bzJobFailures)
-	}
-	// sort from highest to lowest
-	sort.SliceStable(bzComponentResults, func(i, j int) bool {
-		if bzComponentResults[i].JobsFailed[0].FailPercentage > bzComponentResults[j].JobsFailed[0].FailPercentage {
-			return true
-		}
-		if bzComponentResults[i].JobsFailed[0].FailPercentage < bzComponentResults[j].JobsFailed[0].FailPercentage {
-			return false
-		}
-		if strings.Compare(strings.ToLower(bzComponentResults[i].Name), strings.ToLower(bzComponentResults[j].Name)) < 0 {
-			return true
-		}
-		return false
-	})
-	return bzComponentResults
 }

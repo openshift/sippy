@@ -7,12 +7,9 @@ import (
 	"os"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
-	"github.com/openshift/sippy/pkg/sippyserver"
-
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
-
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 )

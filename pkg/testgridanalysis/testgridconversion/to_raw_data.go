@@ -9,7 +9,6 @@ import (
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
 
@@ -165,7 +164,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		col += remaining
 	}
 
-	util.AddTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
+	addTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
 
 	return
 }
@@ -193,4 +192,17 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 
 	// we have mutated, so assign back to our intermediate value
 	rawJobResults.JobResults[job.Name] = jobResult
+}
+
+func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
+	result, ok := testResults[testName]
+	if !ok {
+		result = testgridanalysisapi.RawTestResult{}
+	}
+	result.Name = testName
+	result.Successes += passed
+	result.Failures += failed
+	result.Flakes += flaked
+
+	testResults[testName] = result
 }
