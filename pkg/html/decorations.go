@@ -36,6 +36,12 @@ type colorizationCriteria struct {
 	minGreenPercent  float64
 }
 
+var standardColors = colorizationCriteria{
+	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+	minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+	minGreenPercent:  80, // no action required. This *should* be closer to 85%
+}
+
 func (c colorizationCriteria) getColor(passPercentage float64) string {
 	switch {
 	case passPercentage > c.minGreenPercent:

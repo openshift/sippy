@@ -94,6 +94,8 @@ Data current as of: %s
              <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
 
+{{ topLevelIndicators .Current .Prev }}
+
 {{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
 
 {{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .EndDay .Release }}
@@ -255,7 +257,7 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 		}
 
 		// TODO use a standard presentation for the failed test
-		util.FindTestResult(test.TestName, prevAll)
+		util.FindFailedTestResult(test.TestName, prevAll)
 
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
@@ -411,6 +413,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"testImpactingComponents":                testImpactingComponents,
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
+			"topLevelIndicators":                     topLevelIndicators,
 		},
 	).Parse(dashboardPageHtml))
 
