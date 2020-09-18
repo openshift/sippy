@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
@@ -46,6 +45,9 @@ func main() {
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
+			if err := opt.Validate(); err != nil {
+				klog.Exitf("error: %v", err)
+			}
 			if err := opt.Run(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -73,33 +75,49 @@ func main() {
 	}
 }
 
-func (o *Options) Run() error {
+func (o *Options) Validate() error {
 	switch o.Output {
-	case "json", "text", "dashboard":
+	case "json":
 	default:
 		return fmt.Errorf("invalid output type: %s\n", o.Output)
 	}
 
+	return nil
+}
+
+func (o *Options) Run() error {
 	if len(o.FetchData) != 0 {
 		testgridhelpers.DownloadData(o.Releases, o.JobFilter, o.FetchData)
 		return nil
 	}
-	if !o.Server {
-		analyzer := sippyserver.Analyzer{
-			Options:  o.toServerOptions(),
-			BugCache: buganalysis.NewBugCache(),
-		}
 
-		testReport := analyzer.PrepareTestReport()
-		o.printJSONReport(testReport)
+	if !o.Server {
+		return o.runCLIReportMode()
 	}
 
 	if o.Server {
-		server := sippyserver.NewServer(o.toServerOptions())
-		server.RefreshData()
-		server.Serve()
+		return o.runServerMode()
 	}
 
+	return nil
+}
+
+func (o *Options) runServerMode() error {
+	server := sippyserver.NewServer(o.toServerOptions())
+	server.RefreshData() // force a data refresh once before serving.
+	server.Serve()
+	return nil
+}
+
+func (o *Options) runCLIReportMode() error {
+	analyzer := sippyserver.Analyzer{
+		Options:  o.toServerOptions(),
+		BugCache: buganalysis.NewBugCache(),
+	}
+
+	testReport := analyzer.PrepareTestReport()
+	enc := json.NewEncoder(os.Stdout)
+	enc.Encode(testReport)
 	return nil
 }
 
@@ -117,13 +135,5 @@ func (o *Options) toServerOptions() sippyserver.Options {
 		FetchData:               o.FetchData,
 		ListenAddr:              o.ListenAddr,
 		Server:                  o.Server,
-	}
-}
-
-func (o *Options) printJSONReport(testReport sippyprocessingv1.TestReport) {
-	switch o.Output {
-	case "json":
-		enc := json.NewEncoder(os.Stdout)
-		enc.Encode(testReport)
 	}
 }
