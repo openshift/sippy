@@ -96,7 +96,7 @@ func topFailingTestsRows(topFailingTests, allTests []sippyprocessingv1.FailingTe
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", release, encodedTestName, testResult.TestName)
 
-		testPrev := util.GetTestResult(testResult.TestName, allTests)
+		testPrev := util.FindTestResult(testResult.TestName, allTests)
 
 		byJobCollapseName := makeSafeForCollapseName("test-result---" + testResult.TestName)
 

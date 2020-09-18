@@ -12,11 +12,7 @@ import (
 	"k8s.io/klog"
 )
 
-var (
-	bugzillaRegex *regexp.Regexp = regexp.MustCompile(`(https://bugzilla.redhat.com/show_bug.cgi\?id=\d+)`)
-)
-
-func GetTestResult(test string, testResults []sippyprocessingv1.FailingTestResult) *sippyprocessingv1.FailingTestResult {
+func FindTestResult(test string, testResults []sippyprocessingv1.FailingTestResult) *sippyprocessingv1.FailingTestResult {
 	for _, v := range testResults {
 		if v.TestName == test {
 			return &v
@@ -25,7 +21,7 @@ func GetTestResult(test string, testResults []sippyprocessingv1.FailingTestResul
 	return nil
 }
 
-func GetJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
+func FindJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
 	for _, v := range jobRunsByJob {
 		if v.Name == job {
 			return &v
@@ -34,9 +30,18 @@ func GetJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResu
 	return nil
 }
 
-func GetPlatform(platform string, allPlatforms []sippyprocessingv1.PlatformResults) *sippyprocessingv1.PlatformResults {
+func FindPlatformResultsForName(platform string, allPlatforms []sippyprocessingv1.PlatformResults) *sippyprocessingv1.PlatformResults {
 	for _, v := range allPlatforms {
 		if v.PlatformName == platform {
+			return &v
+		}
+	}
+	return nil
+}
+
+func FindPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyprocessingv1.SortedBugzillaComponentResult) *sippyprocessingv1.SortedBugzillaComponentResult {
+	for _, v := range bugzillaJobFailures {
+		if v.Name == bzComponent {
 			return &v
 		}
 	}
@@ -62,14 +67,6 @@ func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessing
 		avgPrev = count / len(failureGroupsPrev)
 	}
 	return count, countPrev, median, medianPrev, avg, avgPrev
-}
-
-func Percent(success, failure int) float64 {
-	if success+failure == 0 {
-		//return math.NaN()
-		return 0.0
-	}
-	return float64(success) / float64(success+failure) * 100.0
 }
 
 func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
@@ -101,21 +98,6 @@ func ComputeLookback(startday, lookback int, timestamps []int) (int, int) {
 		}
 	}
 	return start, len(timestamps)
-}
-
-func AddTestResultToCategory(categoryKey string, categories map[string]testgridanalysisapi.AggregateTestsResult, testName string, passed, failed, flaked int) {
-
-	klog.V(4).Infof("Adding test %s to category %s, passed: %d, failed: %d\n", testName, categoryKey, passed, failed)
-	category, ok := categories[categoryKey]
-	if !ok {
-		category = testgridanalysisapi.AggregateTestsResult{
-			RawTestResults: make(map[string]testgridanalysisapi.RawTestResult),
-		}
-	}
-
-	AddTestResult(category.RawTestResults, testName, passed, failed, flaked)
-
-	categories[categoryKey] = category
 }
 
 func AddTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
@@ -151,13 +133,4 @@ func SummarizeJobsFailuresByBugzillaComponent(report sippyprocessingv1.TestRepor
 		return false
 	})
 	return bzComponentResults
-}
-
-func GetPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyprocessingv1.SortedBugzillaComponentResult) *sippyprocessingv1.SortedBugzillaComponentResult {
-	for _, v := range bugzillaJobFailures {
-		if v.Name == bzComponent {
-			return &v
-		}
-	}
-	return nil
 }

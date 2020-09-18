@@ -40,7 +40,7 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 	var jobSummariesByPlatform []sippyv1.JobSummaryPlatform
 
 	for _, v := range report.ByPlatform {
-		prev := util.GetPlatform(v.PlatformName, reportPrev.ByPlatform)
+		prev := util.FindPlatformResultsForName(v.PlatformName, reportPrev.ByPlatform)
 
 		var jobSummaryPlatform sippyv1.JobSummaryPlatform
 
@@ -87,7 +87,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
-		testPrev := util.GetTestResult(test.TestName, prevTestResults)
+		testPrev := util.FindTestResult(test.TestName, prevTestResults)
 
 		var failedTestWithBug sippyv1.FailingTestBug
 
@@ -136,7 +136,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
-		testPrev := util.GetTestResult(test.TestName, prevTopFailingTestsWithoutBug)
+		testPrev := util.FindTestResult(test.TestName, prevTopFailingTestsWithoutBug)
 
 		var failedTestWithoutBug sippyv1.FailingTestBug
 
@@ -178,7 +178,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 	var passRatesSlice []sippyv1.PassRatesByJobName
 
 	for _, v := range report.FrequentJobResults {
-		prev := util.GetJobResultForJobName(v.Name, reportPrev.FrequentJobResults)
+		prev := util.FindJobResultForJobName(v.Name, reportPrev.FrequentJobResults)
 
 		var newJobPassRate sippyv1.PassRatesByJobName
 

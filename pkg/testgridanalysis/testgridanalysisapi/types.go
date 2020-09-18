@@ -22,14 +22,6 @@ type RawJobResult struct {
 	TestResults map[string]RawTestResult
 }
 
-// AggregateTestsResult is an intermediate datatype that may not have complete or consistent data when interrogated.
-// It holds data about many different tests, not just one.
-// It is used to build up a set of TestResults (details about individual tests).
-type AggregateTestsResult struct {
-	// TestResults is a map from test.Name to the aggregated results for each run of that test.
-	RawTestResults map[string]RawTestResult
-}
-
 // RawTestResult is an intermediate datatype that may not have complete or consistent data when interrogated.
 // It holds data about an individual test that may have happened in may different jobs and job runs.
 // It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete

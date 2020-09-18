@@ -159,7 +159,7 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 	for _, currPlatform := range report.ByPlatform {
 		jobHTML := newJobAggregationResultRenderer("by-variant", *convertPlatformToAggregationResult(&currPlatform), release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(convertPlatformToAggregationResult(util.GetPlatform(currPlatform.PlatformName, reportPrev.ByPlatform))).
+			withPrevious(convertPlatformToAggregationResult(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform))).
 			toHTML()
 
 		s += jobHTML
@@ -187,7 +187,7 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 	`, endDay)
 
 	for _, currJobResult := range report.FrequentJobResults {
-		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
+		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
 		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).
@@ -212,7 +212,7 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 	`, endDay)
 
 	for _, currJobResult := range report.InfrequentJobResults {
-		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
+		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
 		jobHTML := newJobResultRenderer("by-infrequent-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).
@@ -255,7 +255,7 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 		}
 
 		// TODO use a standard presentation for the failed test
-		util.GetTestResult(test.TestName, prevAll)
+		util.FindTestResult(test.TestName, prevAll)
 
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
@@ -439,7 +439,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			rowColor = "error"
 		}
 
-		prev := util.GetPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
+		prev := util.FindPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
 		if prev != nil && len(prev.JobsFailed) > 0 {
 			previousHighestFailPercentage := prev.JobsFailed[0].FailPercentage
 			previousLowestPassPercentage := 100 - previousHighestFailPercentage
@@ -476,7 +476,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			bzJobTuple := makeSafeForCollapseName(fmt.Sprintf("%s---%s", v.Name, failingJob.JobName))
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
-			fullJobResult := util.GetJobResultForJobName(failingJob.JobName, report.ByJob)
+			fullJobResult := util.FindJobResultForJobName(failingJob.JobName, report.ByJob)
 
 			// create the synthetic JobResult for display purposes.
 			// TODO with another refactor, we'll be able to tighten this up later.
