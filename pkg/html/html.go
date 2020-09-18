@@ -439,7 +439,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			rowColor = "error"
 		}
 
-		prev := util.FindPrevBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
+		prev := util.FindBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
 		if prev != nil && len(prev.JobsFailed) > 0 {
 			previousHighestFailPercentage := prev.JobsFailed[0].FailPercentage
 			previousLowestPassPercentage := 100 - previousHighestFailPercentage

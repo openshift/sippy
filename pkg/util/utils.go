@@ -36,7 +36,7 @@ func FindPlatformResultsForName(platform string, allPlatforms []sippyprocessingv
 	return nil
 }
 
-func FindPrevBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyprocessingv1.SortedBugzillaComponentResult) *sippyprocessingv1.SortedBugzillaComponentResult {
+func FindBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyprocessingv1.SortedBugzillaComponentResult) *sippyprocessingv1.SortedBugzillaComponentResult {
 	for _, v := range bugzillaJobFailures {
 		if v.Name == bzComponent {
 			return &v
