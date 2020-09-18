@@ -189,7 +189,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 
 		var prevJob *sippyprocessingv1.JobResult
 		if b.prevAggregationResult != nil {
-			prevJob = util.GetJobResultForJobName(job.Name, b.prevAggregationResult.JobResults)
+			prevJob = util.FindJobResultForJobName(job.Name, b.prevAggregationResult.JobResults)
 		}
 
 		jobRows = jobRows + newJobResultRenderer(jobsCollapseName, job, b.release).

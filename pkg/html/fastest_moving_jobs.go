@@ -17,7 +17,7 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 	jobPassChanges := []jobPassChange{}
 
 	for _, job := range twoDaysJobs {
-		prevJob := util.GetJobResultForJobName(job.Name, prevJobs)
+		prevJob := util.FindJobResultForJobName(job.Name, prevJobs)
 		if prevJob == nil {
 			continue
 		}
@@ -51,8 +51,8 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		if jobDetails.passPercentageChange > -10 {
 			break
 		}
-		currJobResult := util.GetJobResultForJobName(jobDetails.jobName, twoDaysJobs)
-		prevJobResult := util.GetJobResultForJobName(currJobResult.Name, prevJobs)
+		currJobResult := util.FindJobResultForJobName(jobDetails.jobName, twoDaysJobs)
+		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, prevJobs)
 		jobHTML := newJobResultRenderer("by-job-name", *currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPrevious(prevJobResult).

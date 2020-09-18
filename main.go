@@ -14,13 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
+
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -30,21 +31,14 @@ import (
 
 var (
 	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-	TagStripRegex     = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*\]`)
 )
 
 type Analyzer struct {
-	// TestGridJobInfo contains the data consumed from testgrid
-	TestGridJobInfo []testgridv1.JobDetails
-
-	RawData        testgridanalysisapi.RawData
 	Options        *Options
-	Report         sippyprocessingv1.TestReport
 	LastUpdateTime time.Time
 	Release        string
 
-	BugCache         buganalysis.BugCache
-	analysisWarnings []string
+	BugCache buganalysis.BugCache
 }
 
 func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
@@ -145,230 +139,6 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 
 }
 
-// ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
-var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
-
-// processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
-func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed int, failed int, flaked int) {
-	col := 0
-	for _, result := range test.Statuses {
-		if col > endCol {
-			break
-		}
-
-		// the test results are run length encoded(e.g. "6 passes, 5 failures, 7 passes"), but since we are searching for a test result
-		// from a specific time period, it's possible a particular run of results overlaps the start-point
-		// for the time period we care about.  So we need to iterate each encoded run until we get to the column
-		// we care about(a column which falls within the timestamp range we care about, then start the analysis with the remaining
-		// columns in the run.
-		remaining := result.Count
-		if col < startCol {
-			for i := 0; i < result.Count && col < startCol; i++ {
-				col++
-				remaining--
-			}
-		}
-		// if after iterating above we still aren't within the column range we care about, don't do any analysis
-		// on this run of results.
-		if col < startCol {
-			continue
-		}
-		switch result.Value {
-		case 1, 13: // success, flake(failed one or more times but ultimately succeeded)
-			for i := col; i < col+remaining && i < endCol; i++ {
-				passed++
-				if result.Value == 13 {
-					flaked++
-				}
-				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := jobResult.JobRunResults[joburl]
-				if !ok {
-					jrr = testgridanalysisapi.RawJobRunResult{
-						Job:       job.Name,
-						JobRunURL: joburl,
-					}
-				}
-				switch {
-				case test.Name == "Overall":
-					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
-						State: testgridanalysisapi.Success,
-					})
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
-						State: testgridanalysisapi.Success,
-					})
-				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = testgridanalysisapi.Success
-				}
-				jobResult.JobRunResults[joburl] = jrr
-			}
-		case 12: // failure
-			for i := col; i < col+remaining && i < endCol; i++ {
-				failed++
-				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-				jrr, ok := jobResult.JobRunResults[joburl]
-				if !ok {
-					jrr = testgridanalysisapi.RawJobRunResult{
-						Job:       job.Name,
-						JobRunURL: joburl,
-					}
-				}
-				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
-				// which we use to set various JobRunResult markers
-				if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") {
-					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
-					jrr.TestFailures++
-				}
-
-				switch {
-				case test.Name == "Overall":
-					jrr.Failed = true
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
-						State: testgridanalysisapi.Failure,
-					})
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
-						State: testgridanalysisapi.Failure,
-					})
-				case strings.HasSuffix(test.Name, "container setup"):
-					jrr.SetupStatus = testgridanalysisapi.Failure
-				}
-				jobResult.JobRunResults[joburl] = jrr
-			}
-		}
-		col += remaining
-	}
-
-	util.AddTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
-
-	return
-}
-
-func (a *Analyzer) processTest(job testgridv1.JobDetails, platforms []string, test testgridv1.Test, sig string, startCol, endCol int) {
-	// strip out tests that don't have predictive or diagnostic value
-	// we have to know about overall to be able to set the global success or failure.
-	// we have to know about container setup to be able to set infra failures
-	if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") && ignoreTestRegex.MatchString(test.Name) {
-		return
-	}
-
-	jobResult, ok := a.RawData.JobResults[job.Name]
-	if !ok {
-		jobResult = testgridanalysisapi.RawJobResult{
-			JobName:        job.Name,
-			TestGridJobUrl: job.TestGridUrl,
-			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
-			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
-		}
-	}
-
-	processTestToJobRunResults(jobResult, job, test, startCol, endCol)
-
-	// we have mutated, so assign back to our intermediate value
-	a.RawData.JobResults[job.Name] = jobResult
-
-	// our aggregation and markers are correctly set above.  We allowed these two tests to be checked, but we don't want
-	// actual results for them
-	if test.Name == "Overall" || strings.HasSuffix(test.Name, "container setup") {
-		return
-	}
-}
-
-func (a *Analyzer) processJobDetails(job testgridv1.JobDetails) {
-	startCol, endCol := util.ComputeLookback(a.Options.StartDay, a.Options.EndDay, job.Timestamps)
-	platforms := testidentification.FindPlatform(job.Name)
-
-	for i, test := range job.Tests {
-		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
-
-		test.Name = strings.TrimSpace(TagStripRegex.ReplaceAllString(test.Name, ""))
-		job.Tests[i] = test
-
-		a.processTest(job, platforms, test, testidentification.FindSig(test.Name), startCol, endCol)
-	}
-
-}
-
-// createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
-// and potentially producing synthentic test results and aggregations to better inform sippy.
-// This needs to be called after all the JobDetails have been processed.
-func (a *Analyzer) createSyntheticTests() {
-	// make a pass to fill in install, upgrade, and infra synthentic tests.
-	type synthenticTestResult struct {
-		name string
-		pass int
-		fail int
-	}
-	for jobName, jobResults := range a.RawData.JobResults {
-		for jrrKey, jrr := range jobResults.JobRunResults {
-			isUpgrade := strings.Contains(jrr.Job, "upgrade")
-
-			syntheticTests := map[string]*synthenticTestResult{
-				testgridanalysisapi.InstallTestName:        {name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.UpgradeTestName:        {name: testgridanalysisapi.UpgradeTestName},
-				testgridanalysisapi.InfrastructureTestName: {name: testgridanalysisapi.InfrastructureTestName},
-			}
-
-			installFailed := false
-			for _, operator := range jrr.InstallOperators {
-				if operator.State == testgridanalysisapi.Failure {
-					installFailed = true
-					break
-				}
-			}
-			upgradeFailed := false
-			for _, operator := range jrr.UpgradeOperators {
-				if operator.State == testgridanalysisapi.Failure {
-					upgradeFailed = true
-					break
-				}
-			}
-			setupFailed := jrr.SetupStatus != testgridanalysisapi.Success
-
-			if installFailed {
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InstallTestName)
-				syntheticTests[testgridanalysisapi.InstallTestName].fail = 1
-			} else {
-				if !setupFailed { // this will be an undercount, but we only want to count installs that actually worked.
-					syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
-				}
-			}
-			if setupFailed && len(jrr.InstallOperators) == 0 { // we only want to count it as an infra issue if the install did not start
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InfrastructureTestName)
-				syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
-			} else {
-				syntheticTests[testgridanalysisapi.InfrastructureTestName].pass = 1
-			}
-			if isUpgrade && !setupFailed && !installFailed { // only record upgrade status if we were able to attempt the upgrade
-				if upgradeFailed || len(jrr.UpgradeOperators) == 0 {
-					jrr.TestFailures++
-					jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.UpgradeTestName)
-					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
-				} else {
-					syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
-				}
-			}
-
-			for testName, result := range syntheticTests {
-				util.AddTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
-			}
-
-			jobResults.JobRunResults[jrrKey] = jrr
-		}
-
-		a.RawData.JobResults[jobName] = jobResults
-	}
-}
-
 func getFailedTestNamesFromJobResults(jobResults map[string]testgridanalysisapi.RawJobResult) sets.String {
 	failedTestNames := sets.NewString()
 	for _, jobResult := range jobResults {
@@ -379,32 +149,31 @@ func getFailedTestNamesFromJobResults(jobResults map[string]testgridanalysisapi.
 	return failedTestNames
 }
 
-func (a *Analyzer) analyze() {
-	for _, details := range a.TestGridJobInfo {
-		klog.V(2).Infof("processing test details for job %s\n", details.Name)
-		a.processJobDetails(details)
-	}
-
-	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	a.createSyntheticTests()
+// updateBugCacheForJobResults looks up all the bugs related to every failing test in the jobResults and returns a list of
+// warnings/errors that happened looking up the data
+func updateBugCacheForJobResults(bugCache buganalysis.BugCache, rawJobResults testgridanalysisapi.RawData) []string {
+	warnings := []string{}
 
 	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
-	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobResults(a.RawData.JobResults)
-	err := a.BugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
+	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobResults(rawJobResults.JobResults)
+	err := bugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
 	if err != nil {
 		klog.Error(err)
-		a.analysisWarnings = append(a.analysisWarnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
+		warnings = append(warnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
+
+	return warnings
 }
 
-func (a *Analyzer) loadData(releases []string, storagePath string) {
+func (a *Analyzer) getTestGridData(releases []string, storagePath string) []testgridv1.JobDetails {
+	testGridJobDetails := []testgridv1.JobDetails{}
+
 	var jobFilter *regexp.Regexp
 	if len(a.Options.JobFilter) > 0 {
 		jobFilter = regexp.MustCompile(a.Options.JobFilter)
 	}
 
 	for _, release := range releases {
-
 		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
 		blockingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
@@ -419,7 +188,7 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
+					testGridJobDetails = append(testGridJobDetails, details)
 				}
 			}
 		}
@@ -439,11 +208,13 @@ func (a *Analyzer) loadData(releases []string, storagePath string) {
 				if err != nil {
 					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
 				} else {
-					a.TestGridJobInfo = append(a.TestGridJobInfo, details)
+					testGridJobDetails = append(testGridJobDetails, details)
 				}
 			}
 		}
 	}
+
+	return testGridJobDetails
 }
 
 func downloadData(releases []string, filter string, storagePath string) {
@@ -503,51 +274,49 @@ func downloadData(releases []string, filter string, storagePath string) {
 	}
 }
 
-func (a *Analyzer) prepareTestReport() {
-	a.Report = testreportconversion.PrepareTestReport(
-		a.RawData,
+func (a *Analyzer) prepareTestReport() sippyprocessingv1.TestReport {
+	testGridJobDetails := a.getTestGridData([]string{a.Release}, a.Options.LocalData)
+	rawJobResultOptions := testgridconversion.ProcessingOptions{StartDay: a.Options.StartDay, EndDay: a.Options.EndDay}
+	rawJobResults := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
+	bugCacheWarnings := updateBugCacheForJobResults(a.BugCache, rawJobResults)
+
+	return testreportconversion.PrepareTestReport(
+		rawJobResults,
 		a.BugCache,
 		a.Release,
 		a.Options.MinTestRuns,
 		a.Options.TestSuccessThreshold,
 		a.Options.EndDay,
-		a.analysisWarnings,
+		bugCacheWarnings,
 		a.LastUpdateTime,
 		a.Options.FailureClusterThreshold,
 	)
 }
 
-func (a *Analyzer) printReport() {
-	a.prepareTestReport()
+func (a *Analyzer) printJSONReport(testReport sippyprocessingv1.TestReport) {
 	switch a.Options.Output {
 	case "json":
-		a.printJsonReport()
+		printJsonReport(testReport)
 	}
 }
-func (a *Analyzer) printJsonReport() {
+func printJsonReport(testReport sippyprocessingv1.TestReport) {
 	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(a.Report)
+	enc.Encode(testReport)
 }
 
 type Server struct {
-	bugCache  buganalysis.BugCache
-	analyzers map[string]Analyzer
-	options   *Options
+	bugCache                   buganalysis.BugCache
+	testReportGeneratorOptions map[string]Analyzer
+	currTestReports            map[string]sippyprocessingv1.TestReport
+	options                    *Options
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
 
-	for k, analyzer := range s.analyzers {
-		analyzer.RawData = testgridanalysisapi.RawData{
-			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-		}
-
-		analyzer.loadData([]string{analyzer.Release}, analyzer.Options.LocalData)
-		analyzer.analyze()
-		analyzer.prepareTestReport()
-		s.analyzers[k] = analyzer
+	for k, analyzer := range s.testReportGeneratorOptions {
+		s.currTestReports[k] = analyzer.prepareTestReport()
 	}
 
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
@@ -557,11 +326,11 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
-	if _, ok := s.analyzers[release]; !ok {
+	if _, ok := s.currTestReports[release]; !ok {
 		html.WriteLandingPage(w, s.options.Releases)
 		return
 	}
-	html.PrintHtmlReport(w, req, s.analyzers[release].Report, s.analyzers[release+"-days-2"].Report, s.analyzers[release+"-prev"].Report, s.options.EndDay, 15)
+	html.PrintHtmlReport(w, req, s.currTestReports[release], s.currTestReports[release+"-days-2"], s.currTestReports[release+"-prev"], s.options.EndDay, 15)
 }
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
@@ -572,8 +341,8 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		// return all available json reports
 		// store [currentReport, prevReport] in a slice
 		for _, r := range s.options.Releases {
-			if _, ok := s.analyzers[r]; ok {
-				releaseReports[r] = []sippyprocessingv1.TestReport{s.analyzers[r].Report, s.analyzers[r+"-prev"].Report}
+			if _, ok := s.currTestReports[r]; ok {
+				releaseReports[r] = []sippyprocessingv1.TestReport{s.currTestReports[r], s.currTestReports[r+"-prev"]}
 			} else {
 				klog.Errorf("unable to load test report for release version %s", r)
 				continue
@@ -581,7 +350,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		}
 		api.PrintJSONReport(w, req, releaseReports, s.options.EndDay, 15)
 		return
-	} else if _, ok := s.analyzers[release]; !ok {
+	} else if _, ok := s.currTestReports[release]; !ok {
 		// return a 404 error along with the list of available releases in the detail section
 		errMsg := map[string]interface{}{
 			"code":   "404",
@@ -592,7 +361,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		w.Write(errMsgBytes)
 		return
 	}
-	releaseReports[release] = []sippyprocessingv1.TestReport{s.analyzers[release].Report, s.analyzers[release+"-prev"].Report}
+	releaseReports[release] = []sippyprocessingv1.TestReport{s.currTestReports[release], s.currTestReports[release+"-prev"]}
 	api.PrintJSONReport(w, req, releaseReports, s.options.EndDay, 15)
 }
 
@@ -653,52 +422,38 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		JobFilter:               jobFilter,
 		MinTestRuns:             minTestRuns,
 		FailureClusterThreshold: fct,
+		LocalData:               s.options.LocalData,
 	}
 
 	analyzer := Analyzer{
-		Release: release,
-		Options: opt,
-		RawData: testgridanalysisapi.RawData{
-			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-		},
+		Release:  release,
+		Options:  opt,
 		BugCache: s.bugCache,
 	}
-	analyzer.loadData([]string{release}, s.options.LocalData)
-	analyzer.analyze()
-	analyzer.prepareTestReport()
+	currentReport := analyzer.prepareTestReport()
 
 	// current 2 day period
 	optCopy := *opt
 	optCopy.EndDay = 2
 	twoDayAnalyzer := Analyzer{
-		Release: release,
-		Options: &optCopy,
-		RawData: testgridanalysisapi.RawData{
-			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-		},
+		Release:  release,
+		Options:  &optCopy,
 		BugCache: s.bugCache,
 	}
-	twoDayAnalyzer.loadData([]string{release}, s.options.LocalData)
-	twoDayAnalyzer.analyze()
-	twoDayAnalyzer.prepareTestReport()
+	twoDayReport := twoDayAnalyzer.prepareTestReport()
 
 	// prior 7 day period
 	optCopy = *opt
 	optCopy.StartDay = endDay + 1
 	optCopy.EndDay = endDay + 8
 	prevAnalyzer := Analyzer{
-		Release: release,
-		Options: &optCopy,
-		RawData: testgridanalysisapi.RawData{
-			JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-		},
+		Release:  release,
+		Options:  &optCopy,
 		BugCache: s.bugCache,
 	}
-	prevAnalyzer.loadData([]string{release}, s.options.LocalData)
-	prevAnalyzer.analyze()
-	prevAnalyzer.prepareTestReport()
+	previousReport := prevAnalyzer.prepareTestReport()
 
-	html.PrintHtmlReport(w, req, analyzer.Report, twoDayAnalyzer.Report, prevAnalyzer.Report, opt.EndDay, jobTestCount)
+	html.PrintHtmlReport(w, req, currentReport, twoDayReport, previousReport, opt.EndDay, jobTestCount)
 
 }
 
@@ -787,72 +542,55 @@ func (o *Options) Run() error {
 	}
 	if !o.Server {
 		analyzer := Analyzer{
-			Options: o,
-			RawData: testgridanalysisapi.RawData{
-				JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-			},
+			Options:  o,
 			BugCache: buganalysis.NewBugCache(),
 		}
 
-		analyzer.loadData(o.Releases, o.LocalData)
-		analyzer.analyze()
-		analyzer.printReport()
+		testReport := analyzer.prepareTestReport()
+		analyzer.printJSONReport(testReport)
 	}
 
 	if o.Server {
 		server := Server{
-			bugCache:  buganalysis.NewBugCache(),
-			analyzers: make(map[string]Analyzer),
-			options:   o,
+			bugCache:                   buganalysis.NewBugCache(),
+			testReportGeneratorOptions: make(map[string]Analyzer),
+			currTestReports:            make(map[string]sippyprocessingv1.TestReport),
+			options:                    o,
 		}
 		for _, release := range o.Releases {
 			// most recent 7 day period (days 0-7)
 			analyzer := Analyzer{
-				Release: release,
-				Options: o,
-				RawData: testgridanalysisapi.RawData{
-					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-				},
+				Release:  release,
+				Options:  o,
 				BugCache: server.bugCache,
 			}
-			analyzer.loadData([]string{release}, o.LocalData)
-			analyzer.analyze()
-			analyzer.prepareTestReport()
-			server.analyzers[release] = analyzer
+
+			server.testReportGeneratorOptions[release] = analyzer
+			server.currTestReports[release] = analyzer.prepareTestReport()
 
 			// most recent 2 day period (days 0-2)
 			optCopy := *o
 			optCopy.EndDay = 2
 			optCopy.StartDay = 0
 			analyzer = Analyzer{
-				Release: release,
-				Options: o,
-				RawData: testgridanalysisapi.RawData{
-					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-				},
+				Release:  release,
+				Options:  o,
 				BugCache: server.bugCache,
 			}
-			analyzer.loadData([]string{release}, o.LocalData)
-			analyzer.analyze()
-			analyzer.prepareTestReport()
-			server.analyzers[release+"-days-2"] = analyzer
+			server.testReportGeneratorOptions[release+"-days-2"] = analyzer
+			server.currTestReports[release+"-days-2"] = analyzer.prepareTestReport()
 
 			// prior 7 day period (days 7-14)
 			optCopy = *o
 			optCopy.EndDay = 14
 			optCopy.StartDay = 7
 			analyzer = Analyzer{
-				Release: release,
-				Options: &optCopy,
-				RawData: testgridanalysisapi.RawData{
-					JobResults: make(map[string]testgridanalysisapi.RawJobResult),
-				},
+				Release:  release,
+				Options:  &optCopy,
 				BugCache: server.bugCache,
 			}
-			analyzer.loadData([]string{release}, o.LocalData)
-			analyzer.analyze()
-			analyzer.prepareTestReport()
-			server.analyzers[release+"-prev"] = analyzer
+			server.testReportGeneratorOptions[release+"-prev"] = analyzer
+			server.currTestReports[release+"-prev"] = analyzer.prepareTestReport()
 		}
 		server.serve(o)
 	}
