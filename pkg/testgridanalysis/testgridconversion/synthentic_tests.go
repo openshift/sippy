@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util"
 )
 
 // createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
@@ -71,7 +70,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) {
 			}
 
 			for testName, result := range syntheticTests {
-				util.AddTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
+				addTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
 			}
 
 			jobResults.JobRunResults[jrrKey] = jrr
