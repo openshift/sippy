@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	DashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
+	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
 )
 
 func DownloadData(releases []string, filter string, storagePath string) {
@@ -29,13 +29,13 @@ func DownloadData(releases []string, filter string, storagePath string) {
 
 	for _, release := range releases {
 
-		dashboard := fmt.Sprintf(DashboardTemplate, release, "blocking")
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
 		err := downloadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
-		blockingJobs, _, err := LoadJobSummaries(dashboard, storagePath)
+		blockingJobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
 			continue
@@ -54,13 +54,13 @@ func DownloadData(releases []string, filter string, storagePath string) {
 
 	for _, release := range releases {
 
-		dashboard := fmt.Sprintf(DashboardTemplate, release, "informing")
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
 		err := downloadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
-		informingJobs, _, err := LoadJobSummaries(dashboard, storagePath)
+		informingJobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
@@ -78,7 +78,87 @@ func DownloadData(releases []string, filter string, storagePath string) {
 	}
 }
 
-func LoadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
+// LoadTestGridDataFromDisk reads the requested testgrid data from disk and returns the details and the timestamp of the last
+// modification on disk
+func LoadTestGridDataFromDisk(storagePath string, releases []string, jobFilter *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {
+	testGridJobDetails := []testgridv1.JobDetails{}
+
+	lastUpdateTime := time.Time{}
+
+	for _, release := range releases {
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
+		blockingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+		if ts.After(lastUpdateTime) {
+			lastUpdateTime = ts
+		}
+
+		for jobName, job := range blockingJobs {
+			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
+				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				details, err := loadJobDetails(dashboard, jobName, storagePath)
+				if err != nil {
+					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
+				} else {
+					testGridJobDetails = append(testGridJobDetails, details)
+				}
+			}
+		}
+	}
+	for _, release := range releases {
+		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
+		informingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
+		if err != nil {
+			klog.Errorf("Error load dashboard page %s: %v\n", dashboard, err)
+			continue
+		}
+		if ts.After(lastUpdateTime) {
+			lastUpdateTime = ts
+		}
+
+		for jobName, job := range informingJobs {
+			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
+				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				details, err := loadJobDetails(dashboard, jobName, storagePath)
+				if err != nil {
+					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
+				} else {
+					testGridJobDetails = append(testGridJobDetails, details)
+				}
+			}
+		}
+	}
+
+	return testGridJobDetails, lastUpdateTime
+}
+
+func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetails, error) {
+	details := testgridv1.JobDetails{
+		Name: jobName,
+	}
+
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
+
+	var buf *bytes.Buffer
+	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return details, fmt.Errorf("Could not read local data file %s: %v", filename, err)
+	}
+	buf = bytes.NewBuffer(b)
+
+	err = json.NewDecoder(buf).Decode(&details)
+	if err != nil {
+		return details, err
+	}
+	details.TestGridUrl = fmt.Sprintf("https://testgrid.k8s.io/%s#%s", dashboard, jobName)
+	return details, nil
+}
+
+func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
 	jobs := make(map[string]testgridv1.JobSummary)
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
 

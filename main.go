@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
+
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/spf13/cobra"
@@ -103,37 +105,53 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) runServerMode() error {
-	server := sippyserver.NewServer(o.toServerOptions())
+	server := sippyserver.NewServer(
+		o.toTestGridLoadingConfig(),
+		o.toRawJobResultsAnalysisConfig(),
+		o.toDisplayDataConfig(),
+		o.Releases,
+		o.ListenAddr,
+	)
 	server.RefreshData() // force a data refresh once before serving.
 	server.Serve()
 	return nil
 }
 
 func (o *Options) runCLIReportMode() error {
-	analyzer := sippyserver.Analyzer{
-		Options:  o.toServerOptions(),
-		BugCache: buganalysis.NewBugCache(),
+	analyzer := sippyserver.TestReportGeneratorConfig{
+		TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
+		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
+		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport()
+	testReport := analyzer.PrepareTestReport(o.Releases[0], buganalysis.NewBugCache())
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(testReport)
 	return nil
 }
 
-func (o *Options) toServerOptions() sippyserver.Options {
-	return sippyserver.Options{
-		LocalData:               o.LocalData,
-		Releases:                o.Releases,
-		StartDay:                o.StartDay,
-		EndDay:                  o.EndDay,
-		TestSuccessThreshold:    o.TestSuccessThreshold,
-		JobFilter:               o.JobFilter,
+func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
+	var jobFilter *regexp.Regexp
+	if len(o.JobFilter) > 0 {
+		jobFilter = regexp.MustCompile(o.JobFilter)
+	}
+
+	return sippyserver.TestGridLoadingConfig{
+		LocalData: o.LocalData,
+		JobFilter: jobFilter,
+	}
+}
+
+func (o *Options) toRawJobResultsAnalysisConfig() sippyserver.RawJobResultsAnalysisConfig {
+	return sippyserver.RawJobResultsAnalysisConfig{
+		StartDay: o.StartDay,
+		EndDay:   o.EndDay,
+	}
+}
+func (o *Options) toDisplayDataConfig() sippyserver.DisplayDataConfig {
+	return sippyserver.DisplayDataConfig{
 		MinTestRuns:             o.MinTestRuns,
-		Output:                  o.Output,
+		TestSuccessThreshold:    o.TestSuccessThreshold,
 		FailureClusterThreshold: o.FailureClusterThreshold,
-		FetchData:               o.FetchData,
-		ListenAddr:              o.ListenAddr,
-		Server:                  o.Server,
 	}
 }
