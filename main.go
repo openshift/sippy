@@ -98,7 +98,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 		Name: jobName,
 	}
 
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
 
 	var buf *bytes.Buffer
 	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
@@ -121,7 +121,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 // https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing#release-openshift-origin-installer-e2e-azure-compact-4.4&show-stale-tests=&sort-by-failures=
 
 func downloadJobDetails(dashboard, jobName, storagePath string) error {
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s", dashboard, jobName)
+	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -311,9 +311,9 @@ func (a *Analyzer) createSyntheticTests() {
 			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{
-				testgridanalysisapi.InstallTestName:        &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.UpgradeTestName:        &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName},
-				testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+				testgridanalysisapi.InstallTestName:        {name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.UpgradeTestName:        {name: testgridanalysisapi.UpgradeTestName},
+				testgridanalysisapi.InfrastructureTestName: {name: testgridanalysisapi.InfrastructureTestName},
 			}
 
 			installFailed := false
