@@ -13,6 +13,10 @@ type TestReport struct {
 	Release   string    `json:"release"`
 	Timestamp time.Time `json:"timestamp"`
 
+	// TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
+	// individual jobs or platforms.
+	TopLevelIndicators TopLevelIndicators `json:"topLevelIndicators"`
+
 	// ByPlatform organizes jobs and tests by platform, sorted by job pass rate from low to high
 	ByPlatform []PlatformResults `json:"byPlatform`
 
@@ -42,6 +46,23 @@ type TestReport struct {
 
 	// AnalysisWarnings is a free-form list of warnings to be displayed on sippy test reports
 	AnalysisWarnings []string `json:"analysisWarnings"`
+}
+
+// TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
+// individual jobs or platforms.
+type TopLevelIndicators struct {
+	// Infrastructure goal is indicate when we fail before we start to install.  Because of other issue, this is slightly
+	// broader, catching cases where we are not able to contact a kube-apiserver after the test run.  In theory, this
+	// could include some cases of bootstrapping failure.  In practice, it doesn't appear to very often.
+	// Low Infrastructure pass rates means we are doing a bad job of keeping the CI system itself up and running
+	Infrastructure FailingTestResult
+	// Install indicates how successful we are with installing onto clusters that have started
+	// Low Install pass rates mean we are doing a bad job installing our product, often due to operators.  This should
+	// limit new feature development, but in a pinch we could ship with low install rates.
+	Install FailingTestResult
+	// Upgrade indicates how successful we are with upgrading onto clusters that have already installed.
+	// Low Upgrade pass rates means clusters are not able to upgrade.  This should stop us from shipping the product.
+	Upgrade FailingTestResult
 }
 
 // PlatformResults

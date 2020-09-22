@@ -42,9 +42,18 @@ func PrepareTestReport(
 	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
 	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
 
+	infra := allTestResultsByName[testgridanalysisapi.InfrastructureTestName]
+	install := allTestResultsByName[testgridanalysisapi.InstallTestName]
+	upgrade := allTestResultsByName[testgridanalysisapi.UpgradeTestName]
+
 	testReport := sippyprocessingv1.TestReport{
 		Release:   release,
 		Timestamp: reportTimestamp,
+		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
+			Infrastructure: infra,
+			Install:        install,
+			Upgrade:        upgrade,
+		},
 
 		ByTest:        allTestResultsByName.toOrderedList(),
 		ByPlatform:    byPlatform,

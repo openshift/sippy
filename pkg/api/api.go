@@ -87,7 +87,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
-		testPrev := util.FindTestResult(test.TestName, prevTestResults)
+		testPrev := util.FindFailedTestResult(test.TestName, prevTestResults)
 
 		var failedTestWithBug sippyv1.FailingTestBug
 
@@ -136,7 +136,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
 		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
-		testPrev := util.FindTestResult(test.TestName, prevTopFailingTestsWithoutBug)
+		testPrev := util.FindFailedTestResult(test.TestName, prevTopFailingTestsWithoutBug)
 
 		var failedTestWithoutBug sippyv1.FailingTestBug
 
