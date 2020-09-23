@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"k8s.io/klog"
@@ -119,7 +121,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
 						State: testgridanalysisapi.Success,
 					})
-				case strings.HasSuffix(test.Name, "container setup"):
+				case testidentification.IsSetupContainerEquivalent(test.Name):
 					jrr.SetupStatus = testgridanalysisapi.Success
 				}
 				jobResult.JobRunResults[joburl] = jrr
@@ -137,7 +139,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") {
+				if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
@@ -155,7 +157,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
 						State: testgridanalysisapi.Failure,
 					})
-				case strings.HasSuffix(test.Name, "container setup"):
+				case testidentification.IsSetupContainerEquivalent(test.Name):
 					jrr.SetupStatus = testgridanalysisapi.Failure
 				}
 				jobResult.JobRunResults[joburl] = jrr
@@ -174,7 +176,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about container setup to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if test.Name != "Overall" && !strings.HasSuffix(test.Name, "container setup") && ignoreTestRegex.MatchString(test.Name) {
+	if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
 		return
 	}
 
