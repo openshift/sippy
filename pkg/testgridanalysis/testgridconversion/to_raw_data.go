@@ -19,7 +19,8 @@ type ProcessingOptions struct {
 	EndDay   int
 }
 
-func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) testgridanalysisapi.RawData {
+// returns the raw data and a list of warnings encountered processing the data.
+func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
 	for _, jobDetails := range testGridJobInfo {
@@ -29,9 +30,9 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	createSyntheticTests(rawJobResults)
+	warnings := createSyntheticTests(rawJobResults)
 
-	return rawJobResults
+	return rawJobResults, warnings
 }
 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {

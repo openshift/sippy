@@ -1,15 +1,20 @@
 package testgridconversion
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 // and potentially producing synthentic test results and aggregations to better inform sippy.
 // This needs to be called after all the JobDetails have been processed.
-func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) {
+// returns warnings found in the data. Not failures to process it.
+func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
+	warnings := []string{}
+
 	// make a pass to fill in install, upgrade, and infra synthentic tests.
 	type synthenticTestResult struct {
 		name string
@@ -18,7 +23,11 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) {
 	}
 
 	for jobName, jobResults := range rawJobResults.JobResults {
+		numRunsWithoutSetup := 0
 		for jrrKey, jrr := range jobResults.JobRunResults {
+			if jrr.SetupStatus == "" {
+				numRunsWithoutSetup++
+			}
 			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{
@@ -113,7 +122,21 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) {
 
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
+		if float64(numRunsWithoutSetup)/float64(len(jobResults.JobRunResults)+1)*100 > 50 {
+			if !jobsWithKnownBadSetupContainer.Has(jobName) {
+				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
+			}
+		}
 
 		rawJobResults.JobResults[jobName] = jobResults
 	}
+	return warnings
 }
+
+// this a list of jobs that either do not install the product (bug) or have never had a passing install.
+// both should be fixed over time, but this reduces noise as we ratchet down.
+var jobsWithKnownBadSetupContainer = sets.NewString(
+	"promote-release-openshift-machine-os-content-e2e-aws-4.6-s390x",
+	"promote-release-openshift-machine-os-content-e2e-aws-4.6-ppc64le",
+	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6",
+)
