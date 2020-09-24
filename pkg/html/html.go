@@ -73,7 +73,7 @@ Data current as of: %s
 	bugLookupWarning = `
 <div  style="background-color:pink" class="jumbotron">
   <h1>Warning: Analysis Error</h1>
-  <p>%s</p>
+  %s
 </div>
 `
 	dashboardPageHtml = `
@@ -392,11 +392,15 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
-	for _, analysisWarning := range prevReport.AnalysisWarnings {
-		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
-	}
-	for _, analysisWarning := range report.AnalysisWarnings {
-		fmt.Fprintf(w, bugLookupWarning, analysisWarning)
+	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
+		warningsHTML := ""
+		for _, analysisWarning := range prevReport.AnalysisWarnings {
+			warningsHTML += "<p>" + analysisWarning + "</p>\n"
+		}
+		for _, analysisWarning := range report.AnalysisWarnings {
+			warningsHTML += "<p>" + analysisWarning + "</p>\n"
+		}
+		fmt.Fprintf(w, bugLookupWarning, warningsHTML)
 	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(

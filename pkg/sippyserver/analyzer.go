@@ -59,8 +59,11 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(release string, bugCache b
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(release string, bugCache buganalysis.BugCache, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) sippyprocessingv1.TestReport {
 	rawJobResultOptions := testgridconversion.ProcessingOptions{StartDay: a.RawJobResultsAnalysisConfig.StartDay, EndDay: a.RawJobResultsAnalysisConfig.EndDay}
-	rawJobResults := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
+	rawJobResults, processingWarnings := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
 	bugCacheWarnings := updateBugCacheForJobResults(bugCache, rawJobResults)
+	warnings := []string{}
+	warnings = append(warnings, processingWarnings...)
+	warnings = append(warnings, bugCacheWarnings...)
 
 	return testreportconversion.PrepareTestReport(
 		rawJobResults,
@@ -69,7 +72,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(release string, bu
 		a.DisplayDataConfig.MinTestRuns,
 		a.DisplayDataConfig.TestSuccessThreshold,
 		a.RawJobResultsAnalysisConfig.EndDay,
-		bugCacheWarnings,
+		warnings,
 		lastUpdateTime,
 		a.DisplayDataConfig.FailureClusterThreshold,
 	)

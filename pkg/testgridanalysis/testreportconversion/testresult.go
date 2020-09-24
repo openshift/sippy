@@ -3,7 +3,8 @@ package testreportconversion
 import (
 	"fmt"
 	"sort"
-	"strings"
+
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -114,7 +115,7 @@ func filterSuccessfulTestResults(successThreshold float64 /*indicates an upper b
 }
 
 func filterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
-	if testResult.Name == "Overall" || strings.HasSuffix(testResult.Name, "container setup") {
+	if testResult.Name == "Overall" || testidentification.IsSetupContainerEquivalent(testResult.Name) {
 		return false
 	}
 	return true

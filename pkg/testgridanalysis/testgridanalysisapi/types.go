@@ -63,6 +63,7 @@ const (
 
 	InfrastructureTestName = `[sig-sippy] infrastructure should work`
 	InstallTestName        = `[sig-sippy] install should work`
+	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
 	UpgradeTestName        = `[sig-sippy] upgrade should work`
 
 	Success = "Success"
