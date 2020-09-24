@@ -9,6 +9,7 @@ import (
 var customJobSetupContainers = sets.NewString(
 	"e2e-metal-ipi-baremetalds-devscripts-setup",
 	"e2e-aws-proxy-ipi-install-install",
+	"e2e-aws-workers-rhel7-ipi-install-install",
 	"e2e-vsphere-ipi-install-vsphere",
 	"e2e-vsphere-upi-upi-install-vsphere",
 	"e2e-vsphere-upi-serial-upi-install-vsphere",
