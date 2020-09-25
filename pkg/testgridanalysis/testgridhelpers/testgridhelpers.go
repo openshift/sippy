@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
@@ -143,7 +142,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
 
 	var buf *bytes.Buffer
-	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	filename := storagePath + "/" + normalizeURL(url)
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return details, fmt.Errorf("Could not read local data file %s: %v", filename, err)
@@ -163,7 +162,7 @@ func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid
 	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
 
 	var buf *bytes.Buffer
-	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	filename := storagePath + "/" + normalizeURL(url)
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return jobs, time.Time{}, fmt.Errorf("Could not read local data file %s: %v", filename, err)
@@ -178,7 +177,25 @@ func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid
 	}
 
 	return jobs, f.ModTime(), nil
+}
 
+func normalizeURL(url string) string {
+	return replaceChars(url, `/":?`, '-')
+}
+
+func replaceChars(s string, needles string, by rune) string {
+	out := make([]rune, len(s))
+NextChar:
+	for i, c := range s {
+		for _, r := range needles {
+			if c == r {
+				out[i] = by
+				continue NextChar
+			}
+		}
+		out[i] = c
+	}
+	return string(out)
 }
 
 func downloadJobSummaries(dashboard string, storagePath string) error {
@@ -191,7 +208,7 @@ func downloadJobSummaries(dashboard string, storagePath string) error {
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("Non-200 response code fetching job summary: %v", resp)
 	}
-	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	filename := storagePath + "/" + normalizeURL(url)
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -219,7 +236,7 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 		return fmt.Errorf("Non-200 response code fetching job details: %v", resp)
 	}
 
-	filename := storagePath + "/" + "\"" + strings.ReplaceAll(url, "/", "-") + "\""
+	filename := storagePath + "/" + normalizeURL(url)
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
