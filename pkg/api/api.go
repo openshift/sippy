@@ -253,6 +253,30 @@ func canaryTestFailures(all []sippyprocessingv1.FailingTestResult) []sippyv1.Can
 	return canaryFailures
 }
 
+func minimumJobPassRateByBugzillaComponent(report, prev sippyprocessingv1.TestReport) []sippyv1.MinimumPassRatesByComponent {
+	var result []sippyv1.MinimumPassRatesByComponent
+	for c, failures := range report.JobFailuresByBugzillaComponent {
+		passRate := sippyv1.MinimumPassRatesByComponent{
+			Name: c,
+			PassRates: map[string]sippyv1.PassRate{
+				"latest": {
+					Percentage: 100.0 - failures.JobsFailed[0].FailPercentage,
+					Runs:       failures.JobsFailed[0].TotalRuns,
+				},
+			},
+		}
+		if prev, found := prev.JobFailuresByBugzillaComponent[c]; found {
+			passRate.PassRates["prev"] = sippyv1.PassRate{
+				Percentage: 100.0 - prev.JobsFailed[0].FailPercentage,
+				Runs:       prev.JobsFailed[0].TotalRuns,
+			}
+		}
+		result = append(result, passRate)
+	}
+
+	return result
+}
+
 // job runs with failure groups
 func failureGroupList(report sippyprocessingv1.TestReport) []sippyv1.FailureGroup {
 
@@ -276,14 +300,15 @@ func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, endDay, j
 		Release:      report.Release}
 
 	jsonObject := map[string]interface{}{
-		"failureGroupings":          failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
-		"jobPassRateByPlatform":     summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
-		"topFailingTestsWithoutBug": summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.TopFailingTestsWithoutBug),
-		"topFailingTestsWithBug":    summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.ByTest),
-		"jobPassRatesByName":        summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
-		"canaryTestFailures":        canaryTestFailures(data.Current.ByTest),
-		"jobRunsWithFailureGroups":  failureGroupList(data.Current),
-		"testImpactingBugs":         data.Current.BugsByFailureCount,
+		"failureGroupings":               failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
+		"jobPassRateByPlatform":          summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"topFailingTestsWithoutBug":      summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.TopFailingTestsWithoutBug),
+		"topFailingTestsWithBug":         summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.ByTest),
+		"jobPassRatesByName":             summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"minimumJobPassRatesByComponent": minimumJobPassRateByBugzillaComponent(data.Current, data.Prev),
+		"canaryTestFailures":             canaryTestFailures(data.Current.ByTest),
+		"jobRunsWithFailureGroups":       failureGroupList(data.Current),
+		"testImpactingBugs":              data.Current.BugsByFailureCount,
 	}
 	return jsonObject
 }

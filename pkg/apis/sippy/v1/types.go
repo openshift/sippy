@@ -39,6 +39,14 @@ type PassRatesByJobName struct {
 	PassRates map[string]PassRate `json:"passRates"`
 }
 
+// MinimumPassRatesByComponent describes minimum job pass rate per BZ component
+type MinimumPassRatesByComponent struct {
+	// name is the component name
+	Name string `json:"name"`
+	// passRates are the pass rates, by "latest" and optional "prev".
+	PassRates map[string]PassRate `json:"passRates"`
+}
+
 // FailingTestBug describes a single instance of failed test with bug or failed test without bug
 // differs from failingtest in that it includes pass rates for previous days and latest days
 type FailingTestBug struct {
