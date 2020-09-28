@@ -29,7 +29,7 @@ type TestGridLoadingConfig struct {
 // RawJobResultsAnalysisOptions control which subset of data from the testgrid data is analyzed into the rawJobResults
 type RawJobResultsAnalysisConfig struct {
 	StartDay int
-	EndDay   int
+	NumDays  int
 }
 
 // DisplayDataOptions controls how the RawJobResults are processed and prepared for display
@@ -58,7 +58,7 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(release string, bugCache b
 
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(release string, bugCache buganalysis.BugCache, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) sippyprocessingv1.TestReport {
-	rawJobResultOptions := testgridconversion.ProcessingOptions{StartDay: a.RawJobResultsAnalysisConfig.StartDay, EndDay: a.RawJobResultsAnalysisConfig.EndDay}
+	rawJobResultOptions := testgridconversion.ProcessingOptions{StartDay: a.RawJobResultsAnalysisConfig.StartDay, NumDays: a.RawJobResultsAnalysisConfig.NumDays}
 	rawJobResults, processingWarnings := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
 	bugCacheWarnings := updateBugCacheForJobResults(bugCache, rawJobResults)
 	warnings := []string{}
@@ -71,7 +71,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(release string, bu
 		release,
 		a.DisplayDataConfig.MinTestRuns,
 		a.DisplayDataConfig.TestSuccessThreshold,
-		a.RawJobResultsAnalysisConfig.EndDay,
+		a.RawJobResultsAnalysisConfig.NumDays,
 		warnings,
 		lastUpdateTime,
 		a.DisplayDataConfig.FailureClusterThreshold,
@@ -86,12 +86,16 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(release string, bu
 	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(release, bugCache, testGridJobDetails, lastUpdateTime)
 
 	currentTwoDayPeriodConfig := a.deepCopy()
-	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.EndDay = a.RawJobResultsAnalysisConfig.StartDay + 2
+	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
 	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(release, bugCache, testGridJobDetails, lastUpdateTime)
 
 	previousSevenDayPeriodConfig := a.deepCopy()
-	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.EndDay
-	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.EndDay = a.RawJobResultsAnalysisConfig.EndDay + 7
+	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
+		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay + a.RawJobResultsAnalysisConfig.NumDays
+	} else {
+		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
+	}
+	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
 	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(release, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
@@ -134,7 +138,7 @@ func (a TestReportGeneratorConfig) deepCopy() TestReportGeneratorConfig {
 		},
 		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
 			StartDay: a.RawJobResultsAnalysisConfig.StartDay,
-			EndDay:   a.RawJobResultsAnalysisConfig.EndDay,
+			NumDays:  a.RawJobResultsAnalysisConfig.NumDays,
 		},
 		DisplayDataConfig: DisplayDataConfig{
 			MinTestRuns:             a.DisplayDataConfig.MinTestRuns,

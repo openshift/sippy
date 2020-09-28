@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog"
 )
 
-func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
+func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -24,7 +24,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 		<tr>
 			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 
@@ -33,7 +33,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 	return s
 }
 
-func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, endDay int, release string) string {
+func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -46,7 +46,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 		<tr>
 			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 

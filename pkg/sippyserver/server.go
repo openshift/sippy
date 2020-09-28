@@ -77,7 +77,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		s.currTestReports[release].CurrentPeriodReport,
 		s.currTestReports[release].CurrentTwoDayReport,
 		s.currTestReports[release].PreviousWeekReport,
-		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.EndDay,
+		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		15)
 }
 
@@ -96,7 +96,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 		}
-		api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.EndDay, 15)
+		api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 		return
 	} else if _, ok := s.currTestReports[release]; !ok {
 		// return a 404 error along with the list of available releases in the detail section
@@ -110,7 +110,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	releaseReports[release] = []sippyprocessingv1.TestReport{s.currTestReports[release].CurrentPeriodReport, s.currTestReports[release].PreviousWeekReport}
-	api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.EndDay, 15)
+	api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
@@ -126,10 +126,11 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		startDay, _ = strconv.Atoi(t)
 	}
 
-	endDay := startDay + 7
+	numDays := 7
 	t = req.URL.Query().Get("endDay")
 	if t != "" {
-		endDay, _ = strconv.Atoi(t)
+		endDay, _ := strconv.Atoi(t)
+		numDays = endDay - startDay
 	}
 
 	testSuccessThreshold := 98.0
@@ -178,7 +179,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		},
 		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
 			StartDay: startDay,
-			EndDay:   endDay,
+			NumDays:  numDays,
 		},
 		DisplayDataConfig: DisplayDataConfig{
 			MinTestRuns:             minTestRuns,
@@ -188,7 +189,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(release, s.bugCache)
 
-	html.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, endDay, jobTestCount)
+	html.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
 
 }
 

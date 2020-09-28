@@ -15,7 +15,7 @@ import (
 )
 
 // stats on failure groups
-func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult, endDay int) *sippyv1.FailureGroups {
+func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) *sippyv1.FailureGroups {
 
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
@@ -36,7 +36,7 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 	return &failureGroupStruct
 }
 
-func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int) []sippyv1.JobSummaryPlatform {
+func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport) []sippyv1.JobSummaryPlatform {
 	var jobSummariesByPlatform []sippyv1.JobSummaryPlatform
 
 	for _, v := range report.ByPlatform {
@@ -174,7 +174,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 	return topFailingTests
 }
 
-func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int) []sippyv1.PassRatesByJobName {
+func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport) []sippyv1.PassRatesByJobName {
 	var passRatesSlice []sippyv1.PassRatesByJobName
 
 	for _, v := range report.FrequentJobResults {
@@ -291,20 +291,20 @@ func failureGroupList(report sippyprocessingv1.TestReport) []sippyv1.FailureGrou
 	return failureGroups
 }
 
-func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) map[string]interface{} {
+func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int) map[string]interface{} {
 	data := html.TestReports{
 		Current:      report,
 		Prev:         prevReport,
-		EndDay:       endDay,
+		NumDays:      numDays,
 		JobTestCount: jobTestCount,
 		Release:      report.Release}
 
 	jsonObject := map[string]interface{}{
-		"failureGroupings":               failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups, data.EndDay),
-		"jobPassRateByPlatform":          summaryJobsByPlatform(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"failureGroupings":               failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups),
+		"jobPassRateByPlatform":          summaryJobsByPlatform(data.Current, data.Prev),
 		"topFailingTestsWithoutBug":      summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.TopFailingTestsWithoutBug),
 		"topFailingTestsWithBug":         summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.ByTest),
-		"jobPassRatesByName":             summaryJobPassRatesByJobName(data.Current, data.Prev, data.EndDay, data.JobTestCount),
+		"jobPassRatesByName":             summaryJobPassRatesByJobName(data.Current, data.Prev),
 		"minimumJobPassRatesByComponent": minimumJobPassRateByBugzillaComponent(data.Current, data.Prev),
 		"canaryTestFailures":             canaryTestFailures(data.Current.ByTest),
 		"jobRunsWithFailureGroups":       failureGroupList(data.Current),
@@ -314,12 +314,12 @@ func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, endDay, j
 }
 
 // PrintJSONReport prints json format of the reports
-func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports map[string][]sippyprocessingv1.TestReport, endDay, jobTestCount int) {
+func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports map[string][]sippyprocessingv1.TestReport, numDays, jobTestCount int) {
 	reportObjects := make(map[string]interface{})
 	for _, reports := range releaseReports {
 		report := reports[0]
 		prevReport := reports[1]
-		reportObjects[report.Release] = formatJSONReport(report, prevReport, endDay, jobTestCount)
+		reportObjects[report.Release] = formatJSONReport(report, prevReport, numDays, jobTestCount)
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
