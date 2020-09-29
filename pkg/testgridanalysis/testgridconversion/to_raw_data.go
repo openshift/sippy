@@ -124,9 +124,11 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
+				case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(test.Name):
+					matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(test.Name)
+					operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
+						Name:  matches[operatorIndex],
 						State: testgridanalysisapi.Success,
 					})
 				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
@@ -160,9 +162,11 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorInstallPrefix):
-					jrr.InstallOperators = append(jrr.InstallOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorInstallPrefix):],
+				case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(test.Name):
+					matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(test.Name)
+					operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
+						Name:  matches[operatorIndex],
 						State: testgridanalysisapi.Failure,
 					})
 				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):

@@ -37,9 +37,9 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 				testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 			}
 
-			hasSomeOperatorResults := len(jrr.InstallOperators) > 0
+			hasSomeOperatorResults := len(jrr.SadOperators) > 0
 			allOperatorsSuccessfulAtEndOfRun := true
-			for _, operator := range jrr.InstallOperators {
+			for _, operator := range jrr.SadOperators {
 				if operator.State == testgridanalysisapi.Failure {
 					allOperatorsSuccessfulAtEndOfRun = false
 					break
