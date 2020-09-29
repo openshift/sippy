@@ -9,7 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1.TestReport, endDay int, release string) string {
+func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1.TestReport, numDays int, release string) string {
 	failuresByBugzillaComponent := summarizeJobsFailuresByBugzillaComponent(report)
 	failuresByBugzillaComponentPrev := summarizeJobsFailuresByBugzillaComponent(reportPrev)
 
@@ -21,7 +21,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		<tr>
 			<th>Component</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	bzGroupTemplate := `
 		<tr class="%s">

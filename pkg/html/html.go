@@ -96,17 +96,17 @@ Data current as of: %s
 
 {{ topLevelIndicators .Current .Prev }}
 
-{{ summaryJobsByPlatform .Current .Prev .EndDay .JobTestCount .Release }}
+{{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
 
-{{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .EndDay .Release }}
+{{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .NumDays .Release }}
 
-{{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.ByTest .EndDay .Release }}
+{{ summaryTopFailingTestsWithBug .Current.TopFailingTestsWithBug .Prev.ByTest .NumDays .Release }}
 
 {{ summaryTopNegativelyMovingJobs .TwoDay.ByJob .Prev.ByJob .JobTestCount .Release }}
 
-{{ summaryFrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
+{{ summaryFrequentJobPassRatesByJobName .Current .Prev .Release .NumDays .JobTestCount }}
 
-{{ summaryInfrequentJobPassRatesByJobName .Current .Prev .Release .EndDay .JobTestCount }}
+{{ summaryInfrequentJobPassRatesByJobName .Current .Prev .Release .NumDays .JobTestCount }}
 
 {{ canaryTestFailures .Current.ByTest .Prev.ByTest }}
 
@@ -116,7 +116,7 @@ Data current as of: %s
 
 {{ testImpactingComponents .Current.BugsByFailureCount }}
 
-{{ summaryJobsFailuresByBugzillaComponent .Current .Prev .EndDay .Release }}
+{{ summaryJobsFailuresByBugzillaComponent .Current .Prev .NumDays .Release }}
 
 `
 )
@@ -147,7 +147,7 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 	return s
 }
 
-func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endDay, jobTestCount int, release string) string {
+func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numDays, jobTestCount int, release string) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -156,7 +156,7 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, endD
 		<tr>
 			<th>Variant</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	for _, currPlatform := range report.ByPlatform {
 		jobHTML := newJobAggregationResultRenderer("by-variant", *convertPlatformToAggregationResult(&currPlatform), release).
@@ -177,7 +177,7 @@ func testToSearchURL(testName string) string {
 	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
-func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
+func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, numDays, jobTestCount int) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -186,7 +186,7 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	for _, currJobResult := range report.FrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
@@ -202,7 +202,7 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 	return s
 }
 
-func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, endDay, jobTestCount int) string {
+func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, numDays, jobTestCount int) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -211,7 +211,7 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
-	`, endDay)
+	`, numDays)
 
 	for _, currJobResult := range report.InfrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
@@ -372,7 +372,7 @@ type TestReports struct {
 	Current      sippyprocessingv1.TestReport
 	TwoDay       sippyprocessingv1.TestReport
 	Prev         sippyprocessingv1.TestReport
-	EndDay       int
+	NumDays      int
 	JobTestCount int
 	Release      string
 }
@@ -389,7 +389,7 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, endDay, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -425,7 +425,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		Current:      report,
 		TwoDay:       twoDayReport,
 		Prev:         prevReport,
-		EndDay:       endDay,
+		NumDays:      numDays,
 		JobTestCount: jobTestCount,
 		Release:      report.Release,
 	}); err != nil {

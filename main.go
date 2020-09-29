@@ -19,7 +19,8 @@ type Options struct {
 	LocalData               string
 	Releases                []string
 	StartDay                int
-	EndDay                  int
+	endDay                  int
+	NumDays                 int
 	TestSuccessThreshold    float64
 	JobFilter               string
 	MinTestRuns             int
@@ -32,7 +33,8 @@ type Options struct {
 
 func main() {
 	opt := &Options{
-		EndDay:                  7,
+		endDay:                  0,
+		NumDays:                 7,
 		TestSuccessThreshold:    99.99,
 		MinTestRuns:             10,
 		Output:                  "json",
@@ -47,6 +49,9 @@ func main() {
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
+			if err := opt.Complete(); err != nil {
+				klog.Exitf("error: %v", err)
+			}
 			if err := opt.Validate(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -59,7 +64,9 @@ func main() {
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringArrayVar(&opt.Releases, "release", opt.Releases, "Which releases to analyze (one per arg instance)")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
-	flags.IntVar(&opt.EndDay, "end-day", opt.EndDay, "Look at job runs going back to this day")
+	// TODO convert this to be an offset so that we can go backwards from "data we have"
+	flags.IntVar(&opt.endDay, "end-day", opt.endDay, "Look at job runs going back to this day")
+	flags.IntVar(&opt.NumDays, "num-days", opt.NumDays, "Look at job runs going back to this many days from the start day")
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
@@ -75,6 +82,15 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		klog.Exitf("error: %v", err)
 	}
+}
+
+func (o *Options) Complete() error {
+	// if the end day was explicitly specified, honor that
+	if o.endDay != 0 {
+		o.NumDays = o.endDay - o.StartDay
+	}
+
+	return nil
 }
 
 func (o *Options) Validate() error {
@@ -145,7 +161,7 @@ func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
 func (o *Options) toRawJobResultsAnalysisConfig() sippyserver.RawJobResultsAnalysisConfig {
 	return sippyserver.RawJobResultsAnalysisConfig{
 		StartDay: o.StartDay,
-		EndDay:   o.EndDay,
+		NumDays:  o.NumDays,
 	}
 }
 func (o *Options) toDisplayDataConfig() sippyserver.DisplayDataConfig {

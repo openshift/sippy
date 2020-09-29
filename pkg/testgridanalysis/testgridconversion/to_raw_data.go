@@ -16,7 +16,7 @@ import (
 
 type ProcessingOptions struct {
 	StartDay int
-	EndDay   int
+	NumDays  int
 }
 
 // returns the raw data and a list of warnings encountered processing the data.
@@ -25,7 +25,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 
 	for _, jobDetails := range testGridJobInfo {
 		klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
-		startCol, endCol := computeLookback(o.StartDay, o.EndDay, jobDetails.Timestamps)
+		startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 		processJobDetails(rawJobResults, jobDetails, startCol, endCol)
 	}
 
@@ -46,9 +46,21 @@ func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1
 	}
 }
 
-func computeLookback(startday, lookback int, timestamps []int) (int, int) {
-	stopTs := time.Now().Add(time.Duration(-1*lookback*24)*time.Hour).Unix() * 1000
-	startTs := time.Now().Add(time.Duration(-1*startday*24)*time.Hour).Unix() * 1000
+func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
+	stopTs := time.Now().Add(time.Duration(-1*(startDay+numDays)*24)*time.Hour).Unix() * 1000
+	startTs := time.Now().Add(time.Duration(-1*startDay*24)*time.Hour).Unix() * 1000
+	if startDay <= -1 { // find the most recent startTime
+		mostRecentTimestamp := 0
+		for _, t := range timestamps {
+			if t > mostRecentTimestamp {
+				mostRecentTimestamp = t
+			}
+		}
+		// more negative numbers mean we have a further offset, so work that out
+		startTs = int64(mostRecentTimestamp) + int64((startDay+1)*24*int(time.Hour.Seconds())*1000)
+		stopTs = startTs - int64(numDays*24*int(time.Hour.Seconds())*1000)
+	}
+
 	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
 	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
 	for i, t := range timestamps {

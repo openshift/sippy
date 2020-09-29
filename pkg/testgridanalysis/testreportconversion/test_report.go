@@ -18,7 +18,7 @@ func PrepareTestReport(
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-	endDay int, // indicates how many days of data to collect
+	numDays int, // indicates how many days of data to collect
 	analysisWarnings []string,
 	reportTimestamp time.Time, // TODO seems like we could derive this from our raw data
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
@@ -33,8 +33,8 @@ func PrepareTestReport(
 	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
-	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
-	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, endDay, standardTestResultFilterFn)
+	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
+	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
 
 	bugFailureCounts := generateSortedBugFailureCounts(allTestResultsByName)
 	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, allJobResults)
