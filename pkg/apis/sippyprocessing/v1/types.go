@@ -67,12 +67,14 @@ type TopLevelIndicators struct {
 
 // PlatformResults
 type PlatformResults struct {
-	PlatformName                          string  `json:"platformName"`
-	JobRunSuccesses                       int     `json:"jobRunSuccesses"`
-	JobRunFailures                        int     `json:"jobRunFailures"`
-	JobRunKnownFailures                   int     `json:"jobRunKnownFailures"`
-	JobRunPassPercentage                  float64 `json:"jobRunPassPercentage"`
-	JobRunPassPercentageWithKnownFailures float64 `json:"jobRunPassPercentageWithKnownFailures"`
+	PlatformName                                      string  `json:"platformName"`
+	JobRunSuccesses                                   int     `json:"jobRunSuccesses"`
+	JobRunFailures                                    int     `json:"jobRunFailures"`
+	JobRunKnownFailures                               int     `json:"jobRunKnownFailures"`
+	JobRunInfrastructureFailures                      int     `json:"jobRunInfrastructureFailures"`
+	JobRunPassPercentage                              float64 `json:"jobRunPassPercentage"`
+	JobRunPassPercentageWithKnownFailures             float64 `json:"jobRunPassPercentageWithKnownFailures"`
+	JobRunPassPercentageWithoutInfrastructureFailures float64 `json:"jobRunPassPercentageWithoutInfrastructureFailures"`
 
 	// JobResults for all jobs that match this platform, ordered by lowest PassPercentage to highest
 	JobResults []JobResult `json:"jobResults"`
@@ -126,14 +128,16 @@ type JobRunResult struct {
 }
 
 type JobResult struct {
-	Name                            string  `json:"name"`
-	Platform                        string  `json:"platform"`
-	Failures                        int     `json:"failures"`
-	KnownFailures                   int     `json:"knownFailures"`
-	Successes                       int     `json:"successes"`
-	PassPercentage                  float64 `json:"passPercentage"`
-	PassPercentageWithKnownFailures float64 `json:"passPercentageWithKnownFailures"`
-	TestGridUrl                     string  `json:"testGridUrl"`
+	Name                                        string  `json:"name"`
+	Platform                                    string  `json:"platform"`
+	Failures                                    int     `json:"failures"`
+	KnownFailures                               int     `json:"knownFailures"`
+	InfrastructureFailures                      int     `json:"infrastructureFailures"`
+	Successes                                   int     `json:"successes"`
+	PassPercentage                              float64 `json:"passPercentage"`
+	PassPercentageWithKnownFailures             float64 `json:"passPercentageWithKnownFailures"`
+	PassPercentageWithoutInfrastructureFailures float64 `json:"passPercentageWithoutInfrastructureFailures"`
+	TestGridUrl                                 string  `json:"testGridUrl"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`

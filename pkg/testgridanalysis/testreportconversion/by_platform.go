@@ -26,6 +26,7 @@ func convertRawDataToByPlatform(
 		successfulJobRuns := 0
 		failedJobRuns := 0
 		knownFailureJobRuns := 0
+		infraFailureJobRuns := 0
 
 		// do this the expensive way until we have a unit test.  This allows us to build the full platform result all at once.
 		// TODO if we are too slow, switch this to only build the job results once
@@ -38,6 +39,7 @@ func convertRawDataToByPlatform(
 			successfulJobRuns += jobResult.Successes
 			failedJobRuns += jobResult.Failures
 			knownFailureJobRuns += jobResult.KnownFailures
+			infraFailureJobRuns += jobResult.InfrastructureFailures
 
 			// combined the test results *before* we filter them
 			allPlatformTestResults = combineTestResults(jobResult.TestResults, allPlatformTestResults)
@@ -54,10 +56,12 @@ func convertRawDataToByPlatform(
 			JobRunSuccesses:                       successfulJobRuns,
 			JobRunFailures:                        failedJobRuns,
 			JobRunKnownFailures:                   knownFailureJobRuns,
+			JobRunInfrastructureFailures:          infraFailureJobRuns,
 			JobRunPassPercentage:                  percent(successfulJobRuns, failedJobRuns),
 			JobRunPassPercentageWithKnownFailures: percent(successfulJobRuns+knownFailureJobRuns, failedJobRuns-knownFailureJobRuns),
-			JobResults:                            jobResults,
-			AllTestResults:                        filteredPlatformTestResults,
+			JobRunPassPercentageWithoutInfrastructureFailures: percent(successfulJobRuns, failedJobRuns-infraFailureJobRuns),
+			JobResults:     jobResults,
+			AllTestResults: filteredPlatformTestResults,
 		})
 	}
 
