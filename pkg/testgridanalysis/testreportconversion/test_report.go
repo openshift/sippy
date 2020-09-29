@@ -30,9 +30,9 @@ func PrepareTestReport(
 
 	standardTestResultFilterFn := standardTestResultFilter(minRuns, successThreshold)
 
-	byPlatform := convertRawDataToByPlatform(rawData.JobResults, bugCache, release, standardTestResultFilterFn)
+	byPlatform := convertRawDataToByPlatform(allJobResults, standardTestResultFilterFn)
 
-	filteredFailureGroups := filterFailureGroups(rawData.JobResults, bugCache, release, failureClusterThreshold)
+	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
 	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
 
@@ -77,8 +77,7 @@ func PrepareTestReport(
 
 func filterFailureGroups(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
+	allTestResultsByName testResultsByName, // we look up individual tests to find their list of bugs
 	failureClusterThreshold int,
 ) []sippyprocessingv1.JobRunResult {
 	filteredJrr := []sippyprocessingv1.JobRunResult{}
@@ -92,7 +91,7 @@ func filterFailureGroups(
 				continue
 			}
 
-			allFailuresKnown := areAllFailuresKnown(rawJRR, bugCache, release)
+			allFailuresKnown := areAllFailuresKnownFromProcessedResults(rawJRR, allTestResultsByName)
 			hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
 
 			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{

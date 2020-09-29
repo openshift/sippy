@@ -78,7 +78,7 @@ func convertRawJobResultToProcessedJobResult(
 		} else if rawJRR.Succeeded {
 			job.Successes++
 		}
-		if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
+		if rawJRR.Failed && areAllFailuresKnown(rawJRR, job.TestResults) {
 			job.KnownFailures++
 		}
 		if rawJRR.SetupStatus != testgridanalysisapi.Success {
@@ -95,22 +95,35 @@ func convertRawJobResultToProcessedJobResult(
 
 func areAllFailuresKnown(
 	rawJRR testgridanalysisapi.RawJobRunResult,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
+	allTestResults []sippyprocessingv1.TestResult,
 ) bool {
 	// check if all the test failures in the run can be attributed to
 	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
 	// would have passed if all our bugs were fixed.
-	allFailuresKnown := true
 	for _, testName := range rawJRR.FailedTestNames {
-		bugs := bugCache.ListBugs(release, "", testName)
-		isKnownFailure := len(bugs) > 0
-		if !isKnownFailure {
-			allFailuresKnown = false
-			break
+		for _, testResult := range allTestResults {
+			if testResult.Name == testName && len(testResult.BugList) == 0 {
+				return false
+			}
 		}
 	}
-	return allFailuresKnown
+	return true
+}
+
+func areAllFailuresKnownFromProcessedResults(
+	rawJRR testgridanalysisapi.RawJobRunResult,
+	allTestResultsByName testResultsByName,
+) bool {
+	// check if all the test failures in the run can be attributed to
+	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
+	// would have passed if all our bugs were fixed.
+	for _, testName := range rawJRR.FailedTestNames {
+		isKnownFailure := len(allTestResultsByName[testName].TestResultAcrossAllJobs.BugList) > 0
+		if !isKnownFailure {
+			return false
+		}
+	}
+	return true
 }
 
 // jobsByPassPercentage sorts from lowest to highest pass percentage
