@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -66,13 +68,37 @@ func combineTestResult(lhs, rhs sippyprocessingv1.TestResult) sippyprocessingv1.
 	combined.Successes += rhs.Successes
 	combined.Flakes += rhs.Flakes
 	combined.PassPercentage = percent(combined.Successes, combined.Failures)
-	// bugs should be the same for now.
-	combined.BugList = rhs.BugList
+	combined.BugList = combineBugLists(lhs.BugList, rhs.BugList)
 
 	return combined
 }
 
+func combineBugLists(lhs, rhs []bugsv1.Bug) []bugsv1.Bug {
+	combined := []bugsv1.Bug{}
+	for _, curr := range lhs {
+		combined = append(combined, curr)
+	}
+	for _, curr := range rhs {
+		if existing := findBug(curr.ID, combined); existing != nil {
+			continue
+		}
+		combined = append(combined, curr)
+	}
+
+	return combined
+}
+
+func findBug(id int64, haystack []bugsv1.Bug) *bugsv1.Bug {
+	for _, curr := range haystack {
+		if curr.ID == id {
+			return &curr
+		}
+	}
+	return nil
+}
+
 func convertRawTestResultToProcessedTestResult(
+	jobName string,
 	rawTestResult testgridanalysisapi.RawTestResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
@@ -83,11 +109,12 @@ func convertRawTestResultToProcessedTestResult(
 		Failures:       rawTestResult.Failures,
 		Flakes:         rawTestResult.Flakes,
 		PassPercentage: percent(rawTestResult.Successes, rawTestResult.Failures),
-		BugList:        bugCache.ListBugs(release, "", rawTestResult.Name),
+		BugList:        bugCache.ListBugs(release, jobName, rawTestResult.Name),
 	}
 }
 
 func convertRawTestResultsToProcessedTestResults(
+	jobName string,
 	rawTestResults map[string]testgridanalysisapi.RawTestResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	release string, // required to limit bugs to those that apply to the release in question
@@ -96,7 +123,7 @@ func convertRawTestResultsToProcessedTestResults(
 	ret := []sippyprocessingv1.TestResult{}
 
 	for _, rawTestResult := range rawTestResults {
-		ret = append(ret, convertRawTestResultToProcessedTestResult(rawTestResult, bugCache, release))
+		ret = append(ret, convertRawTestResultToProcessedTestResult(jobName, rawTestResult, bugCache, release))
 	}
 
 	sort.Stable(testResultsByPassPercentage(ret))

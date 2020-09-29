@@ -112,8 +112,11 @@ func updateBugCacheForJobResults(bugCache buganalysis.BugCache, rawJobResults te
 
 	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
 	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobResults(rawJobResults.JobResults)
-	err := bugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...)
-	if err != nil {
+	if err := bugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...); err != nil {
+		klog.Error(err)
+		warnings = append(warnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
+	}
+	if err := bugCache.UpdateJobBlockers(sets.StringKeySet(rawJobResults.JobResults).List()...); err != nil {
 		klog.Error(err)
 		warnings = append(warnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
