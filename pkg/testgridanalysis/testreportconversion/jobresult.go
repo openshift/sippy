@@ -81,10 +81,14 @@ func convertRawJobResultToProcessedJobResult(
 		if rawJRR.Failed && areAllFailuresKnown(rawJRR, bugCache, release) {
 			job.KnownFailures++
 		}
+		if rawJRR.SetupStatus != testgridanalysisapi.Success {
+			job.InfrastructureFailures++
+		}
 	}
 
 	job.PassPercentage = percent(job.Successes, job.Failures)
 	job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
+	job.PassPercentageWithoutInfrastructureFailures = percent(job.Successes, job.Failures-job.InfrastructureFailures)
 
 	return job
 }

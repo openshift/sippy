@@ -11,12 +11,14 @@ import (
 
 // PlatformResults
 type jobAggregationResult struct {
-	AggregationName                             string
-	JobRunSuccesses                             int
-	JobRunFailures                              int
-	JobRunKnownJobRunFailures                   int
-	JobRunPassPercentage                        float64
-	JobRunPassPercentageWithKnownJobRunFailures float64
+	AggregationName                                   string
+	JobRunSuccesses                                   int
+	JobRunFailures                                    int
+	JobRunKnownJobRunFailures                         int
+	JobRunInfrastructureFailures                      int
+	JobRunPassPercentage                              float64
+	JobRunPassPercentageWithKnownJobRunFailures       float64
+	JobRunPassPercentageWithoutInfrastructureFailures float64
 
 	// JobResults for all jobs that match this platform, ordered by lowest JobRunPassPercentage to highest
 	JobResults []sippyprocessingv1.JobResult
@@ -30,14 +32,16 @@ func convertPlatformToAggregationResult(platformResult *sippyprocessingv1.Platfo
 		return nil
 	}
 	return &jobAggregationResult{
-		AggregationName:                             platformResult.PlatformName,
-		JobRunSuccesses:                             platformResult.JobRunSuccesses,
-		JobRunFailures:                              platformResult.JobRunFailures,
-		JobRunKnownJobRunFailures:                   platformResult.JobRunKnownFailures,
-		JobRunPassPercentage:                        platformResult.JobRunPassPercentage,
-		JobRunPassPercentageWithKnownJobRunFailures: platformResult.JobRunPassPercentageWithKnownFailures,
-		JobResults:                                  platformResult.JobResults,
-		AllTestResults:                              platformResult.AllTestResults,
+		AggregationName:                                   platformResult.PlatformName,
+		JobRunSuccesses:                                   platformResult.JobRunSuccesses,
+		JobRunFailures:                                    platformResult.JobRunFailures,
+		JobRunKnownJobRunFailures:                         platformResult.JobRunKnownFailures,
+		JobRunInfrastructureFailures:                      platformResult.JobRunInfrastructureFailures,
+		JobRunPassPercentage:                              platformResult.JobRunPassPercentage,
+		JobRunPassPercentageWithKnownJobRunFailures:       platformResult.JobRunPassPercentageWithKnownFailures,
+		JobRunPassPercentageWithoutInfrastructureFailures: platformResult.JobRunPassPercentageWithoutInfrastructureFailures,
+		JobResults:                                        platformResult.JobResults,
+		AllTestResults:                                    platformResult.AllTestResults,
 	}
 }
 
@@ -156,11 +160,11 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			testsCollapseName,
 			jobsCollapseName,
 			b.currAggregationResult.JobRunPassPercentage,
-			b.currAggregationResult.JobRunPassPercentageWithKnownJobRunFailures,
+			b.currAggregationResult.JobRunPassPercentageWithoutInfrastructureFailures,
 			b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures,
 			arrow,
 			b.prevAggregationResult.JobRunPassPercentage,
-			b.prevAggregationResult.JobRunPassPercentageWithKnownJobRunFailures,
+			b.prevAggregationResult.JobRunPassPercentageWithoutInfrastructureFailures,
 			b.prevAggregationResult.JobRunSuccesses+b.prevAggregationResult.JobRunFailures,
 		)
 	} else {
@@ -170,7 +174,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			testsCollapseName,
 			jobsCollapseName,
 			b.currAggregationResult.JobRunPassPercentage,
-			b.currAggregationResult.JobRunPassPercentageWithKnownJobRunFailures,
+			b.currAggregationResult.JobRunPassPercentageWithoutInfrastructureFailures,
 			b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures,
 		)
 	}

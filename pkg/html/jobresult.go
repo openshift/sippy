@@ -117,11 +117,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
-			b.currJobResult.PassPercentageWithKnownFailures,
+			b.currJobResult.PassPercentageWithoutInfrastructureFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
 			arrow,
 			b.prevJobResult.PassPercentage,
-			b.prevJobResult.PassPercentageWithKnownFailures,
+			b.prevJobResult.PassPercentageWithoutInfrastructureFailures,
 			b.prevJobResult.Successes+b.prevJobResult.Failures,
 		)
 	} else {
@@ -129,7 +129,7 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.TestGridUrl, b.currJobResult.Name, collapseName,
 			b.currJobResult.PassPercentage,
-			b.currJobResult.PassPercentageWithKnownFailures,
+			b.currJobResult.PassPercentageWithoutInfrastructureFailures,
 			b.currJobResult.Successes+b.currJobResult.Failures,
 		)
 	}

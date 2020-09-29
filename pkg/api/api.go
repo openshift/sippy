@@ -189,12 +189,12 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.PassPercentage,
-						ProjectedPercentage: v.PassPercentageWithKnownFailures,
+						ProjectedPercentage: v.PassPercentageWithoutInfrastructureFailures,
 						Runs:                v.Successes + v.Failures,
 					},
 					"prev": sippyv1.PassRate{
 						Percentage:          prev.PassPercentage,
-						ProjectedPercentage: prev.PassPercentageWithKnownFailures,
+						ProjectedPercentage: prev.PassPercentageWithoutInfrastructureFailures,
 						Runs:                prev.Successes + prev.Failures,
 					},
 				},
@@ -206,7 +206,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.PassPercentage,
-						ProjectedPercentage: v.PassPercentageWithKnownFailures,
+						ProjectedPercentage: v.PassPercentageWithoutInfrastructureFailures,
 						Runs:                v.Successes + v.Failures,
 					},
 				},
