@@ -165,7 +165,7 @@ func GetBugzillaComponentForSig(sig string) string {
 
 func addOperatorMapping(operator, bugzillaComponent string) error {
 	if !ValidBugzillaComponents.Has(bugzillaComponent) {
-		return fmt.Errorf("%q is not a valid bugzilla component")
+		return fmt.Errorf("%q is not a valid bugzilla component", bugzillaComponent)
 	}
 	operatorToBugzillaComponent[operator] = bugzillaComponent
 	return nil
@@ -173,7 +173,7 @@ func addOperatorMapping(operator, bugzillaComponent string) error {
 
 func addSigMapping(sig, bugzillaComponent string) error {
 	if !ValidBugzillaComponents.Has(bugzillaComponent) {
-		return fmt.Errorf("%q is not a valid bugzilla component")
+		return fmt.Errorf("%q is not a valid bugzilla component", bugzillaComponent)
 	}
 	sigToBugzillaComponent[sig] = bugzillaComponent
 	return nil
