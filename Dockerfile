@@ -1,4 +1,4 @@
-FROM golang:1.13.10
+FROM golang:1.15.2
 #RUN INSTALL_PKGS="golang" && \
 #    dnf install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
 #    rpm -V $INSTALL_PKGS && \

@@ -2,6 +2,10 @@
 // long term, I think these types become internal under this package.
 package testgridanalysisapi
 
+import (
+	"regexp"
+)
+
 // 1. TestGrid contains jobs
 // 2. Jobs contain JobRuns.  Jobs have associated variants/platforms.
 // 3. JobRuns contain Tests.
@@ -46,7 +50,7 @@ type RawJobRunResult struct {
 	// Used to create synthentic tests.
 	SetupStatus string
 	// Used to create synthentic tests.
-	InstallOperators []OperatorState
+	SadOperators []OperatorState
 	// Used to create synthentic tests.
 	UpgradeOperators []OperatorState
 }
@@ -58,7 +62,6 @@ type OperatorState struct {
 }
 
 const (
-	OperatorInstallPrefix = "operator install "
 	OperatorUpgradePrefix = "Operator upgrade "
 
 	InfrastructureTestName = `[sig-sippy] infrastructure should work`
@@ -68,4 +71,8 @@ const (
 
 	Success = "Success"
 	Failure = "Failure"
+)
+
+var (
+	OperatorConditionsTestCaseName = regexp.MustCompile("operator (install|conditions) (?P<operator>.*)")
 )

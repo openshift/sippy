@@ -133,8 +133,10 @@ func getBugzillaComponentsFromTestResult(testResult sippyprocessingv1.TestResult
 
 	// If we didn't have a bug, use the test name itself to identify a likely victim/blame
 	switch {
-	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix):
-		operatorName := testResult.Name[len(testgridanalysisapi.OperatorInstallPrefix):]
+	case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testResult.Name):
+		matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(testResult.Name)
+		operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+		operatorName := matches[operatorIndex]
 		return []string{testidentification.GetBugzillaComponentForOperator(operatorName)}
 
 	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix):
