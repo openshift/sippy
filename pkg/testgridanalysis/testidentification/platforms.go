@@ -5,7 +5,6 @@ import (
 	"regexp"
 
 	"github.com/openshift/sippy/pkg/util/sets"
-
 	"k8s.io/klog"
 )
 
@@ -40,6 +39,7 @@ var (
 		"gcp",
 		"metal-upi",
 		"metal-ipi",
+		"never-stable",
 		"openstack",
 		"ovirt",
 		"ovn",
@@ -49,7 +49,6 @@ var (
 		"realtime",
 		"s390x",
 		"serial",
-		"unassigned",
 		"upgrade",
 		"vsphere-ipi",
 		"vsphere-upi",
@@ -71,9 +70,6 @@ func FindPlatform(name string) []string {
 	platforms := []string{}
 
 	defer func() {
-		if len(platforms) == 0 {
-			platforms = append(platforms, "unassigned")
-		}
 		for _, platform := range platforms {
 			if !AllPlatforms.Has(platform) {
 				panic(fmt.Sprintf("coding error: missing platform: %q", platform))
@@ -82,7 +78,7 @@ func FindPlatform(name string) []string {
 	}()
 
 	if IsJobNeverStable(name) {
-		return platforms
+		return []string{"never-stable"}
 	}
 
 	// if it's a promotion job, it can't be a part of any other variant aggregation
