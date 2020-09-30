@@ -166,3 +166,28 @@ func (filterFn testResultFilterFunc) filterTestResults(testResults []sippyproces
 
 	return filteredResults
 }
+
+func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult) sippyprocessingv1.FailingTestResult {
+	filteredFailingTestResult := sippyprocessingv1.FailingTestResult{
+		TestName:                in.TestName,
+		TestResultAcrossAllJobs: sippyprocessingv1.TestResult{Name: in.TestName},
+		JobResults:              nil,
+	}
+
+	for _, jobResult := range in.JobResults {
+		if testidentification.IsJobNeverStable(jobResult.Name) {
+			continue
+		}
+		filteredFailingTestResult.JobResults = append(filteredFailingTestResult.JobResults, jobResult)
+	}
+	sort.Stable(failingTestJobResultByJobPassPercentage(filteredFailingTestResult.JobResults))
+
+	for _, jobResult := range filteredFailingTestResult.JobResults {
+		filteredFailingTestResult.TestResultAcrossAllJobs.BugList = in.TestResultAcrossAllJobs.BugList
+		filteredFailingTestResult.TestResultAcrossAllJobs.Successes += jobResult.TestSuccesses
+		filteredFailingTestResult.TestResultAcrossAllJobs.Failures += jobResult.TestFailures
+	}
+	filteredFailingTestResult.TestResultAcrossAllJobs.PassPercentage = percent(filteredFailingTestResult.TestResultAcrossAllJobs.Successes, filteredFailingTestResult.TestResultAcrossAllJobs.Failures)
+
+	return filteredFailingTestResult
+}

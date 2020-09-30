@@ -42,9 +42,10 @@ func PrepareTestReport(
 	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
 	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
 
-	infra := allTestResultsByName[testgridanalysisapi.InfrastructureTestName]
-	install := allTestResultsByName[testgridanalysisapi.InstallTestName]
-	upgrade := allTestResultsByName[testgridanalysisapi.UpgradeTestName]
+	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
+	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName])
+	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName])
+	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName])
 
 	testReport := sippyprocessingv1.TestReport{
 		Release:   release,
