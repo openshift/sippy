@@ -59,16 +59,13 @@ func getTestResultsByName(jobResults []sippyprocessingv1.JobResult) testResultsB
 
 				failingTestResult.TestResultAcrossAllJobs = combineTestResult(failingTestResult.TestResultAcrossAllJobs, testResult)
 
-				// if the job hasn't run at least 7 times, don't add it to the list
-				if testResult.Failures+testResult.Successes >= 7 && testResult.Failures > 0 {
-					failingTestResult.JobResults = append(failingTestResult.JobResults, sippyprocessingv1.FailingTestJobResult{
-						Name:           jobResult.Name,
-						TestFailures:   testResult.Failures,
-						TestSuccesses:  testResult.Successes,
-						PassPercentage: testResult.PassPercentage,
-						TestGridUrl:    jobResult.TestGridUrl,
-					})
-				}
+				failingTestResult.JobResults = append(failingTestResult.JobResults, sippyprocessingv1.FailingTestJobResult{
+					Name:           jobResult.Name,
+					TestFailures:   testResult.Failures,
+					TestSuccesses:  testResult.Successes,
+					PassPercentage: testResult.PassPercentage,
+					TestGridUrl:    jobResult.TestGridUrl,
+				})
 				break
 			}
 		}

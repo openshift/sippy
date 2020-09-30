@@ -49,22 +49,41 @@ var (
 		"realtime",
 		"s390x",
 		"serial",
+		"unassigned",
 		"upgrade",
 		"vsphere-ipi",
 		"vsphere-upi",
 	)
+
+	// jobsNeverStableForPlatforms is a list of jobs that have never been stable (not were stable and broke)
+	// As we phase these jobs in, they should be excluded from "normal" variants.
+	// These jobs are still listed as jobs in total and when individual tests fail, they will still be listed with these jobs as causes.
+	jobsNeverStableForPlatforms = sets.NewString(
+		"release-openshift-ocp-installer-e2e-ovirt-upgrade-4.5-stable-to-4.6-ci",
+	)
 )
+
+func IsJobNeverStable(jobName string) bool {
+	return jobsNeverStableForPlatforms.Has(jobName)
+}
 
 func FindPlatform(name string) []string {
 	platforms := []string{}
 
 	defer func() {
+		if len(platforms) == 0 {
+			platforms = append(platforms, "unassigned")
+		}
 		for _, platform := range platforms {
 			if !AllPlatforms.Has(platform) {
 				panic(fmt.Sprintf("coding error: missing platform: %q", platform))
 			}
 		}
 	}()
+
+	if IsJobNeverStable(name) {
+		return platforms
+	}
 
 	// if it's a promotion job, it can't be a part of any other variant aggregation
 	if promoteRegex.MatchString(name) {
