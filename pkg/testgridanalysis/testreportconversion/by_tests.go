@@ -34,6 +34,8 @@ func (a testResultsByName) toOrderedList() []sippyprocessingv1.FailingTestResult
 	return ret
 }
 
+// getTestResultsByName takes the job results and returns a map of testNames to results for that particular test across
+// all the jobs.
 func getTestResultsByName(jobResults []sippyprocessingv1.JobResult) testResultsByName {
 	testsByName := testResultsByName{}
 
@@ -55,6 +57,10 @@ func getTestResultsByName(jobResults []sippyprocessingv1.JobResult) testResultsB
 			for _, testResult := range jobResult.TestResults {
 				if testResult.Name != failingTestResult.TestName {
 					continue
+				}
+				// don't include jobs that didn't run the test.
+				if testResult.Successes+testResult.Failures == 0 {
+					break
 				}
 
 				failingTestResult.TestResultAcrossAllJobs = combineTestResult(failingTestResult.TestResultAcrossAllJobs, testResult)
