@@ -28,7 +28,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			<td>
 				%[2]s
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Jobs</button>
+					%s
 			</td>
 			<td>
 				%0.2f%% <span class="text-nowrap">(%d runs)</span>
@@ -47,7 +47,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				<td>
 					%[2]s
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Jobs</button>
+					%s
 				</td>
 				<td>
 					%0.2f%% <span class="text-nowrap">(%d runs)</span>
@@ -67,20 +67,12 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 
 	for _, v := range failuresByBugzillaComponent {
 		safeBZJob := makeSafeForCollapseName(fmt.Sprintf("%s---component", v.Name))
+		button := ""
+		button += "					" + getButtonHTML(safeBZJob, "Expand Failing Jobs")
 
 		highestFailPercentage := v.JobsFailed[0].FailPercentage
 		lowestPassPercentage := 100 - highestFailPercentage
-		rowColor := ""
-		switch {
-		case lowestPassPercentage > colors.minGreenPercent:
-			rowColor = "table-success"
-		case lowestPassPercentage > colors.minYellowPercent:
-			rowColor = "table-warning"
-		case lowestPassPercentage > colors.minRedPercent:
-			rowColor = "table-danger"
-		default:
-			rowColor = "error"
-		}
+		rowColor := colors.getColor(lowestPassPercentage)
 
 		prev := util.FindBugzillaJobFailures(v.Name, failuresByBugzillaComponentPrev)
 		if prev != nil && len(prev.JobsFailed) > 0 {
@@ -92,7 +84,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			s = s + fmt.Sprintf(bzGroupTemplate,
 				rowColor,
 				v.Name,
-				safeBZJob,
+				button,
 				lowestPassPercentage,
 				v.JobsFailed[0].TotalRuns, // this is the total runs for the current, worst job which matches the pass percentage
 				arrow,
@@ -103,7 +95,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 			s = s + fmt.Sprintf(naTemplate,
 				rowColor,
 				v.Name,
-				safeBZJob,
+				button,
 				lowestPassPercentage,
 				v.JobsFailed[0].TotalRuns, // this is the total runs for the current, worst job which matches the pass percentage
 			)
@@ -115,8 +107,6 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				break
 			}
 			count++
-
-			bzJobTuple := makeSafeForCollapseName(fmt.Sprintf("%s---%s", v.Name, failingJob.JobName))
 
 			// given the name, we can actually look up the original JobResult.  There aren't that many, just iterate.
 			fullJobResult := util.FindJobResultForJobName(failingJob.JobName, report.ByJob)
@@ -158,10 +148,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 				}
 			}
 
-			jobHTML := newJobResultRenderer("by-bz-component-"+bzJobTuple, currJobResult, release).
-				withPrevious(prevJobResult).
+			jobHTML := newJobResultRendererFromJobResult(safeBZJob, currJobResult, release).
+				withPreviousJobResult(prevJobResult).
 				withColors(colors).
-				startCollapsedAs(safeBZJob).
+				startCollapsed().
 				withIndent(1).
 				toHTML()
 			s += jobHTML

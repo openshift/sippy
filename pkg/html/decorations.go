@@ -3,6 +3,7 @@ package html
 import (
 	"fmt"
 	"regexp"
+	"text/template"
 )
 
 const (
@@ -59,4 +60,14 @@ var collapseNameRemoveRegex = regexp.MustCompile(`[. ,:\(\)\[\]]`)
 
 func makeSafeForCollapseName(in string) string {
 	return collapseNameRemoveRegex.ReplaceAllString(in, "")
+}
+
+func getButtonHTML(sectionName, buttonName string) string {
+	buttonHTML := `<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".{{ .sectionName }}" aria-expanded="false" aria-controls="{{ .sectionName }}">{{ .buttonName }}</button>`
+	buttonHTMLTemplate := template.Must(template.New("buttonHTML").Parse(buttonHTML))
+
+	return mustSubstitute(buttonHTMLTemplate, map[string]string{
+		"sectionName": sectionName,
+		"buttonName":  buttonName,
+	})
 }

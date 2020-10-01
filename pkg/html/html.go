@@ -190,9 +190,9 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 
 	for _, currJobResult := range report.FrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
-		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
+		jobHTML := newJobResultRendererFromJobResult("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPreviousJobResult(prevJobResult).
 			toHTML()
 
 		s += jobHTML
@@ -215,9 +215,9 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 
 	for _, currJobResult := range report.InfrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
-		jobHTML := newJobResultRenderer("by-infrequent-job-name", currJobResult, release).
+		jobHTML := newJobResultRendererFromJobResult("by-infrequent-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPreviousJobResult(prevJobResult).
 			toHTML()
 
 		s += jobHTML

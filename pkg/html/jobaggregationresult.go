@@ -2,8 +2,6 @@ package html
 
 import (
 	"fmt"
-	"net/url"
-	"regexp"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
@@ -101,8 +99,6 @@ func (b *jobAggregationResultRenderBuilder) startCollapsedAs(collapsedAs string)
 }
 
 func (b *jobAggregationResultRenderBuilder) toHTML() string {
-	testsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.AggregationName + "---tests")
-	jobsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.AggregationName + "---jobs")
 
 	s := ""
 
@@ -113,8 +109,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 				<td>
 					%s
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Jobs</button>
+					%s
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -133,8 +128,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 				<td>
 					%s
 					<p>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[3]s" aria-expanded="false" aria-controls="%[3]s">Expand Failing Tests</button>
-					<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".%[4]s" aria-expanded="false" aria-controls="%[4]s">Expand Jobs</button>
+					%s
 				</td>
 				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
@@ -151,14 +145,19 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		class += " collapse " + b.collapsedAs
 	}
 
+	testsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.AggregationName + "---tests")
+	jobsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.AggregationName + "---jobs")
+	button := ""
+	button += "					" + getButtonHTML(testsCollapseName, "Expand Failing Tests")
+	button += "					" + getButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+
 	if b.prevAggregationResult != nil {
 		arrow := getArrow(b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures, b.currAggregationResult.JobRunPassPercentage, b.prevAggregationResult.JobRunPassPercentage)
 
 		s = s + fmt.Sprintf(template,
 			class,
 			b.currAggregationResult.AggregationName,
-			testsCollapseName,
-			jobsCollapseName,
+			button,
 			b.currAggregationResult.JobRunPassPercentage,
 			b.currAggregationResult.JobRunPassPercentageWithoutInfrastructureFailures,
 			b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures,
@@ -171,8 +170,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		s = s + fmt.Sprintf(naTemplate,
 			class,
 			b.currAggregationResult.AggregationName,
-			testsCollapseName,
-			jobsCollapseName,
+			button,
 			b.currAggregationResult.JobRunPassPercentage,
 			b.currAggregationResult.JobRunPassPercentageWithoutInfrastructureFailures,
 			b.currAggregationResult.JobRunSuccesses+b.currAggregationResult.JobRunFailures,
@@ -196,10 +194,10 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			prevJob = util.FindJobResultForJobName(job.Name, b.prevAggregationResult.JobResults)
 		}
 
-		jobRows = jobRows + newJobResultRenderer(jobsCollapseName, job, b.release).
-			withPrevious(prevJob).
+		jobRows = jobRows + newJobResultRendererFromJobResult(jobsCollapseName, job, b.release).
+			withPreviousJobResult(prevJob).
 			withMaxTestResultsToShow(b.maxTestResultsToShow).
-			startCollapsedAs(jobsCollapseName).
+			startCollapsed().
 			withIndent(1).
 			toHTML()
 
@@ -227,19 +225,23 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		}
 		testCount--
 
-		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.Name))
-		bugHTML := bugHTMLForTest(test.BugList, b.release, "", test.Name)
+		var prev *sippyprocessingv1.TestResult
+		if b.prevAggregationResult != nil {
+			for _, prevInstance := range b.prevAggregationResult.AllTestResults {
+				if prevInstance.Name == test.Name {
+					prev = &prevInstance
+					break
+				}
+			}
+		}
 
-		testRows = testRows + fmt.Sprintf(testGroupTemplate,
-			testsCollapseName,
-			60,
-			test.Name,
-			getCIJobSubstring(b.currAggregationResult.AggregationName),
-			encodedTestName,
-			bugHTML,
-			test.PassPercentage,
-			test.Successes+test.Failures,
-		)
+		testRows = testRows +
+			newTestResultRendererForTestResult(testsCollapseName, test, b.release).
+				withIndent(1).
+				withPreviousTestResult(prev).
+				startCollapsed().
+				toHTML()
+
 		testRowCount++
 	}
 	if testAdditionalMatches > 0 {
