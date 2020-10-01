@@ -36,6 +36,8 @@ type TestReport struct {
 	TopFailingTestsWithBug []FailingTestResult `json:"topFailingTestsWithBug"`
 	// TopFailingTestsWithoutBug holds the top 50 failing tests that do not have bugs, sorted from low to high pass rate
 	TopFailingTestsWithoutBug []FailingTestResult `json:"topFailingTestsWithoutBug"`
+	// CuratedTests holds a list of tests that have been identified as, "needs watching".  sorted from low to high pass rate
+	CuratedTests []FailingTestResult `json:"curatedTests"`
 
 	// BugsByFailureCount lists the bugs by the most frequently failed
 	// TODO add information about which FailingTestResult they reference and provide expansion links to tests and jobs

@@ -52,7 +52,29 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 	return s
 }
 
-func topFailingTestsRows(topFailingTests, allTests []sippyprocessingv1.FailingTestResult, release string) string {
+func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {
+	// test name | bug | pass rate | higher/lower | pass rate
+	s := fmt.Sprintf(`
+	<table class="table">
+		<tr>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Curated TRT tests for whatever reason they see fit, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="CuratedTRTTests" href="#CuratedTRTTests">Curated TRT Tests</a></th>
+		</tr>
+		<tr>
+			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
+		</tr>
+		<tr>
+			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
+		</tr>
+	`, numDays)
+
+	s += topFailingTestsRows(curr.CuratedTests, prev.ByTest, release)
+
+	s = s + "</table>"
+
+	return s
+}
+
+func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTestResult, release string) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
 
@@ -68,7 +90,7 @@ func topFailingTestsRows(topFailingTests, allTests []sippyprocessingv1.FailingTe
 			break
 		}
 
-		testPrev := util.FindFailedTestResult(testResult.TestName, allTests)
+		testPrev := util.FindFailedTestResult(testResult.TestName, prevTests)
 
 		s = s +
 			newTestResultRendererForFailedTestResult("", testResult, release).
