@@ -159,12 +159,12 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numD
 	`, numDays)
 
 	for _, currPlatform := range report.ByPlatform {
-		jobHTML := newJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
+		platformHTML := newJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPreviousPlatformResults(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform)).
 			toHTML()
 
-		s += jobHTML
+		s += platformHTML
 	}
 
 	s = s + "</table>"

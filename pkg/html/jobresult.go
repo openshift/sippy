@@ -7,13 +7,11 @@ import (
 )
 
 type jobResultDisplay struct {
-	displayName                        string
-	testGridURL                        string
-	displayPercent                     float64
-	displayPercentWithoutInfraFailures float64
-	totalRuns                          int
-	successfulRuns                     int
-	failedRuns                         int
+	displayName            string
+	testGridURL            string
+	displayPercent         float64
+	parenDisplayPercentage float64
+	totalRuns              int
 
 	testResults []testResultDisplay
 }
@@ -35,16 +33,30 @@ type jobResultRenderBuilder struct {
 
 func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 	ret := jobResultDisplay{
-		displayName:                        in.Name,
-		testGridURL:                        in.TestGridUrl,
-		displayPercent:                     in.PassPercentage,
-		displayPercentWithoutInfraFailures: in.PassPercentageWithoutInfrastructureFailures,
-		totalRuns:                          in.Successes + in.Failures,
-		successfulRuns:                     in.Successes,
-		failedRuns:                         in.Failures,
+		displayName:            in.Name,
+		testGridURL:            in.TestGridUrl,
+		displayPercent:         in.PassPercentage,
+		parenDisplayPercentage: in.PassPercentageWithoutInfrastructureFailures,
+		totalRuns:              in.Successes + in.Failures,
 	}
 
 	for _, testResult := range in.TestResults {
+		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
+	}
+
+	return ret
+}
+
+func bugzillaJobResultToDisplay(in sippyprocessingv1.BugzillaJobResult) jobResultDisplay {
+	ret := jobResultDisplay{
+		displayName:            in.JobName,
+		testGridURL:            in.JobName,
+		displayPercent:         100.0 - in.FailPercentage,
+		parenDisplayPercentage: 100.0 - in.FailPercentage,
+		totalRuns:              in.TotalRuns,
+	}
+
+	for _, testResult := range in.Failures {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
 	}
 
@@ -58,9 +70,7 @@ func failingJobResultToDisplay(in sippyprocessingv1.FailingTestJobResult) jobRes
 		displayPercent: in.PassPercentage,
 		// TODO gather this info
 		//displayPercentWithoutInfraFailures: in.PassPercentageWithoutInfrastructureFailures,
-		totalRuns:      in.TestSuccesses + in.TestFailures,
-		successfulRuns: in.TestSuccesses,
-		failedRuns:     in.TestFailures,
+		totalRuns: in.TestSuccesses + in.TestFailures,
 	}
 
 	return ret
@@ -176,11 +186,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			b.currJobResult.displayPercent,
-			b.currJobResult.displayPercentWithoutInfraFailures,
+			b.currJobResult.parenDisplayPercentage,
 			b.currJobResult.totalRuns,
 			arrow,
 			b.prevJobResult.displayPercent,
-			b.prevJobResult.displayPercentWithoutInfraFailures,
+			b.prevJobResult.parenDisplayPercentage,
 			b.prevJobResult.totalRuns,
 		)
 	} else {
@@ -188,7 +198,7 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			b.currJobResult.displayPercent,
-			b.currJobResult.displayPercentWithoutInfraFailures,
+			b.currJobResult.parenDisplayPercentage,
 			b.currJobResult.totalRuns,
 		)
 	}

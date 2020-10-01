@@ -8,10 +8,10 @@ import (
 
 // PlatformResults
 type jobAggregationDisplay struct {
-	displayName             string
-	totalJobRuns            int
-	displayPercentage       float64
-	parentDisplayPercentage float64
+	displayName            string
+	totalJobRuns           int
+	displayPercentage      float64
+	parenDisplayPercentage float64
 
 	// jobResults for all jobs that match this platform, ordered by lowest JobRunPassPercentage to highest
 	jobResults []jobResultDisplay
@@ -22,10 +22,10 @@ type jobAggregationDisplay struct {
 
 func platformResultToDisplay(in sippyprocessingv1.PlatformResults) jobAggregationDisplay {
 	ret := jobAggregationDisplay{
-		displayName:             in.PlatformName,
-		totalJobRuns:            in.JobRunSuccesses + in.JobRunFailures,
-		displayPercentage:       in.JobRunPassPercentage,
-		parentDisplayPercentage: in.JobRunPassPercentageWithoutInfrastructureFailures,
+		displayName:            in.PlatformName,
+		totalJobRuns:           in.JobRunSuccesses + in.JobRunFailures,
+		displayPercentage:      in.JobRunPassPercentage,
+		parenDisplayPercentage: in.JobRunPassPercentageWithoutInfrastructureFailures,
 	}
 
 	for _, jobResult := range in.JobResults {
@@ -33,6 +33,22 @@ func platformResultToDisplay(in sippyprocessingv1.PlatformResults) jobAggregatio
 	}
 	for _, testResult := range in.AllTestResults {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
+	}
+
+	return ret
+}
+
+func bugzillaComponentReportToDisplay(in sippyprocessingv1.SortedBugzillaComponentResult) jobAggregationDisplay {
+	worstJob := in.JobsFailed[0]
+	ret := jobAggregationDisplay{
+		displayName:            in.Name,
+		totalJobRuns:           worstJob.TotalRuns,
+		displayPercentage:      100.0 - worstJob.FailPercentage,
+		parenDisplayPercentage: 100.0 - worstJob.FailPercentage, // this is the same because infrastructure isn't different for these.
+	}
+
+	for _, jobResult := range in.JobsFailed {
+		ret.jobResults = append(ret.jobResults, bugzillaJobResultToDisplay(jobResult))
 	}
 
 	return ret
@@ -67,8 +83,13 @@ func newJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggre
 		},
 	}
 }
+
 func newJobAggregationResultRendererFromPlatformResults(sectionBlock string, curr sippyprocessingv1.PlatformResults, release string) *jobAggregationResultRenderBuilder {
 	return newJobAggregationResultRenderer(sectionBlock, platformResultToDisplay(curr), release)
+}
+
+func newJobAggregationResultRendererFromBugzillaComponentResult(sectionBlock string, curr sippyprocessingv1.SortedBugzillaComponentResult, release string) *jobAggregationResultRenderBuilder {
+	return newJobAggregationResultRenderer(sectionBlock, bugzillaComponentReportToDisplay(curr), release)
 }
 
 func (b *jobAggregationResultRenderBuilder) withPrevious(prevJobResult *jobAggregationDisplay) *jobAggregationResultRenderBuilder {
@@ -82,6 +103,16 @@ func (b *jobAggregationResultRenderBuilder) withPreviousPlatformResults(prev *si
 		return b
 	}
 	t := platformResultToDisplay(*prev)
+	b.prevAggregationResult = &t
+	return b
+}
+
+func (b *jobAggregationResultRenderBuilder) withPreviousBugzillaComponentResult(prev *sippyprocessingv1.SortedBugzillaComponentResult) *jobAggregationResultRenderBuilder {
+	if prev == nil {
+		b.prevAggregationResult = nil
+		return b
+	}
+	t := bugzillaComponentReportToDisplay(*prev)
 	b.prevAggregationResult = &t
 	return b
 }
@@ -156,7 +187,9 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 	testsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
 	jobsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
 	button := ""
-	button += "					" + getButtonHTML(testsCollapseName, "Expand Failing Tests")
+	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
+		button += "					" + getButtonHTML(testsCollapseName, "Expand Failing Tests")
+	}
 	button += "					" + getButtonHTML(jobsCollapseName, "Expand Failing Jobs")
 
 	if b.prevAggregationResult != nil {
@@ -167,11 +200,11 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			b.currAggregationResult.displayName,
 			button,
 			b.currAggregationResult.displayPercentage,
-			b.currAggregationResult.parentDisplayPercentage,
+			b.currAggregationResult.parenDisplayPercentage,
 			b.currAggregationResult.totalJobRuns,
 			arrow,
 			b.prevAggregationResult.displayPercentage,
-			b.prevAggregationResult.parentDisplayPercentage,
+			b.prevAggregationResult.parenDisplayPercentage,
 			b.prevAggregationResult.totalJobRuns,
 		)
 	} else {
@@ -180,7 +213,7 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			b.currAggregationResult.displayName,
 			button,
 			b.currAggregationResult.displayPercentage,
-			b.currAggregationResult.parentDisplayPercentage,
+			b.currAggregationResult.parenDisplayPercentage,
 			b.currAggregationResult.totalJobRuns,
 		)
 	}
@@ -225,6 +258,11 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobsCollapseName)
 	} else {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
+	}
+
+	// if we have no test results, we're done
+	if len(b.currAggregationResult.testResults) == 0 {
+		return s
 	}
 
 	testCount := b.maxTestResultsToShow
