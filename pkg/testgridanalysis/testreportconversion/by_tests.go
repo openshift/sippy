@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	"github.com/openshift/sippy/pkg/util/sets"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -21,32 +23,9 @@ func getTopFailingTestsWithoutBug(testResultsByName testResultsByName, testResul
 	}, testResultFilterFn)
 }
 
-// curatedTestSubstrings is keyed by release.  This is a list of tests that are important enough to individually watch.
-// Whoever is running or working on TRT gets freedom to choose 10-20 of these for whatever reason they need.  At the moment,
-// we're chasing problems where pods are not running reliably and we have to track it down.
-var curatedTestSubstrings = map[string][]string{
-	"4.6": []string{
-		"[Feature:SCC][Early] should not have pod creation failures during install",
-		"infrastructure should work",
-		"install should work",
-		"Kubernetes APIs remain available",
-		"OAuth APIs remain available",
-		"OpenShift APIs remain available",
-		"Pod Container Status should never report success for a pending container",
-		"pods should never transition back to pending",
-		"pods should successfully create sandboxes",
-		"upgrade should work",
-	},
-}
-
 func getCuratedTests(release string, testResultsByName testResultsByName) []sippyprocessingv1.FailingTestResult {
 	return getTopFailingTests(testResultsByName, func(testResult sippyprocessingv1.TestResult) bool {
-		for _, substring := range curatedTestSubstrings[release] {
-			if strings.Contains(testResult.Name, substring) {
-				return true
-			}
-		}
-		return false
+		return testidentification.IsCuratedTest(release, testResult.Name)
 	}, acceptAllTests)
 }
 
