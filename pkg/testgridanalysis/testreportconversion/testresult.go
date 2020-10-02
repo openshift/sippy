@@ -105,6 +105,10 @@ func convertRawTestResultsToProcessedTestResults(
 
 type testResultFilterFunc func(sippyprocessingv1.TestResult) bool
 
+func acceptAllTests(testResult sippyprocessingv1.TestResult) bool {
+	return true
+}
+
 func filterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) testResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		if testResult.PassPercentage > successThreshold {

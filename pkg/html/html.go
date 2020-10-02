@@ -87,7 +87,7 @@ Data current as of: %s
 <h1 class=text-center>CI Release {{ .Release }} Health Summary</h1>
 
 <p class="small mb-3 text-nowrap">
-	Jump to: <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a> | <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> | <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> |
+	Jump to: <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#CuratedTRTTests">Curated TRT Tests</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a> | <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> | <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> |
 			 <br/>	          
 	         <a href="#JobByMostReducedPassRate">Job Pass Rates By Most Reduced Pass Rate</a> | <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
@@ -97,6 +97,8 @@ Data current as of: %s
 {{ topLevelIndicators .Current .Prev }}
 
 {{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
+
+{{ summaryCuratedTests .Current .Prev .NumDays .Release }} 
 
 {{ summaryTopFailingTestsWithoutBug .Current.TopFailingTestsWithoutBug .Prev.ByTest .NumDays .Release }}
 
@@ -159,12 +161,12 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numD
 	`, numDays)
 
 	for _, currPlatform := range report.ByPlatform {
-		jobHTML := newJobAggregationResultRenderer("by-variant", *convertPlatformToAggregationResult(&currPlatform), release).
+		platformHTML := newJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(convertPlatformToAggregationResult(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform))).
+			withPreviousPlatformResults(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform)).
 			toHTML()
 
-		s += jobHTML
+		s += platformHTML
 	}
 
 	s = s + "</table>"
@@ -190,9 +192,9 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 
 	for _, currJobResult := range report.FrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
-		jobHTML := newJobResultRenderer("by-job-name", currJobResult, release).
+		jobHTML := newJobResultRendererFromJobResult("by-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPreviousJobResult(prevJobResult).
 			toHTML()
 
 		s += jobHTML
@@ -215,9 +217,9 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 
 	for _, currJobResult := range report.InfrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
-		jobHTML := newJobResultRenderer("by-infrequent-job-name", currJobResult, release).
+		jobHTML := newJobResultRendererFromJobResult("by-infrequent-job-name", currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPreviousJobResult(prevJobResult).
 			toHTML()
 
 		s += jobHTML
@@ -409,6 +411,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryJobsByPlatform":                  summaryJobsByPlatform,
 			"summaryTopFailingTestsWithBug":          summaryTopFailingTestsWithBug,
 			"summaryTopFailingTestsWithoutBug":       summaryTopFailingTestsWithoutBug,
+			"summaryCuratedTests":                    summaryCuratedTests,
 			"summaryFrequentJobPassRatesByJobName":   summaryFrequentJobPassRatesByJobName,
 			"summaryInfrequentJobPassRatesByJobName": summaryInfrequentJobPassRatesByJobName,
 			"canaryTestFailures":                     canaryTestFailures,

@@ -53,9 +53,9 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		}
 		currJobResult := util.FindJobResultForJobName(jobDetails.jobName, twoDaysJobs)
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, prevJobs)
-		jobHTML := newJobResultRenderer("by-job-name", *currJobResult, release).
+		jobHTML := newJobResultRendererFromJobResult("by-job-name", *currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
-			withPrevious(prevJobResult).
+			withPreviousJobResult(prevJobResult).
 			toHTML()
 
 		s += jobHTML

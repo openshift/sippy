@@ -41,6 +41,7 @@ func PrepareTestReport(
 
 	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
 	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
+	curatedTests := getCuratedTests(release, allTestResultsByName)
 
 	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
 	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName])
@@ -69,6 +70,7 @@ func PrepareTestReport(
 
 		TopFailingTestsWithBug:    topFailingTestsWithBug,
 		TopFailingTestsWithoutBug: topFailingTestsWithoutBug,
+		CuratedTests:              curatedTests,
 
 		AnalysisWarnings: analysisWarnings,
 	}
