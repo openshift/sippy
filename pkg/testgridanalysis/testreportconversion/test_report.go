@@ -28,13 +28,14 @@ func PrepareTestReport(
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, release)
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
-	standardTestResultFilterFn := standardTestResultFilter(minRuns, successThreshold)
+	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
+	infrequentJobsTestResultFilterFn := StandardTestResultFilter(2, successThreshold)
 
 	byPlatform := convertRawDataToByPlatform(allJobResults, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
-	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
+	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, infrequentJobsTestResultFilterFn)
 
 	bugFailureCounts := generateSortedBugFailureCounts(allTestResultsByName)
 	bugzillaComponentResults := generateAllJobFailuresByBugzillaComponent(rawData.JobResults, allJobResults)

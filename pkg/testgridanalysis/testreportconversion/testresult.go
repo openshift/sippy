@@ -109,7 +109,7 @@ func acceptAllTests(testResult sippyprocessingv1.TestResult) bool {
 	return true
 }
 
-func filterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) testResultFilterFunc {
+func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) testResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		if testResult.PassPercentage > successThreshold {
 			return false
@@ -118,14 +118,14 @@ func filterSuccessfulTestResults(successThreshold float64 /*indicates an upper b
 	}
 }
 
-func filterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
+func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 	if testResult.Name == "Overall" || testidentification.IsSetupContainerEquivalent(testResult.Name) {
 		return false
 	}
 	return true
 }
 
-func filterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) testResultFilterFunc {
+func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) testResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		if testResult.Successes+testResult.Failures < minRuns {
 			return false
@@ -134,7 +134,7 @@ func filterTooFewTestRuns(minRuns int /*indicates how many runs are required for
 	}
 }
 
-func filterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFunc {
+func FilterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		for _, fn := range fns {
 			if !fn(testResult) {
@@ -145,15 +145,15 @@ func filterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFun
 	}
 }
 
-func standardTestResultFilter(
+func StandardTestResultFilter(
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
 ) testResultFilterFunc {
-	return filterTestResultsByFilters(
-		filterLowValueTestsByName,
-		filterTooFewTestRuns(minRuns),
-		filterSuccessfulTestResults(successThreshold),
+	return FilterTestResultsByFilters(
+		FilterLowValueTestsByName,
+		FilterTooFewTestRuns(minRuns),
+		FilterSuccessfulTestResults(successThreshold),
 	)
 }
 

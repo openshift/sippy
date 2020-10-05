@@ -8,6 +8,23 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 )
 
+func FilterJobResultTests(jobResult *sippyprocessingv1.JobResult, testFilterFn testResultFilterFunc) *sippyprocessingv1.JobResult {
+	if jobResult == nil {
+		return nil
+	}
+
+	out := *jobResult
+	testResults := []sippyprocessingv1.TestResult{}
+	for i := range out.TestResults {
+		testResult := out.TestResults[i]
+		if testFilterFn(testResult) {
+			testResults = append(testResults, testResult)
+		}
+	}
+	out.TestResults = testResults
+	return &out
+}
+
 func filterPertinentFrequentJobResults(
 	in []sippyprocessingv1.JobResult,
 	numberOfDaysOfData int, // number of days included in report.
