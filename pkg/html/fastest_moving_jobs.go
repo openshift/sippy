@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
+
 	"github.com/openshift/sippy/pkg/util"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -53,6 +55,15 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		}
 		currJobResult := util.FindJobResultForJobName(jobDetails.jobName, twoDaysJobs)
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, prevJobs)
+
+		// these job results cannot be known until we have two reports to compare.  Because of this, we cannot filter the tests for these job results
+		// when we build the API for each test report because we don't how now it will be used.  This leaves us generating this portion of the
+		// report here where we can filter out results we don't care about.
+		// Choose really wide values.  I doubt anyone feels a need to change them
+		testFilterFn := testreportconversion.StandardTestResultFilter(2, 99.9)
+		currJobResult = testreportconversion.FilterJobResultTests(currJobResult, testFilterFn)
+		prevJobResult = testreportconversion.FilterJobResultTests(prevJobResult, testFilterFn)
+
 		jobHTML := newJobResultRendererFromJobResult("by-job-name", *currJobResult, release).
 			withMaxTestResultsToShow(jobTestCount).
 			withPreviousJobResult(prevJobResult).
