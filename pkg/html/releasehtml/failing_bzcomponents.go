@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/html/generichtml"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -23,10 +25,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		</tr>
 	`, numDays)
 
-	colors := generichtml.colorizationCriteria{
-		minRedPercent:    0,
-		minYellowPercent: 90,
-		minGreenPercent:  95,
+	colors := generichtml.ColorizationCriteria{
+		MinRedPercent:    0,
+		MinYellowPercent: 90,
+		MinGreenPercent:  95,
 	}
 
 	for _, bugzillaComponentResult := range failuresByBugzillaComponent {

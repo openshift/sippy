@@ -1,8 +1,10 @@
-package releasehtml
+package installhtml
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	"github.com/openshift/sippy/pkg/util"
 
@@ -15,10 +17,10 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-var individualInstallUpgradeColor = generichtml.colorizationCriteria{
-	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-	minYellowPercent: 90, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-	minGreenPercent:  95, // no action required.
+var individualInstallUpgradeColor = generichtml.ColorizationCriteria{
+	MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+	MinYellowPercent: 90, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+	MinGreenPercent:  95, // no action required.
 }
 
 type currPrevTestResult struct {
@@ -31,14 +33,15 @@ type currPrevFailedTestResult struct {
 	prev *sippyprocessingv1.FailingTestResult
 }
 
-func installOperatorTests(curr, prev sippyprocessingv1.TestReport, endDay int, release string) string {
+func installOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Operator installation, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="OperatorInstall" href="#OperatorInstall">Operator Install</a></th>
+			<th colspan=%d class="text-center"><a class="text-dark" title="Operator installation, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="InstallRatesByOperator" href="#InstallRatesByOperator">Install Rates by Operator</a></th>
 		</tr>
-	`)
+	`,
+		len(curr.ByPlatform)+2)
 
 	operatorTests := map[string]*currPrevFailedTestResult{}
 	for _, test := range curr.ByTest {
@@ -100,22 +103,12 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport, endDay int, r
 	// now the overall install results by platform
 	s += "    <tr>"
 	s += "      <td>Overall</td>\n"
-	overallInstallTestResult := util.FindFailedTestResult(testgridanalysisapi.InstallTestName, curr.ByTest)
-	prevOverallInstallTestResult := util.FindFailedTestResult(testgridanalysisapi.InstallTestName, prev.ByTest)
-	arrow := generichtml.getArrowForFailedTestResult(*overallInstallTestResult, prevOverallInstallTestResult)
-	color := overallInstallUpgradeColors.getColor(overallInstallTestResult.TestResultAcrossAllJobs.PassPercentage)
-	s += fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v</nobr></td>", color, overallInstallTestResult.TestResultAcrossAllJobs.PassPercentage, arrow)
+	s += installCellHTMLFromFailedTestResult(&currPrevFailedTestResult{
+		curr: *util.FindFailedTestResult(testgridanalysisapi.InstallTestName, curr.ByTest),
+		prev: util.FindFailedTestResult(testgridanalysisapi.InstallTestName, prev.ByTest),
+	}, generichtml.OverallInstallUpgradeColors)
 	for _, platformName := range testidentification.AllPlatforms.List() {
-		platformTestResult, ok := platformToInstallTestResult[platformName]
-		// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
-		passPercentage := 100.0
-		arrow := generichtml.flatdown
-		if ok {
-			passPercentage = platformTestResult.curr.PassPercentage
-			arrow = generichtml.getArrowForTestResult(platformTestResult.curr, platformTestResult.prev)
-		}
-		color := overallInstallUpgradeColors.getColor(passPercentage)
-		s += fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v</nobr></td>", color, passPercentage, arrow)
+		s += installCellHTMLFromTestResult(platformToInstallTestResult[platformName], generichtml.OverallInstallUpgradeColors)
 	}
 	s += "		</tr>"
 
@@ -124,21 +117,10 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport, endDay int, r
 		operatorName := strings.SplitN(testName, " ", 3)[2] // We happen to know the shape of this test name
 		s += "    <tr>"
 		s += "      <td class=\"\"><nobr>" + operatorName + "</nobr></td>\n"
-		arrow := generichtml.getArrowForFailedTestResult(operatorTests[testName].curr, operatorTests[testName].prev)
-		color := individualInstallUpgradeColor.getColor(operatorTests[testName].curr.TestResultAcrossAllJobs.PassPercentage)
-		s += fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v</nobr></td>\n", color, operatorTests[testName].curr.TestResultAcrossAllJobs.PassPercentage, arrow)
+		s += installCellHTMLFromFailedTestResult(operatorTests[testName], individualInstallUpgradeColor)
 		platformResults := operatorTestsToPlatformToTestResult[testName]
 		for _, platformName := range testidentification.AllPlatforms.List() {
-			platformTestResult, ok := platformResults[platformName]
-			// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
-			passPercentage := 100.0
-			arrow := generichtml.flatdown
-			if ok {
-				passPercentage = platformTestResult.curr.PassPercentage
-				arrow = generichtml.getArrowForTestResult(platformTestResult.curr, platformTestResult.prev)
-			}
-			color := individualInstallUpgradeColor.getColor(passPercentage)
-			s += fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v</nobr></td>", color, passPercentage, arrow)
+			s += installCellHTMLFromTestResult(platformResults[platformName], individualInstallUpgradeColor)
 		}
 		s += "		</tr>"
 	}
@@ -146,4 +128,36 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport, endDay int, r
 	s = s + "</table>"
 
 	return s
+}
+
+func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {
+	if cellResult == nil {
+		// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
+		passPercentage := 100.0
+		arrow := generichtml.Flat
+		color := colors.GetColor(passPercentage)
+		return fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v NA</nobr></td>", color, passPercentage, arrow)
+	}
+
+	// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
+	passPercentage := cellResult.curr.PassPercentage
+	arrow := generichtml.GetArrowForTestResult(cellResult.curr, cellResult.prev)
+	color := colors.GetColor(passPercentage)
+	if cellResult.prev == nil {
+		return fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v NA</nobr></td>", color, passPercentage, arrow)
+	}
+
+	return fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v %0.2f%% </nobr></td>", color, passPercentage, arrow, cellResult.prev.PassPercentage)
+}
+
+func installCellHTMLFromFailedTestResult(cellResult *currPrevFailedTestResult, colors generichtml.ColorizationCriteria) string {
+	var prevTestResult *sippyprocessingv1.TestResult
+	if cellResult.prev != nil {
+		prevTestResult = &cellResult.prev.TestResultAcrossAllJobs
+	}
+	testResultCell := currPrevTestResult{
+		curr: cellResult.curr.TestResultAcrossAllJobs,
+		prev: prevTestResult,
+	}
+	return installCellHTMLFromTestResult(&testResultCell, colors)
 }

@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/openshift/sippy/pkg/html/generichtml"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"k8s.io/klog"
 
@@ -53,7 +55,7 @@ type testResultRenderBuilder struct {
 
 	release             string
 	maxJobResultsToShow int
-	colors              generichtml.colorizationCriteria
+	colors              generichtml.ColorizationCriteria
 	startCollapsedBool  bool
 	baseIndentDepth     int
 }
@@ -64,10 +66,10 @@ func newTestResultRenderer(sectionBlock string, curr testResultDisplay, release 
 		currTestResult:      curr,
 		release:             release,
 		maxJobResultsToShow: 10, // just a default, can be overridden
-		colors: generichtml.colorizationCriteria{
-			minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-			minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-			minGreenPercent:  80, // no action required. This *should* be closer to 85%
+		colors: generichtml.ColorizationCriteria{
+			MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+			MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+			MinGreenPercent:  80, // no action required. This *should* be closer to 85%
 		},
 	}
 }
@@ -110,7 +112,7 @@ func (b *testResultRenderBuilder) withMaxJobResultsToShow(maxTestResultsToShow i
 	return b
 }
 
-func (b *testResultRenderBuilder) withColors(colors generichtml.colorizationCriteria) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) withColors(colors generichtml.ColorizationCriteria) *testResultRenderBuilder {
 	b.colors = colors
 	return b
 }
@@ -152,10 +154,10 @@ func (b *testResultRenderBuilder) toHTML() string {
 		class += "collapse " + b.sectionBlock
 	}
 
-	jobCollapseSectionName := generichtml.makeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
+	jobCollapseSectionName := generichtml.MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
 	button := ""
 	if len(b.currTestResult.jobResults) > 0 {
-		button = "<p>" + generichtml.getButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
+		button = "<p>" + generichtml.GetButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
 	}
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -167,7 +169,7 @@ func (b *testResultRenderBuilder) toHTML() string {
 	klog.V(2).Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
 	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.release, "", b.currTestResult.displayName)
 	if b.prevTestResult != nil {
-		arrow := generichtml.getArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
+		arrow := generichtml.GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
 
 		s += fmt.Sprintf(template, class, indentDepth, testLink, button, bugHTML, b.currTestResult.displayPercent, b.currTestResult.totalRuns, b.currTestResult.flakedRuns, arrow, b.prevTestResult.displayPercent, b.prevTestResult.totalRuns, b.prevTestResult.flakedRuns)
 	} else {

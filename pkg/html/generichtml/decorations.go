@@ -13,10 +13,10 @@ const (
 	down     = `<i class="fa fa-arrow-down" title="Decreased %0.2f%%" style="font-size:28px;color:red"></i>`
 	flatup   = `<i class="fa fa-arrows-h" title="Increased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
 	flatdown = `<i class="fa fa-arrows-h" title="Decreased %0.2f%%" style="font-size:28px;color:darkgray"></i>`
-	flat     = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
+	Flat     = `<i class="fa fa-arrows-h" style="font-size:28px;color:darkgray"></i>`
 )
 
-func getArrow(totalRuns int, currPassPercentage, prevPassPercentage float64) string {
+func GetArrow(totalRuns int, currPassPercentage, prevPassPercentage float64) string {
 	delta := 5.0
 	if totalRuns > 80 {
 		delta = 2
@@ -33,39 +33,45 @@ func getArrow(totalRuns int, currPassPercentage, prevPassPercentage float64) str
 	}
 }
 
-func getArrowForTestResult(curr sippyprocessingv1.TestResult, prev *sippyprocessingv1.TestResult) string {
+func GetArrowForTestResult(curr sippyprocessingv1.TestResult, prev *sippyprocessingv1.TestResult) string {
 	if prev == nil {
-		return flatdown
+		return Flat
 	}
-	return getArrow(curr.Successes+curr.Failures, curr.PassPercentage, prev.PassPercentage)
+	return GetArrow(curr.Successes+curr.Failures, curr.PassPercentage, prev.PassPercentage)
 }
 
-func getArrowForFailedTestResult(curr sippyprocessingv1.FailingTestResult, prev *sippyprocessingv1.FailingTestResult) string {
+func GetArrowForFailedTestResult(curr sippyprocessingv1.FailingTestResult, prev *sippyprocessingv1.FailingTestResult) string {
 	if prev == nil {
-		return flatdown
+		return Flat
 	}
-	return getArrow(curr.TestResultAcrossAllJobs.Successes+curr.TestResultAcrossAllJobs.Failures, curr.TestResultAcrossAllJobs.PassPercentage, prev.TestResultAcrossAllJobs.PassPercentage)
+	return GetArrow(curr.TestResultAcrossAllJobs.Successes+curr.TestResultAcrossAllJobs.Failures, curr.TestResultAcrossAllJobs.PassPercentage, prev.TestResultAcrossAllJobs.PassPercentage)
 }
 
-type colorizationCriteria struct {
-	minRedPercent    float64
-	minYellowPercent float64
-	minGreenPercent  float64
+type ColorizationCriteria struct {
+	MinRedPercent    float64
+	MinYellowPercent float64
+	MinGreenPercent  float64
 }
 
-var standardColors = colorizationCriteria{
-	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-	minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-	minGreenPercent:  80, // no action required. This *should* be closer to 85%
+var StandardColors = ColorizationCriteria{
+	MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+	MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+	MinGreenPercent:  80, // no action required. This *should* be closer to 85%
 }
 
-func (c colorizationCriteria) getColor(passPercentage float64) string {
+var OverallInstallUpgradeColors = ColorizationCriteria{
+	MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+	MinYellowPercent: 85, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+	MinGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
+}
+
+func (c ColorizationCriteria) GetColor(passPercentage float64) string {
 	switch {
-	case passPercentage > c.minGreenPercent:
+	case passPercentage > c.MinGreenPercent:
 		return "table-success"
-	case passPercentage > c.minYellowPercent:
+	case passPercentage > c.MinYellowPercent:
 		return "table-warning"
-	case passPercentage > c.minRedPercent:
+	case passPercentage > c.MinRedPercent:
 		return "table-danger"
 	default:
 		return "error"
@@ -74,15 +80,15 @@ func (c colorizationCriteria) getColor(passPercentage float64) string {
 
 var collapseNameRemoveRegex = regexp.MustCompile(`[. ,:\(\)\[\]]`)
 
-func makeSafeForCollapseName(in string) string {
+func MakeSafeForCollapseName(in string) string {
 	return collapseNameRemoveRegex.ReplaceAllString(in, "")
 }
 
-func getButtonHTML(sectionName, buttonName string) string {
+func GetButtonHTML(sectionName, buttonName string) string {
 	buttonHTML := `<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".{{ .sectionName }}" aria-expanded="false" aria-controls="{{ .sectionName }}">{{ .buttonName }}</button>`
 	buttonHTMLTemplate := template.Must(template.New("buttonHTML").Parse(buttonHTML))
 
-	return releasehtml.mustSubstitute(buttonHTMLTemplate, map[string]string{
+	return MustSubstitute(buttonHTMLTemplate, map[string]string{
 		"sectionName": sectionName,
 		"buttonName":  buttonName,
 	})

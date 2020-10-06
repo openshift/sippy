@@ -1,19 +1,14 @@
 package releasehtml
 
 import (
-	"bytes"
 	"text/template"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-var overallInstallUpgradeColors = generichtml.colorizationCriteria{
-	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-	minYellowPercent: 85, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-	minGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
-}
-
-func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport) string {
+func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release string) string {
 	tableHTML := `
 	<table class="table">
 		<tr>
@@ -21,7 +16,7 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport) string 
 		</tr>
 		<tr>
 			<th title="How often we get to the point of running the installer.  This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close." class="text-center {{ .infraColor }}">Infrastructure</th>
-			<th title="How often the install completes successfully." class="text-center {{ .installColor }}">Install</th>
+			<th title="How often the install completes successfully." class="text-center {{ .installColor }}"><a href="/install?release={{ .release }}">Install</a></th>
 			<th title="How often an upgrade that is started completes successfully." class="text-center {{ .upgradeColor }}">Upgrade</th>
 		</tr>
 		<tr>
@@ -33,15 +28,16 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport) string 
 	`
 	tableHTMLTemplate := template.Must(template.New("tableHTML").Parse(tableHTML))
 
-	infraColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
-	installColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
-	upgradeColor := overallInstallUpgradeColors.getColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
+	infraColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
+	installColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
+	upgradeColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
 
 	infraHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Infrastructure, &reportPrev.TopLevelIndicators.Infrastructure)
 	installHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Install, &reportPrev.TopLevelIndicators.Install)
 	upgradeHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Upgrade, &reportPrev.TopLevelIndicators.Upgrade)
 
-	return mustSubstitute(tableHTMLTemplate, map[string]string{
+	return generichtml.MustSubstitute(tableHTMLTemplate, map[string]string{
+		"release":      release,
 		"infraColor":   infraColor,
 		"installColor": installColor,
 		"upgradeColor": upgradeColor,
@@ -55,13 +51,13 @@ func getTopLevelIndicateFailedTestHTML(currFailingTest sippyprocessingv1.Failing
 	failedTestResultTemplateString := `{{ printf "%.2f" .PassPercentage }}% ({{ .TotalRuns }} runs)`
 	failedTestResultTemplate := template.Must(template.New("failed-test-result").Parse(failedTestResultTemplateString))
 
-	currHTML := mustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(currFailingTest))
-	arrow := generichtml.flatdown
+	currHTML := generichtml.MustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(currFailingTest))
+	arrow := generichtml.Flat
 	prevHTML := "NA"
 
 	if prevFailingTest != nil {
-		prevHTML = mustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(*prevFailingTest))
-		arrow = generichtml.getArrow(
+		prevHTML = generichtml.MustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(*prevFailingTest))
+		arrow = generichtml.GetArrow(
 			currFailingTest.TestResultAcrossAllJobs.Successes+currFailingTest.TestResultAcrossAllJobs.Failures,
 			currFailingTest.TestResultAcrossAllJobs.PassPercentage,
 			prevFailingTest.TestResultAcrossAllJobs.PassPercentage)
@@ -80,13 +76,4 @@ func failedTestResultToFailTestTemplate(in sippyprocessingv1.FailingTestResult) 
 		TotalRuns:      in.TestResultAcrossAllJobs.Successes + in.TestResultAcrossAllJobs.Failures,
 		PassPercentage: in.TestResultAcrossAllJobs.PassPercentage,
 	}
-}
-
-func mustSubstitute(tmpl *template.Template, data interface{}) string {
-	buf := &bytes.Buffer{}
-	err := tmpl.Execute(buf, data)
-	if err != nil {
-		panic(err)
-	}
-	return buf.String()
 }

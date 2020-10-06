@@ -7,10 +7,11 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/openshift/sippy/pkg/html/releasehtml"
+
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
-	"github.com/openshift/sippy/pkg/html"
 	"k8s.io/klog"
 )
 
@@ -70,10 +71,10 @@ func (s *Server) RefreshData() {
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	if _, ok := s.currTestReports[release]; !ok {
-		html.WriteLandingPage(w, s.releases)
+		releasehtml.WriteLandingPage(w, s.releases)
 		return
 	}
-	html.PrintHtmlReport(w, req,
+	releasehtml.PrintHtmlReport(w, req,
 		s.currTestReports[release].CurrentPeriodReport,
 		s.currTestReports[release].CurrentTwoDayReport,
 		s.currTestReports[release].PreviousWeekReport,
@@ -189,12 +190,13 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(release, s.bugCache)
 
-	html.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
+	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
 
 }
 
 func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)

@@ -34,12 +34,6 @@ const (
 </html>
 `
 
-	bugLookupWarning = `
-<div  style="background-color:pink" class="jumbotron">
-  <h1>Warning: Analysis Error</h1>
-  %s
-</div>
-`
 	dashboardPageHtml = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
@@ -58,11 +52,9 @@ const (
              <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
 
-{{ topLevelIndicators .Current .Prev }}
+{{ topLevelIndicators .Current .Prev .Release }}
 
 {{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
-
-{{ installOperatorTests .Current .Prev .NumDays .Release }}
 
 {{ summaryCuratedTests .Current .Prev .NumDays .Release }} 
 
@@ -368,7 +360,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		for _, analysisWarning := range report.AnalysisWarnings {
 			warningsHTML += "<p>" + analysisWarning + "</p>\n"
 		}
-		fmt.Fprintf(w, bugLookupWarning, warningsHTML)
+		fmt.Fprintf(w, generichtml.WarningHeader, warningsHTML)
 	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
@@ -387,7 +379,6 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 			"topLevelIndicators":                     topLevelIndicators,
-			"installOperatorTests":                   installOperatorTests,
 		},
 	).Parse(dashboardPageHtml))
 

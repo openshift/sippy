@@ -38,4 +38,11 @@ Data current as of: %s
 </body>
 </html>
 `
+
+	WarningHeader = `
+<div  style="background-color:pink" class="jumbotron">
+  <h1>Warning: Analysis Error</h1>
+  %s
+</div>
+`
 )
