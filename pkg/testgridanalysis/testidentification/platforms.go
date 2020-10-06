@@ -59,6 +59,7 @@ var (
 	// These jobs are still listed as jobs in total and when individual tests fail, they will still be listed with these jobs as causes.
 	jobsNeverStableForPlatforms = sets.NewString(
 		"release-openshift-ocp-installer-e2e-ovirt-upgrade-4.5-stable-to-4.6-ci",
+		"release-openshift-origin-installer-e2e-aws-upgrade-4.3-to-4.4-to-4.5-to-4.6-ci", // this job has never passed because timeouts are too short and cannot be changed
 	)
 )
 
