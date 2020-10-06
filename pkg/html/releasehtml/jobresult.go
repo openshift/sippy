@@ -1,7 +1,9 @@
-package html
+package releasehtml
 
 import (
 	"fmt"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -26,7 +28,7 @@ type jobResultRenderBuilder struct {
 
 	release              string
 	maxTestResultsToShow int
-	colors               colorizationCriteria
+	colors               generichtml.ColorizationCriteria
 	startCollapsedBool   bool
 	baseIndentDepth      int
 }
@@ -82,10 +84,10 @@ func newJobResultRenderer(sectionBlock string, curr jobResultDisplay, release st
 		currJobResult:        curr,
 		release:              release,
 		maxTestResultsToShow: 10, // just a default, can be overridden
-		colors: colorizationCriteria{
-			minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
-			minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
-			minGreenPercent:  80, // no action required. This *should* be closer to 85%
+		colors: generichtml.ColorizationCriteria{
+			MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
+			MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
+			MinGreenPercent:  80, // no action required. This *should* be closer to 85%
 		},
 	}
 }
@@ -113,7 +115,7 @@ func (b *jobResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow i
 	return b
 }
 
-func (b *jobResultRenderBuilder) withColors(colors colorizationCriteria) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) withColors(colors generichtml.ColorizationCriteria) *jobResultRenderBuilder {
 	b.colors = colors
 	return b
 }
@@ -129,7 +131,7 @@ func (b *jobResultRenderBuilder) startCollapsed() *jobResultRenderBuilder {
 }
 
 func (b *jobResultRenderBuilder) toHTML() string {
-	testCollapseSectionName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
+	testCollapseSectionName := generichtml.MakeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
 
 	s := ""
 
@@ -169,18 +171,18 @@ func (b *jobResultRenderBuilder) toHTML() string {
 			</tr>
 		`
 
-	class := b.colors.getColor(b.currJobResult.displayPercent)
+	class := b.colors.GetColor(b.currJobResult.displayPercent)
 	if b.startCollapsedBool {
 		class += " collapse " + b.sectionBlock
 	}
 
 	button := ""
 	if len(b.currJobResult.testResults) > 0 {
-		button = "<p>" + getButtonHTML(testCollapseSectionName, "Expand Failing Tests")
+		button = "<p>" + generichtml.GetButtonHTML(testCollapseSectionName, "Expand Failing Tests")
 	}
 
 	if b.prevJobResult != nil {
-		arrow := getArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
+		arrow := generichtml.GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
 		s = s + fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,

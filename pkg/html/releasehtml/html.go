@@ -1,4 +1,4 @@
-package html
+package releasehtml
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -22,32 +24,6 @@ var (
 const (
 	BugSearchUrl = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
 
-	htmlPageStart = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8"><title>%s</title>
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<style>
-@media (max-width: 992px) {
-  .container {
-    width: 100%%;
-    max-width: none;
-  }
-}
-
-.error {
-	background-color: #f5969b;
-}
-</style>
-</head>
-
-<body>
-<div class="container">
-`
-
 	landingHtmlPageEnd = `
 </div>
 <p>
@@ -58,24 +34,6 @@ const (
 </html>
 `
 
-	htmlPageEnd = `
-</div>
-Data current as of: %s
-<p>
-<a href="https://github.com/openshift/sippy">Source Code</a>
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-</body>
-</html>
-`
-
-	bugLookupWarning = `
-<div  style="background-color:pink" class="jumbotron">
-  <h1>Warning: Analysis Error</h1>
-  %s
-</div>
-`
 	dashboardPageHtml = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
@@ -94,7 +52,7 @@ Data current as of: %s
              <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
 </p>
 
-{{ topLevelIndicators .Current .Prev }}
+{{ topLevelIndicators .Current .Prev .Release }}
 
 {{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
 
@@ -382,7 +340,7 @@ type TestReports struct {
 func WriteLandingPage(w http.ResponseWriter, releases []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
 	releaseLinks := make([]string, len(releases))
 	for i := range releases {
 		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, releases[i])
@@ -393,7 +351,7 @@ func WriteLandingPage(w http.ResponseWriter, releases []string) {
 
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	fmt.Fprintf(w, htmlPageStart, "Release CI Health Dashboard")
+	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
 		warningsHTML := ""
 		for _, analysisWarning := range prevReport.AnalysisWarnings {
@@ -402,7 +360,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		for _, analysisWarning := range report.AnalysisWarnings {
 			warningsHTML += "<p>" + analysisWarning + "</p>\n"
 		}
-		fmt.Fprintf(w, bugLookupWarning, warningsHTML)
+		fmt.Fprintf(w, generichtml.WarningHeader, warningsHTML)
 	}
 
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
@@ -436,5 +394,5 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 	}
 
 	//w.Write(result)
-	fmt.Fprintf(w, htmlPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
+	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }

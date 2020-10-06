@@ -74,5 +74,6 @@ const (
 )
 
 var (
+	OperatorInstallPrefix          = "operator install "
 	OperatorConditionsTestCaseName = regexp.MustCompile("operator (install|conditions) (?P<operator>.*)")
 )
