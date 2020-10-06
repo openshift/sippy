@@ -119,22 +119,16 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numD
 	`, numDays)
 
 	for _, currPlatform := range report.ByPlatform {
-		platformHTML := newJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
-			withMaxTestResultsToShow(jobTestCount).
-			withPreviousPlatformResults(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform)).
-			toHTML()
+		platformHTML := generichtml.NewJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
+			WithMaxTestResultsToShow(jobTestCount).
+			WithPreviousPlatformResults(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform)).
+			ToHTML()
 
 		s += platformHTML
 	}
 
 	s = s + "</table>"
 	return s
-}
-
-// testName is the non-encoded test.Name
-func testToSearchURL(testName string) string {
-	encodedTestName := url.QueryEscape(regexp.QuoteMeta(testName))
-	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }
 
 func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestReport, release string, numDays, jobTestCount int) string {
@@ -150,10 +144,10 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 
 	for _, currJobResult := range report.FrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.FrequentJobResults)
-		jobHTML := newJobResultRendererFromJobResult("by-job-name", currJobResult, release).
-			withMaxTestResultsToShow(jobTestCount).
-			withPreviousJobResult(prevJobResult).
-			toHTML()
+		jobHTML := generichtml.NewJobResultRendererFromJobResult("by-job-name", currJobResult, release).
+			WithMaxTestResultsToShow(jobTestCount).
+			WithPreviousJobResult(prevJobResult).
+			ToHTML()
 
 		s += jobHTML
 	}
@@ -175,10 +169,10 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 
 	for _, currJobResult := range report.InfrequentJobResults {
 		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, reportPrev.InfrequentJobResults)
-		jobHTML := newJobResultRendererFromJobResult("by-infrequent-job-name", currJobResult, release).
-			withMaxTestResultsToShow(jobTestCount).
-			withPreviousJobResult(prevJobResult).
-			toHTML()
+		jobHTML := generichtml.NewJobResultRendererFromJobResult("by-infrequent-job-name", currJobResult, release).
+			WithMaxTestResultsToShow(jobTestCount).
+			WithPreviousJobResult(prevJobResult).
+			ToHTML()
 
 		s += jobHTML
 	}

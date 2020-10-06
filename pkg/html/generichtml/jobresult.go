@@ -1,9 +1,7 @@
-package releasehtml
+package generichtml
 
 import (
 	"fmt"
-
-	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -28,7 +26,7 @@ type jobResultRenderBuilder struct {
 
 	release              string
 	maxTestResultsToShow int
-	colors               generichtml.ColorizationCriteria
+	colors               ColorizationCriteria
 	startCollapsedBool   bool
 	baseIndentDepth      int
 }
@@ -78,13 +76,13 @@ func failingJobResultToDisplay(in sippyprocessingv1.FailingTestJobResult) jobRes
 	return ret
 }
 
-func newJobResultRenderer(sectionBlock string, curr jobResultDisplay, release string) *jobResultRenderBuilder {
+func NewJobResultRenderer(sectionBlock string, curr jobResultDisplay, release string) *jobResultRenderBuilder {
 	return &jobResultRenderBuilder{
 		sectionBlock:         sectionBlock,
 		currJobResult:        curr,
 		release:              release,
 		maxTestResultsToShow: 10, // just a default, can be overridden
-		colors: generichtml.ColorizationCriteria{
+		colors: ColorizationCriteria{
 			MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 			MinGreenPercent:  80, // no action required. This *should* be closer to 85%
@@ -92,46 +90,46 @@ func newJobResultRenderer(sectionBlock string, curr jobResultDisplay, release st
 	}
 }
 
-func newJobResultRendererFromJobResult(sectionBlock string, curr sippyprocessingv1.JobResult, release string) *jobResultRenderBuilder {
-	return newJobResultRenderer(sectionBlock, jobResultToDisplay(curr), release)
+func NewJobResultRendererFromJobResult(sectionBlock string, curr sippyprocessingv1.JobResult, release string) *jobResultRenderBuilder {
+	return NewJobResultRenderer(sectionBlock, jobResultToDisplay(curr), release)
 }
 
-func (b *jobResultRenderBuilder) withPrevious(prevJobResult *jobResultDisplay) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) WithPrevious(prevJobResult *jobResultDisplay) *jobResultRenderBuilder {
 	b.prevJobResult = prevJobResult
 	return b
 }
 
-func (b *jobResultRenderBuilder) withPreviousJobResult(prevJobResult *sippyprocessingv1.JobResult) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) WithPreviousJobResult(prevJobResult *sippyprocessingv1.JobResult) *jobResultRenderBuilder {
 	if prevJobResult == nil {
 		b.prevJobResult = nil
 		return b
 	}
 	t := jobResultToDisplay(*prevJobResult)
-	return b.withPrevious(&t)
+	return b.WithPrevious(&t)
 }
 
-func (b *jobResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow int) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) WithMaxTestResultsToShow(maxTestResultsToShow int) *jobResultRenderBuilder {
 	b.maxTestResultsToShow = maxTestResultsToShow
 	return b
 }
 
-func (b *jobResultRenderBuilder) withColors(colors generichtml.ColorizationCriteria) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) WithColors(colors ColorizationCriteria) *jobResultRenderBuilder {
 	b.colors = colors
 	return b
 }
 
-func (b *jobResultRenderBuilder) withIndent(depth int) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) WithIndent(depth int) *jobResultRenderBuilder {
 	b.baseIndentDepth = depth
 	return b
 }
 
-func (b *jobResultRenderBuilder) startCollapsed() *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) StartCollapsed() *jobResultRenderBuilder {
 	b.startCollapsedBool = true
 	return b
 }
 
-func (b *jobResultRenderBuilder) toHTML() string {
-	testCollapseSectionName := generichtml.MakeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
+func (b *jobResultRenderBuilder) ToHTML() string {
+	testCollapseSectionName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
 
 	s := ""
 
@@ -178,11 +176,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	button := ""
 	if len(b.currJobResult.testResults) > 0 {
-		button = "<p>" + generichtml.GetButtonHTML(testCollapseSectionName, "Expand Failing Tests")
+		button = "<p>" + GetButtonHTML(testCollapseSectionName, "Expand Failing Tests")
 	}
 
 	if b.prevJobResult != nil {
-		arrow := generichtml.GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
+		arrow := GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
 		s = s + fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,
@@ -233,11 +231,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 		}
 
 		rows = rows +
-			newTestResultRenderer(testCollapseSectionName, test, b.release).
-				withIndent(b.baseIndentDepth+1).
-				withPrevious(prev).
-				startCollapsed().
-				toHTML()
+			NewTestResultRenderer(testCollapseSectionName, test, b.release).
+				WithIndent(b.baseIndentDepth+1).
+				WithPrevious(prev).
+				StartCollapsed().
+				ToHTML()
 
 		rowCount++
 	}

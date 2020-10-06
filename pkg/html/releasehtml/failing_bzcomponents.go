@@ -34,10 +34,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 	for _, bugzillaComponentResult := range failuresByBugzillaComponent {
 		prev := util.FindBugzillaJobFailures(bugzillaComponentResult.Name, failuresByBugzillaComponentPrev)
 
-		bugzillaComponentHTML := newJobAggregationResultRendererFromBugzillaComponentResult("by-bugzilla-component", bugzillaComponentResult, release).
-			withColors(colors).
-			withPreviousBugzillaComponentResult(prev).
-			toHTML()
+		bugzillaComponentHTML := generichtml.NewJobAggregationResultRendererFromBugzillaComponentResult("by-bugzilla-component", bugzillaComponentResult, release).
+			WithColors(colors).
+			WithPreviousBugzillaComponentResult(prev).
+			ToHTML()
 
 		s += bugzillaComponentHTML
 	}

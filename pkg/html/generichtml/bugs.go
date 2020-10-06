@@ -1,8 +1,9 @@
-package releasehtml
+package generichtml
 
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
@@ -49,4 +50,10 @@ FIXME: Provide a snippet of the test failure or error from the job log
 		release)
 
 	return bug
+}
+
+// testName is the non-encoded test.Name
+func testToSearchURL(testName string) string {
+	encodedTestName := url.QueryEscape(regexp.QuoteMeta(testName))
+	return fmt.Sprintf("https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s", encodedTestName)
 }

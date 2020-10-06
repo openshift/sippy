@@ -8,7 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 )
 
-func FilterJobResultTests(jobResult *sippyprocessingv1.JobResult, testFilterFn testResultFilterFunc) *sippyprocessingv1.JobResult {
+func FilterJobResultTests(jobResult *sippyprocessingv1.JobResult, testFilterFn TestResultFilterFunc) *sippyprocessingv1.JobResult {
 	if jobResult == nil {
 		return nil
 	}
@@ -28,13 +28,13 @@ func FilterJobResultTests(jobResult *sippyprocessingv1.JobResult, testFilterFn t
 func filterPertinentFrequentJobResults(
 	in []sippyprocessingv1.JobResult,
 	numberOfDaysOfData int, // number of days included in report.
-	testResultFilterFn testResultFilterFunc,
+	testResultFilterFn TestResultFilterFunc,
 ) []sippyprocessingv1.JobResult {
 	filtered := []sippyprocessingv1.JobResult{}
 
 	for _, job := range in {
 		if job.Successes+job.Failures > numberOfDaysOfData*3/2 /*time 1.5*/ {
-			job.TestResults = testResultFilterFn.filterTestResults(job.TestResults)
+			job.TestResults = testResultFilterFn.FilterTestResults(job.TestResults)
 			filtered = append(filtered, job)
 		}
 	}
@@ -45,13 +45,13 @@ func filterPertinentFrequentJobResults(
 func filterPertinentInfrequentJobResults(
 	in []sippyprocessingv1.JobResult,
 	numberOfDaysOfData int, // number of days included in report.
-	testResultFilterFn testResultFilterFunc,
+	testResultFilterFn TestResultFilterFunc,
 ) []sippyprocessingv1.JobResult {
 	filtered := []sippyprocessingv1.JobResult{}
 
 	for _, job := range in {
 		if job.Successes+job.Failures <= numberOfDaysOfData*3/2 /*time 1.5*/ {
-			job.TestResults = testResultFilterFn.filterTestResults(job.TestResults)
+			job.TestResults = testResultFilterFn.FilterTestResults(job.TestResults)
 			filtered = append(filtered, job)
 		}
 	}

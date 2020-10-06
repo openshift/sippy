@@ -11,7 +11,7 @@ import (
 // convertRawDataToByPlatform takes the raw data and produces a map of platform names to job and test results
 func convertRawDataToByPlatform(
 	allJobResults []sippyprocessingv1.JobResult,
-	testResultFilterFn testResultFilterFunc,
+	testResultFilterFn TestResultFilterFunc,
 ) []sippyprocessingv1.PlatformResults {
 
 	platformResults := []sippyprocessingv1.PlatformResults{}
@@ -41,7 +41,7 @@ func convertRawDataToByPlatform(
 			jobResults = append(jobResults, jobResult)
 		}
 
-		filteredPlatformTestResults := testResultFilterFn.filterTestResults(allPlatformTestResults)
+		filteredPlatformTestResults := testResultFilterFn.FilterTestResults(allPlatformTestResults)
 		sort.Stable(jobsByPassPercentage(jobResults))
 
 		platformResults = append(platformResults, sippyprocessingv1.PlatformResults{

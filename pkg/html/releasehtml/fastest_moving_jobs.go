@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/openshift/sippy/pkg/html/generichtml"
+
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 
 	"github.com/openshift/sippy/pkg/util"
@@ -64,10 +66,10 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		currJobResult = testreportconversion.FilterJobResultTests(currJobResult, testFilterFn)
 		prevJobResult = testreportconversion.FilterJobResultTests(prevJobResult, testFilterFn)
 
-		jobHTML := newJobResultRendererFromJobResult("by-job-name", *currJobResult, release).
-			withMaxTestResultsToShow(jobTestCount).
-			withPreviousJobResult(prevJobResult).
-			toHTML()
+		jobHTML := generichtml.NewJobResultRendererFromJobResult("by-job-name", *currJobResult, release).
+			WithMaxTestResultsToShow(jobTestCount).
+			WithPreviousJobResult(prevJobResult).
+			ToHTML()
 
 		s += jobHTML
 	}

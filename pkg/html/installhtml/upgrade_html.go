@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	topPageHtml = `
+	upgradeTopPageHtml = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -17,18 +17,18 @@ var (
 }
 </style>
 
-<h1 class=text-center>Release %s Install Dashboard</h1>
+<h1 class=text-center>Release %s upgrade Dashboard</h1>
 
 <p class="small mb-3 text-nowrap">
-	Jump to: <a href="#InstallRatesByOperator">Install Rates by Operator</a>
+	Jump to: <a href="#UpgradeRatesByOperator">Upgrade Rates by Operator</a> | <a href="#UpgradeRelatedTests">Upgrade Related Tests</a> | <a href="#UpgradeJobs">Upgrade Jobs</a> 
 </p>
 
 `
 )
 
-func PrintInstallHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, release string) {
+func PrintUpgradeHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release "+release+" Install Dashboard")
+	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release "+release+" Upgrade Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
 		warningsHTML := ""
 		for _, analysisWarning := range prevReport.AnalysisWarnings {
@@ -41,11 +41,19 @@ func PrintInstallHtmlReport(w http.ResponseWriter, req *http.Request, report, pr
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, topPageHtml, release)
+	fmt.Fprintf(w, upgradeTopPageHtml, release)
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
-	fmt.Fprint(w, installOperatorTests(report, prevReport))
+	fmt.Fprint(w, upgradeOperatorTests(report, prevReport))
+	fmt.Fprintln(w)
+
+	fmt.Fprintln(w)
+	fmt.Fprint(w, summaryUpgradeRelatedTests(report, prevReport, numDays, release))
+	fmt.Fprintln(w)
+
+	fmt.Fprintln(w)
+	fmt.Fprint(w, summaryUpgradeRelatedJobs(report, prevReport, numDays, release))
 	fmt.Fprintln(w)
 
 	//w.Write(result)

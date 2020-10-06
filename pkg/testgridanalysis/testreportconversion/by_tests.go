@@ -11,13 +11,13 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-func getTopFailingTestsWithBug(testResultsByName testResultsByName, testResultFilterFn testResultFilterFunc) []sippyprocessingv1.FailingTestResult {
+func getTopFailingTestsWithBug(testResultsByName testResultsByName, testResultFilterFn TestResultFilterFunc) []sippyprocessingv1.FailingTestResult {
 	return getTopFailingTests(testResultsByName, func(testResult sippyprocessingv1.TestResult) bool {
 		return len(testResult.BugList) > 0
 	}, testResultFilterFn)
 }
 
-func getTopFailingTestsWithoutBug(testResultsByName testResultsByName, testResultFilterFn testResultFilterFunc) []sippyprocessingv1.FailingTestResult {
+func getTopFailingTestsWithoutBug(testResultsByName testResultsByName, testResultFilterFn TestResultFilterFunc) []sippyprocessingv1.FailingTestResult {
 	return getTopFailingTests(testResultsByName, func(testResult sippyprocessingv1.TestResult) bool {
 		return len(testResult.BugList) == 0
 	}, testResultFilterFn)
@@ -133,7 +133,7 @@ type testFilterFunc func(sippyprocessingv1.TestResult) bool
 func getTopFailingTests(
 	testResultsByName testResultsByName,
 	testFilterFn testFilterFunc,
-	testResultFilterFn testResultFilterFunc,
+	testResultFilterFn TestResultFilterFunc,
 ) []sippyprocessingv1.FailingTestResult {
 
 	topTests := []sippyprocessingv1.FailingTestResult{}

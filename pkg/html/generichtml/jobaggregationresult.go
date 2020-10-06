@@ -1,9 +1,7 @@
-package releasehtml
+package generichtml
 
 import (
 	"fmt"
-
-	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -67,18 +65,18 @@ type jobAggregationResultRenderBuilder struct {
 	release              string
 	maxTestResultsToShow int
 	maxJobResultsToShow  int
-	colors               generichtml.ColorizationCriteria
+	colors               ColorizationCriteria
 	collapsedAs          string
 }
 
-func newJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggregationDisplay, release string) *jobAggregationResultRenderBuilder {
+func NewJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggregationDisplay, release string) *jobAggregationResultRenderBuilder {
 	return &jobAggregationResultRenderBuilder{
 		sectionBlock:          sectionBlock,
 		currAggregationResult: currJobResult,
 		release:               release,
 		maxTestResultsToShow:  10, // just a default, can be overridden
 		maxJobResultsToShow:   10, // just a default, can be overridden
-		colors: generichtml.ColorizationCriteria{
+		colors: ColorizationCriteria{
 			MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 			MinGreenPercent:  80, // no action required. This *should* be closer to 85%
@@ -86,20 +84,20 @@ func newJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggre
 	}
 }
 
-func newJobAggregationResultRendererFromPlatformResults(sectionBlock string, curr sippyprocessingv1.PlatformResults, release string) *jobAggregationResultRenderBuilder {
-	return newJobAggregationResultRenderer(sectionBlock, platformResultToDisplay(curr), release)
+func NewJobAggregationResultRendererFromPlatformResults(sectionBlock string, curr sippyprocessingv1.PlatformResults, release string) *jobAggregationResultRenderBuilder {
+	return NewJobAggregationResultRenderer(sectionBlock, platformResultToDisplay(curr), release)
 }
 
-func newJobAggregationResultRendererFromBugzillaComponentResult(sectionBlock string, curr sippyprocessingv1.SortedBugzillaComponentResult, release string) *jobAggregationResultRenderBuilder {
-	return newJobAggregationResultRenderer(sectionBlock, bugzillaComponentReportToDisplay(curr), release)
+func NewJobAggregationResultRendererFromBugzillaComponentResult(sectionBlock string, curr sippyprocessingv1.SortedBugzillaComponentResult, release string) *jobAggregationResultRenderBuilder {
+	return NewJobAggregationResultRenderer(sectionBlock, bugzillaComponentReportToDisplay(curr), release)
 }
 
-func (b *jobAggregationResultRenderBuilder) withPrevious(prevJobResult *jobAggregationDisplay) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithPrevious(prevJobResult *jobAggregationDisplay) *jobAggregationResultRenderBuilder {
 	b.prevAggregationResult = prevJobResult
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withPreviousPlatformResults(prev *sippyprocessingv1.PlatformResults) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithPreviousPlatformResults(prev *sippyprocessingv1.PlatformResults) *jobAggregationResultRenderBuilder {
 	if prev == nil {
 		b.prevAggregationResult = nil
 		return b
@@ -109,7 +107,7 @@ func (b *jobAggregationResultRenderBuilder) withPreviousPlatformResults(prev *si
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withPreviousBugzillaComponentResult(prev *sippyprocessingv1.SortedBugzillaComponentResult) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithPreviousBugzillaComponentResult(prev *sippyprocessingv1.SortedBugzillaComponentResult) *jobAggregationResultRenderBuilder {
 	if prev == nil {
 		b.prevAggregationResult = nil
 		return b
@@ -119,27 +117,27 @@ func (b *jobAggregationResultRenderBuilder) withPreviousBugzillaComponentResult(
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow int) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithMaxTestResultsToShow(maxTestResultsToShow int) *jobAggregationResultRenderBuilder {
 	b.maxTestResultsToShow = maxTestResultsToShow
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withMaxJobResultsToShow(maxJobResultsToShow int) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithMaxJobResultsToShow(maxJobResultsToShow int) *jobAggregationResultRenderBuilder {
 	b.maxJobResultsToShow = maxJobResultsToShow
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withColors(colors generichtml.ColorizationCriteria) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithColors(colors ColorizationCriteria) *jobAggregationResultRenderBuilder {
 	b.colors = colors
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) startCollapsedAs(collapsedAs string) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) StartCollapsedAs(collapsedAs string) *jobAggregationResultRenderBuilder {
 	b.collapsedAs = collapsedAs
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) toHTML() string {
+func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 
 	s := ""
 
@@ -186,16 +184,16 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		class += " collapse " + b.collapsedAs
 	}
 
-	testsCollapseName := generichtml.MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
-	jobsCollapseName := generichtml.MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
+	testsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
+	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
 	button := ""
 	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
-		button += "					" + generichtml.GetButtonHTML(testsCollapseName, "Expand Failing Tests")
+		button += "					" + GetButtonHTML(testsCollapseName, "Expand Failing Tests")
 	}
-	button += "					" + generichtml.GetButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+	button += "					" + GetButtonHTML(jobsCollapseName, "Expand Failing Jobs")
 
 	if b.prevAggregationResult != nil {
-		arrow := generichtml.GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
+		arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
 
 		s = s + fmt.Sprintf(template,
 			class,
@@ -242,12 +240,12 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 			}
 		}
 
-		jobRows = jobRows + newJobResultRenderer(jobsCollapseName, job, b.release).
-			withPrevious(prev).
-			withMaxTestResultsToShow(b.maxTestResultsToShow).
-			startCollapsed().
-			withIndent(1).
-			toHTML()
+		jobRows = jobRows + NewJobResultRenderer(jobsCollapseName, job, b.release).
+			WithPrevious(prev).
+			WithMaxTestResultsToShow(b.maxTestResultsToShow).
+			StartCollapsed().
+			WithIndent(1).
+			ToHTML()
 
 		jobRowCount++
 	}
@@ -289,11 +287,11 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		}
 
 		testRows = testRows +
-			newTestResultRenderer(testsCollapseName, test, b.release).
-				withIndent(1).
-				withPrevious(prev).
-				startCollapsed().
-				toHTML()
+			NewTestResultRenderer(testsCollapseName, test, b.release).
+				WithIndent(1).
+				WithPrevious(prev).
+				StartCollapsed().
+				ToHTML()
 
 		testRowCount++
 	}
