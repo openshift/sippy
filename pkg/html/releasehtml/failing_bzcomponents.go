@@ -1,4 +1,4 @@
-package html
+package releasehtml
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		</tr>
 	`, numDays)
 
-	colors := colorizationCriteria{
+	colors := generichtml.colorizationCriteria{
 		minRedPercent:    0,
 		minYellowPercent: 90,
 		minGreenPercent:  95,

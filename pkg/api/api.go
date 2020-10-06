@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/openshift/sippy/pkg/html/releasehtml"
+
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/html"
 	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
@@ -86,7 +87,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
-		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
+		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName)
 		testPrev := util.FindFailedTestResult(test.TestName, prevTestResults)
 
 		var failedTestWithBug sippyv1.FailingTestBug
@@ -135,7 +136,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
-		testLink := fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName)
+		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName)
 		testPrev := util.FindFailedTestResult(test.TestName, prevTopFailingTestsWithoutBug)
 
 		var failedTestWithoutBug sippyv1.FailingTestBug
@@ -243,7 +244,7 @@ func canaryTestFailures(all []sippyprocessingv1.FailingTestResult) []sippyv1.Can
 		canaryFailures = append(canaryFailures,
 			sippyv1.CanaryTestFailInstance{
 				Name: test.TestName,
-				Url:  fmt.Sprintf("%s%s", html.BugSearchUrl, encodedTestName),
+				Url:  fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName),
 				PassRate: sippyv1.PassRate{
 					Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 					Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
@@ -292,7 +293,7 @@ func failureGroupList(report sippyprocessingv1.TestReport) []sippyv1.FailureGrou
 }
 
 func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int) map[string]interface{} {
-	data := html.TestReports{
+	data := releasehtml.TestReports{
 		Current:      report,
 		Prev:         prevReport,
 		NumDays:      numDays,

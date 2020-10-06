@@ -1,4 +1,4 @@
-package html
+package releasehtml
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type jobResultRenderBuilder struct {
 
 	release              string
 	maxTestResultsToShow int
-	colors               colorizationCriteria
+	colors               generichtml.colorizationCriteria
 	startCollapsedBool   bool
 	baseIndentDepth      int
 }
@@ -82,7 +82,7 @@ func newJobResultRenderer(sectionBlock string, curr jobResultDisplay, release st
 		currJobResult:        curr,
 		release:              release,
 		maxTestResultsToShow: 10, // just a default, can be overridden
-		colors: colorizationCriteria{
+		colors: generichtml.colorizationCriteria{
 			minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 			minGreenPercent:  80, // no action required. This *should* be closer to 85%
@@ -113,7 +113,7 @@ func (b *jobResultRenderBuilder) withMaxTestResultsToShow(maxTestResultsToShow i
 	return b
 }
 
-func (b *jobResultRenderBuilder) withColors(colors colorizationCriteria) *jobResultRenderBuilder {
+func (b *jobResultRenderBuilder) withColors(colors generichtml.colorizationCriteria) *jobResultRenderBuilder {
 	b.colors = colors
 	return b
 }
@@ -129,7 +129,7 @@ func (b *jobResultRenderBuilder) startCollapsed() *jobResultRenderBuilder {
 }
 
 func (b *jobResultRenderBuilder) toHTML() string {
-	testCollapseSectionName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
+	testCollapseSectionName := generichtml.makeSafeForCollapseName(b.sectionBlock + "---" + b.currJobResult.displayName + "---tests")
 
 	s := ""
 
@@ -176,11 +176,11 @@ func (b *jobResultRenderBuilder) toHTML() string {
 
 	button := ""
 	if len(b.currJobResult.testResults) > 0 {
-		button = "<p>" + getButtonHTML(testCollapseSectionName, "Expand Failing Tests")
+		button = "<p>" + generichtml.getButtonHTML(testCollapseSectionName, "Expand Failing Tests")
 	}
 
 	if b.prevJobResult != nil {
-		arrow := getArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
+		arrow := generichtml.getArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
 		s = s + fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,

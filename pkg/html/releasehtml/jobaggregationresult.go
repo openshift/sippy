@@ -1,4 +1,4 @@
-package html
+package releasehtml
 
 import (
 	"fmt"
@@ -65,7 +65,7 @@ type jobAggregationResultRenderBuilder struct {
 	release              string
 	maxTestResultsToShow int
 	maxJobResultsToShow  int
-	colors               colorizationCriteria
+	colors               generichtml.colorizationCriteria
 	collapsedAs          string
 }
 
@@ -76,7 +76,7 @@ func newJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggre
 		release:               release,
 		maxTestResultsToShow:  10, // just a default, can be overridden
 		maxJobResultsToShow:   10, // just a default, can be overridden
-		colors: colorizationCriteria{
+		colors: generichtml.colorizationCriteria{
 			minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			minYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 			minGreenPercent:  80, // no action required. This *should* be closer to 85%
@@ -127,7 +127,7 @@ func (b *jobAggregationResultRenderBuilder) withMaxJobResultsToShow(maxJobResult
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) withColors(colors colorizationCriteria) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) withColors(colors generichtml.colorizationCriteria) *jobAggregationResultRenderBuilder {
 	b.colors = colors
 	return b
 }
@@ -184,16 +184,16 @@ func (b *jobAggregationResultRenderBuilder) toHTML() string {
 		class += " collapse " + b.collapsedAs
 	}
 
-	testsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
-	jobsCollapseName := makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
+	testsCollapseName := generichtml.makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
+	jobsCollapseName := generichtml.makeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
 	button := ""
 	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
-		button += "					" + getButtonHTML(testsCollapseName, "Expand Failing Tests")
+		button += "					" + generichtml.getButtonHTML(testsCollapseName, "Expand Failing Tests")
 	}
-	button += "					" + getButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+	button += "					" + generichtml.getButtonHTML(jobsCollapseName, "Expand Failing Jobs")
 
 	if b.prevAggregationResult != nil {
-		arrow := getArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
+		arrow := generichtml.getArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
 
 		s = s + fmt.Sprintf(template,
 			class,

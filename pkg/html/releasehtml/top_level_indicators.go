@@ -1,4 +1,4 @@
-package html
+package releasehtml
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-var overallInstallUpgradeColors = colorizationCriteria{
+var overallInstallUpgradeColors = generichtml.colorizationCriteria{
 	minRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 	minYellowPercent: 85, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 	minGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
@@ -56,12 +56,12 @@ func getTopLevelIndicateFailedTestHTML(currFailingTest sippyprocessingv1.Failing
 	failedTestResultTemplate := template.Must(template.New("failed-test-result").Parse(failedTestResultTemplateString))
 
 	currHTML := mustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(currFailingTest))
-	arrow := flatdown
+	arrow := generichtml.flatdown
 	prevHTML := "NA"
 
 	if prevFailingTest != nil {
 		prevHTML = mustSubstitute(failedTestResultTemplate, failedTestResultToFailTestTemplate(*prevFailingTest))
-		arrow = getArrow(
+		arrow = generichtml.getArrow(
 			currFailingTest.TestResultAcrossAllJobs.Successes+currFailingTest.TestResultAcrossAllJobs.Failures,
 			currFailingTest.TestResultAcrossAllJobs.PassPercentage,
 			prevFailingTest.TestResultAcrossAllJobs.PassPercentage)
