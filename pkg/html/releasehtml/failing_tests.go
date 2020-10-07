@@ -3,6 +3,8 @@ package releasehtml
 import (
 	"fmt"
 
+	"github.com/openshift/sippy/pkg/html/generichtml"
+
 	"github.com/openshift/sippy/pkg/util"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -93,9 +95,9 @@ func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingT
 		testPrev := util.FindFailedTestResult(testResult.TestName, prevTests)
 
 		s = s +
-			newTestResultRendererForFailedTestResult("", testResult, release).
-				withPreviousFailedTestResult(testPrev).
-				toHTML()
+			generichtml.NewTestResultRendererForFailedTestResult("", testResult, release).
+				WithPreviousFailedTestResult(testPrev).
+				ToHTML()
 	}
 
 	s = s + "</table>"

@@ -1,11 +1,9 @@
-package releasehtml
+package generichtml
 
 import (
 	"fmt"
 	"net/url"
 	"regexp"
-
-	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"k8s.io/klog"
@@ -55,18 +53,18 @@ type testResultRenderBuilder struct {
 
 	release             string
 	maxJobResultsToShow int
-	colors              generichtml.ColorizationCriteria
+	colors              ColorizationCriteria
 	startCollapsedBool  bool
 	baseIndentDepth     int
 }
 
-func newTestResultRenderer(sectionBlock string, curr testResultDisplay, release string) *testResultRenderBuilder {
+func NewTestResultRenderer(sectionBlock string, curr testResultDisplay, release string) *testResultRenderBuilder {
 	return &testResultRenderBuilder{
 		sectionBlock:        sectionBlock,
 		currTestResult:      curr,
 		release:             release,
 		maxJobResultsToShow: 10, // just a default, can be overridden
-		colors: generichtml.ColorizationCriteria{
+		colors: ColorizationCriteria{
 			MinRedPercent:    0,  // failure.  In this range, there is a systemic failure so severe that a reliable signal isn't available.
 			MinYellowPercent: 60, // at risk.  In this range, there is a systemic problem that needs to be addressed.
 			MinGreenPercent:  80, // no action required. This *should* be closer to 85%
@@ -74,20 +72,20 @@ func newTestResultRenderer(sectionBlock string, curr testResultDisplay, release 
 	}
 }
 
-func newTestResultRendererForTestResult(sectionBlock string, curr sippyprocessingv1.TestResult, release string) *testResultRenderBuilder {
-	return newTestResultRenderer(sectionBlock, testResultToDisplay(curr), release)
+func NewTestResultRendererForTestResult(sectionBlock string, curr sippyprocessingv1.TestResult, release string) *testResultRenderBuilder {
+	return NewTestResultRenderer(sectionBlock, testResultToDisplay(curr), release)
 }
 
-func newTestResultRendererForFailedTestResult(sectionBlock string, curr sippyprocessingv1.FailingTestResult, release string) *testResultRenderBuilder {
-	return newTestResultRenderer(sectionBlock, failedTestResultToDisplay(curr), release)
+func NewTestResultRendererForFailedTestResult(sectionBlock string, curr sippyprocessingv1.FailingTestResult, release string) *testResultRenderBuilder {
+	return NewTestResultRenderer(sectionBlock, failedTestResultToDisplay(curr), release)
 }
 
-func (b *testResultRenderBuilder) withPrevious(prev *testResultDisplay) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithPrevious(prev *testResultDisplay) *testResultRenderBuilder {
 	b.prevTestResult = prev
 	return b
 }
 
-func (b *testResultRenderBuilder) withPreviousTestResult(prev *sippyprocessingv1.TestResult) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithPreviousTestResult(prev *sippyprocessingv1.TestResult) *testResultRenderBuilder {
 	if prev == nil {
 		b.prevTestResult = nil
 		return b
@@ -97,7 +95,7 @@ func (b *testResultRenderBuilder) withPreviousTestResult(prev *sippyprocessingv1
 	return b
 }
 
-func (b *testResultRenderBuilder) withPreviousFailedTestResult(prev *sippyprocessingv1.FailingTestResult) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithPreviousFailedTestResult(prev *sippyprocessingv1.FailingTestResult) *testResultRenderBuilder {
 	if prev == nil {
 		b.prevTestResult = nil
 		return b
@@ -107,27 +105,27 @@ func (b *testResultRenderBuilder) withPreviousFailedTestResult(prev *sippyproces
 	return b
 }
 
-func (b *testResultRenderBuilder) withMaxJobResultsToShow(maxTestResultsToShow int) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithMaxJobResultsToShow(maxTestResultsToShow int) *testResultRenderBuilder {
 	b.maxJobResultsToShow = maxTestResultsToShow
 	return b
 }
 
-func (b *testResultRenderBuilder) withColors(colors generichtml.ColorizationCriteria) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithColors(colors ColorizationCriteria) *testResultRenderBuilder {
 	b.colors = colors
 	return b
 }
 
-func (b *testResultRenderBuilder) withIndent(depth int) *testResultRenderBuilder {
+func (b *testResultRenderBuilder) WithIndent(depth int) *testResultRenderBuilder {
 	b.baseIndentDepth = depth
 	return b
 }
 
-func (b *testResultRenderBuilder) startCollapsed() *testResultRenderBuilder {
+func (b *testResultRenderBuilder) StartCollapsed() *testResultRenderBuilder {
 	b.startCollapsedBool = true
 	return b
 }
 
-func (b *testResultRenderBuilder) toHTML() string {
+func (b *testResultRenderBuilder) ToHTML() string {
 	indentDepth := (b.baseIndentDepth)*50 + 10
 
 	template := `
@@ -154,10 +152,10 @@ func (b *testResultRenderBuilder) toHTML() string {
 		class += "collapse " + b.sectionBlock
 	}
 
-	jobCollapseSectionName := generichtml.MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
+	jobCollapseSectionName := MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
 	button := ""
 	if len(b.currTestResult.jobResults) > 0 {
-		button = "<p>" + generichtml.GetButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
+		button = "<p>" + GetButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
 	}
 
 	// test name | bug | pass rate | higher/lower | pass rate
@@ -169,7 +167,7 @@ func (b *testResultRenderBuilder) toHTML() string {
 	klog.V(2).Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
 	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.release, "", b.currTestResult.displayName)
 	if b.prevTestResult != nil {
-		arrow := generichtml.GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
+		arrow := GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
 
 		s += fmt.Sprintf(template, class, indentDepth, testLink, button, bugHTML, b.currTestResult.displayPercent, b.currTestResult.totalRuns, b.currTestResult.flakedRuns, arrow, b.prevTestResult.displayPercent, b.prevTestResult.totalRuns, b.prevTestResult.flakedRuns)
 	} else {
@@ -203,11 +201,11 @@ func (b *testResultRenderBuilder) toHTML() string {
 			}
 		}
 
-		rows = rows + newJobResultRenderer(jobCollapseSectionName, failingTestJobResult, b.release).
-			withIndent(b.baseIndentDepth+1).
-			withPrevious(prevTestJobResult).
-			startCollapsed().
-			toHTML()
+		rows = rows + NewJobResultRenderer(jobCollapseSectionName, failingTestJobResult, b.release).
+			WithIndent(b.baseIndentDepth+1).
+			WithPrevious(prevTestJobResult).
+			StartCollapsed().
+			ToHTML()
 
 		rowCount++
 	}

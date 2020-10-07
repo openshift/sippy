@@ -3,6 +3,7 @@ package testreportconversion
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
@@ -103,13 +104,13 @@ func convertRawTestResultsToProcessedTestResults(
 	return ret
 }
 
-type testResultFilterFunc func(sippyprocessingv1.TestResult) bool
+type TestResultFilterFunc func(sippyprocessingv1.TestResult) bool
 
 func acceptAllTests(testResult sippyprocessingv1.TestResult) bool {
 	return true
 }
 
-func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) testResultFilterFunc {
+func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		if testResult.PassPercentage > successThreshold {
 			return false
@@ -125,7 +126,17 @@ func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 	return true
 }
 
-func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) testResultFilterFunc {
+func IsHighValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
+	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testResult.Name) {
+		return true
+	}
+	if strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix) {
+		return true
+	}
+	return false
+}
+
+func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		if testResult.Successes+testResult.Failures < minRuns {
 			return false
@@ -134,7 +145,7 @@ func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for
 	}
 }
 
-func FilterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFunc {
+func FilterTestResultsByFilters(fns ...TestResultFilterFunc) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		for _, fn := range fns {
 			if !fn(testResult) {
@@ -145,19 +156,42 @@ func FilterTestResultsByFilters(fns ...testResultFilterFunc) testResultFilterFun
 	}
 }
 
+type TestResultFilterFuncs []TestResultFilterFunc
+
+func (fns TestResultFilterFuncs) And(testResult sippyprocessingv1.TestResult) bool {
+	for _, fn := range fns {
+		if !fn(testResult) {
+			return false
+		}
+	}
+	return true
+}
+
+func (fns TestResultFilterFuncs) Or(testResult sippyprocessingv1.TestResult) bool {
+	for _, fn := range fns {
+		if fn(testResult) {
+			return true
+		}
+	}
+	return false
+}
+
 func StandardTestResultFilter(
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
-) testResultFilterFunc {
-	return FilterTestResultsByFilters(
-		FilterLowValueTestsByName,
-		FilterTooFewTestRuns(minRuns),
-		FilterSuccessfulTestResults(successThreshold),
-	)
+) TestResultFilterFunc {
+	return TestResultFilterFuncs{
+		IsHighValueTestsByName,
+		TestResultFilterFuncs{
+			FilterLowValueTestsByName,
+			FilterTooFewTestRuns(minRuns),
+			FilterSuccessfulTestResults(successThreshold),
+		}.And,
+	}.Or
 }
 
-func (filterFn testResultFilterFunc) filterTestResults(testResults []sippyprocessingv1.TestResult) []sippyprocessingv1.TestResult {
+func (filterFn TestResultFilterFunc) FilterTestResults(testResults []sippyprocessingv1.TestResult) []sippyprocessingv1.TestResult {
 	filteredResults := []sippyprocessingv1.TestResult{}
 
 	for i := range testResults {
