@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -15,9 +17,7 @@ import (
 func upgradeOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 	dataForTestsByPlatform := getDataForTestsByPlatform(
 		curr, prev,
-		func(testResult sippyprocessingv1.TestResult) bool {
-			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix)
-		},
+		isUpgradeRelatedTest,
 		func(testResult sippyprocessingv1.TestResult) bool {
 			return testResult.Name == testgridanalysisapi.UpgradeTestName
 		},
@@ -42,7 +42,7 @@ func upgradeOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 
 	columnNames := append([]string{"All"}, platformColumns...)
 
-	return dataForTestsByPlatform.getTableHTML("Upgrade Rates by Operator", "UpgradeRatesByOperator", "Upgrade Rates by Operator by Platform", columnNames)
+	return dataForTestsByPlatform.getTableHTML("Upgrade Rates by Operator", "UpgradeRatesByOperator", "Upgrade Rates by Operator by Platform", columnNames, getOperatorFromTest)
 }
 
 func summaryUpgradeRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {
@@ -68,7 +68,7 @@ func summaryUpgradeRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 }
 
 func isUpgradeRelatedTest(testResult sippyprocessingv1.TestResult) bool {
-	if strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix) {
+	if testidentification.IsUpgradeOperatorTest(testResult.Name) {
 		return true
 	}
 	if strings.Contains(testResult.Name, testgridanalysisapi.UpgradeTestName) {

@@ -124,16 +124,14 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(test.Name):
-					matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(test.Name)
-					operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+				case testidentification.IsInstallOperatorTest(test.Name):
 					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
-						Name:  matches[operatorIndex],
+						Name:  testidentification.GetOperatorFromInstallTest(test.Name),
 						State: testgridanalysisapi.Success,
 					})
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
+				case testidentification.IsUpgradeOperatorTest(test.Name):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
+						Name:  testidentification.GetOperatorFromUpgradeTest(test.Name),
 						State: testgridanalysisapi.Success,
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):
@@ -162,16 +160,14 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(test.Name):
-					matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(test.Name)
-					operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+				case testidentification.IsInstallOperatorTest(test.Name):
 					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
-						Name:  matches[operatorIndex],
+						Name:  testidentification.GetOperatorFromInstallTest(test.Name),
 						State: testgridanalysisapi.Failure,
 					})
-				case strings.HasPrefix(test.Name, testgridanalysisapi.OperatorUpgradePrefix):
+				case testidentification.IsUpgradeOperatorTest(test.Name):
 					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  test.Name[len(testgridanalysisapi.OperatorUpgradePrefix):],
+						Name:  testidentification.GetOperatorFromUpgradeTest(test.Name),
 						State: testgridanalysisapi.Failure,
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):

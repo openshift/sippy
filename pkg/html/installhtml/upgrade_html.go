@@ -17,7 +17,7 @@ var (
 }
 </style>
 
-<h1 class=text-center>Release %s upgrade Dashboard</h1>
+<h1 class=text-center>Release %s Upgrade Dashboard</h1>
 
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#UpgradeRatesByOperator">Upgrade Rates by Operator</a> | <a href="#UpgradeRelatedTests">Upgrade Related Tests</a> | <a href="#UpgradeJobs">Upgrade Jobs</a> 
