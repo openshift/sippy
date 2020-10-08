@@ -33,8 +33,11 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			syntheticTests := map[string]*synthenticTestResult{
 				testgridanalysisapi.InstallTestName:        &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
 				testgridanalysisapi.InstallTimeoutTestName: &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.UpgradeTestName:        &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName},
 				testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+			}
+			// upgrades should only be indicated on jobs that run upgrades
+			if isUpgrade {
+				syntheticTests[testgridanalysisapi.UpgradeTestName] = &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName}
 			}
 
 			hasSomeOperatorResults := len(jrr.SadOperators) > 0

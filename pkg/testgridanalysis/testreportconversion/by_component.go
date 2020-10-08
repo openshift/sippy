@@ -2,7 +2,6 @@ package testreportconversion
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
@@ -133,14 +132,12 @@ func getBugzillaComponentsFromTestResult(testResult sippyprocessingv1.TestResult
 
 	// If we didn't have a bug, use the test name itself to identify a likely victim/blame
 	switch {
-	case testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testResult.Name):
-		matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(testResult.Name)
-		operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
-		operatorName := matches[operatorIndex]
+	case testidentification.IsInstallOperatorTest(testResult.Name):
+		operatorName := testidentification.GetOperatorFromInstallTest(testResult.Name)
 		return []string{testidentification.GetBugzillaComponentForOperator(operatorName)}
 
-	case strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix):
-		operatorName := testResult.Name[len(testgridanalysisapi.OperatorUpgradePrefix):]
+	case testidentification.IsUpgradeOperatorTest(testResult.Name):
+		operatorName := testidentification.GetOperatorFromUpgradeTest(testResult.Name)
 		return []string{testidentification.GetBugzillaComponentForOperator(operatorName)}
 
 	default:

@@ -3,6 +3,8 @@ package testidentification
 import (
 	"strings"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -59,4 +61,50 @@ func IsCuratedTest(release, testName string) bool {
 		}
 	}
 	return false
+}
+
+func IsInstallOperatorTest(testName string) bool {
+	return testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName)
+}
+
+func GetOperatorFromInstallTest(testName string) string {
+	if !IsInstallOperatorTest(testName) {
+		return "NOT-AN-INSTALL-TEST-" + testName
+	}
+	matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(testName)
+	operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+	return matches[operatorIndex]
+}
+
+func IsUpgradeOperatorTest(testName string) bool {
+	return strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix)
+}
+
+func GetOperatorFromUpgradeTest(testName string) string {
+	if !IsUpgradeOperatorTest(testName) {
+		return "NOT-AN-UPGRADE-TEST-" + testName
+	}
+	return testName[len(testgridanalysisapi.OperatorUpgradePrefix):]
+}
+
+// IsUpgradeRelatedTest is a filter function for identifying tests that are valuable to track for upgrade diagnosis.
+func IsUpgradeRelatedTest(testName string) bool {
+	if IsUpgradeOperatorTest(testName) {
+		return true
+	}
+	if strings.Contains(testName, testgridanalysisapi.UpgradeTestName) {
+		return true
+	}
+	if strings.Contains(testName, `[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade`) {
+		return true
+	}
+	if strings.Contains(testName, `[sig-cluster-lifecycle] cluster upgrade should be fast`) {
+		return true
+	}
+	if strings.Contains(testName, `APIs remain available`) {
+		return true
+	}
+
+	return false
+
 }

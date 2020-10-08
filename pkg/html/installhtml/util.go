@@ -2,7 +2,8 @@ package installhtml
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
@@ -46,7 +47,11 @@ type testsByPlatform struct {
 	aggregationToOverallTestResult map[string]*currPrevTestResult            // this is the first row of the table, summarizing all data.  If empty or nil, no summary is given.
 }
 
-func getDataForTestsByPlatform(curr, prev sippyprocessingv1.TestReport, isInterestingTest testreportconversion.TestResultFilterFunc, isAggregateTest testreportconversion.TestResultFilterFunc) testsByPlatform {
+func getDataForTestsByPlatform(
+	curr, prev sippyprocessingv1.TestReport,
+	isInterestingTest testreportconversion.TestResultFilterFunc,
+	isAggregateTest testreportconversion.TestResultFilterFunc,
+) testsByPlatform {
 	ret := testsByPlatform{
 		aggregateResultByTestName:      map[string]*currPrevFailedTestResult{},
 		testNameToPlatformToTestResult: map[string]map[string]*currPrevTestResult{},
@@ -107,6 +112,7 @@ func (a testsByPlatform) getTableHTML(
 	anchor string,
 	description string,
 	aggregationNames []string, // these are the columns
+	testNameToDisplayName func(string) string,
 ) string {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := fmt.Sprintf(`
@@ -142,9 +148,9 @@ func (a testsByPlatform) getTableHTML(
 
 	// now the main results by operator, by platform
 	for _, testName := range sets.StringKeySet(a.testNameToPlatformToTestResult).List() {
-		operatorName := strings.SplitN(testName, " ", 3)[2] // We happen to know the shape of this test name
+		testDisplayName := testNameToDisplayName(testName)
 		s += "    <tr>"
-		s += "      <td class=\"\"><nobr>" + operatorName + "</nobr></td>\n"
+		s += "      <td class=\"\"><nobr>" + testDisplayName + "</nobr></td>\n"
 		platformResults := a.testNameToPlatformToTestResult[testName]
 		for _, platformName := range aggregationNames {
 			s += installCellHTMLFromTestResult(platformResults[platformName], individualInstallUpgradeColor)
@@ -155,6 +161,17 @@ func (a testsByPlatform) getTableHTML(
 	s = s + "</table>"
 
 	return s
+}
+
+func getOperatorFromTest(testName string) string {
+	switch {
+	case testidentification.IsInstallOperatorTest(testName):
+		return testidentification.GetOperatorFromInstallTest(testName)
+	case testidentification.IsUpgradeOperatorTest(testName):
+		return testidentification.GetOperatorFromUpgradeTest(testName)
+	default:
+		return testName
+	}
 }
 
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {

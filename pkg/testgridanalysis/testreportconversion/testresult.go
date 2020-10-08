@@ -3,7 +3,6 @@ package testreportconversion
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
@@ -127,10 +126,10 @@ func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 }
 
 func IsHighValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
-	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testResult.Name) {
+	if testidentification.IsInstallOperatorTest(testResult.Name) {
 		return true
 	}
-	if strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorUpgradePrefix) {
+	if testidentification.IsUpgradeRelatedTest(testResult.Name) {
 		return true
 	}
 	return false

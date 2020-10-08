@@ -43,7 +43,7 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 
 	columnNames := append([]string{"All"}, platformColumns...)
 
-	return dataForTestsByPlatform.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Platform", columnNames)
+	return dataForTestsByPlatform.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Platform", columnNames, getOperatorFromTest)
 }
 
 func summaryInstallRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {
