@@ -53,6 +53,13 @@ type RawJobRunResult struct {
 	SadOperators []OperatorState
 	// Used to create synthentic tests.
 	UpgradeOperators []OperatorState
+
+	// UpgradeStarted is true if the test attempted to start an upgrade based on the CVO succeeding (or failing) to acknowledge a request
+	UpgradeStarted bool
+	// Success, Failure, or ""
+	UpgradeForOperatorsStatus string
+	// Success, Failure, or ""
+	UpgradeForMachineConfigPoolsStatus string
 }
 
 type OperatorState struct {

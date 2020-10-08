@@ -54,6 +54,12 @@ var curatedTestSubstrings = map[string][]string{
 	},
 }
 
+var (
+	cvoAcknowledgesUpgrade = "[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
+	operatorsUpgraded      = "[sig-cluster-lifecycle] Cluster completes upgrade"
+	machineConfigsUpgraded = "[sig-mco] Machine config pools complete upgrade"
+)
+
 func IsCuratedTest(release, testName string) bool {
 	for _, substring := range curatedTestSubstrings[release] {
 		if strings.Contains(testName, substring) {
@@ -80,6 +86,18 @@ func IsUpgradeOperatorTest(testName string) bool {
 	return strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix)
 }
 
+func IsUpgradeStartedTest(testName string) bool {
+	return testName == cvoAcknowledgesUpgrade
+}
+
+func IsOperatorsUpgradedTest(testName string) bool {
+	return testName == operatorsUpgraded
+}
+
+func IsMachineConfigPoolsUpgradedTest(testName string) bool {
+	return testName == machineConfigsUpgraded
+}
+
 func GetOperatorFromUpgradeTest(testName string) string {
 	if !IsUpgradeOperatorTest(testName) {
 		return "NOT-AN-UPGRADE-TEST-" + testName
@@ -95,11 +113,11 @@ func IsUpgradeRelatedTest(testName string) bool {
 	if strings.Contains(testName, testgridanalysisapi.UpgradeTestName) {
 		return true
 	}
-	if strings.Contains(testName, `[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade`) {
+	if IsUpgradeStartedTest(testName) {
 		// indicates that the CVO updated the clusterversion.status to indicate that it started work on a new payload
 		return true
 	}
-	if strings.Contains(testName, `[sig-cluster-lifecycle] Cluster completes upgrade`) {
+	if IsOperatorsUpgradedTest(testName) {
 		// indicates every cluster operator upgraded successfully.  This does not include machine config pools
 		return true
 	}
@@ -107,7 +125,7 @@ func IsUpgradeRelatedTest(testName string) bool {
 		// indicates that every cluster operator upgraded withing X minutes (currently 75 as of today)
 		return true
 	}
-	if strings.Contains(testName, `[sig-mco] Machine config pools complete upgrade`) {
+	if IsMachineConfigPoolsUpgradedTest(testName) {
 		// indicates that all the machines restarted with new rhcos
 		return true
 	}

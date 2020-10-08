@@ -2,7 +2,6 @@ package testgridconversion
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -28,7 +27,6 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			if jrr.SetupStatus == "" {
 				numRunsWithoutSetup++
 			}
-			isUpgrade := strings.Contains(jrr.Job, "upgrade")
 
 			syntheticTests := map[string]*synthenticTestResult{
 				testgridanalysisapi.InstallTestName:        &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
@@ -36,7 +34,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 				testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 			}
 			// upgrades should only be indicated on jobs that run upgrades
-			if isUpgrade {
+			if jrr.UpgradeStarted {
 				syntheticTests[testgridanalysisapi.UpgradeTestName] = &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName}
 			}
 
@@ -45,13 +43,6 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			for _, operator := range jrr.SadOperators {
 				if operator.State == testgridanalysisapi.Failure {
 					allOperatorsSuccessfulAtEndOfRun = false
-					break
-				}
-			}
-			upgradeFailed := false
-			for _, operator := range jrr.UpgradeOperators {
-				if operator.State == testgridanalysisapi.Failure {
-					upgradeFailed = true
 					break
 				}
 			}
@@ -107,16 +98,17 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			switch {
 			case setupFailed:
 				// do nothing
-			case !isUpgrade:
+			case !jrr.UpgradeStarted:
 			// do nothing
 
-			case len(jrr.UpgradeOperators) == 0 || upgradeFailed:
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.UpgradeTestName)
-				syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
-
 			default:
-				syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
+				if jrr.UpgradeForOperatorsStatus == testgridanalysisapi.Success && jrr.UpgradeForMachineConfigPoolsStatus == testgridanalysisapi.Success {
+					syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
+				} else {
+					jrr.TestFailures++
+					jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.UpgradeTestName)
+					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
+				}
 			}
 
 			for testName, result := range syntheticTests {
