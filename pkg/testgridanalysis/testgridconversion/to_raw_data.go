@@ -136,6 +136,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):
 					jrr.SetupStatus = testgridanalysisapi.Success
+				case testidentification.IsUpgradeStartedTest(test.Name):
+					jrr.UpgradeStarted = true
+				case testidentification.IsOperatorsUpgradedTest(test.Name):
+					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Success
+				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
+					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Success
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
@@ -172,6 +178,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):
 					jrr.SetupStatus = testgridanalysisapi.Failure
+				case testidentification.IsUpgradeStartedTest(test.Name):
+					jrr.UpgradeStarted = true // this is still true because we definitely started
+				case testidentification.IsOperatorsUpgradedTest(test.Name):
+					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Failure
+				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
+					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Failure
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
