@@ -2,6 +2,23 @@ package v1
 
 import bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 
+// ReleaseReportsMap contain multiple reports per specified release.
+// Used for JSON serialization.
+type ReleaseReportsMap map[string]*Report
+
+// Report contain a single release report returned from Sippy API.
+type Report struct {
+	CanaryTestFailures             []CanaryTestFailInstance      `json:"canaryTestFailures"`
+	FailureGroupings               *FailureGroups                `json:"failureGroupings"`
+	JobPassRateByPlatform          []JobSummaryPlatform          `json:"jobPassRateByPlatform"`
+	JobPassRatesByName             []PassRatesByJobName          `json:"jobPassRatesByName"`
+	JobRunsWithFailureGroups       []FailureGroup                `json:"jobRunsWithFailureGroups"`
+	MinimumJobPassRatesByComponent []MinimumPassRatesByComponent `json:"minimumJobPassRatesByComponent"`
+	TestImpactingBugs              []bugsv1.Bug                  `json:"testImpactingBugs"`
+	TopFailingTestsWithoutBug      []FailingTestBug              `json:"topFailingTestsWithoutBug"`
+	TopFailingTestsWithBug         []FailingTestBug              `json:"topFailingTestsWithBug"`
+}
+
 // PassRate describes statistics on a pass rate
 type PassRate struct {
 	Percentage          float64 `json:"percentage"`
