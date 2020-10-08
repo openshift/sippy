@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -51,6 +50,7 @@ var curatedTestSubstrings = map[string][]string{
 		"pods should never transition back to pending",
 		"pods should successfully create sandboxes",
 		"upgrade should work",
+		"Cluster completes upgrade",
 	},
 }
 
@@ -96,9 +96,19 @@ func IsUpgradeRelatedTest(testName string) bool {
 		return true
 	}
 	if strings.Contains(testName, `[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade`) {
+		// indicates that the CVO updated the clusterversion.status to indicate that it started work on a new payload
+		return true
+	}
+	if strings.Contains(testName, `[sig-cluster-lifecycle] Cluster completes upgrade`) {
+		// indicates every cluster operator upgraded successfully.  This does not include machine config pools
 		return true
 	}
 	if strings.Contains(testName, `[sig-cluster-lifecycle] cluster upgrade should be fast`) {
+		// indicates that every cluster operator upgraded withing X minutes (currently 75 as of today)
+		return true
+	}
+	if strings.Contains(testName, `[sig-mco] Machine config pools complete upgrade`) {
+		// indicates that all the machines restarted with new rhcos
 		return true
 	}
 	if strings.Contains(testName, `APIs remain available`) {

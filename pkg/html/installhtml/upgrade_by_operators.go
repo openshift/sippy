@@ -68,24 +68,11 @@ func summaryUpgradeRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 }
 
 func isUpgradeRelatedTest(testResult sippyprocessingv1.TestResult) bool {
-	if testidentification.IsUpgradeOperatorTest(testResult.Name) {
-		return true
-	}
-	if strings.Contains(testResult.Name, testgridanalysisapi.UpgradeTestName) {
-		return true
-	}
-	if strings.Contains(testResult.Name, `[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade`) {
-		return true
-	}
-	if strings.Contains(testResult.Name, `[sig-cluster-lifecycle] cluster upgrade should be fast`) {
-		return true
-	}
-	if strings.Contains(testResult.Name, `APIs remain available`) {
-		return true
-	}
+	return testidentification.IsUpgradeRelatedTest(testResult.Name)
+}
 
+func neverMatch(testResult sippyprocessingv1.TestResult) bool {
 	return false
-
 }
 
 func summaryUpgradeRelatedJobs(report, reportPrev sippyprocessingv1.TestReport, numDays int, release string) string {
