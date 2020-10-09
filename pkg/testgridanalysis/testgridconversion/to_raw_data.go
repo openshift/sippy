@@ -124,14 +124,9 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
-				case testidentification.IsInstallOperatorTest(test.Name):
-					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
-						Name:  testidentification.GetOperatorFromInstallTest(test.Name),
-						State: testgridanalysisapi.Success,
-					})
-				case testidentification.IsUpgradeOperatorTest(test.Name):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  testidentification.GetOperatorFromUpgradeTest(test.Name),
+				case testidentification.IsOperatorHealthTest(test.Name):
+					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
+						Name:  testidentification.GetOperatorNameFromTest(test.Name),
 						State: testgridanalysisapi.Success,
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):
@@ -166,14 +161,9 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Failed = true
-				case testidentification.IsInstallOperatorTest(test.Name):
-					jrr.SadOperators = append(jrr.SadOperators, testgridanalysisapi.OperatorState{
-						Name:  testidentification.GetOperatorFromInstallTest(test.Name),
-						State: testgridanalysisapi.Failure,
-					})
-				case testidentification.IsUpgradeOperatorTest(test.Name):
-					jrr.UpgradeOperators = append(jrr.UpgradeOperators, testgridanalysisapi.OperatorState{
-						Name:  testidentification.GetOperatorFromUpgradeTest(test.Name),
+				case testidentification.IsOperatorHealthTest(test.Name):
+					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
+						Name:  testidentification.GetOperatorNameFromTest(test.Name),
 						State: testgridanalysisapi.Failure,
 					})
 				case testidentification.IsSetupContainerEquivalent(test.Name):
@@ -191,7 +181,17 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		col += remaining
 	}
 
-	addTestResult(jobResult.TestResults, test.Name, passed, failed, flaked)
+	// we override some test names based on their type.  Historically we misnamed the install and upgrade tests
+	// what we really want is to call these the final state
+	// This prevents any real results with this junit from counting.  This should only be needed during our transition  and
+	// we have to keep it to interpret historical results from 4.6.
+	testName := test.Name
+	if testidentification.IsOldInstallOperatorTest(test.Name) || testidentification.IsOldUpgradeOperatorTest(test.Name) {
+		operatorName := testidentification.GetOperatorNameFromTest(test.Name)
+		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
+	}
+
+	addTestResult(jobResult.TestResults, testName, passed, failed, flaked)
 
 	return
 }

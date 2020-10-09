@@ -29,18 +29,19 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			}
 
 			syntheticTests := map[string]*synthenticTestResult{
-				testgridanalysisapi.InstallTestName:        &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InstallTimeoutTestName: &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InfrastructureTestName: &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+				testgridanalysisapi.InstallTestName:             &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InstallTimeoutTestName:      &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InfrastructureTestName:      &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+				testgridanalysisapi.FinalOperatorHealthTestName: &synthenticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
 			}
 			// upgrades should only be indicated on jobs that run upgrades
 			if jrr.UpgradeStarted {
 				syntheticTests[testgridanalysisapi.UpgradeTestName] = &synthenticTestResult{name: testgridanalysisapi.UpgradeTestName}
 			}
 
-			hasSomeOperatorResults := len(jrr.SadOperators) > 0
+			hasFinalOperatorResults := len(jrr.FinalOperatorStates) > 0
 			allOperatorsSuccessfulAtEndOfRun := true
-			for _, operator := range jrr.SadOperators {
+			for _, operator := range jrr.FinalOperatorStates {
 				if operator.State == testgridanalysisapi.Failure {
 					allOperatorsSuccessfulAtEndOfRun = false
 					break
@@ -49,32 +50,54 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			setupFailed := jrr.SetupStatus != testgridanalysisapi.Success
 			setupSucceeded := jrr.SetupStatus == testgridanalysisapi.Success
 
+			switch {
+			case !hasFinalOperatorResults:
+			// without results, there is no run for the tests
+			case allOperatorsSuccessfulAtEndOfRun:
+				syntheticTests[testgridanalysisapi.FinalOperatorHealthTestName].pass = 1
+			default:
+				syntheticTests[testgridanalysisapi.FinalOperatorHealthTestName].fail = 1
+			}
+
 			// set overall installed status
 			switch {
 			case setupSucceeded:
 				// if setup succeeded, we are guaranteed that installation succeeded.
 				syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
+				// if the test succeeded, then the operator install tests should all be passes
+				for _, operatorState := range jrr.FinalOperatorStates {
+					testName := testgridanalysisapi.OperatorInstallPrefix + " " + operatorState.Name
+					syntheticTests[testName] = &synthenticTestResult{
+						name: testName,
+						pass: 1,
+					}
+				}
 
-			case !hasSomeOperatorResults:
+			case !hasFinalOperatorResults:
 				// if we don't have any operator results, then don't count this an install one way or the other.  This was an infra failure
 
 			default:
 				// the setup failed and we have some operator results, which means the install started. This is a failure
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InstallTestName)
 				syntheticTests[testgridanalysisapi.InstallTestName].fail = 1
 
-				// TODO if the setupSucceeds, but we have some failing operators reporting failing at the end, then we should consider
-				//  marking all the operator tests themselves as flaking, but not failing because the install worked.
-
+				// if the test failed, then the operator install tests should match the operator state
+				for _, operatorState := range jrr.FinalOperatorStates {
+					testName := testgridanalysisapi.OperatorInstallPrefix + " " + operatorState.Name
+					syntheticTests[testName] = &synthenticTestResult{
+						name: testName,
+					}
+					if operatorState.State == testgridanalysisapi.Success {
+						syntheticTests[testName].pass = 1
+					} else {
+						syntheticTests[testName].fail = 1
+					}
+				}
 			}
 
 			// set overall install timeout status
 			switch {
-			case !setupSucceeded && hasSomeOperatorResults && allOperatorsSuccessfulAtEndOfRun:
+			case !setupSucceeded && hasFinalOperatorResults && allOperatorsSuccessfulAtEndOfRun:
 				// the setup failed and yet all operators were successful in the end.  This means we had a weird problem.  Probably a timeout failure.
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InstallTimeoutTestName)
 				syntheticTests[testgridanalysisapi.InstallTimeoutTestName].fail = 1
 
 			default:
@@ -84,10 +107,8 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 
 			// set the infra status
 			switch {
-			case setupFailed && !hasSomeOperatorResults:
+			case setupFailed && !hasFinalOperatorResults:
 				// we only count failures as infra if we have no operator results.  If we got any operator working, then CI infra was working.
-				jrr.TestFailures++
-				jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.InfrastructureTestName)
 				syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
 
 			default:
@@ -104,14 +125,37 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			default:
 				if jrr.UpgradeForOperatorsStatus == testgridanalysisapi.Success && jrr.UpgradeForMachineConfigPoolsStatus == testgridanalysisapi.Success {
 					syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
+					// if the test succeeded, then the operator install tests should all be passes
+					for _, operatorState := range jrr.FinalOperatorStates {
+						testName := testgridanalysisapi.OperatorUpgradePrefix + " " + operatorState.Name
+						syntheticTests[testName] = &synthenticTestResult{
+							name: testName,
+							pass: 1,
+						}
+					}
+
 				} else {
-					jrr.TestFailures++
-					jrr.FailedTestNames = append(jrr.FailedTestNames, testgridanalysisapi.UpgradeTestName)
 					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
+					// if the test failed, then the operator upgrade tests should match the operator state
+					for _, operatorState := range jrr.FinalOperatorStates {
+						testName := testgridanalysisapi.OperatorUpgradePrefix + " " + operatorState.Name
+						syntheticTests[testName] = &synthenticTestResult{
+							name: testName,
+						}
+						if operatorState.State == testgridanalysisapi.Success {
+							syntheticTests[testName].pass = 1
+						} else {
+							syntheticTests[testName].fail = 1
+						}
+					}
 				}
 			}
 
 			for testName, result := range syntheticTests {
+				if result.fail > 0 {
+					jrr.TestFailures += result.fail
+					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
+				}
 				addTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
 			}
 

@@ -48,14 +48,16 @@ func PrepareTestReport(
 	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName])
 	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName])
 	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName])
+	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName])
 
 	testReport := sippyprocessingv1.TestReport{
 		Release:   release,
 		Timestamp: reportTimestamp,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
-			Infrastructure: infra,
-			Install:        install,
-			Upgrade:        upgrade,
+			Infrastructure:      infra,
+			Install:             install,
+			Upgrade:             upgrade,
+			FinalOperatorHealth: finalOperatorHealth,
 		},
 
 		ByTest:        allTestResultsByName.toOrderedList(),

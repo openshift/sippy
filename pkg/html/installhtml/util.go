@@ -164,14 +164,10 @@ func (a testsByPlatform) getTableHTML(
 }
 
 func getOperatorFromTest(testName string) string {
-	switch {
-	case testidentification.IsInstallOperatorTest(testName):
-		return testidentification.GetOperatorFromInstallTest(testName)
-	case testidentification.IsUpgradeOperatorTest(testName):
-		return testidentification.GetOperatorFromUpgradeTest(testName)
-	default:
-		return testName
+	if ret := testidentification.GetOperatorNameFromTest(testName); len(ret) > 0 {
+		return ret
 	}
+	return testName
 }
 
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {

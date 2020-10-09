@@ -198,6 +198,7 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
 	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHtmlReport)
+	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHtmlReport)
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)

@@ -69,12 +69,12 @@ func IsCuratedTest(release, testName string) bool {
 	return false
 }
 
-func IsInstallOperatorTest(testName string) bool {
+func IsOldInstallOperatorTest(testName string) bool {
 	return testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName)
 }
 
 func GetOperatorFromInstallTest(testName string) string {
-	if !IsInstallOperatorTest(testName) {
+	if !IsOldInstallOperatorTest(testName) {
 		return "NOT-AN-INSTALL-TEST-" + testName
 	}
 	matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(testName)
@@ -82,8 +82,21 @@ func GetOperatorFromInstallTest(testName string) string {
 	return matches[operatorIndex]
 }
 
-func IsUpgradeOperatorTest(testName string) bool {
+func IsOldUpgradeOperatorTest(testName string) bool {
 	return strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix)
+}
+
+func IsOperatorHealthTest(testName string) bool {
+	if strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix) {
+		return true
+	}
+	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName) {
+		return true
+	}
+	if strings.HasPrefix(testName, testgridanalysisapi.OperatorFinalHealthPrefix) {
+		return true
+	}
+	return false
 }
 
 func IsUpgradeStartedTest(testName string) bool {
@@ -99,15 +112,28 @@ func IsMachineConfigPoolsUpgradedTest(testName string) bool {
 }
 
 func GetOperatorFromUpgradeTest(testName string) string {
-	if !IsUpgradeOperatorTest(testName) {
+	if !IsOldUpgradeOperatorTest(testName) {
 		return "NOT-AN-UPGRADE-TEST-" + testName
 	}
 	return testName[len(testgridanalysisapi.OperatorUpgradePrefix):]
 }
 
+func GetOperatorNameFromTest(testName string) string {
+	if IsOldUpgradeOperatorTest(testName) {
+		return GetOperatorFromUpgradeTest(testName)
+	}
+	if IsOldInstallOperatorTest(testName) {
+		return GetOperatorFromInstallTest(testName)
+	}
+	if strings.HasPrefix(testName, testgridanalysisapi.OperatorFinalHealthPrefix) {
+		return testName[len(testgridanalysisapi.OperatorFinalHealthPrefix):]
+	}
+	return ""
+}
+
 // IsUpgradeRelatedTest is a filter function for identifying tests that are valuable to track for upgrade diagnosis.
 func IsUpgradeRelatedTest(testName string) bool {
-	if IsUpgradeOperatorTest(testName) {
+	if IsOldUpgradeOperatorTest(testName) {
 		return true
 	}
 	if strings.Contains(testName, testgridanalysisapi.UpgradeTestName) {
