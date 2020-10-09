@@ -11,17 +11,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/sippy/pkg/buganalysis/internal"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"github.com/openshift/sippy/pkg/buganalysis/internal"
 	"k8s.io/klog"
 )
 
 // BugCache is a thread-safe way to query about bug status.
 // It is stateful though, so for a time after clearing the data will not be up to date until the Update is called
 type BugCache interface {
+	ListJobBlockingBugs(job string) []bugsv1.Bug
 	ListBugs(release, platform, testName string) []bugsv1.Bug
 	UpdateForFailedTests(failedTestNames ...string) error
+	UpdateJobBlockers(jobNames ...string) error
 
 	Clear()
 	// LastUpdateError returns the last update error, if one exists
@@ -29,8 +30,10 @@ type BugCache interface {
 }
 
 type bugCache struct {
-	lock            sync.RWMutex
-	cache           map[string][]bugsv1.Bug
+	lock  sync.RWMutex
+	cache map[string][]bugsv1.Bug
+	// jobBlockers is indexed by getJobKey(jobName) and lists the bugs that are considered to be responsible for all failures on a job
+	jobBlockers     map[string][]bugsv1.Bug
 	lastUpdateError error
 }
 
@@ -42,13 +45,54 @@ func NewBugCache() BugCache {
 
 // updates a global variable with the bug mapping based on current failures.
 func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
+	newBugs, lastUpdateError := findBugsForFailedTests(failedTestNames...)
+
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	for testName, bug := range newBugs {
+		if _, found := c.cache[testName]; found {
+			continue
+		}
+		c.cache[testName] = bug
+	}
+	c.lastUpdateError = lastUpdateError
+	return lastUpdateError
+}
+
+func getJobKey(jobName string) string {
+	return fmt.Sprintf("job=%v=all", jobName)
+}
+
+// updates a global variable with the bug mapping based on current failures.
+func (c *bugCache) UpdateJobBlockers(jobNames ...string) error {
+	jobSearchStrings := []string{}
+	for _, jobName := range jobNames {
+		jobSearchStrings = append(jobSearchStrings, getJobKey(jobName))
+	}
+	newBugs, lastUpdateError := findBugsForFailedTests(jobSearchStrings...)
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for testName, bug := range newBugs {
+		if _, found := c.jobBlockers[testName]; found {
+			continue
+		}
+		c.jobBlockers[testName] = bug
+	}
+	c.lastUpdateError = lastUpdateError
+	return lastUpdateError
+}
+
+// finds bugs given the test names
+func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug, error) {
+	ret := map[string][]bugsv1.Bug{}
 
 	var lastUpdateError error
 	batchTestNames := []string{}
 	for i, testName := range failedTestNames {
-		if _, found := c.cache[testName]; found {
+		if _, found := ret[testName]; found {
 			continue
 		}
 		batchTestNames = append(batchTestNames, testName)
@@ -56,7 +100,7 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 		// if we find a bug for this test, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
-		c.cache[testName] = []bugsv1.Bug{}
+		ret[testName] = []bugsv1.Bug{}
 
 		// continue building our batch until we have a largish set to check
 		onLastItem := (i + 1) == len(failedTestNames)
@@ -66,7 +110,7 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 
 		r, err := findBugs(batchTestNames)
 		for k, v := range r {
-			c.cache[k] = v
+			ret[k] = v
 		}
 		if err != nil {
 			lastUpdateError = err
@@ -74,8 +118,7 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 		batchTestNames = []string{}
 	}
 
-	c.lastUpdateError = lastUpdateError
-	return lastUpdateError
+	return ret, lastUpdateError
 }
 
 func (c *bugCache) Clear() {
@@ -83,6 +126,7 @@ func (c *bugCache) Clear() {
 	defer c.lock.Unlock()
 
 	c.cache = map[string][]bugsv1.Bug{}
+	c.jobBlockers = map[string][]bugsv1.Bug{}
 	c.lastUpdateError = nil
 }
 
@@ -93,9 +137,13 @@ func (c *bugCache) LastUpdateError() error {
 	return c.lastUpdateError
 }
 
-func (c *bugCache) ListBugs(release, platform, testName string) []bugsv1.Bug {
+func (c *bugCache) ListBugs(release, jobName, testName string) []bugsv1.Bug {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+
+	if jobBlockers := c.jobBlockers[getJobKey(jobName)]; len(jobBlockers) > 0 {
+		return jobBlockers
+	}
 
 	ret := []bugsv1.Bug{}
 	bugList := c.cache[testName]
@@ -109,6 +157,13 @@ func (c *bugCache) ListBugs(release, platform, testName string) []bugsv1.Bug {
 		}
 	}
 	return ret
+}
+
+func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	return c.jobBlockers[jobName]
 }
 
 func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
