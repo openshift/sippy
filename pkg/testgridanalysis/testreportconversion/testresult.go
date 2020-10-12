@@ -153,10 +153,13 @@ func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 }
 
 func IsHighValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
-	if testidentification.IsInstallOperatorTest(testResult.Name) {
+	if testidentification.IsOldInstallOperatorTest(testResult.Name) {
 		return true
 	}
 	if testidentification.IsUpgradeRelatedTest(testResult.Name) {
+		return true
+	}
+	if testidentification.IsOperatorHealthTest(testResult.Name) {
 		return true
 	}
 	return false

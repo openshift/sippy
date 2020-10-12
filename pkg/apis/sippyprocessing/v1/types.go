@@ -65,6 +65,8 @@ type TopLevelIndicators struct {
 	// Upgrade indicates how successful we are with upgrading onto clusters that have already installed.
 	// Low Upgrade pass rates means clusters are not able to upgrade.  This should stop us from shipping the product.
 	Upgrade FailingTestResult
+	// FinalOperatorState indicates how often test runs finish with every operator healthy
+	FinalOperatorHealth FailingTestResult
 }
 
 // PlatformResults

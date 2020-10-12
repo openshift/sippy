@@ -48,11 +48,8 @@ type RawJobRunResult struct {
 
 	// SetupStatus can be "", "Success", "Failure"
 	// Used to create synthentic tests.
-	SetupStatus string
-	// Used to create synthentic tests.
-	SadOperators []OperatorState
-	// Used to create synthentic tests.
-	UpgradeOperators []OperatorState
+	SetupStatus         string
+	FinalOperatorStates []OperatorState
 
 	// UpgradeStarted is true if the test attempted to start an upgrade based on the CVO succeeding (or failing) to acknowledge a request
 	UpgradeStarted bool
@@ -69,7 +66,9 @@ type OperatorState struct {
 }
 
 const (
-	OperatorUpgradePrefix = "Operator upgrade "
+	OperatorUpgradePrefix       = "Operator upgrade "
+	OperatorFinalHealthPrefix   = "operator conditions "
+	FinalOperatorHealthTestName = `[sig-sippy] tests should finish with healthy operators`
 
 	InfrastructureTestName = `[sig-sippy] infrastructure should work`
 	InstallTestName        = `[sig-sippy] install should work`
@@ -82,5 +81,5 @@ const (
 
 var (
 	OperatorInstallPrefix          = "operator install "
-	OperatorConditionsTestCaseName = regexp.MustCompile("operator (install|conditions) (?P<operator>.*)")
+	OperatorConditionsTestCaseName = regexp.MustCompile("operator install (?P<operator>.*)")
 )

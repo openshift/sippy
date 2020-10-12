@@ -18,11 +18,14 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release
 			<th title="How often we get to the point of running the installer.  This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close." class="text-center {{ .infraColor }}">Infrastructure</th>
 			<th title="How often the install completes successfully." class="text-center {{ .installColor }}"><a href="/install?release={{ .release }}">Install</a></th>
 			<th title="How often an upgrade that is started completes successfully." class="text-center {{ .upgradeColor }}"><a href="/upgrade?release={{ .release }}">Upgrade</a></th>
+			<!-- Operator health at the end of a CI run provides information about how stable our operators actually are in use.  Operators can successfully install and subsequently go unhealthy.  This is a bad situation, but one that we are facing here at the end of 4.6. -->
+			<!-- <th title="How often CI job runs finish with all operators healthy." class="text-center {{ .finalColor }}"><a href="/operator-health?release={{ .release }}">Operator Health</a></th> -->
 		</tr>
 		<tr>
 			<td class="text-center {{ .infraColor }}">{{ .infraHTML }}</td>
 			<td class="text-center {{ .installColor }}">{{ .installHTML }}</td>
 			<td class="text-center {{ .upgradeColor }}">{{ .upgradeHTML }}</td>
+			<!-- <td class="text-center {{ .finalColor }}">{{ .finalHTML }}</td> -->
 		</tr>
 	</table>
 	`
@@ -31,19 +34,23 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release
 	infraColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
 	installColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
 	upgradeColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
+	finalColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.FinalOperatorHealth.TestResultAcrossAllJobs.PassPercentage)
 
 	infraHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Infrastructure, &reportPrev.TopLevelIndicators.Infrastructure)
 	installHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Install, &reportPrev.TopLevelIndicators.Install)
 	upgradeHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Upgrade, &reportPrev.TopLevelIndicators.Upgrade)
+	finalHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.FinalOperatorHealth, &reportPrev.TopLevelIndicators.FinalOperatorHealth)
 
 	return generichtml.MustSubstitute(tableHTMLTemplate, map[string]string{
 		"release":      release,
 		"infraColor":   infraColor,
 		"installColor": installColor,
 		"upgradeColor": upgradeColor,
+		"finalColor":   finalColor,
 		"infraHTML":    infraHTML,
 		"installHTML":  installHTML,
 		"upgradeHTML":  upgradeHTML,
+		"finalHTML":    finalHTML,
 	})
 }
 
