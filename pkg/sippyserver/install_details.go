@@ -47,3 +47,18 @@ func (s *Server) printOperatorHealthHtmlReport(w http.ResponseWriter, req *http.
 		release,
 	)
 }
+
+func (s *Server) printTestDetailHtmlReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	if _, ok := s.currTestReports[release]; !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	installhtml.PrintTestDetailHtmlReport(w, req,
+		s.currTestReports[release].CurrentPeriodReport,
+		s.currTestReports[release].PreviousWeekReport,
+		req.URL.Query()["test"],
+		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
+		release,
+	)
+}
