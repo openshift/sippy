@@ -154,7 +154,7 @@ func (b *testResultRenderBuilder) ToHTML() string {
 
 	jobCollapseSectionName := MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
 	button := fmt.Sprintf(
-		`				<p><a href="/testdetails?release=%s&test=%v" target="_blank">Test Details by Platforms</a> `,
+		`				<p><a class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" href="/testdetails?release=%s&test=%v" target="_blank" role="button">Test Details by Platforms</a> `,
 		b.release,
 		url.QueryEscape(b.currTestResult.displayName),
 	)
