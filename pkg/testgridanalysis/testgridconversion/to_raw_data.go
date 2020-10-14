@@ -181,6 +181,11 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		col += remaining
 	}
 
+	// don't add results for tests that did not run
+	if passed+failed+flaked == 0 {
+		return
+	}
+
 	// we override some test names based on their type.  Historically we misnamed the install and upgrade tests
 	// what we really want is to call these the final state
 	// This prevents any real results with this junit from counting.  This should only be needed during our transition  and
