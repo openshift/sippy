@@ -2,6 +2,7 @@ package generichtml
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"text/template"
 
@@ -84,12 +85,27 @@ func MakeSafeForCollapseName(in string) string {
 	return collapseNameRemoveRegex.ReplaceAllString(in, "")
 }
 
-func GetButtonHTML(sectionName, buttonName string) string {
+func GetExpandingButtonHTML(sectionName, buttonName string) string {
 	buttonHTML := `<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".{{ .sectionName }}" aria-expanded="false" aria-controls="{{ .sectionName }}">{{ .buttonName }}</button>`
 	buttonHTMLTemplate := template.Must(template.New("buttonHTML").Parse(buttonHTML))
 
 	return MustSubstitute(buttonHTMLTemplate, map[string]string{
 		"sectionName": sectionName,
 		"buttonName":  buttonName,
+	})
+}
+
+func GetTestDetailsButtonHTML(release string, testNames ...string) string {
+	testDetailsButtonHTML := `<a class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" href="/testdetails?release={{ .release }}{{range .testNames}}&test={{ . }}{{end}}" target="_blank" role="button">Test Details by Platforms</a>`
+	buttonHTMLTemplate := template.Must(template.New("testDetailsButtonHTML").Parse(testDetailsButtonHTML))
+
+	escapedTestNames := []string{}
+	for _, curr := range testNames {
+		escapedTestNames = append(escapedTestNames, url.QueryEscape(curr))
+	}
+
+	return MustSubstitute(buttonHTMLTemplate, map[string]interface{}{
+		"release":   release,
+		"testNames": escapedTestNames,
 	})
 }

@@ -186,11 +186,12 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 
 	testsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
 	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
-	button := ""
+	testRows, displayedTests := b.getTestRowHTML(testsCollapseName)
+	button := "					" + GetExpandingButtonHTML(jobsCollapseName, "Expand Failing Jobs")
 	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
-		button += "					" + GetButtonHTML(testsCollapseName, "Expand Failing Tests")
+		button += " " + GetExpandingButtonHTML(testsCollapseName, "Expand Failing Tests")
+		button += " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 	}
-	button += "					" + GetButtonHTML(jobsCollapseName, "Expand Failing Jobs")
 
 	if b.prevAggregationResult != nil {
 		arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
@@ -264,6 +265,29 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	if len(b.currAggregationResult.testResults) == 0 {
 		return s
 	}
+	s += testRows
+
+	return s
+}
+
+// aggregationToJobSubsetOverrides provides a mapping to
+var aggregationToJobSubsetOverrides = map[string]string{
+	"metal":       "metal-upi",
+	"realtime":    "rt",
+	"vsphere-ipi": "vsphere",
+}
+
+func getCIJobSubstring(aggregationName string) string {
+	if ret, ok := aggregationToJobSubsetOverrides[aggregationName]; ok {
+		return ret
+	}
+	return aggregationName
+}
+
+// returns the table row html and a list of tests displayed
+func (b *jobAggregationResultRenderBuilder) getTestRowHTML(testsCollapseName string) (string, []string) {
+	s := ""
+	testNames := []string{}
 
 	testCount := b.maxTestResultsToShow
 	testRowCount := 0
@@ -275,6 +299,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 			continue
 		}
 		testCount--
+		testNames = append(testNames, test.displayName)
 
 		var prev *testResultDisplay
 		if b.prevAggregationResult != nil {
@@ -306,19 +331,5 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
 	}
 
-	return s
-}
-
-// aggregationToJobSubsetOverrides provides a mapping to
-var aggregationToJobSubsetOverrides = map[string]string{
-	"metal":       "metal-upi",
-	"realtime":    "rt",
-	"vsphere-ipi": "vsphere",
-}
-
-func getCIJobSubstring(aggregationName string) string {
-	if ret, ok := aggregationToJobSubsetOverrides[aggregationName]; ok {
-		return ret
-	}
-	return aggregationName
+	return s, testNames
 }

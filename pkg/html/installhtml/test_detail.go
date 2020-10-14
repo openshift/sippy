@@ -21,7 +21,7 @@ func testDetailTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []s
 		platforms.Insert(sets.StringKeySet(byPlatform).UnsortedList()...)
 	}
 
-	return dataForTestsByPlatform.getTableHTML("Details for Tests", "TestDetailByPlatform", "Test Details by Platform", platforms.List(), getOperatorFromTest)
+	return dataForTestsByPlatform.getTableHTML("Details for Tests", "TestDetailByPlatform", "Test Details by Platform", platforms.List(), noChange)
 }
 
 func summaryTestDetailRelatedTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []string, numDays int, release string) string {

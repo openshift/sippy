@@ -170,6 +170,10 @@ func getOperatorFromTest(testName string) string {
 	return testName
 }
 
+func noChange(testName string) string {
+	return testName
+}
+
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {
 	if cellResult == nil {
 		// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100

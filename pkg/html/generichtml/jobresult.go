@@ -174,9 +174,11 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 		class += " collapse " + b.sectionBlock
 	}
 
+	testRows, displayedTests := b.getTestRowHTML(testCollapseSectionName)
+
 	button := ""
 	if len(b.currJobResult.testResults) > 0 {
-		button = "<p>" + GetButtonHTML(testCollapseSectionName, "Expand Failing Tests")
+		button = "<p>" + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests") + " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 	}
 
 	if b.prevJobResult != nil {
@@ -207,6 +209,15 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 	if len(b.currJobResult.testResults) == 0 {
 		return s
 	}
+	s += testRows
+
+	return s
+}
+
+// returns the table row html and a list of tests displayed
+func (b *jobResultRenderBuilder) getTestRowHTML(testCollapseSectionName string) (string, []string) {
+	s := ""
+	testNames := []string{}
 
 	testIndentDepth := (b.baseIndentDepth+1)*50 + 10
 	count := b.maxTestResultsToShow
@@ -219,6 +230,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 			continue
 		}
 		count--
+		testNames = append(testNames, test.displayName)
 
 		var prev *testResultDisplay
 		if b.prevJobResult != nil {
@@ -251,5 +263,5 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testCollapseSectionName, testIndentDepth)
 	}
 
-	return s
+	return s, testNames
 }

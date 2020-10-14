@@ -153,16 +153,13 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	}
 
 	jobCollapseSectionName := MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
-	button := fmt.Sprintf(
-		`				<p><a class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" href="/testdetails?release=%s&test=%v" target="_blank" role="button">Test Details by Platforms</a> `,
-		b.release,
-		url.QueryEscape(b.currTestResult.displayName),
-	)
+	button := ""
 	if len(b.currTestResult.jobResults) > 0 {
-		button += GetButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
+		button += `				<p>` + GetExpandingButtonHTML(jobCollapseSectionName, "Expand Failing Jobs") + " " + GetTestDetailsButtonHTML(b.release, b.currTestResult.displayName)
+	} else {
+		button += `				<p>` + GetTestDetailsButtonHTML(b.release, b.currTestResult.displayName)
 	}
 
-	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
 
 	encodedTestName := url.QueryEscape(regexp.QuoteMeta(b.currTestResult.displayName))
