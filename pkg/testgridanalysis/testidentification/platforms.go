@@ -59,6 +59,8 @@ var (
 	// These jobs are still listed as jobs in total and when individual tests fail, they will still be listed with these jobs as causes.
 	jobsNeverStableForPlatforms = sets.NewString(
 		"release-openshift-ocp-installer-e2e-ovirt-upgrade-4.5-stable-to-4.6-ci",
+		"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6", // this is manual for a networking change
+		"release-openshift-origin-installer-e2e-aws-disruptive-4.6",              // doesn't recover cleanly.  There is a bug.
 	)
 )
 
