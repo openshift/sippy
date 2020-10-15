@@ -96,7 +96,7 @@ func GetExpandingButtonHTML(sectionName, buttonName string) string {
 }
 
 func GetTestDetailsButtonHTML(release string, testNames ...string) string {
-	testDetailsButtonHTML := `<a class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" href="/testdetails?release={{ .release }}{{range .testNames}}&test={{ . }}{{end}}" target="_blank" role="button">Test Details by Platforms</a>`
+	testDetailsButtonHTML := `<a class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" href="/testdetails?release={{ .release }}{{range .testNames}}&test={{ . }}{{end}}" target="_blank" role="button">Test Details by Variants</a>`
 	buttonHTMLTemplate := template.Must(template.New("testDetailsButtonHTML").Parse(testDetailsButtonHTML))
 
 	escapedTestNames := []string{}

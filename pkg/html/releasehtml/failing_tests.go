@@ -74,7 +74,7 @@ func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, r
 	return s
 }
 
-// returns the rows to display and the names of the tests being show
+// returns the rows to display and the names of the tests being shown
 func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTestResult, release string) (string, []string) {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
