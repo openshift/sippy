@@ -11,11 +11,11 @@ import (
 )
 
 func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
-	// test name | bug | pass rate | higher/lower | pass rate
+	rows, testNames := topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a> %s</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -23,21 +23,20 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 		<tr>
 			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
-	`, numDays)
+	`, generichtml.GetTestDetailsButtonHTML(release, testNames...), numDays)
 
-	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
-
-	s = s + "</table>"
+	s += rows
+	s += "</table>"
 
 	return s
 }
 
 func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
-	// test name | bug | pass rate | higher/lower | pass rate
+	rows, testNames := topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a> %s</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -45,21 +44,21 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 		<tr>
 			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
-	`, numDays)
+	`, generichtml.GetTestDetailsButtonHTML(release, testNames...), numDays)
 
-	s += topFailingTestsRows(topFailingTestsWithBug, allTests, release)
-
-	s = s + "</table>"
+	s += rows
+	s += "</table>"
 
 	return s
 }
 
 func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {
-	// test name | bug | pass rate | higher/lower | pass rate
+	rows, testNames := topFailingTestsRows(curr.CuratedTests, prev.ByTest, release)
+
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Curated TRT tests for whatever reason they see fit, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="CuratedTRTTests" href="#CuratedTRTTests">Curated TRT Tests</a></th>
+			<th colspan=5 class="text-center"><a class="text-dark" title="Curated TRT tests for whatever reason they see fit, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="CuratedTRTTests" href="#CuratedTRTTests">Curated TRT Tests</a> %s</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -67,18 +66,19 @@ func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, r
 		<tr>
 			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
-	`, numDays)
+	`, generichtml.GetTestDetailsButtonHTML(release, testNames...), numDays)
 
-	s += topFailingTestsRows(curr.CuratedTests, prev.ByTest, release)
-
-	s = s + "</table>"
+	s += rows
+	s += "</table>"
 
 	return s
 }
 
-func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTestResult, release string) string {
+// returns the rows to display and the names of the tests being shown
+func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTestResult, release string) (string, []string) {
 	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
+	testNames := []string{}
 
 	count := 0
 	for _, testResult := range topFailingTests {
@@ -91,6 +91,7 @@ func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingT
 		if count > 20 {
 			break
 		}
+		testNames = append(testNames, testResult.TestName)
 
 		testPrev := util.FindFailedTestResult(testResult.TestName, prevTests)
 
@@ -100,6 +101,5 @@ func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingT
 				ToHTML()
 	}
 
-	s = s + "</table>"
-	return s
+	return s, testNames
 }

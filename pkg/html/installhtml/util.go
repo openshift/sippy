@@ -130,9 +130,9 @@ func (a testsByPlatform) getTableHTML(
 
 	// print platform column headers
 	s += "    <tr>"
-	s += "      <td nowrap=\"nowrap\"></td>\n"
-	for _, platformName := range aggregationNames {
-		s += "      <th class=\"text-center\"><nobr>" + platformName + "</nobr></th>\n"
+	s += "      <td nowrap=\"nowrap\">Test Name</td>\n"
+	for _, aggregationName := range aggregationNames {
+		s += "      <th class=\"text-center\"><nobr>" + aggregationName + "</nobr></th>\n"
 	}
 	s += "		</tr>\n"
 
@@ -170,13 +170,13 @@ func getOperatorFromTest(testName string) string {
 	return testName
 }
 
+func noChange(testName string) string {
+	return testName
+}
+
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {
 	if cellResult == nil {
-		// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
-		passPercentage := 100.0
-		//arrow := generichtml.Flat
-		color := colors.GetColor(passPercentage)
-		return fmt.Sprintf("      <td class=\"text-center %v\"><nobr>no-data</nobr></td>", color)
+		return fmt.Sprintf("      <td class=\"text-center table-secondary\"><nobr>no-data</nobr></td>")
 	}
 
 	// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100

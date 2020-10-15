@@ -184,13 +184,19 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 		class += " collapse " + b.collapsedAs
 	}
 
-	testsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
-	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
-	button := ""
-	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
-		button += "					" + GetButtonHTML(testsCollapseName, "Expand Failing Tests")
+	prevTestResults := []testResultDisplay{}
+	if b.prevAggregationResult != nil {
+		prevTestResults = b.prevAggregationResult.testResults
 	}
-	button += "					" + GetButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+
+	testCollapseSectionName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
+	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
+	testRows, displayedTests := getTestRowHTML(b.release, testCollapseSectionName, b.currAggregationResult.testResults, prevTestResults, b.maxTestResultsToShow)
+	button := "					" + GetExpandingButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+	if len(displayedTests) > 0 { // add the button if we have tests to show
+		button += " " + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests")
+		button += " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
+	}
 
 	if b.prevAggregationResult != nil {
 		arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
@@ -264,47 +270,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	if len(b.currAggregationResult.testResults) == 0 {
 		return s
 	}
-
-	testCount := b.maxTestResultsToShow
-	testRowCount := 0
-	testRows := ""
-	testAdditionalMatches := 0
-	for _, test := range b.currAggregationResult.testResults {
-		if testCount <= 0 {
-			testAdditionalMatches++
-			continue
-		}
-		testCount--
-
-		var prev *testResultDisplay
-		if b.prevAggregationResult != nil {
-			for _, prevInstance := range b.prevAggregationResult.testResults {
-				if prevInstance.displayName == test.displayName {
-					prev = &prevInstance
-					break
-				}
-			}
-		}
-
-		testRows = testRows +
-			NewTestResultRenderer(testsCollapseName, test, b.release).
-				WithIndent(1).
-				WithPrevious(prev).
-				StartCollapsed().
-				ToHTML()
-
-		testRowCount++
-	}
-	if testAdditionalMatches > 0 {
-		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more tests</td></tr>`, testsCollapseName, testAdditionalMatches)
-	}
-	if testRowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
-		s = s + testRows
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testsCollapseName)
-	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
-	}
+	s += testRows
 
 	return s
 }

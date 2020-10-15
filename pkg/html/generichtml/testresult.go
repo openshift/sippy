@@ -155,10 +155,11 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	jobCollapseSectionName := MakeSafeForCollapseName("test-result---" + b.sectionBlock + "---" + b.currTestResult.displayName)
 	button := ""
 	if len(b.currTestResult.jobResults) > 0 {
-		button = "<p>" + GetButtonHTML(jobCollapseSectionName, "Expand Failing Jobs")
+		button += `				<p>` + GetExpandingButtonHTML(jobCollapseSectionName, "Expand Failing Jobs") + " " + GetTestDetailsButtonHTML(b.release, b.currTestResult.displayName)
+	} else {
+		button += `				<p>` + GetTestDetailsButtonHTML(b.release, b.currTestResult.displayName)
 	}
 
-	// test name | bug | pass rate | higher/lower | pass rate
 	s := ""
 
 	encodedTestName := url.QueryEscape(regexp.QuoteMeta(b.currTestResult.displayName))
@@ -222,4 +223,56 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	}
 
 	return s
+}
+
+// returns the table row html and a list of tests displayed
+func getTestRowHTML(release, testsCollapseName string, currTestResults, prevTestResults []testResultDisplay, maxTestResultsToShow int) (string, []string) {
+	s := ""
+	testNames := []string{}
+
+	testCount := maxTestResultsToShow
+	testRowCount := 0
+	testRows := ""
+	for _, test := range currTestResults {
+		if testCount <= 0 {
+			break
+		}
+		// if the test isn't failing and isn't flaking, skip it. We do want to see the flakes, so keep iterating.
+		if test.displayPercent > 99.99 && test.flakedRuns == 0 {
+			continue
+		}
+		testCount--
+		testNames = append(testNames, test.displayName)
+
+		var prev *testResultDisplay
+		for _, prevInstance := range prevTestResults {
+			if prevInstance.displayName == test.displayName {
+				prev = &prevInstance
+				break
+			}
+		}
+
+		testRows = testRows +
+			NewTestResultRenderer(testsCollapseName, test, release).
+				WithIndent(1).
+				WithPrevious(prev).
+				StartCollapsed().
+				ToHTML()
+
+		testRowCount++
+	}
+	additionalMatches := len(currTestResults) - len(testNames)
+
+	if additionalMatches > 0 {
+		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more tests</td></tr>`, testsCollapseName, additionalMatches)
+	}
+	if testRowCount > 0 {
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
+		s = s + testRows
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testsCollapseName)
+	} else {
+		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
+	}
+
+	return s, testNames
 }
