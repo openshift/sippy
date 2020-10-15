@@ -130,9 +130,9 @@ func (a testsByPlatform) getTableHTML(
 
 	// print platform column headers
 	s += "    <tr>"
-	s += "      <td nowrap=\"nowrap\"></td>\n"
-	for _, platformName := range aggregationNames {
-		s += "      <th class=\"text-center\"><nobr>" + platformName + "</nobr></th>\n"
+	s += "      <td nowrap=\"nowrap\">Test Name</td>\n"
+	for _, aggregationName := range aggregationNames {
+		s += "      <th class=\"text-center\"><nobr>" + aggregationName + "</nobr></th>\n"
 	}
 	s += "		</tr>\n"
 
