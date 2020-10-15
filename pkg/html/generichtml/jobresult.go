@@ -174,7 +174,12 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 		class += " collapse " + b.sectionBlock
 	}
 
-	testRows, displayedTests := b.getTestRowHTML(testCollapseSectionName)
+	prevTestResults := []testResultDisplay{}
+	if b.prevJobResult != nil {
+		prevTestResults = b.prevJobResult.testResults
+	}
+
+	testRows, displayedTests := getTestRowHTML(b.release, testCollapseSectionName, b.currJobResult.testResults, prevTestResults, b.maxTestResultsToShow)
 
 	button := ""
 	if len(b.currJobResult.testResults) > 0 {
@@ -212,56 +217,4 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 	s += testRows
 
 	return s
-}
-
-// returns the table row html and a list of tests displayed
-func (b *jobResultRenderBuilder) getTestRowHTML(testCollapseSectionName string) (string, []string) {
-	s := ""
-	testNames := []string{}
-
-	testIndentDepth := (b.baseIndentDepth+1)*50 + 10
-	count := b.maxTestResultsToShow
-	rowCount := 0
-	rows := ""
-	additionalMatches := 0
-	for _, test := range b.currJobResult.testResults {
-		if count <= 0 {
-			additionalMatches++
-			continue
-		}
-		count--
-		testNames = append(testNames, test.displayName)
-
-		var prev *testResultDisplay
-		if b.prevJobResult != nil {
-			for _, prevInstance := range b.prevJobResult.testResults {
-				if prevInstance.displayName == test.displayName {
-					prev = &prevInstance
-					break
-				}
-			}
-		}
-
-		rows = rows +
-			NewTestResultRenderer(testCollapseSectionName, test, b.release).
-				WithIndent(b.baseIndentDepth+1).
-				WithPrevious(prev).
-				StartCollapsed().
-				ToHTML()
-
-		rowCount++
-	}
-
-	if additionalMatches > 0 {
-		rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more tests</td></tr>`, testCollapseSectionName, testIndentDepth, additionalMatches)
-	}
-	if rowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testCollapseSectionName, testIndentDepth)
-		s = s + rows
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testCollapseSectionName)
-	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testCollapseSectionName, testIndentDepth)
-	}
-
-	return s, testNames
 }
