@@ -193,7 +193,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
 	testRows, displayedTests := getTestRowHTML(b.release, testCollapseSectionName, b.currAggregationResult.testResults, prevTestResults, b.maxTestResultsToShow)
 	button := "					" + GetExpandingButtonHTML(jobsCollapseName, "Expand Failing Jobs")
-	if len(b.currAggregationResult.testResults) > 0 { // add the button if we have tests to show
+	if len(displayedTests) > 0 { // add the button if we have tests to show
 		button += " " + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests")
 		button += " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 	}

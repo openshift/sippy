@@ -182,7 +182,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 	testRows, displayedTests := getTestRowHTML(b.release, testCollapseSectionName, b.currJobResult.testResults, prevTestResults, b.maxTestResultsToShow)
 
 	button := ""
-	if len(b.currJobResult.testResults) > 0 {
+	if len(displayedTests) > 0 {
 		button = "<p>" + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests") + " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 	}
 
