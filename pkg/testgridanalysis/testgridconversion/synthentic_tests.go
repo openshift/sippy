@@ -107,6 +107,9 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 
 			// set the infra status
 			switch {
+			case jobsWithKnownBadSetupContainer.Has(jobName):
+				// do nothing.  If we don't have a setup container, we have no way of determining infrastructure
+
 			case setupFailed && !hasFinalOperatorResults:
 				// we only count failures as infra if we have no operator results.  If we got any operator working, then CI infra was working.
 				syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
@@ -175,6 +178,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 // this a list of jobs that either do not install the product (bug) or have never had a passing install.
 // both should be fixed over time, but this reduces noise as we ratchet down.
 var jobsWithKnownBadSetupContainer = sets.NewString(
+	"promote-release-openshift-machine-os-content-e2e-aws-4.6",
 	"promote-release-openshift-machine-os-content-e2e-aws-4.6-s390x",
 	"promote-release-openshift-machine-os-content-e2e-aws-4.6-ppc64le",
 	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6",
