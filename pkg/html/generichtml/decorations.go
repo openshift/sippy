@@ -66,8 +66,10 @@ var OverallInstallUpgradeColors = ColorizationCriteria{
 	MinGreenPercent:  90, // no action required.  TODO this should be closer to 95, but we need to ratchet there
 }
 
-func (c ColorizationCriteria) GetColor(passPercentage float64) string {
+func (c ColorizationCriteria) GetColor(passPercentage float64, total int) string {
 	switch {
+	case total == 0:
+		return "table-secondary"
 	case passPercentage > c.MinGreenPercent:
 		return "table-success"
 	case passPercentage > c.MinYellowPercent:

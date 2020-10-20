@@ -182,7 +182,7 @@ func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generi
 	// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
 	passPercentage := cellResult.curr.PassPercentage
 	arrow := generichtml.GetArrowForTestResult(cellResult.curr, cellResult.prev)
-	color := colors.GetColor(passPercentage)
+	color := colors.GetColor(passPercentage, cellResult.curr.Successes+cellResult.curr.Failures+cellResult.curr.Flakes)
 	if cellResult.prev == nil {
 		return fmt.Sprintf("      <td class=\"text-center %v\"><nobr>%0.2f%% %v NA</nobr></td>", color, passPercentage, arrow)
 	}

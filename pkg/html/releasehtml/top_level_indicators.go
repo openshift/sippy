@@ -31,10 +31,25 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release
 	`
 	tableHTMLTemplate := template.Must(template.New("tableHTML").Parse(tableHTML))
 
-	infraColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs.PassPercentage)
-	installColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Install.TestResultAcrossAllJobs.PassPercentage)
-	upgradeColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs.PassPercentage)
-	finalColor := generichtml.OverallInstallUpgradeColors.GetColor(report.TopLevelIndicators.FinalOperatorHealth.TestResultAcrossAllJobs.PassPercentage)
+	res := report.TopLevelIndicators.Infrastructure.TestResultAcrossAllJobs
+	passPercent := res.PassPercentage
+	total := res.Successes + res.Failures + res.Flakes
+	infraColor := generichtml.OverallInstallUpgradeColors.GetColor(passPercent, total)
+
+	res = report.TopLevelIndicators.Install.TestResultAcrossAllJobs
+	passPercent = res.PassPercentage
+	total = res.Successes + res.Failures + res.Flakes
+	installColor := generichtml.OverallInstallUpgradeColors.GetColor(passPercent, total)
+
+	res = report.TopLevelIndicators.Upgrade.TestResultAcrossAllJobs
+	passPercent = res.PassPercentage
+	total = res.Successes + res.Failures + res.Flakes
+	upgradeColor := generichtml.OverallInstallUpgradeColors.GetColor(passPercent, total)
+
+	res = report.TopLevelIndicators.FinalOperatorHealth.TestResultAcrossAllJobs
+	passPercent = res.PassPercentage
+	total = res.Successes + res.Failures + res.Flakes
+	finalColor := generichtml.OverallInstallUpgradeColors.GetColor(passPercent, total)
 
 	infraHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Infrastructure, &reportPrev.TopLevelIndicators.Infrastructure)
 	installHTML := getTopLevelIndicateFailedTestHTML(report.TopLevelIndicators.Install, &reportPrev.TopLevelIndicators.Install)

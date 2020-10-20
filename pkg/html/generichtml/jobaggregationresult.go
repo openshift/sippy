@@ -179,7 +179,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 			</tr>
 		`
 
-	class := b.colors.GetColor(b.currAggregationResult.displayPercentage)
+	class := b.colors.GetColor(b.currAggregationResult.displayPercentage, b.currAggregationResult.totalJobRuns)
 	if len(b.collapsedAs) > 0 {
 		class += " collapse " + b.collapsedAs
 	}
