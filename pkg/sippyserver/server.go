@@ -21,11 +21,18 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	releases []string,
 	listenAddr string,
+	skipBugLookup bool,
 ) *Server {
+	var bugCache buganalysis.BugCache
+	if skipBugLookup {
+		bugCache = buganalysis.NewNoOpBugCache()
+	} else {
+		bugCache = buganalysis.NewBugCache()
+	}
 	server := &Server{
 		listenAddr: listenAddr,
 		releases:   releases,
-		bugCache:   buganalysis.NewBugCache(),
+		bugCache:   bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingOptions,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,

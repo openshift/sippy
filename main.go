@@ -29,6 +29,7 @@ type Options struct {
 	FetchData               string
 	ListenAddr              string
 	Server                  bool
+	SkipBugLookup           bool
 }
 
 func main() {
@@ -75,6 +76,7 @@ func main() {
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
+	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -127,6 +129,7 @@ func (o *Options) runServerMode() error {
 		o.toDisplayDataConfig(),
 		o.Releases,
 		o.ListenAddr,
+		o.SkipBugLookup,
 	)
 	server.RefreshData() // force a data refresh once before serving.
 	server.Serve()
@@ -139,8 +142,13 @@ func (o *Options) runCLIReportMode() error {
 		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
-
-	testReport := analyzer.PrepareTestReport(o.Releases[0], buganalysis.NewBugCache())
+	var bugCache buganalysis.BugCache
+	if o.SkipBugLookup {
+		bugCache = buganalysis.NewNoOpBugCache()
+	} else {
+		bugCache = buganalysis.NewBugCache()
+	}
+	testReport := analyzer.PrepareTestReport(o.Releases[0], bugCache)
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(testReport)
 	return nil
