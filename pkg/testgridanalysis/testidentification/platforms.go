@@ -16,7 +16,8 @@ var (
 	metalRegex = regexp.MustCompile(`(?i)-metal-`)
 	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex  = regexp.MustCompile(`(?i)-metal-ipi`)
-	gcpRegex       = regexp.MustCompile(`(?i)-gcp-`)
+	// 3.11 gcp jobs don't have a trailing -version segment
+	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt-`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn-`)
