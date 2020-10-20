@@ -169,7 +169,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 			</tr>
 		`
 
-	class := b.colors.GetColor(b.currJobResult.displayPercent)
+	class := b.colors.GetColor(b.currJobResult.displayPercent, b.currJobResult.totalRuns)
 	if b.startCollapsedBool {
 		class += " collapse " + b.sectionBlock
 	}
