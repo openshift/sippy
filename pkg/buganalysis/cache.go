@@ -29,6 +29,32 @@ type BugCache interface {
 	LastUpdateError() error
 }
 
+// noOpBugCache is a no-op implementation of the bug cache/lookup interface
+// used to opt-out of bug lookups for faster test analysis/reporting.
+type noOpBugCache struct {
+}
+
+func (*noOpBugCache) ListJobBlockingBugs(job string) []bugsv1.Bug {
+	return []bugsv1.Bug{}
+}
+func (*noOpBugCache) ListBugs(release, platform, testName string) []bugsv1.Bug {
+	return []bugsv1.Bug{}
+}
+func (*noOpBugCache) UpdateForFailedTests(failedTestNames ...string) error {
+	return nil
+}
+func (*noOpBugCache) UpdateJobBlockers(jobNames ...string) error {
+	return nil
+}
+func (*noOpBugCache) Clear() {}
+func (*noOpBugCache) LastUpdateError() error {
+	return nil
+}
+
+func NewNoOpBugCache() BugCache {
+	return &noOpBugCache{}
+}
+
 type bugCache struct {
 	lock  sync.RWMutex
 	cache map[string][]bugsv1.Bug
