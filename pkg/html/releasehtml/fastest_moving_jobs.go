@@ -25,10 +25,14 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		if prevJob == nil {
 			continue
 		}
-		jobPassChanges = append(jobPassChanges, jobPassChange{
-			jobName:              job.Name,
-			passPercentageChange: job.PassPercentage - prevJob.PassPercentage,
-		})
+
+		// in case our job actually never ran we don't need to show it as a negatively moving result
+		if len(job.TestResults) != 0 {
+			jobPassChanges = append(jobPassChanges, jobPassChange{
+				jobName:              job.Name,
+				passPercentageChange: job.PassPercentage - prevJob.PassPercentage,
+			})
+		}
 	}
 	sort.SliceStable(jobPassChanges, func(i, j int) bool {
 		return jobPassChanges[i].passPercentageChange < jobPassChanges[j].passPercentageChange
