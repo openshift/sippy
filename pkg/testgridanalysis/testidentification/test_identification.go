@@ -11,6 +11,7 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-aws-upgrade-ipi-install-install-stableinitial",
 	"e2e-aws-proxy-ipi-install-install",
 	"e2e-aws-workers-rhel7-ipi-install-install",
+	"e2e-azure-upgrade-ipi-conf-azure",
 	"e2e-gcp-upgrade-ipi-install-install-stableinitial",
 	"e2e-metal-ipi-baremetalds-devscripts-setup",
 	"e2e-vsphere-ipi-install-vsphere",
