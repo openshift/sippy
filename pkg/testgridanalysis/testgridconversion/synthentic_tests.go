@@ -182,5 +182,9 @@ var jobsWithKnownBadSetupContainer = sets.NewString(
 	"promote-release-openshift-machine-os-content-e2e-aws-4.6-s390x",
 	"promote-release-openshift-machine-os-content-e2e-aws-4.6-ppc64le",
 	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6",
+	"promote-release-openshift-machine-os-content-e2e-aws-4.7",
+	"promote-release-openshift-machine-os-content-e2e-aws-4.7-s390x",
+	"promote-release-openshift-machine-os-content-e2e-aws-4.7-ppc64le",
+	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.6-to-4.7",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
 )
