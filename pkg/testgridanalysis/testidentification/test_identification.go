@@ -9,17 +9,21 @@ import (
 
 var customJobSetupContainers = sets.NewString(
 	"e2e-aws-upgrade-ipi-install-install-stableinitial",
+	"e2e-aws-upgrade-rollback-ipi-install-install-stableinitial",
 	"e2e-aws-proxy-ipi-install-install",
 	"e2e-aws-workers-rhel7-ipi-install-install",
 	"e2e-azure-upgrade-ipi-conf-azure",
 	"e2e-gcp-upgrade-ipi-install-install-stableinitial",
 	"e2e-metal-ipi-baremetalds-devscripts-setup",
+	"e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup",
+	"e2e-metal-ipi-ovn-dualstack-baremetalds-devscripts-setup",
 	"e2e-vsphere-ipi-install-vsphere",
 	"e2e-vsphere-upi-upi-install-vsphere",
 	"e2e-vsphere-upi-serial-upi-install-vsphere",
 	"e2e-vsphere-serial-ipi-install-vsphere",
 )
 
+// TODO We should instead try to detect whether we fail in a pre-step to determine whether setup succeeded
 // not all setup containers are called setup.  This is heavily dependent on the actual UPI jobs, but they turn out to be different.
 // When this needs updating,  it shows up as installs timing out in weird numbers
 func IsSetupContainerEquivalent(testName string) bool {
