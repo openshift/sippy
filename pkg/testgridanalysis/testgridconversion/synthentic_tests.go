@@ -2,6 +2,7 @@ package testgridconversion
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -107,7 +108,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 
 			// set the infra status
 			switch {
-			case jobsWithKnownBadSetupContainer.Has(jobName):
+			case matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer):
 				// do nothing.  If we don't have a setup container, we have no way of determining infrastructure
 
 			case setupFailed && !hasFinalOperatorResults:
@@ -165,7 +166,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
 		if float64(numRunsWithoutSetup)/float64(len(jobResults.JobRunResults)+1)*100 > 50 {
-			if !jobsWithKnownBadSetupContainer.Has(jobName) {
+			if !matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
 				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
 			}
 		}
@@ -175,12 +176,20 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 	return warnings
 }
 
-// this a list of jobs that either do not install the product (bug) or have never had a passing install.
-// both should be fixed over time, but this reduces noise as we ratchet down.
-var jobsWithKnownBadSetupContainer = sets.NewString(
-	"promote-release-openshift-machine-os-content-e2e-aws-4.6",
-	"promote-release-openshift-machine-os-content-e2e-aws-4.6-s390x",
-	"promote-release-openshift-machine-os-content-e2e-aws-4.6-ppc64le",
+// this a list of job name regexes that either do not install the product (bug) or have
+// never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
+var jobRegexesWithKnownBadSetupContainer = sets.NewString(
+	"promote-release-openshift-machine-os-content-e2e-aws-4.[2-7].*",
 	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
 )
+
+func matchJobRegexList(jobName string, regexList sets.String) bool {
+	for expression := range regexList {
+		result, _ := regexp.MatchString(expression, jobName)
+		if result {
+			return true
+		}
+	}
+	return false
+}
