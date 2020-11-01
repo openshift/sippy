@@ -180,7 +180,6 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 // never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
 var jobRegexesWithKnownBadSetupContainer = sets.NewString(
 	"promote-release-openshift-machine-os-content-e2e-aws-4.[2-7].*",
-	"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
 )
 
