@@ -136,6 +136,7 @@ func init() {
 	must(addSigMapping("sig-imageregistry", "Image Registry"))
 	must(addSigMapping("sig-network", "Networking"))
 	must(addSigMapping("sig-node", "Node"))
+	must(addSigMapping("sig-openshift-logging", "Logging"))
 	must(addSigMapping("sig-operator", "OLM"))
 	must(addSigMapping("sig-storage", "Storage"))
 	must(addSigMapping("sig-unknown", "Unknown"))
