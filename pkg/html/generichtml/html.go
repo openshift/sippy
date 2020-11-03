@@ -31,6 +31,8 @@ var (
 </div>
 Data current as of: %s
 <p>
+<a href="https://openshift-release.apps.ci.l2s4.p1.openshiftapps.com/dashboards/overview">Release Dashboard</a> |
+<a href="https://sippy-historical-bparees.apps.ci.l2s4.p1.openshiftapps.com/">Historical Data</a> |
 <a href="https://github.com/openshift/sippy">Source Code</a>
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
