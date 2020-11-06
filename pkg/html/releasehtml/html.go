@@ -2,6 +2,7 @@ package releasehtml
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -49,7 +50,7 @@ const (
 			 <br/>	          
 	         <a href="#JobByMostReducedPassRate">Job Pass Rates By Most Reduced Pass Rate</a> | <a href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a> | <a href="#CanaryTestFailures">Canary Test Failures</a> | <a href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a> | <a href="#TestImpactingBugs">Test Impacting Bugs</a> |
 	         <br/>
-             <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
+             <a href="#TestImpactingComponents">Test Impacting Components</a> | <a href="#JobImpactingBZComponents">Job Impacting BZ Components</a> | <a href="#jobsWithBuildLogMessages">Jobs Matching Build Log Messages</a>
 </p>
 
 {{ topLevelIndicators .Current .Prev .Release }}
@@ -78,6 +79,7 @@ const (
 
 {{ summaryJobsFailuresByBugzillaComponent .Current .Prev .NumDays .Release }}
 
+{{ jobsWithBuildLogMessages .Release .NumDays }}
 `
 )
 
@@ -178,6 +180,53 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 	}
 
 	s = s + "</table>"
+	return s
+}
+
+func jobsWithBuildLogMessages(release string, numDays int) string {
+	s := fmt.Sprintf(`
+	<table class="table">
+		<tr>
+			<th colspan=4 class="text-center"><a class="text-dark" title="Jobs Matching Build Log Messages" id="jobsWithBuildLogMessages" href="#jobsWithBuildLogMessages">Jobs Matching Build Log Messages</a></th>
+		</tr>
+		<tr>
+			<th>Last %d days</th>
+		</tr>
+	`, numDays)
+
+	buildLogMessage := "Failed to pull image \"busybox\""
+
+	urlFormattedBuildLogMessage := fmt.Sprint(url.QueryEscape(buildLogMessage))
+	numHours := 24 * numDays
+	searchUrl := fmt.Sprintf("https://search.ci.openshift.org/?search=%s&maxAge=%dh&context=1&type=build-log&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job",
+		urlFormattedBuildLogMessage, numHours, release)
+
+	resp, _ := http.Get(searchUrl)
+	defer resp.Body.Close()
+	respData, _ := ioutil.ReadAll(resp.Body)
+
+	//  Jobs that come back in the response HTML end up on a line like this:
+	// <tr class="row-match"><td><a target="_blank" href="https://prow.ci.openshift.org/view/gs/origin-ci-test/pr-logs/pull/openshift_installer/4340/pull-ci-openshift-installer-release-4.6-e2e-vsphere-upi/1324022973677441024">#1324022973677441024</a></td><td>build-log.txt.gz</td><td class="text-nowrap">28 hours ago</td><td class="col-12"></td></tr>
+	r := regexp.MustCompile(".*(<a target=\"_blank\" href=\".*prow.*</a>)")
+	jobUrlMatches := r.FindAllStringSubmatch(string(respData), -1)
+
+	// remove duplicates
+	urlRecorded := map[string]bool{}
+	jobUrls := []string{}
+	for index := range jobUrlMatches {
+		if urlRecorded[jobUrlMatches[index][1]] == false {
+			jobUrls = append(jobUrls, jobUrlMatches[index][1])
+			urlRecorded[jobUrlMatches[index][1]] = true
+		}
+	}
+
+	// add jobs to html with header of build log message we looked for
+	s += "<tr><th>" + "Jobs with the message: " + buildLogMessage + "</tr></th></br><tr><th>\n"
+	for _, job := range jobUrls {
+		s = s + job + "</br>"
+	}
+
+	s += "</tr></th></table>"
 	return s
 }
 
@@ -373,6 +422,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 			"topLevelIndicators":                     topLevelIndicators,
+			"jobsWithBuildLogMessages":               jobsWithBuildLogMessages,
 		},
 	).Parse(dashboardPageHtml))
 
