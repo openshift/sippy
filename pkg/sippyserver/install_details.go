@@ -7,58 +7,58 @@ import (
 )
 
 func (s *Server) printInstallHtmlReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	if _, ok := s.currTestReports[release]; !ok {
+	reportName := req.URL.Query().Get("release")
+	if _, ok := s.currTestReports[reportName]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	installhtml.PrintInstallHtmlReport(w, req,
-		s.currTestReports[release].CurrentPeriodReport,
-		s.currTestReports[release].PreviousWeekReport,
+		s.currTestReports[reportName].CurrentPeriodReport,
+		s.currTestReports[reportName].PreviousWeekReport,
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		release,
+		reportName,
 	)
 }
 
 func (s *Server) printUpgradeHtmlReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	if _, ok := s.currTestReports[release]; !ok {
+	reportName := req.URL.Query().Get("release")
+	if _, ok := s.currTestReports[reportName]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	installhtml.PrintUpgradeHtmlReport(w, req,
-		s.currTestReports[release].CurrentPeriodReport,
-		s.currTestReports[release].PreviousWeekReport,
+		s.currTestReports[reportName].CurrentPeriodReport,
+		s.currTestReports[reportName].PreviousWeekReport,
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		release,
+		reportName,
 	)
 }
 
 func (s *Server) printOperatorHealthHtmlReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	if _, ok := s.currTestReports[release]; !ok {
+	reportName := req.URL.Query().Get("release")
+	if _, ok := s.currTestReports[reportName]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	installhtml.PrintOperatorHealthHtmlReport(w, req,
-		s.currTestReports[release].CurrentPeriodReport,
-		s.currTestReports[release].PreviousWeekReport,
+		s.currTestReports[reportName].CurrentPeriodReport,
+		s.currTestReports[reportName].PreviousWeekReport,
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		release,
+		reportName,
 	)
 }
 
 func (s *Server) printTestDetailHtmlReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	if _, ok := s.currTestReports[release]; !ok {
+	reportName := req.URL.Query().Get("release")
+	if _, ok := s.currTestReports[reportName]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	installhtml.PrintTestDetailHtmlReport(w, req,
-		s.currTestReports[release].CurrentPeriodReport,
-		s.currTestReports[release].PreviousWeekReport,
+		s.currTestReports[reportName].CurrentPeriodReport,
+		s.currTestReports[reportName].PreviousWeekReport,
 		req.URL.Query()["test"],
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		release,
+		reportName,
 	)
 }

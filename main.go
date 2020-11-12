@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
 
@@ -17,7 +18,8 @@ import (
 
 type Options struct {
 	LocalData               string
-	Releases                []string
+	OpenshiftReleases       []string
+	Dashboards              []string
 	StartDay                int
 	endDay                  int
 	NumDays                 int
@@ -42,7 +44,7 @@ func main() {
 		FailureClusterThreshold: 10,
 		StartDay:                0,
 		ListenAddr:              ":8080",
-		Releases:                []string{"4.4"},
+		OpenshiftReleases:       []string{"4.4"},
 	}
 
 	klog.InitFlags(nil)
@@ -63,7 +65,8 @@ func main() {
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
-	flags.StringArrayVar(&opt.Releases, "release", opt.Releases, "Which releases to analyze (one per arg instance)")
+	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
+	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	// TODO convert this to be an offset so that we can go backwards from "data we have"
 	flags.IntVar(&opt.endDay, "end-day", opt.endDay, "Look at job runs going back to this day")
@@ -91,8 +94,43 @@ func (o *Options) Complete() error {
 	if o.endDay != 0 {
 		o.NumDays = o.endDay - o.StartDay
 	}
+	for _, openshiftRelease := range o.OpenshiftReleases {
+		o.Dashboards = append(o.Dashboards, dashboardArgFromOpenshiftRelease(openshiftRelease))
+	}
 
 	return nil
+}
+
+func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboardCoordinates {
+	dashboards := []sippyserver.TestGridDashboardCoordinates{}
+	for _, dashboard := range o.Dashboards {
+		tokens := strings.Split(dashboard, "=")
+		if len(tokens) != 3 {
+			// launch error
+			panic(fmt.Sprintf("must have three tokens: %q", dashboard))
+		}
+
+		dashboards = append(dashboards,
+			sippyserver.TestGridDashboardCoordinates{
+				ReportName:             tokens[0],
+				TestGridDashboardNames: strings.Split(tokens[1], ","),
+				OpenshiftRelease:       tokens[2],
+			},
+		)
+	}
+
+	return dashboards
+}
+
+// dashboardArgFromOpenshiftRelease converts a --release string into the generic --dashboard arg
+func dashboardArgFromOpenshiftRelease(release string) string {
+	const openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
+	dashboards := []string{}
+	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "blocking"))
+	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "informing"))
+
+	argString := release + "=" + strings.Join(dashboards, ",") + "=" + release
+	return argString
 }
 
 func (o *Options) Validate() error {
@@ -107,7 +145,11 @@ func (o *Options) Validate() error {
 
 func (o *Options) Run() error {
 	if len(o.FetchData) != 0 {
-		testgridhelpers.DownloadData(o.Releases, o.JobFilter, o.FetchData)
+		dashboards := []string{}
+		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
+			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
+		}
+		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
 		return nil
 	}
 
@@ -127,7 +169,7 @@ func (o *Options) runServerMode() error {
 		o.toTestGridLoadingConfig(),
 		o.toRawJobResultsAnalysisConfig(),
 		o.toDisplayDataConfig(),
-		o.Releases,
+		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
 		o.SkipBugLookup,
 	)
@@ -148,7 +190,7 @@ func (o *Options) runCLIReportMode() error {
 	} else {
 		bugCache = buganalysis.NewBugCache()
 	}
-	testReport := analyzer.PrepareTestReport(o.Releases[0], bugCache)
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], bugCache)
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(testReport)
 	return nil

@@ -17,55 +17,28 @@ import (
 )
 
 var (
-	dashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
+	openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
 )
 
-func DownloadData(releases []string, filter string, storagePath string) {
+func DownloadData(dashboards []string, filter string, storagePath string) {
 	var jobFilter *regexp.Regexp
 	if len(filter) > 0 {
 		jobFilter = regexp.MustCompile(filter)
 	}
 
-	for _, release := range releases {
-
-		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
+	for _, dashboard := range dashboards {
 		err := downloadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
-		blockingJobs, _, err := loadJobSummaries(dashboard, storagePath)
+		jobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
 
-		for jobName, job := range blockingJobs {
-			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
-				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
-				err := downloadJobDetails(dashboard, jobName, storagePath)
-				if err != nil {
-					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
-				}
-			}
-		}
-	}
-
-	for _, release := range releases {
-
-		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
-		err := downloadJobSummaries(dashboard, storagePath)
-		if err != nil {
-			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
-			continue
-		}
-		informingJobs, _, err := loadJobSummaries(dashboard, storagePath)
-		if err != nil {
-			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
-			continue
-		}
-
-		for jobName, job := range informingJobs {
+		for jobName, job := range jobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				err := downloadJobDetails(dashboard, jobName, storagePath)
@@ -79,14 +52,13 @@ func DownloadData(releases []string, filter string, storagePath string) {
 
 // LoadTestGridDataFromDisk reads the requested testgrid data from disk and returns the details and the timestamp of the last
 // modification on disk
-func LoadTestGridDataFromDisk(storagePath string, releases []string, jobFilter *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {
+func LoadTestGridDataFromDisk(storagePath string, dashboards []string, jobFilter *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {
 	testGridJobDetails := []testgridv1.JobDetails{}
 
 	lastUpdateTime := time.Time{}
 
-	for _, release := range releases {
-		dashboard := fmt.Sprintf(dashboardTemplate, release, "blocking")
-		blockingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
+	for _, dashboard := range dashboards {
+		jobs, ts, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
 			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
 			continue
@@ -95,30 +67,7 @@ func LoadTestGridDataFromDisk(storagePath string, releases []string, jobFilter *
 			lastUpdateTime = ts
 		}
 
-		for jobName, job := range blockingJobs {
-			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
-				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
-				details, err := loadJobDetails(dashboard, jobName, storagePath)
-				if err != nil {
-					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
-				} else {
-					testGridJobDetails = append(testGridJobDetails, details)
-				}
-			}
-		}
-	}
-	for _, release := range releases {
-		dashboard := fmt.Sprintf(dashboardTemplate, release, "informing")
-		informingJobs, ts, err := loadJobSummaries(dashboard, storagePath)
-		if err != nil {
-			klog.Errorf("Error load dashboard page %s: %v\n", dashboard, err)
-			continue
-		}
-		if ts.After(lastUpdateTime) {
-			lastUpdateTime = ts
-		}
-
-		for jobName, job := range informingJobs {
+		for jobName, job := range jobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
 				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				details, err := loadJobDetails(dashboard, jobName, storagePath)

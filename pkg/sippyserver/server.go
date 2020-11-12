@@ -19,20 +19,31 @@ func NewServer(
 	testGridLoadingOptions TestGridLoadingConfig,
 	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
 	displayDataOptions DisplayDataConfig,
-	releases []string,
+	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
 	skipBugLookup bool,
 ) *Server {
+
+	hasOpenshiftReleases := false
+	for _, dashboardCoordinate := range dashboardCoordinates {
+		if len(dashboardCoordinate.OpenshiftRelease) > 0 {
+			hasOpenshiftReleases = true
+			break
+		}
+	}
+
 	var bugCache buganalysis.BugCache
-	if skipBugLookup {
+	// we cannot lookup bugs without an openshift release
+	if skipBugLookup || !hasOpenshiftReleases {
 		bugCache = buganalysis.NewNoOpBugCache()
 	} else {
 		bugCache = buganalysis.NewBugCache()
 	}
 	server := &Server{
-		listenAddr: listenAddr,
-		releases:   releases,
-		bugCache:   bugCache,
+		listenAddr:           listenAddr,
+		dashboardCoordinates: dashboardCoordinates,
+
+		bugCache: bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingOptions,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
@@ -45,12 +56,21 @@ func NewServer(
 }
 
 type Server struct {
-	listenAddr string
-	releases   []string
+	listenAddr           string
+	dashboardCoordinates []TestGridDashboardCoordinates
 
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
 	currTestReports           map[string]StandardReport
+}
+
+type TestGridDashboardCoordinates struct {
+	// this is how we index and display.  it gets wired to ?release for now
+	ReportName string
+	// this is generic and is required
+	TestGridDashboardNames []string
+	// this is openshift specific, used for BZ lookup and not required
+	OpenshiftRelease string
 }
 
 type StandardReport struct {
@@ -69,63 +89,86 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
-	for _, release := range s.releases {
-		s.currTestReports[release] = s.testReportGeneratorConfig.PrepareStandardTestReports(release, s.bugCache)
+	for _, dashboard := range s.dashboardCoordinates {
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.bugCache)
 	}
 	klog.Infof("Refresh complete")
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	if _, ok := s.currTestReports[release]; !ok {
-		releasehtml.WriteLandingPage(w, s.releases)
+	reportName := req.URL.Query().Get("release")
+	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
+	if !found {
+		releasehtml.WriteLandingPage(w, s.reportNames())
 		return
 	}
+	if _, hasReport := s.currTestReports[dashboard.ReportName]; !hasReport {
+		releasehtml.WriteLandingPage(w, s.reportNames())
+		return
+	}
+
 	releasehtml.PrintHtmlReport(w, req,
-		s.currTestReports[release].CurrentPeriodReport,
-		s.currTestReports[release].CurrentTwoDayReport,
-		s.currTestReports[release].PreviousWeekReport,
+		s.currTestReports[dashboard.ReportName].CurrentPeriodReport,
+		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
+		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		15)
 }
 
+func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
+	for _, dashboard := range s.dashboardCoordinates {
+		if dashboard.ReportName == reportName {
+			return dashboard, true
+		}
+	}
+	return TestGridDashboardCoordinates{}, false
+}
+
+func (s *Server) reportNames() []string {
+	ret := []string{}
+	for _, dashboard := range s.dashboardCoordinates {
+		ret = append(ret, dashboard.ReportName)
+	}
+	return ret
+}
+
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
+	reportName := req.URL.Query().Get("release")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	releaseReports := make(map[string][]sippyprocessingv1.TestReport)
-	if release == "all" {
+	if reportName == "all" {
 		// return all available json reports
 		// store [currentReport, prevReport] in a slice
-		for _, r := range s.releases {
-			if _, ok := s.currTestReports[r]; ok {
-				releaseReports[r] = []sippyprocessingv1.TestReport{s.currTestReports[r].CurrentPeriodReport, s.currTestReports[r].PreviousWeekReport}
+		for _, reportName := range s.reportNames() {
+			if _, ok := s.currTestReports[reportName]; ok {
+				releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
 			} else {
-				klog.Errorf("unable to load test report for release version %s", r)
+				klog.Errorf("unable to load test report for reportName version %s", reportName)
 				continue
 			}
 		}
 		api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 		return
-	} else if _, ok := s.currTestReports[release]; !ok {
-		// return a 404 error along with the list of available releases in the detail section
+	} else if _, ok := s.currTestReports[reportName]; !ok {
+		// return a 404 error along with the list of available openshiftReleases in the detail section
 		errMsg := map[string]interface{}{
 			"code":   "404",
-			"detail": fmt.Sprintf("No valid release specified, valid releases are: %v", s.releases),
+			"detail": fmt.Sprintf("No valid reportName specified, valid reportNames are: %v", s.reportNames()),
 		}
 		errMsgBytes, _ := json.Marshal(errMsg)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write(errMsgBytes)
 		return
 	}
-	releaseReports[release] = []sippyprocessingv1.TestReport{s.currTestReports[release].CurrentPeriodReport, s.currTestReports[release].PreviousWeekReport}
+	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
 	api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
-	release := "4.5"
+	reportName := "4.5"
 	t := req.URL.Query().Get("release")
 	if t != "" {
-		release = t
+		reportName = t
 	}
 
 	startDay := 0
@@ -195,7 +238,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			FailureClusterThreshold: failureClusterThreshold,
 		},
 	}
-	testReports := testReportConfig.PrepareStandardTestReports(release, s.bugCache)
+	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
+	if !found {
+		releasehtml.WriteLandingPage(w, s.reportNames())
+		return
+	}
+	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.bugCache)
 
 	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
 
