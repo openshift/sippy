@@ -44,7 +44,6 @@ func main() {
 		FailureClusterThreshold: 10,
 		StartDay:                0,
 		ListenAddr:              ":8080",
-		OpenshiftReleases:       []string{"4.4"},
 	}
 
 	klog.InitFlags(nil)
@@ -138,6 +137,13 @@ func (o *Options) Validate() error {
 	case "json":
 	default:
 		return fmt.Errorf("invalid output type: %s\n", o.Output)
+	}
+
+	for _, dashboard := range o.Dashboards {
+		tokens := strings.Split(dashboard, "=")
+		if len(tokens) != 3 {
+			return fmt.Errorf("must have three tokens: %q", dashboard)
+		}
 	}
 
 	return nil
