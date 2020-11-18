@@ -179,7 +179,7 @@ func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 // this a list of job name regexes that either do not install the product (bug) or have
 // never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
 var jobRegexesWithKnownBadSetupContainer = sets.NewString(
-	"promote-release-openshift-machine-os-content-e2e-aws-4.[2-7].*",
+	"promote-release-openshift-machine-os-content-e2e-aws-4.[1-7].*",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
 )
 
