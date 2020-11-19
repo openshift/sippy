@@ -31,7 +31,7 @@ func PrepareTestReport(
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
 	infrequentJobsTestResultFilterFn := StandardTestResultFilter(2, successThreshold)
 
-	byPlatform := convertRawDataToByPlatform(allJobResults, standardTestResultFilterFn)
+	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
@@ -61,7 +61,7 @@ func PrepareTestReport(
 		},
 
 		ByTest:        allTestResultsByName.toOrderedList(),
-		ByPlatform:    byPlatform,
+		ByVariant:     byVariant,
 		FailureGroups: filteredFailureGroups,
 
 		ByJob:                allJobResults,

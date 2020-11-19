@@ -14,7 +14,7 @@ import (
 )
 
 func installOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
-	dataForTestsByPlatform := getDataForTestsByPlatform(
+	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		func(testResult sippyprocessingv1.TestResult) bool {
 			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix)
@@ -23,12 +23,12 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 			return testResult.Name == testgridanalysisapi.InstallTestName
 		},
 	)
-	// compute platform columns before we add the special "All" column
-	platformColumns := sets.StringKeySet(dataForTestsByPlatform.aggregationToOverallTestResult).List()
+	// compute variants columns before we add the special "All" column
+	variantColumns := sets.StringKeySet(dataForTestsByVariant.aggregationToOverallTestResult).List()
 
-	// we add an "All" column for all platforms. Fill in the aggregate data for that key
-	for _, testName := range sets.StringKeySet(dataForTestsByPlatform.aggregateResultByTestName).List() {
-		dataForTestsByPlatform.testNameToPlatformToTestResult[testName]["All"] = dataForTestsByPlatform.aggregateResultByTestName[testName].toCurrPrevTestResult()
+	// we add an "All" column for all variants. Fill in the aggregate data for that key
+	for _, testName := range sets.StringKeySet(dataForTestsByVariant.aggregateResultByTestName).List() {
+		dataForTestsByVariant.testNameToVariantToTestResult[testName]["All"] = dataForTestsByVariant.aggregateResultByTestName[testName].toCurrPrevTestResult()
 	}
 
 	// fill in the data for the first row's "All" column
@@ -36,14 +36,14 @@ func installOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 	if installTest := util.FindFailedTestResult(testgridanalysisapi.InstallTestName, prev.ByTest); installTest != nil {
 		prevTestResult = &installTest.TestResultAcrossAllJobs
 	}
-	dataForTestsByPlatform.aggregationToOverallTestResult["All"] = &currPrevTestResult{
+	dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
 		curr: util.FindFailedTestResult(testgridanalysisapi.InstallTestName, curr.ByTest).TestResultAcrossAllJobs,
 		prev: prevTestResult,
 	}
 
-	columnNames := append([]string{"All"}, platformColumns...)
+	columnNames := append([]string{"All"}, variantColumns...)
 
-	return dataForTestsByPlatform.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Platform", columnNames, getOperatorFromTest)
+	return dataForTestsByVariant.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Variant", columnNames, getOperatorFromTest)
 }
 
 func summaryInstallRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {

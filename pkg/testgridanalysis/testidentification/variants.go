@@ -9,13 +9,13 @@ import (
 )
 
 var (
-	// platform regexes
+	// variant regexes
 	awsRegex   = regexp.MustCompile(`(?i)-aws-`)
 	azureRegex = regexp.MustCompile(`(?i)-azure-`)
 	fipsRegex  = regexp.MustCompile(`(?i)-fips-`)
 	metalRegex = regexp.MustCompile(`(?i)-metal-`)
 	// metal-ipi jobs do not have a trailing -version segment
-	metalIPIRegex  = regexp.MustCompile(`(?i)-metal-ipi`)
+	metalIPIRegex = regexp.MustCompile(`(?i)-metal-ipi`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
@@ -33,7 +33,7 @@ var (
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
 	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
 
-	AllPlatforms = sets.NewString(
+	AllVariants = sets.NewString(
 		"aws",
 		"azure",
 		"fips",
@@ -55,10 +55,10 @@ var (
 		"vsphere-upi",
 	)
 
-	// jobsNeverStableForPlatforms is a list of jobs that have never been stable (not were stable and broke)
+	// jobsNeverStableForVariants is a list of jobs that have never been stable (not were stable and broke)
 	// As we phase these jobs in, they should be excluded from "normal" variants.
 	// These jobs are still listed as jobs in total and when individual tests fail, they will still be listed with these jobs as causes.
-	jobsNeverStableForPlatforms = sets.NewString(
+	jobsNeverStableForVariants = sets.NewString(
 		"release-openshift-ocp-installer-e2e-ovirt-upgrade-4.5-stable-to-4.6-ci",
 		"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6", // this is manual for a networking change
 		"release-openshift-origin-installer-e2e-aws-disruptive-4.6",              // doesn't recover cleanly.  There is a bug.
@@ -66,16 +66,16 @@ var (
 )
 
 func IsJobNeverStable(jobName string) bool {
-	return jobsNeverStableForPlatforms.Has(jobName)
+	return jobsNeverStableForVariants.Has(jobName)
 }
 
-func FindPlatform(name string) []string {
-	platforms := []string{}
+func IdentifyVariants(name string) []string {
+	variants := []string{}
 
 	defer func() {
-		for _, platform := range platforms {
-			if !AllPlatforms.Has(platform) {
-				panic(fmt.Sprintf("coding error: missing platform: %q", platform))
+		for _, variant := range variants {
+			if !AllVariants.Has(variant) {
+				panic(fmt.Sprintf("coding error: missing variant: %q", variant))
 			}
 		}
 	}()
@@ -86,21 +86,21 @@ func FindPlatform(name string) []string {
 
 	// if it's a promotion job, it can't be a part of any other variant aggregation
 	if promoteRegex.MatchString(name) {
-		platforms = append(platforms, "promote")
-		return platforms
+		variants = append(variants, "promote")
+		return variants
 	}
 
 	if awsRegex.MatchString(name) {
-		platforms = append(platforms, "aws")
+		variants = append(variants, "aws")
 	}
 	if azureRegex.MatchString(name) {
-		platforms = append(platforms, "azure")
+		variants = append(variants, "azure")
 	}
 	if gcpRegex.MatchString(name) {
-		platforms = append(platforms, "gcp")
+		variants = append(variants, "gcp")
 	}
 	if openstackRegex.MatchString(name) {
-		platforms = append(platforms, "openstack")
+		variants = append(variants, "openstack")
 	}
 
 	// Without support for negative lookbacks in the native
@@ -108,49 +108,49 @@ func FindPlatform(name string) []string {
 	// two by seeing if it's metal-ipi, and then fall through
 	// to check if it's UPI metal.
 	if metalIPIRegex.MatchString(name) {
-		platforms = append(platforms, "metal-ipi")
+		variants = append(variants, "metal-ipi")
 	} else if metalRegex.MatchString(name) {
-		platforms = append(platforms, "metal-upi")
+		variants = append(variants, "metal-upi")
 	}
 
 	if ovirtRegex.MatchString(name) {
-		platforms = append(platforms, "ovirt")
+		variants = append(variants, "ovirt")
 	}
 	if vsphereUPIRegex.MatchString(name) {
-		platforms = append(platforms, "vsphere-upi")
+		variants = append(variants, "vsphere-upi")
 	} else if vsphereRegex.MatchString(name) {
-		platforms = append(platforms, "vsphere-ipi")
+		variants = append(variants, "vsphere-ipi")
 	}
 
 	if upgradeRegex.MatchString(name) {
-		platforms = append(platforms, "upgrade")
+		variants = append(variants, "upgrade")
 	}
 	if serialRegex.MatchString(name) {
-		platforms = append(platforms, "serial")
+		variants = append(variants, "serial")
 	}
 	if ovnRegex.MatchString(name) {
-		platforms = append(platforms, "ovn")
+		variants = append(variants, "ovn")
 	}
 	if fipsRegex.MatchString(name) {
-		platforms = append(platforms, "fips")
+		variants = append(variants, "fips")
 	}
 	if ppc64leRegex.MatchString(name) {
-		platforms = append(platforms, "ppc64le")
+		variants = append(variants, "ppc64le")
 	}
 	if s390xRegex.MatchString(name) {
-		platforms = append(platforms, "s390x")
+		variants = append(variants, "s390x")
 	}
 	if rtRegex.MatchString(name) {
-		platforms = append(platforms, "realtime")
+		variants = append(variants, "realtime")
 	}
 	if proxyRegex.MatchString(name) {
-		platforms = append(platforms, "proxy")
+		variants = append(variants, "proxy")
 	}
 
-	if len(platforms) == 0 {
-		klog.V(2).Infof("unknown platform for job: %s\n", name)
-		return []string{"unknown platform"}
+	if len(variants) == 0 {
+		klog.V(2).Infof("unknown variant for job: %s\n", name)
+		return []string{"unknown variant"}
 	}
 
-	return platforms
+	return variants
 }

@@ -33,9 +33,9 @@ func FindJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobRes
 	return nil
 }
 
-func FindPlatformResultsForName(platform string, allPlatforms []sippyprocessingv1.PlatformResults) *sippyprocessingv1.PlatformResults {
-	for _, v := range allPlatforms {
-		if v.PlatformName == platform {
+func FindVariantResultsForName(variant string, allVariants []sippyprocessingv1.VariantResults) *sippyprocessingv1.VariantResults {
+	for _, v := range allVariants {
+		if v.VariantName == variant {
 			return &v
 		}
 	}

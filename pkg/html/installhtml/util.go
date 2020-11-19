@@ -41,20 +41,20 @@ type currPrevFailedTestResult struct {
 	prev *sippyprocessingv1.FailingTestResult
 }
 
-type testsByPlatform struct {
+type testsByVariant struct {
 	aggregateResultByTestName      map[string]*currPrevFailedTestResult
-	testNameToPlatformToTestResult map[string]map[string]*currPrevTestResult // these are the other rows in the table.
+	testNameToVariantToTestResult  map[string]map[string]*currPrevTestResult // these are the other rows in the table.
 	aggregationToOverallTestResult map[string]*currPrevTestResult            // this is the first row of the table, summarizing all data.  If empty or nil, no summary is given.
 }
 
-func getDataForTestsByPlatform(
+func getDataForTestsByVariant(
 	curr, prev sippyprocessingv1.TestReport,
 	isInterestingTest testreportconversion.TestResultFilterFunc,
 	isAggregateTest testreportconversion.TestResultFilterFunc,
-) testsByPlatform {
-	ret := testsByPlatform{
+) testsByVariant {
+	ret := testsByVariant{
 		aggregateResultByTestName:      map[string]*currPrevFailedTestResult{},
-		testNameToPlatformToTestResult: map[string]map[string]*currPrevTestResult{},
+		testNameToVariantToTestResult:  map[string]map[string]*currPrevTestResult{},
 		aggregationToOverallTestResult: map[string]*currPrevTestResult{},
 	}
 
@@ -67,21 +67,21 @@ func getDataForTestsByPlatform(
 		}
 	}
 
-	// now that we have the tests, let's run through all the platforms to pull the platform aggregation for each of the tests in question
+	// now that we have the tests, let's run through all the variants to pull the variant aggregation for each of the tests in question
 	for testName := range ret.aggregateResultByTestName {
-		if _, ok := ret.testNameToPlatformToTestResult[testName]; !ok {
-			ret.testNameToPlatformToTestResult[testName] = map[string]*currPrevTestResult{}
+		if _, ok := ret.testNameToVariantToTestResult[testName]; !ok {
+			ret.testNameToVariantToTestResult[testName] = map[string]*currPrevTestResult{}
 		}
-		for _, platform := range curr.ByPlatform {
-			for _, test := range platform.AllTestResults {
+		for _, variant := range curr.ByVariant {
+			for _, test := range variant.AllTestResults {
 				if test.Name != testName {
 					continue
 				}
 
-				ret.testNameToPlatformToTestResult[testName][platform.PlatformName] = &currPrevTestResult{curr: test}
-				if prevPlatform := util.FindPlatformResultsForName(platform.PlatformName, prev.ByPlatform); prevPlatform != nil {
-					if prevTestResult := util.FindTestResult(test.Name, prevPlatform.AllTestResults); prevTestResult != nil {
-						ret.testNameToPlatformToTestResult[testName][platform.PlatformName].prev = prevTestResult
+				ret.testNameToVariantToTestResult[testName][variant.VariantName] = &currPrevTestResult{curr: test}
+				if prevVariant := util.FindVariantResultsForName(variant.VariantName, prev.ByVariant); prevVariant != nil {
+					if prevTestResult := util.FindTestResult(test.Name, prevVariant.AllTestResults); prevTestResult != nil {
+						ret.testNameToVariantToTestResult[testName][variant.VariantName].prev = prevTestResult
 					}
 				}
 				break
@@ -89,14 +89,14 @@ func getDataForTestsByPlatform(
 		}
 	}
 
-	for _, platform := range curr.ByPlatform {
-		for _, test := range platform.AllTestResults {
+	for _, variant := range curr.ByVariant {
+		for _, test := range variant.AllTestResults {
 			if isAggregateTest(test) {
-				ret.aggregationToOverallTestResult[platform.PlatformName] = &currPrevTestResult{curr: test}
+				ret.aggregationToOverallTestResult[variant.VariantName] = &currPrevTestResult{curr: test}
 
-				if prevPlatform := util.FindPlatformResultsForName(platform.PlatformName, prev.ByPlatform); prevPlatform != nil {
-					if prevTestResult := util.FindTestResult(test.Name, prevPlatform.AllTestResults); prevTestResult != nil {
-						ret.aggregationToOverallTestResult[platform.PlatformName].prev = prevTestResult
+				if prevVariant := util.FindVariantResultsForName(variant.VariantName, prev.ByVariant); prevVariant != nil {
+					if prevTestResult := util.FindTestResult(test.Name, prevVariant.AllTestResults); prevTestResult != nil {
+						ret.aggregationToOverallTestResult[variant.VariantName].prev = prevTestResult
 					}
 				}
 				break
@@ -107,7 +107,7 @@ func getDataForTestsByPlatform(
 	return ret
 }
 
-func (a testsByPlatform) getTableHTML(
+func (a testsByVariant) getTableHTML(
 	title string,
 	anchor string,
 	description string,
@@ -128,7 +128,7 @@ func (a testsByPlatform) getTableHTML(
 		title,
 	)
 
-	// print platform column headers
+	// print variant column headers
 	s += "    <tr>"
 	s += "      <td nowrap=\"nowrap\">Test Name</td>\n"
 	for _, aggregationName := range aggregationNames {
@@ -136,24 +136,24 @@ func (a testsByPlatform) getTableHTML(
 	}
 	s += "		</tr>\n"
 
-	// now the overall install results by platform
+	// now the overall install results by variant
 	if len(a.aggregationToOverallTestResult) > 0 {
 		s += "    <tr>"
 		s += "      <td>Overall</td>\n"
-		for _, platformName := range aggregationNames {
-			s += installCellHTMLFromTestResult(a.aggregationToOverallTestResult[platformName], generichtml.OverallInstallUpgradeColors)
+		for _, variantName := range aggregationNames {
+			s += installCellHTMLFromTestResult(a.aggregationToOverallTestResult[variantName], generichtml.OverallInstallUpgradeColors)
 		}
 		s += "		</tr>"
 	}
 
-	// now the main results by operator, by platform
-	for _, testName := range sets.StringKeySet(a.testNameToPlatformToTestResult).List() {
+	// now the main results by operator, by variant
+	for _, testName := range sets.StringKeySet(a.testNameToVariantToTestResult).List() {
 		testDisplayName := testNameToDisplayName(testName)
 		s += "    <tr>"
 		s += "      <td class=\"\"><nobr>" + testDisplayName + "</nobr></td>\n"
-		platformResults := a.testNameToPlatformToTestResult[testName]
-		for _, platformName := range aggregationNames {
-			s += installCellHTMLFromTestResult(platformResults[platformName], individualInstallUpgradeColor)
+		variantResults := a.testNameToVariantToTestResult[testName]
+		for _, variantName := range aggregationNames {
+			s += installCellHTMLFromTestResult(variantResults[variantName], individualInstallUpgradeColor)
 		}
 		s += "		</tr>"
 	}

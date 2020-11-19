@@ -14,17 +14,17 @@ import (
 )
 
 func operatorHealthTests(curr, prev sippyprocessingv1.TestReport) string {
-	dataForTestsByPlatform := getDataForTestsByPlatform(
+	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		isOperatorHealthRelatedTest,
 		isOperatorHealthOverallTest,
 	)
-	// compute platform columns before we add the special "All" column
-	platformColumns := sets.StringKeySet(dataForTestsByPlatform.aggregationToOverallTestResult).List()
+	// compute variant columns before we add the special "All" column
+	variantColumns := sets.StringKeySet(dataForTestsByVariant.aggregationToOverallTestResult).List()
 
-	// we add an "All" column for all platforms. Fill in the aggregate data for that key
-	for _, testName := range sets.StringKeySet(dataForTestsByPlatform.aggregateResultByTestName).List() {
-		dataForTestsByPlatform.testNameToPlatformToTestResult[testName]["All"] = dataForTestsByPlatform.aggregateResultByTestName[testName].toCurrPrevTestResult()
+	// we add an "All" column for all variants. Fill in the aggregate data for that key
+	for _, testName := range sets.StringKeySet(dataForTestsByVariant.aggregateResultByTestName).List() {
+		dataForTestsByVariant.testNameToVariantToTestResult[testName]["All"] = dataForTestsByVariant.aggregateResultByTestName[testName].toCurrPrevTestResult()
 	}
 
 	// fill in the data for the first row's "All" column
@@ -32,14 +32,14 @@ func operatorHealthTests(curr, prev sippyprocessingv1.TestReport) string {
 	if installTest := util.FindFailedTestResult(testgridanalysisapi.FinalOperatorHealthTestName, prev.ByTest); installTest != nil {
 		prevTestResult = &installTest.TestResultAcrossAllJobs
 	}
-	dataForTestsByPlatform.aggregationToOverallTestResult["All"] = &currPrevTestResult{
+	dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
 		curr: util.FindFailedTestResult(testgridanalysisapi.FinalOperatorHealthTestName, curr.ByTest).TestResultAcrossAllJobs,
 		prev: prevTestResult,
 	}
 
-	columnNames := append([]string{"All"}, platformColumns...)
+	columnNames := append([]string{"All"}, variantColumns...)
 
-	return dataForTestsByPlatform.getTableHTML("Operator Health by Operator", "OperatorHealthByOperator", "Operator Health by Operator by Platform", columnNames, getOperatorFromTest)
+	return dataForTestsByVariant.getTableHTML("Operator Health by Operator", "OperatorHealthByOperator", "Operator Health by Operator by Variant", columnNames, getOperatorFromTest)
 }
 
 func summaryOperatorHealthRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {

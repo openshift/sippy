@@ -12,9 +12,9 @@ func bugLink(bug bugsv1.Bug) string {
 	return fmt.Sprintf(`<a target="_blank" href="%s">%d</a> `, bug.Url, bug.ID)
 }
 
-// bugHTMLForTest release and testName are required.  platform is options, if specified it excludes test that have a
-// different platform specified, but includes bugs without any platform
-func bugHTMLForTest(bugList []bugsv1.Bug, release, platform, testName string) string {
+// bugHTMLForTest release and testName are required.  variant is optional, if specified it excludes test that have a
+// different variant specified, but includes bugs without any variant
+func bugHTMLForTest(bugList []bugsv1.Bug, release, variant, testName string) string {
 	if len(bugList) == 0 {
 		return openABugHTML(testName, release)
 	}

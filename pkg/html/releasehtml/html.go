@@ -54,7 +54,7 @@ const (
 
 {{ topLevelIndicators .Current .Prev .Release }}
 
-{{ summaryJobsByPlatform .Current .Prev .NumDays .JobTestCount .Release }}
+{{ summaryJobsByVariant .Current .Prev .NumDays .JobTestCount .Release }}
 
 {{ summaryCuratedTests .Current .Prev .NumDays .Release }} 
 
@@ -107,7 +107,7 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 	return s
 }
 
-func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numDays, jobTestCount int, release string) string {
+func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport, numDays, jobTestCount int, release string) string {
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
@@ -118,13 +118,13 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport, numD
 		</tr>
 	`, numDays)
 
-	for _, currPlatform := range report.ByPlatform {
-		platformHTML := generichtml.NewJobAggregationResultRendererFromPlatformResults("by-variant", currPlatform, release).
+	for _, currVariant := range report.ByVariant {
+		variantHTML := generichtml.NewJobAggregationResultRendererFromVariantResults("by-variant", currVariant, release).
 			WithMaxTestResultsToShow(jobTestCount).
-			WithPreviousPlatformResults(util.FindPlatformResultsForName(currPlatform.PlatformName, reportPrev.ByPlatform)).
+			WithPreviousVariantResults(util.FindVariantResultsForName(currVariant.VariantName, reportPrev.ByVariant)).
 			ToHTML()
 
-		s += platformHTML
+		s += variantHTML
 	}
 
 	s = s + "</table>"
@@ -360,7 +360,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 	var dashboardPage = template.Must(template.New("dashboardPage").Funcs(
 		template.FuncMap{
 			"failureGroups":                          failureGroups,
-			"summaryJobsByPlatform":                  summaryJobsByPlatform,
+			"summaryJobsByVariant":                   summaryJobsByVariant,
 			"summaryTopFailingTestsWithBug":          summaryTopFailingTestsWithBug,
 			"summaryTopFailingTestsWithoutBug":       summaryTopFailingTestsWithoutBug,
 			"summaryCuratedTests":                    summaryCuratedTests,

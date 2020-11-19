@@ -7,7 +7,7 @@ import (
 )
 
 // 1. TestGrid contains jobs
-// 2. Jobs contain JobRuns.  Jobs have associated variants/platforms.
+// 2. Jobs contain JobRuns.  Jobs have associated variants.
 // 3. JobRuns contain Tests.
 
 type RawData struct {
