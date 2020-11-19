@@ -15,6 +15,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 	failuresByBugzillaComponent := summarizeJobsFailuresByBugzillaComponent(report)
 	failuresByBugzillaComponentPrev := summarizeJobsFailuresByBugzillaComponent(reportPrev)
 
+	if len(failuresByBugzillaComponent) == 0 {
+		return ""
+	}
+
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>

@@ -8,7 +8,27 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+func topLevelIndicatorsHaveResults(in sippyprocessingv1.TopLevelIndicators) bool {
+	if generichtml.FailingTestResultHasResults(in.Infrastructure) {
+		return true
+	}
+	if generichtml.FailingTestResultHasResults(in.FinalOperatorHealth) {
+		return true
+	}
+	if generichtml.FailingTestResultHasResults(in.Install) {
+		return true
+	}
+	if generichtml.FailingTestResultHasResults(in.Upgrade) {
+		return true
+	}
+	return false
+}
+
 func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release string) string {
+	if !topLevelIndicatorsHaveResults(report.TopLevelIndicators) {
+		return ""
+	}
+
 	tableHTML := `
 	<table class="table">
 		<tr>
