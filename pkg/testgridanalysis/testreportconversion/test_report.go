@@ -13,7 +13,7 @@ import (
 func PrepareTestReport(
 	rawData testgridanalysisapi.RawData,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
+	openshiftRelease string, // required to limit bugs to those that apply to the release in question
 	// TODO refactor into a test run filter
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
@@ -25,7 +25,7 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, release)
+	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, openshiftRelease)
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
@@ -42,7 +42,7 @@ func PrepareTestReport(
 
 	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
 	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
-	curatedTests := getCuratedTests(release, allTestResultsByName)
+	curatedTests := getCuratedTests(openshiftRelease, allTestResultsByName)
 
 	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
 	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName])
@@ -51,7 +51,7 @@ func PrepareTestReport(
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName])
 
 	testReport := sippyprocessingv1.TestReport{
-		Release:   release,
+		Release:   openshiftRelease,
 		Timestamp: reportTimestamp,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
 			Infrastructure:      infra,

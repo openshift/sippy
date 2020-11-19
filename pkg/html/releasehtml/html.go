@@ -331,13 +331,13 @@ type TestReports struct {
 	Release      string
 }
 
-func WriteLandingPage(w http.ResponseWriter, releases []string) {
+func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
-	releaseLinks := make([]string, len(releases))
-	for i := range releases {
-		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, releases[i])
+	releaseLinks := make([]string, len(displayNames))
+	for i := range displayNames {
+		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, displayNames[i])
 	}
 	fmt.Fprintf(w, "<h1 class='text-center'>CI Release Health Summary</h1><p><ul>%s</ul></p>", strings.Join(releaseLinks, "\n"))
 	fmt.Fprintf(w, landingHtmlPageEnd)
