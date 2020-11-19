@@ -234,7 +234,7 @@ func (filterFn TestResultFilterFunc) FilterTestResults(testResults []sippyproces
 	return filteredResults
 }
 
-func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult) sippyprocessingv1.FailingTestResult {
+func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult, variantManager testidentification.VariantManager) sippyprocessingv1.FailingTestResult {
 	filteredFailingTestResult := sippyprocessingv1.FailingTestResult{
 		TestName:                in.TestName,
 		TestResultAcrossAllJobs: sippyprocessingv1.TestResult{Name: in.TestName},
@@ -242,7 +242,7 @@ func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult) sippyprocess
 	}
 
 	for _, jobResult := range in.JobResults {
-		if testidentification.IsJobNeverStable(jobResult.Name) {
+		if variantManager.IsJobNeverStable(jobResult.Name) {
 			continue
 		}
 		filteredFailingTestResult.JobResults = append(filteredFailingTestResult.JobResults, jobResult)

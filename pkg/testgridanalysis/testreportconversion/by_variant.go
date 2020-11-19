@@ -12,10 +12,11 @@ import (
 func convertRawDataToByVariant(
 	allJobResults []sippyprocessingv1.JobResult,
 	testResultFilterFn TestResultFilterFunc,
+	variantManager testidentification.VariantManager,
 ) []sippyprocessingv1.VariantResults {
 
 	variantResults := []sippyprocessingv1.VariantResults{}
-	for _, variant := range testidentification.AllVariants.List() {
+	for _, variant := range variantManager.AllVariants().List() {
 
 		allVariantTestResults := []sippyprocessingv1.TestResult{}
 		jobResults := []sippyprocessingv1.JobResult{}
@@ -26,7 +27,7 @@ func convertRawDataToByVariant(
 
 		// do this the expensive way until we have a unit test.  This allows us to build the full variant result all at once.
 		for _, jobResult := range allJobResults {
-			if !sets.NewString(testidentification.IdentifyVariants(jobResult.Name)...).Has(variant) {
+			if !sets.NewString(variantManager.IdentifyVariants(jobResult.Name)...).Has(variant) {
 				continue
 			}
 
