@@ -52,22 +52,28 @@ type TestReportGeneratorConfig struct {
 //  4. converts the result of that into a display API object.
 func (a *TestReportGeneratorConfig) PrepareTestReport(
 	dashboard TestGridDashboardCoordinates,
+	syntheticTestManager testgridconversion.SythenticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
 	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
-	return a.prepareTestReportFromData(dashboard.OpenshiftRelease, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	return a.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 }
 
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 	openshiftRelease string,
+	syntheticTestManager testgridconversion.SythenticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 	testGridJobDetails []testgridv1.JobDetails,
 	lastUpdateTime time.Time,
 ) sippyprocessingv1.TestReport {
-	rawJobResultOptions := testgridconversion.ProcessingOptions{StartDay: a.RawJobResultsAnalysisConfig.StartDay, NumDays: a.RawJobResultsAnalysisConfig.NumDays}
+	rawJobResultOptions := testgridconversion.ProcessingOptions{
+		SythenticTestManager: syntheticTestManager,
+		StartDay:             a.RawJobResultsAnalysisConfig.StartDay,
+		NumDays:              a.RawJobResultsAnalysisConfig.NumDays,
+	}
 	rawJobResults, processingWarnings := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
 	bugCacheWarnings := updateBugCacheForJobResults(bugCache, rawJobResults)
 	warnings := []string{}
@@ -91,17 +97,18 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 // PrepareStandardTestReports returns the current period, current two day period, and the previous seven days period
 func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	dashboard TestGridDashboardCoordinates,
+	syntheticTestManager testgridconversion.SythenticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) StandardReport {
 	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
 
 	currTimePeriodConfig := a.deepCopy()
-	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	currentTwoDayPeriodConfig := a.deepCopy()
 	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
-	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	previousSevenDayPeriodConfig := a.deepCopy()
 	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
@@ -110,7 +117,7 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
 	}
 	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
-	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
 		CurrentPeriodReport: currentTimePeriodReport,

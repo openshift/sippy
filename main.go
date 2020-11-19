@@ -10,6 +10,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/spf13/cobra"
@@ -177,6 +178,7 @@ func (o *Options) runServerMode() error {
 		o.toDisplayDataConfig(),
 		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
+		o.getSynthenticTestManager(),
 		o.getVariantManager(),
 		o.getBugCache(),
 	)
@@ -192,23 +194,25 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getVariantManager(), o.getBugCache())
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(testReport)
 	return nil
 }
 
-func (o *Options) hasOpenshiftRelease() bool {
+func (o *Options) hasOCPDashboard() bool {
 	for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
-		if len(dashboardCoordinate.OpenshiftRelease) > 0 {
-			return true
+		for _, dashboardName := range dashboardCoordinate.TestGridDashboardNames {
+			if strings.Contains(dashboardName, "redhat-openshift-ocp-release-") {
+				return true
+			}
 		}
 	}
 	return false
 }
 
 func (o *Options) getBugCache() buganalysis.BugCache {
-	if o.SkipBugLookup || !o.hasOpenshiftRelease() {
+	if o.SkipBugLookup || len(o.OpenshiftReleases) == 0 {
 		return buganalysis.NewNoOpBugCache()
 	} else {
 		return buganalysis.NewBugCache()
@@ -216,11 +220,19 @@ func (o *Options) getBugCache() buganalysis.BugCache {
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {
-	if o.hasOpenshiftRelease() {
+	if o.hasOCPDashboard() {
 		return testidentification.NewOpenshiftVariantManager()
 	}
 
 	return testidentification.NewEmptyVariantManager()
+}
+
+func (o *Options) getSynthenticTestManager() testgridconversion.SythenticTestManager {
+	if o.hasOCPDashboard() {
+		return testgridconversion.NewOpenshiftSythenticTestManager()
+	}
+
+	return testgridconversion.NewEmptySythenticTestManager()
 }
 
 func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
