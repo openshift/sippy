@@ -11,6 +11,10 @@ import (
 )
 
 func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
+	if len(topFailingTestsWithBug) == 0 {
+		return ""
+	}
+
 	rows, testNames := topFailingTestsRows(topFailingTestsWithBug, allTests, release)
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -53,6 +57,9 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 }
 
 func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, release string) string {
+	if len(curr.CuratedTests) == 0 {
+		return ""
+	}
 	rows, testNames := topFailingTestsRows(curr.CuratedTests, prev.ByTest, release)
 
 	s := fmt.Sprintf(`

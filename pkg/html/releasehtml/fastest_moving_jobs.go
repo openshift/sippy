@@ -25,6 +25,13 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		if prevJob == nil {
 			continue
 		}
+		// don't display things moving in the right direction or that only dropped within the margin of error
+		// The margin of error is currently just a guess.
+		passPercentageChange := job.PassPercentage - prevJob.PassPercentage
+		if passPercentageChange > -10 {
+			continue
+		}
+
 		jobPassChanges = append(jobPassChanges, jobPassChange{
 			jobName:              job.Name,
 			passPercentageChange: job.PassPercentage - prevJob.PassPercentage,
@@ -33,6 +40,10 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 	sort.SliceStable(jobPassChanges, func(i, j int) bool {
 		return jobPassChanges[i].passPercentageChange < jobPassChanges[j].passPercentageChange
 	})
+
+	if len(jobPassChanges) == 0 {
+		return ""
+	}
 
 	s := fmt.Sprintf(`
 	<table class="table">
@@ -48,11 +59,6 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 	for _, jobDetails := range jobPassChanges {
 		jobDisplayed++
 		if jobDisplayed > 10 {
-			break
-		}
-		// don't display things moving in the right direction or that only dropped within the margin of error
-		// The margin of error is currently just a guess.
-		if jobDetails.passPercentageChange > -10 {
 			break
 		}
 		currJobResult := util.FindJobResultForJobName(jobDetails.jobName, twoDaysJobs)

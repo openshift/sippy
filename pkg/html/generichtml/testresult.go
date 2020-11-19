@@ -11,6 +11,17 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+func TestResultHasResults(in sippyprocessingv1.TestResult) bool {
+	if in.Successes == 0 && in.Failures == 0 && in.Flakes == 0 {
+		return false
+	}
+	return true
+}
+
+func FailingTestResultHasResults(in sippyprocessingv1.FailingTestResult) bool {
+	return TestResultHasResults(in.TestResultAcrossAllJobs)
+}
+
 type testResultDisplay struct {
 	displayName    string
 	displayPercent float64

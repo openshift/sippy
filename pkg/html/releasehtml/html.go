@@ -108,6 +108,10 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 }
 
 func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport, numDays, jobTestCount int, release string) string {
+	if len(report.ByVariant) == 0 {
+		return ""
+	}
+
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
