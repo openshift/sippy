@@ -8,11 +8,17 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+type openshiftSyntheticManager struct{}
+
+func NewOpenshiftSythenticTestManager() SythenticTestManager {
+	return openshiftSyntheticManager{}
+}
+
 // createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 // and potentially producing synthentic test results and aggregations to better inform sippy.
 // This needs to be called after all the JobDetails have been processed.
 // returns warnings found in the data. Not failures to process it.
-func createSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
+func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 	warnings := []string{}
 
 	// make a pass to fill in install, upgrade, and infra synthentic tests.

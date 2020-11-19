@@ -11,6 +11,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"k8s.io/klog"
 )
@@ -21,6 +22,7 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
+	syntheticTestManager testgridconversion.SythenticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) *Server {
@@ -29,8 +31,9 @@ func NewServer(
 		listenAddr:           listenAddr,
 		dashboardCoordinates: dashboardCoordinates,
 
-		variantManager: variantManager,
-		bugCache:       bugCache,
+		syntheticTestManager: syntheticTestManager,
+		variantManager:       variantManager,
+		bugCache:             bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingOptions,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
@@ -46,6 +49,7 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
+	syntheticTestManager      testgridconversion.SythenticTestManager
 	variantManager            testidentification.VariantManager
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
@@ -78,7 +82,7 @@ func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
 	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.variantManager, s.bugCache)
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 	klog.Infof("Refresh complete")
 }
@@ -231,7 +235,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		releasehtml.WriteLandingPage(w, s.reportNames())
 		return
 	}
-	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.variantManager, s.bugCache)
+	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
 

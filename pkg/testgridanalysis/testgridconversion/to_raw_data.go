@@ -14,9 +14,19 @@ import (
 	"k8s.io/klog"
 )
 
+type SythenticTestManager interface {
+	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
+	// and potentially producing synthentic test results and aggregations to better inform sippy.
+	// This needs to be called after all the JobDetails have been processed.
+	// This method mutates the rawJobResults
+	// returns warnings found in the data. Not failures to process it.
+	CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string
+}
+
 type ProcessingOptions struct {
-	StartDay int
-	NumDays  int
+	SythenticTestManager SythenticTestManager
+	StartDay             int
+	NumDays              int
 }
 
 // returns the raw data and a list of warnings encountered processing the data.
@@ -30,7 +40,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	warnings := createSyntheticTests(rawJobResults)
+	warnings := o.SythenticTestManager.CreateSyntheticTests(rawJobResults)
 
 	return rawJobResults, warnings
 }
