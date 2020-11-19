@@ -8,10 +8,12 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
 func PrepareTestReport(
 	rawData testgridanalysisapi.RawData,
+	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	openshiftRelease string, // required to limit bugs to those that apply to the release in question
 	// TODO refactor into a test run filter
@@ -31,7 +33,7 @@ func PrepareTestReport(
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
 	infrequentJobsTestResultFilterFn := StandardTestResultFilter(2, successThreshold)
 
-	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn)
+	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn, variantManager)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
@@ -45,10 +47,10 @@ func PrepareTestReport(
 	curatedTests := getCuratedTests(openshiftRelease, allTestResultsByName)
 
 	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
-	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName])
-	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName])
-	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName])
-	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName])
+	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName], variantManager)
+	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName], variantManager)
+	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
+	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
 	testReport := sippyprocessingv1.TestReport{
 		Release:   openshiftRelease,

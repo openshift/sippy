@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/openshift/sippy/pkg/html/releasehtml"
-
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/html/releasehtml"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"k8s.io/klog"
 )
 
@@ -21,29 +21,16 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
-	skipBugLookup bool,
+	variantManager testidentification.VariantManager,
+	bugCache buganalysis.BugCache,
 ) *Server {
 
-	hasOpenshiftReleases := false
-	for _, dashboardCoordinate := range dashboardCoordinates {
-		if len(dashboardCoordinate.OpenshiftRelease) > 0 {
-			hasOpenshiftReleases = true
-			break
-		}
-	}
-
-	var bugCache buganalysis.BugCache
-	// we cannot lookup bugs without an openshift release
-	if skipBugLookup || !hasOpenshiftReleases {
-		bugCache = buganalysis.NewNoOpBugCache()
-	} else {
-		bugCache = buganalysis.NewBugCache()
-	}
 	server := &Server{
 		listenAddr:           listenAddr,
 		dashboardCoordinates: dashboardCoordinates,
 
-		bugCache: bugCache,
+		variantManager: variantManager,
+		bugCache:       bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingOptions,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
@@ -59,6 +46,7 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
+	variantManager            testidentification.VariantManager
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
 	currTestReports           map[string]StandardReport
@@ -90,7 +78,7 @@ func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
 	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.bugCache)
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.variantManager, s.bugCache)
 	}
 	klog.Infof("Refresh complete")
 }
@@ -243,7 +231,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		releasehtml.WriteLandingPage(w, s.reportNames())
 		return
 	}
-	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.bugCache)
+	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
 

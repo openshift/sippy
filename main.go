@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
-
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 )
@@ -177,7 +177,8 @@ func (o *Options) runServerMode() error {
 		o.toDisplayDataConfig(),
 		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
-		o.SkipBugLookup,
+		o.getVariantManager(),
+		o.getBugCache(),
 	)
 	server.RefreshData() // force a data refresh once before serving.
 	server.Serve()
@@ -190,16 +191,36 @@ func (o *Options) runCLIReportMode() error {
 		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
-	var bugCache buganalysis.BugCache
-	if o.SkipBugLookup {
-		bugCache = buganalysis.NewNoOpBugCache()
-	} else {
-		bugCache = buganalysis.NewBugCache()
-	}
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], bugCache)
+
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getVariantManager(), o.getBugCache())
 	enc := json.NewEncoder(os.Stdout)
 	enc.Encode(testReport)
 	return nil
+}
+
+func (o *Options) hasOpenshiftRelease() bool {
+	for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
+		if len(dashboardCoordinate.OpenshiftRelease) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (o *Options) getBugCache() buganalysis.BugCache {
+	if o.SkipBugLookup || !o.hasOpenshiftRelease() {
+		return buganalysis.NewNoOpBugCache()
+	} else {
+		return buganalysis.NewBugCache()
+	}
+}
+
+func (o *Options) getVariantManager() testidentification.VariantManager {
+	if o.hasOpenshiftRelease() {
+		return testidentification.NewOpenshiftVariantManager()
+	}
+
+	return testidentification.NewEmptyVariantManager()
 }
 
 func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
