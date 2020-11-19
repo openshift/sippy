@@ -20,7 +20,7 @@ var (
 <h1 class=text-center>Test Detail Dashboard</h1>
 
 <p class="small mb-3 text-nowrap">
-	Jump to: <a href="#TestDetailByPlatform">Test Details by Platform</a> | <a href="#Tests">Tests</a> 
+	Jump to: <a href="#TestDetailByVariant">Test Details by Variant</a> | <a href="#Tests">Tests</a> 
 </p>
 
 `

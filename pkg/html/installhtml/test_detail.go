@@ -10,18 +10,18 @@ import (
 )
 
 func testDetailTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []string) string {
-	dataForTestsByPlatform := getDataForTestsByPlatform(
+	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		isTestDetailRelatedTest(testSubstrings),
 		neverMatch,
 	)
 
-	platforms := sets.String{}
-	for _, byPlatform := range dataForTestsByPlatform.testNameToPlatformToTestResult {
-		platforms.Insert(sets.StringKeySet(byPlatform).UnsortedList()...)
+	variants := sets.String{}
+	for _, byVariant := range dataForTestsByVariant.testNameToVariantToTestResult {
+		variants.Insert(sets.StringKeySet(byVariant).UnsortedList()...)
 	}
 
-	return dataForTestsByPlatform.getTableHTML("Details for Tests", "TestDetailByPlatform", "Test Details by Platform", platforms.List(), noChange)
+	return dataForTestsByVariant.getTableHTML("Details for Tests", "TestDetailByVariant", "Test Details by Variant", variants.List(), noChange)
 }
 
 func summaryTestDetailRelatedTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []string, numDays int, release string) string {

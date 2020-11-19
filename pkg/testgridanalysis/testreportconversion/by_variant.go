@@ -8,25 +8,25 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-// convertRawDataToByPlatform takes the raw data and produces a map of platform names to job and test results
-func convertRawDataToByPlatform(
+// convertRawDataToByVariant takes the raw data and produces a map of variant names to job and test results
+func convertRawDataToByVariant(
 	allJobResults []sippyprocessingv1.JobResult,
 	testResultFilterFn TestResultFilterFunc,
-) []sippyprocessingv1.PlatformResults {
+) []sippyprocessingv1.VariantResults {
 
-	platformResults := []sippyprocessingv1.PlatformResults{}
-	for _, platform := range testidentification.AllPlatforms.List() {
+	variantResults := []sippyprocessingv1.VariantResults{}
+	for _, variant := range testidentification.AllVariants.List() {
 
-		allPlatformTestResults := []sippyprocessingv1.TestResult{}
+		allVariantTestResults := []sippyprocessingv1.TestResult{}
 		jobResults := []sippyprocessingv1.JobResult{}
 		successfulJobRuns := 0
 		failedJobRuns := 0
 		knownFailureJobRuns := 0
 		infraFailureJobRuns := 0
 
-		// do this the expensive way until we have a unit test.  This allows us to build the full platform result all at once.
+		// do this the expensive way until we have a unit test.  This allows us to build the full variant result all at once.
 		for _, jobResult := range allJobResults {
-			if !sets.NewString(testidentification.FindPlatform(jobResult.Name)...).Has(platform) {
+			if !sets.NewString(testidentification.IdentifyVariants(jobResult.Name)...).Has(variant) {
 				continue
 			}
 
@@ -36,16 +36,16 @@ func convertRawDataToByPlatform(
 			infraFailureJobRuns += jobResult.InfrastructureFailures
 
 			// combined the test results *before* we filter them
-			allPlatformTestResults = combineTestResults(jobResult.TestResults, allPlatformTestResults)
+			allVariantTestResults = combineTestResults(jobResult.TestResults, allVariantTestResults)
 
 			jobResults = append(jobResults, jobResult)
 		}
 
-		filteredPlatformTestResults := testResultFilterFn.FilterTestResults(allPlatformTestResults)
+		filteredVariantTestResults := testResultFilterFn.FilterTestResults(allVariantTestResults)
 		sort.Stable(jobsByPassPercentage(jobResults))
 
-		platformResults = append(platformResults, sippyprocessingv1.PlatformResults{
-			PlatformName:                          platform,
+		variantResults = append(variantResults, sippyprocessingv1.VariantResults{
+			VariantName:                           variant,
 			JobRunSuccesses:                       successfulJobRuns,
 			JobRunFailures:                        failedJobRuns,
 			JobRunKnownFailures:                   knownFailureJobRuns,
@@ -54,20 +54,20 @@ func convertRawDataToByPlatform(
 			JobRunPassPercentageWithKnownFailures: percent(successfulJobRuns+knownFailureJobRuns, failedJobRuns-knownFailureJobRuns),
 			JobRunPassPercentageWithoutInfrastructureFailures: percent(successfulJobRuns, failedJobRuns-infraFailureJobRuns),
 			JobResults:     jobResults,
-			AllTestResults: filteredPlatformTestResults,
+			AllTestResults: filteredVariantTestResults,
 		})
 	}
 
-	sort.Stable(platformsByJobPassPercentage(platformResults))
+	sort.Stable(variantByJobPassPercentage(variantResults))
 
-	return platformResults
+	return variantResults
 }
 
-// platformsByJobPassPercentage sorts from lowest to highest pass percentage
-type platformsByJobPassPercentage []sippyprocessingv1.PlatformResults
+// variantByJobPassPercentage sorts from lowest to highest pass percentage
+type variantByJobPassPercentage []sippyprocessingv1.VariantResults
 
-func (a platformsByJobPassPercentage) Len() int      { return len(a) }
-func (a platformsByJobPassPercentage) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a platformsByJobPassPercentage) Less(i, j int) bool {
+func (a variantByJobPassPercentage) Len() int      { return len(a) }
+func (a variantByJobPassPercentage) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a variantByJobPassPercentage) Less(i, j int) bool {
 	return a[i].JobRunPassPercentage < a[j].JobRunPassPercentage
 }

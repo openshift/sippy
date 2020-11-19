@@ -56,9 +56,9 @@ type FailingTestBug struct {
 	Bugs      []bugsv1.Bug        `json:"bugs,omitempty"`
 }
 
-// JobSummaryPlatform describes a single platform and its associated jobs, their pass rates, and failing tests
-type JobSummaryPlatform struct {
-	Platform  string              `json:"platform"`
+// JobSummaryVariant describes a single variant and its associated jobs, their pass rates, and failing tests
+type JobSummaryVariant struct {
+	Variant   string              `json:"platform"`
 	PassRates map[string]PassRate `json:"passRates"`
 }
 

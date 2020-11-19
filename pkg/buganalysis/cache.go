@@ -20,7 +20,7 @@ import (
 // It is stateful though, so for a time after clearing the data will not be up to date until the Update is called
 type BugCache interface {
 	ListJobBlockingBugs(job string) []bugsv1.Bug
-	ListBugs(release, platform, testName string) []bugsv1.Bug
+	ListBugs(release, variant, testName string) []bugsv1.Bug
 	UpdateForFailedTests(failedTestNames ...string) error
 	UpdateJobBlockers(jobNames ...string) error
 
@@ -37,7 +37,7 @@ type noOpBugCache struct {
 func (*noOpBugCache) ListJobBlockingBugs(job string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
 }
-func (*noOpBugCache) ListBugs(release, platform, testName string) []bugsv1.Bug {
+func (*noOpBugCache) ListBugs(release, variant, testName string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
 }
 func (*noOpBugCache) UpdateForFailedTests(failedTestNames ...string) error {

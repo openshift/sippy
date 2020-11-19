@@ -14,11 +14,11 @@ type TestReport struct {
 	Timestamp time.Time `json:"timestamp"`
 
 	// TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
-	// individual jobs or platforms.
+	// individual jobs or variants.
 	TopLevelIndicators TopLevelIndicators `json:"topLevelIndicators"`
 
-	// ByPlatform organizes jobs and tests by platform, sorted by job pass rate from low to high
-	ByPlatform []PlatformResults `json:"byPlatform`
+	// ByVariant organizes jobs and tests by variant, sorted by job pass rate from low to high
+	ByVariant []VariantResults `json:"byPlatform`
 
 	// ByTest organizes every test ordered by pass rate from low to high.
 	ByTest []FailingTestResult `json:"byTest"`
@@ -51,7 +51,7 @@ type TestReport struct {
 }
 
 // TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
-// individual jobs or platforms.
+// individual jobs or variants.
 type TopLevelIndicators struct {
 	// Infrastructure goal is indicate when we fail before we start to install.  Because of other issue, this is slightly
 	// broader, catching cases where we are not able to contact a kube-apiserver after the test run.  In theory, this
@@ -69,9 +69,9 @@ type TopLevelIndicators struct {
 	FinalOperatorHealth FailingTestResult
 }
 
-// PlatformResults
-type PlatformResults struct {
-	PlatformName                                      string  `json:"platformName"`
+// VariantResults
+type VariantResults struct {
+	VariantName                                       string  `json:"platformName"`
 	JobRunSuccesses                                   int     `json:"jobRunSuccesses"`
 	JobRunFailures                                    int     `json:"jobRunFailures"`
 	JobRunKnownFailures                               int     `json:"jobRunKnownFailures"`
@@ -80,7 +80,7 @@ type PlatformResults struct {
 	JobRunPassPercentageWithKnownFailures             float64 `json:"jobRunPassPercentageWithKnownFailures"`
 	JobRunPassPercentageWithoutInfrastructureFailures float64 `json:"jobRunPassPercentageWithoutInfrastructureFailures"`
 
-	// JobResults for all jobs that match this platform, ordered by lowest PassPercentage to highest
+	// JobResults for all jobs that match this variant, ordered by lowest PassPercentage to highest
 	JobResults []JobResult `json:"jobResults"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
@@ -117,7 +117,7 @@ type TestResult struct {
 	// BugList shows all applicable bugs for the context.
 	// Inside of a release, only bugs matching the release are present.
 	// TODO Inside a particular job, only bugs matching the job are present.
-	// TODO Inside a platform, only bugs matching the platform are present.
+	// TODO Inside a variant, only bugs matching the variant are present.
 	BugList []bugsv1.Bug `json:"bugList"`
 }
 
@@ -133,7 +133,7 @@ type JobRunResult struct {
 
 type JobResult struct {
 	Name                                        string  `json:"name"`
-	Platform                                    string  `json:"platform"`
+	Variant                                     string  `json:"platform"`
 	Failures                                    int     `json:"failures"`
 	KnownFailures                               int     `json:"knownFailures"`
 	InfrastructureFailures                      int     `json:"infrastructureFailures"`

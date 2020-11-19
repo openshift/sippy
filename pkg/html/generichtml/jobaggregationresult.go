@@ -6,23 +6,23 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-// PlatformResults
+// VariantResults
 type jobAggregationDisplay struct {
 	displayName            string
 	totalJobRuns           int
 	displayPercentage      float64
 	parenDisplayPercentage float64
 
-	// jobResults for all jobs that match this platform, ordered by lowest JobRunPassPercentage to highest
+	// jobResults for all jobs that match this variant, ordered by lowest JobRunPassPercentage to highest
 	jobResults []jobResultDisplay
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest JobRunPassPercentage to highest JobRunPassPercentage
 	testResults []testResultDisplay
 }
 
-func platformResultToDisplay(in sippyprocessingv1.PlatformResults) jobAggregationDisplay {
+func variantResultToDisplay(in sippyprocessingv1.VariantResults) jobAggregationDisplay {
 	ret := jobAggregationDisplay{
-		displayName:            in.PlatformName,
+		displayName:            in.VariantName,
 		totalJobRuns:           in.JobRunSuccesses + in.JobRunFailures,
 		displayPercentage:      in.JobRunPassPercentage,
 		parenDisplayPercentage: in.JobRunPassPercentageWithoutInfrastructureFailures,
@@ -84,8 +84,8 @@ func NewJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggre
 	}
 }
 
-func NewJobAggregationResultRendererFromPlatformResults(sectionBlock string, curr sippyprocessingv1.PlatformResults, release string) *jobAggregationResultRenderBuilder {
-	return NewJobAggregationResultRenderer(sectionBlock, platformResultToDisplay(curr), release)
+func NewJobAggregationResultRendererFromVariantResults(sectionBlock string, curr sippyprocessingv1.VariantResults, release string) *jobAggregationResultRenderBuilder {
+	return NewJobAggregationResultRenderer(sectionBlock, variantResultToDisplay(curr), release)
 }
 
 func NewJobAggregationResultRendererFromBugzillaComponentResult(sectionBlock string, curr sippyprocessingv1.SortedBugzillaComponentResult, release string) *jobAggregationResultRenderBuilder {
@@ -97,12 +97,12 @@ func (b *jobAggregationResultRenderBuilder) WithPrevious(prevJobResult *jobAggre
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) WithPreviousPlatformResults(prev *sippyprocessingv1.PlatformResults) *jobAggregationResultRenderBuilder {
+func (b *jobAggregationResultRenderBuilder) WithPreviousVariantResults(prev *sippyprocessingv1.VariantResults) *jobAggregationResultRenderBuilder {
 	if prev == nil {
 		b.prevAggregationResult = nil
 		return b
 	}
-	t := platformResultToDisplay(*prev)
+	t := variantResultToDisplay(*prev)
 	b.prevAggregationResult = &t
 	return b
 }

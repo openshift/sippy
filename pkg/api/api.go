@@ -37,17 +37,17 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 	return &failureGroupStruct
 }
 
-func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport) []sippyv1.JobSummaryPlatform {
-	var jobSummariesByPlatform []sippyv1.JobSummaryPlatform
+func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport) []sippyv1.JobSummaryVariant {
+	var jobSummariesByVariant []sippyv1.JobSummaryVariant
 
-	for _, v := range report.ByPlatform {
-		prev := util.FindPlatformResultsForName(v.PlatformName, reportPrev.ByPlatform)
+	for _, v := range report.ByVariant {
+		prev := util.FindVariantResultsForName(v.VariantName, reportPrev.ByVariant)
 
-		var jobSummaryPlatform sippyv1.JobSummaryPlatform
+		var jobSummaryVariant sippyv1.JobSummaryVariant
 
 		if prev != nil {
-			jobSummaryPlatform = sippyv1.JobSummaryPlatform{
-				Platform: v.PlatformName,
+			jobSummaryVariant = sippyv1.JobSummaryVariant{
+				Variant: v.VariantName,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.JobRunPassPercentage,
@@ -62,8 +62,8 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport) []si
 				},
 			}
 		} else {
-			jobSummaryPlatform = sippyv1.JobSummaryPlatform{
-				Platform: v.PlatformName,
+			jobSummaryVariant = sippyv1.JobSummaryVariant{
+				Variant: v.VariantName,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.JobRunPassPercentage,
@@ -74,9 +74,9 @@ func summaryJobsByPlatform(report, reportPrev sippyprocessingv1.TestReport) []si
 			}
 		}
 
-		jobSummariesByPlatform = append(jobSummariesByPlatform, jobSummaryPlatform)
+		jobSummariesByVariant = append(jobSummariesByVariant, jobSummaryVariant)
 	}
-	return jobSummariesByPlatform
+	return jobSummariesByVariant
 }
 
 // top failing tests with a bug
@@ -302,7 +302,7 @@ func formatJSONReport(report, prevReport sippyprocessingv1.TestReport, numDays, 
 
 	jsonObject := map[string]interface{}{
 		"failureGroupings":               failureGroups(data.Current.FailureGroups, data.Prev.FailureGroups),
-		"jobPassRateByPlatform":          summaryJobsByPlatform(data.Current, data.Prev),
+		"jobPassRateByVariant":           summaryJobsByVariant(data.Current, data.Prev),
 		"topFailingTestsWithoutBug":      summaryTopFailingTestsWithoutBug(data.Current.TopFailingTestsWithoutBug, data.Prev.TopFailingTestsWithoutBug),
 		"topFailingTestsWithBug":         summaryTopFailingTestsWithBug(data.Current.TopFailingTestsWithBug, data.Prev.ByTest),
 		"jobPassRatesByName":             summaryJobPassRatesByJobName(data.Current, data.Prev),

@@ -17,7 +17,7 @@ var (
 		"Cloud Credential Operator",
 		"Cluster Loader",
 		"Cluster Version Operator",
-		"CNF Platform Validation",
+		"CNF Variant Validation",
 		"Compliance Operator",
 		"config-operator",
 		"Console Kubevirt Plugin",
