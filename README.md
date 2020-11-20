@@ -66,3 +66,16 @@ Valid parameters include:
 * `failureClusterThreshold` - minimum number of test failures in a single job run to be considered a failure cluster/grouping
 
 * `jobTestCount` - number of failing tests to report on for each job definition
+
+## Non-OCP usage
+
+Sippy can be pointed at an arbitrary test-grid dashboard with a more limited featureset.
+Instead of using `--release`, you use `--dashboard`, and in order to specify a set of variants, you can use `--variant`.
+`--dashboard` usage is `--dashboard=<reportName>=<comma,delimited,list of dashboard names>=<optional ocp version if this is for ocp>`.
+`--variant` is limited to one of `{ocp,kube,none}` at the moment, but is expected to allow multiples eventually.
+
+Typical usage for this use-case is like
+```
+./sippy --fetch-data ../data-dir/  --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing=
+./sippy --server --local-data ../data-dir --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing= --variant=kube
+```

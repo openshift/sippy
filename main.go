@@ -13,14 +13,17 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 )
 
 type Options struct {
-	LocalData               string
-	OpenshiftReleases       []string
-	Dashboards              []string
+	LocalData         string
+	OpenshiftReleases []string
+	Dashboards        []string
+	// TODO perhaps this could drive the synthetic tests too
+	Variants                []string
 	StartDay                int
 	endDay                  int
 	NumDays                 int
@@ -67,6 +70,7 @@ func main() {
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
+	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "{ocp,kube,none}")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	// TODO convert this to be an offset so that we can go backwards from "data we have"
 	flags.IntVar(&opt.endDay, "end-day", opt.endDay, "Look at job runs going back to this day")
@@ -147,6 +151,14 @@ func (o *Options) Validate() error {
 		}
 	}
 
+	if len(o.Variants) > 1 {
+		return fmt.Errorf("only one --variant allowed for now")
+	} else {
+		if !sets.NewString("ocp", "kube", "none").Has(o.Variants[0]) {
+			return fmt.Errorf("only ocp, kube, or none is allowed")
+		}
+	}
+
 	return nil
 }
 
@@ -220,11 +232,24 @@ func (o *Options) getBugCache() buganalysis.BugCache {
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {
-	if o.hasOCPDashboard() {
-		return testidentification.NewOpenshiftVariantManager()
+	if len(o.Variants) == 0 {
+		if o.hasOCPDashboard() {
+			return testidentification.NewOpenshiftVariantManager()
+		}
+		return testidentification.NewEmptyVariantManager()
 	}
 
-	return testidentification.NewEmptyVariantManager()
+	// TODO allow more than one with a union
+	switch o.Variants[0] {
+	case "ocp":
+		return testidentification.NewOpenshiftVariantManager()
+	case "kube":
+		return testidentification.NewKubeVariantManager()
+	case "none":
+		return testidentification.NewEmptyVariantManager()
+	default:
+		panic("only ocp, kube, or none is allowed")
+	}
 }
 
 func (o *Options) getSynthenticTestManager() testgridconversion.SythenticTestManager {
