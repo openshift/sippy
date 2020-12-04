@@ -19,6 +19,7 @@ var (
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
+	osdRegex       = regexp.MustCompile(`(?i)-osd-`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt-`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn-`)
 	// proxy jobs do not have a trailing -version segment
@@ -42,6 +43,7 @@ var (
 		"metal-ipi",
 		"never-stable",
 		"openstack",
+		"osd",
 		"ovirt",
 		"ovn",
 		"ppc64le",
@@ -107,6 +109,10 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 	if openstackRegex.MatchString(jobName) {
 		variants = append(variants, "openstack")
+	}
+
+	if osdRegex.MatchString(jobName) {
+		variants = append(variants("osd"))
 	}
 
 	// Without support for negative lookbacks in the native
