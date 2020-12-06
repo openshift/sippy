@@ -14,6 +14,8 @@ var (
 	azureRegex = regexp.MustCompile(`(?i)-azure-`)
 	fipsRegex  = regexp.MustCompile(`(?i)-fips-`)
 	metalRegex = regexp.MustCompile(`(?i)-metal-`)
+	// metal-assisted jobs do not have a trailing -version segment
+	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex = regexp.MustCompile(`(?i)-metal-ipi`)
 	// 3.11 gcp jobs don't have a trailing -version segment
@@ -38,6 +40,7 @@ var (
 		"azure",
 		"fips",
 		"gcp",
+		"metal-assisted",
 		"metal-upi",
 		"metal-ipi",
 		"never-stable",
@@ -111,9 +114,11 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 
 	// Without support for negative lookbacks in the native
 	// regexp library, it's easiest to differentiate these
-	// two by seeing if it's metal-ipi, and then fall through
+	// three by seeing if it's metal-assisted or metal-ipi, and then fall through
 	// to check if it's UPI metal.
-	if metalIPIRegex.MatchString(jobName) {
+	if metalAssistedRegex.MatchString(jobName) {
+		variants = append(variants, "metal-assisted")
+	} else if metalIPIRegex.MatchString(jobName) {
 		variants = append(variants, "metal-ipi")
 	} else if metalRegex.MatchString(jobName) {
 		variants = append(variants, "metal-upi")
