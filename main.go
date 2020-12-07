@@ -153,7 +153,7 @@ func (o *Options) Validate() error {
 
 	if len(o.Variants) > 1 {
 		return fmt.Errorf("only one --variant allowed for now")
-	} else {
+	} else if len(o.Variants) == 1 {
 		if !sets.NewString("ocp", "kube", "none").Has(o.Variants[0]) {
 			return fmt.Errorf("only ocp, kube, or none is allowed")
 		}
