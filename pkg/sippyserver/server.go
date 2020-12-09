@@ -66,9 +66,10 @@ type TestGridDashboardCoordinates struct {
 }
 
 type StandardReport struct {
-	CurrentPeriodReport sippyprocessingv1.TestReport
-	CurrentTwoDayReport sippyprocessingv1.TestReport
-	PreviousWeekReport  sippyprocessingv1.TestReport
+	CurrentPeriodReports []sippyprocessingv1.TestReport
+	CurrentPeriodReport  sippyprocessingv1.TestReport
+	CurrentTwoDayReport  sippyprocessingv1.TestReport
+	PreviousWeekReport   sippyprocessingv1.TestReport
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
@@ -99,11 +100,20 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var numDays int
+	t := req.URL.Query().Get("endDay")
+	if t != "" {
+		numDays, _ = strconv.Atoi(t)
+	}
+	if numDays == 0 || numDays > len(s.currTestReports[reportName].CurrentPeriodReports) {
+		numDays = s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays
+	}
+
 	releasehtml.PrintHtmlReport(w, req,
-		s.currTestReports[dashboard.ReportName].CurrentPeriodReport,
-		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
-		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
-		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
+		s.currTestReports[reportName].CurrentPeriodReports[numDays-1],
+		s.currTestReports[reportName].CurrentTwoDayReport,
+		s.currTestReports[reportName].PreviousWeekReport,
+		numDays,
 		15)
 }
 
@@ -238,7 +248,6 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
-
 }
 
 func (s *Server) Serve() {

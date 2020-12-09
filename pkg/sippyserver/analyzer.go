@@ -103,12 +103,13 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 ) StandardReport {
 	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
 
-	currTimePeriodConfig := a.deepCopy()
-	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
-
-	currentTwoDayPeriodConfig := a.deepCopy()
-	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
-	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentWeekReports := []sippyprocessingv1.TestReport{}
+	for i := 1; i <= a.RawJobResultsAnalysisConfig.NumDays; i++ {
+		config := a.deepCopy()
+		config.RawJobResultsAnalysisConfig.NumDays = i
+		configReport := config.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+		currentWeekReports = append(currentWeekReports, configReport)
+	}
 
 	previousSevenDayPeriodConfig := a.deepCopy()
 	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
@@ -120,9 +121,10 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
-		CurrentPeriodReport: currentTimePeriodReport,
-		CurrentTwoDayReport: currentTwoDayReport,
-		PreviousWeekReport:  previousSevenDayReport,
+		CurrentPeriodReports: currentWeekReports,
+		CurrentPeriodReport:  currentWeekReports[a.RawJobResultsAnalysisConfig.NumDays-1],
+		CurrentTwoDayReport:  currentWeekReports[1],
+		PreviousWeekReport:   previousSevenDayReport,
 	}
 }
 
