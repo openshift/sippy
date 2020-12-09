@@ -115,7 +115,7 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 
 	if osdRegex.MatchString(jobName) {
-		variants = append(variants("osd"))
+		variants = append(variants, "osd")
 	}
 
 	// Without support for negative lookbacks in the native
