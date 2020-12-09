@@ -2,6 +2,8 @@
 
 <img src=https://raw.github.com/openshift/sippy/master/sippy.svg height=100 width=100>
 
+![Go](https://github.com/openshift/sippy/workflows/Go/badge.svg)
+
 CIPI (Continuous Integration Private Investigator) aka Sippy.
 
 A tool to process the job results from https://testgrid.k8s.io/
