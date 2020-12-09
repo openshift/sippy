@@ -5,7 +5,7 @@ FROM golang:1.15.2
 #    dnf clean all -y
 RUN mkdir /tmp/src
 COPY . /tmp/src
-RUN cd /tmp/src; make
+RUN cd /tmp/src; make build
 ENTRYPOINT /tmp/src/sippy
 
 
