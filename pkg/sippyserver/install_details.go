@@ -13,8 +13,8 @@ func (s *Server) printInstallHtmlReport(w http.ResponseWriter, req *http.Request
 		return
 	}
 	installhtml.PrintInstallHtmlReport(w, req,
-		s.currTestReports[reportName].CurrentPeriodReport,
-		s.currTestReports[reportName].PreviousWeekReport,
+		s.currTestReports[reportName].ReportForDefaultPeriod(),
+		s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod(),
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		reportName,
 	)
@@ -27,8 +27,8 @@ func (s *Server) printUpgradeHtmlReport(w http.ResponseWriter, req *http.Request
 		return
 	}
 	installhtml.PrintUpgradeHtmlReport(w, req,
-		s.currTestReports[reportName].CurrentPeriodReport,
-		s.currTestReports[reportName].PreviousWeekReport,
+		s.currTestReports[reportName].ReportForDefaultPeriod(),
+		s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod(),
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		reportName,
 	)
@@ -41,8 +41,8 @@ func (s *Server) printOperatorHealthHtmlReport(w http.ResponseWriter, req *http.
 		return
 	}
 	installhtml.PrintOperatorHealthHtmlReport(w, req,
-		s.currTestReports[reportName].CurrentPeriodReport,
-		s.currTestReports[reportName].PreviousWeekReport,
+		s.currTestReports[reportName].ReportForDefaultPeriod(),
+		s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod(),
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		reportName,
 	)
@@ -55,8 +55,8 @@ func (s *Server) printTestDetailHtmlReport(w http.ResponseWriter, req *http.Requ
 		return
 	}
 	installhtml.PrintTestDetailHtmlReport(w, req,
-		s.currTestReports[reportName].CurrentPeriodReport,
-		s.currTestReports[reportName].PreviousWeekReport,
+		s.currTestReports[reportName].ReportForDefaultPeriod(),
+		s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod(),
 		req.URL.Query()["test"],
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
 		reportName,

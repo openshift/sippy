@@ -67,9 +67,29 @@ type TestGridDashboardCoordinates struct {
 
 type StandardReport struct {
 	CurrentPeriodReports []sippyprocessingv1.TestReport
-	CurrentPeriodReport  sippyprocessingv1.TestReport
-	CurrentTwoDayReport  sippyprocessingv1.TestReport
-	PreviousWeekReport   sippyprocessingv1.TestReport
+	PreviousWeekReports  []sippyprocessingv1.TestReport
+}
+
+func (r StandardReport) ReportForPeriod(numDays int) sippyprocessingv1.TestReport {
+	if numDays > len(r.CurrentPeriodReports) {
+		return sippyprocessingv1.TestReport{}
+	}
+	return r.CurrentPeriodReports[numDays-1]
+}
+
+func (r StandardReport) PreviousWeekReportForPeriod(numDays int) sippyprocessingv1.TestReport {
+	if numDays > len(r.PreviousWeekReports) {
+		return sippyprocessingv1.TestReport{}
+	}
+	return r.PreviousWeekReports[numDays-1]
+}
+
+func (r StandardReport) ReportForDefaultPeriod() sippyprocessingv1.TestReport {
+	return r.ReportForPeriod(len(r.CurrentPeriodReports))
+}
+
+func (r StandardReport) PreviousWeekReportForDefaultPeriod() sippyprocessingv1.TestReport {
+	return r.PreviousWeekReportForPeriod(len(r.PreviousWeekReports))
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
@@ -110,9 +130,9 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	releasehtml.PrintHtmlReport(w, req,
-		s.currTestReports[reportName].CurrentPeriodReports[numDays-1],
-		s.currTestReports[reportName].CurrentTwoDayReport,
-		s.currTestReports[reportName].PreviousWeekReport,
+		s.currTestReports[reportName].ReportForPeriod(numDays),
+		s.currTestReports[reportName].ReportForPeriod(2),
+		s.currTestReports[reportName].PreviousWeekReportForPeriod(numDays),
 		numDays,
 		15)
 }
@@ -143,7 +163,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		// store [currentReport, prevReport] in a slice
 		for _, reportName := range s.reportNames() {
 			if _, ok := s.currTestReports[reportName]; ok {
-				releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
+				releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].ReportForDefaultPeriod(), s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod()}
 			} else {
 				klog.Errorf("unable to load test report for reportName version %s", reportName)
 				continue
@@ -162,7 +182,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		w.Write(errMsgBytes)
 		return
 	}
-	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
+	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].ReportForDefaultPeriod(), s.currTestReports[reportName].PreviousWeekReportForDefaultPeriod()}
 	api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 }
 
@@ -247,7 +267,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
-	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
+	releasehtml.PrintHtmlReport(w, req, testReports.ReportForDefaultPeriod(), testReports.ReportForPeriod(2), testReports.PreviousWeekReportForDefaultPeriod(), numDays, jobTestCount)
 }
 
 func (s *Server) Serve() {

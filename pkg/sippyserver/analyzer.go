@@ -103,28 +103,28 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 ) StandardReport {
 	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
 
-	currentWeekReports := []sippyprocessingv1.TestReport{}
+	currentPeriodReports := []sippyprocessingv1.TestReport{}
+	previousWeekReports := []sippyprocessingv1.TestReport{}
+
 	for i := 1; i <= a.RawJobResultsAnalysisConfig.NumDays; i++ {
 		config := a.deepCopy()
 		config.RawJobResultsAnalysisConfig.NumDays = i
 		configReport := config.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
-		currentWeekReports = append(currentWeekReports, configReport)
-	}
+		currentPeriodReports = append(currentPeriodReports, configReport)
 
-	previousSevenDayPeriodConfig := a.deepCopy()
-	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
-		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay + a.RawJobResultsAnalysisConfig.NumDays
-	} else {
-		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
+		previousSevenDayPeriodConfig := config.deepCopy()
+		if config.RawJobResultsAnalysisConfig.StartDay >= 0 {
+			previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = config.RawJobResultsAnalysisConfig.StartDay + config.RawJobResultsAnalysisConfig.NumDays
+		} else {
+			previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = config.RawJobResultsAnalysisConfig.StartDay - config.RawJobResultsAnalysisConfig.NumDays
+		}
+		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
+		previousWeekReports = append(previousWeekReports, previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime))
 	}
-	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
-	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.OpenshiftRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
-		CurrentPeriodReports: currentWeekReports,
-		CurrentPeriodReport:  currentWeekReports[a.RawJobResultsAnalysisConfig.NumDays-1],
-		CurrentTwoDayReport:  currentWeekReports[1],
-		PreviousWeekReport:   previousSevenDayReport,
+		CurrentPeriodReports: currentPeriodReports,
+		PreviousWeekReports:  previousWeekReports,
 	}
 }
 
