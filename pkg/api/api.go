@@ -18,6 +18,7 @@ import (
 // stats on failure groups
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) *sippyv1.FailureGroups {
 
+
 	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	failureGroupStruct := sippyv1.FailureGroups{
