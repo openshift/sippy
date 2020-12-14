@@ -71,12 +71,14 @@ func NewBugCache() BugCache {
 
 // updates a global variable with the bug mapping based on current failures.
 func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
+	c.lock.RLock()
 	newFailedTestNames := []string{}
 	for _, testName := range failedTestNames {
 		if _, found := c.cache[testName]; !found {
 			newFailedTestNames = append(newFailedTestNames, testName)
 		}
 	}
+	c.lock.RUnlock()
 	newBugs, lastUpdateError := findBugsForFailedTests(newFailedTestNames...)
 
 	c.lock.Lock()
@@ -95,6 +97,7 @@ func getJobKey(jobName string) string {
 
 // updates a global variable with the bug mapping based on current failures.
 func (c *bugCache) UpdateJobBlockers(jobNames ...string) error {
+	c.lock.RLock()
 	jobSearchStrings := []string{}
 	for _, jobName := range jobNames {
 		jobKey := getJobKey(jobName)
@@ -102,6 +105,7 @@ func (c *bugCache) UpdateJobBlockers(jobNames ...string) error {
 			jobSearchStrings = append(jobSearchStrings, jobKey)
 		}
 	}
+	c.lock.RUnlock()
 	newBugs, lastUpdateError := findBugsForFailedTests(jobSearchStrings...)
 
 	c.lock.Lock()
