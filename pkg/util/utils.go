@@ -3,6 +3,7 @@ package util
 import (
 	"regexp"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
@@ -84,4 +85,13 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 		}
 		return false
 	*/
+}
+
+func IsActiveBug(bug bugsv1.Bug) bool {
+	switch bug.Status {
+	case "VERIFIED", "RELEASE_PENDING", "CLOSED":
+		return false
+	default:
+		return true
+	}
 }

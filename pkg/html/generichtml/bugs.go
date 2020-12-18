@@ -6,9 +6,13 @@ import (
 	"regexp"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func bugLink(bug bugsv1.Bug) string {
+	if !util.IsActiveBug(bug) {
+		return fmt.Sprintf(`<a target="_blank" href="%s"><strike>%d</strike></a> `, bug.Url, bug.ID)
+	}
 	return fmt.Sprintf(`<a target="_blank" href="%s">%d</a> `, bug.Url, bug.ID)
 }
 
