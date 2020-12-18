@@ -13,6 +13,7 @@ import (
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/buganalysis/internal"
+	"github.com/openshift/sippy/pkg/util"
 	"k8s.io/klog"
 )
 
@@ -238,7 +239,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 
 			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
 			// (or the bug was incorrectly verified and needs to be revisited)
-			if bug.Status == "VERIFIED" {
+			if !util.IsActiveBug(bug) {
 				if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
 					continue
 				}
