@@ -25,7 +25,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
 		</tr>
 		<tr>
-			<th>Test Name</th><th>File a Bug</th><th>Pass Rate</th><th/><th>Pass Rate</th>
+			<th>Test Name</th><th>Bugs</th><th>Pass Rate</th><th/><th>Pass Rate</th>
 		</tr>
 	`, generichtml.GetTestDetailsButtonHTML(release, testNames...), numDays)
 
