@@ -171,7 +171,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
-		if float64(numRunsWithoutSetup)/float64(len(jobResults.JobRunResults)+1)*100 > 50 {
+		if float64(numRunsWithoutSetup)/float64(len(jobResults.JobRunResults)+1)*100 > 75 {
 			if !matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
 				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
 			}
