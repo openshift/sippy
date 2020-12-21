@@ -8,6 +8,7 @@ import (
 )
 
 var customJobSetupContainers = sets.NewString(
+	"e2e-44-stable-to-45-ci-ipi-install-install-stableinitial",
 	"e2e-aws-upgrade-ipi-install-install-stableinitial",
 	"e2e-aws-upgrade-rollback-ipi-install-install-stableinitial",
 	"e2e-aws-proxy-ipi-install-install",
