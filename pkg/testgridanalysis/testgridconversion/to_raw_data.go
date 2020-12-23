@@ -84,7 +84,7 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 
 // tagStripRegex removes test markers deemed unhelpful at one point in time.
 // TODO relitigate the value of doing this.  Without these markers, I don't think it is possible to run the failing test back through `openshift-tests run-test <foo>`
-var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]|\[Serial\]|\[Top Level\]`)
+var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]`)
 
 // ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
