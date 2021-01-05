@@ -124,7 +124,9 @@ func getBugzillaComponentsFromTestResult(testResult sippyprocessingv1.TestResult
 	bzComponents := sets.String{}
 	bugList := testResult.BugList
 	for _, bug := range bugList {
-		bzComponents.Insert(bug.Component[0])
+		if len(bug.Component) > 0 {
+			bzComponents.Insert(bug.Component[0])
+		}
 	}
 	if len(bzComponents) > 0 {
 		return bzComponents.List()
