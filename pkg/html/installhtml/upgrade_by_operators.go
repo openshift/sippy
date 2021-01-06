@@ -50,7 +50,10 @@ func summaryUpgradeRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Upgrade related tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="UpgradeRelatedTests" href="#UpgradeRelatedTests">Upgrade Related Tests</a></th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark" id="UpgradeRelatedTests" href="#UpgradeRelatedTests">Upgrade Related Tests</a>
+				<i class="fa fa-info-circle" title="Upgrade related tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."></i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -79,7 +82,10 @@ func summaryUpgradeRelatedJobs(report, reportPrev sippyprocessingv1.TestReport, 
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job upgrade definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running." id="UpgradeJobs" href="#UpgradeJobs">Upgrade Jobs</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" id="UpgradeJobs" href="#UpgradeJobs">Upgrade Jobs</a>
+				<i class="fa fa-info-circle" title="Passing rate for each job upgrade definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running."</i>
+			</th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>

@@ -19,7 +19,11 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests with a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a> %s</th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark" id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a>
+				%s
+				<i class="fa fa-info-circle" title="Most frequently failing tests with a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -40,7 +44,11 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a> %s</th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark"  id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a>
+				%s
+				<i class="fa fa-info-circle" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
@@ -65,7 +73,11 @@ func summaryCuratedTests(curr, prev sippyprocessingv1.TestReport, numDays int, r
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Curated TRT tests for whatever reason they see fit, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="CuratedTRTTests" href="#CuratedTRTTests">Curated TRT Tests</a> %s</th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark" id="CuratedTRTTests" href="#CuratedTRTTests">Curated TRT Tests</a>
+				%s
+				<i class="fa fa-info-circle" title="Curated TRT tests for whatever reason they see fit, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>

@@ -88,7 +88,10 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 	groups := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" title="Statistics on how often we see a cluster of test failures in a single run.  Such clusters are indicative of cluster infrastructure problems that impact many tests and should be investigated.  See below for a link to specific jobs that show large clusters of test failures."  id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a></th>
+			<th colspan=3 class="text-center">
+				<a class="text-dark" id="FailureGroupings" href="#FailureGroupings">Failure Groupings</a>
+				<i class="fa fa-info-circle" title="Statistics on how often we see a cluster of test failures in a single run.  Such clusters are indicative of cluster infrastructure problems that impact many tests and should be investigated.  See below for a link to specific jobs that show large clusters of test failures."></i>
+			</th>
 		</tr>
 		<tr>
 			<th/><th>Latest %d days</th><th>Previous 7 days</th>
@@ -115,7 +118,10 @@ func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport, numDa
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Aggregation of all job runs for a given variant, sorted by passing rate percentage.  Variants at the top of this list have unreliable CI jobs or the product is unreliable in those variants.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running." id="JobPassRatesByVariant" href="#JobPassRatesByVariant">Job Pass Rates By Variant</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark"  id="JobPassRatesByVariant" href="#JobPassRatesByVariant">Job Pass Rates By Variant</a>
+				<i class="fa fa-info-circle" title="Aggregation of all job runs for a given variant, sorted by passing rate percentage.  Variants at the top of this list have unreliable CI jobs or the product is unreliable in those variants.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Variant</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
@@ -139,7 +145,10 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running." id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" id="JobPassRatesByJobName" href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a>
+				<i class="fa fa-info-circle" title="Passing rate for each job definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
@@ -164,7 +173,10 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Passing rate for each job infrequent definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running." id="InfrequentJobPassRatesByJobName" href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" id="InfrequentJobPassRatesByJobName" href="#InfrequentJobPassRatesByJobName">Infrequent Job Pass Rates By Job Name</a>
+				<i class="fa fa-info-circle" title="Passing rate for each job infrequent definition, sorted by passing percentage.  Jobs at the top of this list are unreliable or represent environments where the product is not stable and should be investigated.  The pass rate in parenthesis is the pass rate for jobs that started to run the installer and got at least the bootstrap kube-apiserver up and running."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
@@ -191,7 +203,10 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=2 class="text-center"><a class="text-dark" title="Tests which historically pass but failed in a job run.  Job run should be investigated because these historically stable tests were probably disrupted by a major cluster bug." id="CanaryTestFailures" href="#CanaryTestFailures">Canary Test Failures</a></th>
+			<th colspan=2 class="text-center">
+				<a class="text-dark" id="CanaryTestFailures" href="#CanaryTestFailures">Canary Test Failures</a>
+				<i class="fa fa-info-circle" title="Tests which historically pass but failed in a job run.  Job run should be investigated because these historically stable tests were probably disrupted by a major cluster bug."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Test Name</th><th>Pass Rate</th>
@@ -230,7 +245,10 @@ func failureGroupList(report sippyprocessingv1.TestReport) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=2 class="text-center"><a class="text-dark" title="Job runs where a large number of tests failed.  This is usually indicative of a cluster infrastructure problem, not a test issue, and should be investigated as such." id="JobRunsWithFailureGroups" href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a></th>
+			<th colspan=2 class="text-center">
+				<a class="text-dark" id="JobRunsWithFailureGroups" href="#JobRunsWithFailureGroups">Job Runs With Failure Groups</a>
+				<i class="fa fa-info-circle" title="Job runs where a large number of tests failed.  This is usually indicative of a cluster infrastructure problem, not a test issue, and should be investigated as such."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Job</th><th>Failed Test Count</th>
@@ -252,7 +270,10 @@ func testImpactingBugs(testImpactingBugs []bugsv1.Bug) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=3 class="text-center"><a class="text-dark" title="Bugs which contain references to one or more failing tests, sorted by number of times the referenced tests failed." id="TestImpactingBugs" href="#TestImpactingBugs">Test Impacting Bugs</a></th>
+			<th colspan=3 class="text-center">
+				<a class="text-dark" id="TestImpactingBugs" href="#TestImpactingBugs">Test Impacting Bugs</a>
+				<i class="fa fa-info-circle" title="Bugs which contain references to one or more failing tests, sorted by number of times the referenced tests failed."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Bug</th><th>Failure Count</th><th>Flake Count</th>
@@ -271,7 +292,10 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 	s := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla Components which have bugs associated with one or more test failures, with a count of how many test failures the bug(s) are associated with." id="TestImpactingComponents" href="#TestImpactingComponents">Test Impacting Components</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" id="TestImpactingComponents" href="#TestImpactingComponents">Test Impacting Components</a>
+				<i class="fa fa-info-circle" title="Bugzilla Components which have bugs associated with one or more test failures, with a count of how many test failures the bug(s) are associated with."></i>
+			</th>
 		</tr>
 		<tr>
 			<th>Component</th><th>Failure Count</th><th>Flake Count</th><th>Bug Count</th>

@@ -29,7 +29,10 @@ func summaryTestDetailRelatedTests(curr, prev sippyprocessingv1.TestReport, test
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a test against the test." id="Tests" href="#Tests">Tests</a></th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark" id="Tests" href="#Tests">Tests</a>
+				<i class="fa fa-info-circle" title="Tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a test against the test."></i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>

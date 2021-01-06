@@ -22,7 +22,10 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Bugzilla components ranked by maximum fail percentage of any job" id="JobImpactingBZComponents" href="#JobImpactingBZComponents">Job Impacting BZ Components</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" href="#JobImpactingBZComponents">Job Impacting BZ Components</a>
+				<i class="fa fa-info-circle" title="Bugzilla components ranked by maximum fail percentage of any job"</i>
+			</th>
 		</tr>
 		<tr>
 			<th>Component</th><th>Latest %d days</th><th/><th>Previous 7 days</th>

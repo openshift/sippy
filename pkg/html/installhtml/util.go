@@ -118,14 +118,17 @@ func (a testsByVariant) getTableHTML(
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=%d class="text-center"><a class="text-dark" title=%q id="%s" href="#%s">%s</a></th>
+			<th colspan=%d class="text-center">
+				<a class="text-dark" id="%s" href="#%s">%s</a>
+				<i class="fa fa-info-circle" title=%q></i>
+			</th>
 		</tr>
 	`,
 		len(aggregationNames)+2,
-		description,
 		anchor,
 		anchor,
 		title,
+		description,
 	)
 
 	// print variant column headers

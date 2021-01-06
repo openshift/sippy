@@ -32,7 +32,10 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release
 	tableHTML := `
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Top level release indicators showing product health." id="TopLevelReleaseIndicators" href="#TopLevelReleaseIndicators">Top Level Release Indicators</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark"  id="TopLevelReleaseIndicators" href="#TopLevelReleaseIndicators">Top Level Release Indicators</a>
+				<i class="fa fa-info-circle" title="Top level release indicators showing product health."></i>
+			</th>
 		</tr>
 		<tr>
 			<th title="How often we get to the point of running the installer.  This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close." class="text-center {{ .infraColor }}">Infrastructure</th>
