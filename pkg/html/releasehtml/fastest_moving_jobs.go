@@ -48,7 +48,10 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=4 class="text-center"><a class="text-dark" title="Jobs that have changed their pass percentages the most in the last two days." id="JobByMostReducedPassRate" href="#JobByMostReducedPassRate">Job Pass Rates By Most Reduced Pass Rate</a></th>
+			<th colspan=4 class="text-center">
+				<a class="text-dark" id="JobByMostReducedPassRate" href="#JobByMostReducedPassRate">Job Pass Rates By Most Reduced Pass Rate</a>
+				<i class="fa fa-info-circle" title="Jobs that have changed their pass percentages the most in the last two days."</i>
+			</th>
 		</tr>
 		<tr>
 			<th>Name</th><th>Latest 2 days</th><th/><th>Previous 7 days</th>

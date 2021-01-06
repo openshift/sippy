@@ -51,7 +51,10 @@ func summaryInstallRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 	s := fmt.Sprintf(`
 	<table class="table">
 		<tr>
-			<th colspan=5 class="text-center"><a class="text-dark" title="Install related tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test." id="InstallRelatedTests" href="#InstallRelatedTests">Install Related Tests</a></th>
+			<th colspan=5 class="text-center">
+				<a class="text-dark" id="InstallRelatedTests" href="#InstallRelatedTests">Install Related Tests</a>
+				<i class="fa fa-info-circle" title="Install related tests, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+			</th>
 		</tr>
 		<tr>
 			<th colspan=2/><th class="text-center">Latest %d Days</th><th/><th class="text-center">Previous 7 Days</th>
