@@ -102,7 +102,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 	if err != nil {
 		return details, err
 	}
-	details.TestGridUrl = fmt.Sprintf("https://testgrid.k8s.io/%s#%s", dashboard, jobName)
+	details.TestGridUrl = fmt.Sprintf("https://testgrid.k8s.io/%s#%s&grid=old", dashboard, jobName)
 	return details, nil
 }
 
