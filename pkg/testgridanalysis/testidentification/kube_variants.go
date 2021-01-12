@@ -9,14 +9,16 @@ import (
 
 var (
 	// variant regexes
-	kubeKindRegex    = regexp.MustCompile(`kind-`)
-	kubeKubeadmRegex = regexp.MustCompile(`kubeadm-`)
-	kubeSerialRegex  = regexp.MustCompile(`-serial`)
-	kubeWindowsRegex = regexp.MustCompile(`windows-`)
-	kubeUpgradeRegex = regexp.MustCompile(`upgrade-`)
-	kubeE2eRegex     = regexp.MustCompile(`-parallel`)
+	kubeConformanceRegex = regexp.MustCompile(`[Cc]onformance-`)
+	kubeKindRegex        = regexp.MustCompile(`kind-`)
+	kubeKubeadmRegex     = regexp.MustCompile(`kubeadm-`)
+	kubeSerialRegex      = regexp.MustCompile(`-serial`)
+	kubeWindowsRegex     = regexp.MustCompile(`windows-`)
+	kubeUpgradeRegex     = regexp.MustCompile(`upgrade-`)
+	kubeE2eRegex         = regexp.MustCompile(`-parallel`)
 
 	allKubeVariants = sets.NewString(
+		"conformance",
 		"kind",
 		"kubeadm",
 		"serial",
@@ -59,6 +61,9 @@ func (v kubeVariants) IdentifyVariants(jobName string) []string {
 		}
 	}()
 
+	if kubeConformanceRegex.MatchString(jobName) {
+		variants = append(variants, "conformance")
+	}
 	if kubeKindRegex.MatchString(jobName) {
 		variants = append(variants, "kind")
 	}
