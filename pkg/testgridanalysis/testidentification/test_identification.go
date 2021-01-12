@@ -43,6 +43,14 @@ func IsSetupContainerEquivalent(testName string) bool {
 		return true
 	}
 
+	//  kube uses this to mean the installation worked.  It's not perfectly analogous, but it's close.
+	if testName == "Up" {
+		return true
+	}
+	if strings.HasSuffix(testName, "create-cluster") {
+		return true
+	}
+
 	return false
 }
 
