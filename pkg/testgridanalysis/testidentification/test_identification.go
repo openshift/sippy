@@ -23,6 +23,8 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-vsphere-upi-serial-upi-install-vsphere",
 	"e2e-vsphere-serial-ipi-install-vsphere",
 	"e2e-metal-assisted-baremetalds-assisted-setup",
+	"e2e-metal-assisted-onprem-baremetalds-assisted-setup",
+	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup",
 )
 
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether setup succeeded
