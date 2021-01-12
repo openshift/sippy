@@ -107,6 +107,13 @@ func convertRawJobResultToProcessedJobResult(
 	job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 	job.PassPercentageWithoutInfrastructureFailures = percent(job.Successes, job.Failures-job.InfrastructureFailures)
 
+	// if there are more infrastructure failures than overall failures, then something is wrong with our accounting and
+	// we should make it clear this is an invalid value.
+	// TODO wire a warning. This is strictly better than nothing at the moment though.
+	if job.InfrastructureFailures > job.Failures {
+		job.PassPercentageWithoutInfrastructureFailures = -1
+	}
+
 	return job
 }
 

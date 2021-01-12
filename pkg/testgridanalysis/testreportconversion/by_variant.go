@@ -34,7 +34,11 @@ func convertRawDataToByVariant(
 			successfulJobRuns += jobResult.Successes
 			failedJobRuns += jobResult.Failures
 			knownFailureJobRuns += jobResult.KnownFailures
-			infraFailureJobRuns += jobResult.InfrastructureFailures
+			// only record infrastructure failures if the number of infrastructure failures makes sense in light of the number of overall runs
+			// we've had issues where infrastructure failures for kubernetes are not properly recognized.
+			if jobResult.InfrastructureFailures <= jobResult.Failures {
+				infraFailureJobRuns += jobResult.InfrastructureFailures
+			}
 
 			// combined the test results *before* we filter them
 			allVariantTestResults = combineTestResults(jobResult.TestResults, allVariantTestResults)
@@ -45,7 +49,7 @@ func convertRawDataToByVariant(
 		filteredVariantTestResults := testResultFilterFn.FilterTestResults(allVariantTestResults)
 		sort.Stable(jobsByPassPercentage(jobResults))
 
-		variantResults = append(variantResults, sippyprocessingv1.VariantResults{
+		variantResult := sippyprocessingv1.VariantResults{
 			VariantName:                           variant,
 			JobRunSuccesses:                       successfulJobRuns,
 			JobRunFailures:                        failedJobRuns,
@@ -56,7 +60,9 @@ func convertRawDataToByVariant(
 			JobRunPassPercentageWithoutInfrastructureFailures: percent(successfulJobRuns, failedJobRuns-infraFailureJobRuns),
 			JobResults:     jobResults,
 			AllTestResults: filteredVariantTestResults,
-		})
+		}
+
+		variantResults = append(variantResults, variantResult)
 	}
 
 	sort.Stable(variantByJobPassPercentage(variantResults))
