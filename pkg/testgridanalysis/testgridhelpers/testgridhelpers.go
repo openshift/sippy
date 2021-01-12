@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"regexp"
 	"time"
@@ -182,7 +183,9 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Non-200 response code fetching job details: %v", resp)
+		responseDump, _ := httputil.DumpResponse(resp, true)
+		fmt.Fprintf(os.Stderr, "response dump\n%v\n", string(responseDump))
+		return fmt.Errorf("non-200 response code fetching job details from %v: %v", url, resp)
 	}
 
 	filename := storagePath + "/" + normalizeURL(url)
