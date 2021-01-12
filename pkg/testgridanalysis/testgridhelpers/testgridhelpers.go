@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	gourl "net/url"
 	"os"
 	"regexp"
 	"time"
@@ -88,13 +90,13 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 		Name: jobName,
 	}
 
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
+	url := URLForJobDetails(dashboard, jobName)
 
 	var buf *bytes.Buffer
-	filename := storagePath + "/" + normalizeURL(url)
+	filename := storagePath + "/" + normalizeURL(url.String())
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return details, fmt.Errorf("Could not read local data file %s: %v", filename, err)
+		return details, fmt.Errorf("could not read local data file %s: %v", filename, err)
 	}
 	buf = bytes.NewBuffer(b)
 
@@ -102,19 +104,19 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 	if err != nil {
 		return details, err
 	}
-	details.TestGridUrl = fmt.Sprintf("https://testgrid.k8s.io/%s#%s&grid=old", dashboard, jobName)
+	details.TestGridUrl = URLForJob(dashboard, jobName).String()
 	return details, nil
 }
 
 func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
 	jobs := make(map[string]testgridv1.JobSummary)
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
+	url := URLForJobSummary(dashboard)
 
 	var buf *bytes.Buffer
-	filename := storagePath + "/" + normalizeURL(url)
+	filename := storagePath + "/" + normalizeURL(url.String())
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return jobs, time.Time{}, fmt.Errorf("Could not read local data file %s: %v", filename, err)
+		return jobs, time.Time{}, fmt.Errorf("could not read local data file %s (holds %s): %v", filename, url.String(), err)
 	}
 	buf = bytes.NewBuffer(b)
 	f, _ := os.Stat(filename)
@@ -122,7 +124,7 @@ func loadJobSummaries(dashboard string, storagePath string) (map[string]testgrid
 
 	err = json.NewDecoder(buf).Decode(&jobs)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, fmt.Errorf("could not parse local data file %s (holds %s): %v", filename, url.String(), err)
 	}
 
 	return jobs, f.ModTime(), nil
@@ -148,16 +150,16 @@ NextChar:
 }
 
 func downloadJobSummaries(dashboard string, storagePath string) error {
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/summary", dashboard)
+	url := URLForJobSummary(dashboard)
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Non-200 response code fetching job summary: %v", resp)
+		return fmt.Errorf("non-200 response code fetching job details from %v: %v", url, resp)
 	}
-	filename := storagePath + "/" + normalizeURL(url)
+	filename := storagePath + "/" + normalizeURL(url.String())
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -174,18 +176,58 @@ func downloadJobSummaries(dashboard string, storagePath string) error {
 
 // https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing#release-openshift-origin-installer-e2e-azure-compact-4.4&show-stale-tests=&sort-by-failures=
 
-func downloadJobDetails(dashboard, jobName, storagePath string) error {
-	url := fmt.Sprintf("https://testgrid.k8s.io/%s/table?&show-stale-tests=&tab=%s&grid=old", dashboard, jobName)
+func URLForJobDetails(dashboard, jobName string) *gourl.URL {
+	url := &gourl.URL{
+		Scheme: "https",
+		Host:   "testgrid.k8s.io",
+		Path:   fmt.Sprintf("/%s/table", gourl.PathEscape(dashboard)),
+	}
+	query := url.Query()
+	query.Set("show-stale-tests", "")
+	query.Set("tab", jobName)
+	query.Set("grid", "old")
+	url.RawQuery = query.Encode()
 
-	resp, err := http.Get(url)
+	return url
+}
+func URLForJobSummary(dashboard string) *gourl.URL {
+	url := &gourl.URL{
+		Scheme: "https",
+		Host:   "testgrid.k8s.io",
+		Path:   fmt.Sprintf("/%s/summary", gourl.PathEscape(dashboard)),
+	}
+
+	return url
+}
+
+func URLForJob(dashboard, jobName string) *gourl.URL {
+	url := &gourl.URL{
+		Scheme: "https",
+		Host:   "testgrid.k8s.io",
+		Path:   fmt.Sprintf("/%s", gourl.PathEscape(dashboard)),
+	}
+	query := url.Query()
+	query.Set("grid", "old")
+	// this is a non-standard fragment honored by test-grid
+	url.Fragment = gourl.PathEscape(jobName) + "&" + query.Encode()
+
+	return url
+}
+
+func downloadJobDetails(dashboard, jobName, storagePath string) error {
+	url := URLForJobDetails(dashboard, jobName)
+
+	resp, err := http.Get(url.String())
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Non-200 response code fetching job details: %v", resp)
+		responseDump, _ := httputil.DumpResponse(resp, true)
+		fmt.Fprintf(os.Stderr, "response dump\n%v\n", string(responseDump))
+		return fmt.Errorf("non-200 response code fetching job details from %v: %v", url, resp)
 	}
 
-	filename := storagePath + "/" + normalizeURL(url)
+	filename := storagePath + "/" + normalizeURL(url.String())
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
