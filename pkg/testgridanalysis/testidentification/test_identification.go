@@ -25,6 +25,8 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-metal-assisted-baremetalds-assisted-setup",
 	"e2e-metal-assisted-onprem-baremetalds-assisted-setup",
 	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup",
+	"install-stableinitial container test",
+	"install-install container test",
 )
 
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether setup succeeded
