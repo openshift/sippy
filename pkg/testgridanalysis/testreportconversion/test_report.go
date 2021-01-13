@@ -12,6 +12,7 @@ import (
 )
 
 func PrepareTestReport(
+	reportName string,
 	rawData testgridanalysisapi.RawData,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
@@ -53,7 +54,7 @@ func PrepareTestReport(
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
 	testReport := sippyprocessingv1.TestReport{
-		Release:   bugzillaRelease,
+		Release:   reportName,
 		Timestamp: reportTimestamp,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
 			Infrastructure:      infra,
