@@ -62,7 +62,7 @@ type TestGridDashboardCoordinates struct {
 	// this is generic and is required
 	TestGridDashboardNames []string
 	// this is openshift specific, used for BZ lookup and not required
-	OpenshiftRelease string
+	BugzillaRelease string
 }
 
 type StandardReport struct {

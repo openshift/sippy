@@ -63,12 +63,12 @@ func filterPertinentInfrequentJobResults(
 func convertRawJobResultsToProcessedJobResults(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
+	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
 ) []sippyprocessingv1.JobResult {
 	jobs := []sippyprocessingv1.JobResult{}
 
 	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, release)
+		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease)
 		jobs = append(jobs, job)
 	}
 
@@ -80,13 +80,13 @@ func convertRawJobResultsToProcessedJobResults(
 func convertRawJobResultToProcessedJobResult(
 	rawJobResult testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question,
+	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
 ) sippyprocessingv1.JobResult {
 
 	job := sippyprocessingv1.JobResult{
 		Name:        rawJobResult.JobName,
 		TestGridUrl: rawJobResult.TestGridJobUrl,
-		TestResults: convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, release),
+		TestResults: convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
 	}
 
 	for _, rawJRR := range rawJobResult.JobRunResults {

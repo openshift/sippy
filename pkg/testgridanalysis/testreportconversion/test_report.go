@@ -15,7 +15,7 @@ func PrepareTestReport(
 	rawData testgridanalysisapi.RawData,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	openshiftRelease string, // required to limit bugs to those that apply to the release in question
+	bugzillaRelease string, // required to limit bugs to those that apply to the release in question
 	// TODO refactor into a test run filter
 	minRuns int, // indicates how many runs are required for a test is included in overall percentages
 	// TODO deads2k wants to eliminate the successThreshold
@@ -27,7 +27,7 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, openshiftRelease)
+	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, bugzillaRelease)
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
@@ -44,7 +44,7 @@ func PrepareTestReport(
 
 	topFailingTestsWithBug := getTopFailingTestsWithBug(allTestResultsByName, standardTestResultFilterFn)
 	topFailingTestsWithoutBug := getTopFailingTestsWithoutBug(allTestResultsByName, standardTestResultFilterFn)
-	curatedTests := getCuratedTests(openshiftRelease, allTestResultsByName)
+	curatedTests := getCuratedTests(bugzillaRelease, allTestResultsByName)
 
 	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
 	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName], variantManager)
@@ -53,7 +53,7 @@ func PrepareTestReport(
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
 	testReport := sippyprocessingv1.TestReport{
-		Release:   openshiftRelease,
+		Release:   bugzillaRelease,
 		Timestamp: reportTimestamp,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
 			Infrastructure:      infra,

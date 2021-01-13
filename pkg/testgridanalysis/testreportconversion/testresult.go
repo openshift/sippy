@@ -100,7 +100,7 @@ func convertRawTestResultToProcessedTestResult(
 	jobName string,
 	rawTestResult testgridanalysisapi.RawTestResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
+	bugzillaRelease string, // required to limit bugs to those that apply to the release in question
 ) sippyprocessingv1.TestResult {
 	return sippyprocessingv1.TestResult{
 		Name:           rawTestResult.Name,
@@ -108,7 +108,7 @@ func convertRawTestResultToProcessedTestResult(
 		Failures:       rawTestResult.Failures,
 		Flakes:         rawTestResult.Flakes,
 		PassPercentage: percent(rawTestResult.Successes, rawTestResult.Failures),
-		BugList:        bugCache.ListBugs(release, jobName, rawTestResult.Name),
+		BugList:        bugCache.ListBugs(bugzillaRelease, jobName, rawTestResult.Name),
 	}
 }
 
@@ -116,13 +116,13 @@ func convertRawTestResultsToProcessedTestResults(
 	jobName string,
 	rawTestResults map[string]testgridanalysisapi.RawTestResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-	release string, // required to limit bugs to those that apply to the release in question
+	bugzillaRelease string, // required to limit bugs to those that apply to the release in question
 ) []sippyprocessingv1.TestResult {
 
 	ret := []sippyprocessingv1.TestResult{}
 
 	for _, rawTestResult := range rawTestResults {
-		ret = append(ret, convertRawTestResultToProcessedTestResult(jobName, rawTestResult, bugCache, release))
+		ret = append(ret, convertRawTestResultToProcessedTestResult(jobName, rawTestResult, bugCache, bugzillaRelease))
 	}
 
 	sort.Stable(testResultsByPassPercentage(ret))
