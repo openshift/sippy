@@ -118,7 +118,7 @@ func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboa
 			sippyserver.TestGridDashboardCoordinates{
 				ReportName:             tokens[0],
 				TestGridDashboardNames: strings.Split(tokens[1], ","),
-				OpenshiftRelease:       tokens[2],
+				BugzillaRelease:        tokens[2],
 			},
 		)
 	}

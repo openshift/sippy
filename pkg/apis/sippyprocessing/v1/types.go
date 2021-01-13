@@ -10,6 +10,9 @@ import (
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
+	// release is the logical name used to identify the dashboard display name.  When using openshift, this corresponds
+	// to actual releases like 4.6, 4.7, etc.  For non-openshift, it corresponds to --dashboard=<display-name>; the display-name
+	// is the value of release.
 	Release   string    `json:"release"`
 	Timestamp time.Time `json:"timestamp"`
 

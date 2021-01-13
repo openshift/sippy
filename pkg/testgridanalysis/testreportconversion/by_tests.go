@@ -23,9 +23,9 @@ func getTopFailingTestsWithoutBug(testResultsByName testResultsByName, testResul
 	}, testResultFilterFn)
 }
 
-func getCuratedTests(release string, testResultsByName testResultsByName) []sippyprocessingv1.FailingTestResult {
+func getCuratedTests(bugzillaRelease string, testResultsByName testResultsByName) []sippyprocessingv1.FailingTestResult {
 	return getTopFailingTests(testResultsByName, func(testResult sippyprocessingv1.TestResult) bool {
-		return testidentification.IsCuratedTest(release, testResult.Name)
+		return testidentification.IsCuratedTest(bugzillaRelease, testResult.Name)
 	}, acceptAllTests)
 }
 

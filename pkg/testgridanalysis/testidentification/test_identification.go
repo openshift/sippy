@@ -79,8 +79,8 @@ var (
 	machineConfigsUpgraded = "[sig-mco] Machine config pools complete upgrade"
 )
 
-func IsCuratedTest(release, testName string) bool {
-	for _, substring := range curatedTestSubstrings[release] {
+func IsCuratedTest(bugzillaRelease, testName string) bool {
+	for _, substring := range curatedTestSubstrings[bugzillaRelease] {
 		if strings.Contains(testName, substring) {
 			return true
 		}
