@@ -185,7 +185,7 @@ func URLForJobDetails(dashboard, jobName string) *gourl.URL {
 	query := url.Query()
 	query.Set("show-stale-tests", "")
 	query.Set("tab", jobName)
-	query.Set("grid", "old")
+	//query.Set("grid", "old")
 	url.RawQuery = query.Encode()
 
 	return url
@@ -206,10 +206,8 @@ func URLForJob(dashboard, jobName string) *gourl.URL {
 		Host:   "testgrid.k8s.io",
 		Path:   fmt.Sprintf("/%s", gourl.PathEscape(dashboard)),
 	}
-	query := url.Query()
-	query.Set("grid", "old")
 	// this is a non-standard fragment honored by test-grid
-	url.Fragment = gourl.PathEscape(jobName) + "&" + query.Encode()
+	url.Fragment = gourl.PathEscape(jobName)
 
 	return url
 }

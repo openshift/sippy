@@ -58,13 +58,13 @@ func (o *RenameOptions) Run() error {
 				return nil
 			}
 
-			// new filenames have -grid=old in them, old filenames have &grid=old
-			if !strings.Contains(info.Name(), "&grid=old") {
+			// old filenames have -grid=old in them, new files do not have a grid parameter
+			if !strings.Contains(info.Name(), "-grid=old") {
 				return nil
 			}
 			newName := info.Name()
-			newName = strings.ReplaceAll(newName, "&grid=old", "")
-			newName = strings.ReplaceAll(newName, "&show-stale", "grid=old&show-stale")
+			newName = strings.ReplaceAll(newName, "-grid=old", "")
+			newName = strings.ReplaceAll(newName, "&show-stale", "-show-stale")
 			fmt.Printf("renaming %q to %q\n", info.Name(), newName)
 			if o.DryRun {
 				return nil
