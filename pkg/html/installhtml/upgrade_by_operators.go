@@ -32,11 +32,16 @@ func upgradeOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 
 	// fill in the data for the first row's "All" column
 	var prevTestResult *sippyprocessingv1.TestResult
-	if installTest := util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, prev.ByTest); installTest != nil {
-		prevTestResult = &installTest.TestResultAcrossAllJobs
+	if prevInstallTest := util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, prev.ByTest); prevInstallTest != nil {
+		prevTestResult = &prevInstallTest.TestResultAcrossAllJobs
 	}
+	var currTestResult sippyprocessingv1.TestResult
+	if currInstallTest := util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, curr.ByTest); currInstallTest != nil {
+		currTestResult = currInstallTest.TestResultAcrossAllJobs
+	}
+
 	dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
-		curr: util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, curr.ByTest).TestResultAcrossAllJobs,
+		curr: currTestResult,
 		prev: prevTestResult,
 	}
 
