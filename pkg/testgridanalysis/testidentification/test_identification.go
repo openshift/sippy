@@ -74,9 +74,9 @@ var curatedTestSubstrings = map[string][]string{
 }
 
 var (
-	cvoAcknowledgesUpgrade = "[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
-	operatorsUpgraded      = "[sig-cluster-lifecycle] Cluster completes upgrade"
-	machineConfigsUpgraded = "[sig-mco] Machine config pools complete upgrade"
+	cvoAcknowledgesUpgrade = "Cluster upgrade.[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
+	operatorsUpgraded      = "Cluster upgrade.[sig-cluster-lifecycle] Cluster completes upgrade"
+	machineConfigsUpgraded = "Cluster upgrade.[sig-mco] Machine config pools complete upgrade"
 )
 
 func IsCuratedTest(bugzillaRelease, testName string) bool {
