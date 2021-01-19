@@ -40,7 +40,7 @@ func TestURLForJob(t *testing.T) {
 				dashboard: "redhat-openshift-ocp-release-4.4-informing",
 				jobName:   "release-openshift-origin-installer-e2e-azure-compact-4.4",
 			},
-			want: "https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing#release-openshift-origin-installer-e2e-azure-compact-4.4&grid=old",
+			want: "https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing#release-openshift-origin-installer-e2e-azure-compact-4.4",
 		},
 	}
 	for _, tt := range tests {
@@ -68,7 +68,7 @@ func TestURLForJobDetails(t *testing.T) {
 				dashboard: "redhat-openshift-ocp-release-4.4-informing",
 				jobName:   "release-openshift-origin-installer-e2e-azure-compact-4.4",
 			},
-			want: "https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing/table?grid=old&show-stale-tests=&tab=release-openshift-origin-installer-e2e-azure-compact-4.4",
+			want: "https://testgrid.k8s.io/redhat-openshift-ocp-release-4.4-informing/table?show-stale-tests=&tab=release-openshift-origin-installer-e2e-azure-compact-4.4",
 		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
