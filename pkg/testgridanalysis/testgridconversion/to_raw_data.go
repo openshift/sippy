@@ -49,6 +49,9 @@ func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 		test.Name = strings.TrimSpace(tagStripRegex.ReplaceAllString(test.Name, ""))
+		for _, prefix := range testSuitePrefixes {
+			test.Name = strings.TrimPrefix(test.Name, prefix)
+		}
 		job.Tests[i] = test
 		processTest(rawJobResults, job, test, startCol, endCol)
 	}
@@ -84,7 +87,15 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 
 // tagStripRegex removes test markers deemed unhelpful at one point in time.
 // TODO relitigate the value of doing this.  Without these markers, I don't think it is possible to run the failing test back through `openshift-tests run-test <foo>`
-var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]`)
+var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]|\[[0-9]+]$`)
+
+// testSuitePrefixes is a list of suite prefixes to remove from test names
+var testSuitePrefixes = []string{
+	"openshift-tests.",
+	"Cluster upgrade.",
+	"Symptom detection.",
+	"Operator results.",
+}
 
 // ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
