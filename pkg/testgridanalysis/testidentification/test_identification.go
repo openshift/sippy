@@ -1,6 +1,7 @@
 package testidentification
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
@@ -74,9 +75,9 @@ var curatedTestSubstrings = map[string][]string{
 }
 
 var (
-	cvoAcknowledgesUpgrade = "[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
-	operatorsUpgraded      = "[sig-cluster-lifecycle] Cluster completes upgrade"
-	machineConfigsUpgraded = "[sig-mco] Machine config pools complete upgrade"
+	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
+	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
+	machineConfigsUpgradedRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-mco\] Machine config pools complete upgrade$`)
 )
 
 func IsCuratedTest(bugzillaRelease, testName string) bool {
@@ -119,15 +120,15 @@ func IsOperatorHealthTest(testName string) bool {
 }
 
 func IsUpgradeStartedTest(testName string) bool {
-	return testName == cvoAcknowledgesUpgrade
+	return cvoAcknowledgesUpgradeRegex.MatchString(testName)
 }
 
 func IsOperatorsUpgradedTest(testName string) bool {
-	return testName == operatorsUpgraded
+	return operatorsUpgradedRegex.MatchString(testName)
 }
 
 func IsMachineConfigPoolsUpgradedTest(testName string) bool {
-	return testName == machineConfigsUpgraded
+	return machineConfigsUpgradedRegex.MatchString(testName)
 }
 
 func GetOperatorFromUpgradeTest(testName string) string {
