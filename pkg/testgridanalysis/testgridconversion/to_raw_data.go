@@ -95,6 +95,8 @@ var testSuitePrefixes = []string{
 	"Cluster upgrade.",
 	"Symptom detection.",
 	"Operator results.",
+	"OSD e2e suite.",
+	"Log Metrics.",
 }
 
 // ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
