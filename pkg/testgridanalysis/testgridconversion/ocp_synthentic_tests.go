@@ -187,6 +187,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 var jobRegexesWithKnownBadSetupContainer = sets.NewString(
 	"promote-release-openshift-machine-os-content-e2e-aws-4.[1-7].*",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
+	"release-openshift-ocp-osd",
 )
 
 func matchJobRegexList(jobName string, regexList sets.String) bool {
