@@ -32,7 +32,7 @@ spec:
       containers:
       - args:
         - --local-data
-        - /tmp/src/historical-data/common
+        - /go/src/sippy/historical-data/common
         - --release
         - "4.4"
         - --release
@@ -43,7 +43,7 @@ spec:
         - --start-day
         - "-1"
         command:
-        - /tmp/src/sippy
+        - /go/src/sippy/sippy
         image: image-registry.openshift-image-registry.svc:5000/bparees/sippy@sha256:35df0be865e4820a76f350ae65d077eb83b41c8cacb286291badf65e0654b5b7
         imagePullPolicy: Always
         name: sippy

@@ -24,7 +24,7 @@ spec:
       labels:
         deploymentconfig: sippy
     spec:
-      containers:      
+      containers:
       - image: docker.io/openshift/sippy
         imagePullPolicy: Always
         name: sippy
@@ -37,7 +37,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:
-        - /tmp/src/sippy
+        - /go/src/sippy/sippy
         args:
         - --local-data
         - /data
@@ -75,7 +75,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:
-        - /tmp/src/scripts/fetchdata.sh
+        - /go/src/sippy/scripts/fetchdata.sh
         volumeMounts:
         - mountPath: /data
           name: data
