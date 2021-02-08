@@ -1,15 +1,10 @@
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
-  creationTimestamp: "2020-09-28T18:27:56Z"
-  generation: 4
   labels:
     app: sippy-historical
   name: sippy-historical
   namespace: bparees
-  resourceVersion: "199851410"
-  selfLink: /apis/apps.openshift.io/v1/namespaces/bparees/deploymentconfigs/sippy-historical
-  uid: 5b8ba268-3cb9-48a5-b467-56e0a14e3e2f
 spec:
   replicas: 1
   revisionHistoryLimit: 10
@@ -74,27 +69,3 @@ spec:
         namespace: bparees
       lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/bparees/sippy@sha256:35df0be865e4820a76f350ae65d077eb83b41c8cacb286291badf65e0654b5b7
     type: ImageChange
-status:
-  availableReplicas: 1
-  conditions:
-  - lastTransitionTime: "2020-09-29T13:36:44Z"
-    lastUpdateTime: "2020-09-29T13:36:44Z"
-    message: Deployment config has minimum availability.
-    status: "True"
-    type: Available
-  - lastTransitionTime: "2020-09-29T13:36:40Z"
-    lastUpdateTime: "2020-09-29T13:36:44Z"
-    message: replication controller "sippy-historical-3" successfully rolled out
-    reason: NewReplicationControllerAvailable
-    status: "True"
-    type: Progressing
-  details:
-    causes:
-    - type: ConfigChange
-    message: config change
-  latestVersion: 3
-  observedGeneration: 4
-  readyReplicas: 1
-  replicas: 1
-  unavailableReplicas: 0
-  updatedReplicas: 1
