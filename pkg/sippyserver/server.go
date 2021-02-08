@@ -250,6 +250,7 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
+	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
 	if err := http.ListenAndServe(s.listenAddr, nil); err != nil {
