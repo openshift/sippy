@@ -24,7 +24,7 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-upgrade-baremetalds-packet-setup",
 	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup",
-	"e2e-ovirt-ipi-install-ovirt-setup container test",
+	"e2e-ovirt-ipi-install-install container test",
 	"e2e-vsphere-ipi-install-vsphere",
 	"e2e-vsphere-serial-ipi-install-vsphere",
 	"e2e-vsphere-upi-serial-upi-install-vsphere",
