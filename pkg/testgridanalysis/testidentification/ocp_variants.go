@@ -22,7 +22,7 @@ var (
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack-`)
 	osdRegex       = regexp.MustCompile(`(?i)-osd-`)
-	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt-`)
+	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn-`)
 	// proxy jobs do not have a trailing -version segment
 	proxyRegex   = regexp.MustCompile(`(?i)-proxy`)
@@ -31,7 +31,7 @@ var (
 	rtRegex      = regexp.MustCompile(`(?i)-rt-`)
 	s390xRegex   = regexp.MustCompile(`(?i)-s390x-`)
 	serialRegex  = regexp.MustCompile(`(?i)-serial-`)
-	upgradeRegex = regexp.MustCompile(`(?i)-upgrade-`)
+	upgradeRegex = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
 	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
