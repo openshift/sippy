@@ -34,6 +34,8 @@ spec:
         - "4.5"
         - --release
         - "4.6"
+        - --release
+        - "4.7"
         - --server
         - --start-day
         - "-1"
