@@ -38,7 +38,7 @@ func topLevelIndicators(report, reportPrev sippyprocessingv1.TestReport, release
 			</th>
 		</tr>
 		<tr>
-			<th title="How often we get to the point of running the installer.  This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close." class="text-center {{ .infraColor }}">Infrastructure</th>
+			<th title="How often we get to the point of running the installer.  This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close." class="text-center {{ .infraColor }}"><a href="/testdetails?release={{ .release }}&test=[sig-sippy]%20infrastructure%20should%20work">Infrastructure</a></th>
 			<th title="How often the install completes successfully." class="text-center {{ .installColor }}"><a href="/install?release={{ .release }}">Install</a></th>
 			<th title="How often an upgrade that is started completes successfully." class="text-center {{ .upgradeColor }}"><a href="/upgrade?release={{ .release }}">Upgrade</a></th>
 			<!-- Operator health at the end of a CI run provides information about how stable our operators actually are in use.  Operators can successfully install and subsequently go unhealthy.  This is a bad situation, but one that we are facing here at the end of 4.6. -->
