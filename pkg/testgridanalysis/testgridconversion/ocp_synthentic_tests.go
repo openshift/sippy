@@ -54,8 +54,8 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					break
 				}
 			}
-			setupFailed := jrr.SetupStatus != testgridanalysisapi.Success
-			setupSucceeded := jrr.SetupStatus == testgridanalysisapi.Success
+			setupFailed := jrr.Failed && jrr.SetupStatus != testgridanalysisapi.Success
+			setupSucceeded := jrr.Succeeded || jrr.SetupStatus == testgridanalysisapi.Success
 
 			switch {
 			case !hasFinalOperatorResults:
@@ -171,7 +171,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
-		if float64(numRunsWithoutSetup)/float64(len(jobResults.JobRunResults)+1)*100 > 95 {
+		if numRunsWithoutSetup > 0 && numRunsWithoutSetup == len(jobResults.JobRunResults) {
 			if !matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
 				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
 			}
@@ -185,7 +185,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 // this a list of job name regexes that either do not install the product (bug) or have
 // never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
 var jobRegexesWithKnownBadSetupContainer = sets.NewString(
-	"promote-release-openshift-machine-os-content-e2e-aws-4.[1-7].*",
+	`promote-release-openshift-machine-os-content-e2e-aws-4\.[0-9].*`,
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
 	"release-openshift-ocp-osd",
 )
