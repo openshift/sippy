@@ -35,6 +35,7 @@ type Options struct {
 	FetchData               string
 	ListenAddr              string
 	Server                  bool
+	Canary                  bool
 	SkipBugLookup           bool
 }
 
@@ -83,6 +84,7 @@ func main() {
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
+	flags.BoolVar(&opt.Canary, "canary", opt.Canary, "Print canary tests(tests that passed at 99% or higher")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
@@ -172,6 +174,9 @@ func (o *Options) Run() error {
 		return nil
 	}
 
+	if o.Canary {
+		return o.runCanaryReportMode()
+	}
 	if !o.Server {
 		return o.runCLIReportMode()
 	}
@@ -207,8 +212,35 @@ func (o *Options) runCLIReportMode() error {
 	}
 
 	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
+
 	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(testReport)
+	enc.Encode(testReport.ByTest)
+	return nil
+}
+
+// runCanaryReportMode generates a list of test names for tests that pass 99% of the
+// time.  The output is fed into an e2e job that only runs those tests.  The output
+// format is designed for easy copying+pasting into origin/cmd/openshift-tests/minimal.go
+// so we can update the list of canary tests as needed.
+func (o *Options) runCanaryReportMode() error {
+	o.SkipBugLookup = true
+	analyzer := sippyserver.TestReportGeneratorConfig{
+		TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
+		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
+		DisplayDataConfig:           o.toDisplayDataConfig(),
+	}
+
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
+
+	for i := len(testReport.ByTest) - 1; i >= 0; i-- {
+		t := testReport.ByTest[i]
+		if t.TestResultAcrossAllJobs.PassPercentage > 99 {
+			fmt.Printf("%q:struct{}{},\n", t.TestName)
+		} else {
+			break
+		}
+	}
+
 	return nil
 }
 
