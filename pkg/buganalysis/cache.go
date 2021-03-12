@@ -22,6 +22,8 @@ import (
 type BugCache interface {
 	ListJobBlockingBugs(job string) []bugsv1.Bug
 	ListBugs(release, variant, testName string) []bugsv1.Bug
+	// ListAssociatedBugs lists bugs that match the testname or variant, but do not match the specified release
+	ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug
 	UpdateForFailedTests(failedTestNames ...string) error
 	UpdateJobBlockers(jobNames ...string) error
 
@@ -39,6 +41,9 @@ func (*noOpBugCache) ListJobBlockingBugs(job string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
 }
 func (*noOpBugCache) ListBugs(release, variant, testName string) []bugsv1.Bug {
+	return []bugsv1.Bug{}
+}
+func (*noOpBugCache) ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
 }
 func (*noOpBugCache) UpdateForFailedTests(failedTestNames ...string) error {
@@ -171,7 +176,7 @@ func (c *bugCache) LastUpdateError() error {
 	return c.lastUpdateError
 }
 
-func (c *bugCache) ListBugs(release, jobName, testName string) []bugsv1.Bug {
+func (c *bugCache) listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -184,13 +189,22 @@ func (c *bugCache) ListBugs(release, jobName, testName string) []bugsv1.Bug {
 	for i := range bugList {
 		bug := bugList[i]
 		for _, r := range bug.TargetRelease {
-			if strings.HasPrefix(r, release) {
+
+			if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
 				ret = append(ret, bug)
 				break
 			}
 		}
 	}
 	return ret
+}
+
+func (c *bugCache) ListBugs(release, jobName, testName string) []bugsv1.Bug {
+	return c.listBugsInternal(release, jobName, testName, false)
+}
+
+func (c *bugCache) ListAssociatedBugs(release, jobName, testName string) []bugsv1.Bug {
+	return c.listBugsInternal(release, jobName, testName, true)
 }
 
 func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {

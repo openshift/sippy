@@ -18,14 +18,25 @@ func bugLink(bug bugsv1.Bug) string {
 
 // bugHTMLForTest release and testName are required.  variant is optional, if specified it excludes test that have a
 // different variant specified, but includes bugs without any variant
-func bugHTMLForTest(bugList []bugsv1.Bug, release, variant, testName string) string {
+func bugHTMLForTest(bugList, associatedBugList []bugsv1.Bug, release, variant, testName string) string {
+	bugHTML := ""
 	if len(bugList) == 0 {
-		return openABugHTML(testName, release)
+		bugHTML += openABugHTML(testName, release)
 	}
 
-	bugHTML := "Associated Bugs: "
-	for _, bug := range bugList {
-		bugHTML += bugLink(bug)
+	if len(bugList) != 0 {
+		bugHTML += " Linked Bugs: "
+		for _, bug := range bugList {
+			bugHTML += bugLink(bug)
+		}
+		bugHTML += "<br>"
+	}
+
+	if len(associatedBugList) != 0 {
+		bugHTML += " Associated Bugs: "
+		for _, bug := range associatedBugList {
+			bugHTML += bugLink(bug)
+		}
 	}
 
 	return bugHTML
