@@ -48,7 +48,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
-		test.Name = strings.TrimSpace(tagStripRegex.ReplaceAllString(test.Name, ""))
+		//test.Name = strings.TrimSpace(tagStripRegex.ReplaceAllString(test.Name, ""))
 		for _, prefix := range testSuitePrefixes {
 			test.Name = strings.TrimPrefix(test.Name, prefix)
 		}
