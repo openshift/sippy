@@ -68,6 +68,7 @@ func combineTestResult(lhs, rhs sippyprocessingv1.TestResult) sippyprocessingv1.
 	combined.Flakes += rhs.Flakes
 	combined.PassPercentage = percent(combined.Successes, combined.Failures)
 	combined.BugList = combineBugLists(lhs.BugList, rhs.BugList)
+	combined.AssociatedBugList = combineBugLists(lhs.AssociatedBugList, rhs.AssociatedBugList)
 
 	return combined
 }
@@ -103,12 +104,13 @@ func convertRawTestResultToProcessedTestResult(
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question
 ) sippyprocessingv1.TestResult {
 	return sippyprocessingv1.TestResult{
-		Name:           rawTestResult.Name,
-		Successes:      rawTestResult.Successes,
-		Failures:       rawTestResult.Failures,
-		Flakes:         rawTestResult.Flakes,
-		PassPercentage: percent(rawTestResult.Successes, rawTestResult.Failures),
-		BugList:        bugCache.ListBugs(bugzillaRelease, jobName, rawTestResult.Name),
+		Name:              rawTestResult.Name,
+		Successes:         rawTestResult.Successes,
+		Failures:          rawTestResult.Failures,
+		Flakes:            rawTestResult.Flakes,
+		PassPercentage:    percent(rawTestResult.Successes, rawTestResult.Failures),
+		BugList:           bugCache.ListBugs(bugzillaRelease, jobName, rawTestResult.Name),
+		AssociatedBugList: bugCache.ListAssociatedBugs(bugzillaRelease, jobName, rawTestResult.Name),
 	}
 }
 
@@ -251,6 +253,7 @@ func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult, variantManag
 
 	for _, jobResult := range filteredFailingTestResult.JobResults {
 		filteredFailingTestResult.TestResultAcrossAllJobs.BugList = in.TestResultAcrossAllJobs.BugList
+		filteredFailingTestResult.TestResultAcrossAllJobs.AssociatedBugList = in.TestResultAcrossAllJobs.AssociatedBugList
 		filteredFailingTestResult.TestResultAcrossAllJobs.Successes += jobResult.TestSuccesses
 		filteredFailingTestResult.TestResultAcrossAllJobs.Failures += jobResult.TestFailures
 	}

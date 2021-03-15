@@ -106,7 +106,8 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 						Runs:       testPrev.TestResultAcrossAllJobs.Successes + testPrev.TestResultAcrossAllJobs.Failures,
 					},
 				},
-				Bugs: test.TestResultAcrossAllJobs.BugList,
+				Bugs:           test.TestResultAcrossAllJobs.BugList,
+				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 			}
 		} else {
 			failedTestWithBug = sippyv1.FailingTestBug{
@@ -118,7 +119,8 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 						Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
 					},
 				},
-				Bugs: test.TestResultAcrossAllJobs.BugList,
+				Bugs:           test.TestResultAcrossAllJobs.BugList,
+				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 			}
 		}
 
@@ -143,8 +145,9 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 
 		if testPrev != nil {
 			failedTestWithoutBug = sippyv1.FailingTestBug{
-				Name: test.TestName,
-				Url:  testLink,
+				Name:           test.TestName,
+				Url:            testLink,
+				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
@@ -159,8 +162,9 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 
 		} else {
 			failedTestWithoutBug = sippyv1.FailingTestBug{
-				Name: test.TestName,
-				Url:  testLink,
+				Name:           test.TestName,
+				Url:            testLink,
+				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,

@@ -22,7 +22,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyproce
 			<th colspan=5 class="text-center">
 				<a class="text-dark" id="TopFailingTestsWithABug" href="#TopFailingTestsWithABug">Top Failing Tests With A Bug</a>
 				%s
-				<i class="fa fa-info-circle" title="Most frequently failing tests with a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+				<i class="fa fa-info-circle" title="Most frequently failing tests with a known bug, sorted by passing rate.  Linked bugs are bugs that mention the failing test name and are targeted to the release being reported on. Associated bugs are bugs that mention the failing test name but are not targeted to the release being reported on."</i>
 			</th>
 		</tr>
 		<tr>
@@ -47,7 +47,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithBug, allTests []sippypr
 			<th colspan=5 class="text-center">
 				<a class="text-dark"  id="TopFailingTestsWithoutABug" href="#TopFailingTestsWithoutABug">Top Failing Tests Without A Bug</a>
 				%s
-				<i class="fa fa-info-circle" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test."</i>
+				<i class="fa fa-info-circle" title="Most frequently failing tests without a known bug, sorted by passing rate.  The link will prepopulate a BZ template to be filled out and submitted to report a bug against the test.  Associated bugs are bugs that mention the failing test name but are not targeted to the release being reported on.  It may be appropriate to clone them and target them to the release being reported on."</i>
 			</th>
 		</tr>
 		<tr>

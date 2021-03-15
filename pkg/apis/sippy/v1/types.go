@@ -54,6 +54,8 @@ type FailingTestBug struct {
 	Url       string              `json:"url"`
 	PassRates map[string]PassRate `json:"passRates"`
 	Bugs      []bugsv1.Bug        `json:"bugs,omitempty"`
+	// AssociatedBugs are bugs that match the test/job, but do not match the target release
+	AssociatedBugs []bugsv1.Bug `json:"associatedBugs,omitempty"`
 }
 
 // JobSummaryVariant describes a single variant and its associated jobs, their pass rates, and failing tests

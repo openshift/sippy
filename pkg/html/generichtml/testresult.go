@@ -23,11 +23,12 @@ func FailingTestResultHasResults(in sippyprocessingv1.FailingTestResult) bool {
 }
 
 type testResultDisplay struct {
-	displayName    string
-	displayPercent float64
-	totalRuns      int
-	flakedRuns     int
-	bugList        []bugsv1.Bug
+	displayName       string
+	displayPercent    float64
+	totalRuns         int
+	flakedRuns        int
+	bugList           []bugsv1.Bug
+	associatedBugList []bugsv1.Bug
 
 	jobResults []jobResultDisplay
 }
@@ -41,6 +42,9 @@ func testResultToDisplay(in sippyprocessingv1.TestResult) testResultDisplay {
 	}
 	for _, bug := range in.BugList {
 		ret.bugList = append(ret.bugList, bug)
+	}
+	for _, bug := range in.AssociatedBugList {
+		ret.associatedBugList = append(ret.associatedBugList, bug)
 	}
 	return ret
 }
@@ -177,7 +181,7 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", b.release, encodedTestName, b.currTestResult.displayName)
 
 	klog.V(2).Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
-	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.release, "", b.currTestResult.displayName)
+	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.currTestResult.associatedBugList, b.release, "", b.currTestResult.displayName)
 	if b.prevTestResult != nil {
 		arrow := GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
 

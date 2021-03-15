@@ -122,6 +122,8 @@ type TestResult struct {
 	// TODO Inside a particular job, only bugs matching the job are present.
 	// TODO Inside a variant, only bugs matching the variant are present.
 	BugList []bugsv1.Bug `json:"bugList"`
+	// AssociatedBugList are bugs that match the test/job, but do not match the target release
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 }
 
 type JobRunResult struct {
