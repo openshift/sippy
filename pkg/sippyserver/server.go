@@ -107,6 +107,30 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		15)
 }
 
+func (s *Server) printCanaryReport(w http.ResponseWriter, req *http.Request) {
+	reportName := req.URL.Query().Get("release")
+	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
+	if !found {
+		releasehtml.WriteLandingPage(w, s.reportNames())
+		return
+	}
+	if _, hasReport := s.currTestReports[dashboard.ReportName]; !hasReport {
+		releasehtml.WriteLandingPage(w, s.reportNames())
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
+	testReport := s.currTestReports[dashboard.ReportName].CurrentPeriodReport
+	for i := len(testReport.ByTest) - 1; i >= 0; i-- {
+		t := testReport.ByTest[i]
+		if t.TestResultAcrossAllJobs.PassPercentage > 99 {
+			fmt.Fprintf(w, "%q:struct{}{},\n", t.TestName)
+		} else {
+			break
+		}
+	}
+}
+
 func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
 	for _, dashboard := range s.dashboardCoordinates {
 		if dashboard.ReportName == reportName {
@@ -250,6 +274,7 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
+	http.DefaultServeMux.HandleFunc("/canary", s.printCanaryReport)
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
