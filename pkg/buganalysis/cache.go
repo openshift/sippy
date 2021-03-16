@@ -251,6 +251,12 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 			bug := match.Bug
 			bug.Url = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
 
+			// search.ci.openshift.org seems to occasionally return empty BZ results, filter
+			// them out.
+			if bug.ID == 0 {
+				continue
+			}
+
 			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
 			// (or the bug was incorrectly verified and needs to be revisited)
 			if !util.IsActiveBug(bug) {
