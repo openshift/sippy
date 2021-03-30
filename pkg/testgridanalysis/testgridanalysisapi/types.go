@@ -57,6 +57,9 @@ type RawJobRunResult struct {
 	UpgradeForOperatorsStatus string
 	// Success, Failure, or ""
 	UpgradeForMachineConfigPoolsStatus string
+
+	// OpenShiftTestsStatus can be "", "Success", "Failure"
+	OpenShiftTestsStatus string
 }
 
 type OperatorState struct {
@@ -74,6 +77,7 @@ const (
 	InstallTestName        = `[sig-sippy] install should work`
 	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
 	UpgradeTestName        = `[sig-sippy] upgrade should work`
+	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
 
 	Success = "Success"
 	Failure = "Failure"

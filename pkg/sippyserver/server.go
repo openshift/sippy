@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"k8s.io/klog"
 )
@@ -265,6 +266,36 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func (s *Server) jobs(w http.ResponseWriter, req *http.Request) {
+	reportName := req.URL.Query().Get("release")
+	jobFilterString := req.URL.Query().Get("jobFilter")
+
+	var jobFilter *regexp.Regexp
+	if len(jobFilterString) > 0 {
+		var err error
+		jobFilter, err = regexp.Compile(jobFilterString)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("jobFilter: %s", err), http.StatusBadRequest)
+			return
+		}
+	}
+
+	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
+	if !found {
+		http.Error(w, fmt.Sprintf("release %s not found", reportName), http.StatusBadRequest)
+		return
+	}
+
+	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData, dashboardCoordinates.TestGridDashboardNames, jobFilter)
+
+	api.PrintJobsReport(w, s.syntheticTestManager, testGridJobDetails, lastUpdateTime)
+}
+
+func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
+	reportName := req.URL.Query().Get("release")
+	releasehtml.PrintJobsReport(w, reportName)
+}
+
 func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
@@ -275,6 +306,8 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
 	http.DefaultServeMux.HandleFunc("/canary", s.printCanaryReport)
+	http.DefaultServeMux.HandleFunc("/api/jobs", s.jobs)
+	http.DefaultServeMux.HandleFunc("/jobs", s.jobsReport)
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
