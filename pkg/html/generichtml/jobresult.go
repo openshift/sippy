@@ -3,6 +3,7 @@ package generichtml
 import (
 	"fmt"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
@@ -12,6 +13,8 @@ type jobResultDisplay struct {
 	displayPercent         float64
 	parenDisplayPercentage float64
 	totalRuns              int
+	bugList                []bugsv1.Bug
+	associatedBugList      []bugsv1.Bug
 
 	testResults []testResultDisplay
 }
@@ -42,6 +45,13 @@ func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 
 	for _, testResult := range in.TestResults {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
+	}
+
+	for _, bug := range in.BugList {
+		ret.bugList = append(ret.bugList, bug)
+	}
+	for _, bug := range in.AssociatedBugList {
+		ret.associatedBugList = append(ret.associatedBugList, bug)
 	}
 
 	return ret
@@ -142,6 +152,9 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 					%s
 				</td>
 				<td>
+					%s
+				</td>
+				<td>
 					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
 				</td>
 				<td>
@@ -157,6 +170,9 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 			<tr class="%s">
 				<td style="padding-left:%dpx">
 					<a target="_blank" href="%s">%s</a>
+					%s
+				</td>
+				<td>
 					%s
 				</td>
 				<td>
@@ -186,12 +202,15 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 		button = "<p>" + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests") + " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 	}
 
+	bugHTML := bugHTMLForJob(b.currJobResult.bugList, b.currJobResult.associatedBugList, b.release, b.currJobResult.displayName, b.currJobResult.testGridURL)
+
 	if b.prevJobResult != nil {
 		arrow := GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
 		s = s + fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
+			bugHTML,
 			b.currJobResult.displayPercent,
 			b.currJobResult.parenDisplayPercentage,
 			b.currJobResult.totalRuns,
@@ -204,6 +223,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 		s = s + fmt.Sprintf(naTemplate,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
+			bugHTML,
 			b.currJobResult.displayPercent,
 			b.currJobResult.parenDisplayPercentage,
 			b.currJobResult.totalRuns,

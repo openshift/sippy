@@ -151,7 +151,7 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 			</th>
 		</tr>
 		<tr>
-			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+			<th>Name</th><th>Bug</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`, numDays)
 
@@ -179,7 +179,7 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 			</th>
 		</tr>
 		<tr>
-			<th>Name</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
+			<th>Name</th><th>Bug</th><th>Latest %d days</th><th/><th>Previous 7 days</th>
 		</tr>
 	`, numDays)
 

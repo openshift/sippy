@@ -97,7 +97,7 @@ func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
 	return lastUpdateError
 }
 
-func getJobKey(jobName string) string {
+func GetJobKey(jobName string) string {
 	return fmt.Sprintf("job=%v=all", jobName)
 }
 
@@ -106,7 +106,7 @@ func (c *bugCache) UpdateJobBlockers(jobNames ...string) error {
 	c.lock.RLock()
 	jobSearchStrings := []string{}
 	for _, jobName := range jobNames {
-		jobKey := getJobKey(jobName)
+		jobKey := GetJobKey(jobName)
 		if _, found := c.jobBlockers[jobKey]; !found {
 			jobSearchStrings = append(jobSearchStrings, jobKey)
 		}
@@ -180,12 +180,25 @@ func (c *bugCache) listBugsInternal(release, jobName, testName string, invertRel
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	if jobBlockers := c.jobBlockers[getJobKey(jobName)]; len(jobBlockers) > 0 {
-		return jobBlockers
+	ret := []bugsv1.Bug{}
+
+	// first check if this job is covered by a job-blocking bug.  If so, all test
+	// failures are attributed to that bug instead of to individual test bugs.
+	bugList := c.jobBlockers[GetJobKey(jobName)]
+	for i := range bugList {
+		bug := bugList[i]
+		for _, r := range bug.TargetRelease {
+			if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
+				ret = append(ret, bug)
+				break
+			}
+		}
+	}
+	if len(ret) > 0 {
+		return ret
 	}
 
-	ret := []bugsv1.Bug{}
-	bugList := c.cache[testName]
+	bugList = c.cache[testName]
 	for i := range bugList {
 		bug := bugList[i]
 		for _, r := range bug.TargetRelease {
@@ -211,7 +224,7 @@ func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.jobBlockers[jobName]
+	return c.jobBlockers[GetJobKey(jobName)]
 }
 
 func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {

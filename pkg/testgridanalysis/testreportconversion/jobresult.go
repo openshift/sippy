@@ -84,9 +84,11 @@ func convertRawJobResultToProcessedJobResult(
 ) sippyprocessingv1.JobResult {
 
 	job := sippyprocessingv1.JobResult{
-		Name:        rawJobResult.JobName,
-		TestGridUrl: rawJobResult.TestGridJobUrl,
-		TestResults: convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
+		Name:              rawJobResult.JobName,
+		TestGridUrl:       rawJobResult.TestGridJobUrl,
+		TestResults:       convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
+		BugList:           bugCache.ListBugs(bugzillaRelease, rawJobResult.JobName, ""),
+		AssociatedBugList: bugCache.ListAssociatedBugs(bugzillaRelease, rawJobResult.JobName, ""),
 	}
 
 	for _, rawJRR := range rawJobResult.JobRunResults {
