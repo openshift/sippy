@@ -181,7 +181,7 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", b.release, encodedTestName, b.currTestResult.displayName)
 
 	klog.V(2).Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
-	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.currTestResult.associatedBugList, b.release, "", b.currTestResult.displayName)
+	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.currTestResult.associatedBugList, b.release, b.currTestResult.displayName)
 	if b.prevTestResult != nil {
 		arrow := GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)
 

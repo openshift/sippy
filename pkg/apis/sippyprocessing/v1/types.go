@@ -137,16 +137,19 @@ type JobRunResult struct {
 }
 
 type JobResult struct {
-	Name                                        string  `json:"name"`
-	Variant                                     string  `json:"platform"`
-	Failures                                    int     `json:"failures"`
-	KnownFailures                               int     `json:"knownFailures"`
-	InfrastructureFailures                      int     `json:"infrastructureFailures"`
-	Successes                                   int     `json:"successes"`
-	PassPercentage                              float64 `json:"passPercentage"`
-	PassPercentageWithKnownFailures             float64 `json:"passPercentageWithKnownFailures"`
-	PassPercentageWithoutInfrastructureFailures float64 `json:"passPercentageWithoutInfrastructureFailures"`
-	TestGridUrl                                 string  `json:"testGridUrl"`
+	Name                                        string       `json:"name"`
+	Variant                                     string       `json:"platform"`
+	Failures                                    int          `json:"failures"`
+	KnownFailures                               int          `json:"knownFailures"`
+	InfrastructureFailures                      int          `json:"infrastructureFailures"`
+	Successes                                   int          `json:"successes"`
+	PassPercentage                              float64      `json:"passPercentage"`
+	PassPercentageWithKnownFailures             float64      `json:"passPercentageWithKnownFailures"`
+	PassPercentageWithoutInfrastructureFailures float64      `json:"passPercentageWithoutInfrastructureFailures"`
+	TestGridUrl                                 string       `json:"testGridUrl"`
+	BugList                                     []bugsv1.Bug `json:"bugList"`
+	// AssociatedBugList are bugs that match the test/job, but do not match the target release
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`
