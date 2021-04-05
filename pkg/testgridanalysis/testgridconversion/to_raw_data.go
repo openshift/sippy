@@ -145,6 +145,9 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case test.Name == "Overall":
 					jrr.Succeeded = true
+					// if the overall job succeeded, setup is always considered successful, even for jobs
+					// that don't have an explicitly defined setup test.
+					jrr.SetupStatus = testgridanalysisapi.Success
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
 						Name:  testidentification.GetOperatorNameFromTest(test.Name),

@@ -77,6 +77,7 @@ const (
 
 	Success = "Success"
 	Failure = "Failure"
+	Unknown = "Unknown"
 )
 
 var (

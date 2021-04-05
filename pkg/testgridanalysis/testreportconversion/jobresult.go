@@ -100,7 +100,12 @@ func convertRawJobResultToProcessedJobResult(
 		if rawJRR.Failed && areAllFailuresKnown(rawJRR, job.TestResults) {
 			job.KnownFailures++
 		}
-		if rawJRR.SetupStatus != testgridanalysisapi.Success {
+		// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
+		// failure - we saw the test result, it failed
+		// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
+		//           failed due to infra issues or not.  probably not infra.
+		// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
+		if rawJRR.SetupStatus != testgridanalysisapi.Success && rawJRR.SetupStatus != testgridanalysisapi.Unknown {
 			job.InfrastructureFailures++
 		}
 	}
