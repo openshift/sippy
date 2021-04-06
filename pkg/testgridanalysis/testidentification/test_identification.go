@@ -84,6 +84,7 @@ var (
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
 	machineConfigsUpgradedRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-mco\] Machine config pools complete upgrade$`)
+	openshiftTestsRegex         = regexp.MustCompile(`(?:^openshift-tests\.|\[Suite:openshift|\[k8s\.io\]|\[sig-|\[bz-)`)
 )
 
 func IsCuratedTest(bugzillaRelease, testName string) bool {
@@ -135,6 +136,10 @@ func IsOperatorsUpgradedTest(testName string) bool {
 
 func IsMachineConfigPoolsUpgradedTest(testName string) bool {
 	return machineConfigsUpgradedRegex.MatchString(testName)
+}
+
+func IsOpenShiftTest(testName string) bool {
+	return openshiftTestsRegex.MatchString(testName)
 }
 
 func GetOperatorFromUpgradeTest(testName string) string {

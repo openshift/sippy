@@ -128,10 +128,10 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 			continue
 		}
 		switch result.Value {
-		case 1, 13: // success, flake(failed one or more times but ultimately succeeded)
+		case testgridv1.TestStatusSuccess, testgridv1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
 			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
-				if result.Value == 13 {
+				if result.Value == testgridv1.TestStatusFlake {
 					flaked++
 				}
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
@@ -158,10 +158,15 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Success
 				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
 					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Success
+				case testidentification.IsOpenShiftTest(test.Name):
+					// If there is a failed test, the aggregated value should stay "Failure"
+					if jrr.OpenShiftTestsStatus == "" {
+						jrr.OpenShiftTestsStatus = testgridanalysisapi.Success
+					}
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
-		case 12: // failure
+		case testgridv1.TestStatusFailure:
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
@@ -195,6 +200,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Failure
 				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
 					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Failure
+				case testidentification.IsOpenShiftTest(test.Name):
+					jrr.OpenShiftTestsStatus = testgridanalysisapi.Failure
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}

@@ -40,6 +40,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 				testgridanalysisapi.InstallTimeoutTestName:      &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
 				testgridanalysisapi.InfrastructureTestName:      &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 				testgridanalysisapi.FinalOperatorHealthTestName: &synthenticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
+				testgridanalysisapi.OpenShiftTestsName:          &synthenticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
 			}
 			// upgrades should only be indicated on jobs that run upgrades
 			if jrr.UpgradeStarted {
@@ -159,6 +160,13 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 						}
 					}
 				}
+			}
+
+			switch {
+			case jrr.Failed && jrr.OpenShiftTestsStatus == testgridanalysisapi.Failure:
+				syntheticTests[testgridanalysisapi.OpenShiftTestsName].fail = 1
+			case jrr.OpenShiftTestsStatus == testgridanalysisapi.Success:
+				syntheticTests[testgridanalysisapi.OpenShiftTestsName].pass = 1
 			}
 
 			for testName, result := range syntheticTests {

@@ -1,5 +1,15 @@
 package v1
 
+type TestStatus int
+
+const (
+	TestStatusAbsent  TestStatus = 0
+	TestStatusSuccess TestStatus = 1
+	TestStatusRunning TestStatus = 4
+	TestStatusFailure TestStatus = 12
+	TestStatusFlake   TestStatus = 13
+)
+
 // testgrid datastructures
 type JobSummary struct {
 	OverallStatus string `json:"overall_status"`
@@ -22,6 +32,6 @@ type Test struct {
 }
 
 type TestResult struct {
-	Count int `json:"count"`
-	Value int `json:"value"`
+	Count int        `json:"count"`
+	Value TestStatus `json:"value"`
 }
