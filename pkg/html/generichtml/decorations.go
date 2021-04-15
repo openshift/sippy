@@ -81,10 +81,10 @@ func (c ColorizationCriteria) GetColor(passPercentage float64, total int) string
 	}
 }
 
-var collapseNameRemoveRegex = regexp.MustCompile(`[. ,:\(\)\[\]]`)
+var collapseNameRemoveRegex = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
 func MakeSafeForCollapseName(in string) string {
-	return collapseNameRemoveRegex.ReplaceAllString(in, "")
+	return collapseNameRemoveRegex.ReplaceAllString(in, "-")
 }
 
 func GetExpandingButtonHTML(sectionName, buttonName string) string {
