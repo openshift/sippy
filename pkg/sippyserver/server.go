@@ -105,7 +105,8 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
 		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
 		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		15)
+		15,
+		s.reportNames())
 }
 
 func (s *Server) printCanaryReport(w http.ResponseWriter, req *http.Request) {
@@ -182,7 +183,14 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
-	reportName := "4.5"
+	reportName := "4.8"
+
+	// Default to the first release given on the command-line
+	reportNames := s.reportNames()
+	if len(reportNames) > 0 {
+		reportName = reportNames[0]
+	}
+
 	t := req.URL.Query().Get("release")
 	if t != "" {
 		reportName = t
@@ -257,12 +265,16 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
 	if !found {
-		releasehtml.WriteLandingPage(w, s.reportNames())
+		releasehtml.WriteLandingPage(w, reportNames)
 		return
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
-	releasehtml.PrintHtmlReport(w, req, testReports.CurrentPeriodReport, testReports.CurrentTwoDayReport, testReports.PreviousWeekReport, numDays, jobTestCount)
+	releasehtml.PrintHtmlReport(w, req,
+		testReports.CurrentPeriodReport,
+		testReports.CurrentTwoDayReport,
+		testReports.PreviousWeekReport,
+		numDays, jobTestCount, reportNames)
 
 }
 

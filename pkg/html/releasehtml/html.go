@@ -44,6 +44,8 @@ const (
 
 <h1 class=text-center>CI Release {{ .Release }} Health Summary</h1>
 
+{{ releasesList .ReportNames }}
+
 <p class="small mb-3 text-nowrap">
 	Jump to: <a href="#JobPassRatesByVariant">Job Pass Rates By Variant</a> | <a href="#CuratedTRTTests">Curated TRT Tests</a> | <a href="#TopFailingTestsWithoutABug">Top Failing Tests Without a Bug</a> | <a href="#TopFailingTestsWithABug">Top Failing Tests With a Bug</a> | <a href="#JobPassRatesByJobName">Job Pass Rates By Job Name</a> |
 			 <br/>	          
@@ -357,6 +359,7 @@ type TestReports struct {
 	NumDays      int
 	JobTestCount int
 	Release      string
+	ReportNames  []string
 }
 
 func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
@@ -371,7 +374,7 @@ func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
 	fmt.Fprintf(w, landingHtmlPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int) {
+func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int, allReportNames []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -401,6 +404,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryJobsFailuresByBugzillaComponent": summaryJobsFailuresByBugzillaComponent,
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 			"topLevelIndicators":                     topLevelIndicators,
+			"releasesList":                           releasesList,
 		},
 	).Parse(dashboardPageHtml))
 
@@ -411,6 +415,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		NumDays:      numDays,
 		JobTestCount: jobTestCount,
 		Release:      report.Release,
+		ReportNames:  allReportNames,
 	}); err != nil {
 		klog.Errorf("Unable to render page: %v", err)
 	}
