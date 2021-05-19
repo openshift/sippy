@@ -110,7 +110,7 @@ func (a failingTestJobResultByJobPassPercentage) Less(i, j int) bool {
 	return false
 }
 
-// failingTestJobResultByJobPassPercentage sorts from lowest to highest pass percentage
+// failingTestResultByPassPercentage sorts from lowest to highest pass percentage
 type failingTestResultByPassPercentage []sippyprocessingv1.FailingTestResult
 
 func (a failingTestResultByPassPercentage) Len() int      { return len(a) }
