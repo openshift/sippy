@@ -1,12 +1,20 @@
 export class JobsDashboard extends React.Component {
     constructor(props) {
         super(props);
+        const urlParams = new URLSearchParams(window.location.search);
         this.state = {
             loaded: false,
-            filter: '',
+            filter: urlParams.get('job') || "",
             jobs: [],
             error: null,
         };
+    }
+
+    updateFilter(newFilter) {
+        this.setState({filter: newFilter});
+        let urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('job', newFilter);
+        window.history.replaceState({}, document.title, "?" + urlParams.toString());
     }
 
     componentDidMount() {
@@ -62,15 +70,15 @@ export class JobsDashboard extends React.Component {
         let periodEnd = new Date(timestampEnd);
 
         let header = [
-            <td className="col-header col-name" key="name">
-                <input value={this.state.filter} placeholder="regular expression to filter jobs" onChange={(e) => this.setState({filter: e.target.value})} />
+            <td key="name" className="col-header col-name" key="name">
+                <input value={this.state.filter} placeholder="regular expression to filter jobs" onChange={(e) => this.updateFilter(e.target.value)} />
             </td>
         ];
         let ts = timestampEnd;
         while (ts >= timestampBegin) {
             let d = new Date(ts);
             let value = (d.getUTCMonth() + 1) + '/' + d.getUTCDate();
-            header.push(<td className="col-header col-day">{value}</td>);
+            header.push(<td key={"ts-"+ts} className="col-header col-day">{value}</td>);
             ts -= msPerDay;
         }
 
@@ -79,16 +87,16 @@ export class JobsDashboard extends React.Component {
             if (!filter.test(job.name)) {
                 continue;
             }
-            let row = [<td className="col-name" key="name"><a href={job.testgrid_url}>{job.name}</a></td>];
+            let row = [<td key="name" className="col-name" key="name"><a href={job.testgrid_url} target="_blank">{job.name}</a></td>];
             let ts = timestampEnd;
             let i = 0;
             while (ts >= timestampBegin) {
                 let results = [];
                 while (job.timestamps[i] >= ts) {
-                    results.push(<a className={'result result-' + job.results[i]} href={'https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/' + job.name + '/' + job.build_ids[i]}>{job.results[i]}</a>);
+                    results.push(<a key={"result-"+i} className={'result result-' + job.results[i]} href={'https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/' + job.name + '/' + job.build_ids[i]} target="_blank">{job.results[i]}</a>);
                     i++;
                 }
-                row.push(<td className="col-day"><div className="results">{results}</div></td>);
+                row.push(<td key={"ts-"+ts} className="col-day"><div className="results">{results}</div></td>);
                 ts -= msPerDay;
             }
 
