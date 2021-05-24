@@ -34,6 +34,8 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-vsphere-upi-upi-install-vsphere",
 	"install-install container test",
 	"install-stableinitial container test",
+	"hypershift-launch-wait-for-nodes",
+
 )
 
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether setup succeeded
