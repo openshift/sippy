@@ -66,7 +66,7 @@ func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconvers
 		results := rawJobResults.JobResults[job.Name]
 		var statuses []string
 		for i := range job.Timestamps {
-			joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+			joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 			statuses = append(statuses, jobRunStatus(results.JobRunResults[joburl]))
 		}
 		response.Jobs = append(response.Jobs, jsonJob{

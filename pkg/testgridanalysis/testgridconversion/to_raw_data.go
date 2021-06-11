@@ -134,7 +134,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				if result.Value == testgridv1.TestStatusFlake {
 					flaked++
 				}
-				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
 					jrr = testgridanalysisapi.RawJobRunResult{
@@ -172,7 +172,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		case testgridv1.TestStatusFailure:
 			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
-				joburl := fmt.Sprintf("https://prow.svc.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
+				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
 					jrr = testgridanalysisapi.RawJobRunResult{
