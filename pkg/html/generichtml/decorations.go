@@ -88,7 +88,7 @@ func MakeSafeForCollapseName(in string) string {
 }
 
 func GetExpandingButtonHTML(sectionName, buttonName string) string {
-	buttonHTML := `<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="collapse" data-target=".{{ .sectionName }}" aria-expanded="false" aria-controls="{{ .sectionName }}">{{ .buttonName }}</button>`
+	buttonHTML := `<button class="btn btn-primary btn-sm py-0" style="font-size: 0.8em" type="button" data-toggle="fast-collapse" data-target=".{{ .sectionName }}" aria-expanded="false" aria-controls="{{ .sectionName }}">{{ .buttonName }}</button>`
 	buttonHTMLTemplate := template.Must(template.New("buttonHTML").Parse(buttonHTML))
 
 	return MustSubstitute(buttonHTMLTemplate, map[string]string{
