@@ -42,15 +42,13 @@ spec:
         - --local-data
         - /data
         - --release
+        - "4.9"
+        - --release
         - "4.8"
         - --release
         - "4.7"
         - --release
         - "4.6"
-        - --release
-        - "4.5"
-        - --release
-        - "4.4"
         - --release
         - "3.11"
         - --end-day
