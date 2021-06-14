@@ -40,6 +40,12 @@ const (
 #table td, #table th {
 	border: 
 }
+
+.collapsing {
+    -webkit-transition: none;
+    transition: none;
+    display: none;
+}
 </style>
 
 <h1 class=text-center>CI Release {{ .Release }} Health Summary</h1>
