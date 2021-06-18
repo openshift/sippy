@@ -89,7 +89,7 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 
 func IsActiveBug(bug bugsv1.Bug) bool {
 	switch bug.Status {
-	case "VERIFIED", "RELEASE_PENDING", "CLOSED":
+	case "VERIFIED", "RELEASE_PENDING", "CLOSED", "CLOSED WONTFIX", "CLOSED DUPLICATE", "CLOSED NOTABUG":
 		return false
 	default:
 		return true
