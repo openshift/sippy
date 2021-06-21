@@ -83,7 +83,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 `
 
 	bug := fmt.Sprintf(
-		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s>Open a bug</a>",
+		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
 		url.QueryEscape(short_desc),
 		url.QueryEscape(testName),
 		url.QueryEscape(searchURL),
@@ -107,7 +107,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
 `
 
 	bug := fmt.Sprintf(
-		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=job:%%0A%[3]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20testgrid%%20results:%%0A%[4]s%%0A%%0A%[5]s&version=%[6]s>Open a bug</a>",
+		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=job:%%0A%[3]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20testgrid%%20results:%%0A%[4]s%%0A%%0A%[5]s&version=%[6]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
 		url.QueryEscape(short_desc),
 		url.QueryEscape(buganalysis.GetJobKey(jobName)),
 		jobName,
