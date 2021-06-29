@@ -35,6 +35,7 @@ var (
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
 	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
+	singleNodeRegex = regexp.MustCompile(`(?i)-single-node`)
 
 	allOpenshiftVariants = sets.NewString(
 		"aws",
@@ -58,6 +59,7 @@ var (
 		"upgrade",
 		"vsphere-ipi",
 		"vsphere-upi",
+		"single-node",
 	)
 
 	// openshiftJobsNeverStableForVariants is a list of jobs that have never been stable (not were stable and broke)
@@ -162,6 +164,9 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 	if proxyRegex.MatchString(jobName) {
 		variants = append(variants, "proxy")
+	}
+	if singleNodeRegex.MatchString(jobName) {
+		variants = append(variants, "single-node")
 	}
 
 	if len(variants) == 0 {
