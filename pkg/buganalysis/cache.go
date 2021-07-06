@@ -71,7 +71,8 @@ type bugCache struct {
 
 func NewBugCache() BugCache {
 	return &bugCache{
-		cache: map[string][]bugsv1.Bug{},
+		cache:       map[string][]bugsv1.Bug{},
+		jobBlockers: map[string][]bugsv1.Bug{},
 	}
 }
 
