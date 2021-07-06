@@ -62,13 +62,45 @@ var (
 		"single-node",
 	)
 
-	// openshiftJobsNeverStableForVariants is a list of jobs that have never been stable (not were stable and broke)
-	// As we phase these jobs in, they should be excluded from "normal" variants.
-	// These jobs are still listed as jobs in total and when individual tests fail, they will still be listed with these jobs as causes.
+	// openshiftJobsNeverStableForVariants is a list of jobs that are
+	// below 40% passing rate. As we phase these jobs in, they should be
+	// excluded from "normal" variants and once they are passing above 40%
+	// can "graduated" from never-stable.
+	//
+	// These jobs are still listed as jobs in total and when individual
+	// tests fail, they will still be listed with these jobs as causes.
 	openshiftJobsNeverStableForVariants = sets.NewString(
-		"release-openshift-ocp-installer-e2e-ovirt-upgrade-4.5-stable-to-4.6-ci",
-		"release-openshift-origin-installer-e2e-aws-upgrade-rollback-4.5-to-4.6", // this is manual for a networking change
-		"release-openshift-origin-installer-e2e-aws-disruptive-4.6",              // doesn't recover cleanly.  There is a bug.
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-ovn-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-azure-ovn-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-gcp-ovn-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-gcp-ovn-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-ovirt-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-csi-migration",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-csi-migration",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-proxy",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-compact-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-compact-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-compact-remote-libvirt-s390x",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp-rt",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-dualstack",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-remote-libvirt-s390x",
+		"periodic-ci-openshift-release-master-nightly-4.9-openshift-ipi-azure-arcconformance",
+		"periodic-ci-openshift-release-master-nightly-4.9-upgrade-from-stable-4.8-e2e-aws-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.9-upgrade-from-stable-4.8-e2e-metal-ipi-upgrade",
+		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
+		"release-openshift-ocp-installer-e2e-azure-ovn-4.9",
+		"release-openshift-ocp-installer-e2e-gcp-ovn-4.9",
+		"release-openshift-ocp-osd-aws-nightly-4.9",
+		"release-openshift-ocp-osd-gcp-nightly-4.9",
+		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.9",
 	)
 )
 
