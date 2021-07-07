@@ -10,10 +10,11 @@ import (
 
 var (
 	// variant regexes
-	awsRegex   = regexp.MustCompile(`(?i)-aws`)
-	azureRegex = regexp.MustCompile(`(?i)-azure`)
-	fipsRegex  = regexp.MustCompile(`(?i)-fips`)
-	metalRegex = regexp.MustCompile(`(?i)-metal`)
+	awsRegex     = regexp.MustCompile(`(?i)-aws`)
+	azureRegex   = regexp.MustCompile(`(?i)-azure`)
+	compactRegex = regexp.MustCompile(`(?i)-compact`)
+	fipsRegex    = regexp.MustCompile(`(?i)-fips`)
+	metalRegex   = regexp.MustCompile(`(?i)-metal`)
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
@@ -40,6 +41,7 @@ var (
 	allOpenshiftVariants = sets.NewString(
 		"aws",
 		"azure",
+		"compact",
 		"fips",
 		"gcp",
 		"metal-assisted",
@@ -140,6 +142,9 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 	if azureRegex.MatchString(jobName) {
 		variants = append(variants, "azure")
+	}
+	if compactRegex.MatchString(jobName) {
+		variants = append(variants, "compact")
 	}
 	if gcpRegex.MatchString(jobName) {
 		variants = append(variants, "gcp")
