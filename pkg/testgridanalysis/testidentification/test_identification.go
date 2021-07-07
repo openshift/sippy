@@ -10,6 +10,7 @@ import (
 
 var customJobSetupContainers = sets.NewString(
 	"e2e-44-stable-to-45-ci-ipi-install-install-stableinitial",
+	"e2e-aws-hypershift-ipi-install",
 	"e2e-aws-proxy-ipi-install-install",
 	"e2e-aws-upgrade-ipi-install-install-stableinitial",
 	"e2e-aws-upgrade-rollback-ipi-install-install-stableinitial",
@@ -27,15 +28,16 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-upgrade-baremetalds-devscripts-setup container test",
 	"e2e-metal-single-node-live-iso-baremetalds-packet-setup",
+	"e2e-openstack-upgrade-ipi-install",
 	"e2e-ovirt-ipi-install-install container test",
 	"e2e-vsphere-ipi-install-vsphere",
 	"e2e-vsphere-serial-ipi-install-vsphere",
 	"e2e-vsphere-upi-serial-upi-install-vsphere",
 	"e2e-vsphere-upi-upi-install-vsphere",
+	"hypershift-launch-wait-for-nodes",
 	"install-install container test",
 	"install-stableinitial container test",
-	"hypershift-launch-wait-for-nodes",
-
+	"ipi-install-libvirt-install",
 )
 
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether setup succeeded
