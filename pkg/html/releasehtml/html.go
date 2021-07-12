@@ -364,7 +364,7 @@ type TestReports struct {
 
 func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
 	releaseLinks := make([]string, len(displayNames))
 	for i := range displayNames {
