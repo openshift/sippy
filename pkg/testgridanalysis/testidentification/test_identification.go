@@ -1,6 +1,8 @@
 package testidentification
 
 import (
+	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -85,6 +87,7 @@ var curatedTestSubstrings = map[string][]string{
 }
 
 var (
+	ciStepRegex                 = regexp.MustCompile(`operator\.Run multi-stage test (\S+) \- (\S+) container test$`)
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
 	machineConfigsUpgradedRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-mco\] Machine config pools complete upgrade$`)
@@ -196,4 +199,37 @@ func IsUpgradeRelatedTest(testName string) bool {
 
 	return false
 
+}
+
+func IsStepRegistryItem(testName string) bool {
+	return ciStepRegex.MatchString(testName)
+}
+
+type StepRegistryItem struct {
+	Name     string
+	StepName string
+}
+
+func (s StepRegistryItem) RegistryURL() *url.URL {
+	if s.Name == "" || s.StepName == "" {
+		return nil
+	}
+
+	return &url.URL{
+		Scheme: "https",
+		Host:   "steps.ci.openshift.org",
+		Path:   filepath.Join("reference", s.StepName),
+	}
+}
+
+func GetStepRegistryItemFromTest(testName string) StepRegistryItem {
+	matches := ciStepRegex.FindAllStringSubmatch(testName, -1)
+	if len(matches) == 0 {
+		return StepRegistryItem{}
+	}
+
+	return StepRegistryItem{
+		Name:     matches[0][1],
+		StepName: strings.ReplaceAll(matches[0][2], matches[0][1]+"-", ""),
+	}
 }
