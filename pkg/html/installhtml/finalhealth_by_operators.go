@@ -62,7 +62,7 @@ func summaryOperatorHealthRelatedTests(curr, prev sippyprocessingv1.TestReport, 
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isOperatorHealthRelatedTest)
 
-	s += "</table>"
+	s += "</table>" //nolint:goconst
 
 	return s
 }
