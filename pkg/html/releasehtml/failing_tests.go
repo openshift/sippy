@@ -115,7 +115,7 @@ func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingT
 
 		testPrev := util.FindFailedTestResult(testResult.TestName, prevTests)
 
-		s = s +
+		s +=
 			generichtml.NewTestResultRendererForFailedTestResult("", testResult, release).
 				WithPreviousFailedTestResult(testPrev).
 				ToHTML()

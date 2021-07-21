@@ -49,7 +49,7 @@ func summaryJobsFailuresByBugzillaComponent(report, reportPrev sippyprocessingv1
 		s += bugzillaComponentHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 

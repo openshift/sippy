@@ -62,7 +62,7 @@ func summaryOperatorHealthRelatedTests(curr, prev sippyprocessingv1.TestReport, 
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isOperatorHealthRelatedTest)
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }

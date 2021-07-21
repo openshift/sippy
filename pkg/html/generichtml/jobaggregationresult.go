@@ -201,7 +201,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	if b.prevAggregationResult != nil {
 		arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
 
-		s = s + fmt.Sprintf(template,
+		s += fmt.Sprintf(template,
 			class,
 			b.currAggregationResult.displayName,
 			button,
@@ -214,7 +214,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 			b.prevAggregationResult.totalJobRuns,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate,
+		s += fmt.Sprintf(naTemplate,
 			class,
 			b.currAggregationResult.displayName,
 			button,
@@ -246,7 +246,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 			}
 		}
 
-		jobRows = jobRows + NewJobResultRenderer(jobsCollapseName, job, b.release).
+		jobRows += NewJobResultRenderer(jobsCollapseName, job, b.release).
 			WithPrevious(prev).
 			WithMaxTestResultsToShow(b.maxTestResultsToShow).
 			StartCollapsed().
@@ -259,11 +259,11 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px"><a href="/variants?release=%s&variant=%s">Plus %d more jobs</a></td></tr>`, jobsCollapseName, b.release, b.currAggregationResult.displayName, jobAdditionalMatches)
 	}
 	if jobRowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
-		s = s + jobRows
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobsCollapseName)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
+		s += jobRows
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobsCollapseName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
 	}
 
 	// if we have no test results, we're done

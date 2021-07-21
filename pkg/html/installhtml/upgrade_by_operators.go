@@ -70,7 +70,7 @@ func summaryUpgradeRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isUpgradeRelatedTest)
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }
@@ -109,6 +109,6 @@ func summaryUpgradeRelatedJobs(report, reportPrev sippyprocessingv1.TestReport, 
 		s += jobHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }

@@ -82,7 +82,7 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		s += jobHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }

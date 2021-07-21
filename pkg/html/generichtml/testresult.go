@@ -215,8 +215,8 @@ func (b *testResultRenderBuilder) ToHTML() string {
 			}
 		}
 
-		rows = rows + NewJobResultRenderer(jobCollapseSectionName, failingTestJobResult, b.release).
-			WithIndent(b.baseIndentDepth+1).
+		rows += NewJobResultRenderer(jobCollapseSectionName, failingTestJobResult, b.release).
+			WithIndent(b.baseIndentDepth + 1).
 			WithPrevious(prevTestJobResult).
 			StartCollapsed().
 			ToHTML()
@@ -228,11 +228,11 @@ func (b *testResultRenderBuilder) ToHTML() string {
 		rows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx">Plus %d more jobs</td></tr>`, jobCollapseSectionName, jobIndentDepth, additionalMatches)
 	}
 	if rowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobCollapseSectionName, jobIndentDepth)
-		s = s + rows
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobCollapseSectionName)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:%dpx" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobCollapseSectionName, jobIndentDepth)
+		s += rows
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, jobCollapseSectionName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobCollapseSectionName, jobIndentDepth)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:%dpx" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobCollapseSectionName, jobIndentDepth)
 	}
 
 	return s
@@ -265,12 +265,11 @@ func getTestRowHTML(release, testsCollapseName string, currTestResults, prevTest
 			}
 		}
 
-		testRows = testRows +
-			NewTestResultRenderer(testsCollapseName, test, release).
-				WithIndent(1).
-				WithPrevious(prev).
-				StartCollapsed().
-				ToHTML()
+		testRows += NewTestResultRenderer(testsCollapseName, test, release).
+			WithIndent(1).
+			WithPrevious(prev).
+			StartCollapsed().
+			ToHTML()
 
 		testRowCount++
 	}
@@ -280,11 +279,11 @@ func getTestRowHTML(release, testsCollapseName string, currTestResults, prevTest
 		testRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more tests</td></tr>`, testsCollapseName, additionalMatches)
 	}
 	if testRowCount > 0 {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
-		s = s + testRows
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testsCollapseName)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Test Name</td><td class="font-weight-bold">Test Pass Rate</td></tr>`, testsCollapseName)
+		s += testRows
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold"></td><td class="font-weight-bold"></td></tr>`, testsCollapseName)
 	} else {
-		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
+		s += fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Tests Matched Filters</td></tr>`, testsCollapseName)
 	}
 
 	return s, testNames

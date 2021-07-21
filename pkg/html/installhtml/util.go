@@ -162,7 +162,7 @@ func (a testsByVariant) getTableHTML(
 		s += "		</tr>"
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }
@@ -204,7 +204,7 @@ func failingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTest
 			continue
 		}
 
-		s = s +
+		s +=
 			generichtml.NewTestResultRendererForFailedTestResult("", testResult, release).
 				WithPreviousFailedTestResult(util.FindFailedTestResult(testResult.TestName, prevTests)).
 				ToHTML()

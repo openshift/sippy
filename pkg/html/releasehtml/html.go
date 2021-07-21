@@ -135,7 +135,7 @@ func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport, numDa
 		s += variantHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 
@@ -163,7 +163,7 @@ func summaryFrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1.T
 		s += jobHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 
@@ -191,7 +191,7 @@ func summaryInfrequentJobPassRatesByJobName(report, reportPrev sippyprocessingv1
 		s += jobHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 
@@ -236,7 +236,7 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 
 		s += fmt.Sprintf(template, testLink, test.TestResultAcrossAllJobs.PassPercentage, test.TestResultAcrossAllJobs.Successes+test.TestResultAcrossAllJobs.Failures)
 	}
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 func failureGroupList(report sippyprocessingv1.TestReport) string {
@@ -260,7 +260,7 @@ func failureGroupList(report sippyprocessingv1.TestReport) string {
 	for _, fg := range report.FailureGroups {
 		s += fmt.Sprintf(template, fg.Url, fg.Job, fg.TestFailures)
 	}
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 
@@ -282,7 +282,7 @@ func testImpactingBugs(testImpactingBugs []bugsv1.Bug) string {
 		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount, bug.FlakeCount)
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 
@@ -344,7 +344,7 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 		s += fmt.Sprintf("<tr><td>%s</td><td>%d</td><td>%d</td><td>%d: %s</td></tr> ", c.name, c.failureCount, c.flakeCount, c.bugCount, links)
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 	return s
 }
 

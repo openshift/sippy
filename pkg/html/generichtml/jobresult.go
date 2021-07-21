@@ -204,7 +204,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 	if b.prevJobResult != nil {
 		arrow := GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
-		s = s + fmt.Sprintf(template,
+		s += fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			bugHTML,
@@ -217,7 +217,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 			b.prevJobResult.totalRuns,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate,
+		s += fmt.Sprintf(naTemplate,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			bugHTML,

@@ -66,7 +66,7 @@ func summaryInstallRelatedTests(curr, prev sippyprocessingv1.TestReport, numDays
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isInstallRelatedTest)
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }
