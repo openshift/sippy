@@ -18,6 +18,7 @@ func NewOpenshiftSythenticTestManager() SythenticTestManager {
 // and potentially producing synthentic test results and aggregations to better inform sippy.
 // This needs to be called after all the JobDetails have been processed.
 // returns warnings found in the data. Not failures to process it.
+//nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 	warnings := []string{}
 
