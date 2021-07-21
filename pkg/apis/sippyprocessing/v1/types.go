@@ -21,7 +21,7 @@ type TestReport struct {
 	TopLevelIndicators TopLevelIndicators `json:"topLevelIndicators"`
 
 	// ByVariant organizes jobs and tests by variant, sorted by job pass rate from low to high
-	ByVariant []VariantResults `json:"byPlatform`
+	ByVariant []VariantResults `json:"byPlatform"`
 
 	// ByTest organizes every test ordered by pass rate from low to high.
 	ByTest []FailingTestResult `json:"byTest"`
@@ -29,7 +29,7 @@ type TestReport struct {
 	FailureGroups []JobRunResult `json:"failureGroups"`
 
 	// ByJob are all the available job results by their job, sorted from low to high pass rate
-	ByJob []JobResult `json:"frequentJobResults"`
+	ByJob []JobResult `json:"byJob"`
 	// FrequentJobResults are jobresults for jobs that run more than 1.5 times per day
 	FrequentJobResults []JobResult `json:"frequentJobResults"`
 	// InfrequentJobResults are jobresults for jobs that run less than 1.5 times per day
