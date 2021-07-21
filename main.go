@@ -55,9 +55,8 @@ func main() {
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
-			if err := opt.Complete(); err != nil {
-				klog.Exitf("error: %v", err)
-			}
+			opt.Complete()
+
 			if err := opt.Validate(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -93,16 +92,15 @@ func main() {
 	}
 }
 
-func (o *Options) Complete() error {
+func (o *Options) Complete() {
 	// if the end day was explicitly specified, honor that
 	if o.endDay != 0 {
 		o.NumDays = o.endDay - o.StartDay
 	}
+
 	for _, openshiftRelease := range o.OpenshiftReleases {
 		o.Dashboards = append(o.Dashboards, dashboardArgFromOpenshiftRelease(openshiftRelease))
 	}
-
-	return nil
 }
 
 func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboardCoordinates {
