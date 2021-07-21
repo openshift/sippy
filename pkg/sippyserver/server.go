@@ -253,7 +253,8 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		var err error
 		jobFilter, err = regexp.Compile(jobFilterString)
 		if err != nil {
-			// TODO add warning
+			http.Error(w, fmt.Sprintf("invalid jobFilter: %s", err), http.StatusBadRequest)
+			return
 		}
 	}
 
