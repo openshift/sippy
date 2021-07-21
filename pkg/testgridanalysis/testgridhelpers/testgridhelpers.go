@@ -162,7 +162,9 @@ func downloadJobSummaries(dashboard, storagePath string) error {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	io.Copy(buf, resp.Body)
+	if _, err := io.Copy(buf, resp.Body); err != nil {
+		return err
+	}
 
 	_, err = f.Write(buf.Bytes())
 	return err
@@ -227,7 +229,9 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	io.Copy(buf, resp.Body)
+	if _, err := io.Copy(buf, resp.Body); err != nil {
+		return err
+	}
 
 	_, err = f.Write(buf.Bytes())
 	return err

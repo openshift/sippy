@@ -9,6 +9,7 @@ import (
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
+	"k8s.io/klog"
 )
 
 const failure string = "Failure"
@@ -80,5 +81,9 @@ func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconvers
 		})
 	}
 
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		e := fmt.Errorf("could not print jobs result: %s", err)
+		klog.Errorf(e.Error())
+		http.Error(w, e.Error(), http.StatusInternalServerError)
+	}
 }

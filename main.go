@@ -51,7 +51,9 @@ func main() {
 	}
 
 	klog.InitFlags(nil)
-	flag.CommandLine.Set("skip_headers", "true")
+	if err := flag.CommandLine.Set("skip_headers", "true"); err != nil {
+		klog.Exitf("could not set commandline flag: %s", err)
+	}
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
@@ -209,8 +211,7 @@ func (o *Options) runCLIReportMode() error {
 	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(testReport.ByTest)
-	return nil
+	return enc.Encode(testReport.ByTest)
 }
 
 func (o *Options) hasOCPDashboard() bool {

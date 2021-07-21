@@ -184,7 +184,9 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		}
 		errMsgBytes, _ := json.Marshal(errMsg)
 		w.WriteHeader(http.StatusNotFound)
-		w.Write(errMsgBytes)
+		if _, err := w.Write(errMsgBytes); err != nil {
+			klog.Errorf(err.Error())
+		}
 		return
 	}
 	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
