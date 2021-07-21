@@ -85,10 +85,6 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-// tagStripRegex removes test markers deemed unhelpful at one point in time.
-// TODO relitigate the value of doing this.  Without these markers, I don't think it is possible to run the failing test back through `openshift-tests run-test <foo>`
-var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]|\[[0-9]+]$`)
-
 // testSuitePrefixes is a list of suite prefixes to remove from test names
 var testSuitePrefixes = []string{
 	"openshift-tests.",

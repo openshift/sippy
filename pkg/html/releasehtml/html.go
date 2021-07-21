@@ -17,10 +17,6 @@ import (
 	"k8s.io/klog"
 )
 
-var (
-	escapeRegex *regexp.Regexp = regexp.MustCompile(`\[.*?\]`)
-)
-
 const (
 	BugSearchUrl = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
 

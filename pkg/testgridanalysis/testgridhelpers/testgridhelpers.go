@@ -18,10 +18,6 @@ import (
 	"k8s.io/klog"
 )
 
-var (
-	openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-)
-
 func DownloadData(dashboards []string, filter string, storagePath string) {
 	var jobFilter *regexp.Regexp
 	if len(filter) > 0 {
