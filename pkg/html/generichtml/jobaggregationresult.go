@@ -238,9 +238,9 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 
 		var prev *jobResultDisplay
 		if b.prevAggregationResult != nil {
-			for _, prevJobInstance := range b.prevAggregationResult.jobResults {
+			for i, prevJobInstance := range b.prevAggregationResult.jobResults {
 				if prevJobInstance.displayName == job.displayName {
-					prev = &prevJobInstance
+					prev = &b.prevAggregationResult.jobResults[i]
 					break
 				}
 			}

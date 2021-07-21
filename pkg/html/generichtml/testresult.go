@@ -207,9 +207,9 @@ func (b *testResultRenderBuilder) ToHTML() string {
 
 		var prevTestJobResult *jobResultDisplay
 		if b.prevTestResult != nil {
-			for _, prevJobInstance := range b.prevTestResult.jobResults {
+			for i, prevJobInstance := range b.prevTestResult.jobResults {
 				if prevJobInstance.displayName == failingTestJobResult.displayName {
-					prevTestJobResult = &prevJobInstance
+					prevTestJobResult = &b.prevTestResult.jobResults[i]
 					break
 				}
 			}
@@ -258,9 +258,9 @@ func getTestRowHTML(release, testsCollapseName string, currTestResults, prevTest
 		testNames = append(testNames, test.displayName)
 
 		var prev *testResultDisplay
-		for _, prevInstance := range prevTestResults {
+		for i, prevInstance := range prevTestResults {
 			if prevInstance.displayName == test.displayName {
-				prev = &prevInstance
+				prev = &prevTestResults[i]
 				break
 			}
 		}
