@@ -255,7 +255,12 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	}
 
 	search := internal.Search{}
-	err = json.NewDecoder(resp.Body).Decode(&search)
+
+	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
+		e := fmt.Errorf("could not decode bug search results: %w", err)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
 
 	for searchString, result := range search.Results {
 		// reverse the regex escaping we did earlier, so we get back the pure test name string.
