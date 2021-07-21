@@ -3,6 +3,7 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/sippy/pkg/html/generichtml"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -86,6 +87,14 @@ func (s *Server) RefreshData() {
 		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 	klog.Infof("Refresh complete")
+}
+
+func (s *Server) defaultHandler(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/" {
+		s.printHtmlReport(w, req)
+	} else {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, "Page not found.")
+	}
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
@@ -309,7 +318,7 @@ func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Serve() {
-	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
 	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHtmlReport)
 	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHtmlReport)
