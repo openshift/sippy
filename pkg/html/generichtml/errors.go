@@ -20,6 +20,7 @@ var messageTemplate = template.Must(template.New("jobs").Parse(`<!DOCTYPE html>
 </html>
 `))
 
+// PrintStatusMessage is used to display a proper error page to an end user.
 func PrintStatusMessage(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")

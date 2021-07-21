@@ -317,6 +317,45 @@ func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
 	releasehtml.PrintJobsReport(w, reportName)
 }
 
+func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	variant := req.URL.Query().Get("variant")
+
+	if variant == "" || release == "" {
+		generichtml.PrintStatusMessage(w, http.StatusBadRequest, "Please specify a variant and release.")
+		return
+	}
+
+	if _, ok := s.currTestReports[release]; !ok {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Release %q not found.", release))
+		return
+	}
+
+	var currentWeek *sippyprocessingv1.VariantResults
+	for _, report := range s.currTestReports[release].CurrentPeriodReport.ByVariant {
+		if report.VariantName == variant {
+			currentWeek = &report
+			break
+		}
+	}
+
+	var previousWeek *sippyprocessingv1.VariantResults
+	for _, report := range s.currTestReports[release].PreviousWeekReport.ByVariant {
+		if report.VariantName == variant {
+			previousWeek = &report
+			break
+		}
+	}
+
+	if currentWeek == nil {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Variant %q not found.", variant))
+		return
+	}
+
+	timestamp := s.currTestReports[release].CurrentPeriodReport.Timestamp
+	releasehtml.PrintVariantsReport(w, release, variant, *currentWeek, *previousWeek, timestamp)
+}
+
 func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
@@ -329,6 +368,8 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/canary", s.printCanaryReport)
 	http.DefaultServeMux.HandleFunc("/api/jobs", s.jobs)
 	http.DefaultServeMux.HandleFunc("/jobs", s.jobsReport)
+	http.DefaultServeMux.HandleFunc("/variants", s.variantsReport)
+
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)

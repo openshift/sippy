@@ -67,6 +67,7 @@ type jobAggregationResultRenderBuilder struct {
 	maxJobResultsToShow  int
 	colors               ColorizationCriteria
 	collapsedAs          string
+	groupby              string
 }
 
 func NewJobAggregationResultRenderer(sectionBlock string, currJobResult jobAggregationDisplay, release string) *jobAggregationResultRenderBuilder {
@@ -137,52 +138,16 @@ func (b *jobAggregationResultRenderBuilder) StartCollapsedAs(collapsedAs string)
 	return b
 }
 
-func (b *jobAggregationResultRenderBuilder) ToHTML() string {
+func (b *jobAggregationResultRenderBuilder) GroupBy(grouping string) *jobAggregationResultRenderBuilder {
+	b.groupby = grouping
+	return b
+}
 
+func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	s := ""
 
-	// TODO either make this a template or make this a builder that takes args and then has branches.
-	//  that will fix the funny link that goes nowhere.
-	template := `
-			<tr class="%s">
-				<td>
-					%s
-					<p>
-					%s
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td>
-					%s
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-			</tr>
-		`
-
-	naTemplate := `
-			<tr class="%s">
-				<td>
-					%s
-					<p>
-					%s
-				</td>
-				<td>
-					%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
-				</td>
-				<td/>
-				<td>
-					NA
-				</td>
-			</tr>
-		`
-
-	class := b.colors.GetColor(b.currAggregationResult.displayPercentage, b.currAggregationResult.totalJobRuns)
-	if len(b.collapsedAs) > 0 {
-		class += " collapse " + b.collapsedAs
-	}
+	buttons := ""
+	jobsCollapseName := b.sectionBlock
 
 	prevTestResults := []testResultDisplay{}
 	if b.prevAggregationResult != nil {
@@ -190,42 +155,93 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 	}
 
 	testCollapseSectionName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---tests")
-	jobsCollapseName := MakeSafeForCollapseName(b.sectionBlock + "---" + b.currAggregationResult.displayName + "---jobs")
 	testRows, displayedTests := getTestRowHTML(b.release, testCollapseSectionName, b.currAggregationResult.testResults, prevTestResults, b.maxTestResultsToShow)
-	button := "					" + GetExpandingButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+
 	if len(displayedTests) > 0 { // add the button if we have tests to show
-		button += " " + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests")
-		button += " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
+		buttons += " " + GetExpandingButtonHTML(testCollapseSectionName, "Expand Failing Tests")
 	}
 
-	if b.prevAggregationResult != nil {
-		arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
+	// TODO either make this a template or make this a builder that takes args and then has branches.
+	// that will fix the funny link that goes nowhere.
+	if b.groupby == "variant" {
+		buttons += " " + GetTestDetailsButtonHTML(b.release, displayedTests...)
 
-		s = s + fmt.Sprintf(template,
-			class,
-			b.currAggregationResult.displayName,
-			button,
-			b.currAggregationResult.displayPercentage,
-			b.currAggregationResult.parenDisplayPercentage,
-			b.currAggregationResult.totalJobRuns,
-			arrow,
-			b.prevAggregationResult.displayPercentage,
-			b.prevAggregationResult.parenDisplayPercentage,
-			b.prevAggregationResult.totalJobRuns,
-		)
-	} else {
-		s = s + fmt.Sprintf(naTemplate,
-			class,
-			b.currAggregationResult.displayName,
-			button,
-			b.currAggregationResult.displayPercentage,
-			b.currAggregationResult.parenDisplayPercentage,
-			b.currAggregationResult.totalJobRuns,
-		)
+		template := `
+				<tr class="%s">
+					<td>
+						%s
+						<p>
+						%s
+					</td>
+					<td>
+						%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
+					</td>
+					<td>
+						%s
+					</td>
+					<td>
+						%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
+					</td>
+				</tr>
+			`
+
+		naTemplate := `
+				<tr class="%s">
+					<td>
+						%s
+						<p>
+						%s
+					</td>
+					<td>
+						%0.2f%% (%0.2f%%)<span class="text-nowrap">(%d runs)</span>
+					</td>
+					<td/>
+					<td>
+						NA
+					</td>
+				</tr>
+			`
+
+		class := b.colors.GetColor(b.currAggregationResult.displayPercentage, b.currAggregationResult.totalJobRuns)
+		if len(b.collapsedAs) > 0 {
+			class += " collapse " + b.collapsedAs
+		}
+
+		jobsCollapseName += MakeSafeForCollapseName( "---" + b.currAggregationResult.displayName + "---jobs")
+		buttons += "					" + GetExpandingButtonHTML(jobsCollapseName, "Expand Failing Jobs")
+		if b.prevAggregationResult != nil {
+			arrow := GetArrow(b.currAggregationResult.totalJobRuns, b.currAggregationResult.displayPercentage, b.prevAggregationResult.displayPercentage)
+
+			s = s + fmt.Sprintf(template,
+				class,
+				b.currAggregationResult.displayName,
+				buttons,
+				b.currAggregationResult.displayPercentage,
+				b.currAggregationResult.parenDisplayPercentage,
+				b.currAggregationResult.totalJobRuns,
+				arrow,
+				b.prevAggregationResult.displayPercentage,
+				b.prevAggregationResult.parenDisplayPercentage,
+				b.prevAggregationResult.totalJobRuns,
+			)
+		} else {
+			s = s + fmt.Sprintf(naTemplate,
+				class,
+				b.currAggregationResult.displayName,
+				buttons,
+				b.currAggregationResult.displayPercentage,
+				b.currAggregationResult.parenDisplayPercentage,
+				b.currAggregationResult.totalJobRuns,
+			)
+		}
 	}
 
 	// now render the individual jobs
 	jobCount := b.maxJobResultsToShow
+	if b.maxJobResultsToShow == 0 {
+		// 0 means unlimited job rows
+		jobCount = len(b.currAggregationResult.jobResults)
+	}
 	jobRowCount := 0
 	jobRows := ""
 	jobAdditionalMatches := 0
@@ -246,17 +262,19 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 			}
 		}
 
-		jobRows = jobRows + NewJobResultRenderer(jobsCollapseName, job, b.release).
+		row := NewJobResultRenderer(jobsCollapseName, job, b.release).
 			WithPrevious(prev).
-			WithMaxTestResultsToShow(b.maxTestResultsToShow).
-			StartCollapsed().
-			WithIndent(1).
-			ToHTML()
+			WithMaxTestResultsToShow(b.maxTestResultsToShow)
+		if b.groupby == "variant" {
+			row = row.StartCollapsed().
+				WithIndent(1)
+		}
 
+		jobRows += row.ToHTML()
 		jobRowCount++
 	}
 	if jobAdditionalMatches > 0 {
-		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more jobs</td></tr>`, jobsCollapseName, jobAdditionalMatches)
+		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px"><a href="/variants?release=%s&variant=%s">Plus %d more jobs</a></td></tr>`, jobsCollapseName, b.release, b.currAggregationResult.displayName, jobAdditionalMatches)
 	}
 	if jobRowCount > 0 {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)
@@ -266,12 +284,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=3 style="padding-left:60px" class="font-weight-bold">No Jobs Matched Filters</td></tr>`, jobsCollapseName)
 	}
 
-	// if we have no test results, we're done
-	if len(b.currAggregationResult.testResults) == 0 {
-		return s
-	}
 	s += testRows
-
 	return s
 }
 
