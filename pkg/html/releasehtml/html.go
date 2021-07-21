@@ -367,7 +367,7 @@ func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
 		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, displayNames[i])
 	}
 	fmt.Fprintf(w, "<h1 class='text-center'>CI Release Health Summary</h1><p><ul>%s</ul></p>", strings.Join(releaseLinks, "\n"))
-	fmt.Fprintf(w, landingHtmlPageEnd)
+	fmt.Fprint(w, landingHtmlPageEnd)
 }
 
 func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int, allReportNames []string) {
