@@ -74,10 +74,8 @@ func combineTestResult(lhs, rhs sippyprocessingv1.TestResult) sippyprocessingv1.
 }
 
 func combineBugLists(lhs, rhs []bugsv1.Bug) []bugsv1.Bug {
-	combined := []bugsv1.Bug{}
-	for _, curr := range lhs {
-		combined = append(combined, curr)
-	}
+	combined := append([]bugsv1.Bug{}, lhs...)
+
 	for _, curr := range rhs {
 		if existing := findBug(curr.ID, combined); existing != nil {
 			continue
@@ -140,10 +138,7 @@ func acceptAllTests(testResult sippyprocessingv1.TestResult) bool {
 
 func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
-		if testResult.PassPercentage > successThreshold {
-			return false
-		}
-		return true
+		return testResult.PassPercentage <= successThreshold
 	}
 }
 
@@ -169,10 +164,7 @@ func IsHighValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 
 func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
-		if testResult.Successes+testResult.Failures < minRuns {
-			return false
-		}
-		return true
+		return testResult.Successes+testResult.Failures >= minRuns
 	}
 }
 

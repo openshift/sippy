@@ -47,12 +47,9 @@ func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
 	}
 
-	for _, bug := range in.BugList {
-		ret.bugList = append(ret.bugList, bug)
-	}
-	for _, bug := range in.AssociatedBugList {
-		ret.associatedBugList = append(ret.associatedBugList, bug)
-	}
+	ret.bugList = append(ret.bugList, in.BugList...)
+
+	ret.associatedBugList = append(ret.associatedBugList, in.AssociatedBugList...)
 
 	return ret
 }

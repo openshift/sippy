@@ -179,7 +179,7 @@ func noChange(testName string) string {
 
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {
 	if cellResult == nil {
-		return fmt.Sprintf("      <td class=\"text-center table-secondary\"><nobr>no-data</nobr></td>")
+		return "      <td class=\"text-center table-secondary\"><nobr>no-data</nobr></td>"
 	}
 
 	// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
