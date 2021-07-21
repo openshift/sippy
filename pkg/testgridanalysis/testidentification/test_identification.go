@@ -177,7 +177,7 @@ func IsUpgradeRelatedTest(testName string) bool {
 		return true
 	}
 	if strings.Contains(testName, `[sig-cluster-lifecycle] cluster upgrade should be fast`) {
-		// indicates that every cluster operator upgraded withing X minutes (currently 75 as of today)
+		// indicates that every cluster operator upgraded within X minutes (currently 75 as of today)
 		return true
 	}
 	if IsMachineConfigPoolsUpgradedTest(testName) {
