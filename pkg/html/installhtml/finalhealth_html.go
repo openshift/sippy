@@ -1,3 +1,4 @@
+//nolint:dupl // TODO: Combine this and install_html.go
 package installhtml
 
 import (

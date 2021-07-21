@@ -1,3 +1,4 @@
+//nolint:dupl // TODO: Combine this and final_health.go
 package installhtml
 
 import (
