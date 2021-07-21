@@ -230,7 +230,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 func canaryTestFailures(all []sippyprocessingv1.FailingTestResult) []sippyv1.CanaryTestFailInstance {
 	var canaryFailures []sippyv1.CanaryTestFailInstance
 
-	if len(all) <= 0 {
+	if len(all) == 0 {
 		return nil
 	}
 

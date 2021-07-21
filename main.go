@@ -129,9 +129,11 @@ func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboa
 // dashboardArgFromOpenshiftRelease converts a --release string into the generic --dashboard arg
 func dashboardArgFromOpenshiftRelease(release string) string {
 	const openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-	dashboards := []string{}
-	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "blocking"))
-	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "informing"))
+
+	dashboards := []string{
+		fmt.Sprintf(openshiftDashboardTemplate, release, "blocking"),
+		fmt.Sprintf(openshiftDashboardTemplate, release, "informing"),
+	}
 
 	argString := release + "=" + strings.Join(dashboards, ",") + "=" + release
 	return argString
@@ -163,7 +165,7 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error {
-	if len(o.FetchData) != 0 {
+	if o.FetchData != "" {
 		dashboards := []string{}
 		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
