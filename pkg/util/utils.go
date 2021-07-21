@@ -78,13 +78,6 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 		return false
 	}
 	return true
-	/*
-		switch status {
-		case "FAILING", "FLAKY":
-			return true
-		}
-		return false
-	*/
 }
 
 func IsActiveBug(bug bugsv1.Bug) bool {

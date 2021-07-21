@@ -373,10 +373,8 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/variants", s.variantsReport)
 
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
 	if err := http.ListenAndServe(s.listenAddr, nil); err != nil {
 		klog.Exitf("Server exited: %v", err)
 	}
-	//}()
 }

@@ -181,7 +181,6 @@ func URLForJobDetails(dashboard, jobName string) *gourl.URL {
 	query := url.Query()
 	query.Set("show-stale-tests", "")
 	query.Set("tab", jobName)
-	//query.Set("grid", "old")
 	url.RawQuery = query.Encode()
 
 	return url

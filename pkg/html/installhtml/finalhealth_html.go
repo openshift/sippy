@@ -52,6 +52,5 @@ func PrintOperatorHealthHtmlReport(w http.ResponseWriter, req *http.Request, rep
 	fmt.Fprint(w, summaryOperatorHealthRelatedTests(report, prevReport, numDays, release))
 	fmt.Fprintln(w)
 
-	//w.Write(result)
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }

@@ -217,7 +217,6 @@ func StandardTestResultFilter(
 		TestResultFilterFuncs{
 			FilterLowValueTestsByName,
 			FilterTooFewTestRuns(minRuns),
-			//FilterSuccessfulTestResults(successThreshold),
 		}.And,
 	}.Or
 }

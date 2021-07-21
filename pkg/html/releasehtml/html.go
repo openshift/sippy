@@ -416,6 +416,5 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		klog.Errorf("Unable to render page: %v", err)
 	}
 
-	//w.Write(result)
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }

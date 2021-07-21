@@ -156,7 +156,6 @@ func generateSortedBugFailureCounts(allTestResultsByName testResultsByName) []bu
 
 func percent(success, failure int) float64 {
 	if success+failure == 0 {
-		//return math.NaN()
 		return 0.0
 	}
 	return float64(success) / float64(success+failure) * 100.0
