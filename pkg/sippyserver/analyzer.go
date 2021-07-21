@@ -173,6 +173,7 @@ func (a TestReportGeneratorConfig) deepCopy() TestReportGeneratorConfig {
 		},
 	}
 	if a.TestGridLoadingConfig.JobFilter != nil {
+		//nolint:staticcheck // Copy() is appropriate since this performs a deep copy.
 		ret.TestGridLoadingConfig.JobFilter = a.TestGridLoadingConfig.JobFilter.Copy()
 	}
 
