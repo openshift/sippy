@@ -26,6 +26,7 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-metal-ipi-ovn-dualstack-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup",
+	"e2e-metal-ipi-ovn-dualstack-local-gateway-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-upgrade-baremetalds-devscripts-setup container test",
 	"e2e-metal-single-node-live-iso-baremetalds-packet-setup",
 	"e2e-openstack-upgrade-ipi-install",
