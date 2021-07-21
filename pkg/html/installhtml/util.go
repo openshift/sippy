@@ -107,6 +107,7 @@ func getDataForTestsByVariant(
 	return ret
 }
 
+//nolint:goconst
 func (a testsByVariant) getTableHTML(
 	title string,
 	anchor string,

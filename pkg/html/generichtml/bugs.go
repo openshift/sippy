@@ -18,6 +18,7 @@ func bugLink(bug bugsv1.Bug) string {
 }
 
 // bugHTMLForTest release and testName are required.
+//nolint:goconst
 func bugHTMLForTest(bugList, associatedBugList []bugsv1.Bug, release, testName string) string {
 	bugHTML := ""
 	if len(bugList) == 0 {

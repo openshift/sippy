@@ -14,6 +14,8 @@ import (
 	"k8s.io/klog"
 )
 
+const overall string = "Overall"
+
 type SythenticTestManager interface {
 	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 	// and potentially producing synthentic test results and aggregations to better inform sippy.
@@ -138,7 +140,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					}
 				}
 				switch {
-				case test.Name == "Overall":
+				case test.Name == overall:
 					jrr.Succeeded = true
 					// if the overall job succeeded, setup is always considered successful, even for jobs
 					// that don't have an explicitly defined setup test.
@@ -177,13 +179,13 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) {
+				if test.Name != overall && !testidentification.IsSetupContainerEquivalent(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
 
 				switch {
-				case test.Name == "Overall":
+				case test.Name == overall:
 					jrr.Failed = true
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
@@ -232,7 +234,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about container setup to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
+	if test.Name != overall && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
 		return
 	}
 

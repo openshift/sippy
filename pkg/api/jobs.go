@@ -11,6 +11,8 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 )
 
+const failure string = "Failure"
+
 func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 	if result.Succeeded {
 		return "S" // Success
@@ -20,16 +22,16 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 		return "R" // Running
 	}
 
-	if result.SetupStatus == "Failure" {
+	if result.SetupStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
 			return "N" // iNfrastructure failure
 		}
 		return "I" // Install failure
 	}
-	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == "Failure" || result.UpgradeForMachineConfigPoolsStatus == "Failure") {
+	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
 		return "U" // Upgrade failure
 	}
-	if result.OpenShiftTestsStatus == "Failure" {
+	if result.OpenShiftTestsStatus == failure {
 		return "F" // Failure
 	}
 	if result.SetupStatus == "" {
