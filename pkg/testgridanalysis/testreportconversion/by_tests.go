@@ -78,7 +78,7 @@ func getTestResultsByName(jobResults []sippyprocessingv1.JobResult) testResultsB
 					TestFailures:   testResult.Failures,
 					TestSuccesses:  testResult.Successes,
 					PassPercentage: testResult.PassPercentage,
-					TestGridUrl:    jobResult.TestGridUrl,
+					TestGridURL:    jobResult.TestGridURL,
 				})
 				break
 			}

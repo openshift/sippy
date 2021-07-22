@@ -3,10 +3,11 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/sippy/pkg/html/generichtml"
 	"net/http"
 	"regexp"
 	"strconv"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -91,13 +92,13 @@ func (s *Server) RefreshData() {
 
 func (s *Server) defaultHandler(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/" {
-		s.printHtmlReport(w, req)
+		s.printHTMLReport(w, req)
 	} else {
 		generichtml.PrintStatusMessage(w, http.StatusNotFound, "Page not found.")
 	}
 }
 
-func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) printHTMLReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
 	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
 	if !found {
@@ -109,7 +110,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	releasehtml.PrintHtmlReport(w, req,
+	releasehtml.PrintHTMLReport(w, req,
 		s.currTestReports[dashboard.ReportName].CurrentPeriodReport,
 		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
 		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
@@ -282,7 +283,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
-	releasehtml.PrintHtmlReport(w, req,
+	releasehtml.PrintHTMLReport(w, req,
 		testReports.CurrentPeriodReport,
 		testReports.CurrentTwoDayReport,
 		testReports.PreviousWeekReport,
@@ -363,10 +364,15 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
-	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
-	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHtmlReport)
-	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHtmlReport)
-	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHtmlReport)
+	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
+	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
+	http.DefaultServeMux.HandleFunc("/", s.printHTMLReport)
+	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
+	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)

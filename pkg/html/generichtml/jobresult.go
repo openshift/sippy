@@ -37,7 +37,7 @@ type jobResultRenderBuilder struct {
 func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 	ret := jobResultDisplay{
 		displayName:            in.Name,
-		testGridURL:            in.TestGridUrl,
+		testGridURL:            in.TestGridURL,
 		displayPercent:         in.PassPercentage,
 		parenDisplayPercentage: in.PassPercentageWithoutInfrastructureFailures,
 		totalRuns:              in.Successes + in.Failures,
@@ -73,7 +73,7 @@ func bugzillaJobResultToDisplay(in sippyprocessingv1.BugzillaJobResult) jobResul
 func failingJobResultToDisplay(in sippyprocessingv1.FailingTestJobResult) jobResultDisplay {
 	ret := jobResultDisplay{
 		displayName:    in.Name,
-		testGridURL:    in.TestGridUrl,
+		testGridURL:    in.TestGridURL,
 		displayPercent: in.PassPercentage,
 		// TODO gather this info
 		//displayPercentWithoutInfraFailures: in.PassPercentageWithoutInfrastructureFailures,

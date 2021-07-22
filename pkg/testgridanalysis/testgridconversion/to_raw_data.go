@@ -243,7 +243,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	if !ok {
 		jobResult = testgridanalysisapi.RawJobResult{
 			JobName:        job.Name,
-			TestGridJobUrl: job.TestGridUrl,
+			TestGridJobURL: job.TestGridURL,
 			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
 			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 		}

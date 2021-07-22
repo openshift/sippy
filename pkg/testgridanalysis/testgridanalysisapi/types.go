@@ -17,7 +17,7 @@ type RawData struct {
 
 type RawJobResult struct {
 	JobName        string
-	TestGridJobUrl string
+	TestGridJobURL string
 
 	// JobRunResults is a map from individual job run URL to the results of that job run
 	JobRunResults map[string]RawJobRunResult

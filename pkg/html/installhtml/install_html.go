@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	installTopPageHtml = `
+	installTopPageHTML = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -27,7 +27,7 @@ var (
 `
 )
 
-func PrintInstallHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
+func PrintInstallHTMLReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release "+release+" Install Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -42,7 +42,7 @@ func PrintInstallHtmlReport(w http.ResponseWriter, req *http.Request, report, pr
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, installTopPageHtml, release)
+	fmt.Fprintf(w, installTopPageHTML, release)
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)

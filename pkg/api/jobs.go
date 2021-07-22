@@ -77,7 +77,7 @@ func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconvers
 			Timestamps:  job.Timestamps,
 			Results:     statuses,
 			BuildIDs:    job.ChangeLists,
-			TestGridURL: job.TestGridUrl,
+			TestGridURL: job.TestGridURL,
 		})
 	}
 

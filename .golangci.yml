@@ -20,6 +20,7 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - revive
     - staticcheck
     - structcheck
     - typecheck
@@ -90,3 +91,6 @@ linters-settings:
       - ptrToRefParam
       - typeUnparen
       - unnecessaryBlock
+  revive:
+    rules:
+      - name: var-naming

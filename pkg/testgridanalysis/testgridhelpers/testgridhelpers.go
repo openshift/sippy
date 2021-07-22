@@ -100,7 +100,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 	if err != nil {
 		return details, err
 	}
-	details.TestGridUrl = URLForJob(dashboard, jobName).String()
+	details.TestGridURL = URLForJob(dashboard, jobName).String()
 	return details, nil
 }
 

@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	BugSearchUrl = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
+	BugSearchURL = "https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search="
 
-	landingHtmlPageEnd = `
+	landingHTMLPageEnd = `
 </div>
 <p>
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
@@ -30,7 +30,7 @@ const (
 </html>
 `
 
-	dashboardPageHtml = `
+	dashboardPageHTML = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -258,7 +258,7 @@ func failureGroupList(report sippyprocessingv1.TestReport) string {
 		<td><a target="_blank" href=%s>%s</a></td><td>%d</td>
 	</tr>`
 	for _, fg := range report.FailureGroups {
-		s += fmt.Sprintf(template, fg.Url, fg.Job, fg.TestFailures)
+		s += fmt.Sprintf(template, fg.URL, fg.Job, fg.TestFailures)
 	}
 	s += "</table>"
 	return s
@@ -279,7 +279,7 @@ func testImpactingBugs(testImpactingBugs []bugsv1.Bug) string {
 	`
 
 	for _, bug := range testImpactingBugs {
-		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td><td>%d</td></tr> ", bug.Url, bug.ID, bug.Summary, bug.FailureCount, bug.FlakeCount)
+		s += fmt.Sprintf("<tr><td><a target=\"_blank\" href=%s>%d: %s</a></td><td>%d</td><td>%d</td></tr> ", bug.URL, bug.ID, bug.Summary, bug.FailureCount, bug.FlakeCount)
 	}
 
 	s += "</table>"
@@ -306,18 +306,18 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 		failureCount int
 		flakeCount   int
 		bugIds       []int64
-		bugUrls      []string
+		bugURLs      []string
 	}
 	components := make(map[string]Component)
 	for _, bug := range testImpactingBugs {
 		for _, component := range bug.Component {
 			if c, found := components[component]; !found {
-				components[component] = Component{component, 1, bug.FailureCount, bug.FlakeCount, []int64{bug.ID}, []string{bug.Url}}
+				components[component] = Component{component, 1, bug.FailureCount, bug.FlakeCount, []int64{bug.ID}, []string{bug.URL}}
 			} else {
 				c.bugCount++
 				c.failureCount += bug.FailureCount
 				c.flakeCount += bug.FlakeCount
-				c.bugUrls = append(c.bugUrls, bug.Url)
+				c.bugURLs = append(c.bugURLs, bug.URL)
 				c.bugIds = append(c.bugIds, bug.ID)
 				components[component] = c
 			}
@@ -337,7 +337,7 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 	for _, c := range sorted {
 
 		links := ""
-		for i, url := range c.bugUrls {
+		for i, url := range c.bugURLs {
 			links += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", url, c.bugIds[i])
 		}
 
@@ -367,10 +367,10 @@ func WriteLandingPage(w http.ResponseWriter, displayNames []string) {
 		releaseLinks[i] = fmt.Sprintf(`<li><a href="?release=%s">release-%[1]s</a></li>`, displayNames[i])
 	}
 	fmt.Fprintf(w, "<h1 class='text-center'>CI Release Health Summary</h1><p><ul>%s</ul></p>", strings.Join(releaseLinks, "\n"))
-	fmt.Fprint(w, landingHtmlPageEnd)
+	fmt.Fprint(w, landingHTMLPageEnd)
 }
 
-func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int, allReportNames []string) {
+func PrintHTMLReport(w http.ResponseWriter, req *http.Request, report, twoDayReport, prevReport sippyprocessingv1.TestReport, numDays, jobTestCount int, allReportNames []string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release CI Health Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -402,7 +402,7 @@ func PrintHtmlReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"topLevelIndicators":                     topLevelIndicators,
 			"releasesList":                           releasesList,
 		},
-	).Parse(dashboardPageHtml))
+	).Parse(dashboardPageHTML))
 
 	if err := dashboardPage.Execute(w, TestReports{
 		Current:      report,

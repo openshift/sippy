@@ -106,7 +106,7 @@ type FailingTestJobResult struct {
 	TestFailures   int     `json:"testFailures"`
 	TestSuccesses  int     `json:"testSuccesses"`
 	PassPercentage float64 `json:"passPercentage"`
-	TestGridUrl    string  `json:"testGridUrl"`
+	TestGridURL    string  `json:"testGridURL"`
 }
 
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
@@ -128,7 +128,7 @@ type TestResult struct {
 
 type JobRunResult struct {
 	Job                string   `json:"job"`
-	Url                string   `json:"url"`
+	URL                string   `json:"url"`
 	TestFailures       int      `json:"testFailures"`
 	FailedTestNames    []string `json:"failedTestNames"`
 	Failed             bool     `json:"failed"`
@@ -146,7 +146,7 @@ type JobResult struct {
 	PassPercentage                              float64      `json:"passPercentage"`
 	PassPercentageWithKnownFailures             float64      `json:"passPercentageWithKnownFailures"`
 	PassPercentageWithoutInfrastructureFailures float64      `json:"passPercentageWithoutInfrastructureFailures"`
-	TestGridUrl                                 string       `json:"testGridUrl"`
+	TestGridURL                                 string       `json:"testGridURL"`
 	BugList                                     []bugsv1.Bug `json:"bugList"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
 	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`

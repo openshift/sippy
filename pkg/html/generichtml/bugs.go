@@ -12,9 +12,9 @@ import (
 
 func bugLink(bug bugsv1.Bug) string {
 	if !util.IsActiveBug(bug) {
-		return fmt.Sprintf(`<a target="_blank" href="%s"><strike>%d</strike></a> `, bug.Url, bug.ID)
+		return fmt.Sprintf(`<a target="_blank" href="%s"><strike>%d</strike></a> `, bug.URL, bug.ID)
 	}
-	return fmt.Sprintf(`<a target="_blank" href="%s">%d</a> `, bug.Url, bug.ID)
+	return fmt.Sprintf(`<a target="_blank" href="%s">%d</a> `, bug.URL, bug.ID)
 }
 
 // bugHTMLForTest release and testName are required.
@@ -70,9 +70,9 @@ func bugHTMLForJob(bugList, associatedBugList []bugsv1.Bug, release, jobName, te
 }
 
 func openATestBugHTML(testName, release string) string {
-	short_desc := testName
-	if len(short_desc) > 255 {
-		short_desc = short_desc[:255]
+	shortDesc := testName
+	if len(shortDesc) > 255 {
+		shortDesc = shortDesc[:255]
 	}
 	searchURL := testToSearchURL(testName)
 
@@ -84,8 +84,8 @@ FIXME: Provide a snippet of the test failure or error from the job log
 `
 
 	bug := fmt.Sprintf(
-		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
-		url.QueryEscape(short_desc),
+		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&shortDesc=%[1]s&cf_environment=%[2]s&comment=test:%%0A%[2]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20search%%20results:%%0A%[3]s%%0A%%0A%[4]s&version=%[5]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
+		url.QueryEscape(shortDesc),
 		url.QueryEscape(testName),
 		url.QueryEscape(searchURL),
 		url.QueryEscape(exampleJob),
@@ -95,9 +95,9 @@ FIXME: Provide a snippet of the test failure or error from the job log
 }
 
 func openAJobBugHTML(jobName, testgridURL, release string) string {
-	short_desc := jobName
-	if len(short_desc) > 255 {
-		short_desc = short_desc[:255]
+	shortDesc := jobName
+	if len(shortDesc) > 255 {
+		shortDesc = shortDesc[:255]
 	}
 
 	exampleJob :=
@@ -108,8 +108,8 @@ FIXME: Provide a snippet of the test failure or error from the job log
 `
 
 	bug := fmt.Sprintf(
-		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&short_desc=%[1]s&cf_environment=%[2]s&comment=job:%%0A%[3]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20testgrid%%20results:%%0A%[4]s%%0A%%0A%[5]s&version=%[6]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
-		url.QueryEscape(short_desc),
+		"<a target=\"_blank\" href=https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%%20Hat&product=OpenShift%%20Container%%20Platform&cf_internal_whiteboard=buildcop&shortDesc=%[1]s&cf_environment=%[2]s&comment=job:%%0A%[3]s%%20%%0A%%0Ais%%20failing%%20frequently%%20in%%20CI,%%20see%%20testgrid%%20results:%%0A%[4]s%%0A%%0A%[5]s&version=%[6]s&cc=sippy@dptools.openshift.org>Open a bug</a>",
+		url.QueryEscape(shortDesc),
 		url.QueryEscape(buganalysis.GetJobKey(jobName)),
 		jobName,
 		url.QueryEscape(testgridURL),

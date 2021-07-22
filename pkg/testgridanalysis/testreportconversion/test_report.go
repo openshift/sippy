@@ -105,7 +105,7 @@ func filterFailureGroups(
 
 			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
 				Job:                jobResult.JobName,
-				Url:                rawJRR.JobRunURL,
+				URL:                rawJRR.JobRunURL,
 				TestFailures:       rawJRR.TestFailures,
 				FailedTestNames:    rawJRR.FailedTestNames,
 				Failed:             rawJRR.Failed,
@@ -131,14 +131,14 @@ func generateSortedBugFailureCounts(allTestResultsByName testResultsByName) []bu
 	for _, testResult := range allTestResultsByName {
 		bugList := testResult.TestResultAcrossAllJobs.BugList
 		for _, bug := range bugList {
-			if b, found := bugs[bug.Url]; found {
+			if b, found := bugs[bug.URL]; found {
 				b.FailureCount += testResult.TestResultAcrossAllJobs.Failures
 				b.FlakeCount += testResult.TestResultAcrossAllJobs.Flakes
-				bugs[bug.Url] = b
+				bugs[bug.URL] = b
 			} else {
 				bug.FailureCount = testResult.TestResultAcrossAllJobs.Failures
 				bug.FlakeCount = testResult.TestResultAcrossAllJobs.Flakes
-				bugs[bug.Url] = bug
+				bugs[bug.URL] = bug
 			}
 		}
 	}

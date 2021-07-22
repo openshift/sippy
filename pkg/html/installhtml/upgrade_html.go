@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	upgradeTopPageHtml = `
+	upgradeTopPageHTML = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -26,7 +26,7 @@ var (
 `
 )
 
-func PrintUpgradeHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
+func PrintUpgradeHTMLReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release "+release+" Upgrade Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -41,7 +41,7 @@ func PrintUpgradeHtmlReport(w http.ResponseWriter, req *http.Request, report, pr
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, upgradeTopPageHtml, release)
+	fmt.Fprintf(w, upgradeTopPageHTML, release)
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
