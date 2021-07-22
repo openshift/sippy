@@ -210,7 +210,7 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 			<th>Test Name</th><th>Pass Rate</th>
 		</tr>
 	`
-	template := `
+	tmpl := `
 		<tr>
 			<td>%s</td><td>%0.2f%% <span class="text-nowrap">(%d runs)</span></td>
 		</tr>
@@ -234,7 +234,7 @@ func canaryTestFailures(all, prevAll []sippyprocessingv1.FailingTestResult) stri
 
 		testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", encodedTestName, test.TestName)
 
-		s += fmt.Sprintf(template, testLink, test.TestResultAcrossAllJobs.PassPercentage, test.TestResultAcrossAllJobs.Successes+test.TestResultAcrossAllJobs.Failures)
+		s += fmt.Sprintf(tmpl, testLink, test.TestResultAcrossAllJobs.PassPercentage, test.TestResultAcrossAllJobs.Successes+test.TestResultAcrossAllJobs.Failures)
 	}
 	s += "</table>"
 	return s
@@ -253,12 +253,12 @@ func failureGroupList(report sippyprocessingv1.TestReport) string {
 		</tr>
 	`
 
-	template := `
+	tmpl := `
 	<tr>
 		<td><a target="_blank" href=%s>%s</a></td><td>%d</td>
 	</tr>`
 	for _, fg := range report.FailureGroups {
-		s += fmt.Sprintf(template, fg.URL, fg.Job, fg.TestFailures)
+		s += fmt.Sprintf(tmpl, fg.URL, fg.Job, fg.TestFailures)
 	}
 	s += "</table>"
 	return s
@@ -337,8 +337,8 @@ func testImpactingComponents(testImpactingBugs []bugsv1.Bug) string {
 	for _, c := range sorted {
 
 		links := ""
-		for i, url := range c.bugURLs {
-			links += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", url, c.bugIds[i])
+		for i, bugURL := range c.bugURLs {
+			links += fmt.Sprintf("<a target=\"_blank\" href=%s>%d</a> ", bugURL, c.bugIds[i])
 		}
 
 		s += fmt.Sprintf("<tr><td>%s</td><td>%d</td><td>%d</td><td>%d: %s</td></tr> ", c.name, c.failureCount, c.flakeCount, c.bugCount, links)

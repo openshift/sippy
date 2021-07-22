@@ -93,4 +93,5 @@ linters-settings:
       - unnecessaryBlock
   revive:
     rules:
+      - name: import-shadowing
       - name: var-naming
