@@ -18,7 +18,7 @@ import (
 // stats on failure groups
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) *sippyv1.FailureGroups {
 
-	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
+	stats := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	failureGroupStruct := sippyv1.FailureGroups{
 		JobRunsWithFailureGroup: map[string]int{
@@ -26,12 +26,12 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 			"prev":   len(failureGroupsPrev),
 		},
 		AvgFailureGroupSize: map[string]int{
-			"latest": avg,
-			"prev":   avgPrev,
+			"latest": stats.Avg,
+			"prev":   stats.AvgPrev,
 		},
 		MedianFailureGroupSize: map[string]int{
-			"latest": median,
-			"prev":   medianPrev,
+			"latest": stats.Median,
+			"prev":   stats.MedianPrev,
 		},
 	}
 	return &failureGroupStruct

@@ -175,7 +175,12 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
 				}
-				addTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
+				addTestResult(jobResults.TestResults, testgridanalysisapi.RawTestResult{
+					Name:      testName,
+					Successes: result.pass,
+					Failures:  result.fail,
+					Flakes:    0,
+				})
 			}
 
 			if jrr.SetupStatus == "" && matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {

@@ -177,6 +177,7 @@ func (c *bugCache) LastUpdateError() error {
 	return c.lastUpdateError
 }
 
+//nolint:revive // flag-parameter: parameter 'invertReleaseQuery' seems to be a control flag, avoid control coupling
 func (c *bugCache) listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
 	c.lock.RLock()
 	defer c.lock.RUnlock()

@@ -143,7 +143,7 @@ func (o *Options) Validate() error {
 	switch o.Output {
 	case "json":
 	default:
-		return fmt.Errorf("invalid output type: %s\n", o.Output)
+		return fmt.Errorf("invalid output type: %s", o.Output)
 	}
 
 	for _, dashboard := range o.Dashboards {
@@ -228,9 +228,9 @@ func (o *Options) hasOCPDashboard() bool {
 func (o *Options) getBugCache() buganalysis.BugCache {
 	if o.SkipBugLookup || len(o.OpenshiftReleases) == 0 {
 		return buganalysis.NewNoOpBugCache()
-	} else {
-		return buganalysis.NewBugCache()
 	}
+
+	return buganalysis.NewBugCache()
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {

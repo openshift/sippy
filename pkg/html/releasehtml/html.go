@@ -81,7 +81,7 @@ const (
 
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult, endDay int) string {
 
-	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
+	stats := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	groups := `
 	<table class="table">
@@ -104,7 +104,7 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 			<td>Median Failure Group Size: </td><td>%d</td><td>%d</td>
 		</tr>
 	</table>`
-	s := fmt.Sprintf(groups, endDay, len(failureGroups), len(failureGroupsPrev), avg, avgPrev, median, medianPrev)
+	s := fmt.Sprintf(groups, endDay, len(failureGroups), len(failureGroupsPrev), stats.Avg, stats.AvgPrev, stats.Median, stats.MedianPrev)
 	return s
 }
 
