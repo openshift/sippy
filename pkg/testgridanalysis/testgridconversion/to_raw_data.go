@@ -16,7 +16,7 @@ import (
 
 const overall string = "Overall"
 
-type SythenticTestManager interface {
+type SyntheticTestManager interface {
 	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 	// and potentially producing synthentic test results and aggregations to better inform sippy.
 	// This needs to be called after all the JobDetails have been processed.
@@ -26,7 +26,7 @@ type SythenticTestManager interface {
 }
 
 type ProcessingOptions struct {
-	SythenticTestManager SythenticTestManager
+	SyntheticTestManager SyntheticTestManager
 	StartDay             int
 	NumDays              int
 }
@@ -42,7 +42,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	warnings := o.SythenticTestManager.CreateSyntheticTests(rawJobResults)
+	warnings := o.SyntheticTestManager.CreateSyntheticTests(rawJobResults)
 
 	return rawJobResults, warnings
 }

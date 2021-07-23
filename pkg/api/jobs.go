@@ -41,9 +41,9 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 	return "f" // unknown failure
 }
 
-func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconversion.SythenticTestManager, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) {
+func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconversion.SyntheticTestManager, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) {
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
-		SythenticTestManager: syntheticTestManager,
+		SyntheticTestManager: syntheticTestManager,
 		StartDay:             0,
 		NumDays:              1000,
 	}

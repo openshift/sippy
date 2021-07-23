@@ -192,7 +192,7 @@ func (o *Options) runServerMode() error {
 		o.toDisplayDataConfig(),
 		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
-		o.getSynthenticTestManager(),
+		o.getSyntheticTestManager(),
 		o.getVariantManager(),
 		o.getBugCache(),
 	)
@@ -208,7 +208,7 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
 	return enc.Encode(testReport.ByTest)
@@ -254,12 +254,12 @@ func (o *Options) getVariantManager() testidentification.VariantManager {
 	}
 }
 
-func (o *Options) getSynthenticTestManager() testgridconversion.SythenticTestManager {
+func (o *Options) getSyntheticTestManager() testgridconversion.SyntheticTestManager {
 	if o.hasOCPDashboard() {
-		return testgridconversion.NewOpenshiftSythenticTestManager()
+		return testgridconversion.NewOpenshiftSyntheticTestManager()
 	}
 
-	return testgridconversion.NewEmptySythenticTestManager()
+	return testgridconversion.NewEmptySyntheticTestManager()
 }
 
 func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {

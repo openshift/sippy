@@ -25,7 +25,7 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
-	syntheticTestManager testgridconversion.SythenticTestManager,
+	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) *Server {
@@ -52,7 +52,7 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
-	syntheticTestManager      testgridconversion.SythenticTestManager
+	syntheticTestManager      testgridconversion.SyntheticTestManager
 	variantManager            testidentification.VariantManager
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig

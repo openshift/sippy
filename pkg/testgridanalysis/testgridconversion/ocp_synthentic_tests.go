@@ -10,7 +10,7 @@ import (
 
 type openshiftSyntheticManager struct{}
 
-func NewOpenshiftSythenticTestManager() SythenticTestManager {
+func NewOpenshiftSyntheticTestManager() SyntheticTestManager {
 	return openshiftSyntheticManager{}
 }
 
