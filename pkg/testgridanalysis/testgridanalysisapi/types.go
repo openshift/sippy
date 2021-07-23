@@ -47,7 +47,7 @@ type RawJobRunResult struct {
 	Succeeded       bool
 
 	// SetupStatus can be "", "Success", "Failure"
-	// Used to create synthentic tests.
+	// Used to create synthetic tests.
 	SetupStatus         string
 	FinalOperatorStates []OperatorState
 

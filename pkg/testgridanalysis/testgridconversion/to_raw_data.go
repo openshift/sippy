@@ -18,7 +18,7 @@ const overall string = "Overall"
 
 type SyntheticTestManager interface {
 	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
-	// and potentially producing synthentic test results and aggregations to better inform sippy.
+	// and potentially producing synthetic test results and aggregations to better inform sippy.
 	// This needs to be called after all the JobDetails have been processed.
 	// This method mutates the rawJobResults
 	// returns warnings found in the data. Not failures to process it.
