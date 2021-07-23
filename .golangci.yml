@@ -28,6 +28,8 @@ linters:
     - unparam
     - varcheck
 linters-settings:
+  gofmt:
+    simplify: false # do not require the -s flag
   gocritic:
     enabled-checks:
       # Diagnostic
@@ -51,7 +53,6 @@ linters-settings:
       - weakCond
 
       # Performance
-      - appendCombine
       - equalFold
       - indexAlloc
       - rangeExprCopy
@@ -66,7 +67,6 @@ linters-settings:
       - docStub
       - elseif
       - emptyFallthrough
-      - emptyStringTest
       - hexLiteral
       - methodExprCall
       - regexpMust
@@ -98,7 +98,6 @@ linters-settings:
       - name: bool-literal-in-expr
       - name: call-to-gc
       - name: confusing-naming
-      - name: confusing-results
       - name: constant-logical-expr
       - name: context-as-argument
       - name: context-keys-type

@@ -31,19 +31,14 @@ type ProcessingOptions struct {
 	NumDays              int
 }
 
-type lookback struct {
-	startCol int
-	endCol   int
-}
-
 // returns the raw data and a list of warnings encountered processing the data.
 func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
 	for _, jobDetails := range testGridJobInfo {
 		klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
-		lookback := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
-		processJobDetails(rawJobResults, jobDetails, lookback)
+		startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
+		processJobDetails(rawJobResults, jobDetails, startCol, endCol)
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
@@ -52,18 +47,18 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	return rawJobResults, warnings
 }
 
-func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, lookbackCols lookback) {
+func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
-		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", lookbackCols.startCol, lookbackCols.endCol, job.Name, test.Name)
+		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 		for _, prefix := range testSuitePrefixes {
 			test.Name = strings.TrimPrefix(test.Name, prefix)
 		}
 		job.Tests[i] = test
-		processTest(rawJobResults, job, test, lookbackCols)
+		processTest(rawJobResults, job, test, startCol, endCol)
 	}
 }
 
-func computeLookback(startDay, numDays int, timestamps []int) lookback {
+func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	stopTs := time.Now().Add(time.Duration(-1*(startDay+numDays)*24)*time.Hour).Unix() * 1000
 	startTs := time.Now().Add(time.Duration(-1*startDay*24)*time.Hour).Unix() * 1000
 	if startDay <= -1 { // find the most recent startTime
@@ -85,16 +80,10 @@ func computeLookback(startDay, numDays int, timestamps []int) lookback {
 			start = i
 		}
 		if int64(t) < stopTs {
-			return lookback{
-				startCol: start,
-				endCol:   i,
-			}
+			return start, i
 		}
 	}
-	return lookback{
-		startCol: start,
-		endCol:   len(timestamps),
-	}
+	return start, len(timestamps)
 }
 
 // testSuitePrefixes is a list of suite prefixes to remove from test names
@@ -112,10 +101,10 @@ var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import t
 
 // processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
-func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, lookbackCols lookback) (passed, failed, flaked int) {
+func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
 	for _, result := range test.Statuses {
-		if col > lookbackCols.endCol {
+		if col > endCol {
 			break
 		}
 
@@ -125,20 +114,20 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		// we care about(a column which falls within the timestamp range we care about, then start the analysis with the remaining
 		// columns in the run.
 		remaining := result.Count
-		if col < lookbackCols.startCol {
-			for i := 0; i < result.Count && col < lookbackCols.startCol; i++ {
+		if col < startCol {
+			for i := 0; i < result.Count && col < startCol; i++ {
 				col++
 				remaining--
 			}
 		}
 		// if after iterating above we still aren't within the column range we care about, don't do any analysis
 		// on this run of results.
-		if col < lookbackCols.startCol {
+		if col < startCol {
 			continue
 		}
 		switch result.Value {
 		case testgridv1.TestStatusSuccess, testgridv1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
-			for i := col; i < col+remaining && i < lookbackCols.endCol; i++ {
+			for i := col; i < col+remaining && i < endCol; i++ {
 				passed++
 				if result.Value == testgridv1.TestStatusFlake {
 					flaked++
@@ -179,7 +168,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				jobResult.JobRunResults[joburl] = jrr
 			}
 		case testgridv1.TestStatusFailure:
-			for i := col; i < col+remaining && i < lookbackCols.endCol; i++ {
+			for i := col; i < col+remaining && i < endCol; i++ {
 				failed++
 				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
@@ -236,17 +225,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
 	}
 
-	addTestResult(jobResult.TestResults, testgridanalysisapi.RawTestResult{
-		Name:      testName,
-		Successes: passed,
-		Failures:  failed,
-		Flakes:    flaked,
-	})
+	addTestResult(jobResult.TestResults, testName, passed, failed, flaked)
 
 	return
 }
 
-func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, test testgridv1.Test, lookbackCols lookback) {
+func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
 	// strip out tests that don't have predictive or diagnostic value
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about container setup to be able to set infra failures
@@ -265,21 +249,21 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 		}
 	}
 
-	processTestToJobRunResults(jobResult, job, test, lookbackCols)
+	processTestToJobRunResults(jobResult, job, test, startCol, endCol)
 
 	// we have mutated, so assign back to our intermediate value
 	rawJobResults.JobResults[job.Name] = jobResult
 }
 
-func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testResult testgridanalysisapi.RawTestResult) {
-	result, ok := testResults[testResult.Name]
-	if ok {
-		result.Successes += testResult.Successes
-		result.Failures += testResult.Failures
-		result.Flakes += testResult.Flakes
-	} else {
-		result = testResult
+func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
+	result, ok := testResults[testName]
+	if !ok {
+		result = testgridanalysisapi.RawTestResult{}
 	}
+	result.Name = testName
+	result.Successes += passed
+	result.Failures += failed
+	result.Flakes += flaked
 
-	testResults[testResult.Name] = result
+	testResults[testName] = result
 }

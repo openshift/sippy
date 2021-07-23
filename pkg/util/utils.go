@@ -62,7 +62,7 @@ type FailureGroupStats struct {
 }
 
 // ComputeFailureGroupStats computes count, median, and average number of failuregroups
-// returns count, countPrev, median, medianPrev, avg, avgPrev
+// returns FailureGroupStats containing count, countPrev, median, medianPrev, avg, avgPrev
 func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) FailureGroupStats {
 	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {

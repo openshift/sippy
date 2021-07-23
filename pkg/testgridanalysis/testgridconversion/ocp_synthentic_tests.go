@@ -37,11 +37,11 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 			}
 
 			syntheticTests := map[string]*synthenticTestResult{
-				testgridanalysisapi.InstallTestName:             {name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InstallTimeoutTestName:      {name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InfrastructureTestName:      {name: testgridanalysisapi.InfrastructureTestName},
-				testgridanalysisapi.FinalOperatorHealthTestName: {name: testgridanalysisapi.FinalOperatorHealthTestName},
-				testgridanalysisapi.OpenShiftTestsName:          {name: testgridanalysisapi.OpenShiftTestsName},
+				testgridanalysisapi.InstallTestName:             &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InstallTimeoutTestName:      &synthenticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InfrastructureTestName:      &synthenticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+				testgridanalysisapi.FinalOperatorHealthTestName: &synthenticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
+				testgridanalysisapi.OpenShiftTestsName:          &synthenticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
 			}
 			// upgrades should only be indicated on jobs that run upgrades
 			if jrr.UpgradeStarted {
@@ -175,12 +175,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
 				}
-				addTestResult(jobResults.TestResults, testgridanalysisapi.RawTestResult{
-					Name:      testName,
-					Successes: result.pass,
-					Failures:  result.fail,
-					Flakes:    0,
-				})
+				addTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
 			}
 
 			if jrr.SetupStatus == "" && matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {

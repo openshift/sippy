@@ -70,7 +70,7 @@ func IsSetupContainerEquivalent(testName string) bool {
 // Whoever is running or working on TRT gets freedom to choose 10-20 of these for whatever reason they need.  At the moment,
 // we're chasing problems where pods are not running reliably and we have to track it down.
 var curatedTestSubstrings = map[string][]string{
-	"4.9": {
+	"4.9": []string{
 		"Kubernetes APIs remain available",
 		"OAuth APIs remain available",
 		"OpenShift APIs remain available",
@@ -189,4 +189,5 @@ func IsUpgradeRelatedTest(testName string) bool {
 	}
 
 	return false
+
 }

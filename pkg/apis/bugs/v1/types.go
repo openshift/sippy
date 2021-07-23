@@ -4,7 +4,7 @@ import "time"
 
 // Bug is used to represent bugs in some serialized content.  It also tracks some additional metadata.
 type Bug struct {
-	BugzillaBug  `json:",inline"` //nolint:revive
+	BugzillaBug  `json:",inline"` //nolint:revive // inline is a known option
 	URL          string           `json:"url"`
 	FailureCount int              `json:"failureCount,omitempty"`
 	FlakeCount   int              `json:"flakeCount,omitempty"`
