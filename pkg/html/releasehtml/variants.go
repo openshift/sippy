@@ -2,15 +2,17 @@ package releasehtml
 
 import (
 	"fmt"
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/html/generichtml"
-	"github.com/openshift/sippy/pkg/util"
 	"html/template"
 	"net/http"
 	"time"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/html/generichtml"
+	"github.com/openshift/sippy/pkg/util"
+	"k8s.io/klog"
 )
 
-var variantsTemplate = template.Must(template.New("variants").Parse(`
+var variantStart = template.Must(template.New("variants").Parse(`
 <div align="center">
 	<h1>Results for {{.Variant}} on {{.Release}}</h1>
 </div>
@@ -25,32 +27,31 @@ var variantsTemplate = template.Must(template.New("variants").Parse(`
 <tr>
 <th>Job</th><th></th><th>Latest 7 days</th><th></th><th>Previous 7 days</th>
 </tr>
-{{.Results}}
-</table>
 `))
 
-type templateData struct {
-	Release string
-	Variant string
-	Results template.HTML
-}
-
-
 // PrintVariantsReport shows an aggregated listing of all jobs for a particular variant.
-func PrintVariantsReport(w http.ResponseWriter, release, variant string, currentWeek, previousWeek v1.VariantResults, timestamp time.Time) {
+func PrintVariantsReport(w http.ResponseWriter, release, variant string, currentWeek, previousWeek *v1.VariantResults, timestamp time.Time) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 
-	results := template.HTML(generichtml.NewJobAggregationResultRendererFromVariantResults("by-job", currentWeek, release).
-		WithMaxTestResultsToShow(10).
-		WithMaxJobResultsToShow(0).
-		WithPreviousVariantResults(util.FindVariantResultsForName(currentWeek.VariantName, []v1.VariantResults{previousWeek})).
-		ToHTML())
+	var s string
+	for _, currJobResult := range currentWeek.JobResults {
+		prevJobResult := util.FindJobResultForJobName(currJobResult.Name, previousWeek.JobResults)
+		jobHTML := generichtml.NewJobResultRendererFromJobResult("by-variant", currJobResult, release).
+			WithMaxTestResultsToShow(10).
+			WithPreviousJobResult(prevJobResult).
+			ToHTML()
+
+		s += jobHTML
+	}
 
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Job Results for Variant " + variant)
-	variantsTemplate.Execute(w, map[string]interface{}{
+	if err := variantStart.Execute(w, map[string]interface{}{
 		"Variant": variant,
 		"Release": release,
-		"Results": results,
-	})
+	}); err != nil {
+		klog.Error(err)
+	}
+
+	fmt.Fprint(w, s + "</table>")
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, timestamp.Format("Jan 2 15:04 2006 MST"))
 }

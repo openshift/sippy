@@ -132,7 +132,6 @@ func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport, numDa
 
 	for _, currVariant := range report.ByVariant {
 		variantHTML := generichtml.NewJobAggregationResultRendererFromVariantResults("by-variant", currVariant, release).
-			GroupBy("variant").
 			WithMaxTestResultsToShow(jobTestCount).
 			WithPreviousVariantResults(util.FindVariantResultsForName(currVariant.VariantName, reportPrev.ByVariant)).
 			ToHTML()

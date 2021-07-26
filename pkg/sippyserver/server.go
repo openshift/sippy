@@ -320,19 +320,20 @@ func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	variant := req.URL.Query().Get("variant")
+	reports := s.currTestReports
 
 	if variant == "" || release == "" {
 		generichtml.PrintStatusMessage(w, http.StatusBadRequest, "Please specify a variant and release.")
 		return
 	}
 
-	if _, ok := s.currTestReports[release]; !ok {
+	if _, ok := reports[release]; !ok {
 		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Release %q not found.", release))
 		return
 	}
 
 	var currentWeek *sippyprocessingv1.VariantResults
-	for _, report := range s.currTestReports[release].CurrentPeriodReport.ByVariant {
+	for _, report := range reports[release].CurrentPeriodReport.ByVariant {
 		if report.VariantName == variant {
 			currentWeek = &report
 			break
@@ -340,7 +341,7 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var previousWeek *sippyprocessingv1.VariantResults
-	for _, report := range s.currTestReports[release].PreviousWeekReport.ByVariant {
+	for _, report := range reports[release].PreviousWeekReport.ByVariant {
 		if report.VariantName == variant {
 			previousWeek = &report
 			break
@@ -352,8 +353,9 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	timestamp := s.currTestReports[release].CurrentPeriodReport.Timestamp
-	releasehtml.PrintVariantsReport(w, release, variant, *currentWeek, *previousWeek, timestamp)
+	timestamp := reports[release].CurrentPeriodReport.Timestamp
+
+	releasehtml.PrintVariantsReport(w, release, variant, currentWeek, previousWeek, timestamp)
 }
 
 func (s *Server) Serve() {
