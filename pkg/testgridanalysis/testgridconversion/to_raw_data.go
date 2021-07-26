@@ -128,7 +128,7 @@ var testSuitePrefixes = []string{
 }
 
 // ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
-var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
+var ignoreTestRegex = regexp.MustCompile(`operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 func IsIgnoredTest(testName string) bool {
 	return ignoreTestRegex.MatchString(testName)
@@ -200,7 +200,10 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					if jrr.OpenShiftTestsStatus == "" {
 						jrr.OpenShiftTestsStatus = testgridanalysisapi.Success
 					}
+				case testidentification.IsStepRegistryItem(test.Name):
+					jrr.StepRegistryItemStates = addStepRegistryItemState(jrr.StepRegistryItemStates, test.Name, testgridanalysisapi.Success)
 				}
+
 				jobResult.JobRunResults[joburl] = jrr
 			}
 		case testgridv1.TestStatusFailure:
@@ -240,6 +243,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Failure
 				case testidentification.IsOpenShiftTest(test.Name):
 					jrr.OpenShiftTestsStatus = testgridanalysisapi.Failure
+				case testidentification.IsStepRegistryItem(test.Name):
+					jrr.StepRegistryItemStates = addStepRegistryItemState(jrr.StepRegistryItemStates, test.Name, testgridanalysisapi.Failure)
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
@@ -265,6 +270,19 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 	addTestResult(jobResult.TestResults, &job, testName, passed, failed, flaked)
 
 	return
+}
+
+func addStepRegistryItemState(stepRegistryItemStates testgridanalysisapi.StepRegistryItemStates, testName, state string) testgridanalysisapi.StepRegistryItemStates {
+	stepItem := testidentification.GetStepRegistryItemFromTest(testName)
+
+	stepRegistryItemStates.Name = stepItem.Name
+
+	stepRegistryItemStates.States = append(stepRegistryItemStates.States, testgridanalysisapi.StageState{
+		Name:  stepItem.StepName,
+		State: state,
+	})
+
+	return stepRegistryItemStates
 }
 
 func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {

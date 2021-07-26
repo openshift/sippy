@@ -57,6 +57,8 @@ type RawJobRunResult struct {
 	SetupStatus         string
 	FinalOperatorStates []OperatorState
 
+	StepRegistryItemStates StepRegistryItemStates
+
 	// UpgradeStarted is true if the test attempted to start an upgrade based on the CVO succeeding (or failing) to acknowledge a request
 	UpgradeStarted bool
 	// Success, Failure, or ""
@@ -72,6 +74,16 @@ type RawJobRunResult struct {
 
 	// Timestamp
 	Timestamp int
+}
+
+type StepRegistryItemStates struct {
+	Name   string
+	States []StageState
+}
+
+type StageState struct {
+	Name  string
+	State string
 }
 
 type OperatorState struct {

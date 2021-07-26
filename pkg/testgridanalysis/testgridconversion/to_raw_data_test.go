@@ -204,19 +204,71 @@ func TestToRawDataOverall(t *testing.T) {
 	})
 }
 
+func TestToRawDataStepRegistryItem(t *testing.T) {
+	testCase := rawDataTestCase{
+		testGridTestNames: []string{
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
+		},
+		expectedTestNames: []string{
+			// TODO: Determine if these tests should still be expected to be here
+			// since they were previously ignored.
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
+		},
+		options: testgridconversion.ProcessingOptions{
+			StartDay:             0,
+			NumDays:              numOfJobs,
+			SythenticTestManager: testgridconversion.NewEmptySythenticTestManager(),
+		},
+		testFunc: func(testOpts testFuncOpts) {
+			expectedState := ""
+
+			// If a success or flake occurs, we expect the step registry item to be
+			// in a successful state.
+			if testOpts.testGridStatus == testgridv1.TestStatusSuccess || testOpts.testGridStatus == testgridv1.TestStatusFlake {
+				expectedState = testgridanalysisapi.Success
+			}
+
+			// If a failure occurs, we expect the step registry item to be
+			// in a failure state.
+			if testOpts.testGridStatus == testgridv1.TestStatusFailure {
+				expectedState = testgridanalysisapi.Failure
+			}
+
+			// Regardless of state, we expect the names to be equal.
+			expectedStepRegistryItemStates := testgridanalysisapi.StepRegistryItemStates{
+				Name: "openshift-ipi-azure-arcconformance",
+				States: []testgridanalysisapi.StageState{
+					{
+						Name:  "ipi-install-rbac",
+						State: expectedState,
+					},
+					{
+						Name:  "ipi-install-times-collection",
+						State: expectedState,
+					},
+				},
+			}
+
+			jrr := testOpts.rawData.JobResults[jobName].JobRunResults[getProwURL("0123456789")]
+
+			assertStepRegistryItemStatesEqual(t, jrr.StepRegistryItemStates, expectedStepRegistryItemStates)
+		},
+	}
+
+	runRawDataTestCase(t, testCase)
+}
+
 func TestToRawDataSkippedNames(t *testing.T) {
 	// These testgrid test names should be ignored
 	ignoredTestNames := []string{
-		"Run multi-stage test",
 		"job.initialize",
 		"openshift-tests.[sig-arch] Monitor cluster while tests execute",
 		"openshift-tests.[sig-arch][Feature:ClusterUpgrade] Cluster should remain functional during upgrade [Disruptive] [Serial]",
 		"operator.Import a release payload",
 		"operator.Import the release payload \"intermediate\" from an external source",
 		"operator.Import the release payload",
-		"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
-		"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
-		"operator.Run multi-stage test",
 	}
 
 	// These test names should not be ignored
@@ -732,5 +784,21 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 			// Ensure we didn't miss anything
 			assertChangelistsEqual(t, jobResults, append(testCase.passingChangelists, testCase.failingChangelists...))
 		})
+	}
+}
+
+func assertStepRegistryItemStatesEqual(t *testing.T, have, want testgridanalysisapi.StepRegistryItemStates) {
+	if have.Name != want.Name {
+		t.Errorf("expected names to be equal, want: %s, got: %s", want.Name, have.Name)
+	}
+
+	if len(have.States) != len(want.States) {
+		t.Errorf("mismatched stepmetrics, want: %d, got: %v", len(want.States), len(have.States))
+	}
+
+	for i := range have.States {
+		if have.States[i] != want.States[i] {
+			t.Errorf("want stepmetric: %v, got: %v", want.States[i], have.States[i])
+		}
 	}
 }
