@@ -256,7 +256,7 @@ func (b *jobAggregationResultRenderBuilder) ToHTML() string {
 		jobRowCount++
 	}
 	if jobAdditionalMatches > 0 {
-		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px">Plus %d more jobs</td></tr>`, jobsCollapseName, jobAdditionalMatches)
+		jobRows += fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px"><a href="/variants?release=%s&variant=%s">Plus %d more jobs</a></td></tr>`, jobsCollapseName, b.release, b.currAggregationResult.displayName, jobAdditionalMatches)
 	}
 	if jobRowCount > 0 {
 		s = s + fmt.Sprintf(`<tr class="collapse %s"><td colspan=2 style="padding-left:60px" class="font-weight-bold">Job Name</td><td class="font-weight-bold">Job Pass Rate</td></tr>`, jobsCollapseName)

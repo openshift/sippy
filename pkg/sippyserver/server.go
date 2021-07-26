@@ -3,6 +3,7 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/sippy/pkg/html/generichtml"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -86,6 +87,14 @@ func (s *Server) RefreshData() {
 		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 	klog.Infof("Refresh complete")
+}
+
+func (s *Server) defaultHandler(w http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/" {
+		s.printHtmlReport(w, req)
+	} else {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, "Page not found.")
+	}
 }
 
 func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
@@ -308,8 +317,49 @@ func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
 	releasehtml.PrintJobsReport(w, reportName)
 }
 
+func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	variant := req.URL.Query().Get("variant")
+	reports := s.currTestReports
+
+	if variant == "" || release == "" {
+		generichtml.PrintStatusMessage(w, http.StatusBadRequest, "Please specify a variant and release.")
+		return
+	}
+
+	if _, ok := reports[release]; !ok {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Release %q not found.", release))
+		return
+	}
+
+	var currentWeek *sippyprocessingv1.VariantResults
+	for _, report := range reports[release].CurrentPeriodReport.ByVariant {
+		if report.VariantName == variant {
+			currentWeek = &report
+			break
+		}
+	}
+
+	var previousWeek *sippyprocessingv1.VariantResults
+	for _, report := range reports[release].PreviousWeekReport.ByVariant {
+		if report.VariantName == variant {
+			previousWeek = &report
+			break
+		}
+	}
+
+	if currentWeek == nil {
+		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Variant %q not found.", variant))
+		return
+	}
+
+	timestamp := reports[release].CurrentPeriodReport.Timestamp
+
+	releasehtml.PrintVariantsReport(w, release, variant, currentWeek, previousWeek, timestamp)
+}
+
 func (s *Server) Serve() {
-	http.DefaultServeMux.HandleFunc("/", s.printHtmlReport)
+	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
 	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHtmlReport)
 	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHtmlReport)
@@ -320,6 +370,8 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/canary", s.printCanaryReport)
 	http.DefaultServeMux.HandleFunc("/api/jobs", s.jobs)
 	http.DefaultServeMux.HandleFunc("/jobs", s.jobsReport)
+	http.DefaultServeMux.HandleFunc("/variants", s.variantsReport)
+
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
