@@ -337,17 +337,17 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var currentWeek *sippyprocessingv1.VariantResults
-	for _, report := range reports[release].CurrentPeriodReport.ByVariant {
+	for i, report := range reports[release].CurrentPeriodReport.ByVariant {
 		if report.VariantName == variant {
-			currentWeek = &report
+			currentWeek = &reports[release].CurrentPeriodReport.ByVariant[i]
 			break
 		}
 	}
 
 	var previousWeek *sippyprocessingv1.VariantResults
-	for _, report := range reports[release].PreviousWeekReport.ByVariant {
+	for i, report := range reports[release].PreviousWeekReport.ByVariant {
 		if report.VariantName == variant {
-			previousWeek = &report
+			previousWeek = &reports[release].PreviousWeekReport.ByVariant[i]
 			break
 		}
 	}
@@ -363,11 +363,6 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Serve() {
-	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
-	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
-	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
-	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
-	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
 	http.DefaultServeMux.HandleFunc("/", s.printHTMLReport)
 	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
 	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)

@@ -2,8 +2,9 @@ package generichtml
 
 import (
 	"html/template"
-	"k8s.io/klog"
 	"net/http"
+
+	"k8s.io/klog"
 )
 
 var messageTemplate = template.Must(template.New("jobs").Parse(`<!DOCTYPE html>
