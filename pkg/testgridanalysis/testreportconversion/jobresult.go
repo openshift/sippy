@@ -126,6 +126,7 @@ func convertRawJobResultToProcessedJobResult(
 	job.PassPercentage = percent(job.Successes, job.Failures)
 	job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 	job.PassPercentageWithoutInfrastructureFailures = percent(job.Successes, job.Failures-job.InfrastructureFailures)
+	job.StepRegistryMetrics = getStepRegistryMetrics(rawJobResult.JobRunResults)
 
 	// if there are more infrastructure failures than overall failures, then something is wrong with our accounting and
 	// we should make it clear this is an invalid value.

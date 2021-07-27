@@ -51,6 +51,34 @@ type TestReport struct {
 
 	// AnalysisWarnings is a free-form list of warnings to be displayed on sippy test reports
 	AnalysisWarnings []string `json:"analysisWarnings"`
+
+	// Holds metrics for Step Registry results for all jobs found
+	TopLevelStepRegistryMetrics TopLevelStepRegistryMetrics `json:"topLevelStepRegistryMetrics"`
+}
+
+type TopLevelStepRegistryMetrics struct {
+	// Aggregated by the multistage test name, e.g., "e2e-aws"
+	ByMultistageName map[string]map[string]StageResult `json:"byMultistageTestName"`
+	// Aggregated by the stage name, e.g., "openshift-e2e-test"
+	ByStageName map[string]StageResult `json:"byStageName"`
+}
+
+// Holds Step Registry metrics aggregated against a specific job name
+type StepRegistryMetrics struct {
+	// Name of the multistage test, e.g., "e2e-aws"
+	MultistageName string `json:"multistageName"`
+	// Contains the top-level multistage result
+	// e.g., e2e-aws
+	MultistageResult StageResult `json:"multistageResult"`
+	// Contains the metrics for each individual stage in no particular order.
+	StageResults []StageResult `json:"stageResults"`
+}
+
+type StageResult struct {
+	// Wraps TestResult since it has most of the fields we'd want to associate.
+	// Additionally, allows reuse of aggregation and reporting funcs.
+	TestResult
+	OriginalTestName string `json:"originalTestName"`
 }
 
 // TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
@@ -180,6 +208,8 @@ type JobResult struct {
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
 	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`
+
+	StepRegistryMetrics StepRegistryMetrics `json:"stepMetrics"`
 }
 
 type SortedBugzillaComponentResult struct {

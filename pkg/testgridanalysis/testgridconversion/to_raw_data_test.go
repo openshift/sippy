@@ -207,19 +207,21 @@ func TestToRawDataOverall(t *testing.T) {
 func TestToRawDataStepRegistryItem(t *testing.T) {
 	testCase := rawDataTestCase{
 		testGridTestNames: []string{
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
 		},
 		expectedTestNames: []string{
 			// TODO: Determine if these tests should still be expected to be here
 			// since they were previously ignored.
+			"operator.Run multi-stage test openshift-ipi-azure-arcconformance",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
 		},
 		options: testgridconversion.ProcessingOptions{
 			StartDay:             0,
 			NumDays:              numOfJobs,
-			SythenticTestManager: testgridconversion.NewEmptySythenticTestManager(),
+			SyntheticTestManager: testgridconversion.NewEmptySyntheticTestManager(),
 		},
 		testFunc: func(testOpts testFuncOpts) {
 			expectedState := ""
@@ -238,15 +240,21 @@ func TestToRawDataStepRegistryItem(t *testing.T) {
 
 			// Regardless of state, we expect the names to be equal.
 			expectedStepRegistryItemStates := testgridanalysisapi.StepRegistryItemStates{
-				Name: "openshift-ipi-azure-arcconformance",
+				MultistageName: "openshift-ipi-azure-arcconformance",
+				MultistageState: testgridanalysisapi.StageState{
+					Name:  "openshift-ipi-azure-arcconformance",
+					State: expectedState,
+				},
 				States: []testgridanalysisapi.StageState{
 					{
-						Name:  "ipi-install-rbac",
-						State: expectedState,
+						Name:             "ipi-install-rbac",
+						State:            expectedState,
+						OriginalTestName: "operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
 					},
 					{
-						Name:  "ipi-install-times-collection",
-						State: expectedState,
+						Name:             "ipi-install-times-collection",
+						State:            expectedState,
+						OriginalTestName: "operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
 					},
 				},
 			}
@@ -788,8 +796,12 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 }
 
 func assertStepRegistryItemStatesEqual(t *testing.T, have, want testgridanalysisapi.StepRegistryItemStates) {
-	if have.Name != want.Name {
-		t.Errorf("expected names to be equal, want: %s, got: %s", want.Name, have.Name)
+	if have.MultistageName != want.MultistageName {
+		t.Errorf("expected names to be equal, want: %s, got: %s", want.MultistageName, have.MultistageName)
+	}
+
+	if have.MultistageState != want.MultistageState {
+		t.Errorf("expected multistage state to be equal, want: %v, got: %v", want.MultistageState, have.MultistageState)
 	}
 
 	if len(have.States) != len(want.States) {

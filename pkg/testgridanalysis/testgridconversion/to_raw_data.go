@@ -202,6 +202,11 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					}
 				case testidentification.IsStepRegistryItem(test.Name):
 					jrr.StepRegistryItemStates = addStepRegistryItemState(jrr.StepRegistryItemStates, test.Name, testgridanalysisapi.Success)
+				case testidentification.IsMultistageJobName(test.Name):
+					jrr.StepRegistryItemStates.MultistageState = testgridanalysisapi.StageState{
+						Name:  testidentification.GetMultistageJobNameFromTest(test.Name),
+						State: testgridanalysisapi.Success,
+					}
 				}
 
 				jobResult.JobRunResults[joburl] = jrr
@@ -245,6 +250,11 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.OpenShiftTestsStatus = testgridanalysisapi.Failure
 				case testidentification.IsStepRegistryItem(test.Name):
 					jrr.StepRegistryItemStates = addStepRegistryItemState(jrr.StepRegistryItemStates, test.Name, testgridanalysisapi.Failure)
+				case testidentification.IsMultistageJobName(test.Name):
+					jrr.StepRegistryItemStates.MultistageState = testgridanalysisapi.StageState{
+						Name:  testidentification.GetMultistageJobNameFromTest(test.Name),
+						State: testgridanalysisapi.Failure,
+					}
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
@@ -275,11 +285,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 func addStepRegistryItemState(stepRegistryItemStates testgridanalysisapi.StepRegistryItemStates, testName, state string) testgridanalysisapi.StepRegistryItemStates {
 	stepItem := testidentification.GetStepRegistryItemFromTest(testName)
 
-	stepRegistryItemStates.Name = stepItem.Name
+	stepRegistryItemStates.MultistageName = stepItem.Name
 
 	stepRegistryItemStates.States = append(stepRegistryItemStates.States, testgridanalysisapi.StageState{
-		Name:  stepItem.StepName,
-		State: state,
+		Name:             stepItem.StepName,
+		State:            state,
+		OriginalTestName: testName,
 	})
 
 	return stepRegistryItemStates
