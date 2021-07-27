@@ -44,7 +44,7 @@ func PrintVariantsReport(w http.ResponseWriter, release, variant string, current
 		s += jobHTML
 	}
 
-	fmt.Fprintf(w, generichtml.HTMLPageStart, "Job Results for Variant " + variant)
+	fmt.Fprintf(w, generichtml.HTMLPageStart, "Job Results for Variant "+variant)
 	if err := variantStart.Execute(w, map[string]interface{}{
 		"Variant": variant,
 		"Release": release,
@@ -52,6 +52,6 @@ func PrintVariantsReport(w http.ResponseWriter, release, variant string, current
 		klog.Error(err)
 	}
 
-	fmt.Fprint(w, s + "</table>")
+	fmt.Fprint(w, s+"</table>")
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, timestamp.Format("Jan 2 15:04 2006 MST"))
 }

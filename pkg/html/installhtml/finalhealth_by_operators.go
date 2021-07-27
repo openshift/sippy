@@ -62,25 +62,15 @@ func summaryOperatorHealthRelatedTests(curr, prev sippyprocessingv1.TestReport, 
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isOperatorHealthRelatedTest)
 
-	s = s + "</table>"
+	s += "</table>" //nolint:goconst
 
 	return s
 }
 
 func isOperatorHealthRelatedTest(testResult sippyprocessingv1.TestResult) bool {
-	if strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorFinalHealthPrefix) {
-		return true
-	}
-
-	return false
-
+	return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorFinalHealthPrefix)
 }
 
 func isOperatorHealthOverallTest(testResult sippyprocessingv1.TestResult) bool {
-	if strings.Contains(testResult.Name, testgridanalysisapi.FinalOperatorHealthTestName) {
-		return true
-	}
-
-	return false
-
+	return strings.Contains(testResult.Name, testgridanalysisapi.FinalOperatorHealthTestName)
 }

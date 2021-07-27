@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	testDetailTopPageHtml = `
+	testDetailTopPageHTML = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -26,7 +26,7 @@ var (
 `
 )
 
-func PrintTestDetailHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, testSubstrings []string, numDays int, release string) {
+func PrintTestDetailHTMLReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, testSubstrings []string, numDays int, release string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Test Details")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -41,7 +41,7 @@ func PrintTestDetailHtmlReport(w http.ResponseWriter, req *http.Request, report,
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, testDetailTopPageHtml)
+	fmt.Fprint(w, testDetailTopPageHTML)
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
@@ -52,6 +52,5 @@ func PrintTestDetailHtmlReport(w http.ResponseWriter, req *http.Request, report,
 	fmt.Fprint(w, summaryTestDetailRelatedTests(report, prevReport, testSubstrings, numDays, release))
 	fmt.Fprintln(w)
 
-	//w.Write(result)
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }

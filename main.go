@@ -51,13 +51,14 @@ func main() {
 	}
 
 	klog.InitFlags(nil)
-	flag.CommandLine.Set("skip_headers", "true")
+	if err := flag.CommandLine.Set("skip_headers", "true"); err != nil {
+		klog.Exitf("could not set commandline flag: %s", err)
+	}
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
-			if err := opt.Complete(); err != nil {
-				klog.Exitf("error: %v", err)
-			}
+			opt.Complete()
+
 			if err := opt.Validate(); err != nil {
 				klog.Exitf("error: %v", err)
 			}
@@ -93,16 +94,15 @@ func main() {
 	}
 }
 
-func (o *Options) Complete() error {
+func (o *Options) Complete() {
 	// if the end day was explicitly specified, honor that
 	if o.endDay != 0 {
 		o.NumDays = o.endDay - o.StartDay
 	}
+
 	for _, openshiftRelease := range o.OpenshiftReleases {
 		o.Dashboards = append(o.Dashboards, dashboardArgFromOpenshiftRelease(openshiftRelease))
 	}
-
-	return nil
 }
 
 func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboardCoordinates {
@@ -129,9 +129,11 @@ func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboa
 // dashboardArgFromOpenshiftRelease converts a --release string into the generic --dashboard arg
 func dashboardArgFromOpenshiftRelease(release string) string {
 	const openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-	dashboards := []string{}
-	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "blocking"))
-	dashboards = append(dashboards, fmt.Sprintf(openshiftDashboardTemplate, release, "informing"))
+
+	dashboards := []string{
+		fmt.Sprintf(openshiftDashboardTemplate, release, "blocking"),
+		fmt.Sprintf(openshiftDashboardTemplate, release, "informing"),
+	}
 
 	argString := release + "=" + strings.Join(dashboards, ",") + "=" + release
 	return argString
@@ -141,7 +143,7 @@ func (o *Options) Validate() error {
 	switch o.Output {
 	case "json":
 	default:
-		return fmt.Errorf("invalid output type: %s\n", o.Output)
+		return fmt.Errorf("invalid output type: %s", o.Output)
 	}
 
 	for _, dashboard := range o.Dashboards {
@@ -163,7 +165,7 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error {
-	if len(o.FetchData) != 0 {
+	if o.FetchData != "" {
 		dashboards := []string{}
 		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
@@ -190,7 +192,7 @@ func (o *Options) runServerMode() error {
 		o.toDisplayDataConfig(),
 		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
-		o.getSynthenticTestManager(),
+		o.getSyntheticTestManager(),
 		o.getVariantManager(),
 		o.getBugCache(),
 	)
@@ -206,11 +208,10 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSynthenticTestManager(), o.getVariantManager(), o.getBugCache())
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(testReport.ByTest)
-	return nil
+	return enc.Encode(testReport.ByTest)
 }
 
 func (o *Options) hasOCPDashboard() bool {
@@ -227,9 +228,9 @@ func (o *Options) hasOCPDashboard() bool {
 func (o *Options) getBugCache() buganalysis.BugCache {
 	if o.SkipBugLookup || len(o.OpenshiftReleases) == 0 {
 		return buganalysis.NewNoOpBugCache()
-	} else {
-		return buganalysis.NewBugCache()
 	}
+
+	return buganalysis.NewBugCache()
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {
@@ -253,12 +254,12 @@ func (o *Options) getVariantManager() testidentification.VariantManager {
 	}
 }
 
-func (o *Options) getSynthenticTestManager() testgridconversion.SythenticTestManager {
+func (o *Options) getSyntheticTestManager() testgridconversion.SyntheticTestManager {
 	if o.hasOCPDashboard() {
-		return testgridconversion.NewOpenshiftSythenticTestManager()
+		return testgridconversion.NewOpenshiftSyntheticTestManager()
 	}
 
-	return testgridconversion.NewEmptySythenticTestManager()
+	return testgridconversion.NewEmptySyntheticTestManager()
 }
 
 func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {

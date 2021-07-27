@@ -107,6 +107,7 @@ func getDataForTestsByVariant(
 	return ret
 }
 
+//nolint:goconst
 func (a testsByVariant) getTableHTML(
 	title string,
 	anchor string,
@@ -161,7 +162,7 @@ func (a testsByVariant) getTableHTML(
 		s += "		</tr>"
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }
@@ -179,7 +180,7 @@ func noChange(testName string) string {
 
 func installCellHTMLFromTestResult(cellResult *currPrevTestResult, colors generichtml.ColorizationCriteria) string {
 	if cellResult == nil {
-		return fmt.Sprintf("      <td class=\"text-center table-secondary\"><nobr>no-data</nobr></td>")
+		return "      <td class=\"text-center table-secondary\"><nobr>no-data</nobr></td>"
 	}
 
 	// we filter out 100% passing results, so this almost certainly means we always pass.  We default to 100
@@ -203,7 +204,7 @@ func failingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingTest
 			continue
 		}
 
-		s = s +
+		s +=
 			generichtml.NewTestResultRendererForFailedTestResult("", testResult, release).
 				WithPreviousFailedTestResult(util.FindFailedTestResult(testResult.TestName, prevTests)).
 				ToHTML()

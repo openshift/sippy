@@ -1,3 +1,4 @@
+//nolint:dupl // TODO: Combine this and install_html.go
 package installhtml
 
 import (
@@ -9,7 +10,7 @@ import (
 )
 
 var (
-	operatorHealthTopPageHtml = `
+	operatorHealthTopPageHTML = `
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 <style>
 #table td, #table th {
@@ -26,7 +27,7 @@ var (
 `
 )
 
-func PrintOperatorHealthHtmlReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
+func PrintOperatorHealthHTMLReport(w http.ResponseWriter, req *http.Request, report, prevReport sippyprocessingv1.TestReport, numDays int, release string) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, "Release "+release+" Install Dashboard")
 	if len(prevReport.AnalysisWarnings)+len(report.AnalysisWarnings) > 0 {
@@ -41,7 +42,7 @@ func PrintOperatorHealthHtmlReport(w http.ResponseWriter, req *http.Request, rep
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, operatorHealthTopPageHtml, release)
+	fmt.Fprintf(w, operatorHealthTopPageHTML, release)
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
@@ -52,6 +53,5 @@ func PrintOperatorHealthHtmlReport(w http.ResponseWriter, req *http.Request, rep
 	fmt.Fprint(w, summaryOperatorHealthRelatedTests(report, prevReport, numDays, release))
 	fmt.Fprintln(w)
 
-	//w.Write(result)
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))
 }

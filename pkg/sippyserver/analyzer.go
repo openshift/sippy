@@ -52,7 +52,7 @@ type TestReportGeneratorConfig struct {
 //  4. converts the result of that into a display API object.
 func (a *TestReportGeneratorConfig) PrepareTestReport(
 	dashboard TestGridDashboardCoordinates,
-	syntheticTestManager testgridconversion.SythenticTestManager,
+	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
@@ -64,14 +64,14 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 	reportName string,
 	bugzillaRelease string,
-	syntheticTestManager testgridconversion.SythenticTestManager,
+	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 	testGridJobDetails []testgridv1.JobDetails,
 	lastUpdateTime time.Time,
 ) sippyprocessingv1.TestReport {
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
-		SythenticTestManager: syntheticTestManager,
+		SyntheticTestManager: syntheticTestManager,
 		StartDay:             a.RawJobResultsAnalysisConfig.StartDay,
 		NumDays:              a.RawJobResultsAnalysisConfig.NumDays,
 	}
@@ -99,7 +99,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 // PrepareStandardTestReports returns the current period, current two day period, and the previous seven days period
 func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	dashboard TestGridDashboardCoordinates,
-	syntheticTestManager testgridconversion.SythenticTestManager,
+	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) StandardReport {
@@ -173,6 +173,7 @@ func (a TestReportGeneratorConfig) deepCopy() TestReportGeneratorConfig {
 		},
 	}
 	if a.TestGridLoadingConfig.JobFilter != nil {
+		//nolint:staticcheck // Copy() is appropriate since this performs a deep copy.
 		ret.TestGridLoadingConfig.JobFilter = a.TestGridLoadingConfig.JobFilter.Copy()
 	}
 

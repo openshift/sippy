@@ -6,7 +6,7 @@ import (
 
 type emptySyntheticManager struct{}
 
-func NewEmptySythenticTestManager() SythenticTestManager {
+func NewEmptySyntheticTestManager() SyntheticTestManager {
 	return emptySyntheticManager{}
 }
 

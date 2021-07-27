@@ -9,7 +9,10 @@ import (
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
+	"k8s.io/klog"
 )
+
+const failure string = "Failure"
 
 func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 	if result.Succeeded {
@@ -20,16 +23,16 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 		return "R" // Running
 	}
 
-	if result.SetupStatus == "Failure" {
+	if result.SetupStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
 			return "N" // iNfrastructure failure
 		}
 		return "I" // Install failure
 	}
-	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == "Failure" || result.UpgradeForMachineConfigPoolsStatus == "Failure") {
+	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
 		return "U" // Upgrade failure
 	}
-	if result.OpenShiftTestsStatus == "Failure" {
+	if result.OpenShiftTestsStatus == failure {
 		return "F" // Failure
 	}
 	if result.SetupStatus == "" {
@@ -38,9 +41,9 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
 	return "f" // unknown failure
 }
 
-func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconversion.SythenticTestManager, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) {
+func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconversion.SyntheticTestManager, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) {
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
-		SythenticTestManager: syntheticTestManager,
+		SyntheticTestManager: syntheticTestManager,
 		StartDay:             0,
 		NumDays:              1000,
 	}
@@ -74,9 +77,13 @@ func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconvers
 			Timestamps:  job.Timestamps,
 			Results:     statuses,
 			BuildIDs:    job.ChangeLists,
-			TestGridURL: job.TestGridUrl,
+			TestGridURL: job.TestGridURL,
 		})
 	}
 
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		e := fmt.Errorf("could not print jobs result: %s", err)
+		klog.Errorf(e.Error())
+		http.Error(w, e.Error(), http.StatusInternalServerError)
+	}
 }

@@ -52,9 +52,18 @@ func FindBugzillaJobFailures(bzComponent string, bugzillaJobFailures []sippyproc
 	return nil
 }
 
+type FailureGroupStats struct {
+	Count      int
+	CountPrev  int
+	Median     int
+	MedianPrev int
+	Avg        int
+	AvgPrev    int
+}
+
 // ComputeFailureGroupStats computes count, median, and average number of failuregroups
-// returns count, countPrev, median, medianPrev, avg, avgPrev
-func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) (int, int, int, int, int, int) {
+// returns FailureGroupStats containing count, countPrev, median, medianPrev, avg, avgPrev
+func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) FailureGroupStats {
 	count, countPrev, median, medianPrev, avg, avgPrev := 0, 0, 0, 0, 0, 0
 	for _, group := range failureGroups {
 		count += group.TestFailures
@@ -70,7 +79,15 @@ func ComputeFailureGroupStats(failureGroups, failureGroupsPrev []sippyprocessing
 		medianPrev = failureGroupsPrev[len(failureGroupsPrev)/2].TestFailures
 		avgPrev = count / len(failureGroupsPrev)
 	}
-	return count, countPrev, median, medianPrev, avg, avgPrev
+
+	return FailureGroupStats{
+		Count:      count,
+		CountPrev:  countPrev,
+		Median:     median,
+		MedianPrev: medianPrev,
+		Avg:        avg,
+		AvgPrev:    avgPrev,
+	}
 }
 
 func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
@@ -78,13 +95,6 @@ func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
 		return false
 	}
 	return true
-	/*
-		switch status {
-		case "FAILING", "FLAKY":
-			return true
-		}
-		return false
-	*/
 }
 
 func IsActiveBug(bug bugsv1.Bug) bool {

@@ -78,7 +78,6 @@ func generateJobFailuresByBugzillaComponent(
 				}
 				failedJobRuns.Insert(rawJRR.JobRunURL)
 				bzComponentToFailedJobRuns[bzComponent] = failedJobRuns
-				////////////////////////////////
 
 				// set the filtered test result
 				testNameToTestResult, ok := bzToTestNameToTestResult[bzComponent]
@@ -87,7 +86,6 @@ func generateJobFailuresByBugzillaComponent(
 				}
 				testNameToTestResult[testName] = getTestResultFilteredByComponent(testResult, bzComponent)
 				bzToTestNameToTestResult[bzComponent] = testNameToTestResult
-				////////////////////////////////
 			}
 		}
 	}

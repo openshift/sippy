@@ -3,10 +3,11 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/sippy/pkg/html/generichtml"
 	"net/http"
 	"regexp"
 	"strconv"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -24,7 +25,7 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
-	syntheticTestManager testgridconversion.SythenticTestManager,
+	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) *Server {
@@ -51,7 +52,7 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
-	syntheticTestManager      testgridconversion.SythenticTestManager
+	syntheticTestManager      testgridconversion.SyntheticTestManager
 	variantManager            testidentification.VariantManager
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
@@ -91,13 +92,13 @@ func (s *Server) RefreshData() {
 
 func (s *Server) defaultHandler(w http.ResponseWriter, req *http.Request) {
 	if req.URL.Path == "/" {
-		s.printHtmlReport(w, req)
+		s.printHTMLReport(w, req)
 	} else {
 		generichtml.PrintStatusMessage(w, http.StatusNotFound, "Page not found.")
 	}
 }
 
-func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) printHTMLReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
 	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
 	if !found {
@@ -109,7 +110,7 @@ func (s *Server) printHtmlReport(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	releasehtml.PrintHtmlReport(w, req,
+	releasehtml.PrintHTMLReport(w, req,
 		s.currTestReports[dashboard.ReportName].CurrentPeriodReport,
 		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
 		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
@@ -184,7 +185,9 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		}
 		errMsgBytes, _ := json.Marshal(errMsg)
 		w.WriteHeader(http.StatusNotFound)
-		w.Write(errMsgBytes)
+		if _, err := w.Write(errMsgBytes); err != nil {
+			klog.Errorf(err.Error())
+		}
 		return
 	}
 	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
@@ -253,7 +256,8 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		var err error
 		jobFilter, err = regexp.Compile(jobFilterString)
 		if err != nil {
-			// TODO add warning
+			http.Error(w, fmt.Sprintf("invalid jobFilter: %s", err), http.StatusBadRequest)
+			return
 		}
 	}
 
@@ -279,7 +283,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	}
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
-	releasehtml.PrintHtmlReport(w, req,
+	releasehtml.PrintHTMLReport(w, req,
 		testReports.CurrentPeriodReport,
 		testReports.CurrentTwoDayReport,
 		testReports.PreviousWeekReport,
@@ -333,17 +337,17 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var currentWeek *sippyprocessingv1.VariantResults
-	for _, report := range reports[release].CurrentPeriodReport.ByVariant {
+	for i, report := range reports[release].CurrentPeriodReport.ByVariant {
 		if report.VariantName == variant {
-			currentWeek = &report
+			currentWeek = &reports[release].CurrentPeriodReport.ByVariant[i]
 			break
 		}
 	}
 
 	var previousWeek *sippyprocessingv1.VariantResults
-	for _, report := range reports[release].PreviousWeekReport.ByVariant {
+	for i, report := range reports[release].PreviousWeekReport.ByVariant {
 		if report.VariantName == variant {
-			previousWeek = &report
+			previousWeek = &reports[release].PreviousWeekReport.ByVariant[i]
 			break
 		}
 	}
@@ -359,11 +363,11 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Serve() {
-	http.DefaultServeMux.HandleFunc("/", s.defaultHandler)
-	http.DefaultServeMux.HandleFunc("/install", s.printInstallHtmlReport)
-	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHtmlReport)
-	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHtmlReport)
-	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHtmlReport)
+	http.DefaultServeMux.HandleFunc("/", s.printHTMLReport)
+	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
+	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
 	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
 	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
 	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
@@ -373,10 +377,8 @@ func (s *Server) Serve() {
 	http.DefaultServeMux.HandleFunc("/variants", s.variantsReport)
 
 	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	//go func() {
 	klog.Infof("Serving reports on %s ", s.listenAddr)
 	if err := http.ListenAndServe(s.listenAddr, nil); err != nil {
 		klog.Exitf("Server exited: %v", err)
 	}
-	//}()
 }

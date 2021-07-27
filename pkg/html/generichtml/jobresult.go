@@ -37,7 +37,7 @@ type jobResultRenderBuilder struct {
 func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 	ret := jobResultDisplay{
 		displayName:            in.Name,
-		testGridURL:            in.TestGridUrl,
+		testGridURL:            in.TestGridURL,
 		displayPercent:         in.PassPercentage,
 		parenDisplayPercentage: in.PassPercentageWithoutInfrastructureFailures,
 		totalRuns:              in.Successes + in.Failures,
@@ -47,12 +47,9 @@ func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
 	}
 
-	for _, bug := range in.BugList {
-		ret.bugList = append(ret.bugList, bug)
-	}
-	for _, bug := range in.AssociatedBugList {
-		ret.associatedBugList = append(ret.associatedBugList, bug)
-	}
+	ret.bugList = append(ret.bugList, in.BugList...)
+
+	ret.associatedBugList = append(ret.associatedBugList, in.AssociatedBugList...)
 
 	return ret
 }
@@ -76,7 +73,7 @@ func bugzillaJobResultToDisplay(in sippyprocessingv1.BugzillaJobResult) jobResul
 func failingJobResultToDisplay(in sippyprocessingv1.FailingTestJobResult) jobResultDisplay {
 	ret := jobResultDisplay{
 		displayName:    in.Name,
-		testGridURL:    in.TestGridUrl,
+		testGridURL:    in.TestGridURL,
 		displayPercent: in.PassPercentage,
 		// TODO gather this info
 		//displayPercentWithoutInfraFailures: in.PassPercentageWithoutInfrastructureFailures,
@@ -207,7 +204,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 	if b.prevJobResult != nil {
 		arrow := GetArrow(b.currJobResult.totalRuns, b.currJobResult.displayPercent, b.prevJobResult.displayPercent)
 
-		s = s + fmt.Sprintf(template,
+		s += fmt.Sprintf(template,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			bugHTML,
@@ -220,7 +217,7 @@ func (b *jobResultRenderBuilder) ToHTML() string {
 			b.prevJobResult.totalRuns,
 		)
 	} else {
-		s = s + fmt.Sprintf(naTemplate,
+		s += fmt.Sprintf(naTemplate,
 			class, b.baseIndentDepth*50+10,
 			b.currJobResult.testGridURL, b.currJobResult.displayName, button,
 			bugHTML,

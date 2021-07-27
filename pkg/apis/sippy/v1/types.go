@@ -28,14 +28,14 @@ type FailureGroups struct {
 // passRate should have percentage (float64) and number of runs (int)
 type CanaryTestFailInstance struct {
 	Name     string   `json:"name"`
-	Url      string   `json:"url"`
+	URL      string   `json:"url"`
 	PassRate PassRate `json:"passRate"`
 }
 
 // PassRatesByJobName is responsible for the section job pass rates by job name
 type PassRatesByJobName struct {
 	Name      string              `json:"name"`
-	Url       string              `json:"url"`
+	URL       string              `json:"url"`
 	PassRates map[string]PassRate `json:"passRates"`
 }
 
@@ -51,7 +51,7 @@ type MinimumPassRatesByComponent struct {
 // differs from failingtest in that it includes pass rates for previous days and latest days
 type FailingTestBug struct {
 	Name      string              `json:"name"`
-	Url       string              `json:"url"`
+	URL       string              `json:"url"`
 	PassRates map[string]PassRate `json:"passRates"`
 	Bugs      []bugsv1.Bug        `json:"bugs,omitempty"`
 	// AssociatedBugs are bugs that match the test/job, but do not match the target release
@@ -67,6 +67,6 @@ type JobSummaryVariant struct {
 // FailureGroup describes a single failure group - does not show the associated failed job names
 type FailureGroup struct {
 	Job          string `json:"job"`
-	Url          string `json:"url"`
+	URL          string `json:"url"`
 	TestFailures int    `json:"testFailures"`
 }

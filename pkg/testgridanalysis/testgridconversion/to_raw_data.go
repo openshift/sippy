@@ -14,9 +14,11 @@ import (
 	"k8s.io/klog"
 )
 
-type SythenticTestManager interface {
+const overall string = "Overall"
+
+type SyntheticTestManager interface {
 	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
-	// and potentially producing synthentic test results and aggregations to better inform sippy.
+	// and potentially producing synthetic test results and aggregations to better inform sippy.
 	// This needs to be called after all the JobDetails have been processed.
 	// This method mutates the rawJobResults
 	// returns warnings found in the data. Not failures to process it.
@@ -24,7 +26,7 @@ type SythenticTestManager interface {
 }
 
 type ProcessingOptions struct {
-	SythenticTestManager SythenticTestManager
+	SyntheticTestManager SyntheticTestManager
 	StartDay             int
 	NumDays              int
 }
@@ -40,7 +42,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	warnings := o.SythenticTestManager.CreateSyntheticTests(rawJobResults)
+	warnings := o.SyntheticTestManager.CreateSyntheticTests(rawJobResults)
 
 	return rawJobResults, warnings
 }
@@ -48,7 +50,6 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
-		//test.Name = strings.TrimSpace(tagStripRegex.ReplaceAllString(test.Name, ""))
 		for _, prefix := range testSuitePrefixes {
 			test.Name = strings.TrimPrefix(test.Name, prefix)
 		}
@@ -85,10 +86,6 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-// tagStripRegex removes test markers deemed unhelpful at one point in time.
-// TODO relitigate the value of doing this.  Without these markers, I don't think it is possible to run the failing test back through `openshift-tests run-test <foo>`
-var tagStripRegex = regexp.MustCompile(`\[Skipped:.*?\]|\[Suite:.*?\]|\[[0-9]+]$`)
-
 // testSuitePrefixes is a list of suite prefixes to remove from test names
 var testSuitePrefixes = []string{
 	"openshift-tests.",
@@ -103,7 +100,8 @@ var testSuitePrefixes = []string{
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 // processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
-func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed int, failed int, flaked int) {
+//nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
+func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
 	for _, result := range test.Statuses {
 		if col > endCol {
@@ -143,7 +141,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					}
 				}
 				switch {
-				case test.Name == "Overall":
+				case test.Name == overall:
 					jrr.Succeeded = true
 					// if the overall job succeeded, setup is always considered successful, even for jobs
 					// that don't have an explicitly defined setup test.
@@ -182,13 +180,13 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) {
+				if test.Name != overall && !testidentification.IsSetupContainerEquivalent(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
 
 				switch {
-				case test.Name == "Overall":
+				case test.Name == overall:
 					jrr.Failed = true
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
@@ -237,7 +235,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about container setup to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if test.Name != "Overall" && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
+	if test.Name != overall && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
 		return
 	}
 
@@ -245,7 +243,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	if !ok {
 		jobResult = testgridanalysisapi.RawJobResult{
 			JobName:        job.Name,
-			TestGridJobUrl: job.TestGridUrl,
+			TestGridJobURL: job.TestGridURL,
 			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
 			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 		}

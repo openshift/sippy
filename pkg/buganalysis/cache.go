@@ -177,6 +177,7 @@ func (c *bugCache) LastUpdateError() error {
 	return c.lastUpdateError
 }
 
+//nolint:revive // flag-parameter: parameter 'invertReleaseQuery' seems to be a control flag, avoid control coupling
 func (c *bugCache) listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -240,22 +241,26 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		v.Add("search", testName)
 	}
 
-	//searchUrl:="https://search.apps.build01.ci.devcluster.openshift.com/search"
-	searchUrl := "https://search.ci.openshift.org/v2/search"
-	resp, err := http.PostForm(searchUrl, v)
+	searchURL := "https://search.ci.openshift.org/v2/search"
+	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
-		e := fmt.Errorf("error during bug search against %s: %w", searchUrl, err)
+		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
 		klog.Errorf(e.Error())
 		return searchResults, e
 	}
 	if resp.StatusCode != 200 {
-		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchUrl, resp.Status)
+		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchURL, resp.Status)
 		klog.Errorf(e.Error())
 		return searchResults, e
 	}
 
 	search := internal.Search{}
-	err = json.NewDecoder(resp.Body).Decode(&search)
+
+	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
+		e := fmt.Errorf("could not decode bug search results: %w", err)
+		klog.Errorf(e.Error())
+		return searchResults, e
+	}
 
 	for searchString, result := range search.Results {
 		// reverse the regex escaping we did earlier, so we get back the pure test name string.
@@ -263,7 +268,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		searchString = string(r.Rune)
 		for _, match := range result.Matches {
 			bug := match.Bug
-			bug.Url = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
+			bug.URL = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
 
 			// search.ci.openshift.org seems to occasionally return empty BZ results, filter
 			// them out.

@@ -89,7 +89,7 @@ var (
 	// sigToBugzillaComponent holds `sig-foo` (from '[sig-foo]' label in a test) as keys and maps them to the "most correct" BZ component
 	sigToBugzillaComponent = map[string]string{}
 
-	sigRegex *regexp.Regexp = regexp.MustCompile(`\[(sig-.*?)\]`)
+	sigRegex = regexp.MustCompile(`\[(sig-.*?)\]`)
 )
 
 func init() {

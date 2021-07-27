@@ -44,7 +44,7 @@ func summaryTestDetailRelatedTests(curr, prev sippyprocessingv1.TestReport, test
 
 	s += failingTestsRows(curr.ByTest, prev.ByTest, release, isTestDetailRelatedTest(testSubstrings))
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }

@@ -10,6 +10,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+//nolint:goconst
 func summaryTopFailingTestsWithBug(topFailingTestsWithBug, allTests []sippyprocessingv1.FailingTestResult, numDays int, release string) string {
 	if len(topFailingTestsWithBug) == 0 {
 		return ""
@@ -114,7 +115,7 @@ func topFailingTestsRows(topFailingTests, prevTests []sippyprocessingv1.FailingT
 
 		testPrev := util.FindFailedTestResult(testResult.TestName, prevTests)
 
-		s = s +
+		s +=
 			generichtml.NewTestResultRendererForFailedTestResult("", testResult, release).
 				WithPreviousFailedTestResult(testPrev).
 				ToHTML()

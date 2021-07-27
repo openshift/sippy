@@ -23,7 +23,7 @@ type JobDetails struct {
 	Query       string   `json:"query"`
 	ChangeLists []string `json:"changelists"`
 	// not part of testgrid json, but we want to store the url of the testgrid job page for later usage
-	TestGridUrl string
+	TestGridURL string
 }
 
 type Test struct {

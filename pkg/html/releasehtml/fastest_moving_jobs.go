@@ -1,7 +1,6 @@
 package releasehtml
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/openshift/sippy/pkg/html/generichtml"
@@ -45,7 +44,7 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		return ""
 	}
 
-	s := fmt.Sprintf(`
+	s := `
 	<table class="table">
 		<tr>
 			<th colspan=4 class="text-center">
@@ -56,7 +55,7 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		<tr>
 			<th>Name</th><th>Latest 2 days</th><th/><th>Previous 7 days</th>
 		</tr>
-	`)
+	`
 
 	jobDisplayed := 0
 	for _, jobDetails := range jobPassChanges {
@@ -83,7 +82,7 @@ func summaryTopNegativelyMovingJobs(twoDaysJobs, prevJobs []sippyprocessingv1.Jo
 		s += jobHTML
 	}
 
-	s = s + "</table>"
+	s += "</table>"
 
 	return s
 }

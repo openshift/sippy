@@ -18,11 +18,7 @@ import (
 	"k8s.io/klog"
 )
 
-var (
-	openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
-)
-
-func DownloadData(dashboards []string, filter string, storagePath string) {
+func DownloadData(dashboards []string, filter, storagePath string) {
 	var jobFilter *regexp.Regexp
 	if len(filter) > 0 {
 		jobFilter = regexp.MustCompile(filter)
@@ -104,11 +100,11 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 	if err != nil {
 		return details, err
 	}
-	details.TestGridUrl = URLForJob(dashboard, jobName).String()
+	details.TestGridURL = URLForJob(dashboard, jobName).String()
 	return details, nil
 }
 
-func loadJobSummaries(dashboard string, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
+func loadJobSummaries(dashboard, storagePath string) (map[string]testgridv1.JobSummary, time.Time, error) {
 	jobs := make(map[string]testgridv1.JobSummary)
 	url := URLForJobSummary(dashboard)
 
@@ -134,7 +130,7 @@ func normalizeURL(url string) string {
 	return replaceChars(url, `/":?`, '-')
 }
 
-func replaceChars(s string, needles string, by rune) string {
+func replaceChars(s, needles string, by rune) string {
 	out := make([]rune, len(s))
 NextChar:
 	for i, c := range s {
@@ -149,7 +145,7 @@ NextChar:
 	return string(out)
 }
 
-func downloadJobSummaries(dashboard string, storagePath string) error {
+func downloadJobSummaries(dashboard, storagePath string) error {
 	url := URLForJobSummary(dashboard)
 
 	resp, err := http.Get(url.String())
@@ -166,7 +162,9 @@ func downloadJobSummaries(dashboard string, storagePath string) error {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	io.Copy(buf, resp.Body)
+	if _, err := io.Copy(buf, resp.Body); err != nil {
+		return err
+	}
 
 	_, err = f.Write(buf.Bytes())
 	return err
@@ -185,7 +183,6 @@ func URLForJobDetails(dashboard, jobName string) *gourl.URL {
 	query := url.Query()
 	query.Set("show-stale-tests", "")
 	query.Set("tab", jobName)
-	//query.Set("grid", "old")
 	url.RawQuery = query.Encode()
 
 	return url
@@ -232,7 +229,9 @@ func downloadJobDetails(dashboard, jobName, storagePath string) error {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	io.Copy(buf, resp.Body)
+	if _, err := io.Copy(buf, resp.Body); err != nil {
+		return err
+	}
 
 	_, err = f.Write(buf.Bytes())
 	return err

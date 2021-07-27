@@ -18,7 +18,7 @@ import (
 // stats on failure groups
 func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunResult) *sippyv1.FailureGroups {
 
-	_, _, median, medianPrev, avg, avgPrev := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
+	stats := util.ComputeFailureGroupStats(failureGroups, failureGroupsPrev)
 
 	failureGroupStruct := sippyv1.FailureGroups{
 		JobRunsWithFailureGroup: map[string]int{
@@ -26,12 +26,12 @@ func failureGroups(failureGroups, failureGroupsPrev []sippyprocessingv1.JobRunRe
 			"prev":   len(failureGroupsPrev),
 		},
 		AvgFailureGroupSize: map[string]int{
-			"latest": avg,
-			"prev":   avgPrev,
+			"latest": stats.Avg,
+			"prev":   stats.AvgPrev,
 		},
 		MedianFailureGroupSize: map[string]int{
-			"latest": median,
-			"prev":   medianPrev,
+			"latest": stats.Median,
+			"prev":   stats.MedianPrev,
 		},
 	}
 	return &failureGroupStruct
@@ -87,7 +87,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 	for _, test := range topFailingTestsWithBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
-		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName)
+		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchURL, encodedTestName)
 		testPrev := util.FindFailedTestResult(test.TestName, prevTestResults)
 
 		var failedTestWithBug sippyv1.FailingTestBug
@@ -95,7 +95,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 		if testPrev != nil {
 			failedTestWithBug = sippyv1.FailingTestBug{
 				Name: test.TestName,
-				Url:  testLink,
+				URL:  testLink,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
@@ -112,7 +112,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 		} else {
 			failedTestWithBug = sippyv1.FailingTestBug{
 				Name: test.TestResultAcrossAllJobs.Name,
-				Url:  testLink,
+				URL:  testLink,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
@@ -138,7 +138,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 	for _, test := range topFailingTestsWithoutBug {
 		encodedTestName := url.QueryEscape(regexp.QuoteMeta(test.TestName))
 
-		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName)
+		testLink := fmt.Sprintf("%s%s", releasehtml.BugSearchURL, encodedTestName)
 		testPrev := util.FindFailedTestResult(test.TestName, prevTopFailingTestsWithoutBug)
 
 		var failedTestWithoutBug sippyv1.FailingTestBug
@@ -146,7 +146,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 		if testPrev != nil {
 			failedTestWithoutBug = sippyv1.FailingTestBug{
 				Name:           test.TestName,
-				Url:            testLink,
+				URL:            testLink,
 				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
@@ -163,7 +163,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 		} else {
 			failedTestWithoutBug = sippyv1.FailingTestBug{
 				Name:           test.TestName,
-				Url:            testLink,
+				URL:            testLink,
 				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
@@ -190,7 +190,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		if prev != nil {
 			newJobPassRate = sippyv1.PassRatesByJobName{
 				Name: v.Name,
-				Url:  v.TestGridUrl,
+				URL:  v.TestGridURL,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.PassPercentage,
@@ -207,7 +207,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 		} else {
 			newJobPassRate = sippyv1.PassRatesByJobName{
 				Name: v.Name,
-				Url:  v.TestGridUrl,
+				URL:  v.TestGridURL,
 				PassRates: map[string]sippyv1.PassRate{
 					"latest": sippyv1.PassRate{
 						Percentage:          v.PassPercentage,
@@ -230,7 +230,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 func canaryTestFailures(all []sippyprocessingv1.FailingTestResult) []sippyv1.CanaryTestFailInstance {
 	var canaryFailures []sippyv1.CanaryTestFailInstance
 
-	if len(all) <= 0 {
+	if len(all) == 0 {
 		return nil
 	}
 
@@ -248,7 +248,7 @@ func canaryTestFailures(all []sippyprocessingv1.FailingTestResult) []sippyv1.Can
 		canaryFailures = append(canaryFailures,
 			sippyv1.CanaryTestFailInstance{
 				Name: test.TestName,
-				Url:  fmt.Sprintf("%s%s", releasehtml.BugSearchUrl, encodedTestName),
+				URL:  fmt.Sprintf("%s%s", releasehtml.BugSearchURL, encodedTestName),
 				PassRate: sippyv1.PassRate{
 					Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 					Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
@@ -289,7 +289,7 @@ func failureGroupList(report sippyprocessingv1.TestReport) []sippyv1.FailureGrou
 	for _, fg := range report.FailureGroups {
 		failureGroups = append(failureGroups, sippyv1.FailureGroup{
 			Job:          fg.Job,
-			Url:          fg.Url,
+			URL:          fg.URL,
 			TestFailures: fg.TestFailures,
 		})
 	}
