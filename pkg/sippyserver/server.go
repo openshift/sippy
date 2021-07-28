@@ -90,14 +90,6 @@ func (s *Server) RefreshData() {
 	klog.Infof("Refresh complete")
 }
 
-func (s *Server) defaultHandler(w http.ResponseWriter, req *http.Request) {
-	if req.URL.Path == "/" {
-		s.printHTMLReport(w, req)
-	} else {
-		generichtml.PrintStatusMessage(w, http.StatusNotFound, "Page not found.")
-	}
-}
-
 func (s *Server) printHTMLReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
 	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
