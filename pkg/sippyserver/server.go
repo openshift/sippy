@@ -14,7 +14,6 @@ import (
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"k8s.io/klog"
 )
@@ -57,6 +56,7 @@ type Server struct {
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
 	currTestReports           map[string]StandardReport
+	httpServer                *http.Server
 }
 
 type TestGridDashboardCoordinates struct {
@@ -264,6 +264,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 	testReportConfig := TestReportGeneratorConfig{
 		TestGridLoadingConfig: TestGridLoadingConfig{
 			LocalData: s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
+			Loader:    s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
 			JobFilter: jobFilter,
 		},
 		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
@@ -276,6 +277,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 			FailureClusterThreshold: failureClusterThreshold,
 		},
 	}
+
 	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
 	if !found {
 		releasehtml.WriteLandingPage(w, reportNames)
@@ -311,7 +313,8 @@ func (s *Server) jobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData, dashboardCoordinates.TestGridDashboardNames, jobFilter)
+	testGridJobDetails, lastUpdateTime := s.testReportGeneratorConfig.TestGridLoadingConfig.loadWithFilter(
+		dashboardCoordinates.TestGridDashboardNames, jobFilter)
 
 	api.PrintJobsReport(w, s.syntheticTestManager, testGridJobDetails, lastUpdateTime)
 }
@@ -363,22 +366,36 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Serve() {
-	http.DefaultServeMux.HandleFunc("/", s.printHTMLReport)
-	http.DefaultServeMux.HandleFunc("/install", s.printInstallHTMLReport)
-	http.DefaultServeMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
-	http.DefaultServeMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
-	http.DefaultServeMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
-	http.DefaultServeMux.HandleFunc("/json", s.printJSONReport)
-	http.DefaultServeMux.HandleFunc("/detailed", s.detailed)
-	http.DefaultServeMux.HandleFunc("/refresh", s.refresh)
-	http.DefaultServeMux.HandleFunc("/canary", s.printCanaryReport)
-	http.DefaultServeMux.HandleFunc("/api/jobs", s.jobs)
-	http.DefaultServeMux.HandleFunc("/jobs", s.jobsReport)
-	http.DefaultServeMux.HandleFunc("/variants", s.variantsReport)
+	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
+	serveMux := http.NewServeMux()
 
-	http.DefaultServeMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	serveMux.HandleFunc("/", s.printHTMLReport)
+	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
+	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+	serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
+	serveMux.HandleFunc("/json", s.printJSONReport)
+	serveMux.HandleFunc("/detailed", s.detailed)
+	serveMux.HandleFunc("/refresh", s.refresh)
+	serveMux.HandleFunc("/canary", s.printCanaryReport)
+	serveMux.HandleFunc("/api/jobs", s.jobs)
+	serveMux.HandleFunc("/jobs", s.jobsReport)
+	serveMux.HandleFunc("/variants", s.variantsReport)
+	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
+	// Store a pointer to the HTTP server for later retrieval.
+	s.httpServer = &http.Server{
+		Addr:    s.listenAddr,
+		Handler: serveMux,
+	}
+
 	klog.Infof("Serving reports on %s ", s.listenAddr)
-	if err := http.ListenAndServe(s.listenAddr, nil); err != nil {
+
+	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		klog.Exitf("Server exited: %v", err)
 	}
+}
+
+func (s *Server) GetHTTPServer() *http.Server {
+	return s.httpServer
 }

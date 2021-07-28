@@ -17,12 +17,30 @@ import (
 	"k8s.io/klog"
 )
 
+// Allows one to pass in an alternative testgrid loader func for testing.
+type TestGridLoader func(string, []string, *regexp.Regexp) ([]testgridv1.JobDetails, time.Time)
+
 // TestGridLoadingOptions control the data which is loaded from disk into the testgrid structs
 type TestGridLoadingConfig struct {
 	// LocalData is the directory where the testgrid data is stored
 	LocalData string
 	// JobFilter is a regex run against job names. Only match names are loaded.
 	JobFilter *regexp.Regexp
+	// The function to load TestGrid results from disk, used for testing.
+	Loader TestGridLoader
+}
+
+func (t TestGridLoadingConfig) loadWithFilter(dashboards []string, jobFilter *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {
+	// If TestGridLoader isn't defined, use the default one
+	if t.Loader == nil {
+		return testgridhelpers.LoadTestGridDataFromDisk(t.LocalData, dashboards, jobFilter)
+	}
+
+	return t.Loader(t.LocalData, dashboards, jobFilter)
+}
+
+func (t TestGridLoadingConfig) load(dashboards []string) ([]testgridv1.JobDetails, time.Time) {
+	return t.loadWithFilter(dashboards, t.JobFilter)
 }
 
 // RawJobResultsAnalysisOptions control which subset of data from the testgrid data is analyzed into the rawJobResults
@@ -56,7 +74,7 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
-	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
+	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	return a.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 }
 
@@ -103,7 +121,7 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) StandardReport {
-	testGridJobDetails, lastUpdateTime := testgridhelpers.LoadTestGridDataFromDisk(a.TestGridLoadingConfig.LocalData, dashboard.TestGridDashboardNames, a.TestGridLoadingConfig.JobFilter)
+	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 
 	currTimePeriodConfig := a.deepCopy()
 	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
