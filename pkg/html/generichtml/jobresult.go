@@ -15,6 +15,7 @@ type jobResultDisplay struct {
 	totalRuns              int
 	bugList                []bugsv1.Bug
 	associatedBugList      []bugsv1.Bug
+	stepRegistryMetrics    sippyprocessingv1.StepRegistryMetrics
 
 	testResults []testResultDisplay
 }
@@ -42,6 +43,8 @@ func jobResultToDisplay(in sippyprocessingv1.JobResult) jobResultDisplay {
 		parenDisplayPercentage: in.PassPercentageWithoutInfrastructureFailures,
 		totalRuns:              in.Successes + in.Failures,
 	}
+
+	ret.stepRegistryMetrics = in.StepRegistryMetrics
 
 	for _, testResult := range in.TestResults {
 		ret.testResults = append(ret.testResults, testResultToDisplay(testResult))
