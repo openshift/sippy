@@ -76,10 +76,10 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
 	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
 	for i, t := range timestamps {
-		if int64(t) < startTs && i < start {
+		if int64(t) <= startTs && i < start {
 			start = i
 		}
-		if int64(t) < stopTs {
+		if int64(t) <= stopTs {
 			return start, i
 		}
 	}

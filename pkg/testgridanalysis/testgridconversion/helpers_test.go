@@ -2,6 +2,7 @@ package testgridconversion_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,6 +12,37 @@ import (
 )
 
 // Assertions
+func assertChangelistsEqual(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedChangelists []string) {
+	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
+	expectedChangelistsSet := changelistsToProwURLSet(expectedChangelists)
+
+	if !actualChangelists.Equal(expectedChangelistsSet) {
+		t.Errorf("expected changelist(s) to equal: %v, got: %v",
+			getChangelistsFromProwURLSet(expectedChangelistsSet),
+			getChangelistsFromProwURLSet(actualChangelists))
+	}
+}
+
+func assertHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedChangelists []string) {
+	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
+	expectedChangelistsSet := changelistsToProwURLSet(expectedChangelists)
+
+	if !actualChangelists.IsSuperset(expectedChangelistsSet) {
+		diff := expectedChangelistsSet.Difference(actualChangelists)
+		t.Errorf("expected to find changelist(s): %v", getChangelistsFromProwURLSet(diff))
+	}
+}
+
+func assertNotHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedNotToHaveChangelists []string) {
+	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
+	expectedChangelistsSet := changelistsToProwURLSet(expectedNotToHaveChangelists)
+
+	if actualChangelists.HasAny(expectedNotToHaveChangelists...) {
+		diff := expectedChangelistsSet.Difference(actualChangelists)
+		t.Errorf("expected not to find changelist(s): %v", getChangelistsFromProwURLSet(diff))
+	}
+}
+
 func assertNoWarnings(t *testing.T, warnings []string) {
 	if len(warnings) != 0 {
 		t.Errorf("expected no warnings, got: %v", warnings)
@@ -91,17 +123,7 @@ func getTestGridJobDetailsFromTestNames(testNames []string, status testgridv1.Te
 	return getTestGridJobDetails(getTestGridTests(testNames, status))
 }
 
-func getTestGridTimestamp() time.Time {
-	// Need to subtract a second from now because the code under test also calls
-	// time.Now() and if these times are the same, this data will be ignored.
-	return time.Now().Add(-1 * time.Second)
-}
-
 func getTestGridJobDetails(tests []testgridv1.Test) []testgridv1.JobDetails {
-	// This creates a single JobDetails instance with all the tests provided.
-	// This assumes single job run with a single change list.
-	timestamp := getTestGridTimestamp()
-
 	return []testgridv1.JobDetails{
 		{
 			Name:  jobName,
@@ -111,14 +133,14 @@ func getTestGridJobDetails(tests []testgridv1.Test) []testgridv1.JobDetails {
 			},
 			Tests: tests,
 			Timestamps: []int{
-				int(timestamp.Unix() * 1000),
+				int(time.Now().Unix() * 1000),
 			},
 		},
 	}
 }
 
 func getTestGridJobDetailsForRunLength(tests []testgridv1.Test, changelists []string) []testgridv1.JobDetails {
-	start := getTestGridTimestamp()
+	start := time.Now()
 
 	// Creates a series of timestamps 24 hours apart from one another.
 	// Note: We must have exactly as many changelists as timestamps.
@@ -194,4 +216,24 @@ func getStatusName(status testgridv1.TestStatus) string {
 	}
 
 	return statusName
+}
+
+func getChangelistsFromProwURLSet(prowURLs sets.String) []string {
+	results := []string{}
+
+	for _, prowURL := range prowURLs.List() {
+		results = append(results, filepath.Base(prowURL))
+	}
+
+	return results
+}
+
+func changelistsToProwURLSet(changelists []string) sets.String {
+	changelistSet := sets.NewString()
+
+	for _, changelist := range changelists {
+		changelistSet.Insert(getProwURL(changelist))
+	}
+
+	return changelistSet
 }

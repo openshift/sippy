@@ -71,11 +71,9 @@ func runRawDataTestCase(t *testing.T, rawDataTestCase rawDataTestCase) {
 
 			// If there are no expected test names, there are no changelists.
 			if len(rawDataTestCase.expectedTestNames) > 0 {
-				changelist := "0123456789"
-				prowURL := getProwURL(changelist)
-				if _, ok := jobResults.JobRunResults[prowURL]; !ok {
-					t.Errorf("expected to find a changelist for %s", changelist)
-				}
+				assertChangelistsEqual(t, jobResults, testGridJobDetails[0].ChangeLists)
+			} else {
+				assertChangelistsEqual(t, jobResults, []string{})
 			}
 
 			// Run the optional verifications, if present.
@@ -160,6 +158,7 @@ func TestToRawDataOverall(t *testing.T) {
 		}
 
 		rawJobRunResult := opts.rawData.JobResults[jobName].JobRunResults[getProwURL("0123456789")]
+
 		if opts.testGridStatus == testgridv1.TestStatusSuccess || opts.testGridStatus == testgridv1.TestStatusFlake {
 			// Check that the job was marked as a success.
 			if !rawJobRunResult.Succeeded {
@@ -422,10 +421,10 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 				"987",
 				"654",
 				"321",
-				"ABC",
+				"123",
 			},
 			excludedChangelists: []string{
-				"123",
+				"ABC",
 				"DEF",
 			},
 			expectedRawTestResult: testgridanalysisapi.RawTestResult{
@@ -510,7 +509,7 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 			// Get our input data
 			testGridJobDetails := getTestGridJobDetailsForRunLength(testGridTests, changelists)
 
-			// Check our inputs:
+			// Check our inputs
 			assertTestGridJobDetailsOK(t, testGridJobDetails, len(changelists))
 
 			// This test isn't concerned about synthetics
@@ -531,19 +530,24 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 				t.Errorf("expected rawtestresult to be: %v, got: %v", testCase.expectedRawTestResult, actualTestResult)
 			}
 
-			// Check for excluded changelists
-			for _, changelist := range testCase.excludedChangelists {
-				if _, ok := jobResults.JobRunResults[getProwURL(changelist)]; ok {
-					t.Errorf("did not expect excluded changelist %s to be found", changelist)
+			// Check our passing changelists
+			assertHasChangelists(t, jobResults, testCase.passingChangelists)
+			for _, changelist := range testCase.passingChangelists {
+				jrr := jobResults.JobRunResults[getProwURL(changelist)]
+
+				if hasTestFailures(jrr) {
+					t.Errorf("expected no test failures for changelist %s", changelist)
+				}
+
+				if hasFailedTest(jrr, testName) {
+					t.Errorf("expected not to find failing test: %s in changelist %s", testName, changelist)
 				}
 			}
 
 			// Check our failing changelists
+			assertHasChangelists(t, jobResults, testCase.failingChangelists)
 			for _, changelist := range testCase.failingChangelists {
-				jrr, ok := jobResults.JobRunResults[getProwURL(changelist)]
-				if !ok {
-					t.Errorf("expected to find failing changelist %s", changelist)
-				}
+				jrr := jobResults.JobRunResults[getProwURL(changelist)]
 
 				if !hasTestFailures(jrr) {
 					t.Errorf("expected test failure for changelist %s", changelist)
@@ -554,21 +558,11 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 				}
 			}
 
-			// Check our passing changelists
-			for _, changelist := range testCase.passingChangelists {
-				jrr, ok := jobResults.JobRunResults[getProwURL(changelist)]
-				if !ok {
-					t.Errorf("expected to find passing changelist %s", changelist)
-				}
+			// Check our excluded changelists
+			assertNotHasChangelists(t, jobResults, testCase.excludedChangelists)
 
-				if hasTestFailures(jrr) {
-					t.Errorf("expected no test failures for changelist %s", changelist)
-				}
-
-				if hasFailedTest(jrr, testName) {
-					t.Errorf("expected not to find failing test: %s in changelist %s", testName, changelist)
-				}
-			}
+			// Ensure we didn't miss anything
+			assertChangelistsEqual(t, jobResults, append(testCase.passingChangelists, testCase.failingChangelists...))
 		})
 	}
 }
