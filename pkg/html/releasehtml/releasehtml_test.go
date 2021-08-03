@@ -63,10 +63,15 @@ func TestPrintHTMLReport(t *testing.T) {
 	jobTestCount := 10
 	allReportNames := []string{release}
 
+	expectedContents := []string{
+		release,
+		"StepMetrics",
+	}
+
 	testFunc := func(r *httptest.ResponseRecorder) {
 		releasehtml.PrintHTMLReport(r, req, report, twoDayReport, prevReport, numDays, jobTestCount, allReportNames)
 	}
 
-	htmltesthelpers.AssertHTTPResponseContains(t, allReportNames, testFunc)
+	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
 	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }

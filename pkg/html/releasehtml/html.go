@@ -76,6 +76,8 @@ const (
 
 {{ summaryJobsFailuresByBugzillaComponent .Current .Prev .NumDays .Release }}
 
+{{ stepMetrics .Current .Prev .NumDays .Release }}
+
 `
 )
 
@@ -401,6 +403,7 @@ func PrintHTMLReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 			"summaryTopNegativelyMovingJobs":         summaryTopNegativelyMovingJobs,
 			"topLevelIndicators":                     topLevelIndicators,
 			"releasesList":                           releasesList,
+			"stepMetrics":                            stepMetrics,
 		},
 	).Parse(dashboardPageHTML))
 
