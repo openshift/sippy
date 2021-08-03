@@ -1,18 +1,23 @@
 package testgridconversion_test
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // Assertions
 func assertChangelistsEqual(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedChangelists []string) {
+	t.Helper()
+
 	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
 	expectedChangelistsSet := changelistsToProwURLSet(expectedChangelists)
 
@@ -24,6 +29,8 @@ func assertChangelistsEqual(t *testing.T, rawJobResult testgridanalysisapi.RawJo
 }
 
 func assertHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedChangelists []string) {
+	t.Helper()
+
 	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
 	expectedChangelistsSet := changelistsToProwURLSet(expectedChangelists)
 
@@ -34,6 +41,8 @@ func assertHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJobR
 }
 
 func assertNotHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedNotToHaveChangelists []string) {
+	t.Helper()
+
 	actualChangelists := sets.StringKeySet(rawJobResult.JobRunResults)
 	expectedChangelistsSet := changelistsToProwURLSet(expectedNotToHaveChangelists)
 
@@ -44,12 +53,16 @@ func assertNotHasChangelists(t *testing.T, rawJobResult testgridanalysisapi.RawJ
 }
 
 func assertNoWarnings(t *testing.T, warnings []string) {
+	t.Helper()
+
 	if len(warnings) != 0 {
 		t.Errorf("expected no warnings, got: %v", warnings)
 	}
 }
 
 func assertWarningsEqual(t *testing.T, have, want []string) {
+	t.Helper()
+
 	haveSet := sets.NewString(have...)
 	wantSet := sets.NewString(want...)
 
@@ -58,7 +71,24 @@ func assertWarningsEqual(t *testing.T, have, want []string) {
 	}
 }
 
+func assertRawTestResultsEqual(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expected []testgridanalysisapi.RawTestResult) {
+	t.Helper()
+
+	if len(rawJobResult.TestResults) != len(expected) {
+		t.Errorf("raw test results size mismatch, expected: %d, got: %d", len(expected), len(rawJobResult.TestResults))
+	}
+
+	for _, expectedResult := range expected {
+		assertHasRawTestResults(t, rawJobResult, []string{expectedResult.Name})
+		if expectedResult != rawJobResult.TestResults[expectedResult.Name] {
+			t.Errorf("raw test results not equal, expected: %v, got: %v", expectedResult, rawJobResult.TestResults[expectedResult.Name])
+		}
+	}
+}
+
 func assertRawTestResultsNamesEqual(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, expectedTestNames []string) {
+	t.Helper()
+
 	wantSet := sets.NewString(expectedTestNames...)
 	haveSet := sets.StringKeySet(rawJobResult.TestResults)
 
@@ -68,6 +98,8 @@ func assertRawTestResultsNamesEqual(t *testing.T, rawJobResult testgridanalysisa
 }
 
 func assertHasRawTestResults(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, testNames []string) {
+	t.Helper()
+
 	for _, testName := range testNames {
 		if _, ok := rawJobResult.TestResults[testName]; !ok {
 			t.Errorf("expected to find raw test result with name: %s", testName)
@@ -76,14 +108,18 @@ func assertHasRawTestResults(t *testing.T, rawJobResult testgridanalysisapi.RawJ
 }
 
 func assertNotHasRawTestResults(t *testing.T, rawJobResult testgridanalysisapi.RawJobResult, testNames []string) {
+	t.Helper()
+
 	for _, testName := range testNames {
 		if _, ok := rawJobResult.TestResults[testName]; ok {
-			t.Errorf("expected to not to find raw test result with name: %s", testName)
+			t.Errorf("expected not to find raw test result with name: %s", testName)
 		}
 	}
 }
 
 func assertTestGridJobDetailsOK(t *testing.T, jobDetails []testgridv1.JobDetails, jobNum int) {
+	t.Helper()
+
 	// Do some validating of our generated input.
 	// Specifically, we're ensuring that the following is true:
 	// - We have an equal number of timestamps and changelists.
@@ -118,6 +154,43 @@ func assertTestGridJobDetailsOK(t *testing.T, jobDetails []testgridv1.JobDetails
 	}
 }
 
+func assertNoErrors(t *testing.T, errs []error) {
+	t.Helper()
+
+	if len(errs) != 0 {
+		t.Errorf("expected no errors, got: %v", errs)
+	}
+}
+
+func assertMissingOverallErrors(t *testing.T, errs []error) {
+	t.Helper()
+
+	for _, err := range errs {
+		assertMissingOverallError(t, err)
+	}
+}
+
+func assertMissingOverallError(t *testing.T, err error) {
+	t.Helper()
+
+	if !errors.As(err, &testgridconversion.MissingOverallError{}) {
+		t.Errorf("expected error to be MissingOverallError, got unknown error type")
+	}
+
+	if !strings.Contains(err.Error(), jobName) {
+		t.Errorf("expected error to have the job name (%s)", jobName)
+	}
+}
+
+func assertErrorEqual(t *testing.T, err, expectedErr error) {
+	t.Helper()
+
+	// I know this isn't the preferred way to do this
+	if err.Error() != expectedErr.Error() {
+		t.Errorf("expected error to be %s, got: %s", expectedErr.Error(), err.Error())
+	}
+}
+
 // Input generation funcs
 func getTestGridJobDetailsFromTestNames(testNames []string, status testgridv1.TestStatus) []testgridv1.JobDetails {
 	return getTestGridJobDetails(getTestGridTests(testNames, status))
@@ -136,6 +209,30 @@ func getTestGridJobDetails(tests []testgridv1.Test) []testgridv1.JobDetails {
 				int(time.Now().Unix() * 1000),
 			},
 		},
+	}
+}
+
+func getTestGridJobDetailsForSkipped(testNames []string) []testgridv1.JobDetails {
+	// We generate two TestGridJobDetails, one with an "Overall" test, and one
+	// without.
+	skippedJobName := "periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp"
+
+	// Get a set of TestGrid job details with an overall test
+	testGridJobDetailWithOverall := getTestGridJobDetailsFromTestNames(
+		append(testNames, overallTestName), testgridv1.TestStatusSuccess)[0]
+
+	// Get a set of TestGrid job details without an overall test
+	testGridJobDetailWithoutOverall := getTestGridJobDetailsFromTestNames(
+		append(testNames, "failing-test"), testgridv1.TestStatusFailure)[0]
+
+	// Change these values so they're unique
+	testGridJobDetailWithoutOverall.ChangeLists[0] = "9876543210"
+	testGridJobDetailWithoutOverall.Name = skippedJobName
+	testGridJobDetailWithoutOverall.Query = "origin-ci-test/logs/" + skippedJobName
+
+	return []testgridv1.JobDetails{
+		testGridJobDetailWithOverall,
+		testGridJobDetailWithoutOverall,
 	}
 }
 

@@ -93,7 +93,16 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 		StartDay:             a.RawJobResultsAnalysisConfig.StartDay,
 		NumDays:              a.RawJobResultsAnalysisConfig.NumDays,
 	}
-	rawJobResults, processingWarnings := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
+	rawJobResults, processingWarnings, processingErrs := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
+	if len(processingErrs) != 0 {
+		for _, err := range processingErrs {
+			processedErr := fmt.Errorf("could not prepare test report from data: %w", err)
+			klog.Error(processedErr)
+			// Add error content to processingWarnings so it gets displayed
+			processingWarnings = append(processingWarnings, processedErr.Error())
+		}
+	}
+
 	bugCacheWarnings := updateBugCacheForJobResults(bugCache, rawJobResults)
 	warnings := []string{}
 	warnings = append(warnings, processingWarnings...)

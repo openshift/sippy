@@ -407,8 +407,8 @@ func (tc testCase) getURL() *url.URL {
 	}
 }
 
-func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Time) *sippyserver.Server {
-	loadingConfig := sippyserver.TestGridLoadingConfig{
+func getLoadingConfig(jobDetails []testgridv1.JobDetails, timestamp time.Time) sippyserver.TestGridLoadingConfig {
+	return sippyserver.TestGridLoadingConfig{
 		Loader: func(_ string, _ []string, _ *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {
 			// Inject Test Grid fixtures so we don't have to read from disk.
 			return jobDetails, timestamp
@@ -418,19 +418,25 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 		// We're not actively trying to filter anything
 		JobFilter: regexp.MustCompile(``),
 	}
+}
 
-	analysisConfig := sippyserver.RawJobResultsAnalysisConfig{
+func getAnalysisConfig() sippyserver.RawJobResultsAnalysisConfig {
+	return sippyserver.RawJobResultsAnalysisConfig{
 		StartDay: 0,
 		NumDays:  7,
 	}
+}
 
-	displayConfig := sippyserver.DisplayDataConfig{
+func getDisplayConfig() sippyserver.DisplayDataConfig {
+	return sippyserver.DisplayDataConfig{
 		MinTestRuns:             1,
 		TestSuccessThreshold:    0.95,
 		FailureClusterThreshold: 0,
 	}
+}
 
-	dashboardCoordinates := []sippyserver.TestGridDashboardCoordinates{
+func getDashboardCoordinates() []sippyserver.TestGridDashboardCoordinates {
+	return []sippyserver.TestGridDashboardCoordinates{
 		{
 			ReportName: release,
 			TestGridDashboardNames: []string{
@@ -441,15 +447,17 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 			BugzillaRelease: release,
 		},
 	}
+}
 
+func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Time) *sippyserver.Server {
 	listenAddr := fmt.Sprintf(":%d", port)
 
 	// Configure the Sippy server.
 	sippyServer := sippyserver.NewServer(
-		loadingConfig,
-		analysisConfig,
-		displayConfig,
-		dashboardCoordinates,
+		getLoadingConfig(jobDetails, timestamp),
+		getAnalysisConfig(),
+		getDisplayConfig(),
+		getDashboardCoordinates(),
 		listenAddr,
 		testgridconversion.NewOpenshiftSyntheticTestManager(),
 		testidentification.NewOpenshiftVariantManager(),
@@ -465,44 +473,55 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 }
 
 func getTestGridData() ([]testgridv1.JobDetails, time.Time) {
-	now := time.Now()
+	awsJobName := "periodic-ci-openshift-release-master-ci-4.9-e2e-aws"
+	gcpJobName := "periodic-ci-openshift-release-master-ci-4.9-e2e-gcp"
 
-	jobName := "periodic-ci-openshift-release-master-ci-4.9-e2e-aws"
+	gcpJobDetail := getTestGridJobDetail(gcpJobName, "9876543210")
+	gcpJobDetail.Tests = append(gcpJobDetail.Tests, testgridv1.Test{
+		Name: "Overall",
+		Statuses: []testgridv1.TestResult{
+			{
+				Count: 1,
+				Value: testgridv1.TestStatusSuccess,
+			},
+		},
+	})
 
-	jobDetails := []testgridv1.JobDetails{
-		{
-			Name:  jobName,
-			Query: "origin-ci-test/logs/" + jobName,
-			ChangeLists: []string{
-				"0123456789",
-			},
-			Timestamps: []int{
-				// The code under test calls time.Now(). If we do not subtract one
-				// second from time.Now(), this test fixture will be ignored.
-				int(now.Add(-1*time.Second).Unix() * 1000),
-			},
-			Tests: []testgridv1.Test{
-				{
-					Name: "passing-test",
-					Statuses: []testgridv1.TestResult{
-						{
-							Count: 1,
-							Value: testgridv1.TestStatusSuccess,
-						},
+	return []testgridv1.JobDetails{
+		getTestGridJobDetail(awsJobName, "1234567890"),
+		gcpJobDetail,
+	}, time.Now()
+}
+
+func getTestGridJobDetail(jobName, changelist string) testgridv1.JobDetails {
+	return testgridv1.JobDetails{
+		Name:  jobName,
+		Query: "origin-ci-test/logs/" + jobName,
+		ChangeLists: []string{
+			changelist,
+		},
+		Timestamps: []int{
+			int(time.Now().Unix() * 1000),
+		},
+		Tests: []testgridv1.Test{
+			{
+				Name: "passing-test",
+				Statuses: []testgridv1.TestResult{
+					{
+						Count: 1,
+						Value: testgridv1.TestStatusSuccess,
 					},
 				},
-				{
-					Name: "failing-test",
-					Statuses: []testgridv1.TestResult{
-						{
-							Count: 1,
-							Value: testgridv1.TestStatusFailure,
-						},
+			},
+			{
+				Name: "failing-test",
+				Statuses: []testgridv1.TestResult{
+					{
+						Count: 1,
+						Value: testgridv1.TestStatusFailure,
 					},
 				},
 			},
 		},
 	}
-
-	return jobDetails, now
 }
