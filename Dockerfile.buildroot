@@ -1,0 +1,7 @@
+# In order to use ubi:8 as a build root, we need
+# git pre-installed per the CI documentation[1].
+#
+# [1] https://docs.ci.openshift.org/docs/architecture/ci-operator/#build-root-image
+#
+FROM registry.access.redhat.com/ubi8/ubi:latest
+RUN dnf install -y git go make npm
