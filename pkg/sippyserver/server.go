@@ -3,10 +3,13 @@ package sippyserver
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -26,6 +29,8 @@ func NewServer(
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
+	sippyNG *rice.Box,
+	static *rice.Box,
 ) *Server {
 
 	server := &Server{
@@ -41,6 +46,8 @@ func NewServer(
 			DisplayDataConfig:           displayDataOptions,
 		},
 		currTestReports: map[string]StandardReport{},
+		sippyNG:         sippyNG,
+		static:          static,
 	}
 
 	return server
@@ -55,6 +62,8 @@ type Server struct {
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
 	currTestReports           map[string]StandardReport
+	sippyNG                   *rice.Box
+	static                    *rice.Box
 	httpServer                *http.Server
 }
 
@@ -425,9 +434,29 @@ func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
 	serveMux := http.NewServeMux()
 
+	// Handle serving React version of frontend with support for browser router, i.e. anything not found
+	// goes to index.html
+	serveMux.HandleFunc("/sippy-ng/", func(w http.ResponseWriter, r *http.Request) {
+		fs := s.sippyNG.HTTPBox()
+		if r.URL.Path != "/sippy-ng/" {
+			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
+			if _, err := fs.Open(fullPath); err != nil {
+				if !os.IsNotExist(err) {
+					panic(err)
+				}
+				r.URL.Path = "/sippy-ng/"
+			}
+		}
+
+		http.StripPrefix("/sippy-ng/", http.FileServer(fs)).ServeHTTP(w, r)
+	})
+
+	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(s.static.HTTPBox())))
+
 	serveMux.HandleFunc("/", s.printHTMLReport)
 	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
 	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+
 	serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
 	serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
 	serveMux.HandleFunc("/detailed", s.detailed)
@@ -448,7 +477,6 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
-	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

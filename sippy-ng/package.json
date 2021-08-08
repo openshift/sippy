@@ -1,0 +1,84 @@
+{
+  "name": "sippy-ng",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@material-ui/core": "^4.12.3",
+    "@material-ui/data-grid": "^4.0.0-alpha.37",
+    "@material-ui/icons": "^4.11.2",
+    "@material-ui/lab": "^4.0.0-alpha.60",
+    "@material-ui/x-license": "^4.0.0-alpha.37",
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/react": "^11.2.7",
+    "@testing-library/user-event": "^12.8.3",
+    "axios": "^0.21.1",
+    "chroma-js": "^2.1.2",
+    "clsx": "^1.1.1",
+    "npm-install-missing": "^0.1.4",
+    "query-string": "^7.0.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-minimal-pie-chart": "^8.2.0",
+    "react-router-dom": "^5.2.0",
+    "use-query-params": "^1.2.3"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "sed -i -e 's/const FORCE_EXIT_DELAY = 500;/const FORCE_EXIT_DELAY = 7000;/g' ./node_modules/jest-worker/build/base/BaseWorkerPool.js && react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "eslintIgnore": [
+    "node_modules",
+    "build/*"
+  ],
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.0",
+    "@babel/plugin-proposal-class-properties": "^7.14.5",
+    "@babel/preset-env": "^7.15.0",
+    "@babel/preset-react": "^7.14.5",
+    "@pollyjs/adapter-node-http": "^5.1.1",
+    "@pollyjs/adapter-xhr": "^5.1.1",
+    "@pollyjs/core": "^5.1.1",
+    "@pollyjs/persister-fs": "^5.1.1",
+    "@wojtekmaj/enzyme-adapter-react-17": "^0.6.3",
+    "babel-eslint": "^10.1.0",
+    "enzyme": "^3.11.0",
+    "enzyme-to-json": "^3.6.2",
+    "eslint": "^7.32.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-plugin-babel": "^5.3.1",
+    "eslint-plugin-import": "^2.24.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.1.0",
+    "eslint-plugin-react": "^7.24.0",
+    "jest-serializer-html": "^7.1.0",
+    "jsdom": "16.7.0",
+    "react-scripts": "4.0.3",
+    "jsdom-global": "3.0.2",
+    "node-fetch": "^2.6.1",
+    "setup-polly-jest": "^0.10.0"
+  },
+  "homepage": "/sippy-ng/",
+  "jest": {
+    "snapshotSerializers": ["jest-serializer-html"]
+  }
+}

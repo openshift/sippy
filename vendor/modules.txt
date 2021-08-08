@@ -1,3 +1,8 @@
+# github.com/GeertJohan/go.rice v1.0.2
+github.com/GeertJohan/go.rice
+github.com/GeertJohan/go.rice/embedded
+# github.com/daaku/go.zipexe v1.0.1
+github.com/daaku/go.zipexe
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/spf13/cobra v0.0.6

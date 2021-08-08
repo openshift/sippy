@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Jobs should match snapshot 1`] = `
+<nav class="MuiTypography-root MuiBreadcrumbs-root MuiTypography-body1 MuiTypography-colorTextSecondary"
+     aria-label="breadcrumb"
+>
+  <ol class="MuiBreadcrumbs-ol">
+    <li class="MuiBreadcrumbs-li">
+      <a href="/release/4.8">
+        Overview
+      </a>
+    </li>
+    <li aria-hidden="true"
+        class="MuiBreadcrumbs-separator"
+    >
+      /
+    </li>
+    <li class="MuiBreadcrumbs-li">
+      <p class="MuiTypography-root MuiTypography-body1">
+        Jobs
+      </p>
+    </li>
+  </ol>
+</nav>
+`;

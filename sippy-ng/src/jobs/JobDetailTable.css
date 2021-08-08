@@ -1,0 +1,115 @@
+a {
+    color: #000;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #33f;
+}
+
+.wrapper {
+    position: relative;
+    overflow: auto;
+    border: 1px solid black;
+    white-space: nowrap;
+}
+
+.view {
+    margin: auto;
+    width: "100%";
+}
+
+.dashboard-table {
+    border: 1px solid black;
+    margin-top: 0.5em;
+}
+
+.row-item {
+    border: 1px solid black;
+    background-color: white;
+}
+
+.col-header {
+    text-align: center;
+}
+
+.col-header input {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.col-name {
+    min-width: 500px;
+    width: 500px;
+    max-width: 500px;
+    overflow: hidden;
+    text-overflow: wrap;
+    left: 0px;
+}
+
+.col-day {
+    border: 1px solid black;
+    opacity: 1;
+    vertical-align: top;
+    display: inline-block;
+}
+
+.results {
+    border: 1px solid black;
+    display: flex;
+}
+
+.results-demo {
+    width: 30px;
+    display: inline-flex;
+}
+
+.legend-item {
+    margin-right: 1em;
+}
+
+.result {
+    border: 2px solid black;
+    color: white;
+    flex: 1 1 auto;
+    text-align:center;
+    font-family: monospace;
+    background: #aaa;
+    display: inline-block;
+    padding: 5px;
+}
+
+.result:hover {
+    color: white;
+    border: 2px solid greenyellow;
+}
+
+.result-F {
+    background: #a00;
+}
+
+.result-f {
+    background: #d33;
+}
+
+.result-U {
+    background: #d60;
+}
+
+.result-I {
+    background: #d60;
+}
+
+.result-N, .result-N:hover {
+    background: #633;
+    color: #a99;
+}
+
+.result-n, .result-n:hover {
+    background: #633;
+    color: #a99;
+}
+
+.result-S {
+    background: #0a0;
+}

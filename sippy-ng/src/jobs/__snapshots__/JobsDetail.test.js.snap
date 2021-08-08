@@ -1,0 +1,575 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`JobsDetail should match snapshot 1`] = `
+"
+<div class=\\"MuiPaper-root MuiAlert-root MuiAlert-standardWarning MuiPaper-elevation0\\"
+     role=\\"alert\\"
+>
+  <div class=\\"MuiAlert-icon\\">
+    <svg class=\\"MuiSvgIcon-root MuiSvgIcon-fontSizeInherit\\"
+         focusable=\\"false\\"
+         viewbox=\\"0 0 24 24\\"
+         aria-hidden=\\"true\\"
+    >
+      <path d=\\"M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z\\">
+      </path>
+    </svg>
+  </div>
+  <div class=\\"MuiAlert-message\\">
+    Enter a search query below
+  </div>
+</div>
+<br>
+<div class=\\"MuiGrid-root MuiGrid-container\\"
+     style=\\"display: flex;\\"
+>
+  <div class=\\"MuiFormControl-root MuiTextField-root\\"
+       style=\\"width: 50%;\\"
+  >
+    <label class=\\"MuiFormLabel-root MuiFormLabel-colorSecondary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-outlined MuiFormLabel-filled\\"
+           data-shrink=\\"true\\"
+           for=\\"outlined-secondary\\"
+           id=\\"outlined-secondary-label\\"
+    >
+      Filter
+    </label>
+    <div class=\\"MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorSecondary MuiOutlinedInput-colorSecondary MuiInputBase-formControl\\">
+      <input aria-invalid=\\"false\\"
+             id=\\"outlined-secondary\\"
+             type=\\"text\\"
+             class=\\"MuiInputBase-input MuiOutlinedInput-input\\"
+             value=\\"4.8-e2e-gcp-upgrade\\"
+      >
+      <fieldset aria-hidden=\\"true\\"
+                class=\\"PrivateNotchedOutline-root-2 MuiOutlinedInput-notchedOutline\\"
+      >
+        <legend class=\\"PrivateNotchedOutline-legendLabelled-4 PrivateNotchedOutline-legendNotched-5\\">
+          <span>
+            Filter
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+  </div>
+  &nbsp;&nbsp;
+  <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary\\"
+          tabindex=\\"0\\"
+          type=\\"button\\"
+  >
+    <span class=\\"MuiButton-label\\">
+      Search
+    </span>
+    <span class=\\"MuiTouchRipple-root\\">
+    </span>
+  </button>
+</div>
+<br>
+<br>
+<div>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-S\\">
+        S
+      </span>
+    </span>
+    success
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-F\\">
+        F
+      </span>
+    </span>
+    failure (e2e)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-f\\">
+        f
+      </span>
+    </span>
+    failure (other tests)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-U\\">
+        U
+      </span>
+    </span>
+    upgrade failure
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-I\\">
+        I
+      </span>
+    </span>
+    setup failure (installer)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-N\\">
+        N
+      </span>
+    </span>
+    setup failure (infra)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-n\\">
+        n
+      </span>
+    </span>
+    failure before setup (infra)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-R\\">
+        R
+      </span>
+    </span>
+    running
+  </span>
+</div>
+<div class=\\"view\\">
+  <div class=\\"MuiTableContainer-root wrapper\\">
+    <table class=\\"MuiTable-root dashboard-table\\"
+           aria-label=\\"simple table\\"
+    >
+      <thead class=\\"MuiTableHead-root\\">
+        <tr class=\\"MuiTableRow-root MuiTableRow-head\\">
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-name col-first\\"
+              scope=\\"col\\"
+          >
+            Name
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/28
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/27
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/26
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/25
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/24
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/23
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/22
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/21
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/20
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/19
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/18
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/17
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/16
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/15
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/14
+          </th>
+        </tr>
+      </thead>
+      <tbody class=\\"MuiTableBody-root\\">
+        <tr class=\\"MuiTableRow-root row-item\\">
+          <th class=\\"MuiTableCell-root MuiTableCell-body col-name col-first\\"
+              role=\\"cell\\"
+              scope=\\"row\\"
+          >
+            <a href=\\"/jobs/4.8?filterBy=name&amp;job=periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\">
+              periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
+            </a>
+          </th>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-U\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420212396076568576\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              U
+            </a>
+            <a class=\\"result result-N\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420177970600873984\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              N
+            </a>
+            <a class=\\"result result-N\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420188033021382656\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              N
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420096355774238720\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420067975628591104\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420013758964568064\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420021248573837312\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419580485293576192\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419392069046112256\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419029450892251136\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418673879374630912\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418365830923554816\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418429231712440320\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-N\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418403733523402752\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              N
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418551483338592256\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418517290151841792\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418177253585457152\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418358411694706688\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417654695903629312\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417637792426496000\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417441891271577600\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417549800152240128\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-n\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417608329097646080\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              n
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417515436714496000\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416921452749262848\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417134541537021952\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+            <a class=\\"result result-S\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417224092519501824\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416601085929328640\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-I\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416238490395348992\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              I
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415838752525258752\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416155304449544192\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415816652422909952\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-I\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415673861600448512\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              I
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415310931189043200\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415384175036338176\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415314195020255232\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+            <a class=\\"result result-F\\"
+               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415441157537665024\\"
+               target=\\"_blank\\"
+               rel=\\"noreferrer\\"
+            >
+              F
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+)
+"
+`;

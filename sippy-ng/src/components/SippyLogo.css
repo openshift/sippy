@@ -1,0 +1,34 @@
+.Sippy-logo {
+  text-align: center;
+  height: 10vmin;
+  margin-top: 20px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .Sippy-logo:hover {
+    animation: Sippy-logo-spin infinite 1s linear;
+  }
+}
+
+.Sippy-link {
+  color: #61dafb;
+}
+
+@keyframes Sippy-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+
+}
