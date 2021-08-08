@@ -28,13 +28,14 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, bugzillaRelease)
+	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
 	infrequentJobsTestResultFilterFn := StandardTestResultFilter(2, successThreshold)
 
 	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn, variantManager)
+	variantHealth := convertVariantResultsToHealth(byVariant)
 
 	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
@@ -61,6 +62,7 @@ func PrepareTestReport(
 			Install:             install,
 			Upgrade:             upgrade,
 			FinalOperatorHealth: finalOperatorHealth,
+			Variant:             variantHealth,
 		},
 
 		ByTest:        allTestResultsByName.toOrderedList(),

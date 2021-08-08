@@ -4,6 +4,8 @@ package testgridanalysisapi
 
 import (
 	"regexp"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
 // 1. TestGrid contains jobs
@@ -19,6 +21,9 @@ type RawJobResult struct {
 	JobName        string
 	TestGridJobURL string
 
+	Query       string
+	ChangeLists []string
+
 	// JobRunResults is a map from individual job run URL to the results of that job run
 	JobRunResults map[string]RawJobRunResult
 
@@ -30,10 +35,11 @@ type RawJobResult struct {
 // It holds data about an individual test that may have happened in may different jobs and job runs.
 // It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete
 type RawTestResult struct {
-	Name      string
-	Successes int
-	Failures  int
-	Flakes    int
+	Name       string
+	Timestamps []int
+	Successes  int
+	Failures   int
+	Flakes     int
 }
 
 // RawJobRunResult is an intermediate datatype that may not have complete or consistent data when interrogated.
@@ -60,6 +66,12 @@ type RawJobRunResult struct {
 
 	// OpenShiftTestsStatus can be "", "Success", "Failure"
 	OpenShiftTestsStatus string
+
+	// Overall status
+	OverallStatus v1.JobStatus
+
+	// Start and end timestamps
+	Timestamp int
 }
 
 type OperatorState struct {

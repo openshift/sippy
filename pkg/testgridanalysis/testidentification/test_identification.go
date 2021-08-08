@@ -191,3 +191,18 @@ func IsUpgradeRelatedTest(testName string) bool {
 	return false
 
 }
+
+// IsInstallRelatedTest is a filter function for identifying tests that are valuable to track for upgrade diagnosis.
+func IsInstallRelatedTest(testName string) bool {
+	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName) {
+		return true
+	}
+	if strings.Contains(testName, testgridanalysisapi.InstallTestName) {
+		return true
+	}
+	if strings.Contains(testName, testgridanalysisapi.InstallTimeoutTestName) {
+		return true
+	}
+
+	return false
+}

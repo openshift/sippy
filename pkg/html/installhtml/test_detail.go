@@ -9,7 +9,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-func testDetailTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []string) string {
+func TestDetailTests(format ResponseFormat, curr, prev sippyprocessingv1.TestReport, testSubstrings []string) string {
 	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		isTestDetailRelatedTest(testSubstrings),
@@ -19,6 +19,10 @@ func testDetailTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []s
 	variants := sets.String{}
 	for _, byVariant := range dataForTestsByVariant.testNameToVariantToTestResult {
 		variants.Insert(sets.StringKeySet(byVariant).UnsortedList()...)
+	}
+
+	if format == JSON {
+		return dataForTestsByVariant.getTableJSON("Details for Tests", "Test Details by Variant", variants.List(), noChange)
 	}
 
 	return dataForTestsByVariant.getTableHTML("Details for Tests", "TestDetailByVariant", "Test Details by Variant", variants.List(), noChange)

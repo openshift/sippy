@@ -79,3 +79,7 @@ Typical usage for this use-case is like
 ./sippy --fetch-data ../data-dir/  --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing=
 ./sippy --server --local-data ../data-dir --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing= --variant=kube
 ```
+
+### API
+
+See [the API documentation](pkg/api/README.md)

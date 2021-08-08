@@ -3,6 +3,8 @@ package testreportconversion
 import (
 	"sort"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
@@ -61,14 +63,16 @@ func filterPertinentInfrequentJobResults(
 
 // convertRawJobResultsToProcessedJobResults performs no filtering
 func convertRawJobResultsToProcessedJobResults(
-	rawJobResults map[string]testgridanalysisapi.RawJobResult,
+	rawData testgridanalysisapi.RawData,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
+	manager testidentification.VariantManager,
 ) []sippyprocessingv1.JobResult {
 	jobs := []sippyprocessingv1.JobResult{}
+	rawJobResults := rawData.JobResults
 
 	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease)
+		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease, manager)
 		jobs = append(jobs, job)
 	}
 
@@ -81,17 +85,26 @@ func convertRawJobResultToProcessedJobResult(
 	rawJobResult testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
+	manager testidentification.VariantManager,
 ) sippyprocessingv1.JobResult {
-
 	job := sippyprocessingv1.JobResult{
 		Name:              rawJobResult.JobName,
+		Variants:          manager.IdentifyVariants(rawJobResult.JobName),
 		TestGridURL:       rawJobResult.TestGridJobURL,
 		TestResults:       convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
 		BugList:           bugCache.ListBugs(bugzillaRelease, rawJobResult.JobName, ""),
 		AssociatedBugList: bugCache.ListAssociatedBugs(bugzillaRelease, rawJobResult.JobName, ""),
 	}
 
-	for _, rawJRR := range rawJobResult.JobRunResults {
+	for url, rawJRR := range rawJobResult.JobRunResults {
+		buildStatus := sippyprocessingv1.BuildResult{
+			URL:       url,
+			Timestamp: rawJRR.Timestamp,
+			Result:    rawJRR.OverallStatus,
+		}
+
+		job.BuildResults = append(job.BuildResults, buildStatus)
+
 		if rawJRR.Failed {
 			job.Failures++
 		} else if rawJRR.Succeeded {
@@ -108,6 +121,7 @@ func convertRawJobResultToProcessedJobResult(
 		if rawJRR.SetupStatus != testgridanalysisapi.Success && rawJRR.SetupStatus != testgridanalysisapi.Unknown {
 			job.InfrastructureFailures++
 		}
+
 	}
 
 	job.PassPercentage = percent(job.Successes, job.Failures)

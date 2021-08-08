@@ -46,7 +46,7 @@ func PrintInstallHTMLReport(w http.ResponseWriter, req *http.Request, report, pr
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
-	fmt.Fprint(w, installOperatorTests(report, prevReport))
+	fmt.Fprint(w, InstallOperatorTests(HTML, report, prevReport))
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)

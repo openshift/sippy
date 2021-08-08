@@ -45,7 +45,7 @@ func PrintTestDetailHTMLReport(w http.ResponseWriter, req *http.Request, report,
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
-	fmt.Fprint(w, testDetailTests(report, prevReport, testSubstrings))
+	fmt.Fprint(w, TestDetailTests(HTML, report, prevReport, testSubstrings))
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
