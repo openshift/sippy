@@ -241,10 +241,6 @@ func TestToRawDataStepRegistryItem(t *testing.T) {
 			// Regardless of state, we expect the names to be equal.
 			expectedStepRegistryItemStates := testgridanalysisapi.StepRegistryItemStates{
 				MultistageName: "openshift-ipi-azure-arcconformance",
-				MultistageState: testgridanalysisapi.StageState{
-					Name:  "openshift-ipi-azure-arcconformance",
-					State: expectedState,
-				},
 				States: []testgridanalysisapi.StageState{
 					{
 						Name:             "ipi-install-rbac",
@@ -798,10 +794,6 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 func assertStepRegistryItemStatesEqual(t *testing.T, have, want testgridanalysisapi.StepRegistryItemStates) {
 	if have.MultistageName != want.MultistageName {
 		t.Errorf("expected names to be equal, want: %s, got: %s", want.MultistageName, have.MultistageName)
-	}
-
-	if have.MultistageState != want.MultistageState {
-		t.Errorf("expected multistage state to be equal, want: %v, got: %v", want.MultistageState, have.MultistageState)
 	}
 
 	if len(have.States) != len(want.States) {

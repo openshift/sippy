@@ -1,7 +1,6 @@
 package testidentification
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -80,7 +79,6 @@ var curatedTestSubstrings = map[string][]string{
 }
 
 var (
-	ciMultistageRegex           = regexp.MustCompile(`operator\.Run multi-stage test (\S+)$`)
 	ciStepRegex                 = regexp.MustCompile(`operator\.Run multi-stage test (\S+) \- (\S+) container test$`)
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
@@ -233,15 +231,4 @@ func GetStepRegistryItemFromTest(testName string) StepRegistryItem {
 		Name:     matches[0][1],
 		StepName: strings.ReplaceAll(matches[0][2], matches[0][1]+"-", ""),
 	}
-}
-
-func GetMultistageJobNameFromTest(testName string) string {
-	matches := ciMultistageRegex.FindAllStringSubmatch(testName, -1)
-	fmt.Println(matches)
-
-	if len(matches) == 0 {
-		return ""
-	}
-
-	return matches[0][1]
 }

@@ -75,9 +75,6 @@ type ByStageName struct {
 type StepRegistryMetrics struct {
 	// Name of the multistage test, e.g., "e2e-aws"
 	MultistageName string `json:"multistageName"`
-	// Contains the top-level multistage result
-	// e.g., e2e-aws
-	MultistageResult StageResult `json:"multistageResult"`
 	// Contains the metrics for each individual stage in no particular order.
 	StageResults map[string]StageResult `json:"stageResults"`
 }

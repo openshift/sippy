@@ -77,9 +77,8 @@ type RawJobRunResult struct {
 }
 
 type StepRegistryItemStates struct {
-	MultistageName  string
-	States          []StageState
-	MultistageState StageState
+	MultistageName string
+	States         []StageState
 }
 
 type StageState struct {

@@ -37,9 +37,6 @@ func getStepRegistryMetricsByMultistageName(allJobResults []sippyprocessingv1.Jo
 }
 
 func updateStepRegistryMetrics(groupedStepRegistryMetrics, ungroupedStepRegistryMetrics sippyprocessingv1.StepRegistryMetrics) sippyprocessingv1.StepRegistryMetrics {
-	// Add the top-level multistage results
-	groupedStepRegistryMetrics.MultistageResult = addStageResult(groupedStepRegistryMetrics.MultistageResult, ungroupedStepRegistryMetrics.MultistageResult)
-
 	// Visit each individual stage result and update accordingly
 	for stageName, stageResult := range ungroupedStepRegistryMetrics.StageResults {
 		groupedStepRegistryMetrics.StageResults[stageName] = addStageResult(groupedStepRegistryMetrics.StageResults[stageName], stageResult)
@@ -127,12 +124,7 @@ func getStepRegistryMetrics(rawJobRunResults map[string]testgridanalysisapi.RawJ
 		// We don't (yet) have a multistage result set up, so lets get that set up
 		if stepRegistryMetrics.MultistageName == "" {
 			stepRegistryMetrics.MultistageName = rawJRR.StepRegistryItemStates.MultistageName
-			stepRegistryMetrics.MultistageResult = getStageResultFromRawStageState(rawJRR.StepRegistryItemStates.MultistageState)
 		}
-
-		// Update the top-level multistage result metrics
-		stepRegistryMetrics.MultistageResult = addRawStageResult(
-			stepRegistryMetrics.MultistageResult, rawJRR.StepRegistryItemStates.MultistageState)
 
 		// Visit each step registry result and create / update each one
 		for _, stepRegistryResult := range rawJRR.StepRegistryItemStates.States {

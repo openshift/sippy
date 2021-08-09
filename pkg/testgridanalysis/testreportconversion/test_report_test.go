@@ -46,8 +46,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 			testFunc: func(t *testing.T, report sippyprocessingv1.TestReport) {
 				expectedByJobStepRegistryMetrics := map[string]sippyprocessingv1.StepRegistryMetrics{
 					awsJobName: {
-						MultistageName:   "e2e-aws",
-						MultistageResult: getStageResult("e2e-aws", e2eAwsStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-aws",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 1, 50),
@@ -55,8 +54,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					gcpJobName: {
-						MultistageName:   "e2e-gcp",
-						MultistageResult: getStageResult("e2e-gcp", e2eGcpStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-gcp",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 1, 50),
@@ -64,8 +62,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					azureJobName: {
-						MultistageName:   "e2e-azure",
-						MultistageResult: getStageResult("e2e-azure", e2eAzureStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-azure",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 1, 1, 50),
@@ -86,8 +83,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 			testFunc: func(t *testing.T, report sippyprocessingv1.TestReport) {
 				expectedByMultistageName := map[string]sippyprocessingv1.StepRegistryMetrics{
 					"e2e-aws": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-aws",
-						MultistageResult: getStageResult("e2e-aws", e2eAwsStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-aws",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 1, 50),
@@ -95,8 +91,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					"e2e-azure": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-azure",
-						MultistageResult: getStageResult("e2e-azure", e2eAzureStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-azure",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 1, 1, 50),
@@ -104,8 +99,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					"e2e-gcp": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-gcp",
-						MultistageResult: getStageResult("e2e-gcp", e2eGcpStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-gcp",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 1, 50),
@@ -177,8 +171,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 			testFunc: func(t *testing.T, report sippyprocessingv1.TestReport) {
 				expectedByVariantName := map[string]sippyprocessingv1.StepRegistryMetrics{
 					"aws": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-aws",
-						MultistageResult: getStageResult("e2e-aws", e2eAwsStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-aws",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 1, 50),
@@ -186,8 +179,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					"azure": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-azure",
-						MultistageResult: getStageResult("e2e-azure", e2eAzureStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-azure",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 1, 1, 50),
@@ -195,8 +187,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 					"gcp": sippyprocessingv1.StepRegistryMetrics{
-						MultistageName:   "e2e-gcp",
-						MultistageResult: getStageResult("e2e-gcp", e2eGcpStageOriginalTestName, 1, 1, 50),
+						MultistageName: "e2e-gcp",
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 1, 50),
@@ -285,8 +276,6 @@ func assertStepRegistryMetricsEqual(t *testing.T, have, want sippyprocessingv1.S
 	if have.MultistageName != want.MultistageName {
 		t.Errorf("expected multistage name to be %s, got: %s", want.MultistageName, have.MultistageName)
 	}
-
-	assertStageResultsEqual(t, have.MultistageResult, want.MultistageResult)
 
 	for stageName, stageResult := range want.StageResults {
 		if _, ok := have.StageResults[stageName]; !ok {
@@ -414,11 +403,6 @@ func getStepRegistryItemStates(multistageName, state string) testgridanalysisapi
 	itemStates := map[string]testgridanalysisapi.StepRegistryItemStates{
 		"e2e-aws": {
 			MultistageName: "e2e-aws",
-			MultistageState: testgridanalysisapi.StageState{
-				Name:             "e2e-aws",
-				State:            state,
-				OriginalTestName: e2eAwsStageOriginalTestName,
-			},
 			States: []testgridanalysisapi.StageState{
 				{
 					Name:             "aws-specific-stage",
@@ -439,11 +423,6 @@ func getStepRegistryItemStates(multistageName, state string) testgridanalysisapi
 		},
 		"e2e-azure": {
 			MultistageName: "e2e-azure",
-			MultistageState: testgridanalysisapi.StageState{
-				Name:             "e2e-azure",
-				State:            state,
-				OriginalTestName: e2eAzureStageOriginalTestName,
-			},
 			States: []testgridanalysisapi.StageState{
 				{
 					Name:             "azure-specific-stage",
@@ -464,11 +443,6 @@ func getStepRegistryItemStates(multistageName, state string) testgridanalysisapi
 		},
 		"e2e-gcp": {
 			MultistageName: "e2e-gcp",
-			MultistageState: testgridanalysisapi.StageState{
-				Name:             "e2e-gcp",
-				State:            state,
-				OriginalTestName: e2eGcpStageOriginalTestName,
-			},
 			States: []testgridanalysisapi.StageState{
 				{
 					Name:             "gcp-specific-stage",

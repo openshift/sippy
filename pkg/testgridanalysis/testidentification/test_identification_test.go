@@ -6,45 +6,6 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
-func TestMultistageJobName(t *testing.T) {
-	emptyOutput := ""
-
-	testCases := []struct {
-		inputTestName  string
-		expectedOutput string
-	}{
-		{
-			inputTestName:  "operator.Run multi-stage test e2e-aws-csi-migration",
-			expectedOutput: "e2e-aws-csi-migration",
-		},
-		{
-			// This should not match because it is the full multistage job name
-			// with stage name
-			inputTestName:  "operator.Run multi-stage test e2e-aws-arm64 - e2e-aws-arm64-openshift-e2e-test container test",
-			expectedOutput: emptyOutput,
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.inputTestName, func(t *testing.T) {
-			actual := testidentification.GetMultistageJobNameFromTest(testCase.inputTestName)
-
-			if actual != testCase.expectedOutput {
-				t.Errorf("expected %s, got: %s", testCase.expectedOutput, actual)
-			}
-
-			if actual != emptyOutput {
-				if !testidentification.IsMultistageJobName(testCase.inputTestName) {
-					t.Errorf("expected to be a multistage job name")
-				}
-			}
-
-			if actual != emptyOutput && !testidentification.IsMultistageJobName(testCase.inputTestName) {
-			}
-		})
-	}
-}
-
 func TestStepRegistryItems(t *testing.T) {
 	emptyStepRegistryItem := testidentification.StepRegistryItem{}
 
@@ -72,12 +33,6 @@ func TestStepRegistryItems(t *testing.T) {
 				Name:     "e2e-aws-csi-migration",
 				StepName: "storage-pv-check",
 			},
-		},
-		{
-			// This should not match because it is the top-level multistage job
-			// name
-			inputTestName:            "operator.Run multi-stage test e2e-aws-csi-migration",
-			expectedStepRegistryItem: emptyStepRegistryItem,
 		},
 		{
 			inputTestName:            "this should not match",
