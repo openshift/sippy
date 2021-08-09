@@ -57,10 +57,18 @@ type TestReport struct {
 }
 
 type TopLevelStepRegistryMetrics struct {
-	// Aggregated by the multistage test name, e.g., "e2e-aws"
-	ByMultistageName map[string]map[string]StageResult `json:"byMultistageTestName"`
+	// Aggregated by the multistage test name ("e2e-aws")
+	ByMultistageName map[string]StepRegistryMetrics `json:"byMultistageTestName"`
 	// Aggregated by the stage name, e.g., "openshift-e2e-test"
-	ByStageName map[string]StageResult `json:"byStageName"`
+	ByStageName map[string]ByStageName `json:"byStageName"`
+}
+
+type ByStageName struct {
+	// Aggregated results from the individual results list
+	Aggregated StageResult `json:"aggregated"`
+	// Individual occurrences of the stage results by name
+	// Useful for referring to which specific test name had this result
+	ByMultistageName map[string]StageResult `json:"byMultistageTestName"`
 }
 
 // Holds Step Registry metrics aggregated against a specific job name
@@ -71,13 +79,14 @@ type StepRegistryMetrics struct {
 	// e.g., e2e-aws
 	MultistageResult StageResult `json:"multistageResult"`
 	// Contains the metrics for each individual stage in no particular order.
-	StageResults []StageResult `json:"stageResults"`
+	StageResults map[string]StageResult `json:"stageResults"`
 }
 
 type StageResult struct {
 	// Wraps TestResult since it has most of the fields we'd want to associate.
 	// Additionally, allows reuse of aggregation and reporting funcs.
 	TestResult
+	// The original test name from TestGrid
 	OriginalTestName string `json:"originalTestName"`
 }
 
