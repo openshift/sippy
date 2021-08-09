@@ -56,7 +56,7 @@ func TestWriteLandingPage(t *testing.T) {
 func TestPrintHTMLReport(t *testing.T) {
 	req := &http.Request{}
 
-	report := sippyprocessingv1.TestReport{}
+	report := htmltesthelpers.GetTestReport("something", "a-test", "4.9")
 	twoDayReport := sippyprocessingv1.TestReport{}
 	prevReport := sippyprocessingv1.TestReport{}
 	numDays := 7
