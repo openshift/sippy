@@ -26,17 +26,18 @@ func (t HTMLElement) ToHTML() string {
 
 	// Order param keys
 	for _, paramKey := range sets.StringKeySet(t.Params).List() {
-		fmt.Fprintf(sb, ` %s="%s"`, paramKey, t.Params[paramKey])
+		fmt.Fprintf(sb, ` %s="`, paramKey)
+		fmt.Fprint(sb, t.Params[paramKey]+`"`)
 	}
 
-	fmt.Fprintf(sb, ">")
+	fmt.Fprint(sb, ">")
 
 	if len(t.HTMLItems) != 0 {
 		for _, item := range t.HTMLItems {
-			fmt.Fprintf(sb, item.ToHTML())
+			fmt.Fprint(sb, item.ToHTML())
 		}
 	} else {
-		fmt.Fprintf(sb, t.Text)
+		fmt.Fprint(sb, t.Text)
 	}
 
 	fmt.Fprintf(sb, "</%s>", t.Element)
@@ -45,7 +46,6 @@ func (t HTMLElement) ToHTML() string {
 }
 
 func NewHTMLLinkWithParams(text string, linkURL *url.URL, params map[string]string) HTMLElement {
-
 	t := HTMLElement{
 		Element: "a",
 		Text:    text,
@@ -131,10 +131,12 @@ func (r *HTMLTableRow) AddItems(items []HTMLItem) {
 }
 
 func (r HTMLTableRow) ToHTML() string {
-	sb := strings.Builder{}
-	fmt.Fprintf(&sb, "\n  ")
+	sb := &strings.Builder{}
+
+	fmt.Fprint(sb, "\n  ")
+
 	for _, item := range r.items {
-		fmt.Fprintf(&sb, "  %s\n  ", item.ToHTML())
+		fmt.Fprint(sb, "  "+item.ToHTML()+"\n  ")
 	}
 
 	t := HTMLElement{
@@ -143,7 +145,7 @@ func (r HTMLTableRow) ToHTML() string {
 		Text:    sb.String(),
 	}
 
-	return fmt.Sprintf("  %s\n", t.ToHTML())
+	return "  " + t.ToHTML() + "\n"
 }
 
 type HTMLTable struct {
@@ -168,14 +170,15 @@ func (h *HTMLTable) AddRow(row HTMLTableRow) {
 
 func (h HTMLTable) ToHTML() string {
 	sb := &strings.Builder{}
-	fmt.Fprintf(sb, "\n")
+
+	fmt.Fprintln(sb, "")
 
 	for _, row := range h.headerRows {
-		fmt.Fprintf(sb, row.ToHTML())
+		fmt.Fprint(sb, row.ToHTML())
 	}
 
 	for _, row := range h.rows {
-		fmt.Fprintf(sb, row.ToHTML())
+		fmt.Fprint(sb, row.ToHTML())
 	}
 
 	t := HTMLElement{
