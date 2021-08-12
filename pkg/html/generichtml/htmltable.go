@@ -12,6 +12,26 @@ type HTMLItem interface {
 	ToHTML() string
 }
 
+type htmlTextElement string
+
+func (h htmlTextElement) ToHTML() string {
+	return string(h)
+}
+
+func NewHTMLTextElement(text string) HTMLItem {
+	return htmlTextElement(text)
+}
+
+func SpaceHTMLItems(htmlItems []HTMLItem) []HTMLItem {
+	out := []HTMLItem{}
+
+	for _, item := range htmlItems {
+		out = append(out, item, NewHTMLTextElement(" "))
+	}
+
+	return out
+}
+
 type HTMLElement struct {
 	Params    map[string]string
 	Text      string
@@ -22,11 +42,11 @@ type HTMLElement struct {
 func (t HTMLElement) ToHTML() string {
 	sb := &strings.Builder{}
 
-	fmt.Fprintf(sb, "<%s", t.Element)
+	fmt.Fprint(sb, "<"+t.Element)
 
 	// Order param keys
 	for _, paramKey := range sets.StringKeySet(t.Params).List() {
-		fmt.Fprintf(sb, ` %s="`, paramKey)
+		fmt.Fprint(sb, " "+paramKey+"="+`"`)
 		fmt.Fprint(sb, t.Params[paramKey]+`"`)
 	}
 
@@ -40,7 +60,7 @@ func (t HTMLElement) ToHTML() string {
 		fmt.Fprint(sb, t.Text)
 	}
 
-	fmt.Fprintf(sb, "</%s>", t.Element)
+	fmt.Fprint(sb, "</"+t.Element+">")
 
 	return sb.String()
 }
