@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
@@ -12,60 +13,62 @@ import (
 )
 
 type StepMetricsHTMLTable struct {
-	StepMetricsHTTPQuery
-	api StepMetricsAPI
+	api       StepMetricsAPI
+	release   string
+	timestamp time.Time
 }
 
-func NewStepMetricsHTMLTable(q StepMetricsHTTPQuery) StepMetricsHTMLTable {
+func NewStepMetricsHTMLTable(curr, prev sippyprocessingv1.TestReport) StepMetricsHTMLTable {
 	return StepMetricsHTMLTable{
-		StepMetricsHTTPQuery: q,
-		api:                  NewStepMetricsAPI(q),
+		api:       NewStepMetricsAPI(curr, prev),
+		release:   curr.Release,
+		timestamp: curr.Timestamp,
 	}
 }
 
-func (s StepMetricsHTMLTable) Render(w http.ResponseWriter) {
+func (s StepMetricsHTMLTable) Render(w http.ResponseWriter, req Request) {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	fmt.Fprintf(w, generichtml.HTMLPageStart, fmt.Sprintf("Release %s Step Metrics Dashboard", s.Release))
-	fmt.Fprint(w, s.getTable().ToHTML())
-	fmt.Fprintf(w, generichtml.HTMLPageEnd, s.Current.Timestamp.Format("Jan 2 15:04 2006 MST"))
+	fmt.Fprintf(w, generichtml.HTMLPageStart, fmt.Sprintf("Release %s Step Metrics Dashboard", s.release))
+	fmt.Fprint(w, s.getTable(req).ToHTML())
+	fmt.Fprintf(w, generichtml.HTMLPageEnd, s.timestamp.Format("Jan 2 15:04 2006 MST"))
 }
 
-func (s StepMetricsHTMLTable) getTable() generichtml.HTMLTable {
-	if s.isMultistageQuery() {
-		return s.ByMultistageName()
+func (s StepMetricsHTMLTable) getTable(req Request) generichtml.HTMLTable {
+	if req.MultistageJobName != "" {
+		return s.ByMultistageName(req)
 	}
 
-	if s.isStepQuery() {
-		return s.ByStageName()
+	if req.StepName != "" {
+		return s.ByStageName(req)
 	}
 
 	return generichtml.NewHTMLTable(map[string]string{})
 }
 
-func (s StepMetricsHTMLTable) ByMultistageName() generichtml.HTMLTable {
-	if s.MultistageJobName == All {
+func (s StepMetricsHTMLTable) ByMultistageName(req Request) generichtml.HTMLTable {
+	if req.MultistageJobName == All {
 		return s.allMultistageJobNames()
 	}
 
-	return s.stepNamesForMultistageJobName(s.MultistageJobName)
+	return s.stepNamesForMultistageJobName(req)
 }
 
-func (s StepMetricsHTMLTable) stepNamesForMultistageJobName(multistageJobName string) generichtml.HTMLTable {
+func (s StepMetricsHTMLTable) stepNamesForMultistageJobName(req Request) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
-		title:       "All Step Names for Multistage Job " + multistageJobName,
-		description: "(stepNamesForMultistageJobNames) All Step Names For Multistage Job " + multistageJobName,
+		title:       "All Step Names for Multistage Job " + req.MultistageJobName,
+		description: "(stepNamesForMultistageJobNames) All Step Names For Multistage Job " + req.MultistageJobName,
 		width:       "4",
 	})
 
 	table.AddHeaderRow(getStepNameHeaderRow())
 
-	multistageDetails := s.api.GetMultistage(multistageJobName)
+	multistageDetails := s.api.GetMultistage(req)
 
 	stepNames := sets.StringKeySet(multistageDetails.StepDetails).List()
 
 	for _, stepName := range stepNames {
 		stepDetail := multistageDetails.StepDetails[stepName]
-		table.AddRow(getRowForStepDetail(stepDetail, s.Release))
+		table.AddRow(getRowForStepDetail(stepDetail, s.release))
 	}
 
 	return table
@@ -87,7 +90,7 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 
 	for _, multistageDetail := range allMultistages {
 		sippyURL := &SippyURL{
-			Release:           s.Release,
+			Release:           s.release,
 			MultistageJobName: multistageDetail.Name,
 		}
 
@@ -122,8 +125,8 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 
 func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
-		title:       "Frequency of passes / failures for step registry items for " + s.StepName,
-		description: "(allStageNames) Step Metrics For " + s.StepName,
+		title:       "Frequency of passes / failures for step registry items for all steps",
+		description: "(allStageNames) Step Metrics For All Steps",
 		width:       "4",
 	})
 
@@ -136,12 +139,12 @@ func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 
 	for _, stepDetails := range allStages {
 		sippyURL := SippyURL{
-			Release:  s.Release,
+			Release:  s.release,
 			StepName: stepDetails.Name,
 		}
 
 		ciSearchURL := CISearchURL{
-			Release: s.Release,
+			Release: s.release,
 			Search:  stepDetails.Current.OriginalTestName,
 		}
 
@@ -176,23 +179,25 @@ func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 	return table
 }
 
-func (s StepMetricsHTMLTable) forStageName(stageName string) generichtml.HTMLTable {
+func (s StepMetricsHTMLTable) forStageName(req Request) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
-		title:       "Frequency of passes / failures for " + stageName + " by multistage job name",
-		description: "(forStageName) Step Metrics For " + stageName + " By Multistage Job Name",
+		title:       "Frequency of passes / failures for " + req.StepName + " by multistage job name",
+		description: "(forStageName) Step Metrics For " + req.StepName + " By Multistage Job Name",
 		width:       "4",
 	})
 
 	table.AddHeaderRow(getMultistageHeaderRow())
 
-	stageResult := s.api.GetStage(stageName)
+	stageResult := s.api.GetStage(req)
 	multistageNames := sets.StringKeySet(stageResult.ByMultistage)
 
 	for _, multistageName := range multistageNames.List() {
-		multistageResult := s.api.GetMultistage(multistageName)
+		multistageResult := s.api.GetMultistage(Request{
+			MultistageJobName: multistageName,
+		})
 
 		sippyURL := &SippyURL{
-			Release:           s.Release,
+			Release:           s.release,
 			MultistageJobName: multistageName,
 		}
 
@@ -201,8 +206,8 @@ func (s StepMetricsHTMLTable) forStageName(stageName string) generichtml.HTMLTab
 		}
 
 		ciSearchURL := CISearchURL{
-			Release: s.Release,
-			Search:  multistageResult.StepDetails[stageName].Current.OriginalTestName,
+			Release: s.api.current.Release,
+			Search:  multistageResult.StepDetails[stageResult.Name].Current.OriginalTestName,
 		}
 
 		row := generichtml.NewHTMLTableRow(map[string]string{})
@@ -232,12 +237,12 @@ func (s StepMetricsHTMLTable) forStageName(stageName string) generichtml.HTMLTab
 	return table
 }
 
-func (s StepMetricsHTMLTable) ByStageName() generichtml.HTMLTable {
-	if s.StepName == All {
+func (s StepMetricsHTMLTable) ByStageName(req Request) generichtml.HTMLTable {
+	if req.StepName == All {
 		return s.allStageNames()
 	}
 
-	return s.forStageName(s.StepName)
+	return s.forStageName(req)
 }
 
 func (s StepMetricsHTMLTable) StageNameDetail() generichtml.HTMLTable {

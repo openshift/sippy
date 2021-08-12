@@ -10,14 +10,19 @@ import (
 )
 
 type StepMetricsHTTPQuery struct {
-	SippyURL
-	Current  sippyprocessingv1.TestReport
-	Previous sippyprocessingv1.TestReport
+	request Request
+}
+
+type Request struct {
+	Release           string
+	MultistageJobName string
+	StepName          string
+	Variant           string
 }
 
 func NewStepMetricsHTTPQuery(req *http.Request) StepMetricsHTTPQuery {
 	return StepMetricsHTTPQuery{
-		SippyURL: SippyURL{
+		request: Request{
 			Release:           req.URL.Query().Get("release"),
 			MultistageJobName: req.URL.Query().Get("multistageJobName"),
 			StepName:          req.URL.Query().Get("stepName"),
@@ -27,19 +32,19 @@ func NewStepMetricsHTTPQuery(req *http.Request) StepMetricsHTTPQuery {
 }
 
 func (q StepMetricsHTTPQuery) Validate(knownReleases sets.String) error {
-	if q.Release == "" {
+	if q.request.Release == "" {
 		return fmt.Errorf("missing release")
 	}
 
-	if q.MultistageJobName == "" && q.StepName == "" {
+	if q.request.MultistageJobName == "" && q.request.StepName == "" {
 		return fmt.Errorf("missing multistage job name and step name")
 	}
 
-	if !knownReleases.Has(q.Release) {
-		return fmt.Errorf("invalid release %s", q.Release)
+	if !knownReleases.Has(q.request.Release) {
+		return fmt.Errorf("invalid release %s", q.request.Release)
 	}
 
-	if q.Variant != "" {
+	if q.request.Variant != "" {
 		return q.validateVariant()
 	}
 
@@ -47,38 +52,46 @@ func (q StepMetricsHTTPQuery) Validate(knownReleases sets.String) error {
 }
 
 func (q *StepMetricsHTTPQuery) ValidateFromReports(curr, prev sippyprocessingv1.TestReport) error {
-	q.Current = curr
-	q.Previous = prev
-
 	if q.isMultistageQuery() {
-		return q.validateMultistageQuery()
+		return q.validateMultistageQuery(curr, prev)
 	}
 
 	if q.isStepQuery() {
-		return q.validateStepQuery()
+		return q.validateStepQuery(curr, prev)
 	}
 
 	return nil
 }
 
-func (q *StepMetricsHTTPQuery) validateMultistageQuery() error {
-	if q.MultistageJobName != "" && q.MultistageJobName != "All" {
-		knownMultistageJobNames := sets.StringKeySet(q.Current.TopLevelStepRegistryMetrics.ByMultistageName)
+func (q StepMetricsHTTPQuery) Request() Request {
+	return Request{
+		Release:           q.request.Release,
+		MultistageJobName: q.request.MultistageJobName,
+		StepName:          q.request.StepName,
+		Variant:           q.request.Variant,
+	}
+}
 
-		if !knownMultistageJobNames.Has(q.MultistageJobName) {
-			return fmt.Errorf("invalid multistage job name %s", q.MultistageJobName)
+func (q *StepMetricsHTTPQuery) validateMultistageQuery(curr, prev sippyprocessingv1.TestReport) error {
+	if q.request.MultistageJobName != "" && q.request.MultistageJobName != "All" {
+		knownMultistageJobNames := sets.StringKeySet(curr.TopLevelStepRegistryMetrics.ByMultistageName)
+		knownMultistageJobNames = knownMultistageJobNames.Union(sets.StringKeySet(prev.TopLevelStepRegistryMetrics.ByMultistageName))
+
+		if !knownMultistageJobNames.Has(q.request.MultistageJobName) {
+			return fmt.Errorf("invalid multistage job name %s", q.request.MultistageJobName)
 		}
 	}
 
 	return nil
 }
 
-func (q *StepMetricsHTTPQuery) validateStepQuery() error {
-	if q.StepName != "" && q.StepName != "All" {
-		knownStepNames := sets.StringKeySet(q.Current.TopLevelStepRegistryMetrics.ByStageName)
+func (q *StepMetricsHTTPQuery) validateStepQuery(curr, prev sippyprocessingv1.TestReport) error {
+	if q.request.StepName != "" && q.request.StepName != "All" {
+		knownStepNames := sets.StringKeySet(curr.TopLevelStepRegistryMetrics.ByStageName)
+		knownStepNames = knownStepNames.Union(sets.StringKeySet(prev.TopLevelStepRegistryMetrics.ByStageName))
 
-		if !knownStepNames.Has(q.StepName) {
-			return fmt.Errorf("unknown step name %s", q.StepName)
+		if !knownStepNames.Has(q.request.StepName) {
+			return fmt.Errorf("unknown step name %s", q.request.StepName)
 		}
 	}
 
@@ -88,17 +101,17 @@ func (q *StepMetricsHTTPQuery) validateStepQuery() error {
 func (q *StepMetricsHTTPQuery) validateVariant() error {
 	variants := testidentification.NewOpenshiftVariantManager().AllVariants()
 
-	if !variants.Has(q.Variant) {
-		return fmt.Errorf("unknown variant %s", q.Variant)
+	if !variants.Has(q.request.Variant) {
+		return fmt.Errorf("unknown variant %s", q.request.Variant)
 	}
 
 	return nil
 }
 
 func (q *StepMetricsHTTPQuery) isMultistageQuery() bool {
-	return q.MultistageJobName != "" && q.StepName == ""
+	return q.request.MultistageJobName != "" && q.request.StepName == ""
 }
 
 func (q *StepMetricsHTTPQuery) isStepQuery() bool {
-	return q.StepName != "" && q.MultistageJobName == ""
+	return q.request.StepName != "" && q.request.MultistageJobName == ""
 }

@@ -9,18 +9,19 @@ import (
 )
 
 type tableTestCase struct {
-	name              string
-	multistageJobName string
-	stepName          string
-	expectedContents  []string
-	expectedURLs      []stepmetricshtml.URLGenerator
+	name             string
+	request          stepmetricshtml.Request
+	expectedContents []string
+	expectedURLs     []stepmetricshtml.URLGenerator
 }
 
 func TestPrintTable(t *testing.T) {
 	testCases := []tableTestCase{
 		{
-			name:              "all multistage jobs",
-			multistageJobName: stepmetricshtml.All,
+			name: "all multistage jobs",
+			request: stepmetricshtml.Request{
+				MultistageJobName: stepmetricshtml.All,
+			},
 			expectedURLs: []stepmetricshtml.URLGenerator{
 				stepmetricshtml.StepRegistryURL{
 					Search: "e2e-aws",
@@ -44,16 +45,20 @@ func TestPrintTable(t *testing.T) {
 			},
 		},
 		{
-			name:              "specific multistage name",
-			multistageJobName: "e2e-aws",
-			expectedURLs:      getExpectedURLsForMultistage("e2e-aws"),
+			name: "specific multistage name",
+			request: stepmetricshtml.Request{
+				MultistageJobName: "e2e-aws",
+			},
+			expectedURLs: getExpectedURLsForMultistage("e2e-aws"),
 			expectedContents: []string{
 				"All Step Names For Multistage Job e2e-aws",
 			},
 		},
 		{
-			name:         "all step names",
-			stepName:     stepmetricshtml.All,
+			name: "all step names",
+			request: stepmetricshtml.Request{
+				StepName: stepmetricshtml.All,
+			},
 			expectedURLs: getExpectedURLsForAllSteps(),
 			expectedContents: []string{
 				"Step Metrics For All",
@@ -64,8 +69,10 @@ func TestPrintTable(t *testing.T) {
 			},
 		},
 		{
-			name:         "specific step name - openshift-e2e-test",
-			stepName:     "openshift-e2e-test",
+			name: "specific step name - openshift-e2e-test",
+			request: stepmetricshtml.Request{
+				StepName: "openshift-e2e-test",
+			},
 			expectedURLs: getExpectedURLsForStep("openshift-e2e-test"),
 			expectedContents: []string{
 				"Step Metrics For openshift-e2e-test By Multistage Job Name",
@@ -74,8 +81,10 @@ func TestPrintTable(t *testing.T) {
 			},
 		},
 		{
-			name:         "specific step name - aws-specific",
-			stepName:     "aws-specific",
+			name: "specific step name - aws-specific",
+			request: stepmetricshtml.Request{
+				StepName: "aws-specific",
+			},
 			expectedURLs: getExpectedURLsForStep("aws-specific"),
 			expectedContents: []string{
 				"Step Metrics For aws-specific By Multistage Job Name",
@@ -87,12 +96,11 @@ func TestPrintTable(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			testFunc := func(r *httptest.ResponseRecorder) {
-
-				q := getStepMetricsHTTPQuery()
-				q.MultistageJobName = testCase.multistageJobName
-				q.StepName = testCase.stepName
-				table := stepmetricshtml.NewStepMetricsHTMLTable(q)
-				table.Render(r)
+				table := stepmetricshtml.NewStepMetricsHTMLTable(
+					htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+					htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+				)
+				table.Render(r, testCase.request)
 			}
 
 			expectedContents := append([]string{}, testCase.expectedContents...)
@@ -167,17 +175,4 @@ func getExpectedURLsForStep(stepName string) []stepmetricshtml.URLGenerator {
 	}
 
 	return urls
-}
-
-func getStepMetricsHTTPQuery() stepmetricshtml.StepMetricsHTTPQuery {
-	return stepmetricshtml.StepMetricsHTTPQuery{
-		SippyURL: stepmetricshtml.SippyURL{
-			Release:           "4.9",
-			MultistageJobName: stepmetricshtml.All,
-			StepName:          "",
-			Variant:           "",
-		},
-		Current:  htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
-		Previous: htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
-	}
 }

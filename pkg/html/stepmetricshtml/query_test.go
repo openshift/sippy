@@ -1,6 +1,8 @@
 package stepmetricshtml_test
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
@@ -8,37 +10,37 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func TestSippyURL(t *testing.T) {
+func TestHTTPQuery(t *testing.T) {
 	testCases := []struct {
 		name                         string
-		query                        stepmetricshtml.SippyURL
+		request                      stepmetricshtml.Request
 		expectedValidateError        string
 		expectedValidateReportsError string
 	}{
 		{
 			name: "sunny day",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:           "4.9",
 				MultistageJobName: "e2e-aws",
 			},
 		},
 		{
 			name: "all multistage job names",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:           "4.9",
 				MultistageJobName: stepmetricshtml.All,
 			},
 		},
 		{
 			name: "missing release",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				MultistageJobName: "e2e-aws",
 			},
 			expectedValidateError: "missing release",
 		},
 		{
 			name: "unknown release",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:           "unknown-release",
 				MultistageJobName: "e2e-aws",
 			},
@@ -46,7 +48,7 @@ func TestSippyURL(t *testing.T) {
 		},
 		{
 			name: "unknown multistage job name",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:           "4.9",
 				MultistageJobName: "unknown-multistage-name",
 			},
@@ -54,14 +56,14 @@ func TestSippyURL(t *testing.T) {
 		},
 		{
 			name: "all step names",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:  "4.9",
 				StepName: stepmetricshtml.All,
 			},
 		},
 		{
 			name: "unknown step name",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:  "4.9",
 				StepName: "unknown-step-name",
 			},
@@ -69,7 +71,7 @@ func TestSippyURL(t *testing.T) {
 		},
 		{
 			name: "unknown variant",
-			query: stepmetricshtml.SippyURL{
+			request: stepmetricshtml.Request{
 				Release:  "4.9",
 				StepName: "gcp-specific",
 				Variant:  "unknown-variant",
@@ -82,9 +84,7 @@ func TestSippyURL(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			knownReleases := sets.NewString("4.9")
 
-			httpQuery := stepmetricshtml.StepMetricsHTTPQuery{
-				SippyURL: testCase.query,
-			}
+			httpQuery := stepmetricshtml.NewStepMetricsHTTPQuery(getHTTPRequest(testCase.request))
 
 			validateErr := httpQuery.Validate(knownReleases)
 			if validateErr != nil && testCase.expectedValidateError != validateErr.Error() {
@@ -98,6 +98,35 @@ func TestSippyURL(t *testing.T) {
 			if validateReportErr != nil && testCase.expectedValidateReportsError != validateReportErr.Error() {
 				t.Errorf("expected error %s, got: %s", testCase.expectedValidateReportsError, validateReportErr)
 			}
+
+			if httpQuery.Request() != testCase.request {
+				t.Errorf("requests do not match, have: %v, want: %v", httpQuery.Request(), testCase.request)
+			}
 		})
+	}
+}
+
+func getHTTPRequest(req stepmetricshtml.Request) *http.Request {
+	valMap := map[string]string{
+		"release":           req.Release,
+		"multistageJobName": req.MultistageJobName,
+		"stepName":          req.StepName,
+		"variant":           req.Variant,
+	}
+
+	values := url.Values{}
+
+	for k, v := range valMap {
+		if v != "" {
+			values.Add(k, v)
+		}
+	}
+
+	u := &url.URL{
+		RawQuery: values.Encode(),
+	}
+
+	return &http.Request{
+		URL: u,
 	}
 }

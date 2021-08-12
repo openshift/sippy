@@ -3,13 +3,13 @@ package stepmetricshtml_test
 import (
 	"testing"
 
+	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
 )
 
 type apiTestCase struct {
-	name              string
-	multistageJobName string
-	stepName          string
+	name    string
+	request stepmetricshtml.Request
 	// We don't care about the ordering of either MultistageDetails or
 	// StepDetails, so we key by their respective names and iterate over the
 	// result list when we run the test.
@@ -20,8 +20,10 @@ type apiTestCase struct {
 func TestStepMetricsAPI(t *testing.T) {
 	testCases := []apiTestCase{
 		{
-			name:              "all multistage jobs",
-			multistageJobName: stepmetricshtml.All,
+			name: "all multistage jobs",
+			request: stepmetricshtml.Request{
+				MultistageJobName: stepmetricshtml.All,
+			},
 			expectedMultistageDetails: map[string]stepmetricshtml.MultistageDetails{
 				"e2e-aws": {
 					Name: "e2e-aws",
@@ -86,8 +88,10 @@ func TestStepMetricsAPI(t *testing.T) {
 			},
 		},
 		{
-			name:              "specific multistage job name",
-			multistageJobName: "e2e-aws",
+			name: "specific multistage job name",
+			request: stepmetricshtml.Request{
+				MultistageJobName: "e2e-aws",
+			},
 			expectedMultistageDetails: map[string]stepmetricshtml.MultistageDetails{
 				"e2e-aws": {
 					Name: "e2e-aws",
@@ -122,8 +126,10 @@ func TestStepMetricsAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "all step names",
-			stepName: stepmetricshtml.All,
+			name: "all step names",
+			request: stepmetricshtml.Request{
+				StepName: stepmetricshtml.All,
+			},
 			expectedStepDetails: map[string]stepmetricshtml.StepDetails{
 				"openshift-e2e-test": {
 					Name: "openshift-e2e-test",
@@ -206,8 +212,10 @@ func TestStepMetricsAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "specific step name",
-			stepName: "openshift-e2e-test",
+			name: "specific step name",
+			request: stepmetricshtml.Request{
+				StepName: "openshift-e2e-test",
+			},
 			expectedStepDetails: map[string]stepmetricshtml.StepDetails{
 				"openshift-e2e-test": {
 					Name: "openshift-e2e-test",
@@ -238,28 +246,28 @@ func TestStepMetricsAPI(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			q := getStepMetricsHTTPQuery()
-			q.MultistageJobName = testCase.multistageJobName
-			q.StepName = testCase.stepName
-			a := stepmetricshtml.NewStepMetricsAPI(q)
+			a := stepmetricshtml.NewStepMetricsAPI(
+				htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+				htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+			)
 
-			if testCase.multistageJobName != "" {
-				if testCase.multistageJobName == stepmetricshtml.All {
+			if testCase.request.MultistageJobName != "" {
+				if testCase.request.MultistageJobName == stepmetricshtml.All {
 					assertAllMultistageDetails(t, a.AllMultistages(), testCase.expectedMultistageDetails)
 				} else {
 					multistageDetails := []stepmetricshtml.MultistageDetails{
-						a.GetMultistage(testCase.multistageJobName),
+						a.GetMultistage(testCase.request),
 					}
 					assertAllMultistageDetails(t, multistageDetails, testCase.expectedMultistageDetails)
 				}
 			}
 
-			if testCase.stepName != "" {
-				if testCase.stepName == stepmetricshtml.All {
+			if testCase.request.StepName != "" {
+				if testCase.request.StepName == stepmetricshtml.All {
 					assertAllStepDetails(t, a.AllStages(), testCase.expectedStepDetails)
 				} else {
 					stepDetails := []stepmetricshtml.StepDetails{
-						a.GetStage(testCase.stepName),
+						a.GetStage(testCase.request),
 					}
 					assertAllStepDetails(t, stepDetails, testCase.expectedStepDetails)
 				}

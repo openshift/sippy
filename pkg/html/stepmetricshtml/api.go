@@ -2,20 +2,23 @@ package stepmetricshtml
 
 import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/html/generichtml"
 )
 
 type StepMetricsAPI struct {
-	StepMetricsHTTPQuery
+	current  sippyprocessingv1.TestReport
+	previous sippyprocessingv1.TestReport
 }
 
-func NewStepMetricsAPI(q StepMetricsHTTPQuery) StepMetricsAPI {
-	return StepMetricsAPI{q}
+func NewStepMetricsAPI(curr, prev sippyprocessingv1.TestReport) StepMetricsAPI {
+	return StepMetricsAPI{
+		current:  curr,
+		previous: prev,
+	}
 }
 
 func (s StepMetricsAPI) AllMultistages() []MultistageDetails {
 	resp := []MultistageDetails{}
-	currStepRegistryMetrics := s.Current.TopLevelStepRegistryMetrics.ByMultistageName
+	currStepRegistryMetrics := s.current.TopLevelStepRegistryMetrics.ByMultistageName
 
 	for multistageJobName := range currStepRegistryMetrics {
 		resp = append(resp, s.getMultistageForName(multistageJobName))
@@ -24,27 +27,27 @@ func (s StepMetricsAPI) AllMultistages() []MultistageDetails {
 	return resp
 }
 
-func (s StepMetricsAPI) GetMultistage(multistageName string) MultistageDetails {
-	return s.getMultistageForName(multistageName)
+func (s StepMetricsAPI) GetMultistage(req Request) MultistageDetails {
+	return s.getMultistageForName(req.MultistageJobName)
 }
 
 func (s StepMetricsAPI) AllStages() []StepDetails {
 	resp := []StepDetails{}
 
-	for stageName := range s.Current.TopLevelStepRegistryMetrics.ByStageName {
+	for stageName := range s.current.TopLevelStepRegistryMetrics.ByStageName {
 		resp = append(resp, s.getStageForName(stageName))
 	}
 
 	return resp
 }
 
-func (s StepMetricsAPI) GetStage(stageName string) StepDetails {
-	return s.getStageForName(stageName)
+func (s StepMetricsAPI) GetStage(req Request) StepDetails {
+	return s.getStageForName(req.StepName)
 }
 
 func (s StepMetricsAPI) getStageForName(stageName string) StepDetails {
-	currByStageName := s.Current.TopLevelStepRegistryMetrics.ByStageName[stageName]
-	prevByStageName := s.Current.TopLevelStepRegistryMetrics.ByStageName[stageName]
+	currByStageName := s.current.TopLevelStepRegistryMetrics.ByStageName[stageName]
+	prevByStageName := s.current.TopLevelStepRegistryMetrics.ByStageName[stageName]
 
 	d := StepDetails{
 		Name: stageName,
@@ -66,8 +69,8 @@ func (s StepMetricsAPI) getStageForName(stageName string) StepDetails {
 }
 
 func (s StepMetricsAPI) getMultistageForName(multistageName string) MultistageDetails {
-	currStepRegistryMetrics := s.Current.TopLevelStepRegistryMetrics.ByMultistageName[multistageName]
-	prevStepRegistryMetrics := s.Previous.TopLevelStepRegistryMetrics.ByMultistageName[multistageName]
+	currStepRegistryMetrics := s.current.TopLevelStepRegistryMetrics.ByMultistageName[multistageName]
+	prevStepRegistryMetrics := s.previous.TopLevelStepRegistryMetrics.ByMultistageName[multistageName]
 
 	d := MultistageDetails{
 		Name: multistageName,
@@ -86,14 +89,6 @@ func (s StepMetricsAPI) getMultistageForName(multistageName string) MultistageDe
 	}
 
 	return d
-}
-
-func (s StepMetricsAPI) StageNameDetail() generichtml.HTMLTable {
-	return generichtml.HTMLTable{}
-}
-
-func (s StepMetricsAPI) MultistageDetail() generichtml.HTMLTable {
-	return generichtml.HTMLTable{}
 }
 
 func getTopLevelMultistageResultAggregation(byMultistageName sippyprocessingv1.StepRegistryMetrics) sippyprocessingv1.StageResult {
