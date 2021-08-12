@@ -251,26 +251,14 @@ func TestStepMetricsAPI(t *testing.T) {
 				htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
 			)
 
+			resp := a.Fetch(testCase.request)
+
 			if testCase.request.MultistageJobName != "" {
-				if testCase.request.MultistageJobName == stepmetricshtml.All {
-					assertAllMultistageDetails(t, a.AllMultistages(), testCase.expectedMultistageDetails)
-				} else {
-					multistageDetails := []stepmetricshtml.MultistageDetails{
-						a.GetMultistage(testCase.request),
-					}
-					assertAllMultistageDetails(t, multistageDetails, testCase.expectedMultistageDetails)
-				}
+				assertAllMultistageDetails(t, resp.MultistageDetails, testCase.expectedMultistageDetails)
 			}
 
 			if testCase.request.StepName != "" {
-				if testCase.request.StepName == stepmetricshtml.All {
-					assertAllStepDetails(t, a.AllStages(), testCase.expectedStepDetails)
-				} else {
-					stepDetails := []stepmetricshtml.StepDetails{
-						a.GetStage(testCase.request),
-					}
-					assertAllStepDetails(t, stepDetails, testCase.expectedStepDetails)
-				}
+				assertAllStepDetails(t, resp.StepDetails, testCase.expectedStepDetails)
 			}
 		})
 	}

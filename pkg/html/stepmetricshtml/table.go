@@ -56,7 +56,7 @@ func (s StepMetricsHTMLTable) ByMultistageName(req Request) generichtml.HTMLTabl
 func (s StepMetricsHTMLTable) stepNamesForMultistageJobName(req Request) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		title:       "All Step Names for Multistage Job " + req.MultistageJobName,
-		description: "(stepNamesForMultistageJobNames) All Step Names For Multistage Job " + req.MultistageJobName,
+		description: "All Step Names For Multistage Job " + req.MultistageJobName,
 		width:       "4",
 	})
 
@@ -78,7 +78,7 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		width:       "4",
 		title:       "All Multistage Job Names",
-		description: "(allMultistageJobNames) All Multistage Jobs",
+		description: "All Multistage Jobs",
 	})
 
 	table.AddHeaderRow(getMultistageHeaderRow())
@@ -126,7 +126,7 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		title:       "Frequency of passes / failures for step registry items for all steps",
-		description: "(allStageNames) Step Metrics For All Steps",
+		description: "Step Metrics For All Steps",
 		width:       "4",
 	})
 
@@ -182,7 +182,7 @@ func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 func (s StepMetricsHTMLTable) forStageName(req Request) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		title:       "Frequency of passes / failures for " + req.StepName + " by multistage job name",
-		description: "(forStageName) Step Metrics For " + req.StepName + " By Multistage Job Name",
+		description: "Step Metrics For " + req.StepName + " By Multistage Job Name",
 		width:       "4",
 	})
 
@@ -243,14 +243,6 @@ func (s StepMetricsHTMLTable) ByStageName(req Request) generichtml.HTMLTable {
 	}
 
 	return s.forStageName(req)
-}
-
-func (s StepMetricsHTMLTable) StageNameDetail() generichtml.HTMLTable {
-	return generichtml.HTMLTable{}
-}
-
-func (s StepMetricsHTMLTable) MultistageDetail() generichtml.HTMLTable {
-	return generichtml.HTMLTable{}
 }
 
 func getStageResultDetail(stageResult sippyprocessingv1.StageResult) string {

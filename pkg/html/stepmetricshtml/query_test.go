@@ -1,21 +1,18 @@
 package stepmetricshtml_test
 
 import (
-	"net/http"
 	"net/url"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func TestHTTPQuery(t *testing.T) {
+func TestValidateQuery(t *testing.T) {
 	testCases := []struct {
-		name                         string
-		request                      stepmetricshtml.Request
-		expectedValidateError        string
-		expectedValidateReportsError string
+		name          string
+		request       stepmetricshtml.Request
+		expectedError string
 	}{
 		{
 			name: "sunny day",
@@ -32,27 +29,12 @@ func TestHTTPQuery(t *testing.T) {
 			},
 		},
 		{
-			name: "missing release",
-			request: stepmetricshtml.Request{
-				MultistageJobName: "e2e-aws",
-			},
-			expectedValidateError: "missing release",
-		},
-		{
-			name: "unknown release",
-			request: stepmetricshtml.Request{
-				Release:           "unknown-release",
-				MultistageJobName: "e2e-aws",
-			},
-			expectedValidateError: "invalid release unknown-release",
-		},
-		{
 			name: "unknown multistage job name",
 			request: stepmetricshtml.Request{
 				Release:           "4.9",
 				MultistageJobName: "unknown-multistage-name",
 			},
-			expectedValidateReportsError: "invalid multistage job name unknown-multistage-name",
+			expectedError: "invalid multistage job name unknown-multistage-name",
 		},
 		{
 			name: "all step names",
@@ -67,7 +49,7 @@ func TestHTTPQuery(t *testing.T) {
 				Release:  "4.9",
 				StepName: "unknown-step-name",
 			},
-			expectedValidateReportsError: "unknown step name unknown-step-name",
+			expectedError: "unknown step name unknown-step-name",
 		},
 		{
 			name: "unknown variant",
@@ -76,37 +58,35 @@ func TestHTTPQuery(t *testing.T) {
 				StepName: "gcp-specific",
 				Variant:  "unknown-variant",
 			},
-			expectedValidateError: "unknown variant unknown-variant",
+			expectedError: "unknown variant unknown-variant",
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			knownReleases := sets.NewString("4.9")
-
-			httpQuery := stepmetricshtml.NewStepMetricsHTTPQuery(getHTTPRequest(testCase.request))
-
-			validateErr := httpQuery.Validate(knownReleases)
-			if validateErr != nil && testCase.expectedValidateError != validateErr.Error() {
-				t.Errorf("expected error %s, got: %s", testCase.expectedValidateError, validateErr)
+			opts := stepmetricshtml.RequestOpts{
+				URLValues: getURLValues(testCase.request),
+				Current:   htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+				Previous:  htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
 			}
 
-			current := htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9")
-			previous := htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9")
-
-			validateReportErr := httpQuery.ValidateFromReports(current, previous)
-			if validateReportErr != nil && testCase.expectedValidateReportsError != validateReportErr.Error() {
-				t.Errorf("expected error %s, got: %s", testCase.expectedValidateReportsError, validateReportErr)
+			req, err := stepmetricshtml.ValidateRequest(opts)
+			if testCase.expectedError != "" && err == nil {
+				t.Errorf("expected error: %s, got nil", testCase.expectedError)
 			}
 
-			if httpQuery.Request() != testCase.request {
-				t.Errorf("requests do not match, have: %v, want: %v", httpQuery.Request(), testCase.request)
+			if err != nil && testCase.expectedError != err.Error() {
+				t.Errorf("expected error %s, got: %s", testCase.expectedError, err)
+			}
+
+			if err == nil && req != testCase.request {
+				t.Errorf("requests do not match, have: %v, want: %v", req, testCase.request)
 			}
 		})
 	}
 }
 
-func getHTTPRequest(req stepmetricshtml.Request) *http.Request {
+func getURLValues(req stepmetricshtml.Request) url.Values {
 	valMap := map[string]string{
 		"release":           req.Release,
 		"multistageJobName": req.MultistageJobName,
@@ -122,11 +102,5 @@ func getHTTPRequest(req stepmetricshtml.Request) *http.Request {
 		}
 	}
 
-	u := &url.URL{
-		RawQuery: values.Encode(),
-	}
-
-	return &http.Request{
-		URL: u,
-	}
+	return values
 }

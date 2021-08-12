@@ -16,6 +16,38 @@ func NewStepMetricsAPI(curr, prev sippyprocessingv1.TestReport) StepMetricsAPI {
 	}
 }
 
+func (s StepMetricsAPI) Fetch(req Request) Response {
+	resp := Response{
+		Request: req,
+	}
+
+	if req.MultistageJobName != "" {
+		if req.MultistageJobName == All {
+			resp.MultistageDetails = s.AllMultistages()
+		} else {
+			resp.MultistageDetails = []MultistageDetails{
+				s.GetMultistage(req),
+			}
+		}
+
+		return resp
+	}
+
+	if req.StepName != "" {
+		if req.StepName == All {
+			resp.StepDetails = s.AllStages()
+		} else {
+			resp.StepDetails = []StepDetails{
+				s.GetStage(req),
+			}
+		}
+
+		return resp
+	}
+
+	return resp
+}
+
 func (s StepMetricsAPI) AllMultistages() []MultistageDetails {
 	resp := []MultistageDetails{}
 	currStepRegistryMetrics := s.current.TopLevelStepRegistryMetrics.ByMultistageName
