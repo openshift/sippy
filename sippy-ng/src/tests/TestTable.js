@@ -222,9 +222,10 @@ function TestTable (props) {
       headerName: ' ',
       flex: 0.40,
       filterable: false,
+      valueGetter: (params) => params.value.length,
       renderCell: (params) => {
         return (
-          <Tooltip title={params.value.length + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
+          <Tooltip title={params.value + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
             <Button style={{ color: bugColor(params.row) }} startIcon={<BugReport />} onClick={() => openBugzillaDialog(params.row)} />
           </Tooltip>
         )

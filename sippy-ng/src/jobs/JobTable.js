@@ -237,10 +237,10 @@ function JobTable (props) {
       headerName: 'Bugs',
       flex: 0.40,
       type: 'number',
-      filterable: false,
+      valueGetter: (params) => params.value.length,
       renderCell: (params) => {
         return (
-          <Tooltip title={params.value.length + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
+          <Tooltip title={params.value + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
             <Button style={{ justifyContent: 'center', color: bugColor(params.row) }} startIcon={<BugReport />} onClick={() => openBugzillaDialog(params.row)} />
           </Tooltip>
         )
