@@ -37,241 +37,241 @@ exports[`release-overview should render correctly 1`] = `
         </h5>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
-        <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-6 MuiPaper-elevation5 MuiPaper-rounded"
-             style="background-color: rgb(129, 199, 132);"
+        <a class="MuiBox-root MuiBox-root-7"
+           href="/tests/4.8/details?test=[sig-sippy] infrastructure should work"
         >
-          <div class="MuiCardContent-root makeStyles-cardContent-4">
-            <h6 class="MuiTypography-root MuiTypography-h6">
-              <a title="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
-                 class
-                 href="/tests/4.8/details?test=[sig-sippy] infrastructure should work"
-              >
+          <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-6 MuiPaper-elevation5 MuiPaper-rounded"
+               style="background-color: rgb(129, 199, 132);"
+               title="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
+          >
+            <div class="MuiCardContent-root makeStyles-cardContent-4">
+              <h6 class="MuiTypography-root MuiTypography-h6">
                 Infrastructure
-              </a>
-            </h6>
-            <svg viewbox="0 0 80 50"
-                 width="100%"
-                 height="100%"
-            >
-              <path d="M 56.51388756292923 25.117024350137537 A 17 17 0 1 1 54.651408563513826 17.38039343242792"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="98.78199105093971"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="#4A934A"
+              </h6>
+              <svg viewbox="0 0 80 50"
+                   width="100%"
+                   height="100%"
               >
-                <title>
-                  Success
-                </title>
-              </path>
-              <path d="M 55.884416594065016 17.679349542915077 A 17 17 0 0 1 57.475756496395405 24.289684205919947"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="6.845335279757138"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="darkred"
-              >
-                <title>
-                  Fail
-                </title>
-              </path>
-            </svg>
-            <h3 class="MuiBox-root MuiBox-root-7">
-              94 % (1111 runs)&nbsp;
-              <svg class="MuiSvgIcon-root"
-                   focusable="false"
-                   viewbox="0 0 24 24"
-                   aria-hidden="true"
-                   data-icon="SyncAltRoundedIcon"
-                   style="color: grey;"
-              >
-                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                <path d="M 56.51388756292923 25.117024350137537 A 17 17 0 1 1 54.651408563513826 17.38039343242792"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="98.78199105093971"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="#4A934A"
+                >
+                  <title>
+                    Success
+                  </title>
+                </path>
+                <path d="M 55.884416594065016 17.679349542915077 A 17 17 0 0 1 57.475756496395405 24.289684205919947"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="6.845335279757138"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="darkred"
+                >
+                  <title>
+                    Fail
+                  </title>
                 </path>
               </svg>
-              &nbsp;93% (1130 runs)
-            </h3>
+              <h3 class="MuiBox-root MuiBox-root-8">
+                94 % (1111 runs)&nbsp;
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                     data-icon="SyncAltRoundedIcon"
+                     style="color: grey;"
+                >
+                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                  </path>
+                </svg>
+                &nbsp;93% (1130 runs)
+              </h3>
+            </div>
           </div>
-        </div>
+        </a>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
-        <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-8 MuiPaper-elevation5 MuiPaper-rounded"
-             style="background-color: rgb(129, 199, 132);"
+        <a class="MuiBox-root MuiBox-root-10"
+           href="/install/4.8"
         >
-          <div class="MuiCardContent-root makeStyles-cardContent-4">
-            <h6 class="MuiTypography-root MuiTypography-h6">
-              <a title="How often the install completes successfully."
-                 class
-                 href="/install/4.8"
-              >
+          <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-9 MuiPaper-elevation5 MuiPaper-rounded"
+               style="background-color: rgb(129, 199, 132);"
+               title="How often the install completes successfully."
+          >
+            <div class="MuiCardContent-root makeStyles-cardContent-4">
+              <h6 class="MuiTypography-root MuiTypography-h6">
                 Install
-              </a>
-            </h6>
-            <svg viewbox="0 0 80 50"
-                 width="100%"
-                 height="100%"
-            >
-              <path d="M 56.50109577133807 25.033084295719423 A 17 17 0 1 1 56.352234166576054 22.788282570725357"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="104.56277320978275"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="#4A934A"
+              </h6>
+              <svg viewbox="0 0 80 50"
+                   width="100%"
+                   height="100%"
               >
-                <title>
-                  Success
-                </title>
-              </path>
-              <path d="M 57.41811981609125 23.311577700702856 A 17 17 0 0 1 57.48854828798656 24.37362426033806"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="1.0645531209140746"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="darkred"
-              >
-                <title>
-                  Fail
-                </title>
-              </path>
-            </svg>
-            <h3 class="MuiBox-root MuiBox-root-9">
-              99 % (2679 runs)&nbsp;
-              <svg class="MuiSvgIcon-root"
-                   focusable="false"
-                   viewbox="0 0 24 24"
-                   aria-hidden="true"
-                   data-icon="SyncAltRoundedIcon"
-                   style="color: grey;"
-              >
-                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                <path d="M 56.50109577133807 25.033084295719423 A 17 17 0 1 1 56.352234166576054 22.788282570725357"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="104.56277320978275"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="#4A934A"
+                >
+                  <title>
+                    Success
+                  </title>
+                </path>
+                <path d="M 57.41811981609125 23.311577700702856 A 17 17 0 0 1 57.48854828798656 24.37362426033806"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="1.0645531209140746"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="darkred"
+                >
+                  <title>
+                    Fail
+                  </title>
                 </path>
               </svg>
-              &nbsp;99% (2866 runs)
-            </h3>
+              <h3 class="MuiBox-root MuiBox-root-11">
+                99 % (2679 runs)&nbsp;
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                     data-icon="SyncAltRoundedIcon"
+                     style="color: grey;"
+                >
+                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                  </path>
+                </svg>
+                &nbsp;99% (2866 runs)
+              </h3>
+            </div>
           </div>
-        </div>
+        </a>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
-        <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-10 MuiPaper-elevation5 MuiPaper-rounded"
-             style="background-color: rgb(129, 199, 132);"
+        <a class="MuiBox-root MuiBox-root-13"
+           href="/upgrade/4.8"
         >
-          <div class="MuiCardContent-root makeStyles-cardContent-4">
-            <h6 class="MuiTypography-root MuiTypography-h6">
-              <a title="How often an upgrade that is started completes successfully."
-                 class
-                 href="/upgrade/4.8"
-              >
+          <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-12 MuiPaper-elevation5 MuiPaper-rounded"
+               style="background-color: rgb(129, 199, 132);"
+               title="How often an upgrade that is started completes successfully."
+          >
+            <div class="MuiCardContent-root makeStyles-cardContent-4">
+              <h6 class="MuiTypography-root MuiTypography-h6">
                 Upgrade
-              </a>
-            </h6>
-            <svg viewbox="0 0 80 50"
-                 width="100%"
-                 height="100%"
-            >
-              <path d="M 56.5057754933912 25.075776890060798 A 17 17 0 1 1 55.72484485224028 19.98246862010083"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="101.64138948802903"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="#4A934A"
+              </h6>
+              <svg viewbox="0 0 80 50"
+                   width="100%"
+                   height="100%"
               >
-                <title>
-                  Success
-                </title>
-              </path>
-              <path d="M 56.881167541801354 20.40005490336749 A 17 17 0 0 1 57.483868565933435 24.330931665996687"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="3.9859368426677984"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="darkred"
-              >
-                <title>
-                  Fail
-                </title>
-              </path>
-            </svg>
-            <h3 class="MuiBox-root MuiBox-root-11">
-              96 % (212 runs)&nbsp;
-              <svg class="MuiSvgIcon-root"
-                   focusable="false"
-                   viewbox="0 0 24 24"
-                   aria-hidden="true"
-                   data-icon="SyncAltRoundedIcon"
-                   style="color: grey;"
-              >
-                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                <path d="M 56.5057754933912 25.075776890060798 A 17 17 0 1 1 55.72484485224028 19.98246862010083"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="101.64138948802903"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="#4A934A"
+                >
+                  <title>
+                    Success
+                  </title>
+                </path>
+                <path d="M 56.881167541801354 20.40005490336749 A 17 17 0 0 1 57.483868565933435 24.330931665996687"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="3.9859368426677984"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="darkred"
+                >
+                  <title>
+                    Fail
+                  </title>
                 </path>
               </svg>
-              &nbsp;96% (246 runs)
-            </h3>
+              <h3 class="MuiBox-root MuiBox-root-14">
+                96 % (212 runs)&nbsp;
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                     data-icon="SyncAltRoundedIcon"
+                     style="color: grey;"
+                >
+                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                  </path>
+                </svg>
+                &nbsp;96% (246 runs)
+              </h3>
+            </div>
           </div>
-        </div>
+        </a>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
-        <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-12 MuiPaper-elevation5 MuiPaper-rounded"
-             style="background-color: rgb(229, 115, 115);"
+        <a class="MuiBox-root MuiBox-root-16"
+           href="/jobs/4.8/variant"
         >
-          <div class="MuiCardContent-root makeStyles-cardContent-4">
-            <h6 class="MuiTypography-root MuiTypography-h6">
-              <a title="Overall health of variants excluding never-stable. Success is greater than 80% pass, unstable is greater than 60%, and anything else is considered failed."
-                 class
-                 href="/jobs/4.8/variant"
-              >
+          <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-15 MuiPaper-elevation5 MuiPaper-rounded"
+               style="background-color: rgb(229, 115, 115);"
+               title="Overall health of variants excluding never-stable. Success is greater than 80% pass, unstable is greater than 60%, and anything else is considered failed."
+          >
+            <div class="MuiCardContent-root makeStyles-cardContent-4">
+              <h6 class="MuiTypography-root MuiTypography-h6">
                 Variants
-              </a>
-            </h6>
-            <svg viewbox="0 0 80 50"
-                 width="100%"
-                 height="100%"
-            >
-              <path d="M 57.27729019667931 25.41606507522928 A 17 17 0 0 1 33.734310228404794 41.10648932490329"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="33.4198818497787"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="#FF8800"
+              </h6>
+              <svg viewbox="0 0 80 50"
+                   width="100%"
+                   height="100%"
               >
-                <title>
-                  Flakes
-                </title>
-              </path>
-              <path d="M 32.53736728486514 40.78204312640637 A 17 17 0 0 1 23.374675185934215 30.325631146780665"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="14.32280650704801"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="#4A934A"
-              >
-                <title>
-                  Success
-                </title>
-              </path>
-              <path d="M 23.51196582482845 28.931523250628924 A 17 17 0 1 1 56.91534706834945 23.9122594109151"
-                    fill="none"
-                    stroke-width="6"
-                    stroke-dasharray="57.29122602819204"
-                    stroke-dashoffset="0"
-                    style="transition: stroke-dashoffset 500ms ease-out;"
-                    stroke="darkred"
-              >
-                <title>
-                  Fail
-                </title>
-              </path>
-            </svg>
-            <h3 class="MuiBox-root MuiBox-root-13">
-              14% success, 32% unstable, 55% failed
-            </h3>
+                <path d="M 57.27729019667931 25.41606507522928 A 17 17 0 0 1 33.734310228404794 41.10648932490329"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="33.4198818497787"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="#FF8800"
+                >
+                  <title>
+                    Flakes
+                  </title>
+                </path>
+                <path d="M 32.53736728486514 40.78204312640637 A 17 17 0 0 1 23.374675185934215 30.325631146780665"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="14.32280650704801"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="#4A934A"
+                >
+                  <title>
+                    Success
+                  </title>
+                </path>
+                <path d="M 23.51196582482845 28.931523250628924 A 17 17 0 1 1 56.91534706834945 23.9122594109151"
+                      fill="none"
+                      stroke-width="6"
+                      stroke-dasharray="57.29122602819204"
+                      stroke-dashoffset="0"
+                      style="transition: stroke-dashoffset 500ms ease-out;"
+                      stroke="darkred"
+                >
+                  <title>
+                    Fail
+                  </title>
+                </path>
+              </svg>
+              <h3 class="MuiBox-root MuiBox-root-17">
+                14% success, 32% unstable, 55% failed
+              </h3>
+            </div>
           </div>
-        </div>
+        </a>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
         <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
@@ -494,7 +494,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -573,7 +573,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="49"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-good-14 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-good-18 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -652,7 +652,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="27"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -731,7 +731,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="48"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-good-14 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-good-18 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -810,7 +810,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="55"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-good-14 MuiDataGrid-row"
+                                 class="Mui-even TestTable-good-18 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -909,10 +909,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -934,7 +934,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -1205,7 +1205,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="39"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1245,7 +1245,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-23"
+                                <div class="MuiBox-root MuiBox-root-27"
                                      title="13 runs"
                                 >
                                   38.46%
@@ -1284,7 +1284,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="62"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-ok-18 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-ok-22 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1324,7 +1324,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-24"
+                                <div class="MuiBox-root MuiBox-root-28"
                                      title="13 runs"
                                 >
                                   69.23%
@@ -1363,7 +1363,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="34"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1403,7 +1403,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-25"
+                                <div class="MuiBox-root MuiBox-root-29"
                                      title="15 runs"
                                 >
                                   33.33%
@@ -1442,7 +1442,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="28"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1482,7 +1482,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-26"
+                                <div class="MuiBox-root MuiBox-root-30"
                                      title="16 runs"
                                 >
                                   31.25%
@@ -1521,7 +1521,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="72"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-ok-18 MuiDataGrid-row"
+                                 class="Mui-even JobTable-ok-22 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1561,7 +1561,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-27"
+                                <div class="MuiBox-root MuiBox-root-31"
                                      title="13 runs"
                                 >
                                   76.92%
@@ -1620,10 +1620,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -1645,7 +1645,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -1916,7 +1916,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="6"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1995,7 +1995,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="7"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2074,7 +2074,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="5"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2153,7 +2153,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="12"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-ok-15 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-ok-19 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2232,7 +2232,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="13"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-ok-15 MuiDataGrid-row"
+                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2331,10 +2331,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -2356,7 +2356,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -2627,7 +2627,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="19"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2667,7 +2667,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-28"
+                                <div class="MuiBox-root MuiBox-root-32"
                                      title="1 runs"
                                 >
                                   0.00%
@@ -2706,7 +2706,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="12"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2746,7 +2746,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-29"
+                                <div class="MuiBox-root MuiBox-root-33"
                                      title="1 runs"
                                 >
                                   0.00%
@@ -2785,7 +2785,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="43"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2825,7 +2825,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-30"
+                                <div class="MuiBox-root MuiBox-root-34"
                                      title="2 runs"
                                 >
                                   0.00%
@@ -2864,7 +2864,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="70"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2904,7 +2904,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-31"
+                                <div class="MuiBox-root MuiBox-root-35"
                                      title="2 runs"
                                 >
                                   50.00%
@@ -2943,7 +2943,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="0"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-failing-19 MuiDataGrid-row"
+                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2983,7 +2983,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-32"
+                                <div class="MuiBox-root MuiBox-root-36"
                                      title="2 runs"
                                 >
                                   0.00%
@@ -3042,10 +3042,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3067,7 +3067,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -3338,7 +3338,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3417,7 +3417,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="27"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-failing-16 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-failing-20 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3496,7 +3496,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="30"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-ok-15 MuiDataGrid-row"
+                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3575,7 +3575,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="41"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-ok-15 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-ok-19 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3654,7 +3654,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="42"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-ok-15 MuiDataGrid-row"
+                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3753,10 +3753,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3778,7 +3778,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4074,10 +4074,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-22 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-26 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -4099,7 +4099,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-21 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-25 MuiTypography-body2 MuiTypography-colorInherit">
                         0-0 of 0
                       </p>
                       <div class="MuiTablePagination-actions">

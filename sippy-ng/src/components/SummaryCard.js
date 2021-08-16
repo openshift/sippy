@@ -1,4 +1,4 @@
-import { Card, CardContent, Tooltip, Typography } from '@material-ui/core'
+import { Box, Card, CardContent, Tooltip, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
 import React, { useEffect } from 'react'
@@ -63,42 +63,49 @@ export default function SummaryCard (props) {
     setCurrentData(data)
   }, [props])
 
-  let header = props.name
-  if (props.link !== undefined) {
-    header = <Link to={props.link}>{props.name}</Link>
-  }
+  let card = (
+    <Card elevation={5} className={`${classes.summaryCard}`} style={{ backgroundColor: bgColor }}>
+      <CardContent className={`${classes.cardContent}`}>
+        <Typography variant="h6">{props.name}</Typography>
+        <PieChart
+          animate
+          animationDuration={500}
+          animationEasing="ease-out"
+          center={[40, 25]}
+          data={currentData}
+          labelPosition={50}
+          lengthAngle={360}
+          lineWidth={30}
+          paddingAngle={2}
+          radius={20}
+          segmentsShift={0.5}
+          startAngle={0}
+          viewBoxSize={[80, 50]}
+        />
+        {props.caption}
+      </CardContent>
+    </Card>
+  )
 
-  if (props.tooltip !== '') {
-    header = (
-            <Tooltip title={props.tooltip}>
-                {header}
-            </Tooltip>
+  // Wrap in tooltip if we have one
+  if (props.tooltip !== undefined) {
+    card = (
+      <Tooltip title={props.tooltip} placement="top">
+        {card}
+      </Tooltip>
     )
   }
 
-  return (
-    <Card elevation={5} className={`${classes.summaryCard}`} style={{ backgroundColor: bgColor }}>
-        <CardContent className={`${classes.cardContent}`}>
-            <Typography variant="h6">{header}</Typography>
-            <PieChart
-                animate
-                animationDuration={500}
-                animationEasing="ease-out"
-                center={[40, 25]}
-                data={currentData}
-                labelPosition={50}
-                lengthAngle={360}
-                lineWidth={30}
-                paddingAngle={2}
-                radius={20}
-                segmentsShift={0.5}
-                startAngle={0}
-                viewBoxSize={[80, 50]}
-            />
-            {props.caption}
-        </CardContent>
-    </Card>
-  )
+  // Link if we have one
+  if (props.link !== undefined) {
+    return (
+      <Box component={Link} to={props.link}>
+        {card}
+      </Box>
+    )
+  } else {
+    return card
+  }
 }
 
 SummaryCard.defaultProps = {
