@@ -71,12 +71,13 @@ type ByStageName struct {
 	ByMultistageName map[string]StageResult `json:"byMultistageTestName"`
 }
 
-// Holds Step Registry metrics aggregated against a specific job name
+// Holds Step Registry metrics aggregated against a multistage job name (e.g., "e2e-aws")
 type StepRegistryMetrics struct {
 	// Name of the multistage test, e.g., "e2e-aws"
 	MultistageName string `json:"multistageName"`
 	// Contains the metrics for each individual stage in no particular order.
 	StageResults map[string]StageResult `json:"stageResults"`
+	Aggregated   StageResult            `json:"aggregated"`
 }
 
 type StageResult struct {
@@ -85,6 +86,7 @@ type StageResult struct {
 	TestResult
 	// The original test name from TestGrid
 	OriginalTestName string `json:"originalTestName"`
+	Runs             int    `json:"runs"`
 }
 
 // TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
