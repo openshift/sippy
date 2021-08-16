@@ -280,7 +280,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?sortBy=regression&amp;filterBy=runs&amp;runs=10"
+             href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%5D%7D"
           >
             Most regressed tests
             <svg class="MuiSvgIcon-root"
@@ -342,7 +342,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -394,7 +394,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -417,12 +417,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"
@@ -494,7 +495,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -573,7 +574,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="49"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-good-18 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -652,7 +653,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="27"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -731,7 +732,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="48"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-good-18 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -810,7 +811,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="55"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-good-18 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -991,7 +992,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/jobs/4.8?sortBy=regression&amp;filterBy=runs&amp;runs=10"
+             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%5D%7D"
           >
             Most regressed jobs
             <svg class="MuiSvgIcon-root"
@@ -1053,7 +1054,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -1105,7 +1106,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -1128,12 +1129,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"
@@ -1202,10 +1204,10 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="39"
+                            <div data-id="38"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1284,7 +1286,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="62"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-ok-22 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-rowWarning-22 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1360,10 +1362,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="34"
+                            <div data-id="31"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1442,7 +1444,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="28"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1518,10 +1520,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="72"
+                            <div data-id="70"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-ok-22 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowWarning-22 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1702,7 +1704,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?sortBy=regression&amp;filterBy=runs&amp;runs=1&amp;period=twoDay"
+             href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%5D%7D"
           >
             Most regressed tests (two day)
             <svg class="MuiSvgIcon-root"
@@ -1764,7 +1766,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -1816,7 +1818,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -1839,12 +1841,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"
@@ -1916,7 +1919,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="6"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -1995,7 +1998,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="7"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2074,7 +2077,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="5"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2153,7 +2156,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="12"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-ok-19 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowWarning-19 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2232,7 +2235,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="13"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowWarning-19 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2413,7 +2416,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/jobs/4.8?sortBy=regression&amp;filterBy=runs&amp;runs=1&amp;period=twoDay"
+             href="/jobs/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%5D%7D"
           >
             Most regressed jobs (two day)
             <svg class="MuiSvgIcon-root"
@@ -2475,7 +2478,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -2527,7 +2530,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -2550,12 +2553,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"
@@ -2624,10 +2628,10 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="19"
+                            <div data-id="40"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2703,10 +2707,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="12"
+                            <div data-id="26"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2782,10 +2786,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="43"
+                            <div data-id="34"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2861,10 +2865,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="70"
+                            <div data-id="66"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -2940,10 +2944,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="0"
+                            <div data-id="1"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-failing-23 MuiDataGrid-row"
+                                 class="Mui-even JobTable-rowError-23 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3124,7 +3128,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?filterBy=runs&amp;filterBy=noBug&amp;runs=10"
+             href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22id%22%3A5%2C%22columnField%22%3A%22bugs%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%5D%7D"
           >
             Top failing tests without a bug
             <svg class="MuiSvgIcon-root"
@@ -3186,7 +3190,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -3238,7 +3242,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -3261,12 +3265,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"
@@ -3338,7 +3343,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
@@ -3414,11 +3419,90 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="27"
+                            <div data-id="49"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-failing-20 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="3"
+                                 aria-selected="false"
+                                 style="max-height: 52px; min-height: 52px;"
+                            >
+                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
+                                   role="cell"
+                                   data-value="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
+                                   data-field="name"
+                                   data-rowindex="1"
+                                   data-colindex="0"
+                                   data-rowselected="false"
+                                   data-editable="false"
+                                   data-mode="view"
+                                   aria-colindex="1"
+                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                                   tabindex="-1"
+                              >
+                                <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                  <a title="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
+                                     class
+                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
+                                  >
+                                    operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test
+                                  </a>
+                                </div>
+                              </div>
+                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
+                                   role="cell"
+                                   data-value="83.33333333333334"
+                                   data-field="current_pass_percentage"
+                                   data-rowindex="1"
+                                   data-colindex="1"
+                                   data-rowselected="false"
+                                   data-editable="false"
+                                   data-mode="view"
+                                   aria-colindex="2"
+                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                                   tabindex="-1"
+                              >
+                                <p title="12 runs"
+                                   class
+                                >
+                                  83.33%
+                                </p>
+                              </div>
+                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
+                                   role="cell"
+                                   data-value="-16.666666666666657"
+                                   data-field="net_improvement"
+                                   data-rowindex="1"
+                                   data-colindex="2"
+                                   data-rowselected="false"
+                                   data-editable="false"
+                                   data-mode="view"
+                                   aria-colindex="3"
+                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                                   tabindex="-1"
+                              >
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowDownwardRoundedIcon"
+                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                     title="-16.67%"
+                                >
+                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                  </path>
+                                </svg>
+                              </div>
+                              <div style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                                   class="MuiDataGrid-cell"
+                              >
+                              </div>
+                            </div>
+                            <div data-id="27"
+                                 data-rowindex="2"
+                                 role="row"
+                                 class="Mui-even TestTable-rowError-20 MuiDataGrid-row"
+                                 aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
                             >
@@ -3426,7 +3510,7 @@ exports[`release-overview should render correctly 1`] = `
                                    role="cell"
                                    data-value="operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                    data-field="name"
-                                   data-rowindex="1"
+                                   data-rowindex="2"
                                    data-colindex="0"
                                    data-rowselected="false"
                                    data-editable="false"
@@ -3448,7 +3532,7 @@ exports[`release-overview should render correctly 1`] = `
                                    role="cell"
                                    data-value="50"
                                    data-field="current_pass_percentage"
-                                   data-rowindex="1"
+                                   data-rowindex="2"
                                    data-colindex="1"
                                    data-rowselected="false"
                                    data-editable="false"
@@ -3467,7 +3551,7 @@ exports[`release-overview should render correctly 1`] = `
                                    role="cell"
                                    data-value="-12.5"
                                    data-field="net_improvement"
-                                   data-rowindex="1"
+                                   data-rowindex="2"
                                    data-colindex="2"
                                    data-rowselected="false"
                                    data-editable="false"
@@ -3493,96 +3577,17 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="30"
-                                 data-rowindex="2"
-                                 role="row"
-                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
-                                 aria-rowindex="4"
-                                 aria-selected="false"
-                                 style="max-height: 52px; min-height: 52px;"
-                            >
-                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
-                                   role="cell"
-                                   data-value="[sig-arch] Check if alerts are firing during or after upgrade success"
-                                   data-field="name"
-                                   data-rowindex="2"
-                                   data-colindex="0"
-                                   data-rowselected="false"
-                                   data-editable="false"
-                                   data-mode="view"
-                                   aria-colindex="1"
-                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
-                                   tabindex="-1"
-                              >
-                                <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                  <a title="[sig-arch] Check if alerts are firing during or after upgrade success"
-                                     class
-                                     href="/tests/4.8/details?test=[sig-arch] Check if alerts are firing during or after upgrade success"
-                                  >
-                                    [sig-arch] Check if alerts are firing during or after upgrade success
-                                  </a>
-                                </div>
-                              </div>
-                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
-                                   role="cell"
-                                   data-value="64.82412060301507"
-                                   data-field="current_pass_percentage"
-                                   data-rowindex="2"
-                                   data-colindex="1"
-                                   data-rowselected="false"
-                                   data-editable="false"
-                                   data-mode="view"
-                                   aria-colindex="2"
-                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
-                                   tabindex="-1"
-                              >
-                                <p title="323 runs"
-                                   class
-                                >
-                                  64.82%
-                                </p>
-                              </div>
-                              <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
-                                   role="cell"
-                                   data-value="2.0036077825022574"
-                                   data-field="net_improvement"
-                                   data-rowindex="2"
-                                   data-colindex="2"
-                                   data-rowselected="false"
-                                   data-editable="false"
-                                   data-mode="view"
-                                   aria-colindex="3"
-                                   style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
-                                   tabindex="-1"
-                              >
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                     title="2.00%"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                              </div>
-                              <div style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
-                                   class="MuiDataGrid-cell"
-                              >
-                              </div>
-                            </div>
-                            <div data-id="41"
+                            <div data-id="48"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-ok-19 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
                             >
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                    role="cell"
-                                   data-value="operator.Run template e2e-metal-serial - e2e-metal-serial container setup"
+                                   data-value="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                    data-field="name"
                                    data-rowindex="3"
                                    data-colindex="0"
@@ -3594,17 +3599,17 @@ exports[`release-overview should render correctly 1`] = `
                                    tabindex="-1"
                               >
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                  <a title="operator.Run template e2e-metal-serial - e2e-metal-serial container setup"
+                                  <a title="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run template e2e-metal-serial - e2e-metal-serial container setup"
+                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                   >
-                                    operator.Run template e2e-metal-serial - e2e-metal-serial container setup
+                                    operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test
                                   </a>
                                 </div>
                               </div>
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                    role="cell"
-                                   data-value="66.66666666666666"
+                                   data-value="83.33333333333334"
                                    data-field="current_pass_percentage"
                                    data-rowindex="3"
                                    data-colindex="1"
@@ -3615,15 +3620,15 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <p title="12 runs"
+                                <p title="48 runs"
                                    class
                                 >
-                                  66.67%
+                                  83.33%
                                 </p>
                               </div>
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                    role="cell"
-                                   data-value="-10.256410256410277"
+                                   data-value="-12.12121212121211"
                                    data-field="net_improvement"
                                    data-rowindex="3"
                                    data-colindex="2"
@@ -3640,7 +3645,7 @@ exports[`release-overview should render correctly 1`] = `
                                      aria-hidden="true"
                                      data-icon="ArrowDownwardRoundedIcon"
                                      style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                     title="-10.26%"
+                                     title="-12.12%"
                                 >
                                   <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                   </path>
@@ -3651,17 +3656,17 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="42"
+                            <div data-id="55"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-ok-19 MuiDataGrid-row"
+                                 class="Mui-even TestTable-rowSuccess-18 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 52px; min-height: 52px;"
                             >
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                    role="cell"
-                                   data-value="[sig-sippy] openshift-tests should work"
+                                   data-value="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                    data-field="name"
                                    data-rowindex="4"
                                    data-colindex="0"
@@ -3673,17 +3678,17 @@ exports[`release-overview should render correctly 1`] = `
                                    tabindex="-1"
                               >
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                  <a title="[sig-sippy] openshift-tests should work"
+                                  <a title="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=[sig-sippy] openshift-tests should work"
+                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                   >
-                                    [sig-sippy] openshift-tests should work
+                                    operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test
                                   </a>
                                 </div>
                               </div>
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                    role="cell"
-                                   data-value="67.89189189189189"
+                                   data-value="89.1891891891892"
                                    data-field="current_pass_percentage"
                                    data-rowindex="4"
                                    data-colindex="1"
@@ -3694,15 +3699,15 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <p title="925 runs"
+                                <p title="37 runs"
                                    class
                                 >
-                                  67.89%
+                                  89.19%
                                 </p>
                               </div>
                               <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                    role="cell"
-                                   data-value="4.778885495303399"
+                                   data-value="-10.810810810810807"
                                    data-field="net_improvement"
                                    data-rowindex="4"
                                    data-colindex="2"
@@ -3717,11 +3722,11 @@ exports[`release-overview should render correctly 1`] = `
                                      focusable="false"
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                     title="4.78%"
+                                     data-icon="ArrowDownwardRoundedIcon"
+                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                     title="-10.81%"
                                 >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                   </path>
                                 </svg>
                               </div>
@@ -3835,7 +3840,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?filterBy=runs&amp;filterBy=trt&amp;runs=10"
+             href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A8%2C%22columnField%22%3A%22tags%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22trt%22%7D%5D%7D"
           >
             Curated by TRT
             <svg class="MuiSvgIcon-root"
@@ -3902,7 +3907,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -3954,7 +3959,7 @@ exports[`release-overview should render correctly 1`] = `
                                      viewbox="0 0 24 24"
                                      aria-hidden="true"
                                 >
-                                  <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z">
+                                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z">
                                   </path>
                                 </svg>
                               </span>
@@ -3977,12 +3982,13 @@ exports[`release-overview should render correctly 1`] = `
                         </svg>
                       </div>
                     </div>
-                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
+                    <div class="MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader"
                          data-field="net_improvement"
                          style="width: 50px; min-width: 50px; max-width: 50px;"
                          role="columnheader"
                          tabindex="-1"
                          aria-colindex="3"
+                         aria-sort="ascending"
                     >
                       <div class="MuiDataGrid-columnHeaderDraggableContainer"
                            draggable="false"

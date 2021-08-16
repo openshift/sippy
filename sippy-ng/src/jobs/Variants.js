@@ -49,7 +49,19 @@ function Row (props) {
             <TableRow>
                 <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
                     <Collapse in={open} timeout="auto" unmountOnExit>
-                        <JobTable briefTable={true} variant={row.platform} filterBy={['variant']} release={props.release} />
+                        <JobTable
+                          briefTable={true}
+                          hideControls={true}
+                          filterModel={{
+                            items: [{
+                              id: 99,
+                              columnField: 'variants',
+                              operatorValue: 'contains',
+                              value: row.platform
+                            }]
+                          }}
+                          release={props.release}
+                        />
                     </Collapse>
                 </TableCell>
             </TableRow>

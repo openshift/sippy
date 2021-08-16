@@ -1,13 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
-	"regexp"
 	gosort "sort"
 	"strconv"
-	"strings"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
@@ -18,67 +17,26 @@ func PrintTestsDetailsJSON(w http.ResponseWriter, req *http.Request, current, pr
 	RespondWithJSON(http.StatusOK, w, installhtml.TestDetailTests(installhtml.JSON, current, previous, req.URL.Query()["test"]))
 }
 
-func testFilter(req *http.Request, release string) []func(result v1sippyprocessing.FailingTestResult) bool {
-	filterBy := req.URL.Query()["filterBy"]
-	runs, _ := strconv.Atoi(req.URL.Query().Get("runs"))
-	names := req.URL.Query()["test"]
-
-	var filter []func(result v1sippyprocessing.FailingTestResult) bool
-	for _, filterName := range filterBy {
-		switch filterName {
-		case "name":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				regex := regexp.QuoteMeta(strings.Join(names, "|"))
-				match, err := regexp.Match(regex, []byte(test.TestName))
-				if err != nil {
-					return false
-				}
-				return match
-			})
-		case "install":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return testidentification.IsInstallRelatedTest(test.TestName)
-			})
-		case "upgrade":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return testidentification.IsUpgradeRelatedTest(test.TestName)
-			})
-		case "runs":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return (test.TestResultAcrossAllJobs.Failures + test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Flakes) > runs
-			})
-		case "trt":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return testidentification.IsCuratedTest(release, test.TestName)
-			})
-		case "hasBug":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return len(test.TestResultAcrossAllJobs.BugList) > 0
-			})
-		case "noBug":
-			filter = append(filter, func(test v1sippyprocessing.FailingTestResult) bool {
-				return len(test.TestResultAcrossAllJobs.BugList) == 0
-			})
-		}
-	}
-	return filter
-}
-
-type testsAPIResult []v1.Test
+type testsAPIResult []apitype.Test
 
 func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
-	sortBy := req.URL.Query().Get("sortBy")
+	sortField := req.URL.Query().Get("sortField")
+	sort := req.URL.Query().Get("sort")
 
-	switch sortBy {
-	case "regression":
-		gosort.Slice(tests, func(i, j int) bool {
-			return tests[i].NetImprovement < tests[j].NetImprovement
-		})
-	case "improvement":
-		gosort.Slice(tests, func(i, j int) bool {
-			return tests[i].NetImprovement > tests[j].NetImprovement
-		})
+	if sortField == "" {
+		sortField = "net_improvement"
 	}
+
+	if sort == "" {
+		sort = "asc"
+	}
+
+	gosort.Slice(tests, func(i, j int) bool {
+		if sort == "asc" {
+			return compare(tests[i], tests[j], sortField)
+		}
+		return compare(tests[j], tests[i], sortField)
+	})
 
 	return tests
 }
@@ -95,7 +53,16 @@ func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
 // PrintTestsJSON renders the list of matching tests.
 func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.FailingTestResult) {
 	tests := testsAPIResult{}
-	filters := testFilter(req, release)
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
@@ -109,18 +76,10 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 		previous = previousPeriod
 	}
 
-buildTests:
 	for idx, test := range current {
-
-		for _, filter := range filters {
-			if !filter(test) {
-				continue buildTests
-			}
-		}
-
 		testPrev := util.FindFailedTestResult(test.TestName, previous)
 
-		row := v1.Test{
+		row := apitype.Test{
 			ID:                    idx,
 			Name:                  test.TestName,
 			CurrentSuccesses:      test.TestResultAcrossAllJobs.Successes,
@@ -129,6 +88,7 @@ buildTests:
 			CurrentPassPercentage: test.TestResultAcrossAllJobs.PassPercentage,
 			CurrentRuns:           test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures + test.TestResultAcrossAllJobs.Flakes,
 		}
+
 		if testPrev != nil {
 			row.PreviousSuccesses = testPrev.TestResultAcrossAllJobs.Successes
 			row.PreviousFlakes = testPrev.TestResultAcrossAllJobs.Flakes
@@ -140,6 +100,30 @@ buildTests:
 
 		row.Bugs = test.TestResultAcrossAllJobs.BugList
 		row.AssociatedBugs = test.TestResultAcrossAllJobs.AssociatedBugList
+
+		if testidentification.IsCuratedTest(release, row.Name) {
+			row.Tags = append(row.Tags, "trt")
+		}
+
+		if testidentification.IsInstallRelatedTest(row.Name) {
+			row.Tags = append(row.Tags, "install")
+		}
+
+		if testidentification.IsUpgradeRelatedTest(row.Name) {
+			row.Tags = append(row.Tags, "upgrade")
+		}
+
+		if filter != nil {
+			include, err := filter.Filter(row)
+			if err != nil {
+				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
+				return
+			}
+
+			if !include {
+				continue
+			}
+		}
 
 		tests = append(tests, row)
 	}

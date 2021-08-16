@@ -11,6 +11,7 @@ import JobTable from '../jobs/JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 import TestTable from '../tests/TestTable'
+import { BOOKMARKS } from '../constants'
 
 /**
  *  Upgrades is the landing page for upgrades.
@@ -51,46 +52,56 @@ export default function Upgrades (props) {
   };
 
   return (
-        <Fragment>
-            <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
-            <Route
-                path="/"
-                render={({ location }) => (
-                    <TabContext value={path}>
-                        <Typography align="center" variant="h4">
-                            Upgrade health for {props.release}
-                        </Typography>
-                        <Grid container justifyContent="center" width="60%" style={{ margin: 20 }}>
-                            <Paper>
-                                <Tabs
-                                    value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}
-                                    indicatorColor="primary"
-                                    textColor="primary"
-                                >
-                                    <Tab label="Upgrade rates by operator" value="operators" component={Link} to={url + '/operators'} />
-                                    <Tab label="Upgrade related tests" value="tests" component={Link} to={url + '/tests'} />
-                                    <Tab label="Upgrade jobs" value="jobs" component={Link} to={url + '/jobs'} />
-                                </Tabs>
-                            </Paper>
-                        </Grid>
-                        <Switch>
-                            <Route path={path + '/operators'}>
-                                <TestByVariantTable release={props.release} colorScale={[90, 100]} data={data} />
-                            </Route>
-                            <Route path={path + '/tests'}>
-                                <TestTable release={props.release} filterBy={['upgrade']} />
-                            </Route>
-                            <Route path={path + '/jobs'}>
-                                <Container size="xl">
-                                    <JobTable release={props.release} filterBy={['upgrade']} />
-                                </Container>
-                            </Route>
-                            <Redirect from="/" to={url + '/operators'} />
-                        </Switch>
-                    </TabContext>
-                )}
-        />
-        </Fragment>
+    <Fragment>
+      <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
+      <Route
+        path="/"
+        render={({ location }) => (
+          <TabContext value={path}>
+            <Typography align="center" variant="h4">
+              Upgrade health for {props.release}
+            </Typography>
+            <Grid container justifyContent="center" width="60%" style={{ margin: 20 }}>
+              <Paper>
+                <Tabs
+                  value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}
+                  indicatorColor="primary"
+                  textColor="primary"
+                >
+                  <Tab label="Upgrade rates by operator" value="operators" component={Link} to={url + '/operators'} />
+                  <Tab label="Upgrade related tests" value="tests" component={Link} to={url + '/tests'} />
+                  <Tab label="Upgrade jobs" value="jobs" component={Link} to={url + '/jobs'} />
+                </Tabs>
+              </Paper>
+            </Grid>
+            <Switch>
+              <Route path={path + '/operators'}>
+                <TestByVariantTable release={props.release} colorScale={[90, 100]} data={data} />
+              </Route>
+              <Route path={path + '/tests'}>
+                <TestTable
+                  release={props.release}
+                  filterModel={{
+                    items: [BOOKMARKS.UPGRADE]
+                  }}
+                />
+              </Route>
+              <Route path={path + '/jobs'}>
+                <Container size="xl">
+                  <JobTable
+                    release={props.release}
+                    filterModel={{
+                      items: [BOOKMARKS.UPGRADE]
+                    }}
+                  />
+                </Container>
+              </Route>
+              <Redirect from="/" to={url + '/operators'} />
+            </Switch>
+          </TabContext>
+        )}
+      />
+    </Fragment>
   )
 }
 

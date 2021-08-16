@@ -34,5 +34,5 @@ export function bugColor (item) {
 }
 
 export function weightedBugComparator (linkedBug1, associatedBug1, linkedBug2, associatedBug2) {
-  return ((100 * linkedBug1) + associatedBug1.length) - ((100 * linkedBug2) + associatedBug2.length)
+  return ((100 * linkedBug1.length) + associatedBug1.length) - ((100 * linkedBug2.length) + associatedBug2.length)
 }

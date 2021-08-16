@@ -54,7 +54,6 @@ export default function JobsDetail (props) {
           setLoaded(true)
         })
         .catch(error => {
-          console.log(fetchError)
           setFetchError(error.toString())
           setLoaded(true)
         })
