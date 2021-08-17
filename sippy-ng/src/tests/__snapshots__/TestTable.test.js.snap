@@ -11,7 +11,7 @@ exports[`TestTable should render correctly 1`] = `
   >
     <div>
       <div>
-        <div class=\\"makeStyles-root-4\\">
+        <div class=\\"makeStyles-root-102\\">
           <div>
             <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-textSizeSmall MuiButton-sizeSmall\\"
                     tabindex=\\"0\\"
@@ -184,11 +184,11 @@ exports[`TestTable should render correctly 1`] = `
                  draggable=\\"false\\"
             >
               <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
-                <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                       aria-disabled=\\"false\\"
                 >
                   <span class=\\"MuiIconButton-label\\">
-                    <input class=\\"PrivateSwitchBase-input-12\\"
+                    <input class=\\"PrivateSwitchBase-input-110\\"
                            tabindex=\\"-1\\"
                            type=\\"checkbox\\"
                            data-indeterminate=\\"false\\"
@@ -351,7 +351,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"13\\"
                        data-rowindex=\\"0\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"2\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -369,11 +369,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -442,7 +442,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"26\\"
                        data-rowindex=\\"1\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-50-51 MuiDataGrid-row\\"
                        aria-rowindex=\\"3\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -460,11 +460,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -533,7 +533,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"25\\"
                        data-rowindex=\\"2\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-37-38 MuiDataGrid-row\\"
                        aria-rowindex=\\"4\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -551,11 +551,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -624,7 +624,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"40\\"
                        data-rowindex=\\"3\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-67-68 MuiDataGrid-row\\"
                        aria-rowindex=\\"5\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -642,11 +642,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -715,7 +715,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"37\\"
                        data-rowindex=\\"4\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-67-68 MuiDataGrid-row\\"
                        aria-rowindex=\\"6\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -733,11 +733,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -806,7 +806,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"1\\"
                        data-rowindex=\\"5\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"7\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -824,11 +824,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -897,7 +897,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"47\\"
                        data-rowindex=\\"6\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-83-84 MuiDataGrid-row\\"
                        aria-rowindex=\\"8\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -915,11 +915,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -988,7 +988,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"49\\"
                        data-rowindex=\\"7\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-83-84 MuiDataGrid-row\\"
                        aria-rowindex=\\"9\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1006,11 +1006,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1079,7 +1079,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"53\\"
                        data-rowindex=\\"8\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-86-87 MuiDataGrid-row\\"
                        aria-rowindex=\\"10\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1097,11 +1097,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1170,7 +1170,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"27\\"
                        data-rowindex=\\"9\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-50-51 MuiDataGrid-row\\"
                        aria-rowindex=\\"11\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1188,11 +1188,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1261,7 +1261,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"48\\"
                        data-rowindex=\\"10\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-83-84 MuiDataGrid-row\\"
                        aria-rowindex=\\"12\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1279,11 +1279,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1352,7 +1352,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"55\\"
                        data-rowindex=\\"11\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-89-90 MuiDataGrid-row\\"
                        aria-rowindex=\\"13\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1370,11 +1370,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1443,7 +1443,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"41\\"
                        data-rowindex=\\"12\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-67-68 MuiDataGrid-row\\"
                        aria-rowindex=\\"14\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1461,11 +1461,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1534,7 +1534,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"29\\"
                        data-rowindex=\\"13\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-63-64 MuiDataGrid-row\\"
                        aria-rowindex=\\"15\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1552,11 +1552,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1625,7 +1625,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"63\\"
                        data-rowindex=\\"14\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-92-93 MuiDataGrid-row\\"
                        aria-rowindex=\\"16\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1643,11 +1643,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1716,7 +1716,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"62\\"
                        data-rowindex=\\"15\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-92-93 MuiDataGrid-row\\"
                        aria-rowindex=\\"17\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1734,11 +1734,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1807,7 +1807,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"67\\"
                        data-rowindex=\\"16\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-93-94 MuiDataGrid-row\\"
                        aria-rowindex=\\"18\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1825,11 +1825,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1898,7 +1898,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"69\\"
                        data-rowindex=\\"17\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-93-94 MuiDataGrid-row\\"
                        aria-rowindex=\\"19\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1916,11 +1916,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -1989,7 +1989,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"68\\"
                        data-rowindex=\\"18\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-93-94 MuiDataGrid-row\\"
                        aria-rowindex=\\"20\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2007,11 +2007,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2080,7 +2080,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"51\\"
                        data-rowindex=\\"19\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-85-86 MuiDataGrid-row\\"
                        aria-rowindex=\\"21\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2098,11 +2098,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2171,7 +2171,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"58\\"
                        data-rowindex=\\"20\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-91-92 MuiDataGrid-row\\"
                        aria-rowindex=\\"22\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2189,11 +2189,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2262,7 +2262,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"82\\"
                        data-rowindex=\\"21\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-95-96 MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2280,11 +2280,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2353,7 +2353,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"77\\"
                        data-rowindex=\\"22\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-95-96 MuiDataGrid-row\\"
                        aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2371,11 +2371,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2444,7 +2444,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"84\\"
                        data-rowindex=\\"23\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd TestTable-row-percent-95-96 MuiDataGrid-row\\"
                        aria-rowindex=\\"25\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2462,11 +2462,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2535,7 +2535,7 @@ exports[`TestTable should render correctly 1`] = `
                   <div data-id=\\"85\\"
                        data-rowindex=\\"24\\"
                        role=\\"row\\"
-                       class=\\"Mui-even TestTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even TestTable-row-percent-95-96 MuiDataGrid-row\\"
                        aria-rowindex=\\"26\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2553,11 +2553,11 @@ exports[`TestTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-9 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
                             aria-disabled=\\"false\\"
                       >
                         <span class=\\"MuiIconButton-label\\">
-                          <input class=\\"PrivateSwitchBase-input-12\\"
+                          <input class=\\"PrivateSwitchBase-input-110\\"
                                  tabindex=\\"-1\\"
                                  type=\\"checkbox\\"
                                  data-indeterminate=\\"false\\"
@@ -2646,10 +2646,10 @@ exports[`TestTable should render correctly 1`] = `
           <div class=\\"MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters\\">
             <div class=\\"MuiTablePagination-spacer\\">
             </div>
-            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-7 MuiTypography-body2 MuiTypography-colorInherit\\">
+            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-105 MuiTypography-body2 MuiTypography-colorInherit\\">
               Rows per page:
             </p>
-            <div class=\\"MuiInputBase-root MuiTablePagination-input makeStyles-input-8 MuiTablePagination-selectRoot\\">
+            <div class=\\"MuiInputBase-root MuiTablePagination-input makeStyles-input-106 MuiTablePagination-selectRoot\\">
               <div class=\\"MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input\\"
                    tabindex=\\"0\\"
                    role=\\"button\\"
@@ -2671,7 +2671,7 @@ exports[`TestTable should render correctly 1`] = `
                 </path>
               </svg>
             </div>
-            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-7 MuiTypography-body2 MuiTypography-colorInherit\\">
+            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-105 MuiTypography-body2 MuiTypography-colorInherit\\">
               1-25 of 2252
             </p>
             <div class=\\"MuiTablePagination-actions\\">

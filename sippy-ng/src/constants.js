@@ -26,7 +26,7 @@ export const VARIANT_THRESHOLDS = {
 export const JOB_THRESHOLDS = {
   success: 80,
   warning: 60,
-  error: 0
+  error: 50
 }
 
 export const TEST_THRESHOLDS = {

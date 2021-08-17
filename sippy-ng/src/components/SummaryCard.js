@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
 import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { scale } from 'chroma-js'
 import { PieChart } from 'react-minimal-pie-chart'
 
 const useStyles = makeStyles({
@@ -28,14 +29,14 @@ export default function SummaryCard (props) {
 
   const percent = (props.success / (props.flakes + props.fail + props.success)) * 100
 
-  let bgColor
-  if (percent >= props.threshold.success) {
-    bgColor = theme.palette.success.light
-  } else if (percent >= props.threshold.warning) {
-    bgColor = theme.palette.warning.light
-  } else if (percent >= props.threshold.error) {
-    bgColor = theme.palette.error.light
-  }
+  const colors = scale(
+    [
+      theme.palette.error.light,
+      theme.palette.warning.light,
+      theme.palette.success.light
+    ]).domain([props.threshold.error, props.threshold.warning, props.threshold.success])
+
+  const bgColor = colors(percent).hex()
 
   useEffect(() => {
     const data = []

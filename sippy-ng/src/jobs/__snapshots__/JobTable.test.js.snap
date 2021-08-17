@@ -11,7 +11,7 @@ exports[`JobTable should render correctly 1`] = `
   >
     <div>
       <div>
-        <div class=\\"makeStyles-root-4\\">
+        <div class=\\"makeStyles-root-102\\">
           <div>
             <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-textSizeSmall MuiButton-sizeSmall\\"
                     tabindex=\\"0\\"
@@ -355,7 +355,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"21\\"
                        data-rowindex=\\"0\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-17-18 MuiDataGrid-row\\"
                        aria-rowindex=\\"2\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -395,7 +395,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-9\\"
+                      <div class=\\"MuiBox-root MuiBox-root-107\\"
                            title=\\"6 runs\\"
                       >
                         16.67%
@@ -434,7 +434,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"3\\"
                        data-rowindex=\\"1\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"3\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -474,7 +474,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-10\\"
+                      <div class=\\"MuiBox-root MuiBox-root-108\\"
                            title=\\"3 runs\\"
                       >
                         0.00%
@@ -513,7 +513,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"19\\"
                        data-rowindex=\\"2\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"4\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -553,7 +553,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-11\\"
+                      <div class=\\"MuiBox-root MuiBox-root-109\\"
                            title=\\"3 runs\\"
                       >
                         0.00%
@@ -592,7 +592,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"23\\"
                        data-rowindex=\\"3\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-25-26 MuiDataGrid-row\\"
                        aria-rowindex=\\"5\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -632,7 +632,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-12\\"
+                      <div class=\\"MuiBox-root MuiBox-root-110\\"
                            title=\\"4 runs\\"
                       >
                         25.00%
@@ -671,7 +671,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"58\\"
                        data-rowindex=\\"4\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-67-68 MuiDataGrid-row\\"
                        aria-rowindex=\\"6\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -711,7 +711,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-13\\"
+                      <div class=\\"MuiBox-root MuiBox-root-111\\"
                            title=\\"3 runs\\"
                       >
                         66.67%
@@ -750,7 +750,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"5\\"
                        data-rowindex=\\"5\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"7\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -790,7 +790,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-14\\"
+                      <div class=\\"MuiBox-root MuiBox-root-112\\"
                            title=\\"3 runs\\"
                       >
                         0.00%
@@ -829,7 +829,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"39\\"
                        data-rowindex=\\"6\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-38-39 MuiDataGrid-row\\"
                        aria-rowindex=\\"8\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -869,7 +869,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-15\\"
+                      <div class=\\"MuiBox-root MuiBox-root-113\\"
                            title=\\"13 runs\\"
                       >
                         38.46%
@@ -908,7 +908,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"65\\"
                        data-rowindex=\\"7\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-75-76 MuiDataGrid-row\\"
                        aria-rowindex=\\"9\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -948,7 +948,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-16\\"
+                      <div class=\\"MuiBox-root MuiBox-root-114\\"
                            title=\\"4 runs\\"
                       >
                         75.00%
@@ -987,7 +987,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"33\\"
                        data-rowindex=\\"8\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-33-34 MuiDataGrid-row\\"
                        aria-rowindex=\\"10\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1027,7 +1027,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-17\\"
+                      <div class=\\"MuiBox-root MuiBox-root-115\\"
                            title=\\"6 runs\\"
                       >
                         33.33%
@@ -1066,7 +1066,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"62\\"
                        data-rowindex=\\"9\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-69-70 MuiDataGrid-row\\"
                        aria-rowindex=\\"11\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1106,7 +1106,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-18\\"
+                      <div class=\\"MuiBox-root MuiBox-root-116\\"
                            title=\\"13 runs\\"
                       >
                         69.23%
@@ -1145,7 +1145,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"46\\"
                        data-rowindex=\\"10\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-50-51 MuiDataGrid-row\\"
                        aria-rowindex=\\"12\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1185,7 +1185,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-19\\"
+                      <div class=\\"MuiBox-root MuiBox-root-117\\"
                            title=\\"6 runs\\"
                       >
                         50.00%
@@ -1224,7 +1224,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"35\\"
                        data-rowindex=\\"11\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-33-34 MuiDataGrid-row\\"
                        aria-rowindex=\\"13\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1264,7 +1264,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-20\\"
+                      <div class=\\"MuiBox-root MuiBox-root-118\\"
                            title=\\"15 runs\\"
                       >
                         33.33%
@@ -1303,7 +1303,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"28\\"
                        data-rowindex=\\"12\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-31-32 MuiDataGrid-row\\"
                        aria-rowindex=\\"14\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1343,7 +1343,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-21\\"
+                      <div class=\\"MuiBox-root MuiBox-root-119\\"
                            title=\\"16 runs\\"
                       >
                         31.25%
@@ -1382,7 +1382,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"48\\"
                        data-rowindex=\\"13\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-50-51 MuiDataGrid-row\\"
                        aria-rowindex=\\"15\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1422,7 +1422,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-22\\"
+                      <div class=\\"MuiBox-root MuiBox-root-120\\"
                            title=\\"4 runs\\"
                       >
                         50.00%
@@ -1461,7 +1461,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"73\\"
                        data-rowindex=\\"14\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-77-78 MuiDataGrid-row\\"
                        aria-rowindex=\\"16\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1501,7 +1501,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-23\\"
+                      <div class=\\"MuiBox-root MuiBox-root-121\\"
                            title=\\"13 runs\\"
                       >
                         76.92%
@@ -1540,7 +1540,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"75\\"
                        data-rowindex=\\"15\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-79-80 MuiDataGrid-row\\"
                        aria-rowindex=\\"17\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1580,7 +1580,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-24\\"
+                      <div class=\\"MuiBox-root MuiBox-root-122\\"
                            title=\\"28 runs\\"
                       >
                         78.57%
@@ -1619,7 +1619,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"26\\"
                        data-rowindex=\\"16\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-26-27 MuiDataGrid-row\\"
                        aria-rowindex=\\"18\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1659,7 +1659,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-25\\"
+                      <div class=\\"MuiBox-root MuiBox-root-123\\"
                            title=\\"27 runs\\"
                       >
                         25.93%
@@ -1698,7 +1698,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"67\\"
                        data-rowindex=\\"17\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-75-76 MuiDataGrid-row\\"
                        aria-rowindex=\\"19\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1738,7 +1738,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-26\\"
+                      <div class=\\"MuiBox-root MuiBox-root-124\\"
                            title=\\"24 runs\\"
                       >
                         75.00%
@@ -1777,7 +1777,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"41\\"
                        data-rowindex=\\"18\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-38-39 MuiDataGrid-row\\"
                        aria-rowindex=\\"20\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1817,7 +1817,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-27\\"
+                      <div class=\\"MuiBox-root MuiBox-root-125\\"
                            title=\\"13 runs\\"
                       >
                         38.46%
@@ -1856,7 +1856,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"44\\"
                        data-rowindex=\\"19\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-49-50 MuiDataGrid-row\\"
                        aria-rowindex=\\"21\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1896,7 +1896,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-28\\"
+                      <div class=\\"MuiBox-root MuiBox-root-126\\"
                            title=\\"37 runs\\"
                       >
                         48.65%
@@ -1935,7 +1935,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"29\\"
                        data-rowindex=\\"20\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-33-34 MuiDataGrid-row\\"
                        aria-rowindex=\\"22\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -1975,7 +1975,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-29\\"
+                      <div class=\\"MuiBox-root MuiBox-root-127\\"
                            title=\\"6 runs\\"
                       >
                         33.33%
@@ -2014,7 +2014,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"51\\"
                        data-rowindex=\\"21\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-54-55 MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2054,7 +2054,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-30\\"
+                      <div class=\\"MuiBox-root MuiBox-root-128\\"
                            title=\\"13 runs\\"
                       >
                         53.85%
@@ -2093,7 +2093,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"82\\"
                        data-rowindex=\\"22\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-92-93 MuiDataGrid-row\\"
                        aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2133,7 +2133,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-31\\"
+                      <div class=\\"MuiBox-root MuiBox-root-129\\"
                            title=\\"13 runs\\"
                       >
                         92.31%
@@ -2172,7 +2172,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"69\\"
                        data-rowindex=\\"23\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-row-percent-77-78 MuiDataGrid-row\\"
                        aria-rowindex=\\"25\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2212,7 +2212,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-32\\"
+                      <div class=\\"MuiBox-root MuiBox-root-130\\"
                            title=\\"13 runs\\"
                       >
                         76.92%
@@ -2251,7 +2251,7 @@ exports[`JobTable should render correctly 1`] = `
                   <div data-id=\\"20\\"
                        data-rowindex=\\"24\\"
                        role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
+                       class=\\"Mui-even JobTable-row-percent-15-16 MuiDataGrid-row\\"
                        aria-rowindex=\\"26\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
@@ -2291,7 +2291,7 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-33\\"
+                      <div class=\\"MuiBox-root MuiBox-root-131\\"
                            title=\\"13 runs\\"
                       >
                         15.38%
@@ -2350,10 +2350,10 @@ exports[`JobTable should render correctly 1`] = `
           <div class=\\"MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters\\">
             <div class=\\"MuiTablePagination-spacer\\">
             </div>
-            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-7 MuiTypography-body2 MuiTypography-colorInherit\\">
+            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-105 MuiTypography-body2 MuiTypography-colorInherit\\">
               Rows per page:
             </p>
-            <div class=\\"MuiInputBase-root MuiTablePagination-input makeStyles-input-8 MuiTablePagination-selectRoot\\">
+            <div class=\\"MuiInputBase-root MuiTablePagination-input makeStyles-input-106 MuiTablePagination-selectRoot\\">
               <div class=\\"MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input\\"
                    tabindex=\\"0\\"
                    role=\\"button\\"
@@ -2375,7 +2375,7 @@ exports[`JobTable should render correctly 1`] = `
                 </path>
               </svg>
             </div>
-            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-7 MuiTypography-body2 MuiTypography-colorInherit\\">
+            <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-105 MuiTypography-body2 MuiTypography-colorInherit\\">
               1-25 of 108
             </p>
             <div class=\\"MuiTablePagination-actions\\">

@@ -6,7 +6,6 @@ import {
 import { BugReport, Search } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
 import { withStyles } from '@material-ui/styles'
-import clsx from 'clsx'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
@@ -16,12 +15,12 @@ import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
 import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
-import { ROW_STYLES } from '../datagrid/utils'
+import { generateClasses } from '../datagrid/utils'
 
 const bookmarks = [
   {
     name: 'Runs > 10',
-    model: [BOOKMARKS.RUNS_10]
+    model: [BOOKMARKS.RUN_10]
   },
   {
     name: 'Upgrade related',
@@ -307,13 +306,7 @@ function TestTable (props) {
         onSelectionModelChange={(rows) =>
           setSelectedTests(rows)
         }
-        getRowClassName={(params =>
-          clsx({
-            [classes.rowSuccess]: (params.row.current_pass_percentage >= TEST_THRESHOLDS.success),
-            [classes.rowWarning]: (params.row.current_pass_percentage >= TEST_THRESHOLDS.warning && params.row.current_pass_percentage < TEST_THRESHOLDS.success),
-            [classes.rowError]: (params.row.current_pass_percentage >= TEST_THRESHOLDS.error && params.row.current_pass_percentage < TEST_THRESHOLDS.warning)
-          })
-        )}
+        getRowClassName={(params) => classes['row-percent-' + Math.round(params.row.current_pass_percentage)]}
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
@@ -353,4 +346,4 @@ TestTable.propTypes = {
   period: PropTypes.string,
   filterModel: PropTypes.object
 }
-export default withStyles(ROW_STYLES)(TestTable)
+export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)

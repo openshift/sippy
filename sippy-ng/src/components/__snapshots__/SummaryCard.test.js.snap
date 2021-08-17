@@ -2,7 +2,7 @@
 
 exports[`SummaryCard shows overview 1`] = `
 <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-2 makeStyles-summaryCard-3 MuiPaper-elevation5 MuiPaper-rounded"
-     style="background-color: rgb(229, 115, 115);"
+     style="background-color: rgb(240, 143, 99);"
      title
 >
   <div class="MuiCardContent-root makeStyles-cardContent-1">
