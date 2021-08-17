@@ -1,3 +1,4 @@
+// Package api contains types suitable for use with Material UI data tables.
 package api
 
 import (
@@ -12,6 +13,13 @@ const (
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
+)
+
+type Sort string
+
+const (
+	SortAscending  Sort = "asc"
+	SortDescending Sort = "desc"
 )
 
 // Job contains the full accounting of a job's history, with a synthetic ID. The format of
@@ -39,12 +47,14 @@ type Job struct {
 
 func (job Job) GetFieldType(param string) ColumnType {
 	switch param {
+	//nolint:goconst
 	case "name":
 		return ColumnTypeString
 	case "briefName":
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
+	//nolint:goconst
 	case "tags":
 		return ColumnTypeArray
 	case "test_grid_url":

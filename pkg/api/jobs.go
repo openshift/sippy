@@ -2,13 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"regexp"
 	gosort "sort"
 	"strconv"
 	"strings"
-	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 
@@ -22,18 +20,18 @@ type jobsAPIResult []apitype.Job
 
 func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 	sortField := req.URL.Query().Get("sortField")
-	sort := req.URL.Query().Get("sort")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
 
 	if sortField == "" {
 		sortField = "net_improvement"
 	}
 
 	if sort == "" {
-		sort = "asc"
+		sort = apitype.SortAscending
 	}
 
 	gosort.Slice(jobs, func(i, j int) bool {
-		if sort == "asc" {
+		if sort == apitype.SortAscending {
 			return compare(jobs[i], jobs[j], sortField)
 		}
 		return compare(jobs[j], jobs[i], sortField)
@@ -146,38 +144,6 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 	return jobs
 }
 
-func getDateRange(req *http.Request) (*int64, *int64, error) {
-	startDate := req.URL.Query().Get("startDate")
-	endDate := req.URL.Query().Get("endDate")
-
-	if startDate == "" && endDate == "" {
-		return nil, nil, nil
-	}
-
-	if startDate != "" && endDate == "" {
-		return nil, nil, fmt.Errorf("end date is missing")
-	}
-
-	if startDate == "" && endDate != "" {
-		return nil, nil, fmt.Errorf("start date is missing")
-	}
-
-	startParsed, err := time.Parse(`2006-01-02`, startDate)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid start date: %s", err)
-	}
-
-	endParsed, err := time.Parse(`2006-01-02`, endDate)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid end date: %s", err)
-	}
-
-	startMillis := startParsed.UnixNano() / int64(time.Millisecond)
-	endMillis := endParsed.UnixNano() / int64(time.Millisecond)
-
-	return &startMillis, &endMillis, nil
-}
-
 // PrintJobDetailsReport renders the detailed list of runs for matching jobs.
 func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, previous []v1sippyprocessing.JobResult) {
 	var min, max int
@@ -190,9 +156,7 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 		}
 
 		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
-
-		buildResults := make([]v1sippyprocessing.BuildResult, 0)
-		buildResults = append(jobResult.BuildResults, prevResult.BuildResults...)
+		buildResults := append(jobResult.BuildResults, prevResult.BuildResults...)
 
 		for _, result := range buildResults {
 			if result.Timestamp < min || min == 0 {
