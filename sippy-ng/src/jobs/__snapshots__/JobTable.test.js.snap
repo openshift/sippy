@@ -431,7 +431,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"6\\"
+                  <div data-id=\\"3\\"
                        data-rowindex=\\"1\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
@@ -441,7 +441,7 @@ exports[`JobTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"0\\"
@@ -453,11 +453,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
                         </a>
                       </div>
                     </div>
@@ -510,7 +510,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"4\\"
+                  <div data-id=\\"19\\"
                        data-rowindex=\\"2\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
@@ -520,7 +520,7 @@ exports[`JobTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"0\\"
@@ -532,11 +532,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -589,7 +589,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"24\\"
+                  <div data-id=\\"23\\"
                        data-rowindex=\\"3\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
@@ -668,7 +668,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"57\\"
+                  <div data-id=\\"58\\"
                        data-rowindex=\\"4\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowWarning-2 MuiDataGrid-row\\"
@@ -747,7 +747,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"1\\"
+                  <div data-id=\\"5\\"
                        data-rowindex=\\"5\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
@@ -826,7 +826,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"38\\"
+                  <div data-id=\\"39\\"
                        data-rowindex=\\"6\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
@@ -1142,7 +1142,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"48\\"
+                  <div data-id=\\"46\\"
                        data-rowindex=\\"10\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
@@ -1221,7 +1221,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"31\\"
+                  <div data-id=\\"35\\"
                        data-rowindex=\\"11\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
@@ -1379,7 +1379,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"47\\"
+                  <div data-id=\\"48\\"
                        data-rowindex=\\"13\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
@@ -1458,7 +1458,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"70\\"
+                  <div data-id=\\"73\\"
                        data-rowindex=\\"14\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowWarning-2 MuiDataGrid-row\\"
@@ -1537,7 +1537,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"76\\"
+                  <div data-id=\\"75\\"
                        data-rowindex=\\"15\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
@@ -1695,7 +1695,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"66\\"
+                  <div data-id=\\"67\\"
                        data-rowindex=\\"17\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"
@@ -1774,7 +1774,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"40\\"
+                  <div data-id=\\"41\\"
                        data-rowindex=\\"18\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
@@ -1932,7 +1932,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"37\\"
+                  <div data-id=\\"29\\"
                        data-rowindex=\\"20\\"
                        role=\\"row\\"
                        class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
@@ -2011,90 +2011,11 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"84\\"
+                  <div data-id=\\"51\\"
                        data-rowindex=\\"21\\"
                        role=\\"row\\"
-                       class=\\"Mui-odd JobTable-rowSuccess-1 MuiDataGrid-row\\"
+                       class=\\"Mui-odd JobTable-rowError-3 MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
-                       aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
-                  >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
-                         data-field=\\"name\\"
-                         data-rowindex=\\"21\\"
-                         data-colindex=\\"0\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
-                        >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary
-                        </a>
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"92.3076923076923\\"
-                         data-field=\\"current_pass_percentage\\"
-                         data-rowindex=\\"21\\"
-                         data-colindex=\\"1\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div class=\\"MuiBox-root MuiBox-root-30\\"
-                           title=\\"13 runs\\"
-                      >
-                        92.31%
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-7.692307692307693\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"21\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-7.69%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 150px; max-width: 150px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         class=\\"MuiDataGrid-cell\\"
-                    >
-                    </div>
-                  </div>
-                  <div data-id=\\"51\\"
-                       data-rowindex=\\"22\\"
-                       role=\\"row\\"
-                       class=\\"Mui-even JobTable-rowError-3 MuiDataGrid-row\\"
-                       aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
                        style=\\"max-height: 52px; min-height: 52px;\\"
                   >
@@ -2102,7 +2023,7 @@ exports[`JobTable should render correctly 1`] = `
                          role=\\"cell\\"
                          data-value=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                          data-field=\\"name\\"
-                         data-rowindex=\\"22\\"
+                         data-rowindex=\\"21\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
@@ -2124,6 +2045,85 @@ exports[`JobTable should render correctly 1`] = `
                          role=\\"cell\\"
                          data-value=\\"53.84615384615385\\"
                          data-field=\\"current_pass_percentage\\"
+                         data-rowindex=\\"21\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div class=\\"MuiBox-root MuiBox-root-30\\"
+                           title=\\"13 runs\\"
+                      >
+                        53.85%
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"-7.692307692307693\\"
+                         data-field=\\"net_improvement\\"
+                         data-rowindex=\\"21\\"
+                         data-colindex=\\"2\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"3\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <svg class=\\"MuiSvgIcon-root\\"
+                           focusable=\\"false\\"
+                           viewbox=\\"0 0 24 24\\"
+                           aria-hidden=\\"true\\"
+                           data-icon=\\"ArrowDownwardRoundedIcon\\"
+                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
+                           title=\\"-7.69%\\"
+                      >
+                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
+                        </path>
+                      </svg>
+                    </div>
+                    <div style=\\"min-width: 150px; max-width: 150px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         class=\\"MuiDataGrid-cell\\"
+                    >
+                    </div>
+                  </div>
+                  <div data-id=\\"82\\"
+                       data-rowindex=\\"22\\"
+                       role=\\"row\\"
+                       class=\\"Mui-even JobTable-rowSuccess-1 MuiDataGrid-row\\"
+                       aria-rowindex=\\"24\\"
+                       aria-selected=\\"false\\"
+                       style=\\"max-height: 52px; min-height: 52px;\\"
+                  >
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"22\\"
+                         data-colindex=\\"0\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"1\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
+                           class
+                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary\\"
+                        >
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-canary
+                        </a>
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"92.3076923076923\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"22\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -2136,7 +2136,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-31\\"
                            title=\\"13 runs\\"
                       >
-                        53.85%
+                        92.31%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2169,7 +2169,7 @@ exports[`JobTable should render correctly 1`] = `
                     >
                     </div>
                   </div>
-                  <div data-id=\\"72\\"
+                  <div data-id=\\"69\\"
                        data-rowindex=\\"23\\"
                        role=\\"row\\"
                        class=\\"Mui-odd JobTable-rowWarning-2 MuiDataGrid-row\\"

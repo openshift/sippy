@@ -1,19 +1,19 @@
-/* eslint-disable react/prop-types */
 
 import { Box, Card, Container, Tooltip, Typography } from '@material-ui/core'
 import Grid from '@material-ui/core/Grid'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import InfoIcon from '@material-ui/icons/Info'
 import Alert from '@material-ui/lab/Alert'
-import React, { useEffect, Fragment } from 'react'
 import PropTypes from 'prop-types'
+import React, { Fragment, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import JobTable from '../jobs/JobTable'
 import PassRateIcon from '../components/PassRateIcon'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
+import { BOOKMARKS, INFRASTRUCTURE_THRESHOLDS, INSTALL_THRESHOLDS, UPGRADE_THRESHOLDS } from '../constants'
+import JobTable from '../jobs/JobTable'
+import VariantCards from '../jobs/VariantCards'
 import TestTable from '../tests/TestTable'
-import { INFRASTRUCTURE_THRESHOLDS, INSTALL_THRESHOLDS, BOOKMARKS, UPGRADE_THRESHOLDS, VARIANT_THRESHOLDS } from '../constants'
 
 export const TOOLTIP = 'Top level release indicators showing product health'
 export const REGRESSED_TOOLTIP = 'Shows the most regressed items this week vs. last week, for those with more than 10 runs'
@@ -84,20 +84,6 @@ export default function ReleaseOverview (props) {
     )
   }
 
-  const variantCaption = (variant) => {
-    const total = variant.success + variant.unstable + variant.failed
-
-    const success = variant.success / total * 100
-    const flaked = variant.unstable / total * 100
-    const failed = variant.failed / total * 100
-
-    return (
-            <Box component="h3">
-                {success.toFixed(0)}% success, {flaked.toFixed(0)}% unstable, {failed.toFixed(0)}% failed
-            </Box>
-    )
-  }
-
   return (
         <Fragment>
             <SimpleBreadcrumbs release={props.release} />
@@ -113,7 +99,7 @@ export default function ReleaseOverview (props) {
                                 </Tooltip>
                             </Typography>
                         </Grid>
-                        <Grid item md={3} sm={6}>
+                        <Grid item md={4} sm={6}>
                             <SummaryCard
                                 key="infrastructure-summary"
                                 threshold={INFRASTRUCTURE_THRESHOLDS}
@@ -125,7 +111,7 @@ export default function ReleaseOverview (props) {
                                 tooltip="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
                             />
                         </Grid>
-                        <Grid item md={3} sm={6}>
+                        <Grid item md={4} sm={6}>
                             <SummaryCard
                                 key="install-summary"
                                 threshold={INSTALL_THRESHOLDS}
@@ -136,7 +122,7 @@ export default function ReleaseOverview (props) {
                                 tooltip="How often the install completes successfully."
                             />
                         </Grid>
-                        <Grid item md={3} sm={6}>
+                        <Grid item md={4} sm={6}>
                             <SummaryCard
                                 key="upgrade-summary"
                                 threshold={UPGRADE_THRESHOLDS}
@@ -148,18 +134,7 @@ export default function ReleaseOverview (props) {
                             />
                         </Grid>
 
-                        <Grid item md={3} sm={6}>
-                            <SummaryCard
-                                key="variant-summary"
-                                threshold={VARIANT_THRESHOLDS}
-                                name="Variants" link={'/jobs/' + props.release + '/variant'}
-                                success={data.variants.current.success}
-                                fail={data.variants.current.failed}
-                                flakes={data.variants.current.unstable}
-                                caption={variantCaption(data.variants.current)}
-                                tooltip="Overall health of variants excluding never-stable. Success is greater than 80% pass, unstable is greater than 60%, and anything else is considered failed."
-                            />
-                        </Grid>
+                        <VariantCards release={props.release} />
 
                         <Grid item md={6} sm={12}>
                             <Card enhancement="5" style={{ textAlign: 'center' }}>

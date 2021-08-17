@@ -41,6 +41,6 @@ describe('release-overview', () => {
     // Latch the number of API calls this page makes. Increase if needed,
     // but this is used to prevent useEffect() being stuck in loops
     // due to state changes
-    expect(fetchSpy).toHaveBeenCalledTimes(7)
+    expect(fetchSpy).toHaveBeenCalledTimes(8)
   })
 })

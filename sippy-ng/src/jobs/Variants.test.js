@@ -17,7 +17,7 @@ describe('Variants', () => {
 
     let wrapper
     await act(async () => {
-      wrapper = mount(<Variants release="4.8"/>)
+      wrapper = mount(<Variants release="4.8" />)
     })
 
     expectLoadingPage(wrapper).toBeTruthy()

@@ -38,6 +38,6 @@ describe('app', () => {
     expect(wrapper.exists()).toBe(true)
     expect(wrapper.text()).toContain('Infrastructure')
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
-    expect(fetchSpy).toHaveBeenCalledTimes(10)
+    expect(fetchSpy).toHaveBeenCalledTimes(11)
   })
 })

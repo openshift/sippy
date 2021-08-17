@@ -45,5 +45,6 @@ export const BOOKMARKS = {
   NO_LINKED_BUG: { id: 5, columnField: 'bugs', operatorValue: '=', value: '0' },
   ASSOCIATED_BUG: { id: 6, columnField: 'associated_bugs', operatorValue: '>', value: '0' },
   NO_ASSOCIATED_BUG: { id: 7, columnField: 'associated_bugs', operatorValue: '=', value: '0' },
-  TRT: { id: 8, columnField: 'tags', operatorValue: 'contains', value: 'trt' }
+  TRT: { id: 8, columnField: 'tags', operatorValue: 'contains', value: 'trt' },
+  VARIANT: (v) => { return { id: 9, columnField: 'variants', operatorValue: 'contains', value: v } }
 }
