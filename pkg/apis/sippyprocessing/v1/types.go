@@ -61,6 +61,8 @@ type TopLevelStepRegistryMetrics struct {
 	ByMultistageName map[string]StepRegistryMetrics `json:"byMultistageTestName"`
 	// Aggregated by the stage name, e.g., "openshift-e2e-test"
 	ByStageName map[string]ByStageName `json:"byStageName"`
+	// Aggregated by the job name
+	ByJobName map[string]ByJobName `json:"byJobName"`
 }
 
 type ByStageName struct {
@@ -69,6 +71,12 @@ type ByStageName struct {
 	// Individual occurrences of the stage results by name
 	// Useful for referring to which specific test name had this result
 	ByMultistageName map[string]StageResult `json:"byMultistageTestName"`
+}
+
+type ByJobName struct {
+	// Results aggregated by job name
+	JobName             string `json:"jobName"`
+	StepRegistryMetrics `json:"stepRegistryMetrics"`
 }
 
 // Holds Step Registry metrics aggregated against a multistage job name (e.g., "e2e-aws")

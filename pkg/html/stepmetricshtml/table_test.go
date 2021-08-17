@@ -30,11 +30,11 @@ func TestPrintTable(t *testing.T) {
 					Search: "e2e-gcp",
 				},
 				stepmetricshtml.SippyURL{
-					Release:           "4.9",
+					Release:           release,
 					MultistageJobName: "e2e-aws",
 				},
 				stepmetricshtml.SippyURL{
-					Release:           "4.9",
+					Release:           release,
 					MultistageJobName: "e2e-gcp",
 				},
 			},
@@ -42,6 +42,7 @@ func TestPrintTable(t *testing.T) {
 				"All Multistage Jobs",
 				"<td>e2e-aws",
 				"<td>e2e-gcp",
+				"100.00% (1 runs)",
 			},
 		},
 		{
@@ -66,6 +67,7 @@ func TestPrintTable(t *testing.T) {
 				"<td>gcp-specific",
 				"<td>openshift-e2e-test",
 				"<td>ipi-install",
+				"100.00% (1 runs)",
 			},
 		},
 		{
@@ -78,6 +80,7 @@ func TestPrintTable(t *testing.T) {
 				"Step Metrics For openshift-e2e-test By Multistage Job Name",
 				"<td>e2e-aws",
 				"<td>e2e-gcp",
+				"100.00% (1 runs)",
 			},
 		},
 		{
@@ -89,6 +92,7 @@ func TestPrintTable(t *testing.T) {
 			expectedContents: []string{
 				"Step Metrics For aws-specific By Multistage Job Name",
 				"<td>e2e-aws",
+				"100.00% (1 runs)",
 			},
 		},
 	}
@@ -97,8 +101,8 @@ func TestPrintTable(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			testFunc := func(r *httptest.ResponseRecorder) {
 				table := stepmetricshtml.NewStepMetricsHTMLTable(
-					htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
-					htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+					htmltesthelpers.GetTestReport(jobName, "test-name", release),
+					htmltesthelpers.GetTestReport(jobName, "test-name", release),
 				)
 				table.Render(r, testCase.request)
 			}
@@ -124,7 +128,7 @@ func getExpectedURLsForAllSteps() []stepmetricshtml.URLGenerator {
 				Reference: stepName,
 			},
 			stepmetricshtml.SippyURL{
-				Release:  "4.9",
+				Release:  release,
 				StepName: stepName,
 			},
 		)
@@ -139,11 +143,11 @@ func getExpectedURLsForMultistage(multistageName string) []stepmetricshtml.URLGe
 	for _, stageResult := range htmltesthelpers.GetByMultistageName()[multistageName].StageResults {
 		urls = append(urls,
 			stepmetricshtml.SippyURL{
-				Release:  "4.9",
+				Release:  release,
 				StepName: stageResult.Name,
 			},
 			stepmetricshtml.CISearchURL{
-				Release: "4.9",
+				Release: release,
 				Search:  stageResult.OriginalTestName,
 			},
 			stepmetricshtml.StepRegistryURL{
@@ -164,11 +168,11 @@ func getExpectedURLsForStep(stepName string) []stepmetricshtml.URLGenerator {
 				Search: multistageName,
 			},
 			stepmetricshtml.CISearchURL{
-				Release: "4.9",
+				Release: release,
 				Search:  multistageResult.OriginalTestName,
 			},
 			stepmetricshtml.SippyURL{
-				Release:           "4.9",
+				Release:           release,
 				MultistageJobName: multistageName,
 			},
 		)

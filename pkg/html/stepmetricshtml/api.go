@@ -16,44 +16,52 @@ func NewStepMetricsAPI(curr, prev sippyprocessingv1.TestReport) StepMetricsAPI {
 	}
 }
 
-func (s StepMetricsAPI) Fetch(req Request) Response {
+func (s StepMetricsAPI) Fetch(req Request) (Response, error) {
 	resp := Response{
 		Request: req,
+	}
+
+	if err := validateAPIRequest(s.current, s.previous, req); err != nil {
+		return resp, err
 	}
 
 	if req.MultistageJobName != "" {
 		if req.MultistageJobName == All {
 			resp.MultistageDetails = s.AllMultistages()
 		} else {
-			resp.MultistageDetails = []MultistageDetails{
-				s.GetMultistage(req),
+			resp.MultistageDetails = map[string]MultistageDetails{
+				req.MultistageJobName: s.GetMultistage(req),
 			}
 		}
 
-		return resp
+		return resp, nil
 	}
 
 	if req.StepName != "" {
 		if req.StepName == All {
 			resp.StepDetails = s.AllStages()
 		} else {
-			resp.StepDetails = []StepDetails{
-				s.GetStage(req),
+			resp.StepDetails = map[string]StepDetails{
+				req.StepName: s.GetStage(req),
 			}
 		}
 
-		return resp
+		return resp, nil
 	}
 
-	return resp
+	if req.JobName != "" {
+		return s.GetJob(req), nil
+	}
+
+	return resp, nil
 }
 
-func (s StepMetricsAPI) AllMultistages() []MultistageDetails {
-	resp := []MultistageDetails{}
+func (s StepMetricsAPI) AllMultistages() map[string]MultistageDetails {
+	resp := map[string]MultistageDetails{}
 	currStepRegistryMetrics := s.current.TopLevelStepRegistryMetrics.ByMultistageName
 
 	for multistageJobName := range currStepRegistryMetrics {
-		resp = append(resp, s.getMultistageForName(multistageJobName))
+		resp[multistageJobName] = s.getMultistageForName(multistageJobName)
 	}
 
 	return resp
@@ -63,14 +71,44 @@ func (s StepMetricsAPI) GetMultistage(req Request) MultistageDetails {
 	return s.getMultistageForName(req.MultistageJobName)
 }
 
-func (s StepMetricsAPI) AllStages() []StepDetails {
-	resp := []StepDetails{}
+func (s StepMetricsAPI) AllStages() map[string]StepDetails {
+	resp := map[string]StepDetails{}
 
 	for stageName := range s.current.TopLevelStepRegistryMetrics.ByStageName {
-		resp = append(resp, s.getStageForName(stageName))
+		resp[stageName] = s.getStageForName(stageName)
 	}
 
 	return resp
+}
+
+func (s StepMetricsAPI) GetJob(req Request) Response {
+	currByJobName := s.current.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
+	prevByJobName := s.previous.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
+
+	multistageName := currByJobName.MultistageName
+
+	stepDetails := map[string]StepDetail{}
+
+	for stageName := range currByJobName.StageResults {
+		stepDetails[stageName] = newStepDetail(
+			currByJobName.StageResults[stageName],
+			prevByJobName.StageResults[stageName],
+		)
+	}
+
+	return Response{
+		Request: req,
+		MultistageDetails: map[string]MultistageDetails{
+			multistageName: MultistageDetails{
+				Name: multistageName,
+				Trend: newTrend(
+					currByJobName.StepRegistryMetrics.Aggregated,
+					prevByJobName.StepRegistryMetrics.Aggregated,
+				),
+				StepDetails: stepDetails,
+			},
+		},
+	}
 }
 
 func (s StepMetricsAPI) GetStage(req Request) StepDetails {
@@ -79,7 +117,7 @@ func (s StepMetricsAPI) GetStage(req Request) StepDetails {
 
 func (s StepMetricsAPI) getStageForName(stageName string) StepDetails {
 	currByStageName := s.current.TopLevelStepRegistryMetrics.ByStageName[stageName]
-	prevByStageName := s.current.TopLevelStepRegistryMetrics.ByStageName[stageName]
+	prevByStageName := s.previous.TopLevelStepRegistryMetrics.ByStageName[stageName]
 
 	d := StepDetails{
 		Name: stageName,
@@ -107,8 +145,8 @@ func (s StepMetricsAPI) getMultistageForName(multistageName string) MultistageDe
 	d := MultistageDetails{
 		Name: multistageName,
 		Trend: newTrend(
-			getTopLevelMultistageResultAggregation(currStepRegistryMetrics),
-			getTopLevelMultistageResultAggregation(prevStepRegistryMetrics),
+			currStepRegistryMetrics.Aggregated,
+			prevStepRegistryMetrics.Aggregated,
 		),
 		StepDetails: map[string]StepDetail{},
 	}
@@ -121,23 +159,4 @@ func (s StepMetricsAPI) getMultistageForName(multistageName string) MultistageDe
 	}
 
 	return d
-}
-
-func getTopLevelMultistageResultAggregation(byMultistageName sippyprocessingv1.StepRegistryMetrics) sippyprocessingv1.StageResult {
-	results := sippyprocessingv1.StageResult{
-		TestResult: sippyprocessingv1.TestResult{
-			Name: byMultistageName.MultistageName,
-		},
-	}
-
-	for _, result := range byMultistageName.StageResults {
-		results.Successes += result.Successes
-		results.Failures += result.Failures
-	}
-
-	if results.Successes+results.Failures != 0 {
-		results.PassPercentage = float64(results.Successes) / float64(results.Successes+results.Failures) * 100.0
-	}
-
-	return results
 }

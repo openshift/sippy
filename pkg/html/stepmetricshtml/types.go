@@ -42,9 +42,9 @@ type StepDetails struct {
 }
 
 type Response struct {
-	MultistageDetails []MultistageDetails `json:"multistageDetails"`
-	StepDetails       []StepDetails       `json:"stepDetails"`
-	Request           Request             `json:"request"`
+	MultistageDetails map[string]MultistageDetails `json:"multistageDetails"`
+	StepDetails       map[string]StepDetails       `json:"stepDetails"`
+	Request           Request                      `json:"request"`
 }
 
 func newStepDetail(curr, prev sippyprocessingv1.StageResult) StepDetail {

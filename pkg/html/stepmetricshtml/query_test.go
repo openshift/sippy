@@ -60,6 +60,14 @@ func TestValidateQuery(t *testing.T) {
 			},
 			expectedError: "unknown variant unknown-variant",
 		},
+		{
+			name: "unknown job",
+			request: stepmetricshtml.Request{
+				Release: "4.9",
+				JobName: "unknown-job-name",
+			},
+			expectedError: "unknown job name unknown-job-name",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -88,6 +96,7 @@ func TestValidateQuery(t *testing.T) {
 
 func getURLValues(req stepmetricshtml.Request) url.Values {
 	valMap := map[string]string{
+		"jobName":           req.JobName,
 		"release":           req.Release,
 		"multistageJobName": req.MultistageJobName,
 		"stepName":          req.StepName,

@@ -3,7 +3,6 @@ package stepmetricshtml
 import (
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -84,11 +83,11 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 	table.AddHeaderRow(getMultistageHeaderRow())
 
 	allMultistages := s.api.AllMultistages()
-	sort.Slice(allMultistages, func(i, j int) bool {
-		return allMultistages[i].Name < allMultistages[j].Name
-	})
+	sortedMultistageNames := sets.StringKeySet(allMultistages).List()
 
-	for _, multistageDetail := range allMultistages {
+	for _, multistageName := range sortedMultistageNames {
+		multistageDetail := allMultistages[multistageName]
+
 		sippyURL := &SippyURL{
 			Release:           s.release,
 			MultistageJobName: multistageDetail.Name,
@@ -102,9 +101,9 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 		row.AddItems([]generichtml.HTMLItem{
 			generichtml.HTMLTableRowItem{
 				HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-					generichtml.NewHTMLTextElement(multistageDetail.Name),
-					generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL()),
-					generichtml.NewHTMLLink("Detail", sippyURL.URL()),
+					generichtml.NewHTMLTextElement(multistageDetail.Name + " "),
+					getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
+					getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
 				}),
 			},
 			generichtml.HTMLTableRowItem{
@@ -133,11 +132,11 @@ func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 	table.AddHeaderRow(getStepNameHeaderRow())
 
 	allStages := s.api.AllStages()
-	sort.Slice(allStages, func(i, j int) bool {
-		return allStages[i].Name < allStages[j].Name
-	})
+	sortedStageNames := sets.StringKeySet(allStages).List()
 
-	for _, stepDetails := range allStages {
+	for _, stageName := range sortedStageNames {
+		stepDetails := allStages[stageName]
+
 		sippyURL := SippyURL{
 			Release:  s.release,
 			StepName: stepDetails.Name,
@@ -189,12 +188,10 @@ func (s StepMetricsHTMLTable) forStageName(req Request) generichtml.HTMLTable {
 	table.AddHeaderRow(getMultistageHeaderRow())
 
 	stageResult := s.api.GetStage(req)
-	multistageNames := sets.StringKeySet(stageResult.ByMultistage)
+	sortedMultistageNames := sets.StringKeySet(stageResult.ByMultistage).List()
 
-	for _, multistageName := range multistageNames.List() {
-		multistageResult := s.api.GetMultistage(Request{
-			MultistageJobName: multistageName,
-		})
+	for _, multistageName := range sortedMultistageNames {
+		multistageResult := stageResult.ByMultistage[multistageName]
 
 		sippyURL := &SippyURL{
 			Release:           s.release,
@@ -202,22 +199,22 @@ func (s StepMetricsHTMLTable) forStageName(req Request) generichtml.HTMLTable {
 		}
 
 		stepRegistryURL := StepRegistryURL{
-			Search: multistageResult.Name,
+			Search: multistageName,
 		}
 
 		ciSearchURL := CISearchURL{
 			Release: s.api.current.Release,
-			Search:  multistageResult.StepDetails[stageResult.Name].Current.OriginalTestName,
+			Search:  stageResult.ByMultistage[multistageName].Current.OriginalTestName,
 		}
 
 		row := generichtml.NewHTMLTableRow(map[string]string{})
 		row.AddItems([]generichtml.HTMLItem{
 			generichtml.HTMLTableRowItem{
 				HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-					generichtml.NewHTMLTextElement(multistageName),
-					generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL()),
-					generichtml.NewHTMLLink("CI Search", ciSearchURL.URL()),
-					generichtml.NewHTMLLink("Detail", sippyURL.URL()),
+					generichtml.NewHTMLTextElement(multistageName + " "),
+					getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
+					getEnclosedHTMLLink(generichtml.NewHTMLLink("CI Search", ciSearchURL.URL())),
+					getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
 				}),
 			},
 			generichtml.HTMLTableRowItem{
@@ -246,8 +243,11 @@ func (s StepMetricsHTMLTable) ByStageName(req Request) generichtml.HTMLTable {
 }
 
 func getStageResultDetail(stageResult sippyprocessingv1.StageResult) string {
-	runs := stageResult.Successes + stageResult.Failures + stageResult.Flakes
-	return fmt.Sprintf("%0.2f (Runs: %d)", stageResult.PassPercentage, runs)
+	sb := strings.Builder{}
+	fmt.Fprintf(&sb, "%0.2f", stageResult.PassPercentage)
+	fmt.Fprint(&sb, "%")
+	fmt.Fprintf(&sb, " (%d runs)", stageResult.Runs)
+	return sb.String()
 }
 
 type htmlTextItem string

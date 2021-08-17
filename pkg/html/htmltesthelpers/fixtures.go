@@ -13,14 +13,15 @@ func GetJobResult(jobName string) sippyprocessingv1.JobResult {
 		Failures:  1,
 		StepRegistryMetrics: sippyprocessingv1.StepRegistryMetrics{
 			MultistageName: "e2e-aws",
-			StageResults: []sippyprocessingv1.StageResult{
-				{
+			StageResults: map[string]sippyprocessingv1.StageResult{
+				"ipi-install": {
 					TestResult: sippyprocessingv1.TestResult{
 						Name:           "ipi-install",
 						Successes:      1,
 						Failures:       0,
 						PassPercentage: 100,
 					},
+					Runs: 1,
 				},
 			},
 		},
@@ -107,83 +108,213 @@ func GetTestReport(jobName, testName, release string) sippyprocessingv1.TestRepo
 				},
 			},
 		},
-		TopLevelStepRegistryMetrics: sippyprocessingv1.TopLevelStepRegistryMetrics{
-			ByStageName: map[string]sippyprocessingv1.StageResult{
+		TopLevelStepRegistryMetrics: GetTopLevelStepRegistryMetrics(jobName),
+	}
+}
+
+func GetTopLevelStepRegistryMetrics(jobName string) sippyprocessingv1.TopLevelStepRegistryMetrics {
+	return sippyprocessingv1.TopLevelStepRegistryMetrics{
+		ByMultistageName: GetByMultistageName(),
+		ByStageName:      GetByStageName(),
+		ByJobName:        GetByJobName(jobName),
+	}
+}
+
+func GetByJobName(jobName string) map[string]sippyprocessingv1.ByJobName {
+	return map[string]sippyprocessingv1.ByJobName{
+		jobName: sippyprocessingv1.ByJobName{
+			JobName:             jobName,
+			StepRegistryMetrics: GetByMultistageName()["e2e-aws"],
+		},
+	}
+}
+
+func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
+	return map[string]sippyprocessingv1.StepRegistryMetrics{
+		"e2e-aws": sippyprocessingv1.StepRegistryMetrics{
+			MultistageName: "e2e-aws",
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "e2e-aws",
+					Successes:      1,
+					PassPercentage: 100,
+				},
+				Runs: 1,
+			},
+			StageResults: map[string]sippyprocessingv1.StageResult{
 				"openshift-e2e-test": {
 					TestResult: sippyprocessingv1.TestResult{
 						Name:           "openshift-e2e-test",
 						PassPercentage: 100,
-						Successes:      2,
+						Successes:      1,
 					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test",
+					Runs:             1,
 				},
 				"ipi-install": {
 					TestResult: sippyprocessingv1.TestResult{
 						Name:           "ipi-install",
 						PassPercentage: 100,
-						Successes:      2,
+						Successes:      1,
 					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
+					Runs:             1,
 				},
-				"aws-specific-step": {
+				"aws-specific": {
 					TestResult: sippyprocessingv1.TestResult{
-						Name:           "aws-specific-step",
+						Name:           "aws-specific",
 						PassPercentage: 100,
 						Successes:      1,
 					},
-				},
-				"gcp-specific-step": {
-					TestResult: sippyprocessingv1.TestResult{
-						Name:           "gcp-specific-step",
-						PassPercentage: 100,
-						Successes:      1,
-					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific container test",
+					Runs:             1,
 				},
 			},
-			ByMultistageName: map[string]map[string]sippyprocessingv1.StageResult{
-				"e2e-aws": map[string]sippyprocessingv1.StageResult{
-					"openshift-e2e-test": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "openshift-e2e-test",
-							PassPercentage: 100,
-							Successes:      1,
-						},
-					},
-					"ipi-install": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "ipi-install",
-							PassPercentage: 100,
-							Successes:      1,
-						},
-					},
-					"aws-specific-step": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "aws-specific-step",
-							PassPercentage: 100,
-							Successes:      1,
-						},
-					},
+		},
+		"e2e-gcp": sippyprocessingv1.StepRegistryMetrics{
+			MultistageName: "e2e-gcp",
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "e2e-gcp",
+					Successes:      1,
+					PassPercentage: 100,
 				},
-				"e2e-gcp": map[string]sippyprocessingv1.StageResult{
-					"openshift-e2e-test": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "openshift-e2e-test",
-							PassPercentage: 100,
-							Successes:      1,
-						},
+				Runs: 1,
+			},
+			StageResults: map[string]sippyprocessingv1.StageResult{
+				"openshift-e2e-test": {
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "openshift-e2e-test",
+						PassPercentage: 100,
+						Successes:      1,
 					},
-					"ipi-install": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "ipi-install",
-							PassPercentage: 100,
-							Successes:      1,
-						},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test",
+					Runs:             1,
+				},
+				"ipi-install": {
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "ipi-install",
+						PassPercentage: 100,
+						Successes:      1,
 					},
-					"gcp-specific-step": {
-						TestResult: sippyprocessingv1.TestResult{
-							Name:           "gcp-specific-step",
-							PassPercentage: 100,
-							Successes:      1,
-						},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test",
+					Runs:             1,
+				},
+				"gcp-specific": {
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "gcp-specific",
+						PassPercentage: 100,
+						Successes:      1,
 					},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific container test",
+					Runs:             1,
+				},
+			},
+		},
+	}
+}
+
+func GetByStageName() map[string]sippyprocessingv1.ByStageName {
+	return map[string]sippyprocessingv1.ByStageName{
+		"openshift-e2e-test": {
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "openshift-e2e-test",
+					Successes:      2,
+					PassPercentage: 100,
+				},
+				Runs: 2,
+			},
+			ByMultistageName: map[string]sippyprocessingv1.StageResult{
+				"e2e-aws": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "openshift-e2e-test",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test",
+					Runs:             1,
+				},
+				"e2e-gcp": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "openshift-e2e-test",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test",
+					Runs:             1,
+				},
+			},
+		},
+		"ipi-install": {
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "ipi-install",
+					Successes:      2,
+					PassPercentage: 100,
+				},
+				Runs: 2,
+			},
+			ByMultistageName: map[string]sippyprocessingv1.StageResult{
+				"e2e-aws": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "ipi-install",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
+					Runs:             1,
+				},
+				"e2e-gcp": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "ipi-install",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test",
+					Runs:             1,
+				},
+			},
+		},
+		"aws-specific": {
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "aws-specific",
+					Successes:      1,
+					PassPercentage: 100,
+				},
+				Runs: 1,
+			},
+			ByMultistageName: map[string]sippyprocessingv1.StageResult{
+				"e2e-aws": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "aws-specific",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific container test",
+					Runs:             1,
+				},
+			},
+		},
+		"gcp-specific": {
+			Aggregated: sippyprocessingv1.StageResult{
+				TestResult: sippyprocessingv1.TestResult{
+					Name:           "gcp-specific",
+					Successes:      1,
+					PassPercentage: 100,
+				},
+				Runs: 1,
+			},
+			ByMultistageName: map[string]sippyprocessingv1.StageResult{
+				"e2e-gcp": sippyprocessingv1.StageResult{
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "gcp-specific",
+						Successes:      1,
+						PassPercentage: 100,
+					},
+					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific container test",
+					Runs:             1,
 				},
 			},
 		},

@@ -16,6 +16,7 @@ type stepMetricsQuery struct {
 
 type Request struct {
 	Release           string `json:"release"`
+	JobName           string `json:"jobName"`
 	MultistageJobName string `json:"multistageJobName"`
 	StepName          string `json:"stepName"`
 	Variant           string `json:"variant"`
@@ -27,10 +28,23 @@ type RequestOpts struct {
 	URLValues url.Values
 }
 
+func validateAPIRequest(curr, prev sippyprocessingv1.TestReport, req Request) error {
+	q := stepMetricsQuery{
+		request: req,
+		requestOpts: RequestOpts{
+			Current:  curr,
+			Previous: prev,
+		},
+	}
+
+	return q.validate()
+}
+
 func ValidateRequest(opts RequestOpts) (Request, error) {
 	q := stepMetricsQuery{
 		request: Request{
 			Release:           opts.URLValues.Get("release"),
+			JobName:           opts.URLValues.Get("jobName"),
 			MultistageJobName: opts.URLValues.Get("multistageJobName"),
 			StepName:          opts.URLValues.Get("stepName"),
 			Variant:           opts.URLValues.Get("variant"),
@@ -44,6 +58,10 @@ func ValidateRequest(opts RequestOpts) (Request, error) {
 }
 
 func (q stepMetricsQuery) validate() error {
+	if q.isJobQuery() {
+		return q.validateJobQuery()
+	}
+
 	if q.request.MultistageJobName == "" && q.request.StepName == "" {
 		return fmt.Errorf("missing multistage job name and step name")
 	}
@@ -65,11 +83,10 @@ func (q stepMetricsQuery) validate() error {
 
 func (q *stepMetricsQuery) validateMultistageQuery() error {
 	if q.request.MultistageJobName != "" && q.request.MultistageJobName != All {
-		knownMultistageJobNames := getAllKeys(
+		if !has(
 			q.requestOpts.Current.TopLevelStepRegistryMetrics.ByMultistageName,
-			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByMultistageName)
-
-		if !knownMultistageJobNames.Has(q.request.MultistageJobName) {
+			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByMultistageName,
+			q.request.MultistageJobName) {
 			return fmt.Errorf("invalid multistage job name %s", q.request.MultistageJobName)
 		}
 	}
@@ -79,11 +96,10 @@ func (q *stepMetricsQuery) validateMultistageQuery() error {
 
 func (q *stepMetricsQuery) validateStepQuery() error {
 	if q.request.StepName != "" && q.request.StepName != "All" {
-		knownStepNames := getAllKeys(
+		if !has(
 			q.requestOpts.Current.TopLevelStepRegistryMetrics.ByStageName,
-			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByStageName)
-
-		if !knownStepNames.Has(q.request.StepName) {
+			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByStageName,
+			q.request.StepName) {
 			return fmt.Errorf("unknown step name %s", q.request.StepName)
 		}
 	}
@@ -101,14 +117,29 @@ func (q *stepMetricsQuery) validateVariant() error {
 	return nil
 }
 
+func (q *stepMetricsQuery) validateJobQuery() error {
+	if !has(
+		q.requestOpts.Current.TopLevelStepRegistryMetrics.ByJobName,
+		q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByJobName,
+		q.request.JobName) {
+		return fmt.Errorf("unknown job name %s", q.request.JobName)
+	}
+
+	return nil
+}
+
 func (q *stepMetricsQuery) isMultistageQuery() bool {
 	return q.request.MultistageJobName != "" && q.request.StepName == ""
+}
+
+func (q *stepMetricsQuery) isJobQuery() bool {
+	return q.request.JobName != ""
 }
 
 func (q *stepMetricsQuery) isStepQuery() bool {
 	return q.request.StepName != "" && q.request.MultistageJobName == ""
 }
 
-func getAllKeys(curr, prev interface{}) sets.String {
-	return sets.StringKeySet(curr).Union(sets.StringKeySet(prev))
+func has(curr, prev interface{}, item string) bool {
+	return sets.StringKeySet(curr).Union(sets.StringKeySet(prev)).Has(item)
 }
