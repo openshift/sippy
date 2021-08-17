@@ -53,7 +53,7 @@ export default function GridToolbar (props) {
                 <GridToolbarDensitySelector />
 
             </div>
-            <div alignItems="center">
+            <div>
                 <TextField
                     variant="standard"
                     value={search}
@@ -89,10 +89,9 @@ export default function GridToolbar (props) {
 }
 
 GridToolbar.propTypes = {
-  bookmarks: PropTypes.object.isRequired,
+  bookmarks: PropTypes.array.isRequired,
   clearSearch: PropTypes.func.isRequired,
   doSearch: PropTypes.func.isRequired,
-  onChange: PropTypes.func.isRequired,
   period: PropTypes.string,
   selectPeriod: PropTypes.func.isRequired,
   setFilterModel: PropTypes.func.isRequired,

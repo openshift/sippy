@@ -272,6 +272,7 @@ function JobTable (props) {
   }
 
   return (
+    /* eslint-disable react/prop-types */
     <Container size="xl">
       {pageTitle()}
       <DataGrid

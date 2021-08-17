@@ -20,6 +20,7 @@
     "react-dom": "^17.0.2",
     "react-minimal-pie-chart": "^8.2.0",
     "react-router-dom": "^5.2.0",
+    "universal-cookie": "^4.0.4",
     "use-query-params": "^1.2.3"
   },
   "scripts": {
@@ -79,6 +80,8 @@
   },
   "homepage": "/sippy-ng/",
   "jest": {
-    "snapshotSerializers": ["jest-serializer-html"]
+    "snapshotSerializers": [
+      "jest-serializer-html"
+    ]
   }
 }

@@ -282,6 +282,7 @@ function TestTable (props) {
   }
 
   return (
+    /* eslint-disable react/prop-types */
     <Container size="xl">
       <DataGrid
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}

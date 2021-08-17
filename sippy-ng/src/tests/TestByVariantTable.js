@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import FormGroup from '@material-ui/core/FormGroup'
@@ -11,11 +10,12 @@ import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { scale } from 'chroma-js'
+import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import { BooleanParam, useQueryParam } from 'use-query-params'
+import { Link } from 'react-router-dom'
+import Cookies from 'universal-cookie'
 import PassRateIcon from '../components/PassRateIcon'
 import './TestByVariantTable.css'
-import { Link } from 'react-router-dom'
 
 function PassRateCompare (props) {
   const { previous, current } = props
@@ -107,13 +107,16 @@ Row.propTypes = {
 }
 
 export default function TestByVariantTable (props) {
-  const [showFull, setShowFull] = useQueryParam('showFull', BooleanParam)
+  const cookies = new Cookies()
+  const cookie = cookies.get('testDetailShowFull') === 'true'
+  const [showFull, setShowFull] = React.useState(cookie)
 
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
   };
 
   const handleSwitchFull = (e) => {
+    cookies.set('testDetailShowFull', e.target.checked, { sameSite: true })
     setShowFull(e.target.checked)
   }
 
