@@ -9,6 +9,57 @@ and may change across API calls. These are only used by the frontend
 data tables. Other ID's when provided  such as Bugzilla, Prow ID's, etc
 are accurate.
 
+## Filtering and sorting
+
+### Filtering
+
+The API's that support filtering, as indicated in their docs below, use a filtering format as follows. This
+corresponds to the filtering options used by Material UI's data tables, but are generally usable outside of
+them as well.
+
+An individual filter is JSON, in the following format:
+
+```json
+{
+  "columnName": "name",
+  "operatorValue": "contains",
+  "value": "aws"
+}
+```
+
+- String operators are: contains, starts with, ends with, equals, is empty, is not empty.
+- Numerical operators are: =, !=, <, <=, >, >=
+- Array operators are: contains
+
+A composed filter consists of one or more filters, along with a link operator.  A link operator is either `and` or `or`.
+
+Example:
+
+```json
+{
+  "linkOperator": "or",
+  "items": [
+    {
+      "columnName": "name",
+      "operatorValue": "contains",
+      "value": "aws"
+    },
+    {
+      "columnName": "name",
+      "operatorValue": "contains",
+      "value": "gcp"
+    }
+  ]
+}
+```
+
+The filter should be URI encoded json in the `filter` parameter.
+
+### Sorting
+
+You may sort results by any sortable field in the item by specifying `sortField`, as well `sort` with the value
+`asc` or `desc`.
+
 ## Release Health
 
 Endpoint: `/api/health`
@@ -200,12 +251,10 @@ Endpoint: `/api/jobs`
 | Option   | Type           | Description                                                                                                              | Acceptable values                                   |
 |----------|----------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                                 |
-| filterBy | String / Array | Filters the results by the specified value. Can be specified multiple times, e.g. filterBy=hasBug&filterBy=name&job=aws  | "job", "bug", "noBug", "upgrade", "runs", "variant" |
-| job      | String         | Filters the results by job names only containing this value                                                              | N/A                                                 |
-| variant  | String         | Filters the results for jobs only with this variant                                                                      | N/A                                                 |
-| sortBy   | String         | Sorts the results                                                                                                        | "regression", "improvement"                         |
+| filter   | Filter         | Filters the results by the specified value. Can be specified multiple times, e.g. filterBy=hasBug&filterBy=name&job=aws  | See filtering                                       |
+| sortField| Field name     | Sort by this field                                                                                                       |                                                     | 
+| sort     | asc / desc     | Sort type, ascending or descending                                                                                       | "asc" or "desc"                                     |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                                 |
-| runs     | Integer        | When specified with filterBy=runs, filter by the minimum number of runs a job should have                                | N/A                                                 |
 
 `*` indicates a required value.
 
@@ -335,8 +384,7 @@ for each job:
 | Option   | Type           | Description                                                                                                              | Acceptable values                        |
 |----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
-| filterBy | String / Array | Filters the results by the specified value. Can be specified multiple times, e.g. filterBy=hasBug&filterBy=name&job=aws  | "job", "bug", "noBug", "upgrade", "runs" |
-| job      | String         | Filters the results by jobs only containing this value                                                                   | N/A                                      |
+| job      | String         | Return only jobs containing only containing this value in their name                                                     | N/A                                      |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                      |
 
 ## Tests
@@ -345,14 +393,13 @@ Endpoint: `/api/tests`
 
 ### Parameters
 
-| Option   | Type           | Description                                                                               | Acceptable values                                           |
-|----------|----------------|-------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                  | N/A                                                         |
-| filterBy | String / Array | Filters the results in the specified way. Can be specified multiple times.                | "test", "bug", "noBug", "install", "upgrade", "runs", "trt" |
-| test     | String         | Filters the results by jobs only containing this value                                    | N/A                                                         |
-| sortBy   | String         | Sorts the results                                                                         | "regression", "improvement"                                 |
-| limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                         |
-| runs     | Integer        | When specified with filterBy=runs, filter by the minimum number of runs a job should have | N/A                                                         |
+| Option   | Type           | Description                                                                               | Acceptable values                                   |
+|----------|----------------|-------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                  | N/A                                                 |
+| filter   | Filter         | Filters the results by the specified value.                                               | See filtering                                       |
+| sortField| Field name     | Sort by this field                                                                        |                                                     | 
+| sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
+| limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
 
 <details>
 <summary>Example response</summary>
