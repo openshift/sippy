@@ -468,13 +468,12 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/json", s.printJSONReport)
 
 	// New API's
+	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
+	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
-
-	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
-	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
-	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
+	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 
