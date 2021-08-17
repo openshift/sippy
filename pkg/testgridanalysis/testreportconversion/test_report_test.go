@@ -114,6 +114,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 				for _, job := range report.ByJob {
 					t.Run(job.Name, func(t *testing.T) {
 						assertStepRegistryMetricsEqual(t, job.StepRegistryMetrics, expectedByJobStepRegistryMetrics[job.Name])
+						assertStepRegistryMetricsEqual(t, report.TopLevelStepRegistryMetrics.ByJobName[job.Name].StepRegistryMetrics, expectedByJobStepRegistryMetrics[job.Name])
 					})
 				}
 			},

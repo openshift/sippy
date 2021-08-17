@@ -7,36 +7,45 @@ import (
 
 func getTopLevelStepRegistryMetrics(allJobResults []sippyprocessingv1.JobResult) sippyprocessingv1.TopLevelStepRegistryMetrics {
 	// Find all step registry metrics by the top-level multistage job name (e.g., e2e-aws)
-	byMultistageName := getStepRegistryMetricsByMultistageName(allJobResults)
+	byMultistageName, byJobName := getStepRegistryMetricsByMultistageName(allJobResults)
 
 	return sippyprocessingv1.TopLevelStepRegistryMetrics{
 		ByMultistageName: byMultistageName,
 		ByStageName:      getStepRegistryMetricsByStageName(byMultistageName),
+		ByJobName:        byJobName,
 	}
 }
 
-func getStepRegistryMetricsByMultistageName(allJobResults []sippyprocessingv1.JobResult) map[string]sippyprocessingv1.StepRegistryMetrics {
+func getStepRegistryMetricsByMultistageName(allJobResults []sippyprocessingv1.JobResult) (map[string]sippyprocessingv1.StepRegistryMetrics, map[string]sippyprocessingv1.ByJobName) {
 	// Group step registry metrics according to the top-level multistage job name (e.g, "e2e-aws")
-	results := map[string]sippyprocessingv1.StepRegistryMetrics{}
+	byMultistageName := map[string]sippyprocessingv1.StepRegistryMetrics{}
+
+	// Group step registry metrics according to the job name (e.g., periodic-ci-openshift-release-master-ci-4.9-e2e-*)
+	byJobName := map[string]sippyprocessingv1.ByJobName{}
 
 	// It is possible that multiple jobs can use the same multistage job. For
 	// example, the periodic-ci-openshift-release-master-ci-4.9-e2e-* and
 	// periodic-ci-openshift-release-master-nightly-4.9-e2e-* series do this.
 	for _, jobResult := range allJobResults {
 		multistageName := jobResult.StepRegistryMetrics.MultistageName
-		srm, ok := results[multistageName]
+		srm, ok := byMultistageName[multistageName]
 		if ok {
 			// We already have a multistage job with this name, so combine it with
 			// what we already have.
-			results[multistageName] = combineStepRegistryMetrics(jobResult.StepRegistryMetrics, srm)
+			byMultistageName[multistageName] = combineStepRegistryMetrics(jobResult.StepRegistryMetrics, srm)
 		} else {
 			// We don't (yet) have a multistage job with this name, so copy what's
 			// attached to the job so we don't mutate the per-job metrics.
-			results[multistageName] = copyStepRegistryMetrics(jobResult.StepRegistryMetrics)
+			byMultistageName[multistageName] = copyStepRegistryMetrics(jobResult.StepRegistryMetrics)
+		}
+
+		byJobName[jobResult.Name] = sippyprocessingv1.ByJobName{
+			JobName:             jobResult.Name,
+			StepRegistryMetrics: copyStepRegistryMetrics(jobResult.StepRegistryMetrics),
 		}
 	}
 
-	return results
+	return byMultistageName, byJobName
 }
 
 func combineStepRegistryMetrics(srm1, srm2 sippyprocessingv1.StepRegistryMetrics) sippyprocessingv1.StepRegistryMetrics {
