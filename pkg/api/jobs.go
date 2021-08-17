@@ -185,7 +185,7 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 	jobName := req.URL.Query().Get("job")
 
 	for _, jobResult := range current {
-		if strings.Contains(jobName, jobResult.Name) {
+		if jobName != "" && !strings.Contains(jobResult.Name, jobName) {
 			continue
 		}
 

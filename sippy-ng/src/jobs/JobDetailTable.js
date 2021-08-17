@@ -46,7 +46,7 @@ export default function JobDetailTable (props) {
                             {rows.map((row) =>
                                 <TableRow key={'job-' + row.name} className="row-item">
                                     <TableCell component="th" scope="row" className="col-name col-first">
-                                        <Link to={`/jobs/${props.release}?filterBy=name&job=${row.name}`}>{row.name}</Link>
+                                        <Link to={`/jobs/${props.release}?job=${row.name}`}>{row.name}</Link>
                                     </TableCell>
                                     {row.results.map((days, index) =>
                                         <TableCell className="col-day" key={'ts-' + index} style={{ verticalAlign: 'top' }}>

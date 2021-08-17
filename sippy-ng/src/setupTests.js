@@ -21,6 +21,15 @@ global.fetch = fetch
 // See: https://github.com/vuejs/vue-test-utils/issues/974
 global.requestAnimationFrame = cb => cb()
 
+// When injecting multiple filters, material table complains.
+const originalConsole = global.console.error
+
+global.console.error = jest.fn((log) => {
+  if (!log.contains('Warning: Failed prop type: Material-UI: `<DataGrid filterModel={model}')) {
+    originalConsole(log)
+  }
+})
+
 // Set API URL for Sippy
 process.env.REACT_APP_API_URL = 'http://localhost:8080'
 

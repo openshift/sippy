@@ -36,7 +36,7 @@ export default function JobsDetail (props) {
       let urlQuery = ''
       if (filter.length > 0) {
         setQuery(filter)
-        urlQuery = '&filterBy=name&job=' + encodeURIComponent(filter)
+        urlQuery = '&job=' + encodeURIComponent(filter)
       }
 
       fetch(process.env.REACT_APP_API_URL + '/api/jobs/details?release=' + props.release + urlQuery)
