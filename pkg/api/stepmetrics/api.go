@@ -1,4 +1,4 @@
-package stepmetricshtml
+package stepmetrics
 
 import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"

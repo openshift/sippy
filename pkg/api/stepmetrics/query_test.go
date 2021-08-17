@@ -1,36 +1,36 @@
-package stepmetricshtml_test
+package stepmetrics_test
 
 import (
 	"net/url"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
-	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
+	"github.com/openshift/sippy/pkg/api/stepmetrics"
 )
 
 func TestValidateQuery(t *testing.T) {
 	testCases := []struct {
 		name          string
-		request       stepmetricshtml.Request
+		request       stepmetrics.Request
 		expectedError string
 	}{
 		{
 			name: "sunny day",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:           "4.9",
 				MultistageJobName: "e2e-aws",
 			},
 		},
 		{
 			name: "all multistage job names",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:           "4.9",
-				MultistageJobName: stepmetricshtml.All,
+				MultistageJobName: stepmetrics.All,
 			},
 		},
 		{
 			name: "unknown multistage job name",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:           "4.9",
 				MultistageJobName: "unknown-multistage-name",
 			},
@@ -38,14 +38,14 @@ func TestValidateQuery(t *testing.T) {
 		},
 		{
 			name: "all step names",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:  "4.9",
-				StepName: stepmetricshtml.All,
+				StepName: stepmetrics.All,
 			},
 		},
 		{
 			name: "unknown step name",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:  "4.9",
 				StepName: "unknown-step-name",
 			},
@@ -53,7 +53,7 @@ func TestValidateQuery(t *testing.T) {
 		},
 		{
 			name: "unknown variant",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:  "4.9",
 				StepName: "gcp-specific",
 				Variant:  "unknown-variant",
@@ -62,7 +62,7 @@ func TestValidateQuery(t *testing.T) {
 		},
 		{
 			name: "unknown job",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release: "4.9",
 				JobName: "unknown-job-name",
 			},
@@ -72,13 +72,13 @@ func TestValidateQuery(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			opts := stepmetricshtml.RequestOpts{
+			opts := stepmetrics.RequestOpts{
 				URLValues: getURLValues(testCase.request),
 				Current:   htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
 				Previous:  htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
 			}
 
-			req, err := stepmetricshtml.ValidateRequest(opts)
+			req, err := stepmetrics.ValidateRequest(opts)
 			if testCase.expectedError != "" && err == nil {
 				t.Errorf("expected error: %s, got nil", testCase.expectedError)
 			}
@@ -94,7 +94,7 @@ func TestValidateQuery(t *testing.T) {
 	}
 }
 
-func getURLValues(req stepmetricshtml.Request) url.Values {
+func getURLValues(req stepmetrics.Request) url.Values {
 	valMap := map[string]string{
 		"jobName":           req.JobName,
 		"release":           req.Release,

@@ -1,11 +1,11 @@
-package stepmetricshtml_test
+package stepmetrics_test
 
 import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
-	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
+	"github.com/openshift/sippy/pkg/api/stepmetrics"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -16,45 +16,45 @@ const (
 
 type apiTestCase struct {
 	name                      string
-	request                   stepmetricshtml.Request
-	expectedMultistageDetails map[string]stepmetricshtml.MultistageDetails
-	expectedStepDetails       map[string]stepmetricshtml.StepDetails
+	request                   stepmetrics.Request
+	expectedMultistageDetails map[string]stepmetrics.MultistageDetails
+	expectedStepDetails       map[string]stepmetrics.StepDetails
 }
 
 func TestStepMetricsAPI(t *testing.T) {
 	testCases := []apiTestCase{
 		{
 			name: "all multistage jobs",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:           release,
-				MultistageJobName: stepmetricshtml.All,
+				MultistageJobName: stepmetrics.All,
 			},
-			expectedMultistageDetails: map[string]stepmetricshtml.MultistageDetails{
+			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
 				"e2e-aws": {
 					Name: "e2e-aws",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					StepDetails: map[string]stepmetricshtml.StepDetail{
-						"aws-specific": stepmetricshtml.StepDetail{
+					StepDetails: map[string]stepmetrics.StepDetail{
+						"aws-specific": stepmetrics.StepDetail{
 							Name: "aws-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"ipi-install": stepmetricshtml.StepDetail{
+						"ipi-install": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"openshift-e2e-test": stepmetricshtml.StepDetail{
+						"openshift-e2e-test": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -62,29 +62,29 @@ func TestStepMetricsAPI(t *testing.T) {
 				},
 				"e2e-gcp": {
 					Name: "e2e-gcp",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					StepDetails: map[string]stepmetricshtml.StepDetail{
-						"gcp-specific": stepmetricshtml.StepDetail{
+					StepDetails: map[string]stepmetrics.StepDetail{
+						"gcp-specific": stepmetrics.StepDetail{
 							Name: "gcp-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"ipi-install": stepmetricshtml.StepDetail{
+						"ipi-install": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"openshift-e2e-test": stepmetricshtml.StepDetail{
+						"openshift-e2e-test": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -94,36 +94,36 @@ func TestStepMetricsAPI(t *testing.T) {
 		},
 		{
 			name: "specific multistage job name",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				MultistageJobName: "e2e-aws",
 				Release:           "4.9",
 			},
-			expectedMultistageDetails: map[string]stepmetricshtml.MultistageDetails{
+			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
 				"e2e-aws": {
 					Name: "e2e-aws",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					StepDetails: map[string]stepmetricshtml.StepDetail{
-						"aws-specific": stepmetricshtml.StepDetail{
+					StepDetails: map[string]stepmetrics.StepDetail{
+						"aws-specific": stepmetrics.StepDetail{
 							Name: "aws-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"ipi-install": stepmetricshtml.StepDetail{
+						"ipi-install": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"openshift-e2e-test": stepmetricshtml.StepDetail{
+						"openshift-e2e-test": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -133,29 +133,29 @@ func TestStepMetricsAPI(t *testing.T) {
 		},
 		{
 			name: "all step names",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:  release,
-				StepName: stepmetricshtml.All,
+				StepName: stepmetrics.All,
 			},
-			expectedStepDetails: map[string]stepmetricshtml.StepDetails{
+			expectedStepDetails: map[string]stepmetrics.StepDetails{
 				"openshift-e2e-test": {
 					Name: "openshift-e2e-test",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					ByMultistage: map[string]stepmetricshtml.StepDetail{
-						"e2e-aws": stepmetricshtml.StepDetail{
+					ByMultistage: map[string]stepmetrics.StepDetail{
+						"e2e-aws": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"e2e-gcp": stepmetricshtml.StepDetail{
+						"e2e-gcp": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -163,22 +163,22 @@ func TestStepMetricsAPI(t *testing.T) {
 				},
 				"ipi-install": {
 					Name: "ipi-install",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					ByMultistage: map[string]stepmetricshtml.StepDetail{
-						"e2e-aws": stepmetricshtml.StepDetail{
+					ByMultistage: map[string]stepmetrics.StepDetail{
+						"e2e-aws": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"e2e-gcp": stepmetricshtml.StepDetail{
+						"e2e-gcp": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -186,15 +186,15 @@ func TestStepMetricsAPI(t *testing.T) {
 				},
 				"aws-specific": {
 					Name: "aws-specific",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					ByMultistage: map[string]stepmetricshtml.StepDetail{
-						"e2e-aws": stepmetricshtml.StepDetail{
+					ByMultistage: map[string]stepmetrics.StepDetail{
+						"e2e-aws": stepmetrics.StepDetail{
 							Name: "aws-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -202,15 +202,15 @@ func TestStepMetricsAPI(t *testing.T) {
 				},
 				"gcp-specific": {
 					Name: "gcp-specific",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					ByMultistage: map[string]stepmetricshtml.StepDetail{
-						"e2e-gcp": stepmetricshtml.StepDetail{
+					ByMultistage: map[string]stepmetrics.StepDetail{
+						"e2e-gcp": stepmetrics.StepDetail{
 							Name: "gcp-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -220,29 +220,29 @@ func TestStepMetricsAPI(t *testing.T) {
 		},
 		{
 			name: "specific step name",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release:  release,
 				StepName: "openshift-e2e-test",
 			},
-			expectedStepDetails: map[string]stepmetricshtml.StepDetails{
+			expectedStepDetails: map[string]stepmetrics.StepDetails{
 				"openshift-e2e-test": {
 					Name: "openshift-e2e-test",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					ByMultistage: map[string]stepmetricshtml.StepDetail{
-						"e2e-aws": stepmetricshtml.StepDetail{
+					ByMultistage: map[string]stepmetrics.StepDetail{
+						"e2e-aws": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"e2e-gcp": stepmetricshtml.StepDetail{
+						"e2e-gcp": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -252,36 +252,36 @@ func TestStepMetricsAPI(t *testing.T) {
 		},
 		{
 			name: "by job name",
-			request: stepmetricshtml.Request{
+			request: stepmetrics.Request{
 				Release: release,
 				JobName: jobName,
 			},
-			expectedMultistageDetails: map[string]stepmetricshtml.MultistageDetails{
+			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
 				"e2e-aws": {
 					Name: "e2e-aws",
-					Trend: stepmetricshtml.Trend{
-						Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+					Trend: stepmetrics.Trend{
+						Trajectory: stepmetrics.TrendTrajectoryFlat,
 						Delta:      0,
 					},
-					StepDetails: map[string]stepmetricshtml.StepDetail{
-						"aws-specific": stepmetricshtml.StepDetail{
+					StepDetails: map[string]stepmetrics.StepDetail{
+						"aws-specific": stepmetrics.StepDetail{
 							Name: "aws-specific",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"ipi-install": stepmetricshtml.StepDetail{
+						"ipi-install": stepmetrics.StepDetail{
 							Name: "ipi-install",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
-						"openshift-e2e-test": stepmetricshtml.StepDetail{
+						"openshift-e2e-test": stepmetrics.StepDetail{
 							Name: "openshift-e2e-test",
-							Trend: stepmetricshtml.Trend{
-								Trajectory: stepmetricshtml.TrendTrajectoryFlat,
+							Trend: stepmetrics.Trend{
+								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
 							},
 						},
@@ -296,7 +296,7 @@ func TestStepMetricsAPI(t *testing.T) {
 			curr := htmltesthelpers.GetTestReport(jobName, "test-name", release)
 			prev := htmltesthelpers.GetTestReport(jobName, "test-name", release)
 
-			a := stepmetricshtml.NewStepMetricsAPI(curr, prev)
+			a := stepmetrics.NewStepMetricsAPI(curr, prev)
 
 			resp, err := a.Fetch(testCase.request)
 			if err != nil {
@@ -324,7 +324,7 @@ func TestStepMetricsAPI(t *testing.T) {
 	}
 }
 
-func assertAllMultistageDetails(t *testing.T, have, want map[string]stepmetricshtml.MultistageDetails) {
+func assertAllMultistageDetails(t *testing.T, have, want map[string]stepmetrics.MultistageDetails) {
 	t.Helper()
 
 	assertKeysEqual(t, have, want)
@@ -338,7 +338,7 @@ func assertAllMultistageDetails(t *testing.T, have, want map[string]stepmetricsh
 	}
 }
 
-func assertMultistageDetails(t *testing.T, have, want stepmetricshtml.MultistageDetails) {
+func assertMultistageDetails(t *testing.T, have, want stepmetrics.MultistageDetails) {
 	t.Helper()
 
 	if have.Name != want.Name {
@@ -356,7 +356,7 @@ func assertMultistageDetails(t *testing.T, have, want stepmetricshtml.Multistage
 	}
 }
 
-func assertTrend(t *testing.T, have, want stepmetricshtml.Trend) {
+func assertTrend(t *testing.T, have, want stepmetrics.Trend) {
 	t.Helper()
 
 	if have.Trajectory != want.Trajectory {
@@ -372,7 +372,7 @@ func assertTrend(t *testing.T, have, want stepmetricshtml.Trend) {
 	}
 }
 
-func assertAllStepDetails(t *testing.T, have, want map[string]stepmetricshtml.StepDetails) {
+func assertAllStepDetails(t *testing.T, have, want map[string]stepmetrics.StepDetails) {
 	t.Helper()
 
 	assertKeysEqual(t, have, want)
@@ -386,7 +386,7 @@ func assertAllStepDetails(t *testing.T, have, want map[string]stepmetricshtml.St
 	}
 }
 
-func assertStepDetails(t *testing.T, have, want stepmetricshtml.StepDetails) {
+func assertStepDetails(t *testing.T, have, want stepmetrics.StepDetails) {
 	t.Helper()
 
 	if have.Name != want.Name {
@@ -404,7 +404,7 @@ func assertStepDetails(t *testing.T, have, want stepmetricshtml.StepDetails) {
 	}
 }
 
-func assertStepDetail(t *testing.T, have, want stepmetricshtml.StepDetail) {
+func assertStepDetail(t *testing.T, have, want stepmetrics.StepDetail) {
 	if have.Name != want.Name {
 		t.Errorf("name mismatch, have: %s, want: %s", have.Name, want.Name)
 	}

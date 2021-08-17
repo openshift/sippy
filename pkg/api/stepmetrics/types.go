@@ -1,4 +1,4 @@
-package stepmetricshtml
+package stepmetrics
 
 import (
 	"math"
