@@ -37,7 +37,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:
-        - /go/src/sippy/sippy
+        - /bin/sippy
         args:
         - --local-data
         - /data
@@ -69,7 +69,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:
-        - /go/src/sippy/scripts/fetchdata.sh
+        - /bin/fetchdata.sh
         volumeMounts:
         - mountPath: /data
           name: data
