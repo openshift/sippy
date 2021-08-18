@@ -487,6 +487,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 	serveMux.HandleFunc("/api/jobs", s.jobs)
 	serveMux.HandleFunc("/jobs", s.jobsReport)
+	serveMux.HandleFunc("/api/stepmetrics", s.stepMetricsAPI)
 	serveMux.HandleFunc("/stepmetrics", s.stepMetrics)
 	serveMux.HandleFunc("/variants", s.variantsReport)
 	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))

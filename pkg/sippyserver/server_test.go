@@ -3,7 +3,6 @@ package sippyserver_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -232,6 +231,54 @@ func TestSippyserverSmokeTest(t *testing.T) {
 				},
 			},
 		},
+		"/api/stepmetrics": byStatus{
+			http.StatusOK: testCases{
+				{
+					args: map[string]string{
+						"release":           "4.9",
+						"multistageJobName": "All",
+					},
+				},
+				{
+					args: map[string]string{
+						"release":  "4.9",
+						"stepName": "All",
+					},
+				},
+			},
+			http.StatusBadRequest: testCases{
+				{
+					args: unknownReleaseURLArgs,
+				},
+				{
+					args: emptyURLArgs,
+				},
+			},
+		},
+		"/stepmetrics": byStatus{
+			http.StatusOK: testCases{
+				{
+					args: map[string]string{
+						"release":           "4.9",
+						"multistageJobName": "All",
+					},
+				},
+				{
+					args: map[string]string{
+						"release":  "4.9",
+						"stepName": "All",
+					},
+				},
+			},
+			http.StatusBadRequest: testCases{
+				{
+					args: unknownReleaseURLArgs,
+				},
+				{
+					args: emptyURLArgs,
+				},
+			},
+		},
 		"/testdetails": byStatus{
 			http.StatusOK: testCases{
 				{
@@ -336,8 +383,9 @@ func TestSippyserverSmokeTest(t *testing.T) {
 			// errors from the server.
 			// In the future, we could write to a buffer and make assertions on the
 			// response content.
+
 			defer resp.Body.Close()
-			if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
+			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
 				t.Errorf("could not read response: %s", err)
 			}
 
