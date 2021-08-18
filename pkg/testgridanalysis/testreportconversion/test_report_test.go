@@ -23,6 +23,8 @@ const (
 
 	gcpCiJobName      string = "periodic-ci-openshift-release-master-ci-4.9-e2e-gcp"
 	gcpNightlyJobName string = "periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp"
+
+	nonMultistageJobName string = "non-multistage-job"
 )
 
 // The original test names from TestGrid
@@ -111,10 +113,17 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 					},
 				}
 
+				assertKeysEqual(t, report.TopLevelStepRegistryMetrics.ByJobName, expectedByJobStepRegistryMetrics)
+
 				for _, job := range report.ByJob {
 					t.Run(job.Name, func(t *testing.T) {
-						assertStepRegistryMetricsEqual(t, job.StepRegistryMetrics, expectedByJobStepRegistryMetrics[job.Name])
-						assertStepRegistryMetricsEqual(t, report.TopLevelStepRegistryMetrics.ByJobName[job.Name].StepRegistryMetrics, expectedByJobStepRegistryMetrics[job.Name])
+						assertStepRegistryMetricsEqual(t,
+							job.StepRegistryMetrics,
+							expectedByJobStepRegistryMetrics[job.Name])
+
+						assertStepRegistryMetricsEqual(t,
+							report.TopLevelStepRegistryMetrics.ByJobName[job.Name].StepRegistryMetrics,
+							expectedByJobStepRegistryMetrics[job.Name])
 					})
 				}
 			},
@@ -123,7 +132,8 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 			name: "ByMultistageName",
 			testFunc: func(t *testing.T, report sippyprocessingv1.TestReport) {
 				expectedByMultistageName := map[string]sippyprocessingv1.StepRegistryMetrics{
-					// These are aggregated by the multistage job name (e.g., e2e-aws, e2e-azure, e2e-gcp), regardless of job name.
+					// These are aggregated by the multistage job name (e.g., e2e-aws,
+					// e2e-azure, e2e-gcp), regardless of job name.
 
 					// It is worth noting that some jobs (most notably the
 					// periodic-ci-openshift-release-master-ci-4.9-e2e-* and
@@ -162,9 +172,13 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 					},
 				}
 
+				assertKeysEqual(t, report.TopLevelStepRegistryMetrics.ByMultistageName, expectedByMultistageName)
+
 				for multistageName, expectedStageResult := range expectedByMultistageName {
 					t.Run(multistageName, func(t *testing.T) {
-						assertStepRegistryMetricsEqual(t, report.TopLevelStepRegistryMetrics.ByMultistageName[multistageName], expectedStageResult)
+						assertStepRegistryMetricsEqual(t,
+							report.TopLevelStepRegistryMetrics.ByMultistageName[multistageName],
+							expectedStageResult)
 					})
 				}
 			},
@@ -220,6 +234,8 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 						},
 					},
 				}
+
+				assertKeysEqual(t, report.TopLevelStepRegistryMetrics.ByStageName, expectedByStageName)
 
 				for stageName, byStageResult := range expectedByStageName {
 					t.Run(stageName, func(t *testing.T) {
@@ -329,11 +345,13 @@ func assertStageResultsEqual(t *testing.T, have, want sippyprocessingv1.StageRes
 }
 
 func assertKeysEqual(t *testing.T, have, want interface{}) {
+	t.Helper()
+
 	haveSet := sets.StringKeySet(have)
 	wantSet := sets.StringKeySet(want)
 
 	if !haveSet.Equal(wantSet) {
-		t.Errorf("key mismatch, expected: %v, got: %v", wantSet.List(), haveSet.List())
+		t.Errorf("key mismatch, expected: %v, got: %v, diff: %v", wantSet.List(), haveSet.List(), haveSet.Difference(wantSet).List())
 	}
 }
 
@@ -389,6 +407,8 @@ func getRawData() testgridanalysisapi.RawData {
 			// GCP Jobs
 			gcpNightlyJobName: getRawJobResult(gcpNightlyJobName, "e2e-gcp", 5),
 			gcpCiJobName:      getRawJobResult(gcpCiJobName, "e2e-gcp", 6),
+			// Non-multistage job
+			nonMultistageJobName: getRawJobResult(nonMultistageJobName, "", 7),
 		},
 	}
 }
@@ -455,6 +475,8 @@ func getStepRegistryItemStates(multistageName, state string) testgridanalysisapi
 				},
 			},
 		},
+		// Purposely left empty. This means the job does not use multistage.
+		"": {},
 	}
 
 	return itemStates[multistageName]

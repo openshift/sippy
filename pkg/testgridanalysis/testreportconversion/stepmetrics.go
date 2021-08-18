@@ -27,7 +27,13 @@ func getStepRegistryMetricsByMultistageName(allJobResults []sippyprocessingv1.Jo
 	// example, the periodic-ci-openshift-release-master-ci-4.9-e2e-* and
 	// periodic-ci-openshift-release-master-nightly-4.9-e2e-* series do this.
 	for _, jobResult := range allJobResults {
+		// This job does not use multistage, skip it
+		if !isMultistageJob(jobResult.StepRegistryMetrics) {
+			continue
+		}
+
 		multistageName := jobResult.StepRegistryMetrics.MultistageName
+
 		srm, ok := byMultistageName[multistageName]
 		if ok {
 			// We already have a multistage job with this name, so combine it with
@@ -75,7 +81,7 @@ func copyStepRegistryMetrics(stepRegistryMetrics sippyprocessingv1.StepRegistryM
 		srm.StageResults[stageName] = stageResult
 	}
 
-	srm.Aggregated = getAggregation(srm)
+	srm.Aggregated = stepRegistryMetrics.Aggregated
 
 	return srm
 }
@@ -216,4 +222,8 @@ func getStepRegistryMetrics(rawJobRunResults map[string]testgridanalysisapi.RawJ
 	srm.Aggregated = getAggregation(srm)
 
 	return srm
+}
+
+func isMultistageJob(srm sippyprocessingv1.StepRegistryMetrics) bool {
+	return srm.MultistageName != "" && len(srm.StageResults) != 0
 }
