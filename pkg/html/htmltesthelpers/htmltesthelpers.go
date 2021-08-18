@@ -2,10 +2,8 @@ package htmltesthelpers
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
@@ -17,6 +15,30 @@ type recordedFunc func(*httptest.ResponseRecorder)
 func AssertHTTPResponseContains(t *testing.T, expectedContents []string, testFunc recordedFunc) {
 	t.Helper()
 
+	contentBuf, err := getHTTPResponseContents(testFunc)
+	if err != nil {
+		t.Error(err)
+	}
+
+	contents := contentBuf.String()
+
+	for _, item := range expectedContents {
+		if !strings.Contains(contents, item) {
+			t.Errorf("expected result to contain: %s", item)
+		}
+	}
+}
+
+func PrintHTML(t *testing.T, testFunc recordedFunc) {
+	contentBuf, err := getHTTPResponseContents(testFunc)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(contentBuf.String())
+}
+
+func getHTTPResponseContents(testFunc recordedFunc) (*bytes.Buffer, error) {
 	// Because several of the HTML functions write to an http.ResponseWriter, we
 	// use an httptest.ResponseRecorder to read the written response.
 	recorder := httptest.NewRecorder()
@@ -29,36 +51,8 @@ func AssertHTTPResponseContains(t *testing.T, expectedContents []string, testFun
 	buf := bytes.NewBufferString("")
 
 	if _, err := io.Copy(buf, result.Body); err != nil {
-		t.Fatal(err)
+		return buf, err
 	}
 
-	contents := buf.String()
-
-	fmt.Println(contents)
-
-	for _, item := range expectedContents {
-		if !strings.Contains(contents, item) {
-			t.Errorf("expected result to contain: %s", item)
-		}
-	}
-}
-
-func WriteHTMLToFile(filename string, testFunc recordedFunc) {
-	recorder := httptest.NewRecorder()
-
-	testFunc(recorder)
-
-	result := recorder.Result()
-	defer result.Body.Close()
-
-	file, err := os.Create(filename)
-	if err != nil {
-		panic(err)
-	}
-
-	defer file.Close()
-
-	if _, err := io.Copy(file, result.Body); err != nil {
-		panic(err)
-	}
+	return buf, nil
 }
