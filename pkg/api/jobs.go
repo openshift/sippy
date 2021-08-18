@@ -125,8 +125,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, tw
 }
 
 type jobDetail struct {
-	Name    string                          `json:"name"`
-	Results []v1sippyprocessing.BuildResult `json:"results"`
+	Name    string                           `json:"name"`
+	Results []v1sippyprocessing.JobRunResult `json:"results"`
 }
 
 type jobDetailAPIResult struct {
@@ -156,9 +156,9 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 		}
 
 		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
-		buildResults := append(jobResult.BuildResults, prevResult.BuildResults...)
+		jobRuns := append(jobResult.AllRuns, prevResult.AllRuns...)
 
-		for _, result := range buildResults {
+		for _, result := range jobRuns {
 			if result.Timestamp < min || min == 0 {
 				min = result.Timestamp
 			}
@@ -170,7 +170,7 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 
 		jobDetail := jobDetail{
 			Name:    jobResult.Name,
-			Results: buildResults,
+			Results: jobRuns,
 		}
 
 		jobs = append(jobs, jobDetail)

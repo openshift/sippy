@@ -184,7 +184,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 				jrr.SetupStatus = testgridanalysisapi.Unknown
 			}
 
-			jrr.OverallStatus = jobRunStatus(jrr)
+			jrr.OverallResult = jobRunStatus(jrr)
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
 
@@ -201,31 +201,31 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 const failure string = "Failure"
 
-func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobStatus {
+func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
 	if result.Succeeded {
-		return sippyprocessingv1.JobStatusSucceeded
+		return sippyprocessingv1.JobSucceeded
 	}
 
 	if !result.Failed {
-		return sippyprocessingv1.JobStatusRunning
+		return sippyprocessingv1.JobRunning
 	}
 
 	if result.SetupStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
-			return sippyprocessingv1.JobStatusInfrastructureFailure
+			return sippyprocessingv1.JobInfrastructureFailure
 		}
-		return sippyprocessingv1.JobStatusInstallFailure
+		return sippyprocessingv1.JobInstallFailure
 	}
 	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
-		return sippyprocessingv1.JobStatusUpgradeFailure
+		return sippyprocessingv1.JobUpgradeFailure
 	}
 	if result.OpenShiftTestsStatus == failure {
-		return sippyprocessingv1.JobStatusTestFailure
+		return sippyprocessingv1.JobTestFailure
 	}
 	if result.SetupStatus == "" {
-		return sippyprocessingv1.JobStatusNoResults
+		return sippyprocessingv1.JobNoResults
 	}
-	return sippyprocessingv1.JobStatusUnknown
+	return sippyprocessingv1.JobUnknown
 }
 
 // this a list of job name regexes that either do not install the product (bug) or have

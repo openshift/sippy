@@ -96,14 +96,8 @@ func convertRawJobResultToProcessedJobResult(
 		AssociatedBugList: bugCache.ListAssociatedBugs(bugzillaRelease, rawJobResult.JobName, ""),
 	}
 
-	for url, rawJRR := range rawJobResult.JobRunResults {
-		buildStatus := sippyprocessingv1.BuildResult{
-			URL:       url,
-			Timestamp: rawJRR.Timestamp,
-			Result:    rawJRR.OverallStatus,
-		}
-
-		job.BuildResults = append(job.BuildResults, buildStatus)
+	for _, rawJRR := range rawJobResult.JobRunResults {
+		job.AllRuns = append(job.AllRuns, convertRawToJobRunResult(rawJRR))
 
 		if rawJRR.Failed {
 			job.Failures++
@@ -138,6 +132,19 @@ func convertRawJobResultToProcessedJobResult(
 	return job
 }
 
+func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobRunResult {
+	return sippyprocessingv1.JobRunResult{
+		Job:             jrr.Job,
+		URL:             jrr.JobRunURL,
+		TestFailures:    jrr.TestFailures,
+		FailedTestNames: jrr.FailedTestNames,
+		Failed:          jrr.Failed,
+		Succeeded:       jrr.Succeeded,
+		Timestamp:       jrr.Timestamp,
+		OverallResult:   jrr.OverallResult,
+	}
+}
+
 func areAllFailuresKnown(
 	rawJRR testgridanalysisapi.RawJobRunResult,
 	allTestResults []sippyprocessingv1.TestResult,
@@ -150,22 +157,6 @@ func areAllFailuresKnown(
 			if testResult.Name == testName && len(testResult.BugList) == 0 {
 				return false
 			}
-		}
-	}
-	return true
-}
-
-func areAllFailuresKnownFromProcessedResults(
-	rawJRR testgridanalysisapi.RawJobRunResult,
-	allTestResultsByName testResultsByName,
-) bool {
-	// check if all the test failures in the run can be attributed to
-	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
-	// would have passed if all our bugs were fixed.
-	for _, testName := range rawJRR.FailedTestNames {
-		isKnownFailure := len(allTestResultsByName[testName].TestResultAcrossAllJobs.BugList) > 0
-		if !isKnownFailure {
-			return false
 		}
 	}
 	return true

@@ -67,10 +67,10 @@ type RawJobRunResult struct {
 	// OpenShiftTestsStatus can be "", "Success", "Failure"
 	OpenShiftTestsStatus string
 
-	// Overall status
-	OverallStatus v1.JobStatus
+	// Overall result
+	OverallResult v1.JobOverallResult
 
-	// Start and end timestamps
+	// Timestamp
 	Timestamp int
 }
 

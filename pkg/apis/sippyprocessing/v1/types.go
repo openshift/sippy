@@ -136,53 +136,49 @@ type TestResult struct {
 	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 }
 
-type JobRunResult struct {
-	Job                string   `json:"job"`
-	URL                string   `json:"url"`
-	TestFailures       int      `json:"testFailures"`
-	FailedTestNames    []string `json:"failedTestNames"`
-	Failed             bool     `json:"failed"`
-	HasUnknownFailures bool     `json:"hasUnknownFailures"`
-	Succeeded          bool     `json:"succeeded"`
-}
-
-type JobStatus string
+type JobOverallResult string
 
 const (
-	JobStatusSucceeded             JobStatus = "S"
-	JobStatusRunning               JobStatus = "R"
-	JobStatusInfrastructureFailure JobStatus = "N"
-	JobStatusInstallFailure        JobStatus = "I"
-	JobStatusUpgradeFailure        JobStatus = "U"
-	JobStatusTestFailure           JobStatus = "F"
-	JobStatusNoResults             JobStatus = "n"
-	JobStatusUnknown               JobStatus = "f"
+	JobSucceeded             JobOverallResult = "S"
+	JobRunning               JobOverallResult = "R"
+	JobInfrastructureFailure JobOverallResult = "N"
+	JobInstallFailure        JobOverallResult = "I"
+	JobUpgradeFailure        JobOverallResult = "U"
+	JobTestFailure           JobOverallResult = "F"
+	JobNoResults             JobOverallResult = "n"
+	JobUnknown               JobOverallResult = "f"
 )
 
-type BuildResult struct {
-	Timestamp int       `json:"timestamp"`
-	Result    JobStatus `json:"result"`
-	URL       string    `json:"url"`
+type JobRunResult struct {
+	Job             string           `json:"job"`
+	URL             string           `json:"url"`
+	TestFailures    int              `json:"testFailures"`
+	FailedTestNames []string         `json:"failedTestNames"`
+	Failed          bool             `json:"failed"`
+	Succeeded       bool             `json:"succeeded"`
+	Timestamp       int              `json:"timestamp"`
+	OverallResult   JobOverallResult `json:"result"`
 }
 
 type JobResult struct {
-	Name                                        string        `json:"name"`
-	Variants                                    []string      `json:"variants"`
-	Failures                                    int           `json:"failures"`
-	KnownFailures                               int           `json:"knownFailures"`
-	InfrastructureFailures                      int           `json:"infrastructureFailures"`
-	Successes                                   int           `json:"successes"`
-	PassPercentage                              float64       `json:"passPercentage"`
-	PassPercentageWithKnownFailures             float64       `json:"passPercentageWithKnownFailures"`
-	PassPercentageWithoutInfrastructureFailures float64       `json:"passPercentageWithoutInfrastructureFailures"`
-	TestGridURL                                 string        `json:"testGridURL"`
-	BuildResults                                []BuildResult `json:"buildResults"`
+	Name                                        string         `json:"name"`
+	Variants                                    []string       `json:"variants"`
+	Failures                                    int            `json:"failures"`
+	KnownFailures                               int            `json:"knownFailures"`
+	InfrastructureFailures                      int            `json:"infrastructureFailures"`
+	Successes                                   int            `json:"successes"`
+	PassPercentage                              float64        `json:"passPercentage"`
+	PassPercentageWithKnownFailures             float64        `json:"passPercentageWithKnownFailures"`
+	PassPercentageWithoutInfrastructureFailures float64        `json:"passPercentageWithoutInfrastructureFailures"`
+	TestGridURL                                 string         `json:"testGridURL"`
+	AllRuns                                     []JobRunResult `json:"allRuns"`
 
 	BugList []bugsv1.Bug `json:"bugList"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
 	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 
-	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
+	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
+	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
 	TestResults []TestResult `json:"results"`
 }
 

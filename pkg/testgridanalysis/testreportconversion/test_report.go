@@ -37,7 +37,7 @@ func PrepareTestReport(
 	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn, variantManager)
 	variantHealth := convertVariantResultsToHealth(byVariant)
 
-	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
+	filteredFailureGroups := filterFailureGroups(rawData.JobResults, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
 	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, infrequentJobsTestResultFilterFn)
 
@@ -65,8 +65,9 @@ func PrepareTestReport(
 			Variant:             variantHealth,
 		},
 
-		ByTest:        allTestResultsByName.toOrderedList(),
-		ByVariant:     byVariant,
+		ByTest:    allTestResultsByName.toOrderedList(),
+		ByVariant: byVariant,
+
 		FailureGroups: filteredFailureGroups,
 
 		ByJob:                allJobResults,
@@ -88,7 +89,6 @@ func PrepareTestReport(
 
 func filterFailureGroups(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	allTestResultsByName testResultsByName, // we look up individual tests to find their list of bugs
 	failureClusterThreshold int,
 ) []sippyprocessingv1.JobRunResult {
 	filteredJrr := []sippyprocessingv1.JobRunResult{}
@@ -102,18 +102,7 @@ func filterFailureGroups(
 				continue
 			}
 
-			allFailuresKnown := areAllFailuresKnownFromProcessedResults(rawJRR, allTestResultsByName)
-			hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
-
-			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
-				Job:                jobResult.JobName,
-				URL:                rawJRR.JobRunURL,
-				TestFailures:       rawJRR.TestFailures,
-				FailedTestNames:    rawJRR.FailedTestNames,
-				Failed:             rawJRR.Failed,
-				HasUnknownFailures: hasUnknownFailure,
-				Succeeded:          rawJRR.Succeeded,
-			})
+			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR))
 		}
 	}
 
