@@ -28,7 +28,6 @@ func TestPrintUpgradeHTMLReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestPrintInstallHTMLReport(t *testing.T) {
@@ -44,7 +43,6 @@ func TestPrintInstallHTMLReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestPrintOperatorHealthHTMLReport(t *testing.T) {
@@ -61,7 +59,6 @@ func TestPrintOperatorHealthHTMLReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestPrintTestDetailHTMLReport(t *testing.T) {
@@ -83,7 +80,6 @@ func TestPrintTestDetailHTMLReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func getReport(testName string) sippyprocessingv1.TestReport {
