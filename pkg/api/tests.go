@@ -24,7 +24,7 @@ func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
 	sort := req.URL.Query().Get("sort")
 
 	if sortField == "" {
-		sortField = "net_improvement"
+		sortField = "current_pass_percentage"
 	}
 
 	if sort == "" {

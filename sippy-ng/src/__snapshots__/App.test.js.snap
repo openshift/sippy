@@ -251,6 +251,75 @@ exports[`app should render correctly 1`] = `
           CI Release 4.8 Health Summary
         </h4>
         <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
+          <div class="MuiPaper-root MuiAlert-root MuiAlert-standardWarning makeStyles-warning-42 MuiPaper-elevation0"
+               role="alert"
+          >
+            <div class="MuiAlert-icon">
+              <svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeInherit"
+                   focusable="false"
+                   viewbox="0 0 24 24"
+                   aria-hidden="true"
+              >
+                <path d="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z">
+                </path>
+              </svg>
+            </div>
+            <div class="MuiAlert-message">
+              <div style="width: 100%;">
+                The
+                <a href="https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le/1420368294816256000">
+                  last run of promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le
+                </a>
+                was more than 12 hours ago.
+              </div>
+            </div>
+          </div>
+          <div class="MuiPaper-root MuiAlert-root MuiAlert-standardWarning makeStyles-warning-42 MuiPaper-elevation0"
+               role="alert"
+          >
+            <div class="MuiAlert-icon">
+              <svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeInherit"
+                   focusable="false"
+                   viewbox="0 0 24 24"
+                   aria-hidden="true"
+              >
+                <path d="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z">
+                </path>
+              </svg>
+            </div>
+            <div class="MuiAlert-message">
+              <div style="width: 100%;">
+                The
+                <a href="https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x/1420368043665526784">
+                  last run of promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x
+                </a>
+                was more than 12 hours ago.
+              </div>
+            </div>
+          </div>
+          <div class="MuiPaper-root MuiAlert-root MuiAlert-standardWarning makeStyles-warning-42 MuiPaper-elevation0"
+               role="alert"
+          >
+            <div class="MuiAlert-icon">
+              <svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeInherit"
+                   focusable="false"
+                   viewbox="0 0 24 24"
+                   aria-hidden="true"
+              >
+                <path d="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z">
+                </path>
+              </svg>
+            </div>
+            <div class="MuiAlert-message">
+              <div style="width: 100%;">
+                The
+                <a href="https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/promote-release-openshift-machine-os-content-e2e-aws-4.8/1420371314731913216">
+                  last run of promote-release-openshift-machine-os-content-e2e-aws-4.8
+                </a>
+                was more than 12 hours ago.
+              </div>
+            </div>
+          </div>
           <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-12"
                style="display: flex;"
           >
@@ -2213,7 +2282,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="39"
+                                <div data-id="40"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-38-193 MuiDataGrid-row"
@@ -2371,7 +2440,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="35"
+                                <div data-id="31"
                                      data-rowindex="2"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-33-188 MuiDataGrid-row"
@@ -3637,7 +3706,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="10"
+                                <div data-id="38"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"
@@ -3716,7 +3785,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="27"
+                                <div data-id="33"
                                      data-rowindex="1"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-0-155 MuiDataGrid-row"
@@ -3795,7 +3864,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="16"
+                                <div data-id="30"
                                      data-rowindex="2"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"
@@ -3874,7 +3943,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="70"
+                                <div data-id="72"
                                      data-rowindex="3"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-50-205 MuiDataGrid-row"
@@ -3953,7 +4022,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="35"
+                                <div data-id="47"
                                      data-rowindex="4"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"

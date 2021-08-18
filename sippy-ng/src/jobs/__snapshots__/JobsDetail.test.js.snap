@@ -234,8 +234,8 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-N\\">
-              N
+            <a class=\\"result result-U\\">
+              U
             </a>
             <a class=\\"result result-N\\">
               N
@@ -245,23 +245,12 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
             <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-F\\">
-              F
-            </a>
-            <a class=\\"result result-F\\">
-              F
-            </a>
-            <a class=\\"result result-F\\">
-              F
-            </a>
-          </td>
-          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
-              style=\\"vertical-align: top;\\"
-          >
-            <br>
             <a class=\\"result result-S\\">
               S
             </a>
@@ -278,6 +267,14 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
             <a class=\\"result result-F\\">
               F
             </a>
@@ -286,29 +283,23 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
             <a class=\\"result result-S\\">
               S
             </a>
             <a class=\\"result result-N\\">
               N
             </a>
-            <a class=\\"result result-F\\">
-              F
-            </a>
-            <a class=\\"result result-S\\">
-              S
-            </a>
-            <a class=\\"result result-S\\">
-              S
-            </a>
           </td>
           <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\">
-              S
-            </a>
             <a class=\\"result result-F\\">
               F
             </a>
@@ -323,26 +314,20 @@ exports[`JobsDetail should match snapshot 1`] = `
             <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-S\\">
-              S
-            </a>
           </td>
           <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\">
-              F
-            </a>
-            <a class=\\"result result-S\\">
-              S
-            </a>
             <a class=\\"result result-n\\">
               n
             </a>
             <a class=\\"result result-F\\">
               F
             </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
           </td>
           <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
               style=\\"vertical-align: top;\\"
@@ -389,9 +374,6 @@ exports[`JobsDetail should match snapshot 1`] = `
             <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-I\\">
-              I
-            </a>
             <a class=\\"result result-F\\">
               F
             </a>
@@ -400,9 +382,6 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\">
-              F
-            </a>
             <a class=\\"result result-F\\">
               F
             </a>
