@@ -118,6 +118,11 @@ func convertRawJobResultToProcessedJobResult(
 
 	}
 
+	// Ensure jobs are ordered by timestamp
+	sort.Slice(job.AllRuns, func(i, j int) bool {
+		return job.AllRuns[i].Timestamp > job.AllRuns[j].Timestamp
+	})
+
 	job.PassPercentage = percent(job.Successes, job.Failures)
 	job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
 	job.PassPercentageWithoutInfrastructureFailures = percent(job.Successes, job.Failures-job.InfrastructureFailures)

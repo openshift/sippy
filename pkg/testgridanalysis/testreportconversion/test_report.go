@@ -98,31 +98,30 @@ func generatePromotionWarnings(variants []sippyprocessingv1.VariantResults) []st
 	for _, variant := range variants {
 		if variant.VariantName == "promote" {
 			for _, jr := range variant.JobResults {
-				var lastSuccess *sippyprocessingv1.JobRunResult
-				var mostRecent *sippyprocessingv1.JobRunResult
+				// Check if it's been more than 12 hours since any promotion has run. AllRuns is sorted with most
+				// recent first, so all we need to do is look at AllRuns[0]
+				if len(jr.AllRuns) > 0 && int64(jr.AllRuns[0].Timestamp) < millis12hoursago {
+					warnings = append(warnings,
+						fmt.Sprintf(`The <a href="%s">last run of %s</a> was more than 12 hours ago.`, jr.AllRuns[0].URL, jr.Name))
+				}
 
-				for idx, run := range jr.AllRuns {
-					if mostRecent == nil || run.Timestamp > mostRecent.Timestamp {
-						mostRecent = &jr.AllRuns[idx]
-						if run.OverallResult == sippyprocessingv1.JobSucceeded {
-							lastSuccess = &jr.AllRuns[idx]
-						}
+				// Check if the last 3 failed
+				if len(jr.AllRuns) < 3 {
+					continue
+				}
+
+				links := make([]string, 0)
+				lastThreeFailed := true
+				for _, run := range jr.AllRuns[0:3] {
+					if run.OverallResult != sippyprocessingv1.JobSucceeded {
+						links = append(links, run.URL)
+						continue
 					}
+					lastThreeFailed = false
 				}
-
-				// Make sure the job has been run recently
-				if mostRecent != nil && (int64(mostRecent.Timestamp) < millis12hoursago) {
+				if lastThreeFailed {
 					warnings = append(warnings,
-						fmt.Sprintf(`The <a href="%s">last run of %s</a> was more than 12 hours ago.`, mostRecent.URL, jr.Name))
-				}
-
-				// Make sure the job succeeded
-				if lastSuccess == nil {
-					warnings = append(warnings,
-						fmt.Sprintf(`No successful run of %s found.`, jr.Name))
-				} else if mostRecent != lastSuccess {
-					warnings = append(warnings,
-						fmt.Sprintf(`The <a href="%s">most recent promotion for %s</a> failed.`, mostRecent.URL, jr.Name))
+						fmt.Sprintf(`The last three (<a href="%s">1</a>, <a href="%s">2</a>, <a href="%s">3</a>) promotion jobs for %s failed!`, links[0], links[1], links[2], jr.Name))
 				}
 			}
 			break
