@@ -185,8 +185,8 @@ function TestTable (props) {
   const [filterModel, setFilterModel] = React.useState(props.filterModel)
   const [filters = JSON.stringify(props.filterModel), setFilters] = useQueryParam('filters', StringParam)
 
-  const [sortField = 'net_improvement', setSortField] = useQueryParam('sortField', StringParam)
-  const [sort = 'asc', setSort] = useQueryParam('sort', StringParam)
+  const [sortField = props.sortField, setSortField] = useQueryParam('sortField', StringParam)
+  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const fetchData = () => {
     let queryString = ''
@@ -333,7 +333,9 @@ TestTable.defaultProps = {
   briefTable: false,
   filterModel: {
     items: []
-  }
+  },
+  sortField: 'current_pass_percentage',
+  sort: 'asc'
 }
 
 TestTable.propTypes = {
@@ -344,6 +346,9 @@ TestTable.propTypes = {
   release: PropTypes.string.isRequired,
   classes: PropTypes.object,
   period: PropTypes.string,
-  filterModel: PropTypes.object
+  filterModel: PropTypes.object,
+  sort: PropTypes.string,
+  sortField: PropTypes.string
 }
+
 export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)

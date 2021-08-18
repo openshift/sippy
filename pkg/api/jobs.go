@@ -23,7 +23,7 @@ func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 	sort := apitype.Sort(req.URL.Query().Get("sort"))
 
 	if sortField == "" {
-		sortField = "net_improvement"
+		sortField = "current_pass_percentage"
 	}
 
 	if sort == "" {
