@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -175,14 +177,17 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
 				}
-				addTestResult(jobResults.TestResults, testName, result.pass, result.fail, 0)
+				addTestResult(jobResults.TestResults, nil, testName, result.pass, result.fail, 0)
 			}
 
 			if jrr.SetupStatus == "" && matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
 				jrr.SetupStatus = testgridanalysisapi.Unknown
 			}
+
+			jrr.OverallResult = jobRunStatus(jrr)
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
+
 		if numRunsWithoutSetup > 0 && numRunsWithoutSetup == len(jobResults.JobRunResults) {
 			if !matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
 				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
@@ -192,6 +197,35 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 		rawJobResults.JobResults[jobName] = jobResults
 	}
 	return warnings
+}
+
+const failure string = "Failure"
+
+func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
+	if result.Succeeded {
+		return sippyprocessingv1.JobSucceeded
+	}
+
+	if !result.Failed {
+		return sippyprocessingv1.JobRunning
+	}
+
+	if result.SetupStatus == failure {
+		if len(result.FinalOperatorStates) == 0 {
+			return sippyprocessingv1.JobInfrastructureFailure
+		}
+		return sippyprocessingv1.JobInstallFailure
+	}
+	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
+		return sippyprocessingv1.JobUpgradeFailure
+	}
+	if result.OpenShiftTestsStatus == failure {
+		return sippyprocessingv1.JobTestFailure
+	}
+	if result.SetupStatus == "" {
+		return sippyprocessingv1.JobNoResults
+	}
+	return sippyprocessingv1.JobUnknown
 }
 
 // this a list of job name regexes that either do not install the product (bug) or have

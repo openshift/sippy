@@ -12,7 +12,6 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
-	"k8s.io/klog"
 )
 
 // stats on failure groups
@@ -49,12 +48,12 @@ func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport) []sip
 			jobSummaryVariant = sippyv1.JobSummaryVariant{
 				Variant: v.VariantName,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage:          v.JobRunPassPercentage,
 						ProjectedPercentage: v.JobRunPassPercentageWithKnownFailures,
 						Runs:                v.JobRunSuccesses + v.JobRunFailures,
 					},
-					"prev": sippyv1.PassRate{
+					"prev": {
 						Percentage:          prev.JobRunPassPercentage,
 						ProjectedPercentage: prev.JobRunPassPercentageWithKnownFailures,
 						Runs:                prev.JobRunSuccesses + prev.JobRunFailures,
@@ -65,7 +64,7 @@ func summaryJobsByVariant(report, reportPrev sippyprocessingv1.TestReport) []sip
 			jobSummaryVariant = sippyv1.JobSummaryVariant{
 				Variant: v.VariantName,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage:          v.JobRunPassPercentage,
 						ProjectedPercentage: v.JobRunPassPercentageWithKnownFailures,
 						Runs:                v.JobRunSuccesses + v.JobRunFailures,
@@ -97,11 +96,11 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 				Name: test.TestName,
 				URL:  testLink,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
 					},
-					"prev": sippyv1.PassRate{
+					"prev": {
 						Percentage: testPrev.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       testPrev.TestResultAcrossAllJobs.Successes + testPrev.TestResultAcrossAllJobs.Failures,
 					},
@@ -114,7 +113,7 @@ func summaryTopFailingTestsWithBug(topFailingTestsWithBug, prevTestResults []sip
 				Name: test.TestResultAcrossAllJobs.Name,
 				URL:  testLink,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
 					},
@@ -149,11 +148,11 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 				URL:            testLink,
 				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
 					},
-					"prev": sippyv1.PassRate{
+					"prev": {
 						Percentage: testPrev.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       testPrev.TestResultAcrossAllJobs.Successes + testPrev.TestResultAcrossAllJobs.Failures,
 					},
@@ -166,7 +165,7 @@ func summaryTopFailingTestsWithoutBug(topFailingTestsWithoutBug, prevTopFailingT
 				URL:            testLink,
 				AssociatedBugs: test.TestResultAcrossAllJobs.AssociatedBugList,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage: test.TestResultAcrossAllJobs.PassPercentage,
 						Runs:       test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures,
 					},
@@ -192,12 +191,12 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 				Name: v.Name,
 				URL:  v.TestGridURL,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithoutInfrastructureFailures,
 						Runs:                v.Successes + v.Failures,
 					},
-					"prev": sippyv1.PassRate{
+					"prev": {
 						Percentage:          prev.PassPercentage,
 						ProjectedPercentage: prev.PassPercentageWithoutInfrastructureFailures,
 						Runs:                prev.Successes + prev.Failures,
@@ -209,7 +208,7 @@ func summaryJobPassRatesByJobName(report, reportPrev sippyprocessingv1.TestRepor
 				Name: v.Name,
 				URL:  v.TestGridURL,
 				PassRates: map[string]sippyv1.PassRate{
-					"latest": sippyv1.PassRate{
+					"latest": {
 						Percentage:          v.PassPercentage,
 						ProjectedPercentage: v.PassPercentageWithoutInfrastructureFailures,
 						Runs:                v.Successes + v.Failures,
@@ -326,11 +325,21 @@ func PrintJSONReport(w http.ResponseWriter, req *http.Request, releaseReports ma
 		prevReport := reports[1]
 		reportObjects[report.Release] = formatJSONReport(report, prevReport, numDays, jobTestCount)
 	}
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "    ")
-	err := enc.Encode(reportObjects)
-	if err != nil {
-		klog.Errorf("unable to render json %v", err)
+
+	RespondWithJSON(http.StatusOK, w, reportObjects)
+}
+
+func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(statusCode)
+
+	if jsonString, ok := data.(string); ok {
+		fmt.Fprint(w, jsonString)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		fmt.Fprintf(w, `{message: "could not marshal results: %s"}`, err)
 	}
 }

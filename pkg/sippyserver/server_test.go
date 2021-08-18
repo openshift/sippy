@@ -72,14 +72,44 @@ func TestSippyserverSmokeTest(t *testing.T) {
 				{
 					args: emptyURLArgs,
 				},
+			},
+			http.StatusNotFound: testCases{
 				{
 					args: unknownReleaseURLArgs,
 				},
+			},
+		},
+		"/api/jobs/details": byStatus{
+			http.StatusOK: testCases{
 				{
-					args: map[string]string{
-						"release":   release,
-						"jobFilter": malformedJobFilterRegex,
-					},
+					args: knownReleaseURLArgs,
+				},
+			},
+			http.StatusBadRequest: testCases{
+				{
+					args: emptyURLArgs,
+				},
+			},
+			http.StatusNotFound: testCases{
+				{
+					args: unknownReleaseURLArgs,
+				},
+			},
+		},
+		"/api/tests": byStatus{
+			http.StatusOK: testCases{
+				{
+					args: knownReleaseURLArgs,
+				},
+			},
+			http.StatusBadRequest: testCases{
+				{
+					args: emptyURLArgs,
+				},
+			},
+			http.StatusNotFound: testCases{
+				{
+					args: unknownReleaseURLArgs,
 				},
 			},
 		},
@@ -424,6 +454,8 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 		testgridconversion.NewOpenshiftSyntheticTestManager(),
 		testidentification.NewOpenshiftVariantManager(),
 		buganalysis.NewNoOpBugCache(),
+		nil,
+		nil,
 	)
 
 	// Refresh data and generate reports.

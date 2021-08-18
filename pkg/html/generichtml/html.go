@@ -29,6 +29,9 @@ var (
 
 <body>
 <div class="container">
+<div align="right">
+	<p><a href="/sippy-ng">Try out the new UI for Sippy</a></p>
+</div>
 `
 
 	HTMLPageEnd = `

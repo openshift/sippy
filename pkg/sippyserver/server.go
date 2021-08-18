@@ -1,17 +1,19 @@
 package sippyserver
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
-	"github.com/openshift/sippy/pkg/html/generichtml"
-
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
@@ -27,6 +29,8 @@ func NewServer(
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
+	sippyNG *rice.Box,
+	static *rice.Box,
 ) *Server {
 
 	server := &Server{
@@ -42,6 +46,8 @@ func NewServer(
 			DisplayDataConfig:           displayDataOptions,
 		},
 		currTestReports: map[string]StandardReport{},
+		sippyNG:         sippyNG,
+		static:          static,
 	}
 
 	return server
@@ -56,6 +62,8 @@ type Server struct {
 	bugCache                  buganalysis.BugCache
 	testReportGeneratorConfig TestReportGeneratorConfig
 	currTestReports           map[string]StandardReport
+	sippyNG                   *rice.Box
+	static                    *rice.Box
 	httpServer                *http.Server
 }
 
@@ -154,7 +162,7 @@ func (s *Server) reportNames() []string {
 
 func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 	releaseReports := make(map[string][]sippyprocessingv1.TestReport)
 	if reportName == "all" {
 		// return all available json reports
@@ -170,16 +178,11 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 		api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
 		return
 	} else if _, ok := s.currTestReports[reportName]; !ok {
-		// return a 404 error along with the list of available openshiftReleases in the detail section
-		errMsg := map[string]interface{}{
+		api.RespondWithJSON(404, w, map[string]interface{}{
 			"code":   "404",
 			"detail": fmt.Sprintf("No valid reportName specified, valid reportNames are: %v", s.reportNames()),
-		}
-		errMsgBytes, _ := json.Marshal(errMsg)
-		w.WriteHeader(http.StatusNotFound)
-		if _, err := w.Write(errMsgBytes); err != nil {
-			klog.Errorf(err.Error())
-		}
+		})
+
 		return
 	}
 	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
@@ -285,50 +288,69 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func (s *Server) jobs(w http.ResponseWriter, req *http.Request) {
-	reportName := req.URL.Query().Get("release")
-	jobFilterString := req.URL.Query().Get("jobFilter")
+func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		currTests := s.currTestReports[release].CurrentPeriodReport.ByTest
+		twoDay := s.currTestReports[release].CurrentTwoDayReport.ByTest
+		prevTests := s.currTestReports[release].PreviousWeekReport.ByTest
 
-	var jobFilter *regexp.Regexp
-	if len(jobFilterString) > 0 {
-		var err error
-		jobFilter, err = regexp.Compile(jobFilterString)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("jobFilter: %s", err), http.StatusBadRequest)
-			return
+		api.PrintTestsJSON(release, w, req, currTests, twoDay, prevTests)
+	}
+}
+
+func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		currTests := s.currTestReports[release].CurrentPeriodReport
+		prevTests := s.currTestReports[release].PreviousWeekReport
+		api.PrintTestsDetailsJSON(w, req, currTests, prevTests)
+	}
+}
+
+func (s *Server) jsonReleasesReport(w http.ResponseWriter, req *http.Request) {
+	type jsonResponse struct {
+		Releases    []string  `json:"releases"`
+		LastUpdated time.Time `json:"last_updated"`
+	}
+
+	response := jsonResponse{}
+	if len(s.dashboardCoordinates) > 0 {
+		firstReport := s.dashboardCoordinates[0].ReportName
+		if report, ok := s.currTestReports[firstReport]; ok {
+			response.LastUpdated = report.CurrentPeriodReport.Timestamp
 		}
 	}
 
-	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
-	if !found {
-		http.Error(w, fmt.Sprintf("release %s not found", reportName), http.StatusBadRequest)
-		return
+	for _, release := range s.dashboardCoordinates {
+		response.Releases = append(response.Releases, release.ReportName)
 	}
 
-	testGridJobDetails, lastUpdateTime := s.testReportGeneratorConfig.TestGridLoadingConfig.loadWithFilter(
-		dashboardCoordinates.TestGridDashboardNames, jobFilter)
-
-	api.PrintJobsReport(w, s.syntheticTestManager, testGridJobDetails, lastUpdateTime)
+	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
-func (s *Server) jobsReport(w http.ResponseWriter, req *http.Request) {
-	reportName := req.URL.Query().Get("release")
-	releasehtml.PrintJobsReport(w, reportName)
+func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		curr := s.currTestReports[release].CurrentPeriodReport
+		prev := s.currTestReports[release].PreviousWeekReport
+		api.PrintOverallReleaseHealth(w, curr, prev)
+	}
 }
 
-func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) (*sippyprocessingv1.VariantResults, *sippyprocessingv1.VariantResults) {
 	release := req.URL.Query().Get("release")
 	variant := req.URL.Query().Get("variant")
 	reports := s.currTestReports
 
 	if variant == "" || release == "" {
 		generichtml.PrintStatusMessage(w, http.StatusBadRequest, "Please specify a variant and release.")
-		return
+		return nil, nil
 	}
 
 	if _, ok := reports[release]; !ok {
 		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Release %q not found.", release))
-		return
+		return nil, nil
 	}
 
 	var currentWeek *sippyprocessingv1.VariantResults
@@ -349,31 +371,111 @@ func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) {
 
 	if currentWeek == nil {
 		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Variant %q not found.", variant))
-		return
+		return nil, nil
 	}
 
-	timestamp := reports[release].CurrentPeriodReport.Timestamp
+	return currentWeek, previousWeek
+}
 
-	releasehtml.PrintVariantsReport(w, release, variant, currentWeek, previousWeek, timestamp)
+func (s *Server) htmlVariantsReport(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	variant := req.URL.Query().Get("variant")
+
+	current, previous := s.variantsReport(w, req)
+	if current == nil {
+		return
+	}
+	timestamp := s.currTestReports[release].CurrentPeriodReport.Timestamp
+	releasehtml.PrintVariantsReport(w, release, variant, current, previous, timestamp)
+}
+
+func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) string {
+	release := req.URL.Query().Get("release")
+	reports := s.currTestReports
+
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    "400",
+			"message": "release is required",
+		})
+		return release
+	}
+
+	if _, ok := reports[release]; !ok {
+		api.RespondWithJSON(http.StatusNotFound, w, map[string]interface{}{
+			"code":    "404",
+			"message": fmt.Sprintf("release %q not found", release),
+		})
+		return ""
+	}
+
+	return release
+}
+
+func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request) {
+	reports := s.currTestReports
+
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintJobDetailsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
+	}
+}
+
+func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
+	reports := s.currTestReports
+
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].CurrentTwoDayReport.ByJob, reports[release].PreviousWeekReport.ByJob, s.variantManager)
+	}
 }
 
 func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
 	serveMux := http.NewServeMux()
 
+	// Handle serving React version of frontend with support for browser router, i.e. anything not found
+	// goes to index.html
+	serveMux.HandleFunc("/sippy-ng/", func(w http.ResponseWriter, r *http.Request) {
+		fs := s.sippyNG.HTTPBox()
+		if r.URL.Path != "/sippy-ng/" {
+			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
+			if _, err := fs.Open(fullPath); err != nil {
+				if !os.IsNotExist(err) {
+					panic(err)
+				}
+				r.URL.Path = "/sippy-ng/"
+			}
+		}
+
+		http.StripPrefix("/sippy-ng/", http.FileServer(fs)).ServeHTTP(w, r)
+	})
+
+	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(s.static.HTTPBox())))
+
 	serveMux.HandleFunc("/", s.printHTMLReport)
 	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
 	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+
 	serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
 	serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
-	serveMux.HandleFunc("/json", s.printJSONReport)
 	serveMux.HandleFunc("/detailed", s.detailed)
 	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/canary", s.printCanaryReport)
-	serveMux.HandleFunc("/api/jobs", s.jobs)
-	serveMux.HandleFunc("/jobs", s.jobsReport)
-	serveMux.HandleFunc("/variants", s.variantsReport)
-	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+
+	// Old API
+	serveMux.HandleFunc("/json", s.printJSONReport)
+
+	// New API's
+	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
+	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
+	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
+	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
+	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
+	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

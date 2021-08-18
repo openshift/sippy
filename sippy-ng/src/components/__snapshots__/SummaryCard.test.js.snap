@@ -1,0 +1,54 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SummaryCard shows overview 1`] = `
+<div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-2 makeStyles-summaryCard-3 MuiPaper-elevation5 MuiPaper-rounded"
+     style="background-color: rgb(240, 143, 99);"
+     title
+>
+  <div class="MuiCardContent-root makeStyles-cardContent-1">
+    <h6 class="MuiTypography-root MuiTypography-h6">
+    </h6>
+    <svg viewbox="0 0 30 12"
+         width="100%"
+         height="100%"
+    >
+      <path d="M 19.657519037455028 6.428583650351056 A 4.4 4.4 0 0 1 13.191844161197109 10.313553058930335"
+            fill="none"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
+            stroke="#FF8800"
+      >
+        <title>
+          Flakes
+        </title>
+      </path>
+      <path d="M 12.300076152421807 9.819237979870174 A 4.4 4.4 0 0 1 12.1684313897957 2.2773145801303696"
+            fill="none"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
+            stroke="#4A934A"
+      >
+        <title>
+          Success
+        </title>
+      </path>
+      <path d="M 13.042404810123163 1.7521783697787745 A 4.4 4.4 0 0 1 19.63972444900719 5.409132360939286"
+            fill="none"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
+            stroke="darkred"
+      >
+        <title>
+          Fail
+        </title>
+      </path>
+    </svg>
+  </div>
+</div>
+`;

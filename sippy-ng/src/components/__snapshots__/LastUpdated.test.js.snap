@@ -1,0 +1,19 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`LastUpdated shows hours when > an hour 1`] = `
+"
+Last updated 3 hours ago
+"
+`;
+
+exports[`LastUpdated shows minutes when < an hour 1`] = `
+"
+Last updated 10 minutes ago
+"
+`;
+
+exports[`LastUpdated shows unknown when last update is unknown 1`] = `
+"
+Last update unknown
+"
+`;

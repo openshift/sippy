@@ -31,7 +31,7 @@ type ProcessingOptions struct {
 	NumDays              int
 }
 
-// returns the raw data and a list of warnings encountered processing the data.
+// ProcessTestGridDataIntoRawJobResults returns the raw data and a list of warnings encountered processing the data.
 func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
@@ -138,6 +138,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr = testgridanalysisapi.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
+						Timestamp: job.Timestamps[i],
 					}
 				}
 				switch {
@@ -176,6 +177,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr = testgridanalysisapi.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
+						Timestamp: job.Timestamps[i],
 					}
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
@@ -225,7 +227,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
 	}
 
-	addTestResult(jobResult.TestResults, testName, passed, failed, flaked)
+	addTestResult(jobResult.TestResults, &job, testName, passed, failed, flaked)
 
 	return
 }
@@ -255,7 +257,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	rawJobResults.JobResults[job.Name] = jobResult
 }
 
-func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, testName string, passed, failed, flaked int) {
+func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, job *testgridv1.JobDetails, testName string, passed, failed, flaked int) {
 	result, ok := testResults[testName]
 	if !ok {
 		result = testgridanalysisapi.RawTestResult{}
@@ -264,6 +266,10 @@ func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, tes
 	result.Successes += passed
 	result.Failures += failed
 	result.Flakes += flaked
+
+	if job != nil {
+		result.Timestamps = append(result.Timestamps, job.Timestamps...)
+	}
 
 	testResults[testName] = result
 }

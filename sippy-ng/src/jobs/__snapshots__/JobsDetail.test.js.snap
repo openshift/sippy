@@ -1,0 +1,420 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`JobsDetail should match snapshot 1`] = `
+"
+<div class=\\"MuiPaper-root MuiAlert-root MuiAlert-standardWarning MuiPaper-elevation0\\"
+     role=\\"alert\\"
+>
+  <div class=\\"MuiAlert-icon\\">
+    <svg class=\\"MuiSvgIcon-root MuiSvgIcon-fontSizeInherit\\"
+         focusable=\\"false\\"
+         viewbox=\\"0 0 24 24\\"
+         aria-hidden=\\"true\\"
+    >
+      <path d=\\"M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z\\">
+      </path>
+    </svg>
+  </div>
+  <div class=\\"MuiAlert-message\\">
+    Enter a search query below
+  </div>
+</div>
+<br>
+<div class=\\"MuiGrid-root MuiGrid-container\\"
+     style=\\"display: flex;\\"
+>
+  <div class=\\"MuiFormControl-root MuiTextField-root\\"
+       style=\\"width: 50%;\\"
+  >
+    <label class=\\"MuiFormLabel-root MuiFormLabel-colorSecondary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-outlined MuiFormLabel-filled\\"
+           data-shrink=\\"true\\"
+           for=\\"outlined-secondary\\"
+           id=\\"outlined-secondary-label\\"
+    >
+      Filter
+    </label>
+    <div class=\\"MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorSecondary MuiOutlinedInput-colorSecondary MuiInputBase-formControl\\">
+      <input aria-invalid=\\"false\\"
+             id=\\"outlined-secondary\\"
+             type=\\"text\\"
+             class=\\"MuiInputBase-input MuiOutlinedInput-input\\"
+             value=\\"4.8-e2e-gcp-upgrade\\"
+      >
+      <fieldset aria-hidden=\\"true\\"
+                class=\\"PrivateNotchedOutline-root-2 MuiOutlinedInput-notchedOutline\\"
+      >
+        <legend class=\\"PrivateNotchedOutline-legendLabelled-4 PrivateNotchedOutline-legendNotched-5\\">
+          <span>
+            Filter
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+  </div>
+  &nbsp;&nbsp;
+  <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary\\"
+          tabindex=\\"0\\"
+          type=\\"button\\"
+  >
+    <span class=\\"MuiButton-label\\">
+      Search
+    </span>
+    <span class=\\"MuiTouchRipple-root\\">
+    </span>
+  </button>
+</div>
+<br>
+<br>
+<div>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-S\\">
+        S
+      </span>
+    </span>
+    success
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-F\\">
+        F
+      </span>
+    </span>
+    failure (e2e)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-f\\">
+        f
+      </span>
+    </span>
+    failure (other tests)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-U\\">
+        U
+      </span>
+    </span>
+    upgrade failure
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-I\\">
+        I
+      </span>
+    </span>
+    setup failure (installer)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-N\\">
+        N
+      </span>
+    </span>
+    setup failure (infra)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-n\\">
+        n
+      </span>
+    </span>
+    failure before setup (infra)
+  </span>
+  <span class=\\"legend-item\\">
+    <span class=\\"results results-demo\\">
+      <span class=\\"result result-R\\">
+        R
+      </span>
+    </span>
+    running
+  </span>
+</div>
+<div class=\\"view\\">
+  <div class=\\"MuiTableContainer-root wrapper\\">
+    <table class=\\"MuiTable-root dashboard-table\\"
+           aria-label=\\"simple table\\"
+    >
+      <thead class=\\"MuiTableHead-root\\">
+        <tr class=\\"MuiTableRow-root MuiTableRow-head\\">
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-name col-first\\"
+              scope=\\"col\\"
+          >
+            Name
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/28
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/27
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/26
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/25
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/24
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/23
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/22
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/21
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/20
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/19
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/18
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/17
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/16
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/15
+          </th>
+          <th class=\\"MuiTableCell-root MuiTableCell-head col-day\\"
+              scope=\\"col\\"
+          >
+            7/14
+          </th>
+        </tr>
+      </thead>
+      <tbody class=\\"MuiTableBody-root\\">
+        <tr class=\\"MuiTableRow-root row-item\\">
+          <th class=\\"MuiTableCell-root MuiTableCell-body col-name col-first\\"
+              role=\\"cell\\"
+              scope=\\"row\\"
+          >
+            <a href=\\"/jobs/4.8?job=periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\">
+              periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
+            </a>
+          </th>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-N\\">
+              N
+            </a>
+            <a class=\\"result result-N\\">
+              N
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-N\\">
+              N
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-n\\">
+              n
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+            <a class=\\"result result-S\\">
+              S
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-I\\">
+              I
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-I\\">
+              I
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+          <td class=\\"MuiTableCell-root MuiTableCell-body col-day\\"
+              style=\\"vertical-align: top;\\"
+          >
+            <br>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+            <a class=\\"result result-F\\">
+              F
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+)
+"
+`;

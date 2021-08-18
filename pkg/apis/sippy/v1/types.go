@@ -1,6 +1,8 @@
 package v1
 
-import bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+import (
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+)
 
 // PassRate describes statistics on a pass rate
 type PassRate struct {

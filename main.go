@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	rice "github.com/GeertJohan/go.rice"
+
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
@@ -186,6 +188,18 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) runServerMode() error {
+	// This embeds the contents of the two static directories directly into the binary. It
+	// needs to be in main.go, so rice can find it when injecting the contents.
+	sippyNG, err := rice.FindBox("./sippy-ng/build")
+	if err != nil {
+		panic(err)
+	}
+
+	static, err := rice.FindBox("./static")
+	if err != nil {
+		panic(err)
+	}
+
 	server := sippyserver.NewServer(
 		o.toTestGridLoadingConfig(),
 		o.toRawJobResultsAnalysisConfig(),
@@ -195,6 +209,8 @@ func (o *Options) runServerMode() error {
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
 		o.getBugCache(),
+		sippyNG,
+		static,
 	)
 	server.RefreshData() // force a data refresh once before serving.
 	server.Serve()

@@ -70,6 +70,26 @@ func convertRawDataToByVariant(
 	return variantResults
 }
 
+func convertVariantResultsToHealth(variants []sippyprocessingv1.VariantResults) sippyprocessingv1.VariantHealth {
+	result := sippyprocessingv1.VariantHealth{}
+
+	for _, variant := range variants {
+		if variant.VariantName == "never-stable" || (variant.JobRunFailures+variant.JobRunSuccesses == 0) {
+			continue
+		}
+
+		if variant.JobRunPassPercentage >= 80 {
+			result.Success++
+		} else if variant.JobRunPassPercentage >= 60 {
+			result.Unstable++
+		} else {
+			result.Failed++
+		}
+	}
+
+	return result
+}
+
 // variantByJobPassPercentage sorts from lowest to highest pass percentage
 type variantByJobPassPercentage []sippyprocessingv1.VariantResults
 

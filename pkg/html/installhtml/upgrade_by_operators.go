@@ -14,7 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func upgradeOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
+func UpgradeOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.TestReport) string {
 	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		isUpgradeRelatedTest,
@@ -46,6 +46,10 @@ func upgradeOperatorTests(curr, prev sippyprocessingv1.TestReport) string {
 	}
 
 	columnNames := append([]string{"All"}, variantColumns...)
+
+	if format == "json" {
+		return dataForTestsByVariant.getTableJSON("Upgrade Rates by Operator", "Upgrade Rates by Operator by Variant", columnNames, getOperatorFromTest)
+	}
 
 	return dataForTestsByVariant.getTableHTML("Upgrade Rates by Operator", "UpgradeRatesByOperator", "Upgrade Rates by Operator by Variant", columnNames, getOperatorFromTest)
 }

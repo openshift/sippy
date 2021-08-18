@@ -3,6 +3,8 @@ package testreportconversion
 import (
 	"sort"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
@@ -61,14 +63,16 @@ func filterPertinentInfrequentJobResults(
 
 // convertRawJobResultsToProcessedJobResults performs no filtering
 func convertRawJobResultsToProcessedJobResults(
-	rawJobResults map[string]testgridanalysisapi.RawJobResult,
+	rawData testgridanalysisapi.RawData,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
+	manager testidentification.VariantManager,
 ) []sippyprocessingv1.JobResult {
 	jobs := []sippyprocessingv1.JobResult{}
+	rawJobResults := rawData.JobResults
 
 	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease)
+		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease, manager)
 		jobs = append(jobs, job)
 	}
 
@@ -81,10 +85,11 @@ func convertRawJobResultToProcessedJobResult(
 	rawJobResult testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
+	manager testidentification.VariantManager,
 ) sippyprocessingv1.JobResult {
-
 	job := sippyprocessingv1.JobResult{
 		Name:              rawJobResult.JobName,
+		Variants:          manager.IdentifyVariants(rawJobResult.JobName),
 		TestGridURL:       rawJobResult.TestGridJobURL,
 		TestResults:       convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
 		BugList:           bugCache.ListBugs(bugzillaRelease, rawJobResult.JobName, ""),
@@ -92,6 +97,8 @@ func convertRawJobResultToProcessedJobResult(
 	}
 
 	for _, rawJRR := range rawJobResult.JobRunResults {
+		job.AllRuns = append(job.AllRuns, convertRawToJobRunResult(rawJRR))
+
 		if rawJRR.Failed {
 			job.Failures++
 		} else if rawJRR.Succeeded {
@@ -108,7 +115,13 @@ func convertRawJobResultToProcessedJobResult(
 		if rawJRR.SetupStatus != testgridanalysisapi.Success && rawJRR.SetupStatus != testgridanalysisapi.Unknown {
 			job.InfrastructureFailures++
 		}
+
 	}
+
+	// Ensure jobs are ordered by timestamp
+	sort.Slice(job.AllRuns, func(i, j int) bool {
+		return job.AllRuns[i].Timestamp > job.AllRuns[j].Timestamp
+	})
 
 	job.PassPercentage = percent(job.Successes, job.Failures)
 	job.PassPercentageWithKnownFailures = percent(job.Successes+job.KnownFailures, job.Failures-job.KnownFailures)
@@ -124,6 +137,19 @@ func convertRawJobResultToProcessedJobResult(
 	return job
 }
 
+func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobRunResult {
+	return sippyprocessingv1.JobRunResult{
+		Job:             jrr.Job,
+		URL:             jrr.JobRunURL,
+		TestFailures:    jrr.TestFailures,
+		FailedTestNames: jrr.FailedTestNames,
+		Failed:          jrr.Failed,
+		Succeeded:       jrr.Succeeded,
+		Timestamp:       jrr.Timestamp,
+		OverallResult:   jrr.OverallResult,
+	}
+}
+
 func areAllFailuresKnown(
 	rawJRR testgridanalysisapi.RawJobRunResult,
 	allTestResults []sippyprocessingv1.TestResult,
@@ -136,22 +162,6 @@ func areAllFailuresKnown(
 			if testResult.Name == testName && len(testResult.BugList) == 0 {
 				return false
 			}
-		}
-	}
-	return true
-}
-
-func areAllFailuresKnownFromProcessedResults(
-	rawJRR testgridanalysisapi.RawJobRunResult,
-	allTestResultsByName testResultsByName,
-) bool {
-	// check if all the test failures in the run can be attributed to
-	// known bugs.  If not, the job run was an "unknown failure" that we cannot pretend
-	// would have passed if all our bugs were fixed.
-	for _, testName := range rawJRR.FailedTestNames {
-		isKnownFailure := len(allTestResultsByName[testName].TestResultAcrossAllJobs.BugList) > 0
-		if !isKnownFailure {
-			return false
 		}
 	}
 	return true

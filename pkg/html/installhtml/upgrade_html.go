@@ -45,7 +45,7 @@ func PrintUpgradeHTMLReport(w http.ResponseWriter, req *http.Request, report, pr
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)
-	fmt.Fprint(w, upgradeOperatorTests(report, prevReport))
+	fmt.Fprint(w, UpgradeOperatorTests(HTML, report, prevReport))
 	fmt.Fprintln(w)
 
 	fmt.Fprintln(w)

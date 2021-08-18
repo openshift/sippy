@@ -2,88 +2,183 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
+	"regexp"
+	gosort "sort"
+	"strconv"
+	"strings"
 
-	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
-	"k8s.io/klog"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
+	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/util"
 )
 
-const failure string = "Failure"
+type jobsAPIResult []apitype.Job
 
-func jobRunStatus(result testgridanalysisapi.RawJobRunResult) string {
-	if result.Succeeded {
-		return "S" // Success
+func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+
+	if sortField == "" {
+		sortField = "net_improvement"
 	}
 
-	if !result.Failed {
-		return "R" // Running
+	if sort == "" {
+		sort = apitype.SortAscending
 	}
 
-	if result.SetupStatus == failure {
-		if len(result.FinalOperatorStates) == 0 {
-			return "N" // iNfrastructure failure
+	gosort.Slice(jobs, func(i, j int) bool {
+		if sort == apitype.SortAscending {
+			return compare(jobs[i], jobs[j], sortField)
 		}
-		return "I" // Install failure
-	}
-	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
-		return "U" // Upgrade failure
-	}
-	if result.OpenShiftTestsStatus == failure {
-		return "F" // Failure
-	}
-	if result.SetupStatus == "" {
-		return "n" // no setup results
-	}
-	return "f" // unknown failure
+		return compare(jobs[j], jobs[i], sortField)
+	})
+
+	return jobs
 }
 
-func PrintJobsReport(w http.ResponseWriter, syntheticTestManager testgridconversion.SyntheticTestManager, testGridJobDetails []testgridv1.JobDetails, lastUpdateTime time.Time) {
-	rawJobResultOptions := testgridconversion.ProcessingOptions{
-		SyntheticTestManager: syntheticTestManager,
-		StartDay:             0,
-		NumDays:              1000,
-	}
-	rawJobResults, _ := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
-
-	type jsonJob struct {
-		Name        string   `json:"name"`
-		Timestamps  []int    `json:"timestamps"`
-		Results     []string `json:"results"`
-		BuildIDs    []string `json:"build_ids"`
-		TestGridURL string   `json:"testgrid_url"`
-	}
-	type jsonResponse struct {
-		Jobs           []jsonJob `json:"jobs"`
-		LastUpdateTime time.Time `json:"last_update_time"`
+func (jobs jobsAPIResult) limit(req *http.Request) jobsAPIResult {
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	if limit > 0 && len(jobs) >= limit {
+		return jobs[:limit]
 	}
 
-	response := jsonResponse{
-		LastUpdateTime: lastUpdateTime,
-		Jobs:           []jsonJob{},
-	}
-	for _, job := range testGridJobDetails {
-		results := rawJobResults.JobResults[job.Name]
-		var statuses []string
-		for i := range job.Timestamps {
-			joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
-			statuses = append(statuses, jobRunStatus(results.JobRunResults[joburl]))
+	return jobs
+}
+
+// PrintJobsReport renders a filtered summary of matching jobs.
+func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.JobResult, manager testidentification.VariantManager) {
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
 		}
-		response.Jobs = append(response.Jobs, jsonJob{
-			Name:        job.Name,
-			Timestamps:  job.Timestamps,
-			Results:     statuses,
-			BuildIDs:    job.ChangeLists,
-			TestGridURL: job.TestGridURL,
-		})
 	}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		e := fmt.Errorf("could not print jobs result: %s", err)
-		klog.Errorf(e.Error())
-		http.Error(w, e.Error(), http.StatusInternalServerError)
+	jobs := jobsAPIResult{}
+	briefName := regexp.MustCompile("periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-")
+
+	// If requesting a two day report, we make the comparison between the last
+	// period (typically 7 days) and the last two days.
+	var current, previous []v1sippyprocessing.JobResult
+	switch req.URL.Query().Get("period") {
+	case "twoDay":
+		current = twoDayPeriod
+		previous = currentPeriod
+	default:
+		current = currentPeriod
+		previous = previousPeriod
 	}
+
+	for idx, jobResult := range current {
+		job := apitype.Job{
+			ID:                             idx,
+			Name:                           jobResult.Name,
+			Variants:                       manager.IdentifyVariants(jobResult.Name),
+			BriefName:                      briefName.ReplaceAllString(jobResult.Name, ""),
+			CurrentPassPercentage:          jobResult.PassPercentage,
+			CurrentProjectedPassPercentage: jobResult.PassPercentageWithoutInfrastructureFailures,
+			CurrentRuns:                    jobResult.Failures + jobResult.Successes,
+		}
+
+		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
+		if previous != nil {
+			job.PreviousPassPercentage = prevResult.PassPercentage
+			job.PreviousProjectedPassPercentage = prevResult.PassPercentageWithoutInfrastructureFailures
+			job.PreviousRuns = prevResult.Failures + prevResult.Successes
+			job.NetImprovement = jobResult.PassPercentage - prevResult.PassPercentage
+		}
+
+		job.Bugs = jobResult.BugList
+		job.AssociatedBugs = jobResult.AssociatedBugList
+		job.TestGridURL = jobResult.TestGridURL
+
+		if strings.Contains(job.Name, "-upgrade") {
+			job.Tags = []string{"upgrade"}
+		}
+
+		if filter != nil {
+			include, err := filter.Filter(job)
+			if err != nil {
+				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
+				return
+			}
+
+			if !include {
+				continue
+			}
+		}
+
+		jobs = append(jobs, job)
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobs.
+		sort(req).
+		limit(req))
+}
+
+type jobDetail struct {
+	Name    string                           `json:"name"`
+	Results []v1sippyprocessing.JobRunResult `json:"results"`
+}
+
+type jobDetailAPIResult struct {
+	Jobs  []jobDetail `json:"jobs"`
+	Start int         `json:"start"`
+	End   int         `json:"end"`
+}
+
+func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	if limit > 0 && len(jobs.Jobs) >= limit {
+		jobs.Jobs = jobs.Jobs[:limit]
+	}
+
+	return jobs
+}
+
+// PrintJobDetailsReport renders the detailed list of runs for matching jobs.
+func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, previous []v1sippyprocessing.JobResult) {
+	var min, max int
+	jobs := make([]jobDetail, 0)
+	jobName := req.URL.Query().Get("job")
+
+	for _, jobResult := range current {
+		if jobName != "" && !strings.Contains(jobResult.Name, jobName) {
+			continue
+		}
+
+		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
+		jobRuns := append(jobResult.AllRuns, prevResult.AllRuns...)
+
+		for _, result := range jobRuns {
+			if result.Timestamp < min || min == 0 {
+				min = result.Timestamp
+			}
+
+			if result.Timestamp > max || max == 0 {
+				max = result.Timestamp
+			}
+		}
+
+		jobDetail := jobDetail{
+			Name:    jobResult.Name,
+			Results: jobRuns,
+		}
+
+		jobs = append(jobs, jobDetail)
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobDetailAPIResult{
+		Jobs:  jobs,
+		Start: min,
+		End:   max,
+	}.limit(req))
 }

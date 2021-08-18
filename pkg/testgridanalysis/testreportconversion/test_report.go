@@ -1,6 +1,7 @@
 package testreportconversion
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -28,15 +29,16 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData.JobResults, bugCache, bugzillaRelease)
+	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
 	infrequentJobsTestResultFilterFn := StandardTestResultFilter(2, successThreshold)
 
 	byVariant := convertRawDataToByVariant(allJobResults, standardTestResultFilterFn, variantManager)
+	variantHealth := convertVariantResultsToHealth(byVariant)
 
-	filteredFailureGroups := filterFailureGroups(rawData.JobResults, allTestResultsByName, failureClusterThreshold)
+	filteredFailureGroups := filterFailureGroups(rawData.JobResults, failureClusterThreshold)
 	frequentJobResults := filterPertinentFrequentJobResults(allJobResults, numDays, standardTestResultFilterFn)
 	infrequentJobResults := filterPertinentInfrequentJobResults(allJobResults, numDays, infrequentJobsTestResultFilterFn)
 
@@ -53,6 +55,9 @@ func PrepareTestReport(
 	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
+	promotionWarnings := generatePromotionWarnings(byVariant)
+	analysisWarnings = append(analysisWarnings, promotionWarnings...)
+
 	testReport := sippyprocessingv1.TestReport{
 		Release:   reportName,
 		Timestamp: reportTimestamp,
@@ -61,10 +66,12 @@ func PrepareTestReport(
 			Install:             install,
 			Upgrade:             upgrade,
 			FinalOperatorHealth: finalOperatorHealth,
+			Variant:             variantHealth,
 		},
 
-		ByTest:        allTestResultsByName.toOrderedList(),
-		ByVariant:     byVariant,
+		ByTest:    allTestResultsByName.toOrderedList(),
+		ByVariant: byVariant,
+
 		FailureGroups: filteredFailureGroups,
 
 		ByJob:                allJobResults,
@@ -84,12 +91,51 @@ func PrepareTestReport(
 	return testReport
 }
 
+func generatePromotionWarnings(variants []sippyprocessingv1.VariantResults) []string {
+	warnings := make([]string, 0)
+	millis12hoursago := time.Now().UTC().Add(-12*time.Hour).Unix() * 1000
+
+	for _, variant := range variants {
+		if variant.VariantName == "promote" {
+			for _, jr := range variant.JobResults {
+				// Check if it's been more than 12 hours since any promotion has run. AllRuns is sorted with most
+				// recent first, so all we need to do is look at AllRuns[0]
+				if len(jr.AllRuns) > 0 && int64(jr.AllRuns[0].Timestamp) < millis12hoursago {
+					warnings = append(warnings,
+						fmt.Sprintf(`The <a href="%s">last run of %s</a> was more than 12 hours ago.`, jr.AllRuns[0].URL, jr.Name))
+				}
+
+				// Check if the last 3 failed
+				if len(jr.AllRuns) < 3 {
+					continue
+				}
+
+				links := make([]string, 0)
+				lastThreeFailed := true
+				for _, run := range jr.AllRuns[0:3] {
+					if run.OverallResult != sippyprocessingv1.JobSucceeded {
+						links = append(links, run.URL)
+						continue
+					}
+					lastThreeFailed = false
+				}
+				if lastThreeFailed {
+					warnings = append(warnings,
+						fmt.Sprintf(`The last three (<a href="%s">1</a>, <a href="%s">2</a>, <a href="%s">3</a>) promotion jobs for %s failed!`, links[0], links[1], links[2], jr.Name))
+				}
+			}
+			break
+		}
+	}
+
+	return warnings
+}
+
 func filterFailureGroups(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
-	allTestResultsByName testResultsByName, // we look up individual tests to find their list of bugs
 	failureClusterThreshold int,
 ) []sippyprocessingv1.JobRunResult {
-	filteredJrr := []sippyprocessingv1.JobRunResult{}
+	var filteredJrr []sippyprocessingv1.JobRunResult
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr
@@ -100,18 +146,7 @@ func filterFailureGroups(
 				continue
 			}
 
-			allFailuresKnown := areAllFailuresKnownFromProcessedResults(rawJRR, allTestResultsByName)
-			hasUnknownFailure := rawJRR.Failed && !allFailuresKnown
-
-			filteredJrr = append(filteredJrr, sippyprocessingv1.JobRunResult{
-				Job:                jobResult.JobName,
-				URL:                rawJRR.JobRunURL,
-				TestFailures:       rawJRR.TestFailures,
-				FailedTestNames:    rawJRR.FailedTestNames,
-				Failed:             rawJRR.Failed,
-				HasUnknownFailures: hasUnknownFailure,
-				Succeeded:          rawJRR.Succeeded,
-			})
+			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR))
 		}
 	}
 
