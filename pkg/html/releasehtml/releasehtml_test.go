@@ -21,7 +21,6 @@ func TestPrintJobsReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestPrintVariantsReport(t *testing.T) {
@@ -37,7 +36,6 @@ func TestPrintVariantsReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestWriteLandingPage(t *testing.T) {
@@ -50,15 +48,16 @@ func TestWriteLandingPage(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, displayNames, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
 
 func TestPrintHTMLReport(t *testing.T) {
 	req := &http.Request{}
 
-	report := htmltesthelpers.GetTestReport("something", "a-test", "4.9")
-	twoDayReport := sippyprocessingv1.TestReport{}
-	prevReport := sippyprocessingv1.TestReport{}
+	jobName := "periodic-ci-openshift-release-master-nightly-4.9-e2e-aws"
+
+	report := htmltesthelpers.GetTestReport(jobName, "a-test", "4.9")
+	twoDayReport := report
+	prevReport := report
 	numDays := 7
 	jobTestCount := 10
 	allReportNames := []string{release}
@@ -66,6 +65,14 @@ func TestPrintHTMLReport(t *testing.T) {
 	expectedContents := []string{
 		release,
 		"StepMetrics",
+		"All Multistage Jobs",
+		"<td>e2e-aws",
+		"<td>e2e-gcp",
+		"Step Metrics For All",
+		"<td>aws-specific",
+		"<td>gcp-specific",
+		"<td>openshift-e2e-test",
+		"<td>ipi-install",
 	}
 
 	testFunc := func(r *httptest.ResponseRecorder) {
@@ -73,5 +80,4 @@ func TestPrintHTMLReport(t *testing.T) {
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-	htmltesthelpers.WriteHTMLToFile(t.Name()+".html", testFunc)
 }
