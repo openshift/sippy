@@ -6,74 +6,124 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/stepmetrics"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+type tableRow struct {
+	name            string
+	trend           stepmetrics.Trend
+	sippyURL        *SippyURL
+	ciSearchURL     *CISearchURL
+	stepRegistryURL *StepRegistryURL
+}
+
+func (t tableRow) toHTMLTableRow() generichtml.HTMLTableRow {
+	row := generichtml.NewHTMLTableRow(map[string]string{})
+
+	nameItems := []generichtml.HTMLItem{
+		generichtml.NewHTMLTextElement(t.name),
+	}
+
+	if t.sippyURL != nil {
+		nameItems = append(nameItems, getEnclosedHTMLLink("Detail", t.sippyURL))
+	}
+
+	if t.ciSearchURL != nil {
+		nameItems = append(nameItems, getEnclosedHTMLLink("CI Search", t.ciSearchURL))
+	}
+
+	if t.stepRegistryURL != nil {
+		nameItems = append(nameItems, getEnclosedHTMLLink("Step Registry", t.stepRegistryURL))
+	}
+
+	row.AddItems([]generichtml.HTMLItem{
+		generichtml.HTMLTableRowItem{
+			HTMLItems: generichtml.SpaceHTMLItems(nameItems),
+		},
+		generichtml.HTMLTableRowItem{
+			Text: getArrowForTrend(t.trend),
+		},
+		generichtml.HTMLTableRowItem{
+			Text: getStageResultDetail(t.trend.Current),
+		},
+		generichtml.HTMLTableRowItem{
+			Text: getStageResultDetail(t.trend.Previous),
+		},
+	})
+
+	return row
+}
+
 type StepMetricsHTMLTable struct {
-	api       StepMetricsAPI
 	release   string
 	timestamp time.Time
 }
 
-func NewStepMetricsHTMLTable(curr, prev sippyprocessingv1.TestReport) StepMetricsHTMLTable {
+func NewStepMetricsHTMLTable(release string, timestamp time.Time) StepMetricsHTMLTable {
 	return StepMetricsHTMLTable{
-		api:       NewStepMetricsAPI(curr, prev),
-		release:   curr.Release,
-		timestamp: curr.Timestamp,
+		release:   release,
+		timestamp: timestamp,
 	}
 }
 
-func (s StepMetricsHTMLTable) Render(w http.ResponseWriter, req Request) {
+func (s StepMetricsHTMLTable) RenderResponse(w http.ResponseWriter, resp stepmetrics.Response) error {
+	table, err := s.getTableForResponse(resp)
+	if err != nil {
+		return err
+	}
+
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	fmt.Fprintf(w, generichtml.HTMLPageStart, fmt.Sprintf("Release %s Step Metrics Dashboard", s.release))
-	fmt.Fprint(w, s.getTable(req).ToHTML())
+	fmt.Fprint(w, table.ToHTML())
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, s.timestamp.Format("Jan 2 15:04 2006 MST"))
+
+	return nil
 }
 
-func (s StepMetricsHTMLTable) getTable(req Request) generichtml.HTMLTable {
-	if req.MultistageJobName != "" {
-		return s.ByMultistageName(req)
+func (s StepMetricsHTMLTable) getTableForResponse(resp stepmetrics.Response) (generichtml.HTMLTable, error) {
+	if resp.Request.MultistageJobName != "" {
+		return s.Multistage(resp)
 	}
 
-	if req.StepName != "" {
-		return s.ByStageName(req)
+	if resp.Request.StepName != "" {
+		return s.Stage(resp)
 	}
 
-	return generichtml.NewHTMLTable(map[string]string{})
+	return generichtml.NewHTMLTable(map[string]string{}), fmt.Errorf("no table to render")
 }
 
-func (s StepMetricsHTMLTable) ByMultistageName(req Request) generichtml.HTMLTable {
-	if req.MultistageJobName == All {
-		return s.allMultistageJobNames()
+func (s StepMetricsHTMLTable) Multistage(resp stepmetrics.Response) (generichtml.HTMLTable, error) {
+	multistageJobName := resp.Request.MultistageJobName
+
+	if multistageJobName == stepmetrics.All {
+		return s.AllMultistages(resp), nil
 	}
 
-	return s.stepNamesForMultistageJobName(req)
-}
-
-func (s StepMetricsHTMLTable) stepNamesForMultistageJobName(req Request) generichtml.HTMLTable {
-	table := initializeTable(tableOpts{
-		title:       "All Step Names for Multistage Job " + req.MultistageJobName,
-		description: "All Step Names For Multistage Job " + req.MultistageJobName,
-		width:       "4",
-	})
-
-	table.AddHeaderRow(getStepNameHeaderRow())
-
-	multistageDetails := s.api.GetMultistage(req)
-
-	stepNames := sets.StringKeySet(multistageDetails.StepDetails).List()
-
-	for _, stepName := range stepNames {
-		stepDetail := multistageDetails.StepDetails[stepName]
-		table.AddRow(getRowForStepDetail(stepDetail, s.release))
+	if multistageJobName != "" {
+		return s.MultistageDetail(resp), nil
 	}
 
-	return table
+	return generichtml.NewHTMLTable(map[string]string{}), fmt.Errorf("multistage job name required")
 }
 
-func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
+func (s StepMetricsHTMLTable) Stage(resp stepmetrics.Response) (generichtml.HTMLTable, error) {
+	stepName := resp.Request.StepName
+
+	if stepName == stepmetrics.All {
+		return s.AllStages(resp), nil
+	}
+
+	if stepName != "" {
+		return s.StageDetail(resp), nil
+	}
+
+	return generichtml.NewHTMLTable(map[string]string{}), fmt.Errorf("step name required")
+}
+
+func (s StepMetricsHTMLTable) AllMultistages(resp stepmetrics.Response) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		width:       "4",
 		title:       "All Multistage Job Names",
@@ -82,47 +132,68 @@ func (s StepMetricsHTMLTable) allMultistageJobNames() generichtml.HTMLTable {
 
 	table.AddHeaderRow(getMultistageHeaderRow())
 
-	allMultistages := s.api.AllMultistages()
-	sortedMultistageNames := sets.StringKeySet(allMultistages).List()
+	sortedMultistageNames := sets.StringKeySet(resp.MultistageDetails).List()
 
 	for _, multistageName := range sortedMultistageNames {
-		multistageDetail := allMultistages[multistageName]
+		multistageDetail := resp.MultistageDetails[multistageName]
 
-		sippyURL := &SippyURL{
-			Release:           s.release,
-			MultistageJobName: multistageDetail.Name,
+		tr := tableRow{
+			name:  multistageDetail.Name,
+			trend: multistageDetail.Trend,
+			sippyURL: &SippyURL{
+				Release:           s.release,
+				MultistageJobName: multistageDetail.Name,
+			},
+			stepRegistryURL: &StepRegistryURL{
+				Search: multistageDetail.Name,
+			},
 		}
 
-		stepRegistryURL := StepRegistryURL{
-			Search: multistageDetail.Name,
-		}
-
-		row := generichtml.NewHTMLTableRow(map[string]string{})
-		row.AddItems([]generichtml.HTMLItem{
-			generichtml.HTMLTableRowItem{
-				HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-					generichtml.NewHTMLTextElement(multistageDetail.Name + " "),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
-				}),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: multistageDetail.getArrow(),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(multistageDetail.Current),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(multistageDetail.Previous),
-			},
-		})
-		table.AddRow(row)
+		table.AddRow(tr.toHTMLTableRow())
 	}
 
 	return table
 }
 
-func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
+func (s StepMetricsHTMLTable) MultistageDetail(resp stepmetrics.Response) generichtml.HTMLTable {
+	multistageJobName := resp.Request.MultistageJobName
+
+	table := initializeTable(tableOpts{
+		title:       "All Step Names for Multistage Job " + multistageJobName,
+		description: "All Step Names For Multistage Job " + multistageJobName,
+		width:       "4",
+	})
+
+	table.AddHeaderRow(getStepNameHeaderRow())
+
+	sortedStepNames := sets.StringKeySet(resp.MultistageDetails[multistageJobName].StepDetails).List()
+
+	for _, stepName := range sortedStepNames {
+		stepDetail := resp.MultistageDetails[multistageJobName].StepDetails[stepName]
+
+		tr := tableRow{
+			name:  stepName,
+			trend: stepDetail.Trend,
+			sippyURL: &SippyURL{
+				Release:  s.release,
+				StepName: stepDetail.Name,
+			},
+			ciSearchURL: &CISearchURL{
+				Release: s.release,
+				Search:  stepDetail.Current.OriginalTestName,
+			},
+			stepRegistryURL: &StepRegistryURL{
+				Reference: stepDetail.Name,
+			},
+		}
+
+		table.AddRow(tr.toHTMLTableRow())
+	}
+
+	return table
+}
+
+func (s StepMetricsHTMLTable) AllStages(resp stepmetrics.Response) generichtml.HTMLTable {
 	table := initializeTable(tableOpts{
 		title:       "Frequency of passes / failures for step registry items for all steps",
 		description: "Step Metrics For All Steps",
@@ -131,115 +202,71 @@ func (s StepMetricsHTMLTable) allStageNames() generichtml.HTMLTable {
 
 	table.AddHeaderRow(getStepNameHeaderRow())
 
-	allStages := s.api.AllStages()
-	sortedStageNames := sets.StringKeySet(allStages).List()
+	sortedStageNames := sets.StringKeySet(resp.StepDetails).List()
 
 	for _, stageName := range sortedStageNames {
-		stepDetails := allStages[stageName]
+		stepDetails := resp.StepDetails[stageName]
 
-		sippyURL := SippyURL{
-			Release:  s.release,
-			StepName: stepDetails.Name,
+		tr := tableRow{
+			name:  stageName,
+			trend: stepDetails.Trend,
+			sippyURL: &SippyURL{
+				Release:  s.release,
+				StepName: stepDetails.Name,
+			},
+			ciSearchURL: &CISearchURL{
+				Release: s.release,
+				Search:  stepDetails.Current.OriginalTestName,
+			},
+			stepRegistryURL: &StepRegistryURL{
+				Reference: stepDetails.Name,
+			},
 		}
 
-		ciSearchURL := CISearchURL{
-			Release: s.release,
-			Search:  stepDetails.Current.OriginalTestName,
-		}
-
-		stepRegistryURL := StepRegistryURL{
-			Reference: stepDetails.Name,
-		}
-
-		row := generichtml.NewHTMLTableRow(map[string]string{})
-		row.AddItems([]generichtml.HTMLItem{
-			generichtml.HTMLTableRowItem{
-				HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-					htmlTextItem(stepDetails.Name + " "),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("CI Search", ciSearchURL.URL())),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
-				}),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: stepDetails.getArrow(),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(stepDetails.Current),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(stepDetails.Previous),
-			},
-		})
-
-		table.AddRow(row)
+		table.AddRow(tr.toHTMLTableRow())
 	}
 
 	return table
 }
 
-func (s StepMetricsHTMLTable) forStageName(req Request) generichtml.HTMLTable {
+func (s StepMetricsHTMLTable) StageDetail(resp stepmetrics.Response) generichtml.HTMLTable {
+	stepName := resp.Request.StepName
+
 	table := initializeTable(tableOpts{
-		title:       "Frequency of passes / failures for " + req.StepName + " by multistage job name",
-		description: "Step Metrics For " + req.StepName + " By Multistage Job Name",
+		title:       "Frequency of passes / failures for " + stepName + " by multistage job name",
+		description: "Step Metrics For " + stepName + " By Multistage Job Name",
 		width:       "4",
 	})
 
 	table.AddHeaderRow(getMultistageHeaderRow())
 
-	stageResult := s.api.GetStage(req)
-	sortedMultistageNames := sets.StringKeySet(stageResult.ByMultistage).List()
+	sortedMultistageNames := sets.StringKeySet(resp.StepDetails[stepName].ByMultistage).List()
+
+	stageResult := resp.StepDetails[stepName]
 
 	for _, multistageName := range sortedMultistageNames {
 		multistageResult := stageResult.ByMultistage[multistageName]
 
-		sippyURL := &SippyURL{
-			Release:           s.release,
-			MultistageJobName: multistageName,
+		tr := tableRow{
+			name:  multistageName,
+			trend: multistageResult.Trend,
+			sippyURL: &SippyURL{
+				Release:           s.release,
+				MultistageJobName: multistageName,
+			},
+			stepRegistryURL: &StepRegistryURL{
+				Search: multistageName,
+			},
+			ciSearchURL: &CISearchURL{
+				Release: s.release,
+				Search:  stageResult.ByMultistage[multistageName].Current.OriginalTestName,
+			},
 		}
 
-		stepRegistryURL := StepRegistryURL{
-			Search: multistageName,
-		}
-
-		ciSearchURL := CISearchURL{
-			Release: s.api.current.Release,
-			Search:  stageResult.ByMultistage[multistageName].Current.OriginalTestName,
-		}
-
-		row := generichtml.NewHTMLTableRow(map[string]string{})
-		row.AddItems([]generichtml.HTMLItem{
-			generichtml.HTMLTableRowItem{
-				HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-					generichtml.NewHTMLTextElement(multistageName + " "),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("CI Search", ciSearchURL.URL())),
-					getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
-				}),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: multistageResult.getArrow(),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(multistageResult.Current),
-			},
-			generichtml.HTMLTableRowItem{
-				Text: getStageResultDetail(multistageResult.Previous),
-			},
-		})
-
-		table.AddRow(row)
+		table.AddRow(tr.toHTMLTableRow())
 	}
 
 	return table
-}
-
-func (s StepMetricsHTMLTable) ByStageName(req Request) generichtml.HTMLTable {
-	if req.StepName == All {
-		return s.allStageNames()
-	}
-
-	return s.forStageName(req)
 }
 
 func getStageResultDetail(stageResult sippyprocessingv1.StageResult) string {
@@ -250,14 +277,9 @@ func getStageResultDetail(stageResult sippyprocessingv1.StageResult) string {
 	return sb.String()
 }
 
-type htmlTextItem string
-
-func (h htmlTextItem) ToHTML() string {
-	return string(h)
-}
-
-func getEnclosedHTMLLink(link generichtml.HTMLItem) generichtml.HTMLItem {
-	return htmlTextItem("(" + link.ToHTML() + ")")
+func getEnclosedHTMLLink(name string, linkURL URLGenerator) generichtml.HTMLItem {
+	link := generichtml.NewHTMLLink(name, linkURL.URL())
+	return generichtml.NewHTMLTextElement("(" + link.ToHTML() + ")")
 }
 
 type tableOpts struct {
@@ -334,41 +356,6 @@ func initializeTable(opts tableOpts) generichtml.HTMLTable {
 	return table
 }
 
-func getRowForStepDetail(stepDetail StepDetail, release string) generichtml.HTMLTableRow {
-	sippyURL := SippyURL{
-		Release:  release,
-		StepName: stepDetail.Name,
-	}
-
-	ciSearchURL := CISearchURL{
-		Release: release,
-		Search:  stepDetail.Current.OriginalTestName,
-	}
-
-	stepRegistryURL := StepRegistryURL{
-		Reference: stepDetail.Name,
-	}
-
-	row := generichtml.NewHTMLTableRow(map[string]string{})
-	row.AddItems([]generichtml.HTMLItem{
-		generichtml.HTMLTableRowItem{
-			HTMLItems: generichtml.SpaceHTMLItems([]generichtml.HTMLItem{
-				htmlTextItem(stepDetail.Name + " "),
-				getEnclosedHTMLLink(generichtml.NewHTMLLink("Detail", sippyURL.URL())),
-				getEnclosedHTMLLink(generichtml.NewHTMLLink("CI Search", ciSearchURL.URL())),
-				getEnclosedHTMLLink(generichtml.NewHTMLLink("Step Registry", stepRegistryURL.URL())),
-			}),
-		},
-		generichtml.HTMLTableRowItem{
-			Text: stepDetail.getArrow(),
-		},
-		generichtml.HTMLTableRowItem{
-			Text: getStageResultDetail(stepDetail.Current),
-		},
-		generichtml.HTMLTableRowItem{
-			Text: getStageResultDetail(stepDetail.Previous),
-		},
-	})
-
-	return row
+func getArrowForTrend(t stepmetrics.Trend) string {
+	return generichtml.GetArrowForTestResult(t.Current.TestResult, &t.Previous.TestResult)
 }
