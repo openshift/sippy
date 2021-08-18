@@ -65,7 +65,7 @@ func TestPrintHTMLReport(t *testing.T) {
 	expectedContents := []string{
 		release,
 		"StepMetrics",
-		"All Multistage Jobs",
+		"All Multistage Job Names",
 		"<td>e2e-aws",
 		"<td>e2e-gcp",
 		"Step Metrics For All",

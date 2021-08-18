@@ -55,11 +55,13 @@ func (s *Server) stepMetrics(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	table := stepmetricshtml.NewStepMetricsHTMLTable(request.Release, curr.Timestamp)
-	if err := table.RenderResponse(w, resp); err != nil {
+	table, err := stepmetricshtml.RenderResponse(resp, curr.Timestamp)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Fprint(w, table)
 }
 
 func (s *Server) stepMetricsAPI(w http.ResponseWriter, req *http.Request) {

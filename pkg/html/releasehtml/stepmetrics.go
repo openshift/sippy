@@ -20,7 +20,13 @@ func allMultistageJobs(report, reportPrev sippyprocessingv1.TestReport) string {
 		return ""
 	}
 
-	return stepmetricshtml.NewStepMetricsHTMLTable(report.Release, report.Timestamp).AllMultistages(resp).ToHTML()
+	table, err := stepmetricshtml.AllMultistages(resp)
+	if err != nil {
+		klog.Error(err)
+		return ""
+	}
+
+	return table
 }
 
 func allSteps(report, reportPrev sippyprocessingv1.TestReport) string {
@@ -31,10 +37,11 @@ func allSteps(report, reportPrev sippyprocessingv1.TestReport) string {
 		StepName: stepmetrics.All,
 	})
 
+	table, err := stepmetricshtml.AllSteps(resp)
 	if err != nil {
 		klog.Error(err)
 		return ""
 	}
 
-	return stepmetricshtml.NewStepMetricsHTMLTable(report.Release, report.Timestamp).AllStages(resp).ToHTML()
+	return table
 }

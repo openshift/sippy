@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+
+	"github.com/openshift/sippy/pkg/html/generichtml"
 )
 
 const (
@@ -12,6 +14,7 @@ const (
 
 type URLGenerator interface {
 	URL() *url.URL
+	ToHTML() string
 }
 
 type StepRegistryURL struct {
@@ -20,6 +23,10 @@ type StepRegistryURL struct {
 }
 
 var _ URLGenerator = (*StepRegistryURL)(nil)
+
+func (s StepRegistryURL) ToHTML() string {
+	return generichtml.NewHTMLLink("Step Registry", s.URL()).ToHTML()
+}
 
 func (s StepRegistryURL) URL() *url.URL {
 	u := &url.URL{
@@ -54,6 +61,10 @@ type SippyURL struct {
 
 var _ URLGenerator = (*SippyURL)(nil)
 
+func (s SippyURL) ToHTML() string {
+	return generichtml.NewHTMLLink("Detail", s.URL()).ToHTML()
+}
+
 func (s SippyURL) URL() *url.URL {
 	values := mapToURLValues(map[string]string{
 		"release":           s.Release,
@@ -73,6 +84,10 @@ var _ URLGenerator = (*CISearchURL)(nil)
 type CISearchURL struct {
 	Release string
 	Search  string
+}
+
+func (c CISearchURL) ToHTML() string {
+	return generichtml.NewHTMLLink("CI Search", c.URL()).ToHTML()
 }
 
 func (c CISearchURL) URL() *url.URL {
