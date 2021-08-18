@@ -6,6 +6,25 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+const (
+	jobName string = ""
+	release string = "4.9"
+)
+
+const (
+	e2eAwsOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific-stage container test"
+	e2eAwsOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test"
+	e2eAwsOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test"
+
+	e2eGcpOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific-stage container test"
+	e2eGcpOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test"
+	e2eGcpOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test"
+
+	e2eAzureOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-azure - e2e-azure-azure-specific-stage container test"
+	e2eAzureOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-azure - e2e-azure-ipi-install container test"
+	e2eAzureOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-azure - e2e-azure-openshift-e2e-test container test"
+)
+
 func GetJobResult(jobName string) sippyprocessingv1.JobResult {
 	return sippyprocessingv1.JobResult{
 		Name:      jobName,
@@ -27,7 +46,7 @@ func GetJobResult(jobName string) sippyprocessingv1.JobResult {
 		},
 		TestResults: []sippyprocessingv1.TestResult{
 			{
-				Name:           "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
+				Name:           e2eAwsOriginalTestNameIpiInstall,
 				Successes:      1,
 				Failures:       0,
 				PassPercentage: 100,
@@ -148,7 +167,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test",
+					OriginalTestName: e2eAwsOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"ipi-install": {
@@ -157,7 +176,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
+					OriginalTestName: e2eAwsOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"aws-specific": {
@@ -166,7 +185,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific container test",
+					OriginalTestName: e2eAwsOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -188,7 +207,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test",
+					OriginalTestName: e2eGcpOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"ipi-install": {
@@ -197,7 +216,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test",
+					OriginalTestName: e2eGcpOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"gcp-specific": {
@@ -206,7 +225,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific container test",
+					OriginalTestName: e2eGcpOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -232,7 +251,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test",
+					OriginalTestName: e2eAwsOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"e2e-gcp": sippyprocessingv1.StageResult{
@@ -241,7 +260,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test",
+					OriginalTestName: e2eGcpOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 			},
@@ -262,7 +281,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
+					OriginalTestName: e2eAwsOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"e2e-gcp": sippyprocessingv1.StageResult{
@@ -271,7 +290,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test",
+					OriginalTestName: e2eGcpOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 			},
@@ -292,7 +311,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific container test",
+					OriginalTestName: e2eAwsOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -313,7 +332,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific container test",
+					OriginalTestName: e2eGcpOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},

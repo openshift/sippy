@@ -3,9 +3,9 @@ package stepmetrics_test
 import (
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -15,10 +15,9 @@ const (
 )
 
 type apiTestCase struct {
-	name                      string
-	request                   stepmetrics.Request
-	expectedMultistageDetails map[string]stepmetrics.MultistageDetails
-	expectedStepDetails       map[string]stepmetrics.StepDetails
+	name             string
+	request          stepmetrics.Request
+	expectedResponse stepmetrics.Response
 }
 
 func TestStepMetricsAPI(t *testing.T) {
@@ -29,107 +28,23 @@ func TestStepMetricsAPI(t *testing.T) {
 				Release:           release,
 				MultistageJobName: stepmetrics.All,
 			},
-			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
-				"e2e-aws": {
-					Name: "e2e-aws",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					StepDetails: map[string]stepmetrics.StepDetail{
-						"aws-specific": stepmetrics.StepDetail{
-							Name: "aws-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"ipi-install": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"openshift-e2e-test": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-				"e2e-gcp": {
-					Name: "e2e-gcp",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					StepDetails: map[string]stepmetrics.StepDetail{
-						"gcp-specific": stepmetrics.StepDetail{
-							Name: "gcp-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"ipi-install": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"openshift-e2e-test": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-			},
+			expectedResponse: htmltesthelpers.GetAllMultistageResponse(),
 		},
 		{
-			name: "specific multistage job name",
+			name: "specific multistage job name - e2e-aws",
 			request: stepmetrics.Request{
 				MultistageJobName: "e2e-aws",
 				Release:           "4.9",
 			},
-			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
-				"e2e-aws": {
-					Name: "e2e-aws",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					StepDetails: map[string]stepmetrics.StepDetail{
-						"aws-specific": stepmetrics.StepDetail{
-							Name: "aws-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"ipi-install": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"openshift-e2e-test": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
+			expectedResponse: htmltesthelpers.GetSpecificMultistageResponse("e2e-aws"),
+		},
+		{
+			name: "specific multistage job name - e2e-gcp",
+			request: stepmetrics.Request{
+				MultistageJobName: "e2e-gcp",
+				Release:           "4.9",
 			},
+			expectedResponse: htmltesthelpers.GetSpecificMultistageResponse("e2e-gcp"),
 		},
 		{
 			name: "all step names",
@@ -137,118 +52,31 @@ func TestStepMetricsAPI(t *testing.T) {
 				Release:  release,
 				StepName: stepmetrics.All,
 			},
-			expectedStepDetails: map[string]stepmetrics.StepDetails{
-				"openshift-e2e-test": {
-					Name: "openshift-e2e-test",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					ByMultistage: map[string]stepmetrics.StepDetail{
-						"e2e-aws": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"e2e-gcp": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-				"ipi-install": {
-					Name: "ipi-install",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					ByMultistage: map[string]stepmetrics.StepDetail{
-						"e2e-aws": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"e2e-gcp": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-				"aws-specific": {
-					Name: "aws-specific",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					ByMultistage: map[string]stepmetrics.StepDetail{
-						"e2e-aws": stepmetrics.StepDetail{
-							Name: "aws-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-				"gcp-specific": {
-					Name: "gcp-specific",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					ByMultistage: map[string]stepmetrics.StepDetail{
-						"e2e-gcp": stepmetrics.StepDetail{
-							Name: "gcp-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-			},
+			expectedResponse: htmltesthelpers.GetAllStepsResponse(),
 		},
 		{
-			name: "specific step name",
+			name: "specific step name - openshift-e2e-test",
 			request: stepmetrics.Request{
 				Release:  release,
 				StepName: "openshift-e2e-test",
 			},
-			expectedStepDetails: map[string]stepmetrics.StepDetails{
-				"openshift-e2e-test": {
-					Name: "openshift-e2e-test",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					ByMultistage: map[string]stepmetrics.StepDetail{
-						"e2e-aws": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"e2e-gcp": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
+			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("openshift-e2e-test"),
+		},
+		{
+			name: "specific step name - ipi-install",
+			request: stepmetrics.Request{
+				Release:  release,
+				StepName: "ipi-install",
 			},
+			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("ipi-install"),
+		},
+		{
+			name: "specific step name - aws-specific",
+			request: stepmetrics.Request{
+				Release:  release,
+				StepName: "aws-specific",
+			},
+			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("aws-specific"),
 		},
 		{
 			name: "by job name",
@@ -256,38 +84,7 @@ func TestStepMetricsAPI(t *testing.T) {
 				Release: release,
 				JobName: jobName,
 			},
-			expectedMultistageDetails: map[string]stepmetrics.MultistageDetails{
-				"e2e-aws": {
-					Name: "e2e-aws",
-					Trend: stepmetrics.Trend{
-						Trajectory: stepmetrics.TrendTrajectoryFlat,
-						Delta:      0,
-					},
-					StepDetails: map[string]stepmetrics.StepDetail{
-						"aws-specific": stepmetrics.StepDetail{
-							Name: "aws-specific",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"ipi-install": stepmetrics.StepDetail{
-							Name: "ipi-install",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-						"openshift-e2e-test": stepmetrics.StepDetail{
-							Name: "openshift-e2e-test",
-							Trend: stepmetrics.Trend{
-								Trajectory: stepmetrics.TrendTrajectoryFlat,
-								Delta:      0,
-							},
-						},
-					},
-				},
-			},
+			expectedResponse: htmltesthelpers.GetByJobNameResponse(),
 		},
 	}
 
@@ -303,23 +100,12 @@ func TestStepMetricsAPI(t *testing.T) {
 				t.Errorf("expected no errors, got: %s", err)
 			}
 
-			spew.Dump(resp)
-
-			if resp.Request != testCase.request {
+			if resp.Request != testCase.expectedResponse.Request {
 				t.Errorf("expected request to be: %v, got: %v", testCase.request, resp.Request)
 			}
 
-			if testCase.request.JobName != "" {
-				assertAllMultistageDetails(t, resp.MultistageDetails, testCase.expectedMultistageDetails)
-			}
-
-			if testCase.request.MultistageJobName != "" {
-				assertAllMultistageDetails(t, resp.MultistageDetails, testCase.expectedMultistageDetails)
-			}
-
-			if testCase.request.StepName != "" {
-				assertAllStepDetails(t, resp.StepDetails, testCase.expectedStepDetails)
-			}
+			assertAllMultistageDetails(t, resp.MultistageDetails, testCase.expectedResponse.MultistageDetails)
+			assertAllStepDetails(t, resp.StepDetails, testCase.expectedResponse.StepDetails)
 		})
 	}
 }
@@ -369,6 +155,49 @@ func assertTrend(t *testing.T, have, want stepmetrics.Trend) {
 
 	if have.Current.Name != have.Previous.Name {
 		t.Errorf("trend name mismatch, current: %s, previous: %s", have.Current.Name, have.Previous.Name)
+	}
+
+	assertStageResultsEqual(t, have.Current, want.Current)
+	assertStageResultsEqual(t, have.Previous, want.Previous)
+}
+
+func assertStageResultsEqual(t *testing.T, have, want sippyprocessingv1.StageResult) {
+	t.Helper()
+
+	if have.Name != want.Name {
+		t.Errorf("expected stage result to have name %s, got: %s", want.Name, have.Name)
+	}
+
+	if have.Successes != want.Successes {
+		t.Errorf("expected stage result %s to have %d successes, got: %d", have.Name, want.Successes, have.Successes)
+	}
+
+	if have.Failures != want.Failures {
+		t.Errorf("expected stage result %s to have %d failures, got: %d", have.Name, want.Failures, have.Failures)
+	}
+
+	// TODO: Determine if we should allow step registry metrics to be flaky.
+	if have.Flakes != want.Flakes {
+		t.Errorf("expected stage result %s to have %d flakes, got: %d", have.Name, want.Flakes, have.Flakes)
+	}
+
+	if have.PassPercentage != want.PassPercentage {
+		t.Errorf("expected stage result %s to have %0.2f pass percentage, got: %0.2f", have.Name, want.PassPercentage, have.PassPercentage)
+	}
+
+	if have.OriginalTestName != want.OriginalTestName {
+		t.Errorf("expected stage result %s to have original test name %s, got: %s", have.Name, want.OriginalTestName, have.OriginalTestName)
+	}
+
+	if have.Runs != want.Runs {
+		t.Errorf("expected stage result %s to have %d runs, got: %d", have.Name, want.Runs, have.Runs)
+	}
+
+	haveCount := have.Successes + have.Failures + have.Flakes
+	wantCount := want.Successes + want.Failures + want.Flakes
+
+	if haveCount != wantCount {
+		t.Errorf("expected stage result %s to have a job run count of %d, got: %d", have.Name, wantCount, haveCount)
 	}
 }
 

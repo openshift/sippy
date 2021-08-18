@@ -4,7 +4,6 @@ import (
 	"math"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/html/generichtml"
 )
 
 type TrendTrajectory string
@@ -61,10 +60,6 @@ func newTrend(curr, prev sippyprocessingv1.StageResult) Trend {
 		Trajectory: getTrajectory(curr, prev),
 		Delta:      math.Abs(curr.PassPercentage - prev.PassPercentage),
 	}
-}
-
-func (t Trend) getArrow() string {
-	return generichtml.GetArrowForTestResult(t.Current.TestResult, &t.Previous.TestResult)
 }
 
 func getTrajectory(curr, prev sippyprocessingv1.StageResult) TrendTrajectory {
