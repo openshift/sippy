@@ -9,53 +9,41 @@ import (
 	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
 )
 
-func (s *Server) validateRelease(req *http.Request) (string, error) {
+func (s *Server) getStepMetricsAPIResponse(req *http.Request, validator stepmetrics.Validator) (stepmetrics.Response, error) {
+	opts := stepmetrics.RequestOpts{
+		URLValues: req.URL.Query(),
+	}
+
 	release := req.URL.Query().Get("release")
 	if release == "" {
-		return "", fmt.Errorf("no release provided")
+		return stepmetrics.Response{}, fmt.Errorf("no release provided")
 	}
 
 	if _, ok := s.currTestReports[release]; !ok {
-		return "", fmt.Errorf("invalid release: %s", release)
+		return stepmetrics.Response{}, fmt.Errorf("invalid release: %s", release)
 	}
 
-	return release, nil
-}
+	opts.Current = s.currTestReports[release].CurrentPeriodReport
+	opts.Previous = s.currTestReports[release].PreviousWeekReport
 
-func (s *Server) validateStepMetricsQuery(req *http.Request) (stepmetrics.Request, error) {
-	release, err := s.validateRelease(req)
+	request, err := validator(opts)
 	if err != nil {
-		return stepmetrics.Request{}, err
+		return stepmetrics.Response{}, err
 	}
 
-	opts := stepmetrics.RequestOpts{
-		URLValues: req.URL.Query(),
-		Current:   s.currTestReports[release].CurrentPeriodReport,
-		Previous:  s.currTestReports[release].PreviousWeekReport,
-	}
-
-	return stepmetrics.ValidateRequest(opts)
+	api := stepmetrics.NewStepMetricsAPI(opts.Current, opts.Previous)
+	return api.Fetch(request)
 }
 
 func (s *Server) stepMetrics(w http.ResponseWriter, req *http.Request) {
-	request, err := s.validateStepMetricsQuery(req)
+	resp, err := s.getStepMetricsAPIResponse(req, stepmetrics.ValidateUIRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
 	}
 
-	curr := s.currTestReports[request.Release].CurrentPeriodReport
-	prev := s.currTestReports[request.Release].PreviousWeekReport
+	timestamp := s.currTestReports[resp.Request.Release].CurrentPeriodReport.Timestamp
 
-	api := stepmetrics.NewStepMetricsAPI(curr, prev)
-
-	resp, err := api.Fetch(request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	table, err := stepmetricshtml.RenderResponse(resp, curr.Timestamp)
+	table, err := stepmetricshtml.RenderResponse(resp, timestamp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -65,20 +53,9 @@ func (s *Server) stepMetrics(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) stepMetricsAPI(w http.ResponseWriter, req *http.Request) {
-	request, err := s.validateStepMetricsQuery(req)
+	resp, err := s.getStepMetricsAPIResponse(req, stepmetrics.ValidateAPIRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	curr := s.currTestReports[request.Release].CurrentPeriodReport
-	prev := s.currTestReports[request.Release].PreviousWeekReport
-
-	api := stepmetrics.NewStepMetricsAPI(curr, prev)
-	resp, err := api.Fetch(request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
 	}
 
 	b, err := json.Marshal(resp)

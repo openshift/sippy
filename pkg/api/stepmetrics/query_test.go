@@ -4,18 +4,20 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 )
 
 func TestValidateQuery(t *testing.T) {
 	testCases := []struct {
-		name          string
-		request       stepmetrics.Request
-		expectedError string
+		name            string
+		request         stepmetrics.Request
+		expectedRequest stepmetrics.Request
+		expectedError   string
+		validators      map[string]stepmetrics.Validator
 	}{
 		{
-			name: "sunny day",
+			name: "specific multistage job name",
 			request: stepmetrics.Request{
 				Release:           "4.9",
 				MultistageJobName: "e2e-aws",
@@ -68,6 +70,29 @@ func TestValidateQuery(t *testing.T) {
 			},
 			expectedError: "unknown job name unknown-job-name",
 		},
+		{
+			name: "ui sets default",
+			request: stepmetrics.Request{
+				Release: "4.9",
+			},
+			validators: map[string]stepmetrics.Validator{
+				"UI": stepmetrics.ValidateUIRequest,
+			},
+			expectedRequest: stepmetrics.Request{
+				Release:           "4.9",
+				MultistageJobName: stepmetrics.All,
+			},
+		},
+		{
+			name: "api emits error",
+			request: stepmetrics.Request{
+				Release: "4.9",
+			},
+			validators: map[string]stepmetrics.Validator{
+				"API": stepmetrics.ValidateAPIRequest,
+			},
+			expectedError: "missing multistage job name or step name",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -78,17 +103,37 @@ func TestValidateQuery(t *testing.T) {
 				Previous:  htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
 			}
 
-			req, err := stepmetrics.ValidateRequest(opts)
-			if testCase.expectedError != "" && err == nil {
-				t.Errorf("expected error: %s, got nil", testCase.expectedError)
+			// If the test case doesn't specify which validator to run, run both
+			if len(testCase.validators) == 0 {
+				testCase.validators = map[string]stepmetrics.Validator{
+					"UI":  stepmetrics.ValidateUIRequest,
+					"API": stepmetrics.ValidateAPIRequest,
+				}
 			}
 
-			if err != nil && testCase.expectedError != err.Error() {
-				t.Errorf("expected error %s, got: %s", testCase.expectedError, err)
-			}
+			for name, validator := range testCase.validators {
+				t.Run(name, func(t *testing.T) {
+					req, err := validator(opts)
 
-			if err == nil && req != testCase.request {
-				t.Errorf("requests do not match, have: %v, want: %v", req, testCase.request)
+					if testCase.expectedError != "" && err == nil {
+						t.Errorf("expected error: %s, got nil", testCase.expectedError)
+					}
+
+					if err != nil && testCase.expectedError != err.Error() {
+						t.Errorf("expected error %s, got: %s", testCase.expectedError, err)
+					}
+
+					// If the test case doesn't specify if we have an expected request,
+					// use the one we provided since it should match.
+					emptyRequest := stepmetrics.Request{}
+					if testCase.expectedRequest == emptyRequest {
+						testCase.expectedRequest = testCase.request
+					}
+
+					if err == nil && req != testCase.expectedRequest {
+						t.Errorf("requests do not match, have: %v, want: %v", req, testCase.expectedRequest)
+					}
+				})
 			}
 		})
 	}
@@ -97,8 +142,8 @@ func TestValidateQuery(t *testing.T) {
 func getURLValues(req stepmetrics.Request) url.Values {
 	valMap := map[string]string{
 		"jobName":           req.JobName,
-		"release":           req.Release,
 		"multistageJobName": req.MultistageJobName,
+		"release":           req.Release,
 		"stepName":          req.StepName,
 		"variant":           req.Variant,
 	}

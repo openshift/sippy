@@ -1,6 +1,8 @@
 package stepmetrics
 
 import (
+	"fmt"
+
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
@@ -17,46 +19,45 @@ func NewStepMetricsAPI(curr, prev sippyprocessingv1.TestReport) StepMetricsAPI {
 }
 
 func (s StepMetricsAPI) Fetch(req Request) (Response, error) {
-	resp := Response{
-		Request: req,
-	}
+	resp := Response{Request: req}
 
 	if err := validateAPIRequest(s.current, s.previous, req); err != nil {
 		return resp, err
 	}
 
 	if req.MultistageJobName != "" {
-		if req.MultistageJobName == All {
-			resp.MultistageDetails = s.AllMultistages()
-		} else {
-			resp.MultistageDetails = map[string]MultistageDetails{
-				req.MultistageJobName: s.GetMultistage(req),
-			}
-		}
-
-		return resp, nil
+		return s.multistageQuery(req)
 	}
 
 	if req.StepName != "" {
-		if req.StepName == All {
-			resp.StepDetails = s.AllStages()
-		} else {
-			resp.StepDetails = map[string]StepDetails{
-				req.StepName: s.GetStage(req),
-			}
-		}
-
-		return resp, nil
+		return s.stepQuery(req)
 	}
 
 	if req.JobName != "" {
-		return s.GetJob(req), nil
+		return s.getJob(req), nil
+	}
+
+	return resp, fmt.Errorf("bad step metrics query")
+}
+
+func (s StepMetricsAPI) multistageQuery(req Request) (Response, error) {
+	resp := Response{
+		Request: req,
+	}
+
+	if req.MultistageJobName == All {
+		resp.MultistageDetails = s.allMultistages()
+	} else {
+		resp.MultistageDetails = map[string]MultistageDetails{
+			req.MultistageJobName: s.getMultistageForName(req.MultistageJobName),
+		}
 	}
 
 	return resp, nil
+
 }
 
-func (s StepMetricsAPI) AllMultistages() map[string]MultistageDetails {
+func (s StepMetricsAPI) allMultistages() map[string]MultistageDetails {
 	resp := map[string]MultistageDetails{}
 	currStepRegistryMetrics := s.current.TopLevelStepRegistryMetrics.ByMultistageName
 
@@ -67,11 +68,23 @@ func (s StepMetricsAPI) AllMultistages() map[string]MultistageDetails {
 	return resp
 }
 
-func (s StepMetricsAPI) GetMultistage(req Request) MultistageDetails {
-	return s.getMultistageForName(req.MultistageJobName)
+func (s StepMetricsAPI) stepQuery(req Request) (Response, error) {
+	resp := Response{
+		Request: req,
+	}
+
+	if req.StepName == All {
+		resp.StepDetails = s.allStages()
+	} else {
+		resp.StepDetails = map[string]StepDetails{
+			req.StepName: s.getStage(req),
+		}
+	}
+
+	return resp, nil
 }
 
-func (s StepMetricsAPI) AllStages() map[string]StepDetails {
+func (s StepMetricsAPI) allStages() map[string]StepDetails {
 	resp := map[string]StepDetails{}
 
 	for stageName := range s.current.TopLevelStepRegistryMetrics.ByStageName {
@@ -81,7 +94,7 @@ func (s StepMetricsAPI) AllStages() map[string]StepDetails {
 	return resp
 }
 
-func (s StepMetricsAPI) GetJob(req Request) Response {
+func (s StepMetricsAPI) getJob(req Request) Response {
 	currByJobName := s.current.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
 	prevByJobName := s.previous.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
 
@@ -111,7 +124,7 @@ func (s StepMetricsAPI) GetJob(req Request) Response {
 	}
 }
 
-func (s StepMetricsAPI) GetStage(req Request) StepDetails {
+func (s StepMetricsAPI) getStage(req Request) StepDetails {
 	return s.getStageForName(req.StepName)
 }
 

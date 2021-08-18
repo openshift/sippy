@@ -28,6 +28,8 @@ type RequestOpts struct {
 	URLValues url.Values
 }
 
+type Validator func(RequestOpts) (Request, error)
+
 func validateAPIRequest(curr, prev sippyprocessingv1.TestReport, req Request) error {
 	q := stepMetricsQuery{
 		request: req,
@@ -40,15 +42,25 @@ func validateAPIRequest(curr, prev sippyprocessingv1.TestReport, req Request) er
 	return q.validate()
 }
 
-func ValidateRequest(opts RequestOpts) (Request, error) {
+func ValidateUIRequest(opts RequestOpts) (Request, error) {
 	q := stepMetricsQuery{
-		request: Request{
-			Release:           opts.URLValues.Get("release"),
-			JobName:           opts.URLValues.Get("jobName"),
-			MultistageJobName: opts.URLValues.Get("multistageJobName"),
-			StepName:          opts.URLValues.Get("stepName"),
-			Variant:           opts.URLValues.Get("variant"),
-		},
+		request:     getRequestFromOpts(opts),
+		requestOpts: opts,
+	}
+
+	// Default to all multistage jobs
+	if q.request.JobName == "" && q.request.MultistageJobName == "" && q.request.StepName == "" {
+		q.request.MultistageJobName = All
+	}
+
+	err := q.validate()
+
+	return q.request, err
+}
+
+func ValidateAPIRequest(opts RequestOpts) (Request, error) {
+	q := stepMetricsQuery{
+		request:     getRequestFromOpts(opts),
 		requestOpts: opts,
 	}
 
@@ -57,13 +69,23 @@ func ValidateRequest(opts RequestOpts) (Request, error) {
 	return q.request, err
 }
 
+func getRequestFromOpts(opts RequestOpts) Request {
+	return Request{
+		Release:           opts.URLValues.Get("release"),
+		JobName:           opts.URLValues.Get("jobName"),
+		MultistageJobName: opts.URLValues.Get("multistageJobName"),
+		StepName:          opts.URLValues.Get("stepName"),
+		Variant:           opts.URLValues.Get("variant"),
+	}
+}
+
 func (q stepMetricsQuery) validate() error {
 	if q.isJobQuery() {
 		return q.validateJobQuery()
 	}
 
 	if q.request.MultistageJobName == "" && q.request.StepName == "" {
-		return fmt.Errorf("missing multistage job name and step name")
+		return fmt.Errorf("missing multistage job name or step name")
 	}
 
 	if q.request.Variant != "" {
