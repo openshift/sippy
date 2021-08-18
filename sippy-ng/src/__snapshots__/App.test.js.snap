@@ -247,7 +247,7 @@ exports[`app should render correctly 1`] = `
          style="padding: 20px;"
     >
       <div class="MuiContainer-root MuiContainer-maxWidthLg">
-        <h4 class="MuiTypography-root makeStyles-title-37 MuiTypography-h4 MuiTypography-gutterBottom">
+        <h4 class="MuiTypography-root makeStyles-title-41 MuiTypography-h4 MuiTypography-gutterBottom">
           CI Release 4.8 Health Summary
         </h4>
         <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
@@ -268,39 +268,39 @@ exports[`app should render correctly 1`] = `
             </h5>
           </div>
           <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
-            <a class="MuiBox-root MuiBox-root-41"
+            <a class="MuiBox-root MuiBox-root-46"
                href="/tests/4.8/details?test=[sig-sippy] infrastructure should work"
             >
-              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-39 makeStyles-summaryCard-40 MuiPaper-elevation5 MuiPaper-rounded"
+              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-44 makeStyles-summaryCard-45 MuiPaper-elevation5 MuiPaper-rounded"
                    style="background-color: rgb(129, 199, 132);"
                    title="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
               >
-                <div class="MuiCardContent-root makeStyles-cardContent-38">
+                <div class="MuiCardContent-root makeStyles-cardContent-43">
                   <h6 class="MuiTypography-root MuiTypography-h6">
                     Infrastructure
                   </h6>
-                  <svg viewbox="0 0 80 50"
+                  <svg viewbox="0 0 30 12"
                        width="100%"
                        height="100%"
                   >
-                    <path d="M 56.51388756292923 25.117024350137537 A 17 17 0 1 1 54.651408563513826 17.38039343242792"
+                    <path d="M 18.913887562929226 6.117024350137539 A 4.4 4.4 0 1 1 18.43183417484524 4.114602230259756"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="98.78199105093971"
+                          stroke-width="2.2"
+                          stroke-dasharray="25.56710356612557"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="#4A934A"
                     >
                       <title>
                         Success
                       </title>
                     </path>
-                    <path d="M 55.884416594065016 17.679349542915077 A 17 17 0 0 1 57.475756496395405 24.289684205919947"
+                    <path d="M 19.47155586593987 4.0185077162996095 A 4.4 4.4 0 0 1 19.883432075954794 5.729417864371458"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="6.845335279757138"
+                          stroke-width="2.2"
+                          stroke-dasharray="1.7717338371136122"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="darkred"
                     >
                       <title>
@@ -308,7 +308,7 @@ exports[`app should render correctly 1`] = `
                       </title>
                     </path>
                   </svg>
-                  <h3 class="MuiBox-root MuiBox-root-42">
+                  <h3 class="MuiBox-root MuiBox-root-47">
                     94 % (1111 runs)&nbsp;
                     <svg class="MuiSvgIcon-root"
                          focusable="false"
@@ -327,39 +327,39 @@ exports[`app should render correctly 1`] = `
             </a>
           </div>
           <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
-            <a class="MuiBox-root MuiBox-root-44"
+            <a class="MuiBox-root MuiBox-root-49"
                href="/install/4.8"
             >
-              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-39 makeStyles-summaryCard-43 MuiPaper-elevation5 MuiPaper-rounded"
+              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-44 makeStyles-summaryCard-48 MuiPaper-elevation5 MuiPaper-rounded"
                    style="background-color: rgb(129, 199, 132);"
                    title="How often the install completes successfully."
               >
-                <div class="MuiCardContent-root makeStyles-cardContent-38">
+                <div class="MuiCardContent-root makeStyles-cardContent-43">
                   <h6 class="MuiTypography-root MuiTypography-h6">
                     Install
                   </h6>
-                  <svg viewbox="0 0 80 50"
+                  <svg viewbox="0 0 30 12"
                        width="100%"
                        height="100%"
                   >
-                    <path d="M 56.50109577133807 25.033084295719423 A 17 17 0 1 1 56.352234166576054 22.788282570725357"
+                    <path d="M 18.901095771338078 6.033084295719422 A 4.4 4.4 0 1 1 18.862566885399673 5.45207679042684"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="104.56277320978275"
+                          stroke-width="2.2"
+                          stroke-dasharray="27.06330600723789"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="#4A934A"
                     >
                       <title>
                         Success
                       </title>
                     </path>
-                    <path d="M 57.41811981609125 23.311577700702856 A 17 17 0 0 1 57.48854828798656 24.37362426033806"
+                    <path d="M 19.877995321878927 5.5384752798251675 A 4.4 4.4 0 0 1 19.896223867545945 5.813357918789574"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="1.0645531209140746"
+                          stroke-width="2.2"
+                          stroke-dasharray="0.2755313960012899"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="darkred"
                     >
                       <title>
@@ -367,7 +367,7 @@ exports[`app should render correctly 1`] = `
                       </title>
                     </path>
                   </svg>
-                  <h3 class="MuiBox-root MuiBox-root-45">
+                  <h3 class="MuiBox-root MuiBox-root-50">
                     99 % (2679 runs)&nbsp;
                     <svg class="MuiSvgIcon-root"
                          focusable="false"
@@ -386,39 +386,39 @@ exports[`app should render correctly 1`] = `
             </a>
           </div>
           <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
-            <a class="MuiBox-root MuiBox-root-47"
+            <a class="MuiBox-root MuiBox-root-52"
                href="/upgrade/4.8"
             >
-              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-39 makeStyles-summaryCard-46 MuiPaper-elevation5 MuiPaper-rounded"
+              <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-44 makeStyles-summaryCard-51 MuiPaper-elevation5 MuiPaper-rounded"
                    style="background-color: rgb(129, 199, 132);"
                    title="How often an upgrade that is started completes successfully."
               >
-                <div class="MuiCardContent-root makeStyles-cardContent-38">
+                <div class="MuiCardContent-root makeStyles-cardContent-43">
                   <h6 class="MuiTypography-root MuiTypography-h6">
                     Upgrade
                   </h6>
-                  <svg viewbox="0 0 80 50"
+                  <svg viewbox="0 0 30 12"
                        width="100%"
                        height="100%"
                   >
-                    <path d="M 56.5057754933912 25.075776890060798 A 17 17 0 1 1 55.72484485224028 19.98246862010083"
+                    <path d="M 18.905775493391197 6.075776890060797 A 4.4 4.4 0 1 1 18.703652268622726 4.757508867247628"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="101.64138948802903"
+                          stroke-width="2.2"
+                          stroke-dasharray="26.307183161607515"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="#4A934A"
                     >
                       <title>
                         Success
                       </title>
                     </path>
-                    <path d="M 56.881167541801354 20.40005490336749 A 17 17 0 0 1 57.483868565933435 24.330931665996687"
+                    <path d="M 19.735550939246874 4.753261927061818 A 4.4 4.4 0 0 1 19.891544145492823 5.770665324448198"
                           fill="none"
-                          stroke-width="6"
-                          stroke-dasharray="3.9859368426677984"
+                          stroke-width="2.2"
+                          stroke-dasharray="1.0316542416316654"
                           stroke-dashoffset="0"
-                          style="transition: stroke-dashoffset 500ms ease-out;"
+                          style="transition: stroke-dashoffset 800ms ease-out;"
                           stroke="darkred"
                     >
                       <title>
@@ -426,7 +426,7 @@ exports[`app should render correctly 1`] = `
                       </title>
                     </path>
                   </svg>
-                  <h3 class="MuiBox-root MuiBox-root-48">
+                  <h3 class="MuiBox-root MuiBox-root-53">
                     96 % (212 runs)&nbsp;
                     <svg class="MuiSvgIcon-root"
                          focusable="false"
@@ -472,14 +472,14 @@ exports[`app should render correctly 1`] = `
               <div class="MuiAccordionSummary-content">
                 <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-254"
+                    <a class="MuiBox-root MuiBox-root-259"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-253 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-258 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(229, 115, 115);"
                            title="Current runs: 13, previous runs: 14"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -506,14 +506,14 @@ exports[`app should render correctly 1`] = `
                     </a>
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-256"
+                    <a class="MuiBox-root MuiBox-root-261"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-255 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-260 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(236, 132, 105);"
                            title="Current runs: 13, previous runs: 14"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -540,14 +540,14 @@ exports[`app should render correctly 1`] = `
                     </a>
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-258"
+                    <a class="MuiBox-root MuiBox-root-263"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-257 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-262 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(242, 149, 96);"
                            title="Current runs: 54, previous runs: 56"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -574,14 +574,14 @@ exports[`app should render correctly 1`] = `
                     </a>
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-260"
+                    <a class="MuiBox-root MuiBox-root-265"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-259 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-264 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(242, 150, 95);"
                            title="Current runs: 251, previous runs: 286"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -608,14 +608,14 @@ exports[`app should render correctly 1`] = `
                     </a>
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-262"
+                    <a class="MuiBox-root MuiBox-root-267"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-261 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-266 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(243, 150, 95);"
                            title="Current runs: 16, previous runs: 16"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -642,14 +642,14 @@ exports[`app should render correctly 1`] = `
                     </a>
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                    <a class="MuiBox-root MuiBox-root-264"
+                    <a class="MuiBox-root MuiBox-root-269"
                        href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D"
                     >
-                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-263 MuiPaper-elevation5 MuiPaper-rounded"
+                      <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-268 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(246, 160, 90);"
                            title="Current runs: 132, previous runs: 125"
                       >
-                        <div class="MuiCardContent-root makeStyles-cardContent-251"
+                        <div class="MuiCardContent-root makeStyles-cardContent-256"
                              style="text-align: center;"
                         >
                           <h6 class="MuiTypography-root MuiTypography-h6">
@@ -709,14 +709,14 @@ exports[`app should render correctly 1`] = `
                            style="margin-right: 20px;"
                       >
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-266"
+                          <a class="MuiBox-root MuiBox-root-271"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-265 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-270 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(248, 164, 87);"
                                  title="Current runs: 138, previous runs: 142"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -743,14 +743,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-268"
+                          <a class="MuiBox-root MuiBox-root-273"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-267 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-272 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(250, 169, 85);"
                                  title="Current runs: 40, previous runs: 33"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -777,14 +777,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-270"
+                          <a class="MuiBox-root MuiBox-root-275"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-269 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-274 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(251, 172, 83);"
                                  title="Current runs: 113, previous runs: 142"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -811,14 +811,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-272"
+                          <a class="MuiBox-root MuiBox-root-277"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-271 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-276 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(253, 177, 80);"
                                  title="Current runs: 93, previous runs: 89"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -845,14 +845,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-274"
+                          <a class="MuiBox-root MuiBox-root-279"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-273 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-278 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(254, 180, 78);"
                                  title="Current runs: 348, previous runs: 377"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -879,14 +879,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-276"
+                          <a class="MuiBox-root MuiBox-root-281"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-275 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-280 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(254, 182, 78);"
                                  title="Current runs: 187, previous runs: 190"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -913,14 +913,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-278"
+                          <a class="MuiBox-root MuiBox-root-283"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-277 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-282 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(251, 183, 79);"
                                  title="Current runs: 33, previous runs: 36"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -947,14 +947,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-280"
+                          <a class="MuiBox-root MuiBox-root-285"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-279 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-284 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(245, 184, 81);"
                                  title="Current runs: 13, previous runs: 13"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -981,14 +981,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-282"
+                          <a class="MuiBox-root MuiBox-root-287"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-281 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-286 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(189, 191, 106);"
                                  title="Current runs: 44, previous runs: 44"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1015,14 +1015,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-284"
+                          <a class="MuiBox-root MuiBox-root-289"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-283 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-288 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(183, 192, 109);"
                                  title="Current runs: 214, previous runs: 209"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1049,14 +1049,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-286"
+                          <a class="MuiBox-root MuiBox-root-291"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-285 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-290 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(179, 193, 110);"
                                  title="Current runs: 43, previous runs: 43"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1083,14 +1083,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-288"
+                          <a class="MuiBox-root MuiBox-root-293"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-287 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-292 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(175, 193, 112);"
                                  title="Current runs: 44, previous runs: 44"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1117,14 +1117,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-290"
+                          <a class="MuiBox-root MuiBox-root-295"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-289 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-294 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(141, 197, 127);"
                                  title="Current runs: 73, previous runs: 68"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1151,14 +1151,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-292"
+                          <a class="MuiBox-root MuiBox-root-297"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-291 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-296 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
                                  title="Current runs: 28, previous runs: 28"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1185,14 +1185,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-294"
+                          <a class="MuiBox-root MuiBox-root-299"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-293 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-298 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
                                  title="Current runs: 28, previous runs: 26"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1219,14 +1219,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-296"
+                          <a class="MuiBox-root MuiBox-root-301"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-295 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-300 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
                                  title="Current runs: 1632, previous runs: 1805"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1253,14 +1253,14 @@ exports[`app should render correctly 1`] = `
                           </a>
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                          <a class="MuiBox-root MuiBox-root-298"
+                          <a class="MuiBox-root MuiBox-root-303"
                              href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D"
                           >
-                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-252 makeStyles-miniCard-297 MuiPaper-elevation5 MuiPaper-rounded"
+                            <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-302 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgba(0, 0, 0, 0.38);"
                                  title="Current runs: 0, previous runs: 0"
                             >
-                              <div class="MuiCardContent-root makeStyles-cardContent-251"
+                              <div class="MuiCardContent-root makeStyles-cardContent-256"
                                    style="text-align: center;"
                               >
                                 <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1504,7 +1504,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="25"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-37-86 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-37-91 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -1583,7 +1583,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="49"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-83-132 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-83-137 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -1662,7 +1662,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="27"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-50-99 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-50-104 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -1741,7 +1741,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="48"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-83-132 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-83-137 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -1820,7 +1820,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="55"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-89-138 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-89-143 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -1919,10 +1919,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -1944,7 +1944,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -2216,7 +2216,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="39"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-38-188 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-38-193 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -2256,7 +2256,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-302"
+                                    <div class="MuiBox-root MuiBox-root-307"
                                          title="13 runs"
                                     >
                                       38.46%
@@ -2295,7 +2295,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="62"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-69-219 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-69-224 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -2335,7 +2335,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-303"
+                                    <div class="MuiBox-root MuiBox-root-308"
                                          title="13 runs"
                                     >
                                       69.23%
@@ -2374,7 +2374,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="35"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-33-183 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-33-188 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -2414,7 +2414,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-304"
+                                    <div class="MuiBox-root MuiBox-root-309"
                                          title="15 runs"
                                     >
                                       33.33%
@@ -2453,7 +2453,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="28"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-31-181 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-31-186 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -2493,7 +2493,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-305"
+                                    <div class="MuiBox-root MuiBox-root-310"
                                          title="16 runs"
                                     >
                                       31.25%
@@ -2532,7 +2532,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="73"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-77-227 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-77-232 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -2572,7 +2572,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-306"
+                                    <div class="MuiBox-root MuiBox-root-311"
                                          title="13 runs"
                                     >
                                       76.92%
@@ -2631,10 +2631,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -2656,7 +2656,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -2928,7 +2928,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="6"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-50-99 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-50-104 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3007,7 +3007,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="7"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-50-99 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-50-104 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3086,7 +3086,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="5"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-50-99 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-50-104 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3165,7 +3165,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="12"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-75-124 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-75-129 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3244,7 +3244,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="13"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-75-124 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-75-129 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3343,10 +3343,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -3368,7 +3368,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -3640,7 +3640,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="10"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-150 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3680,7 +3680,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-307"
+                                    <div class="MuiBox-root MuiBox-root-312"
                                          title="1 runs"
                                     >
                                       0.00%
@@ -3719,7 +3719,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="27"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-0-150 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-0-155 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3759,7 +3759,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-308"
+                                    <div class="MuiBox-root MuiBox-root-313"
                                          title="1 runs"
                                     >
                                       0.00%
@@ -3798,7 +3798,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="16"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-150 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3838,7 +3838,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-309"
+                                    <div class="MuiBox-root MuiBox-root-314"
                                          title="2 runs"
                                     >
                                       0.00%
@@ -3877,7 +3877,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="70"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-50-200 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-50-205 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3917,7 +3917,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-310"
+                                    <div class="MuiBox-root MuiBox-root-315"
                                          title="2 runs"
                                     >
                                       50.00%
@@ -3956,7 +3956,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="35"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-150 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-0-155 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -3996,7 +3996,7 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                        tabindex="-1"
                                   >
-                                    <div class="MuiBox-root MuiBox-root-311"
+                                    <div class="MuiBox-root MuiBox-root-316"
                                          title="2 runs"
                                     >
                                       0.00%
@@ -4055,10 +4055,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -4080,7 +4080,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -4352,7 +4352,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="25"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-37-86 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-37-91 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -4431,7 +4431,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="49"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-83-132 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-83-137 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -4510,7 +4510,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="27"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-50-99 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-50-104 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -4589,7 +4589,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="48"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd TestTable-row-percent-83-132 MuiDataGrid-row"
+                                     class="Mui-odd TestTable-row-percent-83-137 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -4668,7 +4668,7 @@ exports[`app should render correctly 1`] = `
                                 <div data-id="55"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-89-138 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-89-143 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 52px; min-height: 52px;"
@@ -4767,10 +4767,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -4792,7 +4792,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -5089,10 +5089,10 @@ exports[`app should render correctly 1`] = `
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             Rows per page:
                           </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-301 MuiTablePagination-selectRoot">
+                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-306 MuiTablePagination-selectRoot">
                             <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                                  tabindex="0"
                                  role="button"
@@ -5114,7 +5114,7 @@ exports[`app should render correctly 1`] = `
                               </path>
                             </svg>
                           </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-300 MuiTypography-body2 MuiTypography-colorInherit">
+                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-305 MuiTypography-body2 MuiTypography-colorInherit">
                             0-0 of 0
                           </p>
                           <div class="MuiTablePagination-actions">

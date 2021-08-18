@@ -8,40 +8,40 @@ exports[`SummaryCard shows overview 1`] = `
   <div class="MuiCardContent-root makeStyles-cardContent-1">
     <h6 class="MuiTypography-root MuiTypography-h6">
     </h6>
-    <svg viewbox="0 0 80 50"
+    <svg viewbox="0 0 30 12"
          width="100%"
          height="100%"
     >
-      <path d="M 57.257519037455026 25.428583650351055 A 17 17 0 0 1 32.27650247009489 40.438692728952816"
+      <path d="M 19.657519037455028 6.428583650351056 A 4.4 4.4 0 0 1 13.191844161197109 10.313553058930335"
             fill="none"
-            stroke-width="6"
-            stroke-dasharray="35.01130479500625"
-            stroke-dashoffset="35.01130479500625"
-            style="transition: stroke-dashoffset 500ms ease-out;"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
             stroke="#FF8800"
       >
         <title>
           Flakes
         </title>
       </path>
-      <path d="M 31.000076152421812 39.731158067554105 A 17 17 0 0 1 30.49144866045731 10.59190856855941"
+      <path d="M 12.300076152421807 9.819237979870174 A 4.4 4.4 0 0 1 12.1684313897957 2.2773145801303696"
             fill="none"
-            stroke-width="6"
-            stroke-dasharray="35.01130479500625"
-            stroke-dashoffset="35.01130479500625"
-            style="transition: stroke-dashoffset 500ms ease-out;"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
             stroke="#4A934A"
       >
         <title>
           Success
         </title>
       </path>
-      <path d="M 31.742404810123148 9.840258282094858 A 17 17 0 0 1 57.232048869447794 23.969398702487744"
+      <path d="M 13.042404810123163 1.7521783697787745 A 4.4 4.4 0 0 1 19.63972444900719 5.409132360939286"
             fill="none"
-            stroke-width="6"
-            stroke-dasharray="35.01130479500625"
-            stroke-dashoffset="35.01130479500625"
-            style="transition: stroke-dashoffset 500ms ease-out;"
+            stroke-width="2.2"
+            stroke-dasharray="9.061749476354558"
+            stroke-dashoffset="9.061749476354558"
+            style="transition: stroke-dashoffset 800ms ease-out;"
             stroke="darkred"
       >
         <title>

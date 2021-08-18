@@ -70,18 +70,18 @@ export default function SummaryCard (props) {
         <Typography variant="h6">{props.name}</Typography>
         <PieChart
           animate
-          animationDuration={500}
+          animationDuration={800}
           animationEasing="ease-out"
-          center={[40, 25]}
+          center={[15, 6]}
           data={currentData}
           labelPosition={50}
           lengthAngle={360}
-          lineWidth={30}
+          lineWidth={40}
           paddingAngle={2}
-          radius={20}
+          radius={5.5}
           segmentsShift={0.5}
           startAngle={0}
-          viewBoxSize={[80, 50]}
+          viewBoxSize={[30, 12]}
         />
         {props.caption}
       </CardContent>

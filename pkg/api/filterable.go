@@ -25,7 +25,7 @@ type Filter struct {
 	LinkOperator LinkOperator `json:"linkOperator"`
 }
 
-// FilterItem is an individual filter consisting of a field, opertator,
+// FilterItem is an individual filter consisting of a field, operator,
 // and value. For example: name contains aws.
 type FilterItem struct {
 	Field    string `json:"columnField"`

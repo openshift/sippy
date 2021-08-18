@@ -1,6 +1,7 @@
 package testreportconversion
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -54,6 +55,9 @@ func PrepareTestReport(
 	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
+	promotionWarnings := generatePromotionWarnings(byVariant)
+	analysisWarnings = append(analysisWarnings, promotionWarnings...)
+
 	testReport := sippyprocessingv1.TestReport{
 		Release:   reportName,
 		Timestamp: reportTimestamp,
@@ -87,11 +91,52 @@ func PrepareTestReport(
 	return testReport
 }
 
+func generatePromotionWarnings(variants []sippyprocessingv1.VariantResults) []string {
+	warnings := make([]string, 0)
+	millis12hoursago := time.Now().UTC().Add(-12*time.Hour).Unix() * 1000
+
+	for _, variant := range variants {
+		if variant.VariantName == "promote" {
+			for _, jr := range variant.JobResults {
+				var lastSuccess *sippyprocessingv1.JobRunResult
+				var mostRecent *sippyprocessingv1.JobRunResult
+
+				for _, run := range jr.AllRuns {
+					if mostRecent == nil || run.Timestamp > mostRecent.Timestamp {
+						mostRecent = &run
+						if run.OverallResult == sippyprocessingv1.JobSucceeded {
+							lastSuccess = &run
+						}
+					}
+				}
+
+				// Make sure the job has been run recently
+				if mostRecent != nil && (int64(mostRecent.Timestamp) < millis12hoursago) {
+					warnings = append(warnings,
+						fmt.Sprintf(`The <a href="%s">last run of %s</a> was more than 12 hours ago.`, mostRecent.URL, jr.Name))
+				}
+
+				// Make sure the job succeeded
+				if lastSuccess == nil {
+					warnings = append(warnings,
+						fmt.Sprintf(`No successful run of %s found.`, jr.Name))
+				} else if mostRecent != lastSuccess {
+					warnings = append(warnings,
+						fmt.Sprintf(`The <a href="%s">most recent promotion for %s</a> failed.`, mostRecent.URL, jr.Name))
+				}
+			}
+			break
+		}
+	}
+
+	return warnings
+}
+
 func filterFailureGroups(
 	rawJobResults map[string]testgridanalysisapi.RawJobResult,
 	failureClusterThreshold int,
 ) []sippyprocessingv1.JobRunResult {
-	filteredJrr := []sippyprocessingv1.JobRunResult{}
+	var filteredJrr []sippyprocessingv1.JobRunResult
 	// -1 means don't do this reporting.
 	if failureClusterThreshold < 0 {
 		return filteredJrr

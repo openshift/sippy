@@ -92,6 +92,8 @@ func PrintOverallReleaseHealth(w http.ResponseWriter, curr, prev sippyprocessing
 		Indicators  map[string]indicator `json:"indicators"`
 		Variants    variants             `json:"variants"`
 		LastUpdated time.Time            `json:"last_updated"`
+		Promotions  map[string]time.Time `json:"promotions"`
+		Warnings    []string             `json:"warnings"`
 	}
 
 	RespondWithJSON(http.StatusOK, w, health{
@@ -101,5 +103,6 @@ func PrintOverallReleaseHealth(w http.ResponseWriter, curr, prev sippyprocessing
 			Current:  curr.TopLevelIndicators.Variant,
 			Previous: prev.TopLevelIndicators.Variant,
 		},
+		Warnings: curr.AnalysisWarnings,
 	})
 }
