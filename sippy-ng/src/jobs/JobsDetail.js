@@ -59,7 +59,7 @@ export default function JobsDetail (props) {
         })
     }
   }
-  , [filter, props]
+  , [filter]
   )
 
   if (filter !== '' && !isLoaded) {
@@ -120,7 +120,9 @@ export default function JobsDetail (props) {
       for (let i = 0; i < job.results.length; i++) {
         if (job.results[i].timestamp >= today && job.results[i].timestamp < tomorrow) {
           const result = {}
+          result.name = job.name
           result.id = i
+          result.failedTestNames = job.results[i].failedTestNames
           result.text = job.results[i].result
           result.prowLink = job.results[i].url
           result.className = 'result result-' + result.text

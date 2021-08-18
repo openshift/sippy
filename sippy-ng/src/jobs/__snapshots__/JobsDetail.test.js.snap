@@ -234,18 +234,10 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-N\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420188033021382656\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-N\\">
               N
             </a>
-            <a class=\\"result result-N\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420177970600873984\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-N\\">
               N
             </a>
           </td>
@@ -253,32 +245,16 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420067975628591104\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419942967652651008\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420021248573837312\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1420096355774238720\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -286,11 +262,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419580485293576192\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -298,11 +270,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419392069046112256\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -310,11 +278,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1419029450892251136\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -322,39 +286,19 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418673879374630912\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-N\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418403733523402752\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-N\\">
               N
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418614929128165376\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418365830923554816\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418517290151841792\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -362,25 +306,13 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418184370186883072\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418358411694706688\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1418177253585457152\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -388,18 +320,10 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417637792426496000\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417654695903629312\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -407,32 +331,16 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417449414108123136\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417549800152240128\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-n\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417608329097646080\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-n\\">
               n
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417515436714496000\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -440,18 +348,10 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417224092519501824\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
-            <a class=\\"result result-S\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1417134541537021952\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-S\\">
               S
             </a>
           </td>
@@ -459,11 +359,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416601085929328640\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -471,11 +367,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-I\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416238490395348992\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-I\\">
               I
             </a>
           </td>
@@ -483,18 +375,10 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416102741406650368\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1416155304449544192\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -502,25 +386,13 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415664182107312128\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-I\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415673861600448512\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-I\\">
               I
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415816652422909952\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>
@@ -528,25 +400,13 @@ exports[`JobsDetail should match snapshot 1`] = `
               style=\\"vertical-align: top;\\"
           >
             <br>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415441157537665024\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415384175036338176\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
-            <a class=\\"result result-F\\"
-               href=\\"https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade/1415310931189043200\\"
-               target=\\"_blank\\"
-               rel=\\"noreferrer\\"
-            >
+            <a class=\\"result result-F\\">
               F
             </a>
           </td>

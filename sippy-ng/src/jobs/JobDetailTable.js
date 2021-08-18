@@ -8,6 +8,7 @@ import TableRow from '@material-ui/core/TableRow'
 import React, { Fragment } from 'react'
 import './JobDetailTable.css'
 import { Link } from 'react-router-dom'
+import JobDetailTestModal from './JobDetailTestModal'
 
 /**
  * JobDetailTable shows the runs of the selected job(s) grouped by day, and
@@ -16,6 +17,19 @@ import { Link } from 'react-router-dom'
 export default function JobDetailTable (props) {
   const columns = props.columns
   const rows = props.rows
+
+  const [isTestDialogOpen, setTestDialogOpen] = React.useState(false)
+  const [testDetails, setTestDetails] = React.useState({ name: '', failedTestNames: [] })
+
+  const openTestDialog = (test) => {
+    console.log(test)
+    setTestDetails(test)
+    setTestDialogOpen(true)
+  }
+
+  const closeTestDialog = (details) => {
+    setTestDialogOpen(false)
+  }
 
   return (
         <Fragment>
@@ -54,7 +68,7 @@ export default function JobDetailTable (props) {
                                                 days.map((day, dayidx) =>
                                                     <Fragment key={`day-${index}-${dayidx}`}>
                                                         {dayidx % 5 === 0 ? <br /> : ''}
-                                                        <a key={day.id} className={day.className} href={day.prowLink} target="_blank" rel="noreferrer">{day.text}</a>
+                                                        <a key={day.id} className={day.className} onClick={() => openTestDialog(day)}>{day.text}</a>
                                                     </Fragment>
                                                 )}
                                         </TableCell>
@@ -64,6 +78,7 @@ export default function JobDetailTable (props) {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <JobDetailTestModal release={props.release} item={testDetails} isOpen={isTestDialogOpen} close={closeTestDialog} />
             </div>
         </Fragment >
   )
