@@ -101,11 +101,11 @@ func generatePromotionWarnings(variants []sippyprocessingv1.VariantResults) []st
 				var lastSuccess *sippyprocessingv1.JobRunResult
 				var mostRecent *sippyprocessingv1.JobRunResult
 
-				for _, run := range jr.AllRuns {
+				for idx, run := range jr.AllRuns {
 					if mostRecent == nil || run.Timestamp > mostRecent.Timestamp {
-						mostRecent = &run
+						mostRecent = &jr.AllRuns[idx]
 						if run.OverallResult == sippyprocessingv1.JobSucceeded {
-							lastSuccess = &run
+							lastSuccess = &jr.AllRuns[idx]
 						}
 					}
 				}

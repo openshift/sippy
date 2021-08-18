@@ -22,7 +22,6 @@ export default function JobDetailTable (props) {
   const [testDetails, setTestDetails] = React.useState({ name: '', failedTestNames: [] })
 
   const openTestDialog = (test) => {
-    console.log(test)
     setTestDetails(test)
     setTestDialogOpen(true)
   }

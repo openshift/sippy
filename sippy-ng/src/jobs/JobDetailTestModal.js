@@ -14,7 +14,7 @@ export default function JobDetailTestModal (props) {
   }
 
   if (props.item.failedTestNames) {
-    props.item.failedTestNames.forEach((test, index) => {
+    props.item.failedTestNames.slice(0, 25).forEach((test, index) => {
       filterModel.items.push({
         id: index, columnField: 'name', operatorValue: 'equals', value: test
       })
@@ -46,7 +46,7 @@ export default function JobDetailTestModal (props) {
                         </Button>
 
                         <Typography variant="h5">
-                            Failed tests from this run
+                            Failed tests from this run (up to first 25)
                         </Typography>
                     </Container>
 
@@ -67,7 +67,7 @@ JobDetailTestModal.defaultProps = {
 }
 
 JobDetailTestModal.propTypes = {
-  item: PropTypes.array.object,
+  item: PropTypes.object,
   classes: PropTypes.object,
   isOpen: PropTypes.bool,
   close: PropTypes.func,
