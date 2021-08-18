@@ -131,7 +131,7 @@ var testSuitePrefixes = []string{
 var ignoreTestRegex = regexp.MustCompile(`operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 func IsIgnoredTest(testName string) bool {
-	return ignoreTestRegex.MatchString(testName)
+	return ignoreTestRegex.MatchString(testName) || testidentification.IsMultistageJobName(testName)
 }
 
 // processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
@@ -267,7 +267,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
 	}
 
-	addTestResult(jobResult.TestResults, &job, testName, passed, failed, flaked)
+	// Since we took out the filter for tests matching multistage jobs so we can
+	// process them, we still want them to be filtered, so we check before adding
+	// the results.
+	if !testidentification.IsStepRegistryItem(testName) && !testidentification.IsMultistageJobName(testName) {
+		addTestResult(jobResult.TestResults, &job, testName, passed, failed, flaked)
+	}
 
 	return
 }

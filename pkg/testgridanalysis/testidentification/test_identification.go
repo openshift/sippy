@@ -79,6 +79,7 @@ var curatedTestSubstrings = map[string][]string{
 }
 
 var (
+	ciMultistageRegex           = regexp.MustCompile(`operator\.Run multi-stage test (\S+)$`)
 	ciStepRegex                 = regexp.MustCompile(`operator\.Run multi-stage test (\S+) \- (\S+) container test$`)
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)

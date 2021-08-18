@@ -211,13 +211,8 @@ func TestToRawDataStepRegistryItem(t *testing.T) {
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
 		},
-		expectedTestNames: []string{
-			// TODO: Determine if these tests should still be expected to be here
-			// since they were previously ignored.
-			"operator.Run multi-stage test openshift-ipi-azure-arcconformance",
-			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
-			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
-		},
+		// We expect this to be empty since we want to ignore these as tests
+		expectedTestNames: []string{},
 		options: testgridconversion.ProcessingOptions{
 			StartDay:             0,
 			NumDays:              numOfJobs,
