@@ -26,22 +26,24 @@ export default function JobDetailTestModal (props) {
             <Dialog
                 scroll="paper"
                 style={{ verticalAlign: 'top' }}
-                maxWidth="md"
+                maxWidth="lg"
                 fullWidth={true}
                 open={props.isOpen}
                 onClose={props.close}
                 aria-labelledby="form-dialog-title">
 
                 <DialogTitle id="form-dialog-title" style={{ textAlign: 'right' }}>
-                    <Button startIcon={<Close />} onClick={props.close} />
+                    <Button startIcon={<Close/>} onClick={props.close}/>
                 </DialogTitle>
                 <DialogContent>
                     <Container size="xl">
                         <Typography variant="h4">
-                            {props.item.name}
+                            {props.item.name || props.item.job}
                         </Typography>
-                        <Divider />
-                        <Button target="_blank" href={props.item.prowLink} variant="contained" color="primary" style={{ marginTop: 20, marginBottom: 20 }}>
+                        <Divider/>
+
+                        <Button target="_blank" href={props.item.prowLink} variant="contained" color="primary"
+                                style={{ marginTop: 20, marginBottom: 20 }}>
                             Open Prow Link
                         </Button>
 
@@ -50,16 +52,17 @@ export default function JobDetailTestModal (props) {
                         </Typography>
                     </Container>
 
-                    { filterModel.items.length > 0 ? <TestTable release={props.release} hideControls={true} filterModel={filterModel} /> : <Container size="xl"><p>No failed tests found.</p></Container> }
+                    {filterModel.items.length > 0
+                      ? <TestTable release={props.release} hideControls={true} filterModel={filterModel}/>
+                      : <Container size="xl"><p>No failed tests found.</p></Container>}
                 </DialogContent>
             </Dialog>
-        </Fragment >
+        </Fragment>
   )
 }
 
 JobDetailTestModal.defaultProps = {
   item: {
-    name: '',
     failedTestNames: [],
     prowLink: ''
   },

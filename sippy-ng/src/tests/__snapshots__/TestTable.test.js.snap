@@ -5,7 +5,7 @@ exports[`TestTable should render correctly 1`] = `
 <div class=\\"MuiContainer-root MuiContainer-maxWidthLg\\">
   <div class=\\"MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight\\"
        role=\\"grid\\"
-       aria-colcount=\\"7\\"
+       aria-colcount=\\"8\\"
        aria-rowcount=\\"2252\\"
        aria-multiselectable=\\"false\\"
   >
@@ -59,31 +59,6 @@ exports[`TestTable should render correctly 1`] = `
                   </svg>
                 </span>
                 Bookmarks
-              </span>
-              <span class=\\"MuiTouchRipple-root\\">
-              </span>
-            </button>
-            <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary\\"
-                    tabindex=\\"0\\"
-                    type=\\"button\\"
-                    aria-controls=\\"period-menu\\"
-                    aria-haspopup=\\"true\\"
-                    title=\\"The period to report on. When selecting two days, the
-    previous two days are compared with the previous 7 days. A default report typically
-    compares the previous 7 days to the prior 7 day period.\\"
-            >
-              <span class=\\"MuiButton-label\\">
-                <span class=\\"MuiButton-startIcon MuiButton-iconSizeMedium\\">
-                  <svg class=\\"MuiSvgIcon-root\\"
-                       focusable=\\"false\\"
-                       viewbox=\\"0 0 24 24\\"
-                       aria-hidden=\\"true\\"
-                  >
-                    <path d=\\"M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5zm18-4H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 16H7V3h14v14zm-8-2l4-8V5h-6v2h4l-4 8h2z\\">
-                    </path>
-                  </svg>
-                </span>
-                Period
               </span>
               <span class=\\"MuiTouchRipple-root\\">
               </span>
@@ -171,7 +146,7 @@ exports[`TestTable should render correctly 1`] = `
         <div class=\\"MuiDataGrid-columnHeaderWrapper scroll\\"
              aria-rowindex=\\"1\\"
              role=\\"row\\"
-             style=\\"transform: translate3d(-0px, 0, 0); min-width: 350px;\\"
+             style=\\"transform: translate3d(-0px, 0, 0); min-width: 400px;\\"
         >
           <div class=\\"MuiDataGrid-columnHeader--alignCenter MuiDataGrid-columnHeader MuiDataGrid-columnHeaderCheckbox\\"
                data-field=\\"__check__\\"
@@ -327,7 +302,7 @@ exports[`TestTable should render correctly 1`] = `
               </svg>
             </div>
           </div>
-          <div style=\\"min-width: 200px; max-width: 200px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
+          <div style=\\"min-width: 250px; max-width: 250px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
                class=\\"MuiDataGrid-cell\\"
           >
           </div>
@@ -341,13 +316,13 @@ exports[`TestTable should render correctly 1`] = `
                style=\\"top: 56px; overflow-y: hidden;\\"
           >
             <div class=\\"MuiDataGrid-dataContainer\\"
-                 style=\\"min-width: 350px; min-height: 1300px;\\"
+                 style=\\"min-width: 400px; min-height: 1300px;\\"
             >
               <div class=\\"MuiDataGrid-viewport\\"
                    style=\\"min-width: 0; max-width: 0; max-height: 1300px;\\"
               >
                 <div class=\\"MuiDataGrid-renderingZone\\"
-                     style=\\"max-height: 1300px; width: 350px; transform: translate3d(-0px, -0px, 0);\\"
+                     style=\\"max-height: 1300px; width: 400px; transform: translate3d(-0px, -0px, 0);\\"
                 >
                   <div data-id=\\"24\\"
                        data-rowindex=\\"0\\"
@@ -435,7 +410,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -526,7 +501,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -617,7 +592,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -708,7 +683,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -799,7 +774,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -890,7 +865,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -981,7 +956,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1072,7 +1047,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1163,7 +1138,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1254,7 +1229,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1345,7 +1320,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1436,7 +1411,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1527,7 +1502,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1618,7 +1593,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1709,7 +1684,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1800,7 +1775,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1891,7 +1866,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1982,7 +1957,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2073,7 +2048,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2164,7 +2139,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2255,7 +2230,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2346,7 +2321,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2437,7 +2412,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2528,7 +2503,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2619,7 +2594,7 @@ exports[`TestTable should render correctly 1`] = `
                         0.00%
                       </p>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>

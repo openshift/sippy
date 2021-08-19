@@ -1,9 +1,6 @@
-
 import { Button, Container, Tooltip } from '@material-ui/core'
-import {
-  DataGrid
-} from '@material-ui/data-grid'
-import { BugReport, Search } from '@material-ui/icons'
+import { DataGrid } from '@material-ui/data-grid'
+import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
 import { withStyles } from '@material-ui/styles'
 import PropTypes from 'prop-types'
@@ -16,6 +13,7 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
+import { pathForExactTest, pathForJobRunsWithTestFailure } from '../helpers'
 
 const bookmarks = [
   {
@@ -63,7 +61,7 @@ function TestTable (props) {
       renderCell: (params) => (
         <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           <Tooltip title={params.value}>
-            <Link to={'/tests/' + props.release + '/details?test=' + params.row.name}>{params.value}</Link>
+            <Link to={props.briefTable ? pathForExactTest(props.release, params.value) : '/tests/' + props.release + '/details?test=' + params.row.name}>{params.value}</Link>
           </Tooltip>
         </div>
       )
@@ -110,7 +108,26 @@ function TestTable (props) {
       filterable: false,
       renderCell: (params) => {
         return (
-          <Button target="_blank" startIcon={<Search />} href={'https://search.ci.openshift.org/?search=' + encodeURIComponent(params.row.name) + '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'} />
+          <Button target="_blank" startIcon={<Search />}
+                  href={'https://search.ci.openshift.org/?search=' + encodeURIComponent(params.row.name) + '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'} />
+        )
+      },
+      hide: props.briefTable
+    },
+    {
+      field: 'jobs',
+      headerName: ' ',
+      flex: 0.40,
+      filterable: false,
+      renderCell: (params) => {
+        return (
+          <Tooltip title="See job runs that failed this test">
+            <Button
+              startIcon={<DirectionsRun />}
+              component={Link}
+              to={pathForJobRunsWithTestFailure(props.release, params.row.name)}
+            />
+          </Tooltip>
         )
       },
       hide: props.briefTable

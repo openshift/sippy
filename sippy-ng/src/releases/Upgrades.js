@@ -2,11 +2,9 @@ import PropTypes from 'prop-types'
 
 import { Container, Grid, Paper, Tab, Tabs, Typography } from '@material-ui/core'
 import { Alert, TabContext } from '@material-ui/lab'
-import React, { useEffect, Fragment } from 'react'
+import React, { Fragment, useEffect } from 'react'
 
-import {
-  Link, Redirect, Route, Switch, useRouteMatch
-} from 'react-router-dom'
+import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import JobTable from '../jobs/JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
@@ -40,6 +38,7 @@ export default function Upgrades (props) {
   }
 
   useEffect(() => {
+    document.title = `Sippy > ${props.release} > Upgrade health`
     fetchData()
   }, [])
 
@@ -49,7 +48,7 @@ export default function Upgrades (props) {
 
   if (!isLoaded) {
     return <p>Loading...</p>
-  };
+  }
 
   return (
     <Fragment>

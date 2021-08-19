@@ -18,21 +18,22 @@ export default function GridToolbarSearchBox (props) {
   }
 
   return (
-        <Fragment>
-            <Grid container alignItems="stretch" style={{ display: 'flex' }}>
-                <TextField
-                    id="outlined-secondary"
-                    label="Filter"
-                    variant="outlined"
-                    color="secondary"
-                    defaultValue={props.value}
-                    style={{ border: formError ? 'solid 1px red' : '', width: '50%' }}
-                    onChange={(e) => props.setValue(e.target.value)}
-                /> &nbsp;&nbsp;
+    <Fragment>
+      <Grid container alignItems="stretch" style={{ display: 'flex' }}>
+        <TextField
+          id="outlined-secondary"
+          label="Filter"
+          variant="outlined"
+          color="secondary"
+          defaultValue={props.value}
+          style={{ border: formError ? 'solid 1px red' : '', width: '50%' }}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          onChange={(e) => props.setValue(e.target.value)}
+        /> &nbsp;&nbsp;
 
-                <Button variant="contained" color="secondary" onClick={submit} >Search</Button>
-            </Grid>
-        </Fragment>
+        <Button variant="contained" color="secondary" onClick={submit}>Search</Button>
+      </Grid>
+    </Fragment>
   )
 }
 
