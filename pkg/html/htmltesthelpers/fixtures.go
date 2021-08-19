@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	jobName string = ""
 	release string = "4.9"
 )
 
@@ -85,23 +84,27 @@ func GetTestReport(jobName, testName, release string) sippyprocessingv1.TestRepo
 				},
 			},
 		},
-		TopLevelStepRegistryMetrics: GetTopLevelStepRegistryMetrics(jobName),
+		TopLevelStepRegistryMetrics: GetTopLevelStepRegistryMetrics(),
 	}
 }
 
-func GetTopLevelStepRegistryMetrics(jobName string) sippyprocessingv1.TopLevelStepRegistryMetrics {
+func GetTopLevelStepRegistryMetrics() sippyprocessingv1.TopLevelStepRegistryMetrics {
 	return sippyprocessingv1.TopLevelStepRegistryMetrics{
 		ByMultistageName: GetByMultistageName(),
 		ByStageName:      GetByStageName(),
-		ByJobName:        GetByJobName(jobName),
+		ByJobName:        GetByJobName(),
 	}
 }
 
-func GetByJobName(jobName string) map[string]sippyprocessingv1.ByJobName {
+func GetByJobName() map[string]sippyprocessingv1.ByJobName {
 	return map[string]sippyprocessingv1.ByJobName{
-		jobName: sippyprocessingv1.ByJobName{
-			JobName:             jobName,
+		AwsJobName: sippyprocessingv1.ByJobName{
+			JobName:             AwsJobName,
 			StepRegistryMetrics: GetByMultistageName()["e2e-aws"],
+		},
+		GcpJobName: sippyprocessingv1.ByJobName{
+			JobName:             GcpJobName,
+			StepRegistryMetrics: GetByMultistageName()["e2e-gcp"],
 		},
 	}
 }
