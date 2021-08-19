@@ -2,17 +2,18 @@ package stepmetricshtml_test
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
 )
 
 const (
-	jobName string = "periodic-ci-openshift-release-master-ci-4.9-e2e-aws"
 	release string = "4.9"
 )
 
@@ -24,27 +25,67 @@ type tableTestCase struct {
 	tableFunc        func(stepmetrics.Response) (string, error)
 }
 
-func TestPrintTable(t *testing.T) {
+func (tc tableTestCase) allExpectedContents() []string {
+	expectedContents := append([]string{}, tc.expectedContents...)
+
+	for _, u := range tc.expectedURLs {
+		expectedContents = append(expectedContents, u.URL().String())
+		expectedContents = append(expectedContents, u.ToHTML())
+	}
+
+	return expectedContents
+}
+
+func TestPrintLandingPage(t *testing.T) {
 	testCases := []tableTestCase{
 		{
-			name:     "all multistage jobs",
-			response: htmltesthelpers.GetAllMultistageResponse(),
-			expectedURLs: []stepmetricshtml.URLGenerator{
-				stepmetricshtml.StepRegistryURL{
-					Search: "e2e-aws",
-				},
-				stepmetricshtml.StepRegistryURL{
-					Search: "e2e-gcp",
-				},
-				stepmetricshtml.SippyURL{
-					Release:           release,
-					MultistageJobName: "e2e-aws",
-				},
-				stepmetricshtml.SippyURL{
-					Release:           release,
-					MultistageJobName: "e2e-gcp",
-				},
+			name:         "landing page",
+			expectedURLs: append(getExpectedURLsForAllSteps(), getExpectedURLsForAllMultistages()...),
+			expectedContents: []string{
+				fmt.Sprintf(generichtml.HTMLPageStart, "Step Metrics For 4.9"),
+				fmt.Sprintf(generichtml.HTMLPageEnd, time.Now().Format("Jan 2 15:04 2006 MST")),
+				"All Multistage Job Names",
+				"Multistage Job Name",
+				"<td>e2e-aws",
+				"<td>e2e-gcp",
+				"100.00% (1 runs)",
+				"href=\"#AllMultistageJobNames\"",
+				"id=\"AllMultistageJobNames\"",
+				"Step Metrics For All",
+				"Step Name",
+				"<td>aws-specific",
+				"<td>gcp-specific",
+				"<td>openshift-e2e-test",
+				"<td>ipi-install",
+				"100.00% (1 runs)",
+				"100.00% (2 runs)",
+				"href=\"#StepMetricsForAllSteps\"",
+				"id=\"StepMetricsForAllSteps\"",
 			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			curr := htmltesthelpers.GetTestReport(htmltesthelpers.AwsJobName, "a-test", release)
+			prev := htmltesthelpers.GetTestReport(htmltesthelpers.AwsJobName, "a-test", release)
+
+			out, err := stepmetricshtml.PrintLandingPage(curr, prev)
+			if err != nil {
+				t.Errorf("expected no errors, got: %s", err)
+			}
+
+			assertContains(t, out, testCase.allExpectedContents())
+		})
+	}
+}
+
+func TestPrintTables(t *testing.T) {
+	testCases := []tableTestCase{
+		{
+			name:         "all multistage jobs",
+			response:     htmltesthelpers.GetAllMultistageResponse(),
+			expectedURLs: getExpectedURLsForAllMultistages(),
 			expectedContents: []string{
 				"All Multistage Job Names",
 				"Multistage Job Name",
@@ -121,10 +162,10 @@ func TestPrintTable(t *testing.T) {
 		},
 		{
 			name:         "by job name",
-			response:     htmltesthelpers.GetByJobNameResponse(),
+			response:     htmltesthelpers.GetByJobNameResponse(htmltesthelpers.AwsJobName),
 			expectedURLs: getExpectedURLsForJobName(),
 			expectedContents: []string{
-				htmltesthelpers.GetByJobNameResponse().Request.JobName,
+				htmltesthelpers.AwsJobName,
 				"Step Name",
 				"Multistage Job Name",
 				"<td>aws-specific",
@@ -135,17 +176,20 @@ func TestPrintTable(t *testing.T) {
 			},
 			tableFunc: stepmetricshtml.ByJob,
 		},
+		{
+			name:         "all jobs",
+			response:     htmltesthelpers.GetAllJobsResponse(),
+			expectedURLs: getExpectedURLsForJobName(),
+			expectedContents: []string{
+				htmltesthelpers.AwsJobName,
+				htmltesthelpers.GcpJobName,
+			},
+			tableFunc: stepmetricshtml.AllJobs,
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			expectedContents := append([]string{}, testCase.expectedContents...)
-
-			for _, u := range testCase.expectedURLs {
-				expectedContents = append(expectedContents, u.URL().String())
-				expectedContents = append(expectedContents, u.ToHTML())
-			}
-
 			result, err := testCase.tableFunc(testCase.response)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
@@ -156,22 +200,53 @@ func TestPrintTable(t *testing.T) {
 				t.Errorf("unexpected error: %s", err)
 			}
 
-			fmt.Println(rendered)
-
 			if !strings.Contains(rendered, result) {
 				t.Errorf("result not in rendered")
 			}
 
-			for _, item := range expectedContents {
-				if !strings.Contains(result, item) {
-					t.Errorf("expected to contain %s", item)
-				}
+			allExpectedContents := testCase.allExpectedContents()
 
-				if !strings.Contains(rendered, item) {
-					t.Errorf("expected rendered table to contain %s", item)
-				}
-			}
+			assertContains(t, result, allExpectedContents)
+			assertContains(t, result, allExpectedContents)
 		})
+	}
+}
+
+// Assertions
+func assertContains(t *testing.T, result string, expectedContents []string) {
+	t.Helper()
+
+	for _, item := range expectedContents {
+		if !strings.Contains(result, item) {
+			t.Errorf("expected result to contain: %s", item)
+		}
+	}
+}
+
+func getExpectedURLsForAllMultistages() []stepmetricshtml.URLGenerator {
+	return []stepmetricshtml.URLGenerator{
+		stepmetricshtml.StepRegistryURL{
+			Search: "e2e-aws",
+		},
+		stepmetricshtml.StepRegistryURL{
+			Search: "e2e-gcp",
+		},
+		stepmetricshtml.SippyURL{
+			Release:           release,
+			MultistageJobName: "e2e-aws",
+		},
+		stepmetricshtml.SippyURL{
+			Release:           release,
+			MultistageJobName: "e2e-gcp",
+		},
+		stepmetricshtml.CISearchURL{
+			Release: release,
+			Search:  "operator.Run multi-stage test e2e-aws",
+		},
+		stepmetricshtml.CISearchURL{
+			Release: release,
+			Search:  "operator.Run multi-stage test e2e-gcp",
+		},
 	}
 }
 
@@ -186,6 +261,10 @@ func getExpectedURLsForAllSteps() []stepmetricshtml.URLGenerator {
 			stepmetricshtml.SippyURL{
 				Release:  release,
 				StepName: stepName,
+			},
+			stepmetricshtml.CISearchURL{
+				Release:     release,
+				SearchRegex: fmt.Sprintf(`operator\.Run multi-stage test .*-%s container test`, stepName),
 			},
 		)
 	}
@@ -218,7 +297,7 @@ func getExpectedURLsForMultistage(multistageName string) []stepmetricshtml.URLGe
 func getExpectedURLsForJobName() []stepmetricshtml.URLGenerator {
 	urls := []stepmetricshtml.URLGenerator{}
 
-	byJobName := htmltesthelpers.GetByJobName(jobName)[jobName]
+	byJobName := htmltesthelpers.GetByJobName()[htmltesthelpers.AwsJobName]
 
 	for _, stageResult := range byJobName.StepRegistryMetrics.StageResults {
 		urls = append(urls,
@@ -226,8 +305,8 @@ func getExpectedURLsForJobName() []stepmetricshtml.URLGenerator {
 				Reference: stageResult.Name,
 			},
 			stepmetricshtml.CISearchURL{
-				Release: release,
-				Search:  stageResult.OriginalTestName,
+				Search:   stageResult.OriginalTestName,
+				JobRegex: fmt.Sprintf("^%s$", regexp.QuoteMeta(htmltesthelpers.AwsJobName)),
 			},
 			stepmetricshtml.SippyURL{
 				Release:  release,

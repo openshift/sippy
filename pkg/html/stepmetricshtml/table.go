@@ -2,13 +2,48 @@ package stepmetricshtml
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
+
+func PrintLandingPage(curr, prev sippyprocessingv1.TestReport) (string, error) {
+	sb := strings.Builder{}
+
+	fmt.Fprintf(&sb, generichtml.HTMLPageStart, "Step Metrics For "+curr.Release)
+
+	api := stepmetrics.NewStepMetricsAPI(curr, prev)
+
+	allMultistagesResp, err := api.Fetch(stepmetrics.Request{
+		Release:           curr.Release,
+		MultistageJobName: stepmetrics.All,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	allStepsResp, err := api.Fetch(stepmetrics.Request{
+		Release:  curr.Release,
+		StepName: stepmetrics.All,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Fprintln(&sb, allMultistages(allMultistagesResp).toHTML())
+	fmt.Fprintln(&sb, allSteps(allStepsResp).toHTML())
+
+	fmt.Fprintf(&sb, generichtml.HTMLPageEnd, curr.Timestamp.Format("Jan 2 15:04 2006 MST"))
+
+	return sb.String(), nil
+}
 
 func RenderResponse(resp stepmetrics.Response, timestamp time.Time) (string, error) {
 	tables, err := getTablesForResponse(resp)
@@ -18,15 +53,21 @@ func RenderResponse(resp stepmetrics.Response, timestamp time.Time) (string, err
 
 	sb := strings.Builder{}
 
+	title := tables[0].pageTitle
+
+	if resp.Request.JobName == stepmetrics.All {
+		title = "All Step Metrics By Job Name"
+	}
+
 	header := generichtml.HTMLElement{
 		Element: "h1",
-		Text:    tables[0].pageTitle,
+		Text:    title,
 		Params: map[string]string{
 			"class": "text-center",
 		},
 	}
 
-	fmt.Fprintf(&sb, generichtml.HTMLPageStart, tables[0].pageTitle)
+	fmt.Fprintf(&sb, generichtml.HTMLPageStart, title)
 	fmt.Fprintln(&sb, header.ToHTML())
 
 	for _, table := range tables {
@@ -52,10 +93,13 @@ func getTablesForResponse(resp stepmetrics.Response) ([]tableOpts, error) {
 			return []tableOpts{allSteps(resp)}, nil
 		}
 
-		return []tableOpts{stepDetail(resp)}, nil
+		return stepDetail(resp), nil
 	}
 
 	if resp.Request.JobName != "" {
+		if resp.Request.JobName == stepmetrics.All {
+			return allJobs(resp)
+		}
 		return byJob(resp)
 	}
 
@@ -94,6 +138,10 @@ func allMultistages(resp stepmetrics.Response) tableOpts {
 		opts.rows = append(opts.rows, tableRow{
 			name:  multistageDetail.Name,
 			trend: multistageDetail.Trend,
+			ciSearchURL: &CISearchURL{
+				Release: resp.Request.Release,
+				Search:  fmt.Sprintf(`operator.Run multi-stage test %s`, multistageDetail.Name),
+			},
 			sippyURL: &SippyURL{
 				Release:           resp.Request.Release,
 				MultistageJobName: multistageDetail.Name,
@@ -125,12 +173,12 @@ func MultistageDetail(resp stepmetrics.Response) (string, error) {
 }
 
 func multistageDetail(resp stepmetrics.Response) []tableOpts {
-	multistageJobName := resp.Request.MultistageJobName
+	multistageDetails := resp.MultistageDetails[resp.Request.MultistageJobName]
 
 	opts := tableOpts{
-		pageTitle:   "All Step Names for Multistage Job " + multistageJobName,
-		title:       "All Step Names for Multistage Job " + multistageJobName,
-		description: "All Step Names For Multistage Job " + multistageJobName,
+		pageTitle:   "All Step Names for Multistage Job " + multistageDetails.Name,
+		title:       "All Step Names for Multistage Job " + multistageDetails.Name,
+		description: "All Step Names For Multistage Job " + multistageDetails.Name,
 		width:       "4",
 		headerRows: []generichtml.HTMLTableRow{
 			getStepNameHeaderRow(),
@@ -138,10 +186,10 @@ func multistageDetail(resp stepmetrics.Response) []tableOpts {
 		rows: []tableRow{},
 	}
 
-	sortedStepNames := sets.StringKeySet(resp.MultistageDetails[multistageJobName].StepDetails).List()
+	sortedStepNames := sets.StringKeySet(multistageDetails.StepDetails).List()
 
 	for _, stepName := range sortedStepNames {
-		stepDetail := resp.MultistageDetails[multistageJobName].StepDetails[stepName]
+		stepDetail := multistageDetails.StepDetails[stepName]
 
 		opts.rows = append(opts.rows, tableRow{
 			name:  stepName,
@@ -161,8 +209,8 @@ func multistageDetail(resp stepmetrics.Response) []tableOpts {
 	}
 
 	return []tableOpts{
+		multistageAggregateDetail(multistageDetails),
 		opts,
-		multistageAggregateDetail(resp, multistageJobName),
 	}
 }
 
@@ -203,8 +251,8 @@ func allSteps(resp stepmetrics.Response) tableOpts {
 				StepName: stepDetails.Name,
 			},
 			ciSearchURL: &CISearchURL{
-				Release: resp.Request.Release,
-				Search:  stepDetails.Current.OriginalTestName,
+				Release:     resp.Request.Release,
+				SearchRegex: fmt.Sprintf(`operator\.Run multi-stage test .*-%s container test`, stepDetails.Current.Name),
 			},
 			stepRegistryURL: &StepRegistryURL{
 				Reference: stepDetails.Name,
@@ -224,10 +272,15 @@ func StepDetail(resp stepmetrics.Response) (string, error) {
 		return "", fmt.Errorf("step name must not be \"All\"")
 	}
 
-	return stepDetail(resp).toHTML(), nil
+	sb := strings.Builder{}
+	for _, table := range stepDetail(resp) {
+		fmt.Fprintln(&sb, table.toHTML())
+	}
+
+	return sb.String(), nil
 }
 
-func stepDetail(resp stepmetrics.Response) tableOpts {
+func stepDetail(resp stepmetrics.Response) []tableOpts {
 	stepName := resp.Request.StepName
 
 	opts := tableOpts{
@@ -265,7 +318,37 @@ func stepDetail(resp stepmetrics.Response) tableOpts {
 		})
 	}
 
-	return opts
+	return []tableOpts{
+		opts,
+	}
+}
+
+func AllJobs(resp stepmetrics.Response) (string, error) {
+	jobs, err := allJobs(resp)
+	if err != nil {
+		return "", err
+	}
+
+	sb := strings.Builder{}
+
+	for _, job := range jobs {
+		fmt.Fprintln(&sb, job.toHTML())
+	}
+
+	return sb.String(), nil
+}
+
+func allJobs(resp stepmetrics.Response) ([]tableOpts, error) {
+	sortedJobNames := sets.StringKeySet(resp.JobDetails).List()
+
+	tables := []tableOpts{}
+
+	for _, jobName := range sortedJobNames {
+		jobDetails := resp.JobDetails[jobName]
+		tables = append(tables, jobStepDetail(resp, jobDetails))
+	}
+
+	return tables, nil
 }
 
 func ByJob(resp stepmetrics.Response) (string, error) {
@@ -277,8 +360,7 @@ func ByJob(resp stepmetrics.Response) (string, error) {
 	sb := strings.Builder{}
 
 	for _, opt := range opts {
-		sb.WriteString(opt.toHTML())
-		sb.WriteString("\n")
+		fmt.Fprintln(&sb, opt.toHTML())
 	}
 
 	return sb.String(), nil
@@ -289,62 +371,79 @@ func byJob(resp stepmetrics.Response) ([]tableOpts, error) {
 		return []tableOpts{}, fmt.Errorf("job name empty")
 	}
 
-	if len(resp.MultistageDetails) > 1 {
-		return []tableOpts{}, fmt.Errorf("jobs should only have a single multistage")
+	if len(resp.JobDetails) != 1 {
+		return []tableOpts{}, fmt.Errorf("expected a single job")
 	}
 
-	multistageName := sets.StringKeySet(resp.MultistageDetails).UnsortedList()[0]
+	jobName := sets.StringKeySet(resp.JobDetails).UnsortedList()[0]
+
+	jobDetails := resp.JobDetails[jobName]
 
 	opts := []tableOpts{
-		jobStepDetail(resp, multistageName),
-		multistageAggregateDetail(resp, multistageName),
+		jobStepDetail(resp, jobDetails),
+		multistageAggregateDetailForJob(jobDetails.MultistageDetails, jobName),
 	}
 
 	return opts, nil
 }
 
-func multistageAggregateDetail(resp stepmetrics.Response, multistageName string) tableOpts {
-	multistageDetail := resp.MultistageDetails[multistageName]
-
+func multistageAggregateDetailForJob(multistageDetail stepmetrics.MultistageDetails, jobName string) tableOpts {
 	return tableOpts{
-		pageTitle:   "Multistage Job Detail For " + resp.Request.JobName,
-		title:       "Overall Multistage Metrics For " + resp.Request.JobName + " With Multistage " + multistageName,
-		description: "Overall Multistage Metrics For " + resp.Request.JobName + " With Multistage " + multistageName,
+		pageTitle:   "Multistage Job Detail For " + jobName,
+		title:       "Overall Multistage Metrics For " + jobName + " With Multistage " + multistageDetail.Name,
+		description: "Overall Multistage Metrics For " + jobName + " With Multistage " + multistageDetail.Name,
 		width:       "4",
 		headerRows: []generichtml.HTMLTableRow{
 			getMultistageHeaderRow(),
 		},
 		rows: []tableRow{
 			{
-				name:  multistageName,
+				name:  multistageDetail.Name,
 				trend: multistageDetail.Trend,
 				stepRegistryURL: &StepRegistryURL{
-					Search: multistageName,
+					Search: multistageDetail.Name,
 				},
 			},
 		},
 	}
 }
 
-func jobStepDetail(resp stepmetrics.Response, multistageName string) tableOpts {
-	jobName := resp.Request.JobName
+func multistageAggregateDetail(multistageDetail stepmetrics.MultistageDetails) tableOpts {
+	return tableOpts{
+		pageTitle:   "Multistage Job Detail For " + multistageDetail.Name,
+		title:       "Overall Multistage Metrics For " + multistageDetail.Name,
+		description: "Overall Multistage Metrics For " + multistageDetail.Name,
+		width:       "4",
+		headerRows: []generichtml.HTMLTableRow{
+			getMultistageHeaderRow(),
+		},
+		rows: []tableRow{
+			{
+				name:  multistageDetail.Name,
+				trend: multistageDetail.Trend,
+				stepRegistryURL: &StepRegistryURL{
+					Search: multistageDetail.Name,
+				},
+			},
+		},
+	}
+}
 
+func jobStepDetail(resp stepmetrics.Response, jobDetails stepmetrics.JobDetails) tableOpts {
 	opts := tableOpts{
-		pageTitle:   "Step Metrics For Job " + jobName,
-		title:       "Step Metrics For Job " + jobName,
-		description: "Step Metrics For " + jobName,
+		pageTitle:   "Step Metrics For Job " + jobDetails.JobName,
+		title:       "Step Metrics For Job " + jobDetails.JobName,
+		description: "Step Metrics For " + jobDetails.JobName,
 		width:       "4",
 		headerRows: []generichtml.HTMLTableRow{
 			getStepNameHeaderRow(),
 		},
 	}
 
-	stepDetails := resp.MultistageDetails[multistageName].StepDetails
-
-	sortedStepNames := sets.StringKeySet(stepDetails).List()
+	sortedStepNames := sets.StringKeySet(jobDetails.StepDetails).List()
 
 	for _, stepName := range sortedStepNames {
-		stepDetail := stepDetails[stepName]
+		stepDetail := jobDetails.StepDetails[stepName]
 
 		opts.rows = append(opts.rows, tableRow{
 			name:  stepName,
@@ -354,8 +453,8 @@ func jobStepDetail(resp stepmetrics.Response, multistageName string) tableOpts {
 				StepName: stepDetail.Name,
 			},
 			ciSearchURL: &CISearchURL{
-				Release: resp.Request.Release,
-				Search:  stepDetail.Current.OriginalTestName,
+				Search:   stepDetail.Current.OriginalTestName,
+				JobRegex: fmt.Sprintf("^%s$", regexp.QuoteMeta(jobDetails.JobName)),
 			},
 			stepRegistryURL: &StepRegistryURL{
 				Reference: stepDetail.Name,

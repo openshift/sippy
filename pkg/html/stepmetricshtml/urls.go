@@ -53,6 +53,7 @@ func (s StepRegistryURL) getPath() string {
 }
 
 type SippyURL struct {
+	JobName           string
 	Release           string
 	MultistageJobName string
 	StepName          string
@@ -67,6 +68,7 @@ func (s SippyURL) ToHTML() string {
 
 func (s SippyURL) URL() *url.URL {
 	values := mapToURLValues(map[string]string{
+		"jobName":           s.JobName,
 		"release":           s.Release,
 		"multistageJobName": s.MultistageJobName,
 		"stepName":          s.StepName,
@@ -82,12 +84,30 @@ func (s SippyURL) URL() *url.URL {
 var _ URLGenerator = (*CISearchURL)(nil)
 
 type CISearchURL struct {
-	Release string
-	Search  string
+	Release     string
+	Search      string
+	SearchRegex string
+	JobRegex    string
 }
 
 func (c CISearchURL) ToHTML() string {
 	return generichtml.NewHTMLLink("CI Search", c.URL()).ToHTML()
+}
+
+func (c CISearchURL) search() string {
+	if c.Search != "" {
+		return regexp.QuoteMeta(c.Search)
+	}
+
+	return c.SearchRegex
+}
+
+func (c CISearchURL) name() string {
+	if c.Release != "" {
+		return c.Release
+	}
+
+	return c.JobRegex
 }
 
 func (c CISearchURL) URL() *url.URL {
@@ -95,11 +115,11 @@ func (c CISearchURL) URL() *url.URL {
 		"maxAge":     "168h",
 		"context":    "1",
 		"type":       `bug+junit`,
-		"name":       c.Release,
+		"name":       c.name(),
 		"maxMatches": "5",
 		"maxBytes":   "20971520",
 		"groupBy":    "job",
-		"search":     regexp.QuoteMeta(c.Search),
+		"search":     c.search(),
 	})
 
 	return &url.URL{
