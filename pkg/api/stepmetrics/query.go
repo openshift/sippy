@@ -117,7 +117,7 @@ func (q *stepMetricsQuery) validateMultistageQuery() error {
 }
 
 func (q *stepMetricsQuery) validateStepQuery() error {
-	if q.request.StepName != "" && q.request.StepName != "All" {
+	if q.request.StepName != "" && q.request.StepName != All {
 		if !has(
 			q.requestOpts.Current.TopLevelStepRegistryMetrics.ByStageName,
 			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByStageName,
@@ -140,11 +140,13 @@ func (q *stepMetricsQuery) validateVariant() error {
 }
 
 func (q *stepMetricsQuery) validateJobQuery() error {
-	if !has(
-		q.requestOpts.Current.TopLevelStepRegistryMetrics.ByJobName,
-		q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByJobName,
-		q.request.JobName) {
-		return fmt.Errorf("unknown job name %s", q.request.JobName)
+	if q.request.JobName != "" && q.request.JobName != All {
+		if !has(
+			q.requestOpts.Current.TopLevelStepRegistryMetrics.ByJobName,
+			q.requestOpts.Previous.TopLevelStepRegistryMetrics.ByJobName,
+			q.request.JobName) {
+			return fmt.Errorf("unknown job name %s", q.request.JobName)
+		}
 	}
 
 	return nil

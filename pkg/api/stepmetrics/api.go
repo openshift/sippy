@@ -34,7 +34,7 @@ func (s StepMetricsAPI) Fetch(req Request) (Response, error) {
 	}
 
 	if req.JobName != "" {
-		return s.getJob(req), nil
+		return s.jobQuery(req), nil
 	}
 
 	return resp, fmt.Errorf("bad step metrics query")
@@ -94,7 +94,42 @@ func (s StepMetricsAPI) allStages() map[string]StepDetails {
 	return resp
 }
 
-func (s StepMetricsAPI) getJob(req Request) Response {
+func (s StepMetricsAPI) jobQuery(req Request) Response {
+	resp := Response{
+		Request: req,
+	}
+
+	if req.JobName == All {
+		resp.JobDetails = s.getAllJobs(req)
+		return resp
+	}
+
+	resp.JobDetails = map[string]JobDetails{
+		req.JobName: s.getJobDetails(req),
+	}
+
+	return resp
+}
+
+func (s StepMetricsAPI) getAllJobs(req Request) map[string]JobDetails {
+	currByJobName := s.current.TopLevelStepRegistryMetrics.ByJobName
+
+	jobDetails := map[string]JobDetails{}
+
+	for jobName := range currByJobName {
+		jobDetails[jobName] = JobDetails{
+			JobName: jobName,
+			MultistageDetails: s.getJobMultistageDetails(Request{
+				Release: req.Release,
+				JobName: jobName,
+			}),
+		}
+	}
+
+	return jobDetails
+}
+
+func (s StepMetricsAPI) getJobMultistageDetails(req Request) MultistageDetails {
 	currByJobName := s.current.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
 	prevByJobName := s.previous.TopLevelStepRegistryMetrics.ByJobName[req.JobName]
 
@@ -109,18 +144,20 @@ func (s StepMetricsAPI) getJob(req Request) Response {
 		)
 	}
 
-	return Response{
-		Request: req,
-		MultistageDetails: map[string]MultistageDetails{
-			multistageName: MultistageDetails{
-				Name: multistageName,
-				Trend: newTrend(
-					currByJobName.StepRegistryMetrics.Aggregated,
-					prevByJobName.StepRegistryMetrics.Aggregated,
-				),
-				StepDetails: stepDetails,
-			},
-		},
+	return MultistageDetails{
+		Name: multistageName,
+		Trend: newTrend(
+			currByJobName.StepRegistryMetrics.Aggregated,
+			prevByJobName.StepRegistryMetrics.Aggregated,
+		),
+		StepDetails: stepDetails,
+	}
+}
+
+func (s StepMetricsAPI) getJobDetails(req Request) JobDetails {
+	return JobDetails{
+		JobName:           req.JobName,
+		MultistageDetails: s.getJobMultistageDetails(req),
 	}
 }
 

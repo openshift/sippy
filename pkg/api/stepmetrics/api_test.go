@@ -84,7 +84,15 @@ func TestStepMetricsAPI(t *testing.T) {
 				Release: release,
 				JobName: jobName,
 			},
-			expectedResponse: htmltesthelpers.GetByJobNameResponse(),
+			expectedResponse: htmltesthelpers.GetByJobNameResponse(jobName),
+		},
+		{
+			name: "all job names",
+			request: stepmetrics.Request{
+				Release: release,
+				JobName: stepmetrics.All,
+			},
+			expectedResponse: htmltesthelpers.GetAllJobsResponse(),
 		},
 	}
 
@@ -104,9 +112,27 @@ func TestStepMetricsAPI(t *testing.T) {
 				t.Errorf("expected request to be: %v, got: %v", testCase.request, resp.Request)
 			}
 
+			assertAllJobDetails(t, resp.JobDetails, testCase.expectedResponse.JobDetails)
 			assertAllMultistageDetails(t, resp.MultistageDetails, testCase.expectedResponse.MultistageDetails)
 			assertAllStepDetails(t, resp.StepDetails, testCase.expectedResponse.StepDetails)
 		})
+	}
+}
+
+func assertAllJobDetails(t *testing.T, have, want map[string]stepmetrics.JobDetails) {
+	t.Helper()
+
+	assertKeysEqual(t, have, want)
+
+	for jobName := range want {
+		haveJobDetails := have[jobName]
+		wantJobDetails := want[jobName]
+
+		if haveJobDetails.JobName != wantJobDetails.JobName {
+			t.Errorf("job name mismatch, want: %s, got: %s", wantJobDetails.JobName, haveJobDetails.JobName)
+		}
+
+		assertMultistageDetails(t, haveJobDetails.MultistageDetails, wantJobDetails.MultistageDetails)
 	}
 }
 

@@ -28,6 +28,11 @@ type StepDetail struct {
 	Trend `json:"trend"`
 }
 
+type JobDetails struct {
+	JobName string `json:"jobName"`
+	MultistageDetails
+}
+
 type MultistageDetails struct {
 	Name        string `json:"name"`
 	Trend       `json:"trend"`
@@ -41,6 +46,7 @@ type StepDetails struct {
 }
 
 type Response struct {
+	JobDetails        map[string]JobDetails        `json:"jobDetails"`
 	MultistageDetails map[string]MultistageDetails `json:"multistageDetails"`
 	StepDetails       map[string]StepDetails       `json:"stepDetails"`
 	Request           Request                      `json:"request"`
