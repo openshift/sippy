@@ -41,22 +41,22 @@ func TestStepRegistryItems(t *testing.T) {
 		{
 			inputTestName: "operator.Run multi-stage test e2e-aws-arm64 - e2e-aws-arm64-openshift-e2e-test container test",
 			expectedStepRegistryItem: testidentification.StepRegistryItem{
-				Name:     "e2e-aws-arm64",
-				StepName: "openshift-e2e-test",
+				MultistageJobName: "e2e-aws-arm64",
+				StepName:          "openshift-e2e-test",
 			},
 		},
 		{
 			inputTestName: "operator.Run multi-stage test e2e-aws-csi-migration - e2e-aws-csi-migration-openshift-e2e-test container test",
 			expectedStepRegistryItem: testidentification.StepRegistryItem{
-				Name:     "e2e-aws-csi-migration",
-				StepName: "openshift-e2e-test",
+				MultistageJobName: "e2e-aws-csi-migration",
+				StepName:          "openshift-e2e-test",
 			},
 		},
 		{
 			inputTestName: "operator.Run multi-stage test e2e-aws-csi-migration - e2e-aws-csi-migration-storage-pv-check container test",
 			expectedStepRegistryItem: testidentification.StepRegistryItem{
-				Name:     "e2e-aws-csi-migration",
-				StepName: "storage-pv-check",
+				MultistageJobName: "e2e-aws-csi-migration",
+				StepName:          "storage-pv-check",
 			},
 		},
 		{

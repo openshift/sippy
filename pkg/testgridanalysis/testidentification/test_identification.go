@@ -218,8 +218,8 @@ func IsStepRegistryItem(testName string) bool {
 }
 
 type StepRegistryItem struct {
-	Name     string
-	StepName string
+	MultistageJobName string
+	StepName          string
 }
 
 func GetStepRegistryItemFromTest(testName string) StepRegistryItem {
@@ -229,7 +229,7 @@ func GetStepRegistryItemFromTest(testName string) StepRegistryItem {
 	}
 
 	return StepRegistryItem{
-		Name:     matches[0][1],
-		StepName: strings.ReplaceAll(matches[0][2], matches[0][1]+"-", ""),
+		MultistageJobName: matches[0][1],
+		StepName:          strings.ReplaceAll(matches[0][2], matches[0][1]+"-", ""),
 	}
 }

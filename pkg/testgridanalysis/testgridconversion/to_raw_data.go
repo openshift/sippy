@@ -281,7 +281,7 @@ func addStepRegistryItemState(stepRegistryItemStates testgridanalysisapi.StepReg
 	stepItem := testidentification.GetStepRegistryItemFromTest(testName)
 
 	if stepRegistryItemStates.MultistageName == "" {
-		stepRegistryItemStates.MultistageName = stepItem.Name
+		stepRegistryItemStates.MultistageName = stepItem.MultistageJobName
 	}
 
 	stepRegistryItemStates.States = append(stepRegistryItemStates.States, testgridanalysisapi.StageState{
