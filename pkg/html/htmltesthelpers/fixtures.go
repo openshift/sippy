@@ -25,48 +25,6 @@ const (
 	e2eAzureOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-azure - e2e-azure-openshift-e2e-test container test"
 )
 
-func GetJobResult(jobName string) sippyprocessingv1.JobResult {
-	return sippyprocessingv1.JobResult{
-		Name:      jobName,
-		Successes: 2,
-		Failures:  1,
-		StepRegistryMetrics: sippyprocessingv1.StepRegistryMetrics{
-			MultistageName: "e2e-aws",
-			StageResults: map[string]sippyprocessingv1.StageResult{
-				"ipi-install": {
-					TestResult: sippyprocessingv1.TestResult{
-						Name:           "ipi-install",
-						Successes:      1,
-						Failures:       0,
-						PassPercentage: 100,
-					},
-					Runs: 1,
-				},
-			},
-		},
-		TestResults: []sippyprocessingv1.TestResult{
-			{
-				Name:           e2eAwsOriginalTestNameIpiInstall,
-				Successes:      1,
-				Failures:       0,
-				PassPercentage: 100,
-			},
-			{
-				Name:           "unrelated-passing-test",
-				Successes:      1,
-				Failures:       0,
-				PassPercentage: 100,
-			},
-			{
-				Name:           "unrelated-failing-test",
-				Successes:      0,
-				Failures:       1,
-				PassPercentage: 0,
-			},
-		},
-	}
-}
-
 func GetTestReport(jobName, testName, release string) sippyprocessingv1.TestReport {
 	return sippyprocessingv1.TestReport{
 		Release:   release,

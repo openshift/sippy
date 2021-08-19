@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 )
 
 func TestJobResultRenderer(t *testing.T) {
@@ -16,7 +16,7 @@ func TestJobResultRenderer(t *testing.T) {
 
 	renderer := generichtml.NewJobResultRendererFromJobResult(
 		sectionBlock,
-		htmltesthelpers.GetJobResult(jobName),
+		getJobResult(jobName),
 		release)
 
 	result := renderer.ToHTML()
@@ -24,17 +24,47 @@ func TestJobResultRenderer(t *testing.T) {
 	expectedContents := []string{
 		release,
 		jobName,
-		// "job-name",
-		// "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test",
-		// "unrelated-passing-test",
-		// "unrelated-failing-test",
-		// "e2e-aws",
-		// "ipi-install",
 	}
 
 	for _, item := range expectedContents {
 		if !strings.Contains(result, item) {
 			t.Errorf("result did not contain: %s", item)
 		}
+	}
+}
+
+func getJobResult(jobName string) sippyprocessingv1.JobResult {
+	return sippyprocessingv1.JobResult{
+		Name:      jobName,
+		Successes: 2,
+		Failures:  1,
+		StepRegistryMetrics: sippyprocessingv1.StepRegistryMetrics{
+			MultistageName: "e2e-aws",
+			StageResults: map[string]sippyprocessingv1.StageResult{
+				"ipi-install": {
+					TestResult: sippyprocessingv1.TestResult{
+						Name:           "ipi-install",
+						Successes:      1,
+						Failures:       0,
+						PassPercentage: 100,
+					},
+					Runs: 1,
+				},
+			},
+		},
+		TestResults: []sippyprocessingv1.TestResult{
+			{
+				Name:           "unrelated-passing-test",
+				Successes:      1,
+				Failures:       0,
+				PassPercentage: 100,
+			},
+			{
+				Name:           "unrelated-failing-test",
+				Successes:      0,
+				Failures:       1,
+				PassPercentage: 0,
+			},
+		},
 	}
 }
