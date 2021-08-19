@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
+	"github.com/openshift/sippy/pkg/api/stepmetrics/fixtures"
 )
 
 func TestValidateQuery(t *testing.T) {
@@ -99,8 +99,8 @@ func TestValidateQuery(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			opts := stepmetrics.RequestOpts{
 				URLValues: getURLValues(testCase.request),
-				Current:   htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
-				Previous:  htmltesthelpers.GetTestReport("a-job-name", "test-name", "4.9"),
+				Current:   fixtures.GetTestReport("a-job-name", "test-name", "4.9"),
+				Previous:  fixtures.GetTestReport("a-job-name", "test-name", "4.9"),
 			}
 
 			// If the test case doesn't specify which validator to run, run both

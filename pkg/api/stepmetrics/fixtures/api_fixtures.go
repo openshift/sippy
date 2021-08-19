@@ -1,19 +1,36 @@
-package htmltesthelpers
+package fixtures
 
 import (
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+// Release
+const (
+	Release string = "4.9"
+)
+
+// Job Names
 const (
 	AwsJobName string = "periodic-ci-openshift-release-master-nightly-4.9-e2e-aws"
 	GcpJobName string = "periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp"
 )
 
+// Original Test Names
+const (
+	E2eAwsOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific-stage container test"
+	E2eAwsOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test"
+	E2eAwsOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test"
+
+	E2eGcpOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific-stage container test"
+	E2eGcpOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test"
+	E2eGcpOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test"
+)
+
 func GetAllMultistageResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release:           "4.9",
+			Release:           Release,
 			MultistageJobName: stepmetrics.All,
 		},
 		MultistageDetails: map[string]stepmetrics.MultistageDetails{
@@ -31,8 +48,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
-							Previous:   GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Current:    GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Previous:   GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
 						},
 					},
 					"ipi-install": stepmetrics.StepDetail{
@@ -40,8 +57,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
-							Previous:   GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
+							Current:    GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
+							Previous:   GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
 						},
 					},
 					"openshift-e2e-test": stepmetrics.StepDetail{
@@ -49,8 +66,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
-							Previous:   GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
+							Current:    GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
+							Previous:   GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
 						},
 					},
 				},
@@ -69,8 +86,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
-							Previous:   GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
+							Current:    GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
+							Previous:   GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
 						},
 					},
 					"ipi-install": stepmetrics.StepDetail{
@@ -78,8 +95,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
-							Previous:   GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
+							Current:    GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
+							Previous:   GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
 						},
 					},
 					"openshift-e2e-test": stepmetrics.StepDetail{
@@ -87,8 +104,8 @@ func GetAllMultistageResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
-							Previous:   GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
+							Current:    GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
+							Previous:   GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
 						},
 					},
 				},
@@ -102,7 +119,7 @@ func GetSpecificMultistageResponse(multistageJobName string) stepmetrics.Respons
 
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release:           "4.9",
+			Release:           Release,
 			MultistageJobName: multistageJobName,
 		},
 		MultistageDetails: map[string]stepmetrics.MultistageDetails{
@@ -114,7 +131,7 @@ func GetSpecificMultistageResponse(multistageJobName string) stepmetrics.Respons
 func GetAllStepsResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release:  "4.9",
+			Release:  Release,
 			StepName: stepmetrics.All,
 		},
 		StepDetails: map[string]stepmetrics.StepDetails{
@@ -132,8 +149,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
-							Previous:   GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
+							Current:    GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
+							Previous:   GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
 						},
 					},
 					"e2e-gcp": stepmetrics.StepDetail{
@@ -141,8 +158,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
-							Previous:   GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
+							Current:    GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
+							Previous:   GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
 						},
 					},
 				},
@@ -161,8 +178,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
-							Previous:   GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
+							Current:    GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
+							Previous:   GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
 						},
 					},
 					"e2e-gcp": stepmetrics.StepDetail{
@@ -170,8 +187,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
-							Previous:   GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
+							Current:    GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
+							Previous:   GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
 						},
 					},
 				},
@@ -190,8 +207,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
-							Previous:   GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Current:    GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Previous:   GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
 						},
 					},
 				},
@@ -210,8 +227,8 @@ func GetAllStepsResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
-							Previous:   GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
+							Current:    GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
+							Previous:   GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
 						},
 					},
 				},
@@ -223,7 +240,7 @@ func GetAllStepsResponse() stepmetrics.Response {
 func GetAwsSpecificStepNameResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release:  "4.9",
+			Release:  Release,
 			StepName: "aws-specific",
 		},
 		StepDetails: map[string]stepmetrics.StepDetails{
@@ -241,8 +258,8 @@ func GetAwsSpecificStepNameResponse() stepmetrics.Response {
 						Trend: stepmetrics.Trend{
 							Trajectory: stepmetrics.TrendTrajectoryFlat,
 							Delta:      0,
-							Current:    GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
-							Previous:   GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Current:    GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
+							Previous:   GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
 						},
 					},
 				},
@@ -256,7 +273,7 @@ func GetSpecificStepNameResponse(stepName string) stepmetrics.Response {
 
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release:  "4.9",
+			Release:  Release,
 			StepName: stepName,
 		},
 		StepDetails: map[string]stepmetrics.StepDetails{
@@ -268,7 +285,7 @@ func GetSpecificStepNameResponse(stepName string) stepmetrics.Response {
 func GetAllJobsResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release: "4.9",
+			Release: Release,
 			JobName: stepmetrics.All,
 		},
 		JobDetails: map[string]stepmetrics.JobDetails{
@@ -288,8 +305,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
-								Previous:   GetStageResult("aws-specific", e2eAwsOriginalTestNameSpecificStage, 1, 0),
+								Current:    GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
+								Previous:   GetStageResult("aws-specific", E2eAwsOriginalTestNameSpecificStage, 1, 0),
 							},
 						},
 						"ipi-install": stepmetrics.StepDetail{
@@ -297,8 +314,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
-								Previous:   GetStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 0),
+								Current:    GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
+								Previous:   GetStageResult("ipi-install", E2eAwsOriginalTestNameIpiInstall, 1, 0),
 							},
 						},
 						"openshift-e2e-test": stepmetrics.StepDetail{
@@ -306,8 +323,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
-								Previous:   GetStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 0),
+								Current:    GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
+								Previous:   GetStageResult("openshift-e2e-test", E2eAwsOriginalTestNameE2ETest, 1, 0),
 							},
 						},
 					},
@@ -329,8 +346,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
-								Previous:   GetStageResult("gcp-specific", e2eGcpOriginalTestNameSpecificStage, 1, 0),
+								Current:    GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
+								Previous:   GetStageResult("gcp-specific", E2eGcpOriginalTestNameSpecificStage, 1, 0),
 							},
 						},
 						"ipi-install": stepmetrics.StepDetail{
@@ -338,8 +355,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
-								Previous:   GetStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 0),
+								Current:    GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
+								Previous:   GetStageResult("ipi-install", E2eGcpOriginalTestNameIpiInstall, 1, 0),
 							},
 						},
 						"openshift-e2e-test": stepmetrics.StepDetail{
@@ -347,8 +364,8 @@ func GetAllJobsResponse() stepmetrics.Response {
 							Trend: stepmetrics.Trend{
 								Trajectory: stepmetrics.TrendTrajectoryFlat,
 								Delta:      0,
-								Current:    GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
-								Previous:   GetStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 0),
+								Current:    GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
+								Previous:   GetStageResult("openshift-e2e-test", E2eGcpOriginalTestNameE2ETest, 1, 0),
 							},
 						},
 					},
@@ -363,7 +380,7 @@ func GetByJobNameResponse(jobName string) stepmetrics.Response {
 
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
-			Release: "4.9",
+			Release: Release,
 			JobName: jobName,
 		},
 		JobDetails: map[string]stepmetrics.JobDetails{

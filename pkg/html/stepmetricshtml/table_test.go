@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	"github.com/openshift/sippy/pkg/api/stepmetrics/fixtures"
 	"github.com/openshift/sippy/pkg/html/generichtml"
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/html/stepmetricshtml"
 )
 
@@ -67,8 +67,8 @@ func TestPrintLandingPage(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			curr := htmltesthelpers.GetTestReport(htmltesthelpers.AwsJobName, "a-test", release)
-			prev := htmltesthelpers.GetTestReport(htmltesthelpers.AwsJobName, "a-test", release)
+			curr := fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release)
+			prev := fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release)
 
 			out, err := stepmetricshtml.PrintLandingPage(curr, prev)
 			if err != nil {
@@ -84,7 +84,7 @@ func TestPrintTables(t *testing.T) {
 	testCases := []tableTestCase{
 		{
 			name:         "all multistage jobs",
-			response:     htmltesthelpers.GetAllMultistageResponse(),
+			response:     fixtures.GetAllMultistageResponse(),
 			expectedURLs: getExpectedURLsForAllMultistages(),
 			expectedContents: []string{
 				"All Multistage Job Names",
@@ -99,7 +99,7 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "specific multistage name - e2e-aws",
-			response:     htmltesthelpers.GetSpecificMultistageResponse("e2e-aws"),
+			response:     fixtures.GetSpecificMultistageResponse("e2e-aws"),
 			expectedURLs: getExpectedURLsForMultistage("e2e-aws"),
 			expectedContents: []string{
 				"All Step Names for Multistage Job e2e-aws",
@@ -115,7 +115,7 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "all step names",
-			response:     htmltesthelpers.GetAllStepsResponse(),
+			response:     fixtures.GetAllStepsResponse(),
 			expectedURLs: getExpectedURLsForAllSteps(),
 			expectedContents: []string{
 				"Step Metrics For All",
@@ -133,7 +133,7 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "specific step name - openshift-e2e-test",
-			response:     htmltesthelpers.GetSpecificStepNameResponse("openshift-e2e-test"),
+			response:     fixtures.GetSpecificStepNameResponse("openshift-e2e-test"),
 			expectedURLs: getExpectedURLsForStep("openshift-e2e-test"),
 			expectedContents: []string{
 				"Step Metrics For openshift-e2e-test By Multistage Job Name",
@@ -148,7 +148,7 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "specific step name - aws-specific",
-			response:     htmltesthelpers.GetSpecificStepNameResponse("aws-specific"),
+			response:     fixtures.GetSpecificStepNameResponse("aws-specific"),
 			expectedURLs: getExpectedURLsForStep("aws-specific"),
 			expectedContents: []string{
 				"Step Metrics For aws-specific By Multistage Job Name",
@@ -162,10 +162,10 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "by job name",
-			response:     htmltesthelpers.GetByJobNameResponse(htmltesthelpers.AwsJobName),
+			response:     fixtures.GetByJobNameResponse(fixtures.AwsJobName),
 			expectedURLs: getExpectedURLsForJobName(),
 			expectedContents: []string{
-				htmltesthelpers.AwsJobName,
+				fixtures.AwsJobName,
 				"Step Name",
 				"Multistage Job Name",
 				"<td>aws-specific",
@@ -178,11 +178,11 @@ func TestPrintTables(t *testing.T) {
 		},
 		{
 			name:         "all jobs",
-			response:     htmltesthelpers.GetAllJobsResponse(),
+			response:     fixtures.GetAllJobsResponse(),
 			expectedURLs: getExpectedURLsForJobName(),
 			expectedContents: []string{
-				htmltesthelpers.AwsJobName,
-				htmltesthelpers.GcpJobName,
+				fixtures.AwsJobName,
+				fixtures.GcpJobName,
 			},
 			tableFunc: stepmetricshtml.AllJobs,
 		},
@@ -253,7 +253,7 @@ func getExpectedURLsForAllMultistages() []stepmetricshtml.URLGenerator {
 func getExpectedURLsForAllSteps() []stepmetricshtml.URLGenerator {
 	urls := []stepmetricshtml.URLGenerator{}
 
-	for stepName := range htmltesthelpers.GetByStageName() {
+	for stepName := range fixtures.GetByStageName() {
 		urls = append(urls,
 			stepmetricshtml.StepRegistryURL{
 				Reference: stepName,
@@ -275,7 +275,7 @@ func getExpectedURLsForAllSteps() []stepmetricshtml.URLGenerator {
 func getExpectedURLsForMultistage(multistageName string) []stepmetricshtml.URLGenerator {
 	urls := []stepmetricshtml.URLGenerator{}
 
-	for _, stageResult := range htmltesthelpers.GetByMultistageName()[multistageName].StageResults {
+	for _, stageResult := range fixtures.GetByMultistageName()[multistageName].StageResults {
 		urls = append(urls,
 			stepmetricshtml.SippyURL{
 				Release:  release,
@@ -297,7 +297,7 @@ func getExpectedURLsForMultistage(multistageName string) []stepmetricshtml.URLGe
 func getExpectedURLsForJobName() []stepmetricshtml.URLGenerator {
 	urls := []stepmetricshtml.URLGenerator{}
 
-	byJobName := htmltesthelpers.GetByJobName()[htmltesthelpers.AwsJobName]
+	byJobName := fixtures.GetByJobName()[fixtures.AwsJobName]
 
 	for _, stageResult := range byJobName.StepRegistryMetrics.StageResults {
 		urls = append(urls,
@@ -306,7 +306,7 @@ func getExpectedURLsForJobName() []stepmetricshtml.URLGenerator {
 			},
 			stepmetricshtml.CISearchURL{
 				Search:   stageResult.OriginalTestName,
-				JobRegex: fmt.Sprintf("^%s$", regexp.QuoteMeta(htmltesthelpers.AwsJobName)),
+				JobRegex: fmt.Sprintf("^%s$", regexp.QuoteMeta(fixtures.AwsJobName)),
 			},
 			stepmetricshtml.SippyURL{
 				Release:  release,
@@ -331,7 +331,7 @@ func getExpectedURLsForSteps(stepNames []string) []stepmetricshtml.URLGenerator 
 func getExpectedURLsForStep(stepName string) []stepmetricshtml.URLGenerator {
 	urls := []stepmetricshtml.URLGenerator{}
 
-	byMultistageName := htmltesthelpers.GetByStageName()[stepName].ByMultistageName
+	byMultistageName := fixtures.GetByStageName()[stepName].ByMultistageName
 
 	for multistageName, multistageResult := range byMultistageName {
 		urls = append(urls,

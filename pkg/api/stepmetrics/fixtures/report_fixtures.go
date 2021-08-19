@@ -1,27 +1,9 @@
-package htmltesthelpers
+package fixtures
 
 import (
 	"time"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-)
-
-const (
-	release string = "4.9"
-)
-
-const (
-	e2eAwsOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific-stage container test"
-	e2eAwsOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test"
-	e2eAwsOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test"
-
-	e2eGcpOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific-stage container test"
-	e2eGcpOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test"
-	e2eGcpOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test"
-
-	e2eAzureOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-azure - e2e-azure-azure-specific-stage container test"
-	e2eAzureOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-azure - e2e-azure-ipi-install container test"
-	e2eAzureOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-azure - e2e-azure-openshift-e2e-test container test"
 )
 
 func GetTestReport(jobName, testName, release string) sippyprocessingv1.TestReport {
@@ -128,7 +110,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameE2ETest,
+					OriginalTestName: E2eAwsOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"ipi-install": {
@@ -137,7 +119,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameIpiInstall,
+					OriginalTestName: E2eAwsOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"aws-specific": {
@@ -146,7 +128,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameSpecificStage,
+					OriginalTestName: E2eAwsOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -168,7 +150,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameE2ETest,
+					OriginalTestName: E2eGcpOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"ipi-install": {
@@ -177,7 +159,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameIpiInstall,
+					OriginalTestName: E2eGcpOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"gcp-specific": {
@@ -186,7 +168,7 @@ func GetByMultistageName() map[string]sippyprocessingv1.StepRegistryMetrics {
 						PassPercentage: 100,
 						Successes:      1,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameSpecificStage,
+					OriginalTestName: E2eGcpOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -212,7 +194,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameE2ETest,
+					OriginalTestName: E2eAwsOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 				"e2e-gcp": sippyprocessingv1.StageResult{
@@ -221,7 +203,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameE2ETest,
+					OriginalTestName: E2eGcpOriginalTestNameE2ETest,
 					Runs:             1,
 				},
 			},
@@ -242,7 +224,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameIpiInstall,
+					OriginalTestName: E2eAwsOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 				"e2e-gcp": sippyprocessingv1.StageResult{
@@ -251,7 +233,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameIpiInstall,
+					OriginalTestName: E2eGcpOriginalTestNameIpiInstall,
 					Runs:             1,
 				},
 			},
@@ -272,7 +254,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eAwsOriginalTestNameSpecificStage,
+					OriginalTestName: E2eAwsOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},
@@ -293,7 +275,7 @@ func GetByStageName() map[string]sippyprocessingv1.ByStageName {
 						Successes:      1,
 						PassPercentage: 100,
 					},
-					OriginalTestName: e2eGcpOriginalTestNameSpecificStage,
+					OriginalTestName: E2eGcpOriginalTestNameSpecificStage,
 					Runs:             1,
 				},
 			},

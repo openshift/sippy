@@ -4,14 +4,9 @@ import (
 	"testing"
 
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
+	"github.com/openshift/sippy/pkg/api/stepmetrics/fixtures"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/util/sets"
-)
-
-const (
-	jobName string = "periodic-ci-openshift-release-master-nightly-4.9-e2e-aws"
-	release string = "4.9"
 )
 
 type apiTestCase struct {
@@ -25,10 +20,10 @@ func TestStepMetricsAPI(t *testing.T) {
 		{
 			name: "all multistage jobs",
 			request: stepmetrics.Request{
-				Release:           release,
+				Release:           fixtures.Release,
 				MultistageJobName: stepmetrics.All,
 			},
-			expectedResponse: htmltesthelpers.GetAllMultistageResponse(),
+			expectedResponse: fixtures.GetAllMultistageResponse(),
 		},
 		{
 			name: "specific multistage job name - e2e-aws",
@@ -36,7 +31,7 @@ func TestStepMetricsAPI(t *testing.T) {
 				MultistageJobName: "e2e-aws",
 				Release:           "4.9",
 			},
-			expectedResponse: htmltesthelpers.GetSpecificMultistageResponse("e2e-aws"),
+			expectedResponse: fixtures.GetSpecificMultistageResponse("e2e-aws"),
 		},
 		{
 			name: "specific multistage job name - e2e-gcp",
@@ -44,62 +39,62 @@ func TestStepMetricsAPI(t *testing.T) {
 				MultistageJobName: "e2e-gcp",
 				Release:           "4.9",
 			},
-			expectedResponse: htmltesthelpers.GetSpecificMultistageResponse("e2e-gcp"),
+			expectedResponse: fixtures.GetSpecificMultistageResponse("e2e-gcp"),
 		},
 		{
 			name: "all step names",
 			request: stepmetrics.Request{
-				Release:  release,
+				Release:  fixtures.Release,
 				StepName: stepmetrics.All,
 			},
-			expectedResponse: htmltesthelpers.GetAllStepsResponse(),
+			expectedResponse: fixtures.GetAllStepsResponse(),
 		},
 		{
 			name: "specific step name - openshift-e2e-test",
 			request: stepmetrics.Request{
-				Release:  release,
+				Release:  fixtures.Release,
 				StepName: "openshift-e2e-test",
 			},
-			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("openshift-e2e-test"),
+			expectedResponse: fixtures.GetSpecificStepNameResponse("openshift-e2e-test"),
 		},
 		{
 			name: "specific step name - ipi-install",
 			request: stepmetrics.Request{
-				Release:  release,
+				Release:  fixtures.Release,
 				StepName: "ipi-install",
 			},
-			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("ipi-install"),
+			expectedResponse: fixtures.GetSpecificStepNameResponse("ipi-install"),
 		},
 		{
 			name: "specific step name - aws-specific",
 			request: stepmetrics.Request{
-				Release:  release,
+				Release:  fixtures.Release,
 				StepName: "aws-specific",
 			},
-			expectedResponse: htmltesthelpers.GetSpecificStepNameResponse("aws-specific"),
+			expectedResponse: fixtures.GetSpecificStepNameResponse("aws-specific"),
 		},
 		{
 			name: "by job name",
 			request: stepmetrics.Request{
-				Release: release,
-				JobName: jobName,
+				Release: fixtures.Release,
+				JobName: fixtures.AwsJobName,
 			},
-			expectedResponse: htmltesthelpers.GetByJobNameResponse(jobName),
+			expectedResponse: fixtures.GetByJobNameResponse(fixtures.AwsJobName),
 		},
 		{
 			name: "all job names",
 			request: stepmetrics.Request{
-				Release: release,
+				Release: fixtures.Release,
 				JobName: stepmetrics.All,
 			},
-			expectedResponse: htmltesthelpers.GetAllJobsResponse(),
+			expectedResponse: fixtures.GetAllJobsResponse(),
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			curr := htmltesthelpers.GetTestReport(jobName, "test-name", release)
-			prev := htmltesthelpers.GetTestReport(jobName, "test-name", release)
+			curr := fixtures.GetTestReport(fixtures.AwsJobName, "test-name", fixtures.Release)
+			prev := fixtures.GetTestReport(fixtures.AwsJobName, "test-name", fixtures.Release)
 
 			a := stepmetrics.NewStepMetricsAPI(curr, prev)
 

@@ -6,18 +6,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/stepmetrics/fixtures"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/htmltesthelpers"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 )
 
-const release string = "4.9"
-
 func TestPrintJobsReport(t *testing.T) {
-	expectedContents := []string{release}
+	expectedContents := []string{fixtures.Release}
 
 	testFunc := func(r *httptest.ResponseRecorder) {
-		releasehtml.PrintJobsReport(r, release)
+		releasehtml.PrintJobsReport(r, fixtures.Release)
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
@@ -32,7 +31,7 @@ func TestPrintVariantsReport(t *testing.T) {
 	expectedContents := []string{}
 
 	testFunc := func(r *httptest.ResponseRecorder) {
-		releasehtml.PrintVariantsReport(r, release, variant, currWeek, prevWeek, time.Now())
+		releasehtml.PrintVariantsReport(r, fixtures.Release, variant, currWeek, prevWeek, time.Now())
 	}
 
 	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
@@ -40,7 +39,7 @@ func TestPrintVariantsReport(t *testing.T) {
 
 func TestWriteLandingPage(t *testing.T) {
 	displayNames := []string{
-		release,
+		fixtures.Release,
 	}
 
 	testFunc := func(r *httptest.ResponseRecorder) {
@@ -53,17 +52,15 @@ func TestWriteLandingPage(t *testing.T) {
 func TestPrintHTMLReport(t *testing.T) {
 	req := &http.Request{}
 
-	jobName := "periodic-ci-openshift-release-master-nightly-4.9-e2e-aws"
-
-	report := htmltesthelpers.GetTestReport(jobName, "a-test", "4.9")
+	report := fixtures.GetTestReport(fixtures.AwsJobName, "a-test", fixtures.Release)
 	twoDayReport := report
 	prevReport := report
 	numDays := 7
 	jobTestCount := 10
-	allReportNames := []string{release}
+	allReportNames := []string{fixtures.Release}
 
 	expectedContents := []string{
-		release,
+		fixtures.Release,
 		"StepMetrics",
 		"All Multistage Job Names",
 		"<td>e2e-aws",
