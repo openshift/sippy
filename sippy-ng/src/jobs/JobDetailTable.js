@@ -1,13 +1,14 @@
-import PropTypes from 'prop-types'
 import { TableContainer } from '@material-ui/core'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
+import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import './JobDetailTable.css'
 import { Link } from 'react-router-dom'
+import { pathForExactJob } from '../helpers'
+import './JobDetailTable.css'
 import JobDetailTestModal from './JobDetailTestModal'
 
 /**
@@ -59,7 +60,7 @@ export default function JobDetailTable (props) {
                             {rows.map((row) =>
                                 <TableRow key={'job-' + row.name} className="row-item">
                                     <TableCell component="th" scope="row" className="col-name col-first">
-                                        <Link to={`/jobs/${props.release}?job=${row.name}`}>{row.name}</Link>
+                                        <Link to={pathForExactJob(props.release, row.name)}>{row.name}</Link>
                                     </TableCell>
                                     {row.results.map((days, index) =>
                                         <TableCell className="col-day" key={'ts-' + index} style={{ verticalAlign: 'top' }}>

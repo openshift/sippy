@@ -542,7 +542,7 @@ exports[`app should render correctly 1`] = `
                 <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-259"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-258 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(229, 115, 115);"
@@ -576,7 +576,7 @@ exports[`app should render correctly 1`] = `
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-261"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-260 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(236, 132, 105);"
@@ -610,7 +610,7 @@ exports[`app should render correctly 1`] = `
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-263"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-262 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(242, 149, 96);"
@@ -644,7 +644,7 @@ exports[`app should render correctly 1`] = `
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-265"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-264 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(242, 150, 95);"
@@ -678,7 +678,7 @@ exports[`app should render correctly 1`] = `
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-267"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-266 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(243, 150, 95);"
@@ -712,7 +712,7 @@ exports[`app should render correctly 1`] = `
                   </div>
                   <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                     <a class="MuiBox-root MuiBox-root-269"
-                       href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D"
+                       href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                     >
                       <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-268 MuiPaper-elevation5 MuiPaper-rounded"
                            style="background-color: rgb(246, 160, 90);"
@@ -779,7 +779,7 @@ exports[`app should render correctly 1`] = `
                       >
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-271"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-270 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(248, 164, 87);"
@@ -813,7 +813,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-273"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-272 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(250, 169, 85);"
@@ -847,7 +847,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-275"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-274 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(251, 172, 83);"
@@ -881,7 +881,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-277"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-276 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(253, 177, 80);"
@@ -915,7 +915,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-279"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-278 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(254, 180, 78);"
@@ -949,7 +949,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-281"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-280 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(254, 182, 78);"
@@ -983,7 +983,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-283"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-282 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(251, 183, 79);"
@@ -1017,7 +1017,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-285"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-284 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(245, 184, 81);"
@@ -1051,7 +1051,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-287"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-286 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(189, 191, 106);"
@@ -1085,7 +1085,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-289"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-288 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(183, 192, 109);"
@@ -1119,7 +1119,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-291"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-290 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(179, 193, 110);"
@@ -1153,7 +1153,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-293"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-292 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(175, 193, 112);"
@@ -1187,7 +1187,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-295"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-294 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(141, 197, 127);"
@@ -1221,7 +1221,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-297"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-296 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
@@ -1255,7 +1255,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-299"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-298 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
@@ -1289,7 +1289,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-301"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-300 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgb(129, 199, 132);"
@@ -1323,7 +1323,7 @@ exports[`app should render correctly 1`] = `
                         </div>
                         <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                           <a class="MuiBox-root MuiBox-root-303"
-                             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A9%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D"
+                             href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
                           >
                             <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-257 makeStyles-miniCard-302 MuiPaper-elevation5 MuiPaper-rounded"
                                  style="background-color: rgba(0, 0, 0, 0.38);"
