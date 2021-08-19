@@ -113,7 +113,7 @@ export default function TestByVariantTable (props) {
 
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
-  };
+  }
 
   const handleSwitchFull = (e) => {
     cookies.set('testDetailShowFull', e.target.checked, { sameSite: true })
@@ -140,7 +140,7 @@ export default function TestByVariantTable (props) {
   }
 
   return (
-    <div className="table-container" width="100%">
+    <div className="view" width="100%">
       {pageTitle}
       <TableContainer component="div" className="wrapper">
         <Table className="test-variant-table">
