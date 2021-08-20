@@ -19,10 +19,9 @@ const (
 
 type tableTestCase struct {
 	name             string
-	response         stepmetrics.Response
+	request          stepmetrics.Request
 	expectedContents []string
 	expectedURLs     []stepmetricshtml.URLGenerator
-	tableFunc        func(stepmetrics.Response) (string, error)
 }
 
 func (tc tableTestCase) allExpectedContents() []string {
@@ -34,6 +33,146 @@ func (tc tableTestCase) allExpectedContents() []string {
 	}
 
 	return expectedContents
+}
+
+func TestPrintTableRaw(t *testing.T) {
+	testCases := []tableTestCase{
+		{
+			name: "all multistage jobs",
+			request: stepmetrics.Request{
+				MultistageJobName: stepmetrics.All,
+				Release:           fixtures.Release,
+			},
+			expectedURLs: getExpectedURLsForAllMultistages(),
+			expectedContents: []string{
+				"All Multistage Job Names",
+				"Multistage Job Name",
+				"<td>e2e-aws",
+				"<td>e2e-gcp",
+				"50.00% (2 runs)",
+				"href=\"#AllMultistageJobNames\"",
+				"id=\"AllMultistageJobNames\"",
+			},
+		},
+		{
+			name: "specific multistage name - e2e-aws",
+			request: stepmetrics.Request{
+				MultistageJobName: "e2e-aws",
+				Release:           fixtures.Release,
+			},
+			expectedURLs: getExpectedURLsForMultistage("e2e-aws"),
+			expectedContents: []string{
+				"All Step Names for Multistage Job e2e-aws",
+				"Step Name",
+				"<td>aws-specific",
+				"<td>openshift-e2e-test",
+				"<td>ipi-install",
+				"50.00% (2 runs)",
+				"href=\"#AllStepNamesForMultistageJobE2eAws\"",
+				"id=\"AllStepNamesForMultistageJobE2eAws\"",
+			},
+		},
+		{
+			name: "all step names",
+			request: stepmetrics.Request{
+				Release:  fixtures.Release,
+				StepName: stepmetrics.All,
+			},
+			expectedURLs: getExpectedURLsForAllSteps(),
+			expectedContents: []string{
+				"Step Metrics For All",
+				"Step Name",
+				"<td>aws-specific",
+				"<td>gcp-specific",
+				"<td>openshift-e2e-test",
+				"<td>ipi-install",
+				"50.00% (2 runs)",
+				"50.00% (4 runs)",
+				"href=\"#StepMetricsForAllSteps\"",
+				"id=\"StepMetricsForAllSteps\"",
+			},
+		},
+		{
+			name: "specific step name - openshift-e2e-test",
+			request: stepmetrics.Request{
+				Release:  fixtures.Release,
+				StepName: "openshift-e2e-test",
+			},
+			expectedURLs: getExpectedURLsForStep("openshift-e2e-test"),
+			expectedContents: []string{
+				"Step Metrics For openshift-e2e-test By Multistage Job Name",
+				"Multistage Job Name",
+				"<td>e2e-aws",
+				"<td>e2e-gcp",
+				"50.00% (2 runs)",
+				"href=\"#StepMetricsForOpenshiftE2eTestByMultistageJobName\"",
+				"id=\"StepMetricsForOpenshiftE2eTestByMultistageJobName\"",
+			},
+		},
+		{
+			name: "specific step name - aws-specific",
+			request: stepmetrics.Request{
+				Release:  fixtures.Release,
+				StepName: "aws-specific",
+			},
+			expectedURLs: getExpectedURLsForStep("aws-specific"),
+			expectedContents: []string{
+				"Step Metrics For aws-specific By Multistage Job Name",
+				"Multistage Job Name",
+				"<td>e2e-aws",
+				"50.00% (2 runs)",
+				"href=\"#StepMetricsForAwsSpecificByMultistageJobName\"",
+				"id=\"StepMetricsForAwsSpecificByMultistageJobName\"",
+			},
+		},
+		{
+			name: "by job name",
+			request: stepmetrics.Request{
+				Release: fixtures.Release,
+				JobName: fixtures.AwsJobName,
+			},
+			expectedURLs: getExpectedURLsForJobName(),
+			expectedContents: []string{
+				fixtures.AwsJobName,
+				"Step Name",
+				"Multistage Job Name",
+				"<td>aws-specific",
+				"<td>openshift-e2e-test",
+				"<td>ipi-install",
+				"50.00% (2 runs)",
+				"<td>e2e-aws",
+			},
+		},
+		{
+			name: "all jobs",
+			request: stepmetrics.Request{
+				Release: fixtures.Release,
+				JobName: stepmetrics.All,
+			},
+			expectedURLs: getExpectedURLsForJobName(),
+			expectedContents: []string{
+				fixtures.AwsJobName,
+				fixtures.GcpJobName,
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			tableReq := stepmetricshtml.NewTableRequest(
+				fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release),
+				fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release),
+				testCase.request,
+			)
+
+			rendered, err := stepmetricshtml.RenderRequest(tableReq, time.Now())
+			if err != nil {
+				t.Errorf("expected no errors, got: %s", err)
+			}
+
+			assertContains(t, rendered, testCase.allExpectedContents())
+		})
+	}
 }
 
 func TestPrintLandingPage(t *testing.T) {
@@ -48,7 +187,6 @@ func TestPrintLandingPage(t *testing.T) {
 				"Multistage Job Name",
 				"<td>e2e-aws",
 				"<td>e2e-gcp",
-				"100.00% (1 runs)",
 				"href=\"#AllMultistageJobNames\"",
 				"id=\"AllMultistageJobNames\"",
 				"Step Metrics For All",
@@ -57,8 +195,8 @@ func TestPrintLandingPage(t *testing.T) {
 				"<td>gcp-specific",
 				"<td>openshift-e2e-test",
 				"<td>ipi-install",
-				"100.00% (1 runs)",
-				"100.00% (2 runs)",
+				"50.00% (2 runs)",
+				"50.00% (4 runs)",
 				"href=\"#StepMetricsForAllSteps\"",
 				"id=\"StepMetricsForAllSteps\"",
 			},
@@ -67,147 +205,16 @@ func TestPrintLandingPage(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			curr := fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release)
-			prev := fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release)
+			tableReq := stepmetricshtml.NewTableRequest(
+				fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release),
+				fixtures.GetTestReport(fixtures.AwsJobName, "a-test", release),
+				stepmetrics.Request{
+					Release: fixtures.Release,
+				})
 
-			out, err := stepmetricshtml.PrintLandingPage(curr, prev)
-			if err != nil {
-				t.Errorf("expected no errors, got: %s", err)
-			}
+			out := stepmetricshtml.PrintLandingPage(tableReq, time.Now())
 
 			assertContains(t, out, testCase.allExpectedContents())
-		})
-	}
-}
-
-func TestPrintTables(t *testing.T) {
-	testCases := []tableTestCase{
-		{
-			name:         "all multistage jobs",
-			response:     fixtures.GetAllMultistageResponse(),
-			expectedURLs: getExpectedURLsForAllMultistages(),
-			expectedContents: []string{
-				"All Multistage Job Names",
-				"Multistage Job Name",
-				"<td>e2e-aws",
-				"<td>e2e-gcp",
-				"100.00% (1 runs)",
-				"href=\"#AllMultistageJobNames\"",
-				"id=\"AllMultistageJobNames\"",
-			},
-			tableFunc: stepmetricshtml.AllMultistages,
-		},
-		{
-			name:         "specific multistage name - e2e-aws",
-			response:     fixtures.GetSpecificMultistageResponse("e2e-aws"),
-			expectedURLs: getExpectedURLsForMultistage("e2e-aws"),
-			expectedContents: []string{
-				"All Step Names for Multistage Job e2e-aws",
-				"Step Name",
-				"<td>aws-specific",
-				"<td>openshift-e2e-test",
-				"<td>ipi-install",
-				"100.00% (1 runs)",
-				"href=\"#AllStepNamesForMultistageJobE2eAws\"",
-				"id=\"AllStepNamesForMultistageJobE2eAws\"",
-			},
-			tableFunc: stepmetricshtml.MultistageDetail,
-		},
-		{
-			name:         "all step names",
-			response:     fixtures.GetAllStepsResponse(),
-			expectedURLs: getExpectedURLsForAllSteps(),
-			expectedContents: []string{
-				"Step Metrics For All",
-				"Step Name",
-				"<td>aws-specific",
-				"<td>gcp-specific",
-				"<td>openshift-e2e-test",
-				"<td>ipi-install",
-				"100.00% (1 runs)",
-				"100.00% (2 runs)",
-				"href=\"#StepMetricsForAllSteps\"",
-				"id=\"StepMetricsForAllSteps\"",
-			},
-			tableFunc: stepmetricshtml.AllSteps,
-		},
-		{
-			name:         "specific step name - openshift-e2e-test",
-			response:     fixtures.GetSpecificStepNameResponse("openshift-e2e-test"),
-			expectedURLs: getExpectedURLsForStep("openshift-e2e-test"),
-			expectedContents: []string{
-				"Step Metrics For openshift-e2e-test By Multistage Job Name",
-				"Multistage Job Name",
-				"<td>e2e-aws",
-				"<td>e2e-gcp",
-				"100.00% (1 runs)",
-				"href=\"#StepMetricsForOpenshiftE2eTestByMultistageJobName\"",
-				"id=\"StepMetricsForOpenshiftE2eTestByMultistageJobName\"",
-			},
-			tableFunc: stepmetricshtml.StepDetail,
-		},
-		{
-			name:         "specific step name - aws-specific",
-			response:     fixtures.GetSpecificStepNameResponse("aws-specific"),
-			expectedURLs: getExpectedURLsForStep("aws-specific"),
-			expectedContents: []string{
-				"Step Metrics For aws-specific By Multistage Job Name",
-				"Multistage Job Name",
-				"<td>e2e-aws",
-				"100.00% (1 runs)",
-				"href=\"#StepMetricsForAwsSpecificByMultistageJobName\"",
-				"id=\"StepMetricsForAwsSpecificByMultistageJobName\"",
-			},
-			tableFunc: stepmetricshtml.StepDetail,
-		},
-		{
-			name:         "by job name",
-			response:     fixtures.GetByJobNameResponse(fixtures.AwsJobName),
-			expectedURLs: getExpectedURLsForJobName(),
-			expectedContents: []string{
-				fixtures.AwsJobName,
-				"Step Name",
-				"Multistage Job Name",
-				"<td>aws-specific",
-				"<td>openshift-e2e-test",
-				"<td>ipi-install",
-				"100.00% (1 runs)",
-				"<td>e2e-aws",
-			},
-			tableFunc: stepmetricshtml.ByJob,
-		},
-		{
-			name:         "all jobs",
-			response:     fixtures.GetAllJobsResponse(),
-			expectedURLs: getExpectedURLsForJobName(),
-			expectedContents: []string{
-				fixtures.AwsJobName,
-				fixtures.GcpJobName,
-			},
-			tableFunc: stepmetricshtml.AllJobs,
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			result, err := testCase.tableFunc(testCase.response)
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-
-			rendered, err := stepmetricshtml.RenderResponse(testCase.response, time.Now())
-			if err != nil {
-				t.Errorf("unexpected error: %s", err)
-			}
-
-			if !strings.Contains(rendered, result) {
-				t.Errorf("result not in rendered")
-			}
-
-			allExpectedContents := testCase.allExpectedContents()
-
-			assertContains(t, result, allExpectedContents)
-			assertContains(t, result, allExpectedContents)
 		})
 	}
 }
@@ -313,16 +320,6 @@ func getExpectedURLsForJobName() []stepmetricshtml.URLGenerator {
 				StepName: stageResult.Name,
 			},
 		)
-	}
-
-	return urls
-}
-
-func getExpectedURLsForSteps(stepNames []string) []stepmetricshtml.URLGenerator {
-	urls := []stepmetricshtml.URLGenerator{}
-
-	for _, stepName := range stepNames {
-		urls = append(urls, getExpectedURLsForStep(stepName)...)
 	}
 
 	return urls

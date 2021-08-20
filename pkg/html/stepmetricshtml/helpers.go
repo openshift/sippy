@@ -4,9 +4,71 @@ import (
 	"fmt"
 	"strings"
 
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/util/sets"
+
 	"github.com/openshift/sippy/pkg/api/stepmetrics"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 )
+
+type TableRequest struct {
+	current  sippyprocessingv1.TopLevelStepRegistryMetrics
+	previous sippyprocessingv1.TopLevelStepRegistryMetrics
+	req      stepmetrics.Request
+}
+
+func newTableRequestWithRelease(curr, prev sippyprocessingv1.TestReport) TableRequest {
+	return NewTableRequest(curr, prev, stepmetrics.Request{
+		Release: curr.Release,
+	})
+}
+
+func NewTableRequest(curr, prev sippyprocessingv1.TestReport, req stepmetrics.Request) TableRequest {
+	return TableRequest{
+		current:  curr.TopLevelStepRegistryMetrics,
+		previous: prev.TopLevelStepRegistryMetrics,
+		req:      req,
+	}
+}
+
+func (tr TableRequest) request() stepmetrics.Request {
+	return tr.req
+}
+
+func (tr TableRequest) withRequest(req stepmetrics.Request) TableRequest {
+	return TableRequest{
+		current:  tr.current,
+		previous: tr.previous,
+		req:      req,
+	}
+}
+
+func (tr TableRequest) allMultistageNames() []string {
+	return getSortedKeys(tr.current.ByMultistageName)
+}
+
+func (tr TableRequest) allJobNames() []string {
+	return getSortedKeys(tr.current.ByJobName)
+}
+
+func (tr TableRequest) allStageNames() []string {
+	return getSortedKeys(tr.current.ByStageName)
+}
+
+func (tr TableRequest) byMultistageName(name string) (sippyprocessingv1.StepRegistryMetrics, sippyprocessingv1.StepRegistryMetrics) {
+	return tr.current.ByMultistageName[name],
+		tr.previous.ByMultistageName[name]
+}
+
+func (tr TableRequest) byJobName(name string) (sippyprocessingv1.ByJobName, sippyprocessingv1.ByJobName) {
+	return tr.current.ByJobName[name],
+		tr.previous.ByJobName[name]
+}
+
+func (tr TableRequest) byStageName(name string) (sippyprocessingv1.ByStageName, sippyprocessingv1.ByStageName) {
+	return tr.current.ByStageName[name],
+		tr.previous.ByStageName[name]
+}
 
 type tableOpts struct {
 	pageTitle   string
@@ -153,4 +215,8 @@ func getMultistageHeaderRow() generichtml.HTMLTableRow {
 
 func getArrowForTrend(t stepmetrics.Trend) string {
 	return generichtml.GetArrowForTestResult(t.Current.TestResult, &t.Previous.TestResult)
+}
+
+func getSortedKeys(inMap interface{}) []string {
+	return sets.StringKeySet(inMap).List()
 }

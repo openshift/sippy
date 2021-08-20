@@ -52,7 +52,7 @@ type Response struct {
 	Request           Request                      `json:"request"`
 }
 
-func newStepDetail(curr, prev sippyprocessingv1.StageResult) StepDetail {
+func NewStepDetail(curr, prev sippyprocessingv1.StageResult) StepDetail {
 	return StepDetail{
 		Name:  curr.Name,
 		Trend: newTrend(curr, prev),

@@ -138,7 +138,7 @@ func (s StepMetricsAPI) getJobMultistageDetails(req Request) MultistageDetails {
 	stepDetails := map[string]StepDetail{}
 
 	for stageName := range currByJobName.StageResults {
-		stepDetails[stageName] = newStepDetail(
+		stepDetails[stageName] = NewStepDetail(
 			currByJobName.StageResults[stageName],
 			prevByJobName.StageResults[stageName],
 		)
@@ -179,7 +179,7 @@ func (s StepMetricsAPI) getStageForName(stageName string) StepDetails {
 	}
 
 	for multistageName := range currByStageName.ByMultistageName {
-		d.ByMultistage[multistageName] = newStepDetail(
+		d.ByMultistage[multistageName] = NewStepDetail(
 			currByStageName.ByMultistageName[multistageName],
 			prevByStageName.ByMultistageName[multistageName],
 		)
@@ -202,7 +202,7 @@ func (s StepMetricsAPI) getMultistageForName(multistageName string) MultistageDe
 	}
 
 	for stageName := range currStepRegistryMetrics.StageResults {
-		d.StepDetails[stageName] = newStepDetail(
+		d.StepDetails[stageName] = NewStepDetail(
 			currStepRegistryMetrics.StageResults[stageName],
 			prevStepRegistryMetrics.StageResults[stageName],
 		)
