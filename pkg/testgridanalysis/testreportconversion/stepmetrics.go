@@ -95,9 +95,8 @@ func getAggregation(stepRegistryMetrics sippyprocessingv1.StepRegistryMetrics) s
 	// this would result in our top-level run count being 8, which is not true
 	// since the multistage job itself was ran two times.
 	//
-	// Instead, we get the maximum number of successes and failures from each of
-	// the stage results and use that to calculate a top-level aggregation value
-	// as this is a much closer approximation.
+	// Instead, we get the max number of runs from the stage results and use that
+	// as our top-level multistage metric.
 	aggregated := sippyprocessingv1.StageResult{
 		TestResult: sippyprocessingv1.TestResult{
 			Name: stepRegistryMetrics.MultistageName,
@@ -105,17 +104,13 @@ func getAggregation(stepRegistryMetrics sippyprocessingv1.StepRegistryMetrics) s
 	}
 
 	for _, stageResult := range stepRegistryMetrics.StageResults {
-		if stageResult.Successes > aggregated.Successes {
-			aggregated.Successes = stageResult.Successes
-		}
-
-		if stageResult.Failures > aggregated.Failures {
-			aggregated.Failures = stageResult.Failures
+		if stageResult.Runs > aggregated.Runs {
+			aggregated = stageResult
 		}
 	}
 
-	aggregated.PassPercentage = percent(aggregated.Successes, aggregated.Failures)
-	aggregated.Runs = aggregated.Successes + aggregated.Failures
+	aggregated.Name = stepRegistryMetrics.MultistageName
+	aggregated.OriginalTestName = ""
 
 	return aggregated
 }

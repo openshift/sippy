@@ -32,15 +32,20 @@ const (
 	e2eAwsOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-aws - e2e-aws-aws-specific-stage container test"
 	e2eAwsOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-aws - e2e-aws-ipi-install container test"
 	e2eAwsOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-aws - e2e-aws-openshift-e2e-test container test"
+	e2eAwsOriginalTestNameMostRun       string = "operator.Run multi-stage test e2e-aws - e2e-aws-most-run-stage container test"
 
 	e2eGcpOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-gcp-specific-stage container test"
 	e2eGcpOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install container test"
 	e2eGcpOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test"
+	e2eGcpOriginalTestNameMostRun       string = "operator.Run multi-stage test e2e-aws - e2e-gcp-most-run-stage container test"
 
 	e2eAzureOriginalTestNameSpecificStage string = "operator.Run multi-stage test e2e-azure - e2e-azure-azure-specific-stage container test"
 	e2eAzureOriginalTestNameIpiInstall    string = "operator.Run multi-stage test e2e-azure - e2e-azure-ipi-install container test"
 	e2eAzureOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-azure - e2e-azure-openshift-e2e-test container test"
+	e2eAzureOriginalTestNameMostRun       string = "operator.Run multi-stage test e2e-aws - e2e-azure-most-run-stage container test"
 )
+
+const mostRunPassPercentage float64 = 33.33333333333333
 
 func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 	testCases := []struct {
@@ -59,56 +64,62 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 				expectedByJobStepRegistryMetrics := map[string]sippyprocessingv1.StepRegistryMetrics{
 					awsNightlyJobName: {
 						MultistageName: "e2e-aws",
-						Aggregated:     getStageResult("e2e-aws", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-aws", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eAwsOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 					awsCiJobName: {
 						MultistageName: "e2e-aws",
-						Aggregated:     getStageResult("e2e-aws", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-aws", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eAwsOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 					gcpNightlyJobName: {
 						MultistageName: "e2e-gcp",
-						Aggregated:     getStageResult("e2e-gcp", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-gcp", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eGcpOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 					gcpCiJobName: {
 						MultistageName: "e2e-gcp",
-						Aggregated:     getStageResult("e2e-gcp", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-gcp", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eGcpOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 					azureNightlyJobName: {
 						MultistageName: "e2e-azure",
-						Aggregated:     getStageResult("e2e-azure", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-azure", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test":   getStageResult("openshift-e2e-test", e2eAzureOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":       getStageResult("most-run-stage", e2eAzureOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 					azureCiJobName: {
 						MultistageName: "e2e-azure",
-						Aggregated:     getStageResult("e2e-azure", "", 1, 1, 50),
+						Aggregated:     getStageResult("e2e-azure", "", 1, 2, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 1, 1, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 1, 1, 50),
 							"openshift-e2e-test":   getStageResult("openshift-e2e-test", e2eAzureOriginalTestNameE2ETest, 1, 1, 50),
+							"most-run-stage":       getStageResult("most-run-stage", e2eAzureOriginalTestNameMostRun, 1, 2, mostRunPassPercentage),
 						},
 					},
 				}
@@ -145,29 +156,32 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 					// with the top-level multistage results being aggregated similarly.
 					"e2e-aws": sippyprocessingv1.StepRegistryMetrics{
 						MultistageName: "e2e-aws",
-						Aggregated:     getStageResult("e2e-aws", "", 2, 2, 50),
+						Aggregated:     getStageResult("e2e-aws", "", 2, 4, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"aws-specific-stage": getStageResult("aws-specific-stage", e2eAwsOriginalTestNameSpecificStage, 2, 2, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eAwsOriginalTestNameIpiInstall, 2, 2, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 2, 2, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eAwsOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
 						},
 					},
 					"e2e-azure": sippyprocessingv1.StepRegistryMetrics{
 						MultistageName: "e2e-azure",
-						Aggregated:     getStageResult("e2e-azure", "", 2, 2, 50),
+						Aggregated:     getStageResult("e2e-azure", "", 2, 4, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"azure-specific-stage": getStageResult("azure-specific-stage", e2eAzureOriginalTestNameSpecificStage, 2, 2, 50),
 							"ipi-install":          getStageResult("ipi-install", e2eAzureOriginalTestNameIpiInstall, 2, 2, 50),
 							"openshift-e2e-test":   getStageResult("openshift-e2e-test", e2eAzureOriginalTestNameE2ETest, 2, 2, 50),
+							"most-run-stage":       getStageResult("most-run-stage", e2eAzureOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
 						},
 					},
 					"e2e-gcp": sippyprocessingv1.StepRegistryMetrics{
 						MultistageName: "e2e-gcp",
-						Aggregated:     getStageResult("e2e-gcp", "", 2, 2, 50),
+						Aggregated:     getStageResult("e2e-gcp", "", 2, 4, mostRunPassPercentage),
 						StageResults: map[string]sippyprocessingv1.StageResult{
 							"gcp-specific-stage": getStageResult("gcp-specific-stage", e2eGcpOriginalTestNameSpecificStage, 2, 2, 50),
 							"ipi-install":        getStageResult("ipi-install", e2eGcpOriginalTestNameIpiInstall, 2, 2, 50),
 							"openshift-e2e-test": getStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 2, 2, 50),
+							"most-run-stage":     getStageResult("most-run-stage", e2eGcpOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
 						},
 					},
 				}
@@ -186,6 +200,7 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 		{
 			name: "ByStageName",
 			testFunc: func(t *testing.T, report sippyprocessingv1.TestReport) {
+
 				// These are aggregated by the individual stage names (e.g., openshift-e2e-test, ipi-install, etc.)
 				//
 				// These are specific to a given multistage job name. We expect to find
@@ -231,6 +246,15 @@ func TestPrepareTestReportWithStepMetrics(t *testing.T) {
 							"e2e-aws":   getStageResult("openshift-e2e-test", e2eAwsOriginalTestNameE2ETest, 2, 2, 50),
 							"e2e-azure": getStageResult("openshift-e2e-test", e2eAzureOriginalTestNameE2ETest, 2, 2, 50),
 							"e2e-gcp":   getStageResult("openshift-e2e-test", e2eGcpOriginalTestNameE2ETest, 2, 2, 50),
+						},
+					},
+					// For this one, we expect to get a top level of
+					"most-run-stage": sippyprocessingv1.ByStageName{
+						Aggregated: getStageResult("most-run-stage", "", 6, 12, mostRunPassPercentage),
+						ByMultistageName: map[string]sippyprocessingv1.StageResult{
+							"e2e-aws":   getStageResult("most-run-stage", e2eAwsOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
+							"e2e-azure": getStageResult("most-run-stage", e2eAzureOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
+							"e2e-gcp":   getStageResult("most-run-stage", e2eGcpOriginalTestNameMostRun, 2, 4, mostRunPassPercentage),
 						},
 					},
 				}
@@ -374,6 +398,18 @@ func getStageResult(name, originalTestName string, successes, failures int, pass
 func getRawJobResult(jobName, multistageJobName string, prowURLCount int) testgridanalysisapi.RawJobResult {
 	prowURL1 := fmt.Sprintf("https://prowurl%d", prowURLCount)
 	prowURL2 := fmt.Sprintf("https://prowurl%d", prowURLCount+1)
+	prowURL3 := fmt.Sprintf("https://prowurl%d", prowURLCount+2)
+
+	mostRun := testgridanalysisapi.StepRegistryItemStates{
+		MultistageName: multistageJobName,
+		States: []testgridanalysisapi.StageState{
+			getStageState(multistageJobName, "most-run-stage", testgridanalysisapi.Failure),
+		},
+	}
+
+	if jobName == nonMultistageJobName {
+		mostRun.States = []testgridanalysisapi.StageState{}
+	}
 
 	return testgridanalysisapi.RawJobResult{
 		JobName:        jobName,
@@ -390,6 +426,12 @@ func getRawJobResult(jobName, multistageJobName string, prowURLCount int) testgr
 				JobRunURL:              prowURL2,
 				Failed:                 true,
 				StepRegistryItemStates: getStepRegistryItemStates(multistageJobName, testgridanalysisapi.Failure),
+			},
+			prowURL3: testgridanalysisapi.RawJobRunResult{
+				Job:                    jobName,
+				JobRunURL:              prowURL3,
+				Failed:                 true,
+				StepRegistryItemStates: mostRun,
 			},
 		},
 	}
@@ -413,65 +455,73 @@ func getRawData() testgridanalysisapi.RawData {
 	}
 }
 
+func getStageState(multistageName, stageName, state string) testgridanalysisapi.StageState {
+	items := map[string]map[string]string{
+		"e2e-aws": map[string]string{
+			"aws-specific-stage": e2eAwsOriginalTestNameSpecificStage,
+			"ipi-install":        e2eAwsOriginalTestNameIpiInstall,
+			"openshift-e2e-test": e2eAwsOriginalTestNameE2ETest,
+			"most-run-stage":     e2eAwsOriginalTestNameMostRun,
+		},
+		"e2e-azure": map[string]string{
+			"azure-specific-stage": e2eAzureOriginalTestNameSpecificStage,
+			"ipi-install":          e2eAzureOriginalTestNameIpiInstall,
+			"openshift-e2e-test":   e2eAzureOriginalTestNameE2ETest,
+			"most-run-stage":       e2eAzureOriginalTestNameMostRun,
+		},
+		"e2e-gcp": map[string]string{
+			"gcp-specific-stage": e2eGcpOriginalTestNameSpecificStage,
+			"ipi-install":        e2eGcpOriginalTestNameIpiInstall,
+			"openshift-e2e-test": e2eGcpOriginalTestNameE2ETest,
+			"most-run-stage":     e2eGcpOriginalTestNameMostRun,
+		},
+	}
+
+	return testgridanalysisapi.StageState{
+		Name:             stageName,
+		State:            state,
+		OriginalTestName: items[multistageName][stageName],
+	}
+}
+
 func getStepRegistryItemStates(multistageName, state string) testgridanalysisapi.StepRegistryItemStates {
 	itemStates := map[string]testgridanalysisapi.StepRegistryItemStates{
 		"e2e-aws": {
 			MultistageName: "e2e-aws",
 			States: []testgridanalysisapi.StageState{
+				getStageState(multistageName, "aws-specific-stage", state),
+				getStageState(multistageName, "ipi-install", state),
+				getStageState(multistageName, "openshift-e2e-test", state),
 				{
-					Name:             "aws-specific-stage",
+					Name:             "most-run-stage",
 					State:            state,
-					OriginalTestName: e2eAwsOriginalTestNameSpecificStage,
-				},
-				{
-					Name:             "ipi-install",
-					State:            state,
-					OriginalTestName: e2eAwsOriginalTestNameIpiInstall,
-				},
-				{
-					Name:             "openshift-e2e-test",
-					State:            state,
-					OriginalTestName: e2eAwsOriginalTestNameE2ETest,
+					OriginalTestName: e2eAwsOriginalTestNameMostRun,
 				},
 			},
 		},
 		"e2e-azure": {
 			MultistageName: "e2e-azure",
 			States: []testgridanalysisapi.StageState{
+				getStageState(multistageName, "azure-specific-stage", state),
+				getStageState(multistageName, "ipi-install", state),
+				getStageState(multistageName, "openshift-e2e-test", state),
 				{
-					Name:             "azure-specific-stage",
+					Name:             "most-run-stage",
 					State:            state,
-					OriginalTestName: e2eAzureOriginalTestNameSpecificStage,
-				},
-				{
-					Name:             "ipi-install",
-					State:            state,
-					OriginalTestName: e2eAzureOriginalTestNameIpiInstall,
-				},
-				{
-					Name:             "openshift-e2e-test",
-					State:            state,
-					OriginalTestName: e2eAzureOriginalTestNameE2ETest,
+					OriginalTestName: e2eAzureOriginalTestNameMostRun,
 				},
 			},
 		},
 		"e2e-gcp": {
 			MultistageName: "e2e-gcp",
 			States: []testgridanalysisapi.StageState{
+				getStageState(multistageName, "gcp-specific-stage", state),
+				getStageState(multistageName, "ipi-install", state),
+				getStageState(multistageName, "openshift-e2e-test", state),
 				{
-					Name:             "gcp-specific-stage",
+					Name:             "most-run-stage",
 					State:            state,
-					OriginalTestName: e2eGcpOriginalTestNameSpecificStage,
-				},
-				{
-					Name:             "ipi-install",
-					State:            state,
-					OriginalTestName: e2eGcpOriginalTestNameIpiInstall,
-				},
-				{
-					Name:             "openshift-e2e-test",
-					State:            state,
-					OriginalTestName: e2eGcpOriginalTestNameE2ETest,
+					OriginalTestName: e2eGcpOriginalTestNameMostRun,
 				},
 			},
 		},
