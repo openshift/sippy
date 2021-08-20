@@ -469,16 +469,19 @@ func TestToRawDataSkippedJob(t *testing.T) {
 	// Check that the test results are exactly what we expect
 	assertRawTestResultsEqual(t, jobResult, []testgridanalysisapi.RawTestResult{
 		{
-			Name:      overallTestName,
-			Successes: 1,
+			Name:       overallTestName,
+			Successes:  1,
+			Timestamps: testGridJobDetails[0].Timestamps,
 		},
 		{
-			Name:      "test-1",
-			Successes: 1,
+			Name:       "test-1",
+			Successes:  1,
+			Timestamps: testGridJobDetails[0].Timestamps,
 		},
 		{
-			Name:      "test-2",
-			Successes: 1,
+			Name:       "test-2",
+			Successes:  1,
+			Timestamps: testGridJobDetails[0].Timestamps,
 		},
 	})
 }
@@ -542,15 +545,17 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 				{
 					Name: testName,
 					// Successes include the flake count
-					Successes: 4,
-					Failures:  2,
-					Flakes:    2,
+					Successes:  4,
+					Failures:   2,
+					Flakes:     2,
+					Timestamps: []int{1},
 				},
 				{
-					Name:      overallTestName,
-					Successes: 4,
-					Failures:  2,
-					Flakes:    2,
+					Name:       overallTestName,
+					Successes:  4,
+					Failures:   2,
+					Flakes:     2,
+					Timestamps: []int{1},
 				},
 			},
 		},
@@ -579,12 +584,18 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 					Successes: 6,
 					Failures:  2,
 					Flakes:    3,
+					Timestamps: []int{
+						1,
+					},
 				},
 				{
 					Name:      overallTestName,
 					Successes: 6,
 					Failures:  2,
 					Flakes:    3,
+					Timestamps: []int{
+						1,
+					},
 				},
 			},
 		},
@@ -660,6 +671,11 @@ func TestToRawDataRunLengthEncoding(t *testing.T) {
 
 			// Get our input data
 			testGridJobDetails := getTestGridJobDetailsForRunLength(testGridTests, changelists)
+
+			// Copy the timestamps onto the expected test results
+			for i := range testCase.expectedRawTestResults {
+				testCase.expectedRawTestResults[i].Timestamps = testGridJobDetails[0].Timestamps
+			}
 
 			// Check our inputs
 			assertTestGridJobDetailsOK(t, testGridJobDetails, len(changelists))

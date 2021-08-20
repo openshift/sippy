@@ -80,8 +80,36 @@ func assertRawTestResultsEqual(t *testing.T, rawJobResult testgridanalysisapi.Ra
 
 	for _, expectedResult := range expected {
 		assertHasRawTestResults(t, rawJobResult, []string{expectedResult.Name})
-		if expectedResult != rawJobResult.TestResults[expectedResult.Name] {
-			t.Errorf("raw test results not equal, expected: %v, got: %v", expectedResult, rawJobResult.TestResults[expectedResult.Name])
+		assertRawTestResultEqual(t, rawJobResult.TestResults[expectedResult.Name], expectedResult)
+	}
+}
+
+func assertRawTestResultEqual(t *testing.T, have, want testgridanalysisapi.RawTestResult) {
+	t.Helper()
+
+	if have.Name != want.Name {
+		t.Errorf("raw test result name mismatch, have: %s, want: %s", have.Name, want.Name)
+	}
+
+	if have.Successes != want.Successes {
+		t.Errorf("success mismatch, have: %d, want: %d", have.Successes, want.Successes)
+	}
+
+	if have.Failures != want.Failures {
+		t.Errorf("failure mismatch, have: %d, want: %d", have.Failures, want.Failures)
+	}
+
+	if have.Flakes != want.Flakes {
+		t.Errorf("flake mismatch, have: %d, want: %d", have.Flakes, want.Flakes)
+	}
+
+	if len(have.Timestamps) != len(want.Timestamps) {
+		t.Errorf("timestamp size mismatch, have: %d, want: %d", len(have.Timestamps), len(want.Timestamps))
+	}
+
+	for i := range have.Timestamps {
+		if have.Timestamps[i] != want.Timestamps[i] {
+			t.Errorf("timestamp mismatch, have: %d, want: %d", have.Timestamps[i], want.Timestamps[i])
 		}
 	}
 }
