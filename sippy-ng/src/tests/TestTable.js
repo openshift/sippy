@@ -13,7 +13,7 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
-import { pathForExactTest, pathForJobRunsWithTestFailure } from '../helpers'
+import { pathForExactTest, pathForJobRunsWithTestFailure, withSort } from '../helpers'
 
 const bookmarks = [
   {
@@ -125,7 +125,7 @@ function TestTable (props) {
             <Button
               startIcon={<DirectionsRun />}
               component={Link}
-              to={pathForJobRunsWithTestFailure(props.release, params.row.name)}
+              to={withSort(pathForJobRunsWithTestFailure(props.release, params.row.name), 'timestamp', 'desc')}
             />
           </Tooltip>
         )
