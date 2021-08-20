@@ -169,7 +169,7 @@ func (t tableRow) toHTMLTableRow() generichtml.HTMLTableRow {
 			Text: fmt.Sprintf("%0.2f%% (%d runs)", t.trend.Current.PassPercentage, t.trend.Current.Runs),
 		},
 		generichtml.HTMLTableRowItem{
-			Text: fmt.Sprintf("%0.2f%% (%d runs)", t.trend.Current.PassPercentage, t.trend.Previous.Runs),
+			Text: fmt.Sprintf("%0.2f%% (%d runs)", t.trend.Previous.PassPercentage, t.trend.Previous.Runs),
 		},
 	})
 
