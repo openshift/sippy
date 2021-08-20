@@ -7,6 +7,7 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 import TestTable from '../tests/TestTable'
 import { BOOKMARKS } from '../constants'
+import './Install.css'
 
 export default function Install (props) {
   const { path, url } = useRouteMatch()
@@ -54,7 +55,7 @@ export default function Install (props) {
             <Typography align="center" variant="h4">
               Install health for {props.release}
             </Typography>
-            <Grid container justifyContent="center" width="60%" style={{ margin: 20 }}>
+            <Grid container justifyContent="center" size="xl" className="view">
               <Paper>
                 <Tabs
                   value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}

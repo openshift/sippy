@@ -25,10 +25,7 @@ exports[`install should render correctly 1`] = `
 <h4 class="MuiTypography-root MuiTypography-h4 MuiTypography-alignCenter">
   Install health for 4.8
 </h4>
-<div class="MuiGrid-root MuiGrid-container MuiGrid-justify-content-xs-center"
-     width="60%"
-     style="margin: 20px;"
->
+<div class="MuiGrid-root view MuiGrid-container MuiGrid-justify-content-xs-center">
   <div class="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded">
     <div class="MuiTabs-root">
       <div class="MuiTabs-scroller MuiTabs-fixed"

@@ -15,6 +15,7 @@ describe('JobRunsTable', () => {
   setupDefaultPolly()
 
   it('should render correctly', async () => {
+    Date.now = jest.spyOn(Date, 'now').mockImplementation(() => new Date(1628691480000))
     const fetchSpy = jest.spyOn(global, 'fetch')
 
     let wrapper

@@ -18,6 +18,9 @@ export function relativeTime (date) {
 }
 
 // A set of functions for getting paths to specific tests and jobs.
+export function withSort (queryString, sortField, sort) {
+  return `${queryString}&sortField=${sortField}&sort=${sort}`
+}
 
 export function pathForExactJob (release, job) {
   return `/jobs/${release}?${single(filterFor('name', 'equals', job))}`

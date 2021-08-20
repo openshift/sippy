@@ -84,5 +84,9 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v
 		}
 	}
 
-	RespondWithJSON(http.StatusOK, w, apiRunResults(all).limit(req).sort(req))
+	RespondWithJSON(http.StatusOK, w,
+		apiRunResults(all).
+			sort(req).
+			limit(req),
+	)
 }
