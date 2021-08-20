@@ -10,6 +10,7 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 import TestTable from '../tests/TestTable'
 import { BOOKMARKS } from '../constants'
+import './Upgrades.css'
 
 /**
  *  Upgrades is the landing page for upgrades.
@@ -60,7 +61,7 @@ export default function Upgrades (props) {
             <Typography align="center" variant="h4">
               Upgrade health for {props.release}
             </Typography>
-            <Grid container justifyContent="center" width="60%" style={{ margin: 20 }}>
+            <Grid container justifyContent="center" size="xl" className="view">
               <Paper>
                 <Tabs
                   value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}
