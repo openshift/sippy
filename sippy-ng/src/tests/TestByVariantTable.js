@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 import Cookies from 'universal-cookie'
 import PassRateIcon from '../components/PassRateIcon'
 import './TestByVariantTable.css'
+import { pathForExactTest } from '../helpers'
 
 function PassRateCompare (props) {
   const { previous, current } = props
@@ -51,28 +52,41 @@ function Cell (props) {
   if (result === undefined) {
     return (
       <Tooltip title="No data">
-        <TableCell className="cell-result" style={{ textAlign: 'center', backgroundColor: theme.palette.text.disabled }}>
+        <TableCell
+          className="cell-result"
+          style={{ textAlign: 'center', backgroundColor: theme.palette.text.disabled }}>
           <HelpOutlineIcon style={{ color: theme.palette.text.disabled }} />
         </TableCell>
       </Tooltip>
     )
-  }
-
-  if (props.showFull) {
+  } else if (props.showFull) {
     return (
-      <TableCell className="cell-result" style={{ textAlign: 'center', backgroundColor: cellBackground(result.current_pass_percentage) }}>
+      <TableCell
+        className="cell-result"
+        style={{ textAlign: 'center', backgroundColor: cellBackground(result.current_pass_percentage) }}>
         <PassRateCompare current={result.current_pass_percentage} previous={result.previous_pass_percentage} />
       </TableCell>
     )
   } else {
     return (
       <Tooltip title={<PassRateCompare current={result.current_pass_percentage} previous={result.previous_pass_percentage} />}>
-        <TableCell className="cell-result" style={{ textAlign: 'center', backgroundColor: cellBackground(result.current_pass_percentage) }}>
+        <TableCell
+          className="cell-result"
+          style={{ textAlign: 'center', backgroundColor: cellBackground(result.current_pass_percentage) }}>
           <PassRateIcon improvement={result.current_pass_percentage - result.previous_pass_percentage} />
         </TableCell>
       </Tooltip>
     )
   }
+}
+
+Cell.propTypes = {
+  result: PropTypes.object,
+  colorScale: PropTypes.object,
+  showFull: PropTypes.bool,
+  release: PropTypes.string,
+  variant: PropTypes.string,
+  testName: PropTypes.string
 }
 
 function Row (props) {
@@ -84,13 +98,20 @@ function Row (props) {
         <TableCell className="cell-name" key={testName}>
           <Tooltip title={testName}>
             <Typography className="cell-name">
-              <Link to={`/tests/${props.release}?filterBy=name&test=${testName}`}>{testName}</Link>
+              <Link to={pathForExactTest(props.release, testName)}>{testName}</Link>
             </Typography>
           </Tooltip>
         </TableCell>
         {
           columnNames.map((column, idx) =>
-            <Cell key={'testName-' + idx} colorScale={props.colorScale} showFull={props.showFull} result={results[column]}></Cell>
+            <Cell key={'testName-' + idx}
+                  colorScale={props.colorScale}
+                  showFull={props.showFull}
+                  result={results[column]}
+                  release={props.release}
+                  variant={column}
+                  testName={testName}
+            />
           )}
       </TableRow>
     </Fragment>
@@ -113,7 +134,7 @@ export default function TestByVariantTable (props) {
 
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
-  };
+  }
 
   const handleSwitchFull = (e) => {
     cookies.set('testDetailShowFull', e.target.checked, { sameSite: true })
@@ -140,7 +161,7 @@ export default function TestByVariantTable (props) {
   }
 
   return (
-    <div className="table-container" width="100%">
+    <div className="view" width="100%">
       {pageTitle}
       <TableContainer component="div" className="wrapper">
         <Table className="test-variant-table">

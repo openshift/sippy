@@ -1,4 +1,3 @@
-
 import { Box, Card, Container, Tooltip, Typography } from '@material-ui/core'
 import Grid from '@material-ui/core/Grid'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
@@ -67,6 +66,7 @@ export default function ReleaseOverview (props) {
   }
 
   useEffect(() => {
+    document.title = `Sippy > ${props.release} > Health Summary`
     fetchData()
   }, [])
 
@@ -92,14 +92,14 @@ export default function ReleaseOverview (props) {
   if (data.warnings && data.warnings.length > 0) {
     data.warnings.forEach((warning, index) => {
       warnings.push(
-          <Alert
-            key={'sippy-warning-' + index}
-            className={classes.warning}
-            severity="warning"
-          >
-            <div style={{ width: '100%' }} dangerouslySetInnerHTML={{ __html: warning }}></div>
+        <Alert
+          key={'sippy-warning-' + index}
+          className={classes.warning}
+          severity="warning"
+        >
+          <div style={{ width: '100%' }} dangerouslySetInnerHTML={{ __html: warning }}></div>
 
-          </Alert>
+        </Alert>
       )
     })
   }
@@ -207,7 +207,8 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }} variant="h5">
+                <Typography component={Link} to={'/tests/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }}
+                            variant="h5">
                   Most regressed tests (two day)
                   <Tooltip title={TWODAY_WARNING}>
                     <InfoIcon />
@@ -231,7 +232,8 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/jobs/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }} variant="h5">
+                <Typography component={Link} to={'/jobs/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }}
+                            variant="h5">
                   Most regressed jobs (two day)
                   <Tooltip title={TWODAY_WARNING}>
                     <InfoIcon />
@@ -255,7 +257,8 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_10, BOOKMARKS.NO_LINKED_BUG] }))} style={{ textAlign: 'center' }} variant="h5">
+                <Typography component={Link} to={'/tests/' + props.release + '?sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_10, BOOKMARKS.NO_LINKED_BUG] }))}
+                            style={{ textAlign: 'center' }} variant="h5">
                   Top failing tests without a bug
                   <Tooltip title={NOBUG_TOOLTIP}>
                     <InfoIcon />
@@ -279,7 +282,8 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.TRT] }))} style={{ textAlign: 'center' }} variant="h5">
+                <Typography component={Link} to={'/tests/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.TRT] }))} style={{ textAlign: 'center' }}
+                            variant="h5">
                   Curated by TRT
                   <Tooltip title={TRT_TOOLTIP}>
                     <InfoIcon />

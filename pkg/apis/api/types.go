@@ -4,6 +4,8 @@ package api
 import (
 	"fmt"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -52,6 +54,7 @@ func (job Job) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "briefName":
 		return ColumnTypeString
+	//nolint:goconst
 	case "variants":
 		return ColumnTypeArray
 	//nolint:goconst
@@ -112,6 +115,68 @@ func (job Job) GetArrayValue(param string) ([]string, error) {
 		return job.Variants, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
+	}
+}
+
+// JobRun contains a full accounting of a job run's history, with a synthetic ID.
+type JobRun struct {
+	ID          int      `json:"id"`
+	Variants    []string `json:"variants"`
+	TestGridURL string   `json:"testGridURL"`
+	v1.JobRunResult
+}
+
+func (run JobRun) GetFieldType(param string) ColumnType {
+	switch param {
+	case "job":
+		return ColumnTypeString
+	case "result":
+		return ColumnTypeString
+	case "failedTestNames":
+		return ColumnTypeArray
+	case "variants":
+		return ColumnTypeArray
+	case "testGridURL":
+		return ColumnTypeString
+	default:
+		return ColumnTypeNumerical
+	}
+}
+
+func (run JobRun) GetStringValue(param string) (string, error) {
+	switch param {
+	case "job":
+		return run.Job, nil
+	case "result":
+		return string(run.OverallResult), nil
+	case "testGridURL":
+		return run.TestGridURL, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+func (run JobRun) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(run.ID), nil
+	case "testFailures":
+		return float64(run.TestFailures), nil
+	case "timestamp":
+		return float64(run.Timestamp), nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (run JobRun) GetArrayValue(param string) ([]string, error) {
+	switch param {
+	case "failedTestNames":
+		return run.FailedTestNames, nil
+	case "variants":
+		return run.Variants, nil
+	default:
+		return nil, fmt.Errorf("unknown array field %s", param)
 	}
 }
 

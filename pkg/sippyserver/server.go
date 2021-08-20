@@ -421,6 +421,14 @@ func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request)
 	}
 }
 
+func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
+	reports := s.currTestReports
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintJobRunsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
+	}
+}
+
 func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
 
@@ -471,6 +479,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
 	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
+	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)

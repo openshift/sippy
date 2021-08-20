@@ -2,10 +2,7 @@ import { createTheme } from '@material-ui/core/styles'
 import { makeStyles } from '@material-ui/styles'
 import IconButton from '@material-ui/core/IconButton'
 import TextField from '@material-ui/core/TextField'
-import {
-  GridToolbarDensitySelector,
-  GridToolbarFilterButton
-} from '@material-ui/data-grid'
+import { GridToolbarDensitySelector, GridToolbarFilterButton } from '@material-ui/data-grid'
 import ClearIcon from '@material-ui/icons/Clear'
 import SearchIcon from '@material-ui/icons/Search'
 import PropTypes from 'prop-types'
@@ -45,55 +42,59 @@ export default function GridToolbar (props) {
   const [search, setSearch] = React.useState('')
 
   return (
-        <div className={classes.root}>
-            <div>
-                <GridToolbarFilterButton />
-                <GridToolbarBookmarkMenu bookmarks={props.bookmarks} setFilterModel={props.setFilterModel} />
-                <GridToolbarPeriodSelector selectPeriod={props.selectPeriod} period={props.period} />
-                <GridToolbarDensitySelector />
+    <div className={classes.root}>
+      <div>
+        <GridToolbarFilterButton />
+        {props.bookmarks ? <GridToolbarBookmarkMenu bookmarks={props.bookmarks} setFilterModel={props.setFilterModel} /> : ''}
+        {props.period ? <GridToolbarPeriodSelector selectPeriod={props.selectPeriod} period={props.period} /> : ''}
+        <GridToolbarDensitySelector />
 
-            </div>
-            <div>
-                <TextField
-                    variant="standard"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onBlur={() => props.doSearch(search)}
-                    placeholder="Search…"
-                    InputProps={{
-                      endAdornment: (
-                            <Fragment>
-                                <IconButton
-                                    title="Search"
-                                    aria-label="Search"
-                                    size="small"
-                                    onClick={() => props.doSearch(search)}
-                                >
-                                    <SearchIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                    title="Clear"
-                                    aria-label="Clear"
-                                    size="small"
-                                    onClick={() => { props.clearSearch(); setSearch('') }}
-                                >
-                                    <ClearIcon fontSize="small" />
-                                </IconButton>
-                            </Fragment>
-                      )
-                    }}
-                />
-            </div>
-        </div>
+      </div>
+      <div>
+        <TextField
+          variant="standard"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && props.doSearch(search)}
+          onBlur={() => props.doSearch(search)}
+          placeholder="Search…"
+          InputProps={{
+            endAdornment: (
+              <Fragment>
+                <IconButton
+                  title="Search"
+                  aria-label="Search"
+                  size="small"
+                  onClick={() => props.doSearch(search)}
+                >
+                  <SearchIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  title="Clear"
+                  aria-label="Clear"
+                  size="small"
+                  onClick={() => {
+                    props.clearSearch()
+                    setSearch('')
+                  }}
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </Fragment>
+            )
+          }}
+        />
+      </div>
+    </div>
   )
 }
 
 GridToolbar.propTypes = {
-  bookmarks: PropTypes.array.isRequired,
+  bookmarks: PropTypes.array,
   clearSearch: PropTypes.func.isRequired,
   doSearch: PropTypes.func.isRequired,
   period: PropTypes.string,
-  selectPeriod: PropTypes.func.isRequired,
+  selectPeriod: PropTypes.func,
   setFilterModel: PropTypes.func.isRequired,
   value: PropTypes.string
 }

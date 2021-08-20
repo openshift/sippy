@@ -1,6 +1,6 @@
 import { Grid, Paper, Tab, Tabs, Typography } from '@material-ui/core'
 import { Alert, TabContext } from '@material-ui/lab'
-import React, { useEffect, Fragment } from 'react'
+import React, { Fragment, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -32,6 +32,7 @@ export default function Install (props) {
   }
 
   useEffect(() => {
+    document.title = `Sippy > ${props.release} > Install health`
     fetchData()
   }, [])
 
@@ -41,7 +42,7 @@ export default function Install (props) {
 
   if (!isLoaded) {
     return <p>Loading...</p>
-  };
+  }
 
   return (
     <Fragment>

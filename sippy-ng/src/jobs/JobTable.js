@@ -1,8 +1,6 @@
 import { Backdrop, Box, Button, CircularProgress, Container, Tooltip, Typography } from '@material-ui/core'
-import {
-  DataGrid
-} from '@material-ui/data-grid'
-import { BugReport, GridOn } from '@material-ui/icons'
+import { DataGrid } from '@material-ui/data-grid'
+import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
 import { withStyles } from '@material-ui/styles'
 import PropTypes from 'prop-types'
@@ -15,6 +13,7 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
+import { pathForExactJob, pathForExactJobRuns } from '../helpers'
 
 const bookmarks = [
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
@@ -57,7 +56,7 @@ function JobTable (props) {
         return (
           <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             <Tooltip title={params.value}>
-              <Link to={'/jobs/' + props.release + '/detail?job=' + params.row.name}>
+              <Link to={props.briefTable ? pathForExactJob(props.release, params.value) : '/jobs/' + props.release + '/detail?job=' + params.row.name}>
                 {props.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
@@ -110,6 +109,20 @@ function JobTable (props) {
         return (
           <Tooltip title="TestGrid">
             <Button style={{ justifyContent: 'center' }} target="_blank" startIcon={<GridOn />} href={params.value} />
+          </Tooltip>
+        )
+      },
+      filterable: false,
+      hide: props.briefTable
+    },
+    {
+      field: 'job_runs',
+      headerName: ' ',
+      flex: 0.40,
+      renderCell: (params) => {
+        return (
+          <Tooltip title="See all job runs">
+            <Button component={Link} style={{ justifyContent: 'center' }} startIcon={<DirectionsRun />} to={pathForExactJobRuns(props.release, params.row.name)} />
           </Tooltip>
         )
       },

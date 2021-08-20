@@ -72,7 +72,7 @@ exports[`install should render correctly 1`] = `
     </div>
   </div>
 </div>
-<div class="table-container"
+<div class="view"
      width="100%"
 >
   <h4 class="MuiTypography-root MuiTypography-h4"
@@ -231,7 +231,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="Overall"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=Overall">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22Overall%22%7D%5D%7D">
                 Overall
               </a>
             </p>
@@ -550,7 +550,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="authentication"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=authentication">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22authentication%22%7D%5D%7D">
                 authentication
               </a>
             </p>
@@ -869,7 +869,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="baremetal"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=baremetal">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22baremetal%22%7D%5D%7D">
                 baremetal
               </a>
             </p>
@@ -1188,7 +1188,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="cloud-controller-manager"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=cloud-controller-manager">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22cloud-controller-manager%22%7D%5D%7D">
                 cloud-controller-manager
               </a>
             </p>
@@ -1507,7 +1507,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="cloud-credential"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=cloud-credential">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22cloud-credential%22%7D%5D%7D">
                 cloud-credential
               </a>
             </p>
@@ -1826,7 +1826,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="cluster-autoscaler"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=cluster-autoscaler">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22cluster-autoscaler%22%7D%5D%7D">
                 cluster-autoscaler
               </a>
             </p>
@@ -2145,7 +2145,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="config-operator"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=config-operator">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22config-operator%22%7D%5D%7D">
                 config-operator
               </a>
             </p>
@@ -2464,7 +2464,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="console"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=console">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22console%22%7D%5D%7D">
                 console
               </a>
             </p>
@@ -2783,7 +2783,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="csi-snapshot-controller"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=csi-snapshot-controller">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22csi-snapshot-controller%22%7D%5D%7D">
                 csi-snapshot-controller
               </a>
             </p>
@@ -3102,7 +3102,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="dns"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=dns">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22dns%22%7D%5D%7D">
                 dns
               </a>
             </p>
@@ -3421,7 +3421,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="etcd"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=etcd">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22etcd%22%7D%5D%7D">
                 etcd
               </a>
             </p>
@@ -3740,7 +3740,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="image-registry"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=image-registry">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22image-registry%22%7D%5D%7D">
                 image-registry
               </a>
             </p>
@@ -4059,7 +4059,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="ingress"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=ingress">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22ingress%22%7D%5D%7D">
                 ingress
               </a>
             </p>
@@ -4378,7 +4378,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="insights"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=insights">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22insights%22%7D%5D%7D">
                 insights
               </a>
             </p>
@@ -4697,7 +4697,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="kube-apiserver"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=kube-apiserver">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22kube-apiserver%22%7D%5D%7D">
                 kube-apiserver
               </a>
             </p>
@@ -5016,7 +5016,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="kube-controller-manager"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=kube-controller-manager">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22kube-controller-manager%22%7D%5D%7D">
                 kube-controller-manager
               </a>
             </p>
@@ -5335,7 +5335,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="kube-scheduler"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=kube-scheduler">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22kube-scheduler%22%7D%5D%7D">
                 kube-scheduler
               </a>
             </p>
@@ -5654,7 +5654,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="kube-storage-version-migrator"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=kube-storage-version-migrator">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22kube-storage-version-migrator%22%7D%5D%7D">
                 kube-storage-version-migrator
               </a>
             </p>
@@ -5973,7 +5973,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="machine-api"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=machine-api">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22machine-api%22%7D%5D%7D">
                 machine-api
               </a>
             </p>
@@ -6292,7 +6292,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="machine-approver"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=machine-approver">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22machine-approver%22%7D%5D%7D">
                 machine-approver
               </a>
             </p>
@@ -6611,7 +6611,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="machine-config"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=machine-config">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22machine-config%22%7D%5D%7D">
                 machine-config
               </a>
             </p>
@@ -6930,7 +6930,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="marketplace"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=marketplace">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22marketplace%22%7D%5D%7D">
                 marketplace
               </a>
             </p>
@@ -7249,7 +7249,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="monitoring"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=monitoring">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22monitoring%22%7D%5D%7D">
                 monitoring
               </a>
             </p>
@@ -7568,7 +7568,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="network"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=network">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22network%22%7D%5D%7D">
                 network
               </a>
             </p>
@@ -7887,7 +7887,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="node-tuning"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=node-tuning">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22node-tuning%22%7D%5D%7D">
                 node-tuning
               </a>
             </p>
@@ -8206,7 +8206,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="openshift-apiserver"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=openshift-apiserver">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22openshift-apiserver%22%7D%5D%7D">
                 openshift-apiserver
               </a>
             </p>
@@ -8525,7 +8525,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="openshift-controller-manager"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=openshift-controller-manager">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22openshift-controller-manager%22%7D%5D%7D">
                 openshift-controller-manager
               </a>
             </p>
@@ -8844,7 +8844,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="openshift-samples"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=openshift-samples">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22openshift-samples%22%7D%5D%7D">
                 openshift-samples
               </a>
             </p>
@@ -9163,7 +9163,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="operator-lifecycle-manager"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=operator-lifecycle-manager">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator-lifecycle-manager%22%7D%5D%7D">
                 operator-lifecycle-manager
               </a>
             </p>
@@ -9482,7 +9482,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="operator-lifecycle-manager-catalog"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=operator-lifecycle-manager-catalog">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator-lifecycle-manager-catalog%22%7D%5D%7D">
                 operator-lifecycle-manager-catalog
               </a>
             </p>
@@ -9801,7 +9801,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="operator-lifecycle-manager-packageserver"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=operator-lifecycle-manager-packageserver">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator-lifecycle-manager-packageserver%22%7D%5D%7D">
                 operator-lifecycle-manager-packageserver
               </a>
             </p>
@@ -10120,7 +10120,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="page"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=page">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22page%22%7D%5D%7D">
                 page
               </a>
             </p>
@@ -10439,7 +10439,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="service-ca"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=service-ca">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22service-ca%22%7D%5D%7D">
                 service-ca
               </a>
             </p>
@@ -10758,7 +10758,7 @@ exports[`install should render correctly 1`] = `
             <p class="MuiTypography-root cell-name MuiTypography-body1"
                title="storage"
             >
-              <a href="/tests/4.8?filterBy=name&amp;test=storage">
+              <a href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22storage%22%7D%5D%7D">
                 storage
               </a>
             </p>

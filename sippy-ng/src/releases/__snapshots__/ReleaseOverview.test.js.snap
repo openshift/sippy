@@ -1113,6 +1113,29 @@ exports[`release-overview should render correctly 1`] = `
                         </div>
                       </a>
                     </div>
+                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                      <a class="MuiBox-root MuiBox-root-267"
+                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                      >
+                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-266 MuiPaper-elevation5 MuiPaper-rounded"
+                             style="background-color: rgba(0, 0, 0, 0.38);"
+                             title="Current runs: 0, previous runs: 0"
+                        >
+                          <div class="MuiCardContent-root makeStyles-cardContent-218"
+                               style="text-align: center;"
+                          >
+                            <h6 class="MuiTypography-root MuiTypography-h6">
+                              techpreview
+                            </h6>
+                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                 style="margin: 20px; text-align: center;"
+                            >
+                              No data
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1363,7 +1386,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                      class
-                                     href="/tests/4.8/details?test=[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Binstall%5D%20%5BSuite%3A%20operators%5D%20%5BOSD%5D%20RBAC%20Operator%20Operator%20Upgrade%20should%20upgrade%20from%20the%20replaced%20version%22%7D%5D%7D"
                                   >
                                     [install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version
                                   </a>
@@ -1442,7 +1465,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-vsphere-upgrade%20-%20e2e-vsphere-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -1521,7 +1544,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-proxy%20-%20e2e-aws-proxy-ipi-install-install%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test
                                   </a>
@@ -1600,7 +1623,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp-upgrade%20-%20e2e-gcp-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -1679,7 +1702,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp%20-%20e2e-gcp-ipi-install-install%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test
                                   </a>
@@ -1757,10 +1780,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -1782,7 +1805,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -2051,7 +2074,7 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="40"
+                            <div data-id="38"
                                  data-rowindex="0"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-38-155 MuiDataGrid-row"
@@ -2075,7 +2098,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4%22%7D%5D%7D"
                                   >
                                     e2e-metal-ipi-serial-ipv4
                                   </a>
@@ -2094,7 +2117,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-269"
+                                <div class="MuiBox-root MuiBox-root-271"
                                      title="13 runs"
                                 >
                                   38.46%
@@ -2154,7 +2177,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp%22%7D%5D%7D"
                                   >
                                     e2e-gcp
                                   </a>
@@ -2173,7 +2196,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-270"
+                                <div class="MuiBox-root MuiBox-root-272"
                                      title="13 runs"
                                 >
                                   69.23%
@@ -2209,7 +2232,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="31"
+                            <div data-id="32"
                                  data-rowindex="2"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-33-150 MuiDataGrid-row"
@@ -2233,7 +2256,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade%22%7D%5D%7D"
                                   >
                                     e2e-aws-upgrade
                                   </a>
@@ -2252,7 +2275,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-271"
+                                <div class="MuiBox-root MuiBox-root-273"
                                      title="15 runs"
                                 >
                                   33.33%
@@ -2312,7 +2335,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy%22%7D%5D%7D"
                                   >
                                     e2e-aws-proxy
                                   </a>
@@ -2331,7 +2354,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-272"
+                                <div class="MuiBox-root MuiBox-root-274"
                                      title="16 runs"
                                 >
                                   31.25%
@@ -2367,7 +2390,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="73"
+                            <div data-id="69"
                                  data-rowindex="4"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-77-194 MuiDataGrid-row"
@@ -2391,7 +2414,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="release-openshift-ocp-installer-e2e-aws-ovn-4.8"
                                      class
-                                     href="/jobs/4.8/detail?job=release-openshift-ocp-installer-e2e-aws-ovn-4.8"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-aws-ovn-4.8%22%7D%5D%7D"
                                   >
                                     release-openshift-ocp-installer-e2e-aws-ovn-4.8
                                   </a>
@@ -2410,7 +2433,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-273"
+                                <div class="MuiBox-root MuiBox-root-275"
                                      title="13 runs"
                                 >
                                   76.92%
@@ -2469,10 +2492,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -2494,7 +2517,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -2787,7 +2810,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-assisted%20-%20e2e-metal-assisted-baremetalds-assisted-setup%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test
                                   </a>
@@ -2866,7 +2889,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-ipi-virtualmedia%20-%20e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test
                                   </a>
@@ -2945,7 +2968,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-fips%20-%20e2e-aws-fips-ipi-install-install%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test
                                   </a>
@@ -3024,7 +3047,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
                                      class
-                                     href="/tests/4.8/details?test=TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22TestInstall_test_install.start_install_and_wait_for_installed(openshift_version%3D4.8)%22%7D%5D%7D"
                                   >
                                     TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)
                                   </a>
@@ -3103,7 +3126,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-ipi-ovn-ipv6%20-%20e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test
                                   </a>
@@ -3181,10 +3204,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3206,7 +3229,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -3475,7 +3498,7 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 260px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="38"
+                            <div data-id="16"
                                  data-rowindex="0"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-117 MuiDataGrid-row"
@@ -3499,7 +3522,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade%22%7D%5D%7D"
                                   >
                                     e2e-aws-upgrade
                                   </a>
@@ -3518,7 +3541,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-274"
+                                <div class="MuiBox-root MuiBox-root-276"
                                      title="1 runs"
                                 >
                                   0.00%
@@ -3554,7 +3577,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="33"
+                            <div data-id="52"
                                  data-rowindex="1"
                                  role="row"
                                  class="Mui-odd JobTable-row-percent-0-117 MuiDataGrid-row"
@@ -3578,7 +3601,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation%22%7D%5D%7D"
                                   >
                                     e2e-gcp-libvirt-cert-rotation
                                   </a>
@@ -3597,7 +3620,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-275"
+                                <div class="MuiBox-root MuiBox-root-277"
                                      title="1 runs"
                                 >
                                   0.00%
@@ -3633,7 +3656,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="30"
+                            <div data-id="0"
                                  data-rowindex="2"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-117 MuiDataGrid-row"
@@ -3657,7 +3680,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia%22%7D%5D%7D"
                                   >
                                     e2e-metal-ipi-virtualmedia
                                   </a>
@@ -3676,7 +3699,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-276"
+                                <div class="MuiBox-root MuiBox-root-278"
                                      title="2 runs"
                                 >
                                   0.00%
@@ -3712,7 +3735,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="72"
+                            <div data-id="71"
                                  data-rowindex="3"
                                  role="row"
                                  class="Mui-odd JobTable-row-percent-50-167 MuiDataGrid-row"
@@ -3736,7 +3759,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted%22%7D%5D%7D"
                                   >
                                     e2e-metal-assisted
                                   </a>
@@ -3755,7 +3778,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-277"
+                                <div class="MuiBox-root MuiBox-root-279"
                                      title="2 runs"
                                 >
                                   50.00%
@@ -3791,7 +3814,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="47"
+                            <div data-id="7"
                                  data-rowindex="4"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-117 MuiDataGrid-row"
@@ -3815,7 +3838,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack"
                                      class
-                                     href="/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack"
+                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D"
                                   >
                                     e2e-metal-ipi-ovn-dualstack
                                   </a>
@@ -3834,7 +3857,7 @@ exports[`release-overview should render correctly 1`] = `
                                    style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                    tabindex="-1"
                               >
-                                <div class="MuiBox-root MuiBox-root-278"
+                                <div class="MuiBox-root MuiBox-root-280"
                                      title="2 runs"
                                 >
                                   0.00%
@@ -3893,10 +3916,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3918,7 +3941,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4211,7 +4234,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                      class
-                                     href="/tests/4.8/details?test=[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Binstall%5D%20%5BSuite%3A%20operators%5D%20%5BOSD%5D%20RBAC%20Operator%20Operator%20Upgrade%20should%20upgrade%20from%20the%20replaced%20version%22%7D%5D%7D"
                                   >
                                     [install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version
                                   </a>
@@ -4290,7 +4313,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-vsphere-upgrade%20-%20e2e-vsphere-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -4369,7 +4392,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-proxy%20-%20e2e-aws-proxy-ipi-install-install%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test
                                   </a>
@@ -4448,7 +4471,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp-upgrade%20-%20e2e-gcp-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -4527,7 +4550,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                   <a title="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8/details?test=operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
+                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp%20-%20e2e-gcp-ipi-install-install%20container%20test%22%7D%5D%7D"
                                   >
                                     operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test
                                   </a>
@@ -4605,10 +4628,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -4630,7 +4653,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4927,10 +4950,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-270 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -4952,7 +4975,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-269 MuiTypography-body2 MuiTypography-colorInherit">
                         0-0 of 0
                       </p>
                       <div class="MuiTablePagination-actions">
