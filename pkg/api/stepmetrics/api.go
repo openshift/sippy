@@ -21,7 +21,7 @@ func NewStepMetricsAPI(curr, prev sippyprocessingv1.TestReport) StepMetricsAPI {
 func (s StepMetricsAPI) Fetch(req Request) (Response, error) {
 	resp := Response{Request: req}
 
-	if err := validateAPIRequest(s.current, s.previous, req); err != nil {
+	if err := validateRequest(s.current, s.previous, req); err != nil {
 		return resp, err
 	}
 

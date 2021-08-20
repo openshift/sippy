@@ -207,12 +207,15 @@ func TestToRawDataOverall(t *testing.T) {
 func TestToRawDataStepRegistryItem(t *testing.T) {
 	testCase := rawDataTestCase{
 		testGridTestNames: []string{
+			"Overall",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-rbac container test",
 			"operator.Run multi-stage test openshift-ipi-azure-arcconformance - openshift-ipi-azure-arcconformance-ipi-install-times-collection container test",
 		},
 		// We expect this to be empty since we want to ignore these as tests
-		expectedTestNames: []string{},
+		expectedTestNames: []string{
+			"Overall",
+		},
 		options: testgridconversion.ProcessingOptions{
 			StartDay:             0,
 			NumDays:              numOfJobs,

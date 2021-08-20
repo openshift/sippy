@@ -471,6 +471,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/canary", s.printCanaryReport)
 	serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+	serveMux.HandleFunc("/stepmetrics", s.stepMetrics)
+	serveMux.HandleFunc("/api/stepmetrics", s.stepMetricsAPI)
 
 	// Old API
 	serveMux.HandleFunc("/json", s.printJSONReport)
@@ -485,12 +487,6 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
-	serveMux.HandleFunc("/api/jobs", s.jobs)
-	serveMux.HandleFunc("/jobs", s.jobsReport)
-	serveMux.HandleFunc("/api/stepmetrics", s.stepMetricsAPI)
-	serveMux.HandleFunc("/stepmetrics", s.stepMetrics)
-	serveMux.HandleFunc("/variants", s.variantsReport)
-	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

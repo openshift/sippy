@@ -12,16 +12,6 @@ import (
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 )
 
-func TestPrintJobsReport(t *testing.T) {
-	expectedContents := []string{fixtures.Release}
-
-	testFunc := func(r *httptest.ResponseRecorder) {
-		releasehtml.PrintJobsReport(r, fixtures.Release)
-	}
-
-	htmltesthelpers.AssertHTTPResponseContains(t, expectedContents, testFunc)
-}
-
 func TestPrintVariantsReport(t *testing.T) {
 	variant := "aws"
 

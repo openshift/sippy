@@ -49,8 +49,7 @@ func GetTestReport(jobName, testName, release string) sippyprocessingv1.TestRepo
 		},
 		ByJob: []sippyprocessingv1.JobResult{
 			{
-				Name:    "job-name",
-				Variant: "aws",
+				Name: "job-name",
 				TestResults: []sippyprocessingv1.TestResult{
 					{
 						Name:           testName,

@@ -30,7 +30,7 @@ type RequestOpts struct {
 
 type Validator func(RequestOpts) (Request, error)
 
-func validateAPIRequest(curr, prev sippyprocessingv1.TestReport, req Request) error {
+func validateRequest(curr, prev sippyprocessingv1.TestReport, req Request) error {
 	q := stepMetricsQuery{
 		request: req,
 		requestOpts: RequestOpts{

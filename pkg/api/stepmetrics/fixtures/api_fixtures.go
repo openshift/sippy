@@ -27,6 +27,7 @@ const (
 	E2eGcpOriginalTestNameE2ETest       string = "operator.Run multi-stage test e2e-gcp - e2e-gcp-openshift-e2e-test container test"
 )
 
+//nolint:dupl // Duplication is OK in this context
 func GetAllMultistageResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
@@ -282,6 +283,7 @@ func GetSpecificStepNameResponse(stepName string) stepmetrics.Response {
 	}
 }
 
+//nolint:dupl // Duplication is OK in this context
 func GetAllJobsResponse() stepmetrics.Response {
 	return stepmetrics.Response{
 		Request: stepmetrics.Request{
