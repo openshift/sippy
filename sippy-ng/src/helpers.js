@@ -22,6 +22,10 @@ export function withSort (queryString, sortField, sort) {
   return `${queryString}&sortField=${sortField}&sort=${sort}`
 }
 
+export function queryForBookmark (...bookmarks) {
+  return multiple(...bookmarks)
+}
+
 export function pathForExactJob (release, job) {
   return `/jobs/${release}?${single(filterFor('name', 'equals', job))}`
 }

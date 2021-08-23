@@ -3,16 +3,17 @@ import Grid from '@material-ui/core/Grid'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import InfoIcon from '@material-ui/icons/Info'
 import Alert from '@material-ui/lab/Alert'
-import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import PassRateIcon from '../components/PassRateIcon'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
 import { BOOKMARKS, INFRASTRUCTURE_THRESHOLDS, INSTALL_THRESHOLDS, UPGRADE_THRESHOLDS } from '../constants'
-import JobTable from '../jobs/JobTable'
 import VariantCards from '../jobs/VariantCards'
+import { queryForBookmark } from '../helpers'
+import JobTable from '../jobs/JobTable'
 import TestTable from '../tests/TestTable'
+import PropTypes from 'prop-types'
 
 export const TOOLTIP = 'Top level release indicators showing product health'
 export const REGRESSED_TOOLTIP = 'Shows the most regressed items this week vs. last week, for those with more than 10 runs'
@@ -156,34 +157,13 @@ export default function ReleaseOverview (props) {
             </Grid>
 
             <VariantCards release={props.release} />
-
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_10] }))} style={{ textAlign: 'center' }} variant="h5">
-                  Most regressed tests
-                  <Tooltip title={REGRESSED_TOOLTIP}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <TestTable
-                  hideControls={true}
-                  sortField="net_improvement"
-                  sort="asc"
-                  limit={10}
-                  filterModel={{
-                    items: [BOOKMARKS.RUN_10]
-                  }}
-                  pageSize={5}
-                  briefTable={true}
-                  release={props.release} />
-
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/jobs/' + props.release + '?sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_10] }))} style={{ textAlign: 'center' }} variant="h5">
+                <Typography
+                  component={Link}
+                  to={`/jobs/${props.release}?sortField=net_improvement&sort=asc&${queryForBookmark(BOOKMARKS.RUN_10)}`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5">
                   Most regressed jobs
                   <Tooltip title={REGRESSED_TOOLTIP}>
                     <InfoIcon />
@@ -207,8 +187,65 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }}
-                            variant="h5">
+                <Typography
+                  component={Link}
+                  to={`/jobs/${props.release}?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(BOOKMARKS.RUN_1)}`}
+                  variant="h5">
+                  Most regressed jobs (two day)
+                  <Tooltip title={TWODAY_WARNING}>
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+
+                <JobTable
+                  hideControls={true}
+                  sortField="net_improvement"
+                  sort="asc"
+                  limit={10}
+                  filterModel={{
+                    items: [BOOKMARKS.RUN_1]
+                  }}
+                  pageSize={5}
+                  period="twoDay"
+                  release={props.release}
+                  briefTable={true} />
+              </Card>
+            </Grid>
+            <Grid item md={6} sm={12}>
+              <Card enhancement="5" style={{ textAlign: 'center' }}>
+                <Typography
+                  component={Link}
+                  to={`/tests/${props.release}?${queryForBookmark(BOOKMARKS.RUN_10)}&sortField=net_improvement&sort=asc`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5">
+                  Most regressed tests
+                  <Tooltip title={REGRESSED_TOOLTIP}>
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+
+                <TestTable
+                  hideControls={true}
+                  sortField="net_improvement"
+                  sort="asc"
+                  limit={10}
+                  filterModel={{
+                    items: [BOOKMARKS.RUN_10]
+                  }}
+                  pageSize={5}
+                  briefTable={true}
+                  release={props.release} />
+
+              </Card>
+            </Grid>
+
+            <Grid item md={6} sm={12}>
+              <Card enhancement="5" style={{ textAlign: 'center' }}>
+                <Typography
+                  component={Link}
+                  to={`/tests/${props.release}?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(BOOKMARKS.RUN_1)}`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5">
                   Most regressed tests (two day)
                   <Tooltip title={TWODAY_WARNING}>
                     <InfoIcon />
@@ -232,33 +269,11 @@ export default function ReleaseOverview (props) {
 
             <Grid item md={6} sm={12}>
               <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/jobs/' + props.release + '?period=twoDay&sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_1] }))} style={{ textAlign: 'center' }}
-                            variant="h5">
-                  Most regressed jobs (two day)
-                  <Tooltip title={TWODAY_WARNING}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <JobTable
-                  hideControls={true}
-                  sortField="net_improvement"
-                  sort="asc"
-                  limit={10}
-                  filterModel={{
-                    items: [BOOKMARKS.RUN_1]
-                  }}
-                  pageSize={5}
-                  period="twoDay"
-                  release={props.release}
-                  briefTable={true} />
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
-                <Typography component={Link} to={'/tests/' + props.release + '?sortField=net_improvement&sort=asc&filters=' + encodeURIComponent(JSON.stringify({ items: [BOOKMARKS.RUN_10, BOOKMARKS.NO_LINKED_BUG] }))}
-                            style={{ textAlign: 'center' }} variant="h5">
+                <Typography
+                  component={Link}
+                  to={`/tests/${props.release}?sortField=net_improvement&sort=asc&${queryForBookmark(BOOKMARKS.RUN_10, BOOKMARKS.NO_LINKED_BUG)}`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5">
                   Top failing tests without a bug
                   <Tooltip title={NOBUG_TOOLTIP}>
                     <InfoIcon />

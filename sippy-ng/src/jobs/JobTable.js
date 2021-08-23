@@ -51,7 +51,7 @@ function JobTable (props) {
     {
       field: 'name',
       headerName: 'Name',
-      flex: 3,
+      flex: 4,
       renderCell: (params) => {
         return (
           <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -68,11 +68,11 @@ function JobTable (props) {
       field: 'current_pass_percentage',
       headerName: 'Current Period',
       type: 'number',
-      flex: 1,
+      flex: 0.5,
       renderCell: (params) => (
         <Tooltip title={params.row.current_runs + ' runs'}>
           <Box>
-            {Number(params.value).toFixed(2).toLocaleString()}%
+            {Number(params.value).toFixed(0).toLocaleString()}%
           </Box>
         </Tooltip>
       )
@@ -91,12 +91,12 @@ function JobTable (props) {
     {
       field: 'previous_pass_percentage',
       headerName: 'Previous Period',
-      flex: 1,
+      flex: 0.5,
       type: 'number',
       renderCell: (params) => (
         <Tooltip title={params.row.current_runs + ' runs'}>
           <Box>
-            {Number(params.value).toFixed(2).toLocaleString()}%
+            {Number(params.value).toFixed(0).toLocaleString()}%
           </Box>
         </Tooltip>
       )

@@ -310,19 +310,19 @@ exports[`TestTable should render correctly 1`] = `
       </div>
       <div style=\\"overflow: visible; width: 0px;\\">
         <div class=\\"MuiDataGrid-windowContainer\\"
-             style=\\"width: 0px; height: 1356px;\\"
+             style=\\"width: 0px; height: 2556px;\\"
         >
           <div class=\\"MuiDataGrid-window\\"
                style=\\"top: 56px; overflow-y: hidden;\\"
           >
             <div class=\\"MuiDataGrid-dataContainer\\"
-                 style=\\"min-width: 400px; min-height: 1300px;\\"
+                 style=\\"min-width: 400px; min-height: 2500px;\\"
             >
               <div class=\\"MuiDataGrid-viewport\\"
-                   style=\\"min-width: 0; max-width: 0; max-height: 1300px;\\"
+                   style=\\"min-width: 0; max-width: 0; max-height: 2500px;\\"
               >
                 <div class=\\"MuiDataGrid-renderingZone\\"
-                     style=\\"max-height: 1300px; width: 400px; transform: translate3d(-0px, -0px, 0);\\"
+                     style=\\"max-height: 2500px; width: 400px; transform: translate3d(-0px, -0px, 0);\\"
                 >
                   <div data-id=\\"24\\"
                        data-rowindex=\\"0\\"
@@ -330,7 +330,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"2\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -342,7 +342,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -379,10 +379,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -401,16 +401,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -421,7 +421,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"3\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -433,7 +433,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -470,10 +470,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s\\"
@@ -492,16 +492,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"3 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -512,7 +512,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"4\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -524,7 +524,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -561,10 +561,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -583,16 +583,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -603,7 +603,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"5\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -615,7 +615,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -652,10 +652,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -674,16 +674,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -694,7 +694,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"6\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -706,7 +706,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -743,10 +743,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -765,16 +765,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -785,7 +785,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"7\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -797,7 +797,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -834,10 +834,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -856,16 +856,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -876,7 +876,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"8\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -888,7 +888,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -925,10 +925,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -947,16 +947,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -967,7 +967,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"9\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -979,7 +979,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1016,10 +1016,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -1038,16 +1038,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1058,7 +1058,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"10\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1070,7 +1070,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1107,10 +1107,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -1129,16 +1129,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1149,7 +1149,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"11\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1161,7 +1161,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1198,10 +1198,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
                            href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
@@ -1220,16 +1220,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1240,7 +1240,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"12\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1252,7 +1252,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1289,10 +1289,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -1311,16 +1311,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1331,7 +1331,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"13\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1343,7 +1343,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1380,10 +1380,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-arch] Only known images used by tests\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-arch] Only known images used by tests\\"
@@ -1402,16 +1402,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1422,7 +1422,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"14\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1434,7 +1434,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1471,10 +1471,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]\\"
@@ -1493,16 +1493,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1513,7 +1513,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"15\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1525,7 +1525,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1562,10 +1562,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]\\"
@@ -1584,16 +1584,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"2 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1604,7 +1604,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"16\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1616,7 +1616,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1653,10 +1653,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]\\"
@@ -1675,16 +1675,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1695,7 +1695,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"17\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1707,7 +1707,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1744,10 +1744,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -1766,16 +1766,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1786,7 +1786,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"18\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1798,7 +1798,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1835,10 +1835,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -1857,16 +1857,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1877,7 +1877,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"19\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1889,7 +1889,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -1926,10 +1926,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -1948,16 +1948,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1968,7 +1968,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"20\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -1980,7 +1980,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2017,10 +2017,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance\\"
                            class
                            href=\\"/tests/4.8/details?test=CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance\\"
@@ -2039,16 +2039,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"3 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2059,7 +2059,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"21\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2071,7 +2071,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2108,10 +2108,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -2130,16 +2130,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2150,7 +2150,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"22\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2162,7 +2162,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2199,10 +2199,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -2221,16 +2221,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2241,7 +2241,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2253,7 +2253,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2290,10 +2290,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -2312,16 +2312,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2332,7 +2332,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2344,7 +2344,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2381,10 +2381,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -2403,16 +2403,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2423,7 +2423,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-odd TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"25\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2435,7 +2435,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2472,10 +2472,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
@@ -2494,16 +2494,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2514,7 +2514,7 @@ exports[`TestTable should render correctly 1`] = `
                        class=\\"Mui-even TestTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"26\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 100px; min-height: 100px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
@@ -2526,7 +2526,7 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
@@ -2563,10 +2563,10 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"test-name\\">
                         <a title=\\"[sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]\\"
                            class
                            href=\\"/tests/4.8/details?test=[sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]\\"
@@ -2585,16 +2585,16 @@ exports[`TestTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0.00%
+                        0%
                       </p>
                     </div>
-                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
