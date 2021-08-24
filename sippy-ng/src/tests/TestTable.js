@@ -14,6 +14,7 @@ import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
 import { pathForExactTest, pathForJobRunsWithTestFailure, withSort } from '../helpers'
+import './TestTable.css'
 
 const bookmarks = [
   {
@@ -57,11 +58,13 @@ function TestTable (props) {
     {
       field: 'name',
       headerName: 'Name',
-      flex: 3,
+      flex: 4,
       renderCell: (params) => (
-        <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="test-name">
           <Tooltip title={params.value}>
-            <Link to={props.briefTable ? pathForExactTest(props.release, params.value) : '/tests/' + props.release + '/details?test=' + params.row.name}>{params.value}</Link>
+            <Link to={props.briefTable ? pathForExactTest(props.release, params.value) : '/tests/' + props.release + '/details?test=' + params.row.name}>
+              {params.value}
+            </Link>
           </Tooltip>
         </div>
       )
@@ -70,11 +73,11 @@ function TestTable (props) {
       field: 'current_pass_percentage',
       headerName: 'Current Period',
       type: 'number',
-      flex: 1,
+      flex: 0.5,
       renderCell: (params) => (
         <Tooltip title={params.row.current_runs + ' runs'}>
           <p>
-            {Number(params.value).toFixed(2).toLocaleString()}%
+            {Number(params.value).toFixed(0).toLocaleString()}%
           </p>
         </Tooltip>
       )
@@ -91,12 +94,12 @@ function TestTable (props) {
     {
       field: 'previous_pass_percentage',
       headerName: 'Previous Period',
-      flex: 1,
+      flex: 0.5,
       type: 'number',
       renderCell: (params) => (
         <Tooltip title={params.row.previous_runs + ' runs'}>
           <p>
-            {Number(params.value).toFixed(2).toLocaleString()}%
+            {Number(params.value).toFixed(0).toLocaleString()}%
           </p>
         </Tooltip>
       )
@@ -305,6 +308,7 @@ function TestTable (props) {
         rows={rows}
         columns={columns}
         autoHeight={true}
+        rowHeight={100}
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
         pageSize={props.pageSize}

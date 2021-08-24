@@ -373,7 +373,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-107\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -452,7 +452,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-108\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -531,7 +531,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-109\\"
                            title=\\"6 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -610,7 +610,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-110\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -689,7 +689,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-111\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -768,7 +768,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-112\\"
                            title=\\"13 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -847,7 +847,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-113\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -926,7 +926,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-114\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1005,7 +1005,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-115\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1084,7 +1084,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-116\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1163,7 +1163,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-117\\"
                            title=\\"40 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1242,7 +1242,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-118\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1321,7 +1321,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-119\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1400,7 +1400,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-120\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1479,7 +1479,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-121\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1558,7 +1558,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-122\\"
                            title=\\"6 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1637,7 +1637,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-123\\"
                            title=\\"6 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1716,7 +1716,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-124\\"
                            title=\\"6 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1795,7 +1795,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-125\\"
                            title=\\"3 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1874,7 +1874,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-126\\"
                            title=\\"6 runs\\"
                       >
-                        0.00%
+                        0%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1953,7 +1953,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-127\\"
                            title=\\"13 runs\\"
                       >
-                        15.38%
+                        15%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2032,7 +2032,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-128\\"
                            title=\\"6 runs\\"
                       >
-                        16.67%
+                        17%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2111,7 +2111,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-129\\"
                            title=\\"13 runs\\"
                       >
-                        23.08%
+                        23%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2190,7 +2190,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-130\\"
                            title=\\"4 runs\\"
                       >
-                        25.00%
+                        25%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2269,7 +2269,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"MuiBox-root MuiBox-root-131\\"
                            title=\\"4 runs\\"
                       >
-                        25.00%
+                        25%
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
