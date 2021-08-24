@@ -33,37 +33,37 @@ export default function MiniCard (props) {
   }
 
   const summary = (
-        <Fragment>
-            {props.current.toFixed(1)}% <PassRateIcon improvement={props.current - props.previous} /> {props.previous.toFixed(1)}%
-        </Fragment>
+    <Fragment>
+      <div align="center">{props.current.toFixed(1)}% <PassRateIcon improvement={props.current - props.previous} /> {props.previous.toFixed(1)}%</div>
+    </Fragment>
   )
 
   let card = (
-        <Card elevation={5} className={`${classes.miniCard}`} style={{ backgroundColor: bgColor }}>
-            <CardContent className={`${classes.cardContent}`} style={{ textAlign: 'center' }}>
-                <Typography variant="h6">{props.name}</Typography>
-                <Grid container direction="row" alignItems="center" style={{ margin: 20, textAlign: 'center' }}>
-                    {props.currentRuns > 0 ? summary : 'No data'}
-                </Grid>
-            </CardContent>
-        </Card>
+    <Card elevation={5} className={`${classes.miniCard}`} style={{ backgroundColor: bgColor }}>
+      <CardContent className={`${classes.cardContent}`} style={{ textAlign: 'center' }}>
+        <Typography variant="h6">{props.name}</Typography>
+        <Grid container direction="row" alignItems="center" style={{ margin: 20, textAlign: 'center' }}>
+          {props.currentRuns > 0 ? summary : 'No data'}
+        </Grid>
+      </CardContent>
+    </Card>
   )
 
   // Wrap in tooltip if we have one
   if (props.tooltip !== undefined) {
     card = (
-            <Tooltip title={props.tooltip} placement="top">
-                {card}
-            </Tooltip>
+      <Tooltip title={props.tooltip} placement="top">
+        {card}
+      </Tooltip>
     )
   }
 
   // Link if we have one
   if (props.link !== undefined) {
     return (
-            <Box component={Link} to={props.link}>
-                {card}
-            </Box>
+      <Box component={Link} to={props.link}>
+        {card}
+      </Box>
     )
   } else {
     return card

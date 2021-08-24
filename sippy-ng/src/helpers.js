@@ -17,6 +17,15 @@ export function relativeTime (date) {
   }
 }
 
+export function escapeRegex (str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function searchCI (query) {
+  query = encodeURIComponent(escapeRegex(query))
+  return `https://search.ci.openshift.org/?search=${query}&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job`
+}
+
 // A set of functions for getting paths to specific tests and jobs.
 export function withSort (queryString, sortField, sort) {
   return `${queryString}&sortField=${sortField}&sort=${sort}`
@@ -54,7 +63,7 @@ export function pathForJobVariant (release, variant) {
 }
 
 // Helpers used by the above
-function filterFor (column, operator, value) {
+export function filterFor (column, operator, value) {
   return { id: 99, columnField: column, operatorValue: operator, value: value }
 }
 

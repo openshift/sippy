@@ -13,7 +13,7 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
-import { pathForExactTest, pathForJobRunsWithTestFailure, withSort } from '../helpers'
+import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
 import './TestTable.css'
 
 const bookmarks = [
@@ -62,7 +62,7 @@ function TestTable (props) {
       renderCell: (params) => (
         <div className="test-name">
           <Tooltip title={params.value}>
-            <Link to={props.briefTable ? pathForExactTest(props.release, params.value) : '/tests/' + props.release + '/details?test=' + params.row.name}>
+            <Link to={'/tests/' + props.release + '/analysis?test=' + params.row.name}>
               {params.value}
             </Link>
           </Tooltip>
@@ -111,8 +111,10 @@ function TestTable (props) {
       filterable: false,
       renderCell: (params) => {
         return (
-          <Button target="_blank" startIcon={<Search />}
-                  href={'https://search.ci.openshift.org/?search=' + encodeURIComponent(params.row.name) + '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'} />
+          <Tooltip title="Search CI Logs">
+            <Button target="_blank" startIcon={<Search />}
+                    href={'https://search.ci.openshift.org/?search=' + encodeURIComponent(params.row.name) + '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'} />
+          </Tooltip>
         )
       },
       hide: props.briefTable

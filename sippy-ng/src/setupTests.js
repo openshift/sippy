@@ -54,3 +54,11 @@ export const setupDefaultPolly = () => {
 }
 
 export const expectLoadingPage = (wrapper) => expect(wrapper.find('p').contains('Loading...'))
+
+jest.mock('react-chartjs-2', () => ({
+  Bar: () => null,
+  Chart: () => null,
+  ChartComponent: () => null,
+  Line: () => null,
+  PolarArea: () => null
+}))

@@ -121,6 +121,7 @@ func (job Job) GetArrayValue(param string) ([]string, error) {
 // JobRun contains a full accounting of a job run's history, with a synthetic ID.
 type JobRun struct {
 	ID          int      `json:"id"`
+	BriefName   string   `json:"brief_name"`
 	Variants    []string `json:"variants"`
 	TestGridURL string   `json:"testGridURL"`
 	v1.JobRunResult

@@ -62,6 +62,7 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v
 		for _, run := range results.AllRuns {
 			apiRun := apitype.JobRun{
 				ID:           next,
+				BriefName:    briefName(results.Name),
 				Variants:     results.Variants,
 				TestGridURL:  results.TestGridURL,
 				JobRunResult: run,

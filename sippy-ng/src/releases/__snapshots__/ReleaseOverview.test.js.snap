@@ -145,6 +145,26 @@ exports[`release-overview should render correctly 1`] = `
                     Fail
                   </title>
                 </path>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="-6.9027966064049835"
+                      dy="1.6617457719530504"
+                      text-anchor="end"
+                      style="font-size: 1px;"
+                >
+                  94%
+                </text>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="6.902796606404984"
+                      dy="-1.6617457719530484"
+                      text-anchor="start"
+                      style="font-size: 1px;"
+                >
+                  6%
+                </text>
               </svg>
               <h3 class="MuiBox-root MuiBox-root-9">
                 94 % (1111 runs)&nbsp;
@@ -204,6 +224,26 @@ exports[`release-overview should render correctly 1`] = `
                     Fail
                   </title>
                 </path>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="-7.084440046999328"
+                      dy="0.46979699921578716"
+                      text-anchor="end"
+                      style="font-size: 1px;"
+                >
+                  99%
+                </text>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="7.084440046999328"
+                      dy="-0.46979699921578805"
+                      text-anchor="start"
+                      style="font-size: 1px;"
+                >
+                  1%
+                </text>
               </svg>
               <h3 class="MuiBox-root MuiBox-root-12">
                 99 % (2679 runs)&nbsp;
@@ -263,6 +303,26 @@ exports[`release-overview should render correctly 1`] = `
                     Fail
                   </title>
                 </path>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="-7.01798799384499"
+                      dy="1.0760318388633172"
+                      text-anchor="end"
+                      style="font-size: 1px;"
+                >
+                  96%
+                </text>
+                <text dominant-baseline="central"
+                      x="15"
+                      y="6"
+                      dx="7.017987993844988"
+                      dy="-1.0760318388633272"
+                      text-anchor="start"
+                      style="font-size: 1px;"
+                >
+                  4%
+                </text>
               </svg>
               <h3 class="MuiBox-root MuiBox-root-15">
                 96 % (212 runs)&nbsp;
@@ -326,18 +386,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        0.0%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="SyncAltRoundedIcon"
-                             style="color: grey;"
-                        >
-                          <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                          </path>
-                        </svg>
-                        0.0%
+                        <div align="center">
+                          0.0%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="SyncAltRoundedIcon"
+                               style="color: grey;"
+                          >
+                            <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                            </path>
+                          </svg>
+                          0.0%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -360,18 +422,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        15.4%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="ArrowDownwardRoundedIcon"
-                             style="stroke: darkred; stroke-width: 3; color: darkred;"
-                        >
-                          <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                          </path>
-                        </svg>
-                        21.4%
+                        <div align="center">
+                          15.4%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="ArrowDownwardRoundedIcon"
+                               style="stroke: darkred; stroke-width: 3; color: darkred;"
+                          >
+                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                            </path>
+                          </svg>
+                          21.4%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -394,18 +458,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        29.6%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="ArrowDownwardRoundedIcon"
-                             style="stroke: darkred; stroke-width: 3; color: darkred;"
-                        >
-                          <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                          </path>
-                        </svg>
-                        35.7%
+                        <div align="center">
+                          29.6%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="ArrowDownwardRoundedIcon"
+                               style="stroke: darkred; stroke-width: 3; color: darkred;"
+                          >
+                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                            </path>
+                          </svg>
+                          35.7%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -428,18 +494,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        31.1%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="ArrowUpwardRoundedIcon"
-                             style="stroke: green; stroke-width: 3; color: green;"
-                        >
-                          <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                          </path>
-                        </svg>
-                        25.9%
+                        <div align="center">
+                          31.1%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="ArrowUpwardRoundedIcon"
+                               style="stroke: green; stroke-width: 3; color: green;"
+                          >
+                            <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                            </path>
+                          </svg>
+                          25.9%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -462,18 +530,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        31.3%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="ArrowDownwardRoundedIcon"
-                             style="stroke: darkred; stroke-width: 3; color: darkred;"
-                        >
-                          <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                          </path>
-                        </svg>
-                        50.0%
+                        <div align="center">
+                          31.3%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="ArrowDownwardRoundedIcon"
+                               style="stroke: darkred; stroke-width: 3; color: darkred;"
+                          >
+                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                            </path>
+                          </svg>
+                          50.0%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -496,18 +566,20 @@ exports[`release-overview should render correctly 1`] = `
                       <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                            style="margin: 20px; text-align: center;"
                       >
-                        39.4%
-                        <svg class="MuiSvgIcon-root"
-                             focusable="false"
-                             viewbox="0 0 24 24"
-                             aria-hidden="true"
-                             data-icon="ArrowUpwardRoundedIcon"
-                             style="stroke: green; stroke-width: 3; color: green;"
-                        >
-                          <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                          </path>
-                        </svg>
-                        33.6%
+                        <div align="center">
+                          39.4%
+                          <svg class="MuiSvgIcon-root"
+                               focusable="false"
+                               viewbox="0 0 24 24"
+                               aria-hidden="true"
+                               data-icon="ArrowUpwardRoundedIcon"
+                               style="stroke: green; stroke-width: 3; color: green;"
+                          >
+                            <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                            </path>
+                          </svg>
+                          33.6%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -563,18 +635,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              43.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="SyncAltRoundedIcon"
-                                   style="color: grey;"
-                              >
-                                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                </path>
-                              </svg>
-                              43.7%
+                              <div align="center">
+                                43.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="SyncAltRoundedIcon"
+                                     style="color: grey;"
+                                >
+                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                  </path>
+                                </svg>
+                                43.7%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -597,18 +671,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              47.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              42.4%
+                              <div align="center">
+                                47.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                42.4%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -631,18 +707,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              50.4%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              40.8%
+                              <div align="center">
+                                50.4%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                40.8%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -665,18 +743,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              54.8%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowDownwardRoundedIcon"
-                                   style="stroke: darkred; stroke-width: 3; color: darkred;"
-                              >
-                                <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                                </path>
-                              </svg>
-                              58.4%
+                              <div align="center">
+                                54.8%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowDownwardRoundedIcon"
+                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                >
+                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                  </path>
+                                </svg>
+                                58.4%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -699,18 +779,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              57.8%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              54.9%
+                              <div align="center">
+                                57.8%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                54.9%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -733,18 +815,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              58.8%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              47.9%
+                              <div align="center">
+                                58.8%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                47.9%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -767,18 +851,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              60.6%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="SyncAltRoundedIcon"
-                                   style="color: grey;"
-                              >
-                                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                </path>
-                              </svg>
-                              61.1%
+                              <div align="center">
+                                60.6%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="SyncAltRoundedIcon"
+                                     style="color: grey;"
+                                >
+                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                  </path>
+                                </svg>
+                                61.1%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -801,18 +887,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              61.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              38.5%
+                              <div align="center">
+                                61.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                38.5%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -835,18 +923,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              70.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              61.4%
+                              <div align="center">
+                                70.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                61.4%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -869,18 +959,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              71.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="SyncAltRoundedIcon"
-                                   style="color: grey;"
-                              >
-                                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                </path>
-                              </svg>
-                              70.3%
+                              <div align="center">
+                                71.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="SyncAltRoundedIcon"
+                                     style="color: grey;"
+                                >
+                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                  </path>
+                                </svg>
+                                70.3%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -903,18 +995,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              72.1%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              48.8%
+                              <div align="center">
+                                72.1%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                48.8%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -937,18 +1031,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              72.7%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              70.5%
+                              <div align="center">
+                                72.7%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                70.5%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -971,18 +1067,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              78.1%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              75.0%
+                              <div align="center">
+                                78.1%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                75.0%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1005,18 +1103,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              85.7%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowDownwardRoundedIcon"
-                                   style="stroke: darkred; stroke-width: 3; color: darkred;"
-                              >
-                                <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                                </path>
-                              </svg>
-                              89.3%
+                              <div align="center">
+                                85.7%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowDownwardRoundedIcon"
+                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                >
+                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                  </path>
+                                </svg>
+                                89.3%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1039,18 +1139,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              85.7%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="ArrowUpwardRoundedIcon"
-                                   style="stroke: green; stroke-width: 3; color: green;"
-                              >
-                                <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                </path>
-                              </svg>
-                              76.9%
+                              <div align="center">
+                                85.7%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="ArrowUpwardRoundedIcon"
+                                     style="stroke: green; stroke-width: 3; color: green;"
+                                >
+                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                  </path>
+                                </svg>
+                                76.9%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1073,18 +1175,20 @@ exports[`release-overview should render correctly 1`] = `
                             <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
                                  style="margin: 20px; text-align: center;"
                             >
-                              99.5%
-                              <svg class="MuiSvgIcon-root"
-                                   focusable="false"
-                                   viewbox="0 0 24 24"
-                                   aria-hidden="true"
-                                   data-icon="SyncAltRoundedIcon"
-                                   style="color: grey;"
-                              >
-                                <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                </path>
-                              </svg>
-                              99.4%
+                              <div align="center">
+                                99.5%
+                                <svg class="MuiSvgIcon-root"
+                                     focusable="false"
+                                     viewbox="0 0 24 24"
+                                     aria-hidden="true"
+                                     data-icon="SyncAltRoundedIcon"
+                                     style="color: grey;"
+                                >
+                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                  </path>
+                                </svg>
+                                99.4%
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2809,7 +2913,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Binstall%5D%20%5BSuite%3A%20operators%5D%20%5BOSD%5D%20RBAC%20Operator%20Operator%20Upgrade%20should%20upgrade%20from%20the%20replaced%20version%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                   >
                                     [install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version
                                   </a>
@@ -2888,7 +2992,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-vsphere-upgrade%20-%20e2e-vsphere-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                   >
                                     operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -2967,7 +3071,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-proxy%20-%20e2e-aws-proxy-ipi-install-install%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                   >
                                     operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test
                                   </a>
@@ -3046,7 +3150,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp-upgrade%20-%20e2e-gcp-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                   >
                                     operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -3125,7 +3229,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp%20-%20e2e-gcp-ipi-install-install%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                   >
                                     operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test
                                   </a>
@@ -3521,7 +3625,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-assisted%20-%20e2e-metal-assisted-baremetalds-assisted-setup%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test"
                                   >
                                     operator.Run multi-stage test e2e-metal-assisted - e2e-metal-assisted-baremetalds-assisted-setup container test
                                   </a>
@@ -3600,7 +3704,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-ipi-virtualmedia%20-%20e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test"
                                   >
                                     operator.Run multi-stage test e2e-metal-ipi-virtualmedia - e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup container test
                                   </a>
@@ -3679,7 +3783,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-fips%20-%20e2e-aws-fips-ipi-install-install%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test"
                                   >
                                     operator.Run multi-stage test e2e-aws-fips - e2e-aws-fips-ipi-install-install container test
                                   </a>
@@ -3758,7 +3862,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22TestInstall_test_install.start_install_and_wait_for_installed(openshift_version%3D4.8)%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
                                   >
                                     TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)
                                   </a>
@@ -3837,7 +3941,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-metal-ipi-ovn-ipv6%20-%20e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test"
                                   >
                                     operator.Run multi-stage test e2e-metal-ipi-ovn-ipv6 - e2e-metal-ipi-ovn-ipv6-baremetalds-devscripts-setup container test
                                   </a>
@@ -4233,7 +4337,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Binstall%5D%20%5BSuite%3A%20operators%5D%20%5BOSD%5D%20RBAC%20Operator%20Operator%20Upgrade%20should%20upgrade%20from%20the%20replaced%20version%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                   >
                                     [install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version
                                   </a>
@@ -4312,7 +4416,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-vsphere-upgrade%20-%20e2e-vsphere-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test"
                                   >
                                     operator.Run multi-stage test e2e-vsphere-upgrade - e2e-vsphere-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -4391,7 +4495,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-aws-proxy%20-%20e2e-aws-proxy-ipi-install-install%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test"
                                   >
                                     operator.Run multi-stage test e2e-aws-proxy - e2e-aws-proxy-ipi-install-install container test
                                   </a>
@@ -4470,7 +4574,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp-upgrade%20-%20e2e-gcp-upgrade-ipi-install-install-stableinitial%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test"
                                   >
                                     operator.Run multi-stage test e2e-gcp-upgrade - e2e-gcp-upgrade-ipi-install-install-stableinitial container test
                                   </a>
@@ -4549,7 +4653,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="test-name">
                                   <a title="operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                      class
-                                     href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator.Run%20multi-stage%20test%20e2e-gcp%20-%20e2e-gcp-ipi-install-install%20container%20test%22%7D%5D%7D"
+                                     href="/tests/4.8/analysis?test=operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test"
                                   >
                                     operator.Run multi-stage test e2e-gcp - e2e-gcp-ipi-install-install container test
                                   </a>

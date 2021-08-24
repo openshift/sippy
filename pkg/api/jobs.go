@@ -49,6 +49,11 @@ func (jobs jobsAPIResult) limit(req *http.Request) jobsAPIResult {
 	return jobs
 }
 
+func briefName(job string) string {
+	briefName := regexp.MustCompile("periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-")
+	return briefName.ReplaceAllString(job, "")
+}
+
 // PrintJobsReport renders a filtered summary of matching jobs.
 func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.JobResult, manager testidentification.VariantManager) {
 	var filter *Filter
@@ -63,7 +68,6 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, tw
 	}
 
 	jobs := jobsAPIResult{}
-	briefName := regexp.MustCompile("periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-")
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
@@ -82,7 +86,7 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, tw
 			ID:                             idx,
 			Name:                           jobResult.Name,
 			Variants:                       manager.IdentifyVariants(jobResult.Name),
-			BriefName:                      briefName.ReplaceAllString(jobResult.Name, ""),
+			BriefName:                      briefName(jobResult.Name),
 			CurrentPassPercentage:          jobResult.PassPercentage,
 			CurrentProjectedPassPercentage: jobResult.PassPercentageWithoutInfrastructureFailures,
 			CurrentRuns:                    jobResult.Failures + jobResult.Successes,
