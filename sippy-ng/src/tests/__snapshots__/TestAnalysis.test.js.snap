@@ -196,7 +196,16 @@ exports[`TestAnalysis should render correctly 1`] = `
     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-12">
       <div class="MuiPaper-root MuiCard-root test-failure-card MuiPaper-elevation5 MuiPaper-rounded">
         <h5 class="MuiTypography-root MuiTypography-h5">
-          Pass rate (jobs without test failure)
+          Pass rate
+          <svg class="MuiSvgIcon-root"
+               focusable="false"
+               viewbox="0 0 24 24"
+               aria-hidden="true"
+               title="Test pass rate is approximated as how many job runs on the given day without a test failure. Only jobs with at least one failure over the reporting period are shown individually."
+          >
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+            </path>
+          </svg>
         </h5>
       </div>
     </div>
@@ -995,6 +1004,27 @@ name but are not targeted to the release being reported on."
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
                     scope="row"
                 >
+                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1943334">
+                    1943334
+                  </a>
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  [ovnkube] node pod should taint NoSchedule on termination; clear on startup
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ON_QA
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  Networking
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  4.9.0
+                </td>
+              </tr>
+              <tr class="MuiTableRow-root">
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
+                    scope="row"
+                >
                   <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1997057">
                     1997057
                   </a>
@@ -1016,21 +1046,21 @@ name but are not targeted to the release being reported on."
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
                     scope="row"
                 >
-                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1943334">
-                    1943334
+                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983758">
+                    1983758
                   </a>
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  [ovnkube] node pod should taint NoSchedule on termination; clear on startup
+                  gcp upgrades are failing on disruptive tests
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ON_QA
+                  NEW
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  Networking
+                  Routing
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  4.9.0
+                  ---
                 </td>
               </tr>
               <tr class="MuiTableRow-root">

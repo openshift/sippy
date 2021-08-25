@@ -289,10 +289,12 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 }
 func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
-	curr := s.currTestReports[release].CurrentPeriodReport
-	prev := s.currTestReports[release].PreviousWeekReport
+	if release != "" {
+		curr := s.currTestReports[release].CurrentPeriodReport
+		prev := s.currTestReports[release].PreviousWeekReport
 
-	api.PrintTestAnalysisJSON(w, req, curr, prev)
+		api.PrintTestAnalysisJSON(w, req, curr, prev)
+	}
 }
 
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {

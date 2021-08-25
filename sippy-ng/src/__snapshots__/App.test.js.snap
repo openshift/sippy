@@ -1674,7 +1674,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="40"
+                                <div data-id="39"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-38-92 MuiDataGrid-row"
@@ -1998,7 +1998,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="73"
+                                <div data-id="70"
                                      data-rowindex="4"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-77-131 MuiDataGrid-row"
@@ -2395,7 +2395,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="38"
+                                <div data-id="36"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-54 MuiDataGrid-row"
@@ -2476,7 +2476,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="13"
+                                <div data-id="0"
                                      data-rowindex="1"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-0-54 MuiDataGrid-row"
@@ -2557,7 +2557,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="19"
+                                <div data-id="3"
                                      data-rowindex="2"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-54 MuiDataGrid-row"
@@ -2638,7 +2638,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="72"
+                                <div data-id="67"
                                      data-rowindex="3"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-50-104 MuiDataGrid-row"
@@ -2719,7 +2719,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="2"
+                                <div data-id="32"
                                      data-rowindex="4"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-54 MuiDataGrid-row"

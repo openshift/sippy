@@ -83,6 +83,12 @@ export function TestAnalysis (props) {
     )
   }
 
+  // An approximation of the pass rate is number of runs that presented
+  // without failure.
+  const inversePercentage = (failures, runs) => {
+    return (100 * (1 - (failures / runs))).toFixed(2)
+  }
+
   const chart = {
     labels: Object.keys(analysis.by_day),
     datasets: [
@@ -93,26 +99,64 @@ export function TestAnalysis (props) {
         borderColor: 'black',
         backgroundColor: 'black',
         fill: false,
-        data: Object.keys(analysis.by_day).map((key) => (100 * (1 - (analysis.by_day[key].failure_count / analysis.by_day[key].runs)).toFixed(2)))
+        data: Object.keys(analysis.by_day).map(
+          (key) => {
+            const failures = analysis.by_day[key].overall.failures
+            const runs = analysis.by_day[key].overall.runs
+
+            return inversePercentage(failures, runs)
+          })
       }
     ]
   }
 
-  // Get list of variants in this data set
+  // Get list of jobs in this data set
+  const jobs = new Set()
+
+  // Get a list of variants in this data set
   const variants = new Set()
   const variantFailures = []
 
   Object.keys(analysis.by_day).forEach((key) => {
-    Object.keys(analysis.by_day[key].failure_by_variant || {}).forEach((variant) => {
-      variants.add(variant)
+    Object.keys(analysis.by_day[key].by_variant || {}).forEach((variant) => {
+      if (analysis.by_day[key].by_variant[variant].failures !== 0) {
+        variants.add(variant)
+      }
+    })
+
+    Object.keys(analysis.by_day[key].by_job || {}).forEach((job) => {
+      // Omit jobs that never failed
+      if (analysis.by_day[key].by_job[job].failures !== 0) {
+        jobs.add(job)
+      }
     })
   })
 
-  const colors = scale('Set2').mode('lch').colors(variants.size)
+  const colors = scale('Set2').mode('lch').colors(jobs.size)
 
   const options = {
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            let failures, runs
+
+            if (context.dataset.label === 'overall') {
+              failures = analysis.by_day[context.label].overall.failures || 0
+              runs = analysis.by_day[context.label].overall.runs
+            } else {
+              failures = analysis.by_day[context.label].by_job[context.dataset.label] ? analysis.by_day[context.label].by_job[context.dataset.label].failures : 0
+              runs = analysis.by_day[context.label].by_job[context.dataset.label] ? analysis.by_day[context.label].by_job[context.dataset.label].runs : 0
+            }
+
+            return `${context.dataset.label} ${context.raw}% (${failures}/${runs} runs failed)`
+          }
+        }
+      }
+    },
     scales: {
       y: {
+        max: 100,
         ticks: {
           callback: (value, index, values) => {
             return `${value}%`
@@ -122,20 +166,28 @@ export function TestAnalysis (props) {
     }
   }
 
-  let index = 0
   variants.forEach((variant) => {
     variantFailures.push(Object.keys(analysis.by_day).map((key) => {
-      return analysis.by_day[key].failure_by_variant[variant] || 0
+      return analysis.by_day[key].by_variant[variant] ? analysis.by_day[key].by_variant[variant].failures : 0
     }).reduce((acc, val) => acc + val))
+  })
 
+  let index = 0
+  jobs.forEach((job) => {
     chart.datasets.push({
       type: 'line',
-      label: `${variant}`,
+      label: `${job}`,
       tension: 0.25,
       yAxisID: 'y',
       borderColor: colors[index],
       backgroundColor: colors[index],
-      data: Object.keys(analysis.by_day).map((key) => 100 * (1 - ((analysis.by_day[key].failure_by_variant[variant] || 0) / analysis.by_day[key].runs_by_variant[variant])))
+      data: Object.keys(analysis.by_day).map((key) => {
+        const failures = analysis.by_day[key].by_job[job] ? analysis.by_day[key].by_job[job].failures : 0
+        const runs = analysis.by_day[key].by_job[job] ? analysis.by_day[key].by_job[job].runs : 0
+        // Percentage of job runs not exhibiting failure, i.e.
+        // an approximation of the pass rate
+        return inversePercentage(failures, runs)
+      })
     })
 
     index++
@@ -237,7 +289,7 @@ export function TestAnalysis (props) {
           <Grid item md={12}>
             <Card className="test-failure-card" elevation={5}>
               <Typography variant="h5">
-                Pass rate (jobs without test failure)
+                Pass rate <Tooltip title="Test pass rate is approximated as how many job runs on the given day without a test failure. Only jobs with at least one failure over the reporting period are shown individually."><InfoIcon /></Tooltip>
               </Typography>
               <Line data={chart} options={options} height={80} />
             </Card>
