@@ -70,17 +70,19 @@ type TestReportGeneratorConfig struct {
 //  4. converts the result of that into a display API object.
 func (a *TestReportGeneratorConfig) PrepareTestReport(
 	dashboard TestGridDashboardCoordinates,
+	reportType sippyprocessingv1.ReportType,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
-	return a.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	return a.prepareTestReportFromData(dashboard.ReportName, reportType, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 }
 
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 	reportName string,
+	reportType sippyprocessingv1.ReportType,
 	bugzillaRelease string,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
@@ -101,6 +103,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 
 	return testreportconversion.PrepareTestReport(
 		reportName,
+		reportType,
 		rawJobResults,
 		variantManager,
 		bugCache,
@@ -124,11 +127,11 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 
 	currTimePeriodConfig := a.deepCopy()
-	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.CurrentReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	currentTwoDayPeriodConfig := a.deepCopy()
 	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
-	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.TwoDayReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	previousSevenDayPeriodConfig := a.deepCopy()
 	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
@@ -137,7 +140,7 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
 	}
 	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
-	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.PreviousReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
 		CurrentPeriodReport: currentTimePeriodReport,
