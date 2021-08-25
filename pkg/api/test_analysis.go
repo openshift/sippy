@@ -7,11 +7,15 @@ import (
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
+type counts struct {
+	Runs     int `json:"runs"`
+	Failures int `json:"failures"`
+}
+
 type testResultDay struct {
-	Runs             int            `json:"runs"`
-	FailureCount     int            `json:"failure_count"`
-	FailureByVariant map[string]int `json:"failure_by_variant"`
-	RunsByVariant    map[string]int `json:"runs_by_variant"`
+	Overall   counts             `json:"overall"`
+	ByVariant map[string]*counts `json:"by_variant"`
+	ByJob     map[string]*counts `json:"by_job"`
 }
 
 type apiTestByDayresults struct {
@@ -35,36 +39,49 @@ func PrintTestAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev 
 	for _, job := range append(curr.ByJob, prev.ByJob...) {
 		for _, run := range job.AllRuns {
 			date := time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02")
+
 			var result testResultDay
 			if _, ok := results.ByDay[date]; !ok {
 				result = testResultDay{
-					FailureCount:     0,
-					FailureByVariant: make(map[string]int),
-					RunsByVariant:    make(map[string]int),
+					Overall: counts{
+						Failures: 0,
+						Runs:     0,
+					},
+					ByVariant: make(map[string]*counts),
+					ByJob:     make(map[string]*counts),
 				}
 			} else {
 				result = results.ByDay[date]
 			}
 
-			result.Runs++
+			result.Overall.Runs++
+
+			// Runs by job
+			if _, ok := result.ByJob[briefName(job.Name)]; !ok {
+				result.ByJob[briefName(job.Name)] = &counts{
+					Runs: 1,
+				}
+			} else {
+				result.ByJob[briefName(job.Name)].Runs++
+			}
+
+			// Runs by variant
 			for _, variant := range job.Variants {
-				if _, ok := result.RunsByVariant[variant]; !ok {
-					result.RunsByVariant[variant] = 1
+				if _, ok := result.ByVariant[variant]; !ok {
+					result.ByVariant[variant] = &counts{
+						Runs: 1,
+					}
 				} else {
-					result.RunsByVariant[variant]++
+					result.ByVariant[variant].Runs++
 				}
 			}
 
 			for _, test := range run.FailedTestNames {
 				if test == testName {
-					result.FailureCount++
-
+					result.Overall.Failures++
+					result.ByJob[briefName(job.Name)].Failures++
 					for _, variant := range job.Variants {
-						if _, ok := result.FailureByVariant[variant]; !ok {
-							result.FailureByVariant[variant] = 1
-						} else {
-							result.FailureByVariant[variant]++
-						}
+						result.ByVariant[variant].Failures++
 					}
 				}
 			}
