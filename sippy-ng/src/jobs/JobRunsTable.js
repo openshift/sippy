@@ -46,7 +46,7 @@ export default function JobRunsTable (props) {
       field: 'timestamp',
       headerName: 'Date / Time',
       filterable: false, // FIXME: probably need server-side date filtering
-      flex: 1.5,
+      flex: 1.25,
       type: 'date',
       valueFormatter: (params) => {
         return new Date(params.value)
@@ -62,13 +62,13 @@ export default function JobRunsTable (props) {
     {
       field: 'job',
       headerName: 'Job name',
-      flex: 3,
+      flex: props.briefTable ? 1 : 3,
       renderCell: (params) => {
         return (
           <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             <Tooltip title={params.value}>
               <Link to={pathForExactJob(props.release, params.value)}>
-                {params.value}
+                {props.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
           </div>
@@ -79,7 +79,7 @@ export default function JobRunsTable (props) {
       field: 'testFailures',
       headerName: 'Test Failures',
       type: 'number',
-      flex: 1
+      flex: 0.5
     },
     {
       field: 'result',
@@ -209,69 +209,82 @@ export default function JobRunsTable (props) {
     }
   }
 
+  const legend = (
+    <div>
+        <span className="legend-item"><span className="results results-demo"><span
+          className="result result-S">S</span></span> success</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-F">F</span></span> failure (e2e)</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-f">f</span></span> failure (other tests)</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-U">U</span></span> upgrade failure</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-I">I</span></span> setup failure (installer)</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-N">N</span></span> setup failure (infra)</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-n">n</span></span> failure before setup (infra)</span>
+      <span className="legend-item"><span className="results results-demo"><span
+        className="result result-R">R</span></span> running</span>
+    </div>
+  )
+
+  const table = (
+    <DataGrid
+      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      rows={rows}
+      columns={columns}
+      autoHeight={true}
+
+      // Filtering:
+      filterMode="server"
+      filterModel={filterModel}
+      onFilterModelChange={(m) => props.briefTable ? '' : setFilters(JSON.stringify(m))}
+      sortingOrder={['desc', 'asc']}
+      sortModel={[{
+        field: sortField,
+        sort: sort
+      }]}
+
+      // Sorting:
+      onSortModelChange={(m) => updateSortModel(m)}
+      sortingMode="server"
+      pageSize={props.pageSize}
+
+      disableColumnMenu={true}
+      rowsPerPageOptions={[5, 10, 25, 50]}
+      componentsProps={{
+        toolbar: {
+          clearSearch: () => requestSearch(''),
+          doSearch: requestSearch,
+          setFilterModel: (m) => addFilters(m)
+        }
+      }}
+
+    />
+  )
+
+  if (props.briefTable) {
+    return table
+  }
+
   /* eslint-disable react/prop-types */
   return (
     <Fragment>
 
       {pageTitle()}
       <br /><br />
-      <div>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-S">S</span></span> success</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-F">F</span></span> failure (e2e)</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-f">f</span></span> failure (other tests)</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-U">U</span></span> upgrade failure</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-I">I</span></span> setup failure (installer)</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-N">N</span></span> setup failure (infra)</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-n">n</span></span> failure before setup (infra)</span>
-        <span className="legend-item"><span className="results results-demo"><span
-          className="result result-R">R</span></span> running</span>
-      </div>
+      {legend}
       <Container size="xl" style={{ marginTop: 20 }}>
-        <DataGrid
-          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-          rows={rows}
-          columns={columns}
-          autoHeight={true}
-
-          // Filtering:
-          filterMode="server"
-          filterModel={filterModel}
-          onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
-          sortingOrder={['desc', 'asc']}
-          sortModel={[{
-            field: sortField,
-            sort: sort
-          }]}
-
-          // Sorting:
-          onSortModelChange={(m) => updateSortModel(m)}
-          sortingMode="server"
-          pageSize={props.pageSize}
-
-          disableColumnMenu={true}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          componentsProps={{
-            toolbar: {
-              clearSearch: () => requestSearch(''),
-              doSearch: requestSearch,
-              setFilterModel: (m) => addFilters(m)
-            }
-          }}
-
-        />
+        {table}
       </Container>
     </Fragment>
   )
 }
 
 JobRunsTable.defaultProps = {
+  briefTable: false,
   hideControls: false,
   pageSize: 25,
   filterModel: {
@@ -282,6 +295,7 @@ JobRunsTable.defaultProps = {
 }
 
 JobRunsTable.propTypes = {
+  briefTable: PropTypes.bool,
   classes: PropTypes.object,
   limit: PropTypes.number,
   pageSize: PropTypes.number,

@@ -74,9 +74,11 @@ export default function SummaryCard (props) {
           animationEasing="ease-out"
           center={[15, 6]}
           data={currentData}
-          labelPosition={50}
           lengthAngle={360}
           lineWidth={40}
+          label={({ dataEntry }) => (100 * dataEntry.value / (props.success + props.flakes + props.fail)).toFixed(0) + '%'}
+          labelPosition={120}
+          labelStyle={{ fontSize: 1 }}
           paddingAngle={2}
           radius={5.5}
           segmentsShift={0.5}

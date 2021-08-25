@@ -80,7 +80,7 @@ exports[`install should render correctly 1`] = `
     <table class="MuiTable-root test-variant-table">
       <thead class="MuiTableHead-root">
         <tr class="MuiTableRow-root MuiTableRow-head">
-          <th class="MuiTableCell-root MuiTableCell-head col-name"
+          <th class="MuiTableCell-root MuiTableCell-head col-name "
               scope="col"
           >
             <div class="MuiFormGroup-root MuiFormGroup-row">

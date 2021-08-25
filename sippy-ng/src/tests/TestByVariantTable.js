@@ -92,16 +92,20 @@ Cell.propTypes = {
 function Row (props) {
   const { columnNames, testName, results } = props
 
+  const nameColumn = (
+    <TableCell className={'cell-name'} key={testName}>
+      <Tooltip title={testName}>
+        <Typography className="cell-name">
+          <Link to={pathForExactTest(props.release, testName)}>{testName}</Link>
+        </Typography>
+      </Tooltip>
+    </TableCell>
+  )
+
   return (
     <Fragment>
       <TableRow>
-        <TableCell className="cell-name" key={testName}>
-          <Tooltip title={testName}>
-            <Typography className="cell-name">
-              <Link to={pathForExactTest(props.release, testName)}>{testName}</Link>
-            </Typography>
-          </Tooltip>
-        </TableCell>
+        {props.briefTable ? '' : nameColumn}
         {
           columnNames.map((column, idx) =>
             <Cell key={'testName-' + idx}
@@ -119,6 +123,7 @@ function Row (props) {
 }
 
 Row.propTypes = {
+  briefTable: PropTypes.bool,
   results: PropTypes.object,
   columnNames: PropTypes.array.isRequired,
   testName: PropTypes.string.isRequired,
@@ -130,7 +135,7 @@ Row.propTypes = {
 export default function TestByVariantTable (props) {
   const cookies = new Cookies()
   const cookie = cookies.get('testDetailShowFull') === 'true'
-  const [showFull, setShowFull] = React.useState(cookie)
+  const [showFull, setShowFull] = React.useState(props.showFull ? props.showFull : cookie)
 
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
@@ -160,6 +165,17 @@ export default function TestByVariantTable (props) {
     return <Typography variant="h6" style={{ marginTop: 50 }}>No per-variant data found.</Typography>
   }
 
+  const nameColumn = (
+    <TableCell className={`col-name ${props.briefTable ? 'col-hide' : ''}`}>
+      <FormGroup row>
+        <FormControlLabel
+          control={<Switch checked={showFull} onChange={handleSwitchFull} name="showFull" />}
+          label="Show Full"
+        />
+      </FormGroup>
+    </TableCell>
+  )
+
   return (
     <div className="view" width="100%">
       {pageTitle}
@@ -167,22 +183,28 @@ export default function TestByVariantTable (props) {
         <Table className="test-variant-table">
           <TableHead>
             <TableRow>
-              <TableCell className="col-name">
-                <FormGroup row>
-                  <FormControlLabel
-                    control={<Switch checked={showFull} onChange={handleSwitchFull} name="showFull" />}
-                    label="Show Full"
-                  />
-                </FormGroup>
-              </TableCell>
+              {props.briefTable ? '' : nameColumn}
               {props.data.column_names.map((column, idx) =>
-                <TableCell className={'col-result' + (showFull ? '-full' : '')} key={'column' + '-' + idx}>{column}</TableCell>
+                <TableCell
+                  className={'col-result' + (showFull ? '-full' : '')}
+                  key={'column' + '-' + idx}>
+                  {column}
+                </TableCell>
               )}
             </TableRow>
           </TableHead>
           <TableBody>
             {Object.keys(props.data.tests).map((test) => (
-              <Row colorScale={props.colorScale} showFull={showFull} key={test} testName={test} columnNames={props.data.column_names} results={props.data.tests[test]} release={props.release} />
+              <Row
+                briefTable={props.briefTable}
+                colorScale={props.colorScale}
+                showFull={showFull}
+                key={test}
+                testName={test}
+                columnNames={props.data.column_names}
+                results={props.data.tests[test]}
+                release={props.release}
+              />
             ))}
           </TableBody>
         </Table>
@@ -192,10 +214,12 @@ export default function TestByVariantTable (props) {
 }
 
 TestByVariantTable.defaultProps = {
+  briefTable: false,
   colorScale: [60, 100]
 }
 
 TestByVariantTable.propTypes = {
+  briefTable: PropTypes.bool,
   columnNames: PropTypes.array,
   current: PropTypes.number,
   data: PropTypes.object,
@@ -204,5 +228,6 @@ TestByVariantTable.propTypes = {
   results: PropTypes.object,
   testName: PropTypes.string,
   title: PropTypes.string,
-  colorScale: PropTypes.array
+  colorScale: PropTypes.array,
+  showFull: PropTypes.bool
 }

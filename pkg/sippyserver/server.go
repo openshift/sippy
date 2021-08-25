@@ -287,6 +287,13 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		numDays, jobTestCount, reportNames)
 
 }
+func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	curr := s.currTestReports[release].CurrentPeriodReport
+	prev := s.currTestReports[release].PreviousWeekReport
+
+	api.PrintTestAnalysisJSON(w, req, curr, prev)
+}
 
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
@@ -484,6 +491,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
+	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 
 	// Store a pointer to the HTTP server for later retrieval.

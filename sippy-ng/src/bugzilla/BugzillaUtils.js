@@ -1,10 +1,10 @@
 /**
  * bugzillaURL generates a link to a prefilled out bug.
  */
-export default function bugzillaURL (item) {
+export default function bugzillaURL (release, item) {
   const title = item.name
   const titleEncoded = encodeURIComponent(title)
-  let url = `https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%2Bjunit&name=&maxMatches=5&maxBytes=20971520&groupBy=job&search=${titleEncoded}`
+  let url = `https://sippy.ci.openshift.org/sippy-ng/tests/${release}/analysis?test=${encodeURIComponent(item.name)}`
   if (item.test_grid_url) {
     url = item.test_grid_url
   }

@@ -21,6 +21,7 @@ import ReleaseOverview from './releases/ReleaseOverview'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Upgrades from './releases/Upgrades'
+import { TestAnalysis } from './tests/TestAnalysis'
 
 const drawerWidth = 240
 
@@ -145,7 +146,7 @@ export default function App (props) {
 
   if (!isLoaded) {
     return (
-            <Typography>Loading...</Typography>
+      <Typography>Loading...</Typography>
     )
   }
 
@@ -153,110 +154,114 @@ export default function App (props) {
   if (fetchError !== '') {
     landingPage = <Alert severity="error">{fetchError}</Alert>
   } else if (releases.length > 0) {
-    landingPage = <ReleaseOverview key={releases[0]} release={releases[0]}/>
+    landingPage = <ReleaseOverview key={releases[0]} release={releases[0]} />
   } else {
     landingPage = 'No data.'
   }
 
   return (
-            <MuiThemeProvider theme={createTheme(lightMode)}>
-                <CssBaseline/>
-                    <QueryParamProvider ReactRouterRoute={Route}>
+    <MuiThemeProvider theme={createTheme(lightMode)}>
+      <CssBaseline />
+      <QueryParamProvider ReactRouterRoute={Route}>
 
-                        <div className={classes.root}>
-                            <AppBar
-                                position="fixed"
-                                className={clsx(classes.appBar, {
-                                  [classes.appBarShift]: drawerOpen
-                                })}
-                            >
-                                <Toolbar edge="start">
-                                    <IconButton
-                                        color="inherit"
-                                        aria-label="open drawer"
-                                        onClick={handleDrawerOpen}
-                                        edge="start"
-                                        className={clsx(classes.menuButton, drawerOpen && classes.hide)}
-                                    >
-                                        <MenuIcon/>
-                                    </IconButton>
-                                    <Grid container justifyContent="space-between" alignItems="center">
-                                        <Typography variant="h6"
-                                                    className={classes.title}>Sippy</Typography><LastUpdated
-                                        lastUpdated={lastUpdated}/>
-                                    </Grid>
-                                </Toolbar>
-                            </AppBar>
+        <div className={classes.root}>
+          <AppBar
+            position="fixed"
+            className={clsx(classes.appBar, {
+              [classes.appBarShift]: drawerOpen
+            })}
+          >
+            <Toolbar edge="start">
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                onClick={handleDrawerOpen}
+                edge="start"
+                className={clsx(classes.menuButton, drawerOpen && classes.hide)}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Grid container justifyContent="space-between" alignItems="center">
+                <Typography variant="h6"
+                            className={classes.title}>Sippy</Typography><LastUpdated
+                lastUpdated={lastUpdated} />
+              </Grid>
+            </Toolbar>
+          </AppBar>
 
-                            <Drawer
-                                className={classes.drawer}
-                                variant="persistent"
-                                anchor="left"
-                                open={drawerOpen}
-                                classes={{
-                                  paper: classes.drawerPaper
-                                }}
-                            >
-                                <div className={classes.drawerHeader}>
-                                    <IconButton onClick={handleDrawerClose}>
-                                        {theme.direction === 'ltr' ? <ChevronLeftIcon/> : <ChevronRightIcon/>}
-                                    </IconButton>
-                                </div>
-                                <Sidebar releases={releases}/>
-                            </Drawer>
+          <Drawer
+            className={classes.drawer}
+            variant="persistent"
+            anchor="left"
+            open={drawerOpen}
+            classes={{
+              paper: classes.drawerPaper
+            }}
+          >
+            <div className={classes.drawerHeader}>
+              <IconButton onClick={handleDrawerClose}>
+                {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+              </IconButton>
+            </div>
+            <Sidebar releases={releases} />
+          </Drawer>
 
-                            <main
-                                className={clsx(classes.content, {
-                                  [classes.contentShift]: drawerOpen
-                                })}
-                            >
-                                <div className={classes.drawerHeader}/>
+          <main
+            className={clsx(classes.content, {
+              [classes.contentShift]: drawerOpen
+            })}
+          >
+            <div className={classes.drawerHeader} />
 
-                                {/* eslint-disable react/prop-types */}
-                                <Switch>
-                                    <Route path="/about">
-                                        <p>Hello, world!</p>
-                                    </Route>
+            {/* eslint-disable react/prop-types */}
+            <Switch>
+              <Route path="/about">
+                <p>Hello, world!</p>
+              </Route>
 
-                                    <Route path="/release/:release" render={(props) =>
-                                        <ReleaseOverview
-                                            key={'release-overview-' + props.match.params.release}
-                                            release={props.match.params.release}/>
-                                    }/>
+              <Route path="/release/:release" render={(props) =>
+                <ReleaseOverview
+                  key={'release-overview-' + props.match.params.release}
+                  release={props.match.params.release} />
+              } />
 
-                                    <Route path="/jobs/:release" render={(props) =>
-                                        <Jobs
-                                            key={'jobs-' + props.match.params.release}
-                                            title={'Job results for ' + props.match.params.release}
-                                            release={props.match.params.release}/>
-                                    }/>
+              <Route path="/jobs/:release" render={(props) =>
+                <Jobs
+                  key={'jobs-' + props.match.params.release}
+                  title={'Job results for ' + props.match.params.release}
+                  release={props.match.params.release} />
+              } />
 
-                                    <Route path="/tests/:release" render={(props) =>
-                                        <Tests
-                                            key={'tests-' + props.match.params.release}
-                                            release={props.match.params.release}/>
-                                    }/>
+              <Route path="/tests/:release/analysis" render={(props) =>
+                <TestAnalysis release={props.match.params.release} />
+              } />
 
-                                    <Route path="/upgrade/:release" render={(props) =>
-                                        <Upgrades
-                                            key={'upgrades-' + props.match.params.release}
-                                            release={props.match.params.release}/>
-                                    }/>
+              <Route path="/tests/:release" render={(props) =>
+                <Tests
+                  key={'tests-' + props.match.params.release}
+                  release={props.match.params.release} />
+              } />
 
-                                    <Route path="/install/:release" render={(props) =>
-                                        <Install
-                                            key={'install-' + props.match.params.release}
-                                            release={props.match.params.release}/>
-                                    }/>
+              <Route path="/upgrade/:release" render={(props) =>
+                <Upgrades
+                  key={'upgrades-' + props.match.params.release}
+                  release={props.match.params.release} />
+              } />
 
-                                    <Route path="/">
-                                        {landingPage}
-                                    </Route>
-                                </Switch>
-                                {/* eslint-enable react/prop-types */}
-                            </main>
-                        </div>
-                    </QueryParamProvider>
-            </MuiThemeProvider>
+              <Route path="/install/:release" render={(props) =>
+                <Install
+                  key={'install-' + props.match.params.release}
+                  release={props.match.params.release} />
+              } />
+
+              <Route path="/">
+                {landingPage}
+              </Route>
+            </Switch>
+            {/* eslint-enable react/prop-types */}
+          </main>
+        </div>
+      </QueryParamProvider>
+    </MuiThemeProvider>
   )
 }

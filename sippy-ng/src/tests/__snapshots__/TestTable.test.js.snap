@@ -385,7 +385,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] PersistentVolumes-local  [Volume type: dir-link] Set fsGroup for local volume should set different fsGroup for second pod if first pod is deleted [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -476,7 +476,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s\\"
                         >
                           [ClusterLogging] event router e2e test.hack/testing-olm/test-040-eventrouter.sh:109: executing 'oc -n openshift-logging get clusterloggings/instance -o jsonpath={.status.logStore.elasticsearchStatus[0].cluster.status}' expecting any result and text 'green'; re-trying every 10s until completion or 300.000s
                         </a>
@@ -567,7 +567,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -658,7 +658,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-29522 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -749,7 +749,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Index Management Block Auto-Create For Write Suffix.hack/testing-olm/test-657-im-block-autocreate-for-write-suffix.sh:64: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -840,7 +840,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-2207 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -931,7 +931,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-27200 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -1022,7 +1022,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-28323 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -1113,7 +1113,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-436 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -1204,7 +1204,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                            class
-                           href=\\"/tests/4.8/details?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
+                           href=\\"/tests/4.8/analysis?test=[Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s\\"
                         >
                           [Elasticsearch] Verify Metrics Access.hack/testing-olm/test-200-verify-es-metrics-access.sh:70: executing 'oc -n e2e-test-6123 get deployment -l component=elasticsearch -o jsonpath='{.items[0].metadata.name}'' expecting success; re-trying every 0.2s until completion or 120.000s
                         </a>
@@ -1295,7 +1295,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: hostPath] [Testpattern: Dynamic PV (delayed binding)] topology should fail to schedule a pod which has topologies that conflict with AllowedTopologies [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -1386,7 +1386,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-arch] Only known images used by tests\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-arch] Only known images used by tests\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-arch] Only known images used by tests\\"
                         >
                           [sig-arch] Only known images used by tests
                         </a>
@@ -1477,7 +1477,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]\\"
                         >
                           [sig-devex][Feature:Templates] templateservicebroker end-to-end test  should pass an end-to-end test [Suite:openshift/conformance/parallel]
                         </a>
@@ -1568,7 +1568,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]\\"
                         >
                           [sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]
                         </a>
@@ -1659,7 +1659,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]\\"
                         >
                           [sig-network] multicast when using one of the plugins 'redhat/openshift-ovs-subnet' should block multicast traffic [Suite:openshift/conformance/parallel]
                         </a>
@@ -1750,7 +1750,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] CSI Volumes [Driver: csi-hostpath] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -1841,7 +1841,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Dynamic PV (block volmode)] volumes should store data [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -1932,7 +1932,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: emptydir] [Testpattern: Inline-volume (ext4)] volumes should allow exec of files on the volume [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2023,7 +2023,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance\\"
                            class
-                           href=\\"/tests/4.8/details?test=CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance\\"
+                           href=\\"/tests/4.8/analysis?test=CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance\\"
                         >
                           CRD extensions.ConsoleExternalLogLink CRD.displays YAML editor for adding namespaceFilter to the ConsoleExternalLogLink instance
                         </a>
@@ -2114,7 +2114,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link-bindmounted] [Testpattern: Dynamic PV (filesystem volmode)] volumeMode should not mount / map unused volumes in a pod [LinuxOnly] [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2205,7 +2205,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir-link] [Testpattern: Dynamic PV (block volmode)] provisioning should provision storage with pvc data source [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2296,7 +2296,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: local][LocalVolumeType: dir] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with same fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2387,7 +2387,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV (block volmode)(allowExpansion)] volume-expand should resize volume when PVC is edited while pod is using it [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2478,7 +2478,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]\\"
                         >
                           [sig-storage] In-tree Volumes [Driver: windows-gcepd] [Testpattern: Inline-volume (default fs)] subPath should support existing directory [Suite:openshift/conformance/parallel] [Suite:k8s]
                         </a>
@@ -2569,7 +2569,7 @@ exports[`TestTable should render correctly 1`] = `
                       <div class=\\"test-name\\">
                         <a title=\\"[sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]\\"
                            class
-                           href=\\"/tests/4.8/details?test=[sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]\\"
+                           href=\\"/tests/4.8/analysis?test=[sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]\\"
                         >
                           [sig-api-machinery][Feature:ClusterResourceQuota] Cluster resource quota should control resource limits across namespaces [Suite:openshift/conformance/parallel]
                         </a>

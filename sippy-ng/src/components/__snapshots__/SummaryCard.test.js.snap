@@ -48,6 +48,36 @@ exports[`SummaryCard shows overview 1`] = `
           Fail
         </title>
       </path>
+      <text dominant-baseline="central"
+            x="15"
+            y="6"
+            dx="3.656770331861386"
+            dy="6.085887834984996"
+            text-anchor="start"
+            style="font-size: 1px;"
+      >
+        33%
+      </text>
+      <text dominant-baseline="central"
+            x="15"
+            y="6"
+            dx="-7.098918635610378"
+            dy="0.12391208570472184"
+            text-anchor="end"
+            style="font-size: 1px;"
+      >
+        33%
+      </text>
+      <text dominant-baseline="central"
+            x="15"
+            y="6"
+            dx="3.4421483037489833"
+            dy="-6.209799920689715"
+            text-anchor="start"
+            style="font-size: 1px;"
+      >
+        33%
+      </text>
     </svg>
   </div>
 </div>
