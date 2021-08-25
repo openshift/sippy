@@ -1,4 +1,9 @@
-.test-name {
+.percentage-cell {
+    line-height: 1.2em;
+    text-align: center;
+}
+
+.job-name {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;

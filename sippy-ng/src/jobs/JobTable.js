@@ -1,4 +1,11 @@
-import { Backdrop, Box, Button, CircularProgress, Container, Tooltip, Typography } from '@material-ui/core'
+import {
+  Backdrop,
+  Button,
+  CircularProgress,
+  Container,
+  Tooltip,
+  Typography
+} from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
@@ -14,6 +21,7 @@ import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
 import { pathForExactJob, pathForExactJobRuns } from '../helpers'
+import './JobTable.css'
 
 const bookmarks = [
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
@@ -36,12 +44,19 @@ function JobTable (props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [period = props.period, setPeriod] = useQueryParam('period', StringParam)
+  const [period = props.period, setPeriod] = useQueryParam(
+    'period',
+    StringParam
+  )
 
   const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] = useQueryParam('filters', StringParam)
+  const [filters = JSON.stringify(props.filterModel), setFilters] =
+    useQueryParam('filters', StringParam)
 
-  const [sortField = props.sortField, setSortField] = useQueryParam('sortField', StringParam)
+  const [sortField = props.sortField, setSortField] = useQueryParam(
+    'sortField',
+    StringParam
+  )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
@@ -51,12 +66,20 @@ function JobTable (props) {
     {
       field: 'name',
       headerName: 'Name',
-      flex: 4,
+      flex: 3.5,
       renderCell: (params) => {
         return (
-          <div style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className="job-name">
             <Tooltip title={params.value}>
-              <Link to={props.briefTable ? pathForExactJob(props.release, params.value) : '/jobs/' + props.release + '/detail?job=' + params.row.name}>
+              <Link
+                to={
+                  props.briefTable
+                    ? pathForExactJob(props.release, params.value)
+                    : '/jobs/' +
+                      props.release +
+                      '/detail?job=' +
+                      params.row.name
+                }>
                 {props.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
@@ -68,13 +91,12 @@ function JobTable (props) {
       field: 'current_pass_percentage',
       headerName: 'Current Period',
       type: 'number',
-      flex: 0.5,
+      flex: 0.75,
       renderCell: (params) => (
-        <Tooltip title={params.row.current_runs + ' runs'}>
-          <Box>
-            {Number(params.value).toFixed(0).toLocaleString()}%
-          </Box>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(0).toLocaleString()}%<br />
+          <small>({params.row.current_runs} runs)</small>
+        </div>
       )
     },
     {
@@ -83,32 +105,34 @@ function JobTable (props) {
       type: 'number',
       flex: 0.5,
       renderCell: (params) => {
-        return (
-          <PassRateIcon tooltip={true} improvement={params.value} />
-        )
+        return <PassRateIcon tooltip={true} improvement={params.value} />
       }
     },
     {
       field: 'previous_pass_percentage',
       headerName: 'Previous Period',
-      flex: 0.5,
+      flex: 0.75,
       type: 'number',
       renderCell: (params) => (
-        <Tooltip title={params.row.current_runs + ' runs'}>
-          <Box>
-            {Number(params.value).toFixed(0).toLocaleString()}%
-          </Box>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(0).toLocaleString()}%<br />
+          <small>({params.row.previous_runs} runs)</small>
+        </div>
       )
     },
     {
       field: 'test_grid_url',
       headerName: ' ',
-      flex: 0.40,
+      flex: 0.4,
       renderCell: (params) => {
         return (
           <Tooltip title="TestGrid">
-            <Button style={{ justifyContent: 'center' }} target="_blank" startIcon={<GridOn />} href={params.value} />
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<GridOn />}
+              href={params.value}
+            />
           </Tooltip>
         )
       },
@@ -118,11 +142,16 @@ function JobTable (props) {
     {
       field: 'job_runs',
       headerName: ' ',
-      flex: 0.40,
+      flex: 0.4,
       renderCell: (params) => {
         return (
           <Tooltip title="See all job runs">
-            <Button component={Link} style={{ justifyContent: 'center' }} startIcon={<DirectionsRun />} to={pathForExactJobRuns(props.release, params.row.name)} />
+            <Button
+              component={Link}
+              style={{ justifyContent: 'center' }}
+              startIcon={<DirectionsRun />}
+              to={pathForExactJobRuns(props.release, params.row.name)}
+            />
           </Tooltip>
         )
       },
@@ -132,22 +161,34 @@ function JobTable (props) {
     {
       field: 'bugs',
       headerName: 'Bugs',
-      flex: 0.40,
+      flex: 0.4,
       type: 'number',
       filterable: true,
       renderCell: (params) => {
         return (
-          <Tooltip title={params.value.length + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
-            <Button style={{ justifyContent: 'center', color: bugColor(params.row) }} startIcon={<BugReport />} onClick={() => openBugzillaDialog(params.row)} />
+          <Tooltip
+            title={
+              params.value.length +
+              ' linked bugs,' +
+              params.row.associated_bugs.length +
+              ' associated bugs'
+            }>
+            <Button
+              style={{ justifyContent: 'center', color: bugColor(params.row) }}
+              startIcon={<BugReport />}
+              onClick={() => openBugzillaDialog(params.row)}
+            />
           </Tooltip>
         )
       },
       // Weight linked bugs more than associated bugs, but associated bugs are ranked more than not having one at all.
-      sortComparator: (v1, v2, param1, param2) => weightedBugComparator(
-        param1.api.getCellValue(param1.id, 'bugs'),
-        param1.api.getCellValue(param1.id, 'associated_bugs'),
-        param2.api.getCellValue(param2.id, 'bugs'),
-        param2.api.getCellValue(param2.id, 'associated_bugs')),
+      sortComparator: (v1, v2, param1, param2) =>
+        weightedBugComparator(
+          param1.api.getCellValue(param1.id, 'bugs'),
+          param1.api.getCellValue(param1.id, 'associated_bugs'),
+          param2.api.getCellValue(param2.id, 'bugs'),
+          param2.api.getCellValue(param2.id, 'associated_bugs')
+        ),
       hide: props.briefTable
     },
     // These are here just to allow filtering
@@ -179,7 +220,6 @@ function JobTable (props) {
       headerName: 'Tags',
       hide: true
     }
-
   ]
 
   const openBugzillaDialog = (job) => {
@@ -208,25 +248,38 @@ function JobTable (props) {
     queryString += '&sortField=' + encodeURIComponent(sortField)
     queryString += '&sort=' + encodeURIComponent(sort)
 
-    fetch(process.env.REACT_APP_API_URL + '/api/jobs?release=' + props.release + queryString)
+    fetch(
+      process.env.REACT_APP_API_URL +
+        '/api/jobs?release=' +
+        props.release +
+        queryString
+    )
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
         }
         return response.json()
       })
-      .then(json => {
+      .then((json) => {
         setRows(json)
         setLoaded(true)
-      }).catch(error => {
+      })
+      .catch((error) => {
         setFetchError('Could not retrieve jobs ' + props.release + ', ' + error)
       })
   }
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter((f) => f.columnField !== 'name')
-    currentFilters.items.push({ id: 99, columnField: 'name', operatorValue: 'contains', value: searchValue })
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'name'
+    )
+    currentFilters.items.push({
+      id: 99,
+      columnField: 'name',
+      operatorValue: 'contains',
+      value: searchValue
+    })
     setFilters(JSON.stringify(currentFilters))
   }
 
@@ -292,26 +345,30 @@ function JobTable (props) {
         rows={rows}
         columns={columns}
         autoHeight={true}
-
+        rowHeight={70}
         // Filtering:
         filterMode="server"
         filterModel={filterModel}
         onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
         sortingOrder={['desc', 'asc']}
-        sortModel={[{
-          field: sortField,
-          sort: sort
-        }]}
-
+        sortModel={[
+          {
+            field: sortField,
+            sort: sort
+          }
+        ]}
         // Sorting:
         onSortModelChange={(m) => updateSortModel(m)}
         sortingMode="server"
         pageSize={props.pageSize}
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
-
         rowsPerPageOptions={[5, 10, 25, 50]}
-        getRowClassName={(params) => classes['row-percent-' + Math.round(params.row.current_pass_percentage)]}
+        getRowClassName={(params) =>
+          classes[
+            'row-percent-' + Math.round(params.row.current_pass_percentage)
+          ]
+        }
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
@@ -322,9 +379,12 @@ function JobTable (props) {
             setFilterModel: (m) => addFilters(m)
           }
         }}
-
       />
-      <BugzillaDialog item={jobDetails} isOpen={isBugzillaDialogOpen} close={closeBugzillaDialog} />
+      <BugzillaDialog
+        item={jobDetails}
+        isOpen={isBugzillaDialogOpen}
+        close={closeBugzillaDialog}
+      />
     </Container>
   )
 }
