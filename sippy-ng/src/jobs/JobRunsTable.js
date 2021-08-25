@@ -5,9 +5,10 @@ import React, { Fragment, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import GridToolbar from '../datagrid/GridToolbar'
-import { pathForExactJob, relativeTime } from '../helpers'
 import { DirectionsBoat } from '@material-ui/icons'
 import { Backdrop, Button, CircularProgress, Container, Tooltip, Typography } from '@material-ui/core'
+import { relativeTime } from '../lib/time'
+import { pathForExactJob } from '../lib/urls'
 
 /**
  * JobRunsTable shows the list of all job runs matching any selected filters.

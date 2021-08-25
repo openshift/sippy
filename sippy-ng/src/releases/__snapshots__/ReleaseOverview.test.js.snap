@@ -371,7 +371,7 @@ exports[`release-overview should render correctly 1`] = `
             <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-221"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'s390x')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-220 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(229, 115, 115);"
@@ -407,7 +407,7 @@ exports[`release-overview should render correctly 1`] = `
               </div>
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-223"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'ppc64le')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-222 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(236, 132, 105);"
@@ -443,7 +443,7 @@ exports[`release-overview should render correctly 1`] = `
               </div>
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-225"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'osd')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-224 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(242, 149, 96);"
@@ -479,7 +479,7 @@ exports[`release-overview should render correctly 1`] = `
               </div>
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-227"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'upgrade')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-226 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(242, 150, 95);"
@@ -515,7 +515,7 @@ exports[`release-overview should render correctly 1`] = `
               </div>
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-229"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'proxy')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-228 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(243, 150, 95);"
@@ -551,7 +551,7 @@ exports[`release-overview should render correctly 1`] = `
               </div>
               <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                 <a class="MuiBox-root MuiBox-root-231"
-                   href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                   href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'metal-ipi')])_&amp;sortField=net_improvement&amp;sort=asc"
                 >
                   <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-230 MuiPaper-elevation5 MuiPaper-rounded"
                        style="background-color: rgb(246, 160, 90);"
@@ -620,7 +620,7 @@ exports[`release-overview should render correctly 1`] = `
                   >
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-233"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'azure')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-232 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(248, 164, 87);"
@@ -656,7 +656,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-235"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorV*ntains'~v*mpact')])*alue!'co*_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-234 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(250, 169, 85);"
@@ -692,7 +692,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-237"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'ovn')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-236 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(251, 172, 83);"
@@ -728,7 +728,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-239"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'vsphere-ipi')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-238 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(253, 177, 80);"
@@ -764,7 +764,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-241"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'aws')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-240 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(254, 180, 78);"
@@ -800,7 +800,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-243"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'gcp')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-242 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(254, 182, 78);"
@@ -836,7 +836,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-245"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'single-node')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-244 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(251, 183, 79);"
@@ -872,7 +872,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-247"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'realtime')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-246 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(245, 184, 81);"
@@ -908,7 +908,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-249"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'metal-upi')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-248 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(189, 191, 106);"
@@ -944,7 +944,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-251"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'serial')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-250 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(183, 192, 109);"
@@ -980,7 +980,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-253"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'ovirt')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-252 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(179, 193, 110);"
@@ -1016,7 +1016,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-255"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'openstack')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-254 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(175, 193, 112);"
@@ -1052,7 +1052,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-257"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'vsphere-upi')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-256 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(141, 197, 127);"
@@ -1088,7 +1088,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-259"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'fips')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-258 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(129, 199, 132);"
@@ -1124,7 +1124,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-261"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'metal-assisted')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-260 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(129, 199, 132);"
@@ -1160,7 +1160,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-263"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'promote')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-262 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgb(129, 199, 132);"
@@ -1196,7 +1196,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-265"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'never-stable')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-264 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgba(0, 0, 0, 0.38);"
@@ -1219,7 +1219,7 @@ exports[`release-overview should render correctly 1`] = `
                     </div>
                     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
                       <a class="MuiBox-root MuiBox-root-267"
-                         href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%5D%7D&amp;sortField=net_improvement&amp;sort=asc"
+                         href="/jobs/4.8?filters=('items![('id!99~columnField!'variants'~operatorValue!'contains'~value!'techpreview')])_&amp;sortField=net_improvement&amp;sort=asc"
                       >
                         <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-266 MuiPaper-elevation5 MuiPaper-rounded"
                              style="background-color: rgba(0, 0, 0, 0.38);"
@@ -1254,7 +1254,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+             href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=('items![('id!1~columnField!'current_runs'~o*Value!'>='~value!'10')]~linkO*!'and')*perator*_"
           >
             Most regressed jobs
             <svg class="MuiSvgIcon-root"
@@ -1490,7 +1490,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-serial-ipv4')])_"
                                   >
                                     e2e-metal-ipi-serial-ipv4
                                   </a>
@@ -1571,7 +1571,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp')])_"
                                   >
                                     e2e-gcp
                                   </a>
@@ -1652,7 +1652,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade')])_"
                                   >
                                     e2e-aws-upgrade
                                   </a>
@@ -1733,7 +1733,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-proxy')])_"
                                   >
                                     e2e-aws-proxy
                                   </a>
@@ -1814,7 +1814,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="release-openshift-ocp-installer-e2e-aws-ovn-4.8"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-aws-ovn-4.8%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-aws-ovn-4.8')])_"
                                   >
                                     release-openshift-ocp-installer-e2e-aws-ovn-4.8
                                   </a>
@@ -1975,7 +1975,7 @@ exports[`release-overview should render correctly 1`] = `
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
-             href="/jobs/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+             href="/jobs/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=('items![('id!1~columnField!'current_runs'~o*Value!'>='~value!'1')]~linkO*!'and')*perator*_"
           >
             Most regressed jobs (two day)
             <svg class="MuiSvgIcon-root"
@@ -2211,7 +2211,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade')])_"
                                   >
                                     e2e-aws-upgrade
                                   </a>
@@ -2292,7 +2292,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation')])_"
                                   >
                                     e2e-gcp-libvirt-cert-rotation
                                   </a>
@@ -2373,7 +2373,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia')])_"
                                   >
                                     e2e-metal-ipi-virtualmedia
                                   </a>
@@ -2454,7 +2454,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted')])_"
                                   >
                                     e2e-metal-assisted
                                   </a>
@@ -2535,7 +2535,7 @@ exports[`release-overview should render correctly 1`] = `
                                 <div class="job-name">
                                   <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack"
                                      class
-                                     href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D"
+                                     href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack')])_"
                                   >
                                     e2e-metal-ipi-ovn-dualstack
                                   </a>
@@ -2697,7 +2697,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;sortField=net_improvement&amp;sort=asc"
+             href="/tests/4.8?filters=('items![('id!1~columnField!'current_runs'~o*Value!'>='~value!'10')]~linkO*!'and')*perator*_&amp;sortField=net_improvement&amp;sort=asc"
           >
             Most regressed tests
             <svg class="MuiSvgIcon-root"
@@ -3409,7 +3409,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+             href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=('items![('id!1~columnField!'current_runs'~o*Value!'>='~value!'1')]~linkO*!'and')*perator*_"
           >
             Most regressed tests (two day)
             <svg class="MuiSvgIcon-root"
@@ -4121,7 +4121,7 @@ exports[`release-overview should render correctly 1`] = `
         >
           <a class="MuiTypography-root MuiTypography-h5"
              style="text-align: center;"
-             href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22id%22%3A1%2C%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22id%22%3A5%2C%22columnField%22%3A%22bugs%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+             href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=('items![('id!1-current_run*>.10'),('id!5-bug*.0')]~linkO2!'and')*s'~o2V3-~columnField!'.='~v32perator3alue!'32.-*_"
           >
             Top failing tests without a bug
             <svg class="MuiSvgIcon-root"

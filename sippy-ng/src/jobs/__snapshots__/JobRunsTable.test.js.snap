@@ -417,7 +417,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7
                         </a>
@@ -486,7 +486,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
@@ -555,7 +555,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8*-from-stable-4.7-e2e-azure-ovn*')])*-upgrade*_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
                         </a>
@@ -624,7 +624,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8*-from-stable-4.7-e2e-aws*')])*-upgrade*_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade
                         </a>
@@ -693,7 +693,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere
                         </a>
@@ -762,7 +762,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-gcp\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-gcp')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-gcp
                         </a>
@@ -831,7 +831,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
@@ -900,7 +900,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
                         </a>
@@ -969,7 +969,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-ovn-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-azure-ovn-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-azure-ovn-4.8
                         </a>
@@ -1038,7 +1038,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt
                         </a>
@@ -1107,7 +1107,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
@@ -1176,7 +1176,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node
                         </a>
@@ -1245,7 +1245,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-serial-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-metal-serial-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-metal-serial-4.8
                         </a>
@@ -1314,7 +1314,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
                         </a>
@@ -1383,7 +1383,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
                         </a>
@@ -1452,7 +1452,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-ovn-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-azure-ovn-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-azure-ovn-4.8
                         </a>
@@ -1521,7 +1521,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade
                         </a>
@@ -1590,7 +1590,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
                         </a>
@@ -1659,7 +1659,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial
                         </a>
@@ -1728,7 +1728,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-metal-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-metal-4.8
                         </a>
@@ -1797,7 +1797,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-metal-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-metal-4.8
                         </a>
@@ -1866,7 +1866,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial')])_\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial
                         </a>
@@ -1935,7 +1935,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial
                         </a>
@@ -2004,7 +2004,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial')])_\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-serial
                         </a>
@@ -2073,7 +2073,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
                         <a title=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-e2e-metal-4.8')])_\\"
                         >
                           release-openshift-ocp-installer-e2e-metal-4.8
                         </a>

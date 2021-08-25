@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom'
 import Cookies from 'universal-cookie'
 import PassRateIcon from '../components/PassRateIcon'
 import './TestByVariantTable.css'
-import { pathForExactTest } from '../helpers'
+import { pathForExactTest } from '../lib/urls'
 
 function PassRateCompare (props) {
   const { previous, current } = props

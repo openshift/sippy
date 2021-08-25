@@ -11,7 +11,6 @@ import Divider from '@material-ui/core/Divider'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import { Link } from 'react-router-dom'
 import JobRunsTable from '../jobs/JobRunsTable'
-import { filterFor, pathForJobRunsWithTestFailure, searchCI, withSort } from '../helpers'
 import BugTable from '../bugzilla/BugTable'
 import bugzillaURL from '../bugzilla/BugzillaUtils'
 import InfoIcon from '@material-ui/icons/Info'
@@ -19,6 +18,8 @@ import { ASSOCIATED_BUGS, LINKED_BUGS } from '../bugzilla/BugzillaDialog'
 import { TEST_THRESHOLDS } from '../constants'
 import SummaryCard from '../components/SummaryCard'
 import PassRateIcon from '../components/PassRateIcon'
+import { filterFor, pathForJobRunsWithTestFailure, withSort } from '../lib/urls'
+import { searchCI } from '../lib/helpers'
 
 export function TestAnalysis (props) {
   const [isLoaded, setLoaded] = React.useState(false)

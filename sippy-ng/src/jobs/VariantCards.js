@@ -6,7 +6,7 @@ import { PropTypes } from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import MiniCard from '../components/MiniCard'
 import { VARIANT_THRESHOLDS } from '../constants'
-import { pathForJobVariant } from '../helpers'
+import { pathForJobVariant } from '../lib/urls'
 
 export default function VariantCards (props) {
   const [jobs, setJobs] = React.useState([])

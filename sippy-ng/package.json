@@ -15,6 +15,7 @@
     "chart.js": "^3.5.1",
     "chroma-js": "^2.1.2",
     "clsx": "^1.1.1",
+    "jsoncrush": "^1.1.6",
     "npm-install-missing": "^0.1.4",
     "query-string": "^7.0.1",
     "react": "^17.0.2",
@@ -84,6 +85,9 @@
   "jest": {
     "snapshotSerializers": [
       "jest-serializer-html"
+    ],
+    "transformIgnorePatterns": [
+       "node_modules/(?!jsoncrush)"
     ]
   }
 }

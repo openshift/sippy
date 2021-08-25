@@ -1,11 +1,4 @@
-import {
-  Backdrop,
-  Button,
-  CircularProgress,
-  Container,
-  Tooltip,
-  Typography
-} from '@material-ui/core'
+import { Backdrop, Button, CircularProgress, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
@@ -20,8 +13,9 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
-import { pathForExactJob, pathForExactJobRuns } from '../helpers'
 import './JobTable.css'
+import { CompressedJsonParam } from '../lib/query_params'
+import { pathForExactJob, pathForExactJobRuns } from '../lib/urls'
 
 const bookmarks = [
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
@@ -49,9 +43,7 @@ function JobTable (props) {
     StringParam
   )
 
-  const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] =
-    useQueryParam('filters', StringParam)
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam('filters', CompressedJsonParam)
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
@@ -233,8 +225,9 @@ function JobTable (props) {
 
   const fetchData = () => {
     let queryString = ''
-    if (filters && filters !== '') {
-      queryString += '&filter=' + encodeURIComponent(filters)
+
+    if (filterModel) {
+      queryString += '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
@@ -280,16 +273,12 @@ function JobTable (props) {
       operatorValue: 'contains',
       value: searchValue
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   useEffect(() => {
-    if (filters && filters !== '') {
-      setFilterModel(JSON.parse(filters))
-    }
-
     fetchData()
-  }, [period, filters, sort, sortField])
+  }, [period, filterModel, sort, sortField])
 
   const pageTitle = () => {
     if (props.title) {
@@ -319,7 +308,7 @@ function JobTable (props) {
     filter.forEach((item) => {
       currentFilters.items.push(item)
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   const updateSortModel = (model) => {
@@ -349,7 +338,7 @@ function JobTable (props) {
         // Filtering:
         filterMode="server"
         filterModel={filterModel}
-        onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
+        onFilterModelChange={(m) => setFilterModel(m)}
         sortingOrder={['desc', 'asc']}
         sortModel={[
           {

@@ -7,9 +7,9 @@ import TableRow from '@material-ui/core/TableRow'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { pathForExactJob } from '../helpers'
 import './JobDetailTable.css'
 import JobDetailTestModal from './JobDetailTestModal'
+import { pathForExactJob } from '../lib/urls'
 
 /**
  * JobDetailTable shows the runs of the selected job(s) grouped by day, and

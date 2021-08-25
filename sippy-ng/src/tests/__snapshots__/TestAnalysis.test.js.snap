@@ -182,7 +182,7 @@ exports[`TestAnalysis should render correctly 1`] = `
              tabindex="0"
              role="button"
              aria-disabled="false"
-             href="/jobs/4.8/runs?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22failedTestNames%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20with%20reused%20connections%22%7D%5D%7D&amp;sortField=timestamp&amp;sort=desc"
+             href="/jobs/4.8/runs?filters=('items![('id!99~columnField!'failedTestNames'~operatorValue!'contains'~value!'[sig-api-machinery] Kubernetes APIs remain available with reused connections')])_&amp;sortField=timestamp&amp;sort=desc"
           >
             <span class="MuiButton-label">
               See all job runs
@@ -224,7 +224,7 @@ exports[`TestAnalysis should render correctly 1`] = `
       >
         <a class="MuiTypography-root MuiTypography-h5"
            style="margin-bottom: 20px;"
-           href="/jobs/4.8/runs?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22failedTestNames%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20with%20reused%20connections%22%7D%5D%7D&amp;sortField=timestamp&amp;sort=desc"
+           href="/jobs/4.8/runs?filters=('items![('id!99~columnField!'failedTestNames'~operatorValue!'contains'~value!'[sig-api-machinery] Kubernetes APIs remain available with reused connections')])_&amp;sortField=timestamp&amp;sort=desc"
         >
           Job runs with test failure
         </a>
@@ -469,7 +469,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                               <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade"
                                  class
-                                 href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D"
+                                 href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade')])_"
                               >
                                 e2e-gcp-upgrade
                               </a>
@@ -538,7 +538,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8"
                                  class
-                                 href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D"
+                                 href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8')])_"
                               >
                                 release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
                               </a>
@@ -607,7 +607,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8"
                                  class
-                                 href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D"
+                                 href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8')])_"
                               >
                                 release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
                               </a>
@@ -676,7 +676,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8"
                                  class
-                                 href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8%22%7D%5D%7D"
+                                 href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8')])_"
                               >
                                 release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8
                               </a>
@@ -745,7 +745,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                               <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-azure-upgrade"
                                  class
-                                 href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-upgrade%22%7D%5D%7D"
+                                 href="/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-azure-upgrade')])_"
                               >
                                 e2e-azure-upgrade
                               </a>

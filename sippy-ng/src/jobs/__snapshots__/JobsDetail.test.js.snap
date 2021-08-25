@@ -226,7 +226,7 @@ exports[`JobsDetail should match snapshot 1`] = `
               role=\\"cell\\"
               scope=\\"row\\"
           >
-            <a href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D\\">
+            <a href=\\"/jobs/4.8?filters=('items![('id!99~columnField!'name'~operatorValue!'equals'~value!'periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade')])_\\">
               periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
             </a>
           </th>

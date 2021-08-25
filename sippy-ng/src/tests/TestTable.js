@@ -13,8 +13,9 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
-import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
 import './TestTable.css'
+import { CompressedJsonParam } from '../lib/query_params'
+import { pathForJobRunsWithTestFailure, withSort } from '../lib/urls'
 
 const bookmarks = [
   {
@@ -204,16 +205,15 @@ function TestTable (props) {
 
   const [period = props.period, setPeriod] = useQueryParam('period', StringParam)
 
-  const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] = useQueryParam('filters', StringParam)
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam('filters', CompressedJsonParam)
 
   const [sortField = props.sortField, setSortField] = useQueryParam('sortField', StringParam)
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const fetchData = () => {
     let queryString = ''
-    if (filters && filters !== '') {
-      queryString += '&filter=' + encodeURIComponent(filters)
+    if (filterModel) {
+      queryString += '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
@@ -243,18 +243,14 @@ function TestTable (props) {
   }
 
   useEffect(() => {
-    if (filters && filters !== '') {
-      setFilterModel(JSON.parse(filters))
-    }
-
     fetchData()
-  }, [period, filters, sort, sortField])
+  }, [period, filterModel, sort, sortField])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter((f) => f.columnField !== 'name')
     currentFilters.items.push({ id: 99, columnField: 'name', operatorValue: 'contains', value: searchValue })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   if (fetchError !== '') {
@@ -285,7 +281,7 @@ function TestTable (props) {
     filter.forEach((item) => {
       currentFilters.items.push(item)
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   const updateSortModel = (model) => {
@@ -318,7 +314,7 @@ function TestTable (props) {
         checkboxSelection={!props.hideControls}
         filterMode="server"
         filterModel={filterModel}
-        onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
+        onFilterModelChange={(m) => setFilterModel(m)}
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
         sortModel={[{
