@@ -313,19 +313,19 @@ exports[`JobTable should render correctly 1`] = `
       </div>
       <div style=\\"overflow: visible; width: 0px;\\">
         <div class=\\"MuiDataGrid-windowContainer\\"
-             style=\\"width: 0px; height: 1356px;\\"
+             style=\\"width: 0px; height: 1806px;\\"
         >
           <div class=\\"MuiDataGrid-window\\"
                style=\\"top: 56px; overflow-y: hidden;\\"
           >
             <div class=\\"MuiDataGrid-dataContainer\\"
-                 style=\\"min-width: 350px; min-height: 1300px;\\"
+                 style=\\"min-width: 350px; min-height: 1750px;\\"
             >
               <div class=\\"MuiDataGrid-viewport\\"
-                   style=\\"min-width: 0; max-width: 0; max-height: 1300px;\\"
+                   style=\\"min-width: 0; max-width: 0; max-height: 1750px;\\"
               >
                 <div class=\\"MuiDataGrid-renderingZone\\"
-                     style=\\"max-height: 1300px; width: 350px; transform: translate3d(-0px, -0px, 0);\\"
+                     style=\\"max-height: 1750px; width: 350px; transform: translate3d(-0px, -0px, 0);\\"
                 >
                   <div data-id=\\"19\\"
                        data-rowindex=\\"0\\"
@@ -333,7 +333,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"2\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -345,10 +345,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
@@ -367,13 +367,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-107\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -386,7 +388,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -401,7 +403,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -412,7 +414,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"3\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -424,10 +426,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
@@ -446,13 +448,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-108\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -465,7 +469,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -480,7 +484,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -491,7 +495,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"4\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -503,10 +507,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
@@ -525,13 +529,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-109\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -544,7 +550,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -559,7 +565,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -570,7 +576,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"5\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -582,10 +588,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
@@ -604,13 +610,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-110\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -623,7 +631,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -638,7 +646,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -649,7 +657,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"6\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -661,10 +669,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
@@ -683,13 +691,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-111\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -702,7 +712,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -717,7 +727,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -728,7 +738,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"7\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -740,10 +750,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
@@ -762,13 +772,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-112\\"
-                           title=\\"13 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (13 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -781,7 +793,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -796,7 +808,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -807,7 +819,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"8\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -819,10 +831,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
@@ -841,13 +853,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-113\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -860,7 +874,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -875,7 +889,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -886,7 +900,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"9\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -898,10 +912,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
@@ -920,13 +934,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-114\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -939,7 +955,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -954,7 +970,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -965,7 +981,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"10\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -977,10 +993,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
@@ -999,13 +1015,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-115\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1018,7 +1036,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1033,7 +1051,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1044,7 +1062,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"11\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1056,10 +1074,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
@@ -1078,13 +1096,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-116\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1097,7 +1117,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1112,7 +1132,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1123,7 +1143,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"12\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1135,10 +1155,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
@@ -1157,13 +1177,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-117\\"
-                           title=\\"40 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (40 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1176,7 +1198,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1191,7 +1213,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1202,7 +1224,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"13\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1214,10 +1236,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
@@ -1236,13 +1258,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-118\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1255,7 +1279,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1270,7 +1294,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1281,7 +1305,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"14\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1293,10 +1317,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
@@ -1315,13 +1339,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-119\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1334,7 +1360,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1349,7 +1375,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1360,7 +1386,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"15\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1372,10 +1398,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
@@ -1394,13 +1420,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-120\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1413,7 +1441,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1428,7 +1456,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1439,7 +1467,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"16\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1451,10 +1479,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
@@ -1473,13 +1501,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-121\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1492,7 +1522,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1507,7 +1537,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1518,7 +1548,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"17\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1530,10 +1560,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
@@ -1552,13 +1582,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-122\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1571,7 +1603,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1586,7 +1618,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1597,7 +1629,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"18\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1609,10 +1641,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
@@ -1631,13 +1663,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-123\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1650,7 +1684,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1665,7 +1699,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1676,7 +1710,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"19\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1688,10 +1722,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
@@ -1710,13 +1744,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-124\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1729,7 +1765,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1744,7 +1780,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1755,7 +1791,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"20\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1767,10 +1803,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
@@ -1789,13 +1825,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-125\\"
-                           title=\\"3 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1808,7 +1846,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1823,7 +1861,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1834,7 +1872,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
                        aria-rowindex=\\"21\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1846,10 +1884,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
@@ -1868,13 +1906,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-126\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1887,7 +1927,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1902,7 +1942,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1913,7 +1953,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-15-16 MuiDataGrid-row\\"
                        aria-rowindex=\\"22\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1925,10 +1965,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
                            class
                            href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
@@ -1947,13 +1987,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-127\\"
-                           title=\\"13 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         15%
+                        <br>
+                        <small>
+                          (13 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -1966,7 +2008,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -1981,7 +2023,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1992,7 +2034,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-17-18 MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -2004,10 +2046,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
@@ -2026,13 +2068,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-128\\"
-                           title=\\"6 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         17%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2045,7 +2089,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -2060,7 +2104,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2071,7 +2115,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-23-24 MuiDataGrid-row\\"
                        aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -2083,10 +2127,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
@@ -2105,13 +2149,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-129\\"
-                           title=\\"13 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         23%
+                        <br>
+                        <small>
+                          (13 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2124,7 +2170,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -2139,7 +2185,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2150,7 +2196,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-odd JobTable-row-percent-25-26 MuiDataGrid-row\\"
                        aria-rowindex=\\"25\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -2162,10 +2208,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
@@ -2184,13 +2230,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-130\\"
-                           title=\\"4 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         25%
+                        <br>
+                        <small>
+                          (4 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2203,7 +2251,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -2218,7 +2266,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2229,7 +2277,7 @@ exports[`JobTable should render correctly 1`] = `
                        class=\\"Mui-even JobTable-row-percent-25-26 MuiDataGrid-row\\"
                        aria-rowindex=\\"26\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -2241,10 +2289,10 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
                            href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
@@ -2263,13 +2311,15 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"MuiBox-root MuiBox-root-131\\"
-                           title=\\"4 runs\\"
-                      >
+                      <div class=\\"percentage-cell\\">
                         25%
+                        <br>
+                        <small>
+                          (4 runs)
+                        </small>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
@@ -2282,7 +2332,7 @@ exports[`JobTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <svg class=\\"MuiSvgIcon-root\\"
@@ -2297,7 +2347,7 @@ exports[`JobTable should render correctly 1`] = `
                         </path>
                       </svg>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
