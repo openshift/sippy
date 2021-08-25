@@ -103,6 +103,6 @@ func PrintOverallReleaseHealth(w http.ResponseWriter, curr, prev sippyprocessing
 			Current:  curr.TopLevelIndicators.Variant,
 			Previous: prev.TopLevelIndicators.Variant,
 		},
-		Warnings: curr.AnalysisWarnings,
+		Warnings: append(curr.AnalysisWarnings, prev.AnalysisWarnings...),
 	})
 }

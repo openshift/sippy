@@ -8,8 +8,19 @@ import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
+type ReportType string
+
+const (
+	CurrentReport  ReportType = "current"
+	TwoDayReport   ReportType = "twoDay"
+	PreviousReport ReportType = "previous"
+)
+
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
+	// ReportType contains the type of the report, e.g. current, two day, or previous.
+	ReportType ReportType `json:"reportType"`
+
 	// release is the logical name used to identify the dashboard display name.  When using openshift, this corresponds
 	// to actual releases like 4.6, 4.7, etc.  For non-openshift, it corresponds to --dashboard=<display-name>; the display-name
 	// is the value of release.

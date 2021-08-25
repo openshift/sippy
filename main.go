@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+
 	rice "github.com/GeertJohan/go.rice"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -224,7 +226,7 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
 	return enc.Encode(testReport.ByTest)

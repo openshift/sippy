@@ -14,6 +14,7 @@ import (
 
 func PrepareTestReport(
 	reportName string,
+	reportType sippyprocessingv1.ReportType,
 	rawData testgridanalysisapi.RawData,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
@@ -55,12 +56,16 @@ func PrepareTestReport(
 	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
-	promotionWarnings := generatePromotionWarnings(byVariant)
-	analysisWarnings = append(analysisWarnings, promotionWarnings...)
+	// Only generate promotion warnings based on current reporting
+	if reportType == sippyprocessingv1.CurrentReport {
+		promotionWarnings := generatePromotionWarnings(byVariant)
+		analysisWarnings = append(analysisWarnings, promotionWarnings...)
+	}
 
 	testReport := sippyprocessingv1.TestReport{
-		Release:   reportName,
-		Timestamp: reportTimestamp,
+		ReportType: reportType,
+		Release:    reportName,
+		Timestamp:  reportTimestamp,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
 			Infrastructure:      infra,
 			Install:             install,
