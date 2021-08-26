@@ -5,7 +5,7 @@ import React from 'react'
 import { act, waitFor } from '@testing-library/react'
 import { QueryParamProvider } from 'use-query-params'
 import { mount } from 'enzyme'
-import { setupDefaultPolly, withoutMuiID } from '../setupTests'
+import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTests'
 import { BrowserRouter } from 'react-router-dom'
 import JobTable from './JobTable'
 
@@ -27,11 +27,11 @@ describe('JobTable', () => {
                 </QueryParamProvider>)
     })
 
-    expect(wrapper.find('div').contains('Fetching data...')).toBeTruthy()
+    expectLoadingPage(wrapper).toBeTruthy()
 
     await waitFor(() => {
       wrapper.update()
-      expect(wrapper.find('div').contains('Fetching data...')).toBeFalsy()
+      expectLoadingPage(wrapper).toBeFalsy()
     })
 
     expect(wrapper.text()).toContain('-e2e-')

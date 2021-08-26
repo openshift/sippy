@@ -1,11 +1,4 @@
-import {
-  Backdrop,
-  Button,
-  CircularProgress,
-  Container,
-  Tooltip,
-  Typography
-} from '@material-ui/core'
+import { Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
@@ -20,7 +13,7 @@ import PassRateIcon from '../components/PassRateIcon'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import GridToolbar from '../datagrid/GridToolbar'
 import { generateClasses } from '../datagrid/utils'
-import { pathForExactJob, pathForExactJobRuns } from '../helpers'
+import { pathForExactJobAnalysis, pathForExactJobRuns } from '../helpers'
 import './JobTable.css'
 
 const bookmarks = [
@@ -43,6 +36,7 @@ function JobTable (props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
+  const [selectedJobs, setSelectedJobs] = React.useState([])
 
   const [period = props.period, setPeriod] = useQueryParam(
     'period',
@@ -72,14 +66,8 @@ function JobTable (props) {
           <div className="job-name">
             <Tooltip title={params.value}>
               <Link
-                to={
-                  props.briefTable
-                    ? pathForExactJob(props.release, params.value)
-                    : '/jobs/' +
-                      props.release +
-                      '/detail?job=' +
-                      params.row.name
-                }>
+                to={pathForExactJobAnalysis(props.release, params.value)}
+                >
                 {props.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
@@ -306,18 +294,15 @@ function JobTable (props) {
   }
 
   if (!isLoaded) {
-    return (
-      <Backdrop className={classes.backdrop} open={!isLoaded}>
-        Fetching data...
-        <CircularProgress color="inherit" />
-      </Backdrop>
-    )
+    return <p>Loading...</p>
   }
 
   const addFilters = (filter) => {
     const currentFilters = filterModel
     filter.forEach((item) => {
-      currentFilters.items.push(item)
+      if (item.value) {
+        currentFilters.items.push(item)
+      }
     })
     setFilters(JSON.stringify(currentFilters))
   }
@@ -335,6 +320,30 @@ function JobTable (props) {
       setSortField(model[0].field)
     }
   }
+
+  const createFilter = () => {
+    if (selectedJobs.length === rows.length || selectedJobs.length === 0) {
+      return filters
+    }
+
+    const selectedIDs = new Set(selectedJobs)
+    let jobs = rows.filter((row) => selectedIDs.has(row.id))
+    jobs = jobs.map((job) => { return { columnField: 'name', operatorValue: 'equals', value: job.name } })
+    console.log(jobs)
+    return encodeURIComponent(JSON.stringify({ items: jobs, linkOperator: 'or' }))
+  }
+
+  const detailsButton = (
+    <Button
+      component={Link}
+      to={`/jobs/${props.release}/analysis?filters=${createFilter()}`}
+      variant="contained"
+      color="primary"
+      style={{ margin: 10 }}
+    >
+      Analyze
+    </Button>
+  )
 
   return (
     /* eslint-disable react/prop-types */
@@ -363,6 +372,10 @@ function JobTable (props) {
         pageSize={props.pageSize}
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
+        checkboxSelection={!props.briefTable}
+        onSelectionModelChange={(rows) =>
+          setSelectedJobs(rows)
+        }
         rowsPerPageOptions={[5, 10, 25, 50]}
         getRowClassName={(params) =>
           classes[
@@ -380,6 +393,7 @@ function JobTable (props) {
           }
         }}
       />
+      { props.briefTable ? '' : detailsButton }
       <BugzillaDialog
         item={jobDetails}
         isOpen={isBugzillaDialogOpen}

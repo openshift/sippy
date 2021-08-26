@@ -59,6 +59,7 @@ jest.mock('react-chartjs-2', () => ({
   Bar: () => null,
   Chart: () => null,
   ChartComponent: () => null,
+  Doughnut: () => null,
   Line: () => null,
   PolarArea: () => null
 }))

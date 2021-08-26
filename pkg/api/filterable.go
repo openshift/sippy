@@ -44,6 +44,10 @@ type Filterable interface {
 
 // Filter applies the selected filters to a filterable item.
 func (filters Filter) Filter(item Filterable) (bool, error) {
+	if len(filters.Items) == 0 {
+		return true, nil
+	}
+
 	matches := make([]bool, 0)
 
 	for _, filter := range filters.Items {

@@ -82,7 +82,7 @@ function Cell (props) {
 
 Cell.propTypes = {
   result: PropTypes.object,
-  colorScale: PropTypes.object,
+  colorScale: PropTypes.array,
   showFull: PropTypes.bool,
   release: PropTypes.string,
   variant: PropTypes.string,

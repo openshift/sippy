@@ -12,6 +12,7 @@ import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTest
 jest.useRealTimers()
 
 describe('release-overview', () => {
+  const flushPromises = () => new Promise(setImmediate)
   setupDefaultPolly()
 
   it('should render correctly', async () => {

@@ -17,6 +17,19 @@ export function relativeTime (date) {
   }
 }
 
+export function explainFilter (filter) {
+  if (!filter || filter.items.length === 0) {
+    return 'all'
+  }
+
+  const explanations = []
+  filter.items.forEach((item) =>
+    explanations.push(`('${item.columnField}' ${item.operatorValue} '${item.value}')`)
+  )
+
+  return explanations.join(' and ')
+}
+
 export function escapeRegex (str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -31,12 +44,20 @@ export function withSort (queryString, sortField, sort) {
   return `${queryString}&sortField=${sortField}&sort=${sort}`
 }
 
+export function pathForVariantAnalysis (release, variant) {
+  return `/jobs/${release}/analysis?${single(filterFor('variants', 'contains', variant))}`
+}
+
 export function queryForBookmark (...bookmarks) {
   return multiple(...bookmarks)
 }
 
 export function pathForExactJob (release, job) {
   return `/jobs/${release}?${single(filterFor('name', 'equals', job))}`
+}
+
+export function pathForExactJobAnalysis (release, job) {
+  return `/jobs/${release}/analysis?${single(filterFor('name', 'equals', job))}`
 }
 
 export function pathForExactTest (release, test) {
@@ -56,6 +77,22 @@ export function pathForVariantsWithTestFailure (release, variant, test) {
 
 export function pathForJobRunsWithTestFailure (release, test) {
   return `/jobs/${release}/runs?${single(filterFor('failedTestNames', 'contains', test))}`
+}
+
+export function pathForJobRunsWithFilter (release, filter) {
+  if (!filter || filter.items === []) {
+    return `/jobs/${release}/runs`
+  }
+
+  return `/jobs/${release}/runs?filters=${encodeURIComponent(JSON.stringify(filter))}`
+}
+
+export function pathForJobsWithFilter (release, filter) {
+  if (!filter || filter.items === []) {
+    return `/jobs/${release}`
+  }
+
+  return `/jobs/${release}?filters=${encodeURIComponent(JSON.stringify(filter))}`
 }
 
 export function pathForJobVariant (release, variant) {

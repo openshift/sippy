@@ -15,7 +15,7 @@ describe(SummaryCard, () => {
       )
     })
 
-    expect(wrapper.find('ReactMinimalPieChart').exists()).toBe(true)
+    expect(wrapper.find('Doughnut').exists()).toBe(true)
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
   })
 })

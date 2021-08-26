@@ -1,10 +1,10 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@material-ui/core'
 import PropTypes from 'prop-types'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
-import { PieChart } from 'react-minimal-pie-chart'
+import { Doughnut } from 'react-chartjs-2'
 
 const useStyles = makeStyles({
   cardContent: {
@@ -25,9 +25,7 @@ export default function SummaryCard (props) {
   const classes = useStyles(props)
   const theme = useTheme()
 
-  const [currentData, setCurrentData] = React.useState([])
-
-  const percent = (props.success / (props.flakes + props.fail + props.success)) * 100
+  const percent = (props.success / ((props.flakes || 0) + props.fail + props.success)) * 100
 
   const colors = scale(
     [
@@ -38,55 +36,44 @@ export default function SummaryCard (props) {
 
   const bgColor = colors(percent).hex()
 
-  useEffect(() => {
-    const data = []
+  const labels = ['Pass', 'Fail']
+  const data = [props.success, props.fail]
+  const color = [theme.palette.success.dark, theme.palette.error.dark]
 
-    if (props.flakes !== 0) {
-      data.push({
-        title: 'Flakes',
-        value: props.flakes,
-        color: '#FF8800'
-      })
-    }
-
-    data.push({
-      title: 'Success',
-      value: props.success,
-      color: '#4A934A'
-    })
-
-    data.push({
-      title: 'Fail',
-      value: props.fail,
-      color: 'darkred'
-    })
-
-    setCurrentData(data)
-  }, [props])
+  if (props.flakes) {
+    labels.push('Flakes')
+    data.push(props.flakes)
+    color.push(theme.palette.warning.dark)
+  }
 
   let card = (
     <Card elevation={5} className={`${classes.summaryCard}`} style={{ backgroundColor: bgColor }}>
-      <CardContent className={`${classes.cardContent}`}>
-        <Typography variant="h6">{props.name}</Typography>
-        <PieChart
-          animate
-          animationDuration={800}
-          animationEasing="ease-out"
-          center={[15, 6]}
-          data={currentData}
-          lengthAngle={360}
-          lineWidth={40}
-          label={({ dataEntry }) => (100 * dataEntry.value / (props.success + props.flakes + props.fail)).toFixed(0) + '%'}
-          labelPosition={120}
-          labelStyle={{ fontSize: 1 }}
-          paddingAngle={2}
-          radius={5.5}
-          segmentsShift={0.5}
-          startAngle={0}
-          viewBoxSize={[30, 12]}
-        />
-        {props.caption}
-      </CardContent>
+        <CardContent className={`${classes.cardContent}`}>
+          <Typography variant="h6">{props.name}</Typography>
+          <div align="center">
+            <div style={{ width: '70%' }}>
+              <Doughnut
+                data={
+                  {
+                    labels: labels,
+                    datasets: [{
+                      label: props.name,
+                      data: data,
+                      borderColor: bgColor,
+                      backgroundColor: color
+                    }]
+                  }}
+
+                options={
+                  {
+                    cutout: '60%'
+                  }
+                }
+              />
+            </div>
+            {props.caption}
+          </div>
+        </CardContent>
     </Card>
   )
 
@@ -112,14 +99,15 @@ export default function SummaryCard (props) {
 }
 
 SummaryCard.defaultProps = {
-  flakes: 0,
   success: 0,
   fail: 0,
   caption: '',
-  tooltip: ''
+  tooltip: '',
+  units: 'percent'
 }
 
 SummaryCard.propTypes = {
+  units: PropTypes.string,
   flakes: PropTypes.number,
   success: PropTypes.number,
   fail: PropTypes.number,

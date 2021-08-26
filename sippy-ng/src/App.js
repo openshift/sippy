@@ -22,6 +22,8 @@ import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Upgrades from './releases/Upgrades'
 import { TestAnalysis } from './tests/TestAnalysis'
+import { JobAnalysis } from './jobs/JobAnalysis'
+import VariantStatus from './jobs/VariantStatus'
 
 const drawerWidth = 240
 
@@ -223,6 +225,16 @@ export default function App (props) {
                 <ReleaseOverview
                   key={'release-overview-' + props.match.params.release}
                   release={props.match.params.release} />
+              } />
+
+              <Route path="/variants/:release/:variant" render={(props) =>
+                <VariantStatus
+                  release={props.match.params.release}
+                  variant={props.match.params.variant} />
+              }/>
+
+              <Route path="/jobs/:release/analysis" render={(props) =>
+                <JobAnalysis release={props.match.params.release} />
               } />
 
               <Route path="/jobs/:release" render={(props) =>

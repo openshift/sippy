@@ -5,7 +5,7 @@ exports[`JobTable should render correctly 1`] = `
 <div class=\\"MuiContainer-root MuiContainer-maxWidthLg\\">
   <div class=\\"MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight\\"
        role=\\"grid\\"
-       aria-colcount=\\"7\\"
+       aria-colcount=\\"8\\"
        aria-rowcount=\\"108\\"
        aria-multiselectable=\\"false\\"
   >
@@ -146,14 +146,63 @@ exports[`JobTable should render correctly 1`] = `
         <div class=\\"MuiDataGrid-columnHeaderWrapper scroll\\"
              aria-rowindex=\\"1\\"
              role=\\"row\\"
-             style=\\"transform: translate3d(-0px, 0, 0); min-width: 350px;\\"
+             style=\\"transform: translate3d(-0px, 0, 0); min-width: 400px;\\"
         >
-          <div class=\\"MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader\\"
-               data-field=\\"name\\"
+          <div class=\\"MuiDataGrid-columnHeader--alignCenter MuiDataGrid-columnHeader MuiDataGrid-columnHeaderCheckbox\\"
+               data-field=\\"__check__\\"
                style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
                role=\\"columnheader\\"
                tabindex=\\"0\\"
                aria-colindex=\\"1\\"
+          >
+            <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
+                 draggable=\\"false\\"
+            >
+              <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
+                <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                      aria-disabled=\\"false\\"
+                >
+                  <span class=\\"MuiIconButton-label\\">
+                    <input class=\\"PrivateSwitchBase-input-110\\"
+                           tabindex=\\"-1\\"
+                           type=\\"checkbox\\"
+                           data-indeterminate=\\"false\\"
+                           aria-label=\\"Select All Rows checkbox\\"
+                           value
+                    >
+                    <svg class=\\"MuiSvgIcon-root\\"
+                         focusable=\\"false\\"
+                         viewbox=\\"0 0 24 24\\"
+                         aria-hidden=\\"true\\"
+                    >
+                      <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                      </path>
+                    </svg>
+                  </span>
+                  <span class=\\"MuiTouchRipple-root\\">
+                  </span>
+                </span>
+              </div>
+            </div>
+            <div class=\\"MuiDataGrid-columnSeparator\\"
+                 style=\\"min-height: 56px; opacity: 1;\\"
+            >
+              <svg class=\\"MuiSvgIcon-root MuiDataGrid-iconSeparator\\"
+                   focusable=\\"false\\"
+                   viewbox=\\"0 0 24 24\\"
+                   aria-hidden=\\"true\\"
+              >
+                <path d=\\"M11 19V5h2v14z\\">
+                </path>
+              </svg>
+            </div>
+          </div>
+          <div class=\\"MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader\\"
+               data-field=\\"name\\"
+               style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
+               role=\\"columnheader\\"
+               tabindex=\\"-1\\"
+               aria-colindex=\\"2\\"
           >
             <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
                  draggable=\\"false\\"
@@ -205,7 +254,7 @@ exports[`JobTable should render correctly 1`] = `
                style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
                role=\\"columnheader\\"
                tabindex=\\"-1\\"
-               aria-colindex=\\"2\\"
+               aria-colindex=\\"3\\"
                aria-sort=\\"ascending\\"
           >
             <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
@@ -253,59 +302,7 @@ exports[`JobTable should render correctly 1`] = `
               </svg>
             </div>
           </div>
-          <div class=\\"MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader\\"
-               data-field=\\"net_improvement\\"
-               style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
-               role=\\"columnheader\\"
-               tabindex=\\"-1\\"
-               aria-colindex=\\"3\\"
-          >
-            <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
-                 draggable=\\"false\\"
-            >
-              <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
-                <div class=\\"MuiDataGrid-columnHeaderTitle\\"
-                     title
-                >
-                  Improvement
-                </div>
-                <div class=\\"MuiDataGrid-iconButtonContainer\\">
-                  <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall\\"
-                          tabindex=\\"-1\\"
-                          type=\\"button\\"
-                          aria-label=\\"Sort\\"
-                          title=\\"Sort\\"
-                  >
-                    <span class=\\"MuiIconButton-label\\">
-                      <svg class=\\"MuiSvgIcon-root MuiDataGrid-sortIcon MuiSvgIcon-fontSizeSmall\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                      >
-                        <path d=\\"M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z\\">
-                        </path>
-                      </svg>
-                    </span>
-                    <span class=\\"MuiTouchRipple-root\\">
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class=\\"MuiDataGrid-columnSeparator\\"
-                 style=\\"min-height: 56px; opacity: 1;\\"
-            >
-              <svg class=\\"MuiSvgIcon-root MuiDataGrid-iconSeparator\\"
-                   focusable=\\"false\\"
-                   viewbox=\\"0 0 24 24\\"
-                   aria-hidden=\\"true\\"
-              >
-                <path d=\\"M11 19V5h2v14z\\">
-                </path>
-              </svg>
-            </div>
-          </div>
-          <div style=\\"min-width: 200px; max-width: 200px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
+          <div style=\\"min-width: 250px; max-width: 250px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
                class=\\"MuiDataGrid-cell\\"
           >
           </div>
@@ -319,13 +316,13 @@ exports[`JobTable should render correctly 1`] = `
                style=\\"top: 56px; overflow-y: hidden;\\"
           >
             <div class=\\"MuiDataGrid-dataContainer\\"
-                 style=\\"min-width: 350px; min-height: 1750px;\\"
+                 style=\\"min-width: 400px; min-height: 1750px;\\"
             >
               <div class=\\"MuiDataGrid-viewport\\"
                    style=\\"min-width: 0; max-width: 0; max-height: 1750px;\\"
               >
                 <div class=\\"MuiDataGrid-renderingZone\\"
-                     style=\\"max-height: 1750px; width: 350px; transform: translate3d(-0px, -0px, 0);\\"
+                     style=\\"max-height: 1750px; width: 400px; transform: translate3d(-0px, -0px, 0);\\"
                 >
                   <div data-id=\\"19\\"
                        data-rowindex=\\"0\\"
@@ -335,10 +332,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"0\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -348,12 +345,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"0\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -362,11 +396,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"0\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -378,32 +412,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"0\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -416,10 +425,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -429,12 +438,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"1\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -443,11 +489,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"1\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -459,32 +505,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"1\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -497,10 +518,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -510,19 +531,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -532,18 +568,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (6 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -553,19 +590,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (40 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -578,10 +611,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -591,19 +624,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -613,18 +661,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (3 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D\\"
+                        >
+                          release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -634,19 +683,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (13 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -659,10 +704,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"4\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -672,12 +717,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"4\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
                         </a>
                       </div>
                     </div>
@@ -686,11 +768,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"4\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -702,32 +784,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"4\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -740,10 +797,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -753,19 +810,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
-                        >
-                          release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -775,18 +847,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (13 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
+                        >
+                          release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -796,19 +869,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -821,10 +890,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"6\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -834,12 +903,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"6\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
                         </a>
                       </div>
                     </div>
@@ -848,11 +954,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"6\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -864,32 +970,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"6\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -902,10 +983,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -915,19 +996,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
-                        >
-                          release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -937,18 +1033,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (3 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -958,19 +1055,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -983,10 +1076,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -996,19 +1089,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1018,18 +1126,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (3 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
+                        >
+                          release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"-66.66666666666666\\"
-                         data-field=\\"net_improvement\\"
+                         data-value=\\"0\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1039,19 +1148,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-66.67%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1064,10 +1169,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"9\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1077,12 +1182,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"9\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
                         </a>
                       </div>
                     </div>
@@ -1091,11 +1233,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"9\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -1107,32 +1249,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-33.33333333333333\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"9\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-33.33%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1145,10 +1262,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1158,19 +1275,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
-                        >
-                          periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1180,18 +1312,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (40 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
+                        >
+                          release-openshift-origin-installer-e2e-aws-disruptive-4.8
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1201,19 +1334,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1226,10 +1355,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1239,19 +1368,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
-                        >
-                          release-openshift-origin-installer-e2e-aws-disruptive-4.8
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1261,18 +1405,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (3 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1282,19 +1427,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1307,10 +1448,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"12\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1320,12 +1461,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"12\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                        <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
+                          release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8
                         </a>
                       </div>
                     </div>
@@ -1334,11 +1512,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"12\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -1350,32 +1528,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-66.66666666666666\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"12\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-66.67%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1388,10 +1541,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1401,19 +1554,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1423,18 +1591,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (3 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1444,19 +1613,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (6 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1469,10 +1634,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"14\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1482,12 +1647,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"14\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade%22%7D%5D%7D\\"
                         >
-                          release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade
                         </a>
                       </div>
                     </div>
@@ -1496,11 +1698,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"14\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -1512,32 +1714,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"14\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1550,10 +1727,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"15\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1563,19 +1740,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
-                        >
-                          release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"15\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1585,18 +1777,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (6 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"15\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1606,19 +1799,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1631,10 +1820,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"16\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1644,19 +1833,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"16\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1666,18 +1870,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (6 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"16\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1687,19 +1892,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1712,10 +1913,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"17\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1725,19 +1926,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"17\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1747,18 +1963,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (6 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
+                        >
+                          release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"17\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1768,19 +1985,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1793,10 +2006,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"18\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1806,12 +2019,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"18\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
                         </a>
                       </div>
                     </div>
@@ -1820,11 +2070,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"0\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"18\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -1836,32 +2086,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"18\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1874,10 +2099,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1887,19 +2112,34 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
-                           class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
-                        >
-                          release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
-                        </a>
-                      </div>
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"0\\"
-                         data-field=\\"current_pass_percentage\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                         data-field=\\"name\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
@@ -1909,18 +2149,19 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div class=\\"percentage-cell\\">
-                        0%
-                        <br>
-                        <small>
-                          (6 runs)
-                        </small>
+                      <div class=\\"job-name\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
+                        </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
                          data-value=\\"0\\"
-                         data-field=\\"net_improvement\\"
+                         data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
@@ -1930,19 +2171,15 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"SyncAltRoundedIcon\\"
-                           style=\\"color: grey;\\"
-                           title=\\"0.00%\\"
-                      >
-                        <path d=\\"M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z\\">
-                        </path>
-                      </svg>
+                      <div class=\\"percentage-cell\\">
+                        0%
+                        <br>
+                        <small>
+                          (3 runs)
+                        </small>
+                      </div>
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1955,10 +2192,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"20\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -1968,10 +2205,47 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"20\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8%22%7D%5D%7D\\"
                         >
                           release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8
                         </a>
@@ -1982,11 +2256,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"15.384615384615385\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"20\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -1998,32 +2272,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-6.043956043956042\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"20\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-6.04%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2036,10 +2285,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"21\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -2049,10 +2298,47 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"21\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn
                         </a>
@@ -2063,11 +2349,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"16.666666666666664\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"21\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -2079,32 +2365,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-69.04761904761904\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"21\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-69.05%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2117,10 +2378,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"22\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -2130,10 +2391,47 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"22\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade
                         </a>
@@ -2144,11 +2442,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"23.076923076923077\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"22\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -2160,32 +2458,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"6.410256410256412\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"22\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowUpwardRoundedIcon\\"
-                           style=\\"stroke: green; stroke-width: 3; color: green;\\"
-                           title=\\"6.41%\\"
-                      >
-                        <path d=\\"M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2198,10 +2471,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"23\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -2211,12 +2484,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"23\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
                         </a>
                       </div>
                     </div>
@@ -2225,11 +2535,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"25\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"23\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -2241,32 +2551,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"-41.66666666666666\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"23\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowDownwardRoundedIcon\\"
-                           style=\\"stroke: darkred; stroke-width: 3; color: darkred;\\"
-                           title=\\"-41.67%\\"
-                      >
-                        <path d=\\"M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2279,10 +2564,10 @@ exports[`JobTable should render correctly 1`] = `
                        aria-selected=\\"false\\"
                        style=\\"max-height: 70px; min-height: 70px;\\"
                   >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
-                         data-field=\\"name\\"
+                         data-value=\\"false\\"
+                         data-field=\\"__check__\\"
                          data-rowindex=\\"24\\"
                          data-colindex=\\"0\\"
                          data-rowselected=\\"false\\"
@@ -2292,12 +2577,49 @@ exports[`JobTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
+                      <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-107 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                            aria-disabled=\\"false\\"
+                      >
+                        <span class=\\"MuiIconButton-label\\">
+                          <input class=\\"PrivateSwitchBase-input-110\\"
+                                 tabindex=\\"-1\\"
+                                 type=\\"checkbox\\"
+                                 data-indeterminate=\\"false\\"
+                                 aria-label=\\"Select Row checkbox\\"
+                                 value
+                          >
+                          <svg class=\\"MuiSvgIcon-root\\"
+                               focusable=\\"false\\"
+                               viewbox=\\"0 0 24 24\\"
+                               aria-hidden=\\"true\\"
+                          >
+                            <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                            </path>
+                          </svg>
+                        </span>
+                        <span class=\\"MuiTouchRipple-root\\">
+                        </span>
+                      </span>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
+                         data-field=\\"name\\"
+                         data-rowindex=\\"24\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                         tabindex=\\"-1\\"
+                    >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
                            class
-                           href=\\"/jobs/4.8/detail?job=periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial
                         </a>
                       </div>
                     </div>
@@ -2306,11 +2628,11 @@ exports[`JobTable should render correctly 1`] = `
                          data-value=\\"25\\"
                          data-field=\\"current_pass_percentage\\"
                          data-rowindex=\\"24\\"
-                         data-colindex=\\"1\\"
+                         data-colindex=\\"2\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
+                         aria-colindex=\\"3\\"
                          style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
@@ -2322,32 +2644,7 @@ exports[`JobTable should render correctly 1`] = `
                         </small>
                       </div>
                     </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"25\\"
-                         data-field=\\"net_improvement\\"
-                         data-rowindex=\\"24\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <svg class=\\"MuiSvgIcon-root\\"
-                           focusable=\\"false\\"
-                           viewbox=\\"0 0 24 24\\"
-                           aria-hidden=\\"true\\"
-                           data-icon=\\"ArrowUpwardRoundedIcon\\"
-                           style=\\"stroke: green; stroke-width: 3; color: green;\\"
-                           title=\\"25.00%\\"
-                      >
-                        <path d=\\"M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z\\">
-                        </path>
-                      </svg>
-                    </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                    <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2447,6 +2744,19 @@ exports[`JobTable should render correctly 1`] = `
       </div>
     </div>
   </div>
+  <a class=\\"MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary\\"
+     tabindex=\\"0\\"
+     role=\\"button\\"
+     aria-disabled=\\"false\\"
+     style=\\"margin: 10px;\\"
+     href=\\"/jobs/4.8/analysis?filters={&quot;items&quot;:[]}\\"
+  >
+    <span class=\\"MuiButton-label\\">
+      Analyze
+    </span>
+    <span class=\\"MuiTouchRipple-root\\">
+    </span>
+  </a>
 </div>
 )
 "

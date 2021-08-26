@@ -6,7 +6,7 @@ import { PropTypes } from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import MiniCard from '../components/MiniCard'
 import { VARIANT_THRESHOLDS } from '../constants'
-import { pathForJobVariant } from '../helpers'
+import { pathForVariantAnalysis } from '../helpers'
 
 export default function VariantCards (props) {
   const [jobs, setJobs] = React.useState([])
@@ -45,7 +45,7 @@ export default function VariantCards (props) {
     return (
       <Grid item key={index} md={2} sm={4}>
         <MiniCard
-          link={`${pathForJobVariant(props.release, job.platform)}&sortField=net_improvement&sort=asc`}
+          link={pathForVariantAnalysis(props.release, job.platform)}
           threshold={VARIANT_THRESHOLDS}
           name={job.platform}
           current={job.passRates.latest.percentage}
