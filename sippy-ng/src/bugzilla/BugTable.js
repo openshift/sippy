@@ -1,8 +1,17 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@material-ui/core'
-import React from 'react'
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@material-ui/core'
 import PropTypes from 'prop-types'
+import React from 'react'
 
-export default function BugTable (props) {
+export default function BugTable(props) {
   if (!props.bugs || props.bugs.length === 0) {
     return <Typography>None found</Typography>
   }
@@ -22,7 +31,9 @@ export default function BugTable (props) {
         <TableBody>
           {props.bugs.map((bug) => (
             <TableRow key={'bug-row-' + bug.id}>
-              <TableCell scope="row"><a href={bug.url}>{bug.id}</a></TableCell>
+              <TableCell scope="row">
+                <a href={bug.url}>{bug.id}</a>
+              </TableCell>
               <TableCell>{bug.summary}</TableCell>
               <TableCell>{bug.status}</TableCell>
               <TableCell>{bug.component}</TableCell>
@@ -37,5 +48,5 @@ export default function BugTable (props) {
 
 BugTable.propTypes = {
   bugs: PropTypes.array,
-  classes: PropTypes.object
+  classes: PropTypes.object,
 }

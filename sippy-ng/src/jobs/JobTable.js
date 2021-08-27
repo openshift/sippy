@@ -1,20 +1,20 @@
+import './JobTable.css'
+import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
+import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
+import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import { Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
-import Alert from '@material-ui/lab/Alert'
+import { generateClasses } from '../datagrid/utils'
+import { Link } from 'react-router-dom'
+import { pathForExactJobAnalysis, pathForExactJobRuns } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
+import Alert from '@material-ui/lab/Alert'
+import BugzillaDialog from '../bugzilla/BugzillaDialog'
+import GridToolbar from '../datagrid/GridToolbar'
+import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { StringParam, useQueryParam } from 'use-query-params'
-import BugzillaDialog from '../bugzilla/BugzillaDialog'
-import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
-import PassRateIcon from '../components/PassRateIcon'
-import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
-import GridToolbar from '../datagrid/GridToolbar'
-import { generateClasses } from '../datagrid/utils'
-import { pathForExactJobAnalysis, pathForExactJobRuns } from '../helpers'
-import './JobTable.css'
 
 const bookmarks = [
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
@@ -22,7 +22,7 @@ const bookmarks = [
   { name: 'Has a linked bug', model: [BOOKMARKS.LINKED_BUG] },
   { name: 'Has no linked bug', model: [BOOKMARKS.NO_LINKED_BUG] },
   { name: 'Has an associated bug', model: [BOOKMARKS.ASSOCIATED_BUG] },
-  { name: 'Has no associated bug', model: [BOOKMARKS.NO_ASSOCIATED_BUG] }
+  { name: 'Has no associated bug', model: [BOOKMARKS.NO_ASSOCIATED_BUG] },
 ]
 
 /**
@@ -30,7 +30,7 @@ const bookmarks = [
  * including current and previous pass percentages, net improvement, and
  * bug links.
  */
-function JobTable (props) {
+function JobTable(props) {
   const { classes } = props
 
   const [fetchError, setFetchError] = React.useState('')
@@ -65,15 +65,13 @@ function JobTable (props) {
         return (
           <div className="job-name">
             <Tooltip title={params.value}>
-              <Link
-                to={pathForExactJobAnalysis(props.release, params.value)}
-                >
+              <Link to={pathForExactJobAnalysis(props.release, params.value)}>
                 {props.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
           </div>
         )
-      }
+      },
     },
     {
       field: 'current_pass_percentage',
@@ -85,7 +83,7 @@ function JobTable (props) {
           {Number(params.value).toFixed(0).toLocaleString()}%<br />
           <small>({params.row.current_runs} runs)</small>
         </div>
-      )
+      ),
     },
     {
       field: 'net_improvement',
@@ -94,7 +92,7 @@ function JobTable (props) {
       flex: 0.5,
       renderCell: (params) => {
         return <PassRateIcon tooltip={true} improvement={params.value} />
-      }
+      },
     },
     {
       field: 'previous_pass_percentage',
@@ -106,7 +104,7 @@ function JobTable (props) {
           {Number(params.value).toFixed(0).toLocaleString()}%<br />
           <small>({params.row.previous_runs} runs)</small>
         </div>
-      )
+      ),
     },
     {
       field: 'test_grid_url',
@@ -125,7 +123,7 @@ function JobTable (props) {
         )
       },
       filterable: false,
-      hide: props.briefTable
+      hide: props.briefTable,
     },
     {
       field: 'job_runs',
@@ -144,7 +142,7 @@ function JobTable (props) {
         )
       },
       filterable: false,
-      hide: props.briefTable
+      hide: props.briefTable,
     },
     {
       field: 'bugs',
@@ -160,7 +158,8 @@ function JobTable (props) {
               ' linked bugs,' +
               params.row.associated_bugs.length +
               ' associated bugs'
-            }>
+            }
+          >
             <Button
               style={{ justifyContent: 'center', color: bugColor(params.row) }}
               startIcon={<BugReport />}
@@ -177,37 +176,37 @@ function JobTable (props) {
           param2.api.getCellValue(param2.id, 'bugs'),
           param2.api.getCellValue(param2.id, 'associated_bugs')
         ),
-      hide: props.briefTable
+      hide: props.briefTable,
     },
     // These are here just to allow filtering
     {
       field: 'variants',
       headerName: 'Variants',
-      hide: true
+      hide: true,
     },
     {
       field: 'current_runs',
       headerName: 'Current runs',
       hide: true,
-      type: 'number'
+      type: 'number',
     },
     {
       field: 'previous_runs',
       headerName: 'Previous runs',
       hide: true,
-      type: 'number'
+      type: 'number',
     },
     {
       field: 'associated_bugs',
       headerName: 'Associated bugs',
       type: 'number',
-      hide: true
+      hide: true,
     },
     {
       field: 'tags',
       headerName: 'Tags',
-      hide: true
-    }
+      hide: true,
+    },
   ]
 
   const openBugzillaDialog = (job) => {
@@ -266,7 +265,7 @@ function JobTable (props) {
       id: 99,
       columnField: 'name',
       operatorValue: 'contains',
-      value: searchValue
+      value: searchValue,
     })
     setFilters(JSON.stringify(currentFilters))
   }
@@ -328,9 +327,13 @@ function JobTable (props) {
 
     const selectedIDs = new Set(selectedJobs)
     let jobs = rows.filter((row) => selectedIDs.has(row.id))
-    jobs = jobs.map((job) => { return { columnField: 'name', operatorValue: 'equals', value: job.name } })
+    jobs = jobs.map((job) => {
+      return { columnField: 'name', operatorValue: 'equals', value: job.name }
+    })
     console.log(jobs)
-    return encodeURIComponent(JSON.stringify({ items: jobs, linkOperator: 'or' }))
+    return encodeURIComponent(
+      JSON.stringify({ items: jobs, linkOperator: 'or' })
+    )
   }
 
   const detailsButton = (
@@ -363,8 +366,8 @@ function JobTable (props) {
         sortModel={[
           {
             field: sortField,
-            sort: sort
-          }
+            sort: sort,
+          },
         ]}
         // Sorting:
         onSortModelChange={(m) => updateSortModel(m)}
@@ -373,9 +376,7 @@ function JobTable (props) {
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
         checkboxSelection={!props.briefTable}
-        onSelectionModelChange={(rows) =>
-          setSelectedJobs(rows)
-        }
+        onSelectionModelChange={(rows) => setSelectedJobs(rows)}
         rowsPerPageOptions={[5, 10, 25, 50]}
         getRowClassName={(params) =>
           classes[
@@ -389,11 +390,11 @@ function JobTable (props) {
             doSearch: requestSearch,
             period: period,
             selectPeriod: setPeriod,
-            setFilterModel: (m) => addFilters(m)
-          }
+            setFilterModel: (m) => addFilters(m),
+          },
         }}
       />
-      { props.briefTable ? '' : detailsButton }
+      {props.briefTable ? '' : detailsButton}
       <BugzillaDialog
         item={jobDetails}
         isOpen={isBugzillaDialogOpen}
@@ -408,10 +409,10 @@ JobTable.defaultProps = {
   pageSize: 25,
   briefTable: false,
   filterModel: {
-    items: []
+    items: [],
   },
   sortField: 'current_pass_percentage',
-  sort: 'asc'
+  sort: 'asc',
 }
 
 JobTable.propTypes = {
@@ -426,7 +427,7 @@ JobTable.propTypes = {
   job: PropTypes.string,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
-  sortField: PropTypes.string
+  sortField: PropTypes.string,
 }
 
 export default withStyles(generateClasses(JOB_THRESHOLDS))(JobTable)

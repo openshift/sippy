@@ -1,13 +1,17 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { QueryParamProvider } from 'use-query-params'
-import { mount } from 'enzyme'
-import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTests'
 import { BrowserRouter } from 'react-router-dom'
+import {
+  expectLoadingPage,
+  setupDefaultPolly,
+  withoutMuiID,
+} from '../setupTests'
+import { mount } from 'enzyme'
+import { QueryParamProvider } from 'use-query-params'
 import JobTable from './JobTable'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -20,11 +24,13 @@ describe('JobTable', () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-                <QueryParamProvider>
-                    <BrowserRouter>
-                        <JobTable release="4.8" />
-                    </BrowserRouter>)
-                </QueryParamProvider>)
+        <QueryParamProvider>
+          <BrowserRouter>
+            <JobTable release="4.8" />
+          </BrowserRouter>
+          )
+        </QueryParamProvider>
+      )
     })
 
     expectLoadingPage(wrapper).toBeTruthy()

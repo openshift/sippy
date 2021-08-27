@@ -1,14 +1,17 @@
 import { createTheme } from '@material-ui/core/styles'
+import {
+  GridToolbarDensitySelector,
+  GridToolbarFilterButton,
+} from '@material-ui/data-grid'
 import { makeStyles } from '@material-ui/styles'
-import IconButton from '@material-ui/core/IconButton'
-import TextField from '@material-ui/core/TextField'
-import { GridToolbarDensitySelector, GridToolbarFilterButton } from '@material-ui/data-grid'
 import ClearIcon from '@material-ui/icons/Clear'
-import SearchIcon from '@material-ui/icons/Search'
-import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
+import IconButton from '@material-ui/core/IconButton'
+import PropTypes from 'prop-types'
+import React, { Fragment } from 'react'
+import SearchIcon from '@material-ui/icons/Search'
+import TextField from '@material-ui/core/TextField'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -18,25 +21,25 @@ const useStyles = makeStyles(
       justifyContent: 'space-between',
       display: 'flex',
       alignItems: 'flex-start',
-      flexWrap: 'wrap'
+      flexWrap: 'wrap',
     },
     textField: {
       [theme.breakpoints.down('xs')]: {
-        width: '100%'
+        width: '100%',
       },
       margin: theme.spacing(1, 0.5, 1.5),
       '& .MuiSvgIcon-root': {
-        marginRight: theme.spacing(0.5)
+        marginRight: theme.spacing(0.5),
       },
       '& .MuiInput-underline:before': {
-        borderBottom: `1px solid ${theme.palette.divider}`
-      }
-    }
+        borderBottom: `1px solid ${theme.palette.divider}`,
+      },
+    },
   }),
   { defaultTheme }
 )
 
-export default function GridToolbar (props) {
+export default function GridToolbar(props) {
   const classes = useStyles()
 
   const [search, setSearch] = React.useState('')
@@ -45,10 +48,23 @@ export default function GridToolbar (props) {
     <div className={classes.root}>
       <div>
         <GridToolbarFilterButton />
-        {props.bookmarks ? <GridToolbarBookmarkMenu bookmarks={props.bookmarks} setFilterModel={props.setFilterModel} /> : ''}
-        {props.period ? <GridToolbarPeriodSelector selectPeriod={props.selectPeriod} period={props.period} /> : ''}
+        {props.bookmarks ? (
+          <GridToolbarBookmarkMenu
+            bookmarks={props.bookmarks}
+            setFilterModel={props.setFilterModel}
+          />
+        ) : (
+          ''
+        )}
+        {props.period ? (
+          <GridToolbarPeriodSelector
+            selectPeriod={props.selectPeriod}
+            period={props.period}
+          />
+        ) : (
+          ''
+        )}
         <GridToolbarDensitySelector />
-
       </div>
       <div>
         <TextField
@@ -81,7 +97,7 @@ export default function GridToolbar (props) {
                   <ClearIcon fontSize="small" />
                 </IconButton>
               </Fragment>
-            )
+            ),
           }}
         />
       </div>
@@ -96,5 +112,5 @@ GridToolbar.propTypes = {
   period: PropTypes.string,
   selectPeriod: PropTypes.func,
   setFilterModel: PropTypes.func.isRequired,
-  value: PropTypes.string
+  value: PropTypes.string,
 }

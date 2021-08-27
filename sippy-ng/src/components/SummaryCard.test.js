@@ -1,7 +1,7 @@
-import React from 'react'
 import { act } from '@testing-library/react'
-import { withoutMuiID } from '../setupTests'
 import { mount } from 'enzyme'
+import { withoutMuiID } from '../setupTests'
+import React from 'react'
 import SummaryCard from './SummaryCard'
 
 jest.useRealTimers()
@@ -11,7 +11,12 @@ describe(SummaryCard, () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-          <SummaryCard flakes={10} success={10} fail={10} threshold={{ success: 90, warning: 80, error: 0 }} />
+        <SummaryCard
+          flakes={10}
+          success={10}
+          fail={10}
+          threshold={{ success: 90, warning: 80, error: 0 }}
+        />
       )
     })
 

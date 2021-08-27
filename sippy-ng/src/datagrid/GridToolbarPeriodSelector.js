@@ -3,7 +3,7 @@ import { Filter2, Filter7 } from '@material-ui/icons'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-export default function GridToolbarPeriodSelector (props) {
+export default function GridToolbarPeriodSelector(props) {
   const periodFilter = `The period to report on. When selecting two days, the
     previous two days are compared with the previous 7 days. A default report typically
     compares the previous 7 days to the prior 7 day period.`
@@ -31,27 +31,43 @@ export default function GridToolbarPeriodSelector (props) {
   }
 
   return (
-        <Fragment>
-            <Tooltip title={periodFilter}>
-                <Button aria-controls="period-menu" aria-haspopup="true" startIcon={periodIcon} color="primary" onClick={handleClick}>
-                    Period
-                </Button>
-            </Tooltip>
-            <Menu
-                id="period-menu"
-                anchorEl={anchor}
-                keepMounted
-                open={Boolean(anchor)}
-                onClose={handleClose}
-            >
-                <MenuItem style={{ fontWeight: (period === 'twoDay') ? 'normal' : 'bold' }} onClick={() => selectPeriod('default')}>Default</MenuItem>
-                <MenuItem style={{ fontWeight: (period === 'twoDay') ? 'bold' : 'normal' }} onClick={() => selectPeriod('twoDay')}>Two Days</MenuItem>
-            </Menu>
-        </Fragment>
+    <Fragment>
+      <Tooltip title={periodFilter}>
+        <Button
+          aria-controls="period-menu"
+          aria-haspopup="true"
+          startIcon={periodIcon}
+          color="primary"
+          onClick={handleClick}
+        >
+          Period
+        </Button>
+      </Tooltip>
+      <Menu
+        id="period-menu"
+        anchorEl={anchor}
+        keepMounted
+        open={Boolean(anchor)}
+        onClose={handleClose}
+      >
+        <MenuItem
+          style={{ fontWeight: period === 'twoDay' ? 'normal' : 'bold' }}
+          onClick={() => selectPeriod('default')}
+        >
+          Default
+        </MenuItem>
+        <MenuItem
+          style={{ fontWeight: period === 'twoDay' ? 'bold' : 'normal' }}
+          onClick={() => selectPeriod('twoDay')}
+        >
+          Two Days
+        </MenuItem>
+      </Menu>
+    </Fragment>
   )
 }
 
 GridToolbarPeriodSelector.propTypes = {
   selectPeriod: PropTypes.func.isRequired,
-  period: PropTypes.string
+  period: PropTypes.string,
 }

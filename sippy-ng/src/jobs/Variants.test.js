@@ -1,10 +1,14 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
+import {
+  expectLoadingPage,
+  setupDefaultPolly,
+  withoutMuiID,
+} from '../setupTests'
 import { mount } from 'enzyme'
-import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTests'
+import React from 'react'
 import Variants from './Variants'
 
 jest.useRealTimers()

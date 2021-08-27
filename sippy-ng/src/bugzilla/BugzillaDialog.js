@@ -1,12 +1,12 @@
 import { Button, Divider, Tooltip, Typography } from '@material-ui/core'
+import { Close, Info } from '@material-ui/icons'
+import BugTable from './BugTable'
+import bugzillaURL from './BugzillaUtils'
 import Dialog from '@material-ui/core/Dialog'
 import DialogContent from '@material-ui/core/DialogContent'
 import DialogTitle from '@material-ui/core/DialogTitle'
-import { Close, Info } from '@material-ui/icons'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import bugzillaURL from './BugzillaUtils'
-import BugTable from './BugTable'
 
 export const LINKED_BUGS = `Linked bugs are bugs that mention the failing test name
 and are targeted to the release being reported on.`
@@ -18,7 +18,7 @@ name but are not targeted to the release being reported on.`
  * BugzillaDialog shows the bugs both linked and associated with a
  * job or test. It also has a link to prefill in a new bug.
  */
-export default function BugzillaDialog (props) {
+export default function BugzillaDialog(props) {
   return (
     <Fragment>
       <Dialog
@@ -28,15 +28,13 @@ export default function BugzillaDialog (props) {
         fullWidth={true}
         open={props.isOpen}
         onClose={props.close}
-        aria-labelledby="form-dialog-title">
-
+        aria-labelledby="form-dialog-title"
+      >
         <DialogTitle id="form-dialog-title" style={{ textAlign: 'right' }}>
           <Button startIcon={<Close />} onClick={props.close} />
         </DialogTitle>
         <DialogContent>
-          <Typography variant="h5">
-            {props.item.name}
-          </Typography>
+          <Typography variant="h5">{props.item.name}</Typography>
           <Divider />
 
           <Typography variant="h6" style={{ margin: 20 }}>
@@ -57,7 +55,13 @@ export default function BugzillaDialog (props) {
 
           <BugTable bugs={props.item.associated_bugs} />
 
-          <Button target="_blank" href={bugzillaURL(props.release, props.item)} variant="contained" color="primary" style={{ marginTop: 20 }}>
+          <Button
+            target="_blank"
+            href={bugzillaURL(props.release, props.item)}
+            variant="contained"
+            color="primary"
+            style={{ marginTop: 20 }}
+          >
             Open a new bug
           </Button>
         </DialogContent>
@@ -70,9 +74,9 @@ BugzillaDialog.defaultProps = {
   item: {
     name: '',
     bugs: [],
-    associated_bugs: []
+    associated_bugs: [],
   },
-  classes: {}
+  classes: {},
 }
 
 BugzillaDialog.propTypes = {
@@ -80,5 +84,5 @@ BugzillaDialog.propTypes = {
   item: PropTypes.object.isRequired,
   classes: PropTypes.object,
   isOpen: PropTypes.bool,
-  close: PropTypes.func
+  close: PropTypes.func,
 }

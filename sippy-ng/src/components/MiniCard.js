@@ -1,31 +1,41 @@
-import { Box, Card, CardContent, Grid, Tooltip, Typography } from '@material-ui/core'
+import {
+  Box,
+  Card,
+  CardContent,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
+import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { scale } from 'chroma-js'
+import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import { Link } from 'react-router-dom'
-import PassRateIcon from './PassRateIcon'
-import { scale } from 'chroma-js'
 
 const useStyles = makeStyles({
   cardContent: {
     color: 'black',
-    textAlign: 'center'
+    textAlign: 'center',
   },
-  miniCard: props => ({
-    height: '100%'
-  })
+  miniCard: (props) => ({
+    height: '100%',
+  }),
 })
 
-export default function MiniCard (props) {
+export default function MiniCard(props) {
   const classes = useStyles(props)
   const theme = useTheme()
 
-  const colorScale = scale(
-    [
-      theme.palette.error.light,
-      theme.palette.warning.light,
-      theme.palette.success.light
-    ]).domain([props.threshold.error, props.threshold.warning, props.threshold.success])
+  const colorScale = scale([
+    theme.palette.error.light,
+    theme.palette.warning.light,
+    theme.palette.success.light,
+  ]).domain([
+    props.threshold.error,
+    props.threshold.warning,
+    props.threshold.success,
+  ])
 
   let bgColor = colorScale(props.current).hex()
   if (props.currentRuns === 0) {
@@ -34,15 +44,31 @@ export default function MiniCard (props) {
 
   const summary = (
     <Fragment>
-      <div align="center">{props.current.toFixed(1)}% <PassRateIcon improvement={props.current - props.previous} /> {props.previous.toFixed(1)}%</div>
+      <div align="center">
+        {props.current.toFixed(1)}%{' '}
+        <PassRateIcon improvement={props.current - props.previous} />{' '}
+        {props.previous.toFixed(1)}%
+      </div>
     </Fragment>
   )
 
   let card = (
-    <Card elevation={5} className={`${classes.miniCard}`} style={{ backgroundColor: bgColor }}>
-      <CardContent className={`${classes.cardContent}`} style={{ textAlign: 'center' }}>
+    <Card
+      elevation={5}
+      className={`${classes.miniCard}`}
+      style={{ backgroundColor: bgColor }}
+    >
+      <CardContent
+        className={`${classes.cardContent}`}
+        style={{ textAlign: 'center' }}
+      >
         <Typography variant="h6">{props.name}</Typography>
-        <Grid container direction="row" alignItems="center" style={{ margin: 20, textAlign: 'center' }}>
+        <Grid
+          container
+          direction="row"
+          alignItems="center"
+          style={{ margin: 20, textAlign: 'center' }}
+        >
           {props.currentRuns > 0 ? summary : 'No data'}
         </Grid>
       </CardContent>
@@ -74,7 +100,7 @@ MiniCard.defaultProps = {
   flakes: 0,
   success: 0,
   fail: 0,
-  tooltip: ''
+  tooltip: '',
 }
 
 MiniCard.propTypes = {
@@ -88,6 +114,6 @@ MiniCard.propTypes = {
   threshold: PropTypes.shape({
     success: PropTypes.number,
     warning: PropTypes.number,
-    error: PropTypes.number
-  })
+    error: PropTypes.number,
+  }),
 }

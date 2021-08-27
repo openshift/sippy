@@ -1,21 +1,28 @@
 import PropTypes from 'prop-types'
 
-import { Container, Grid, Paper, Tab, Tabs, Typography } from '@material-ui/core'
 import { Alert, TabContext } from '@material-ui/lab'
+import {
+  Container,
+  Grid,
+  Paper,
+  Tab,
+  Tabs,
+  Typography,
+} from '@material-ui/core'
 import React, { Fragment, useEffect } from 'react'
 
+import './Upgrades.css'
+import { BOOKMARKS } from '../constants'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import JobTable from '../jobs/JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 import TestTable from '../tests/TestTable'
-import { BOOKMARKS } from '../constants'
-import './Upgrades.css'
 
 /**
  *  Upgrades is the landing page for upgrades.
  */
-export default function Upgrades (props) {
+export default function Upgrades(props) {
   const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -23,18 +30,23 @@ export default function Upgrades (props) {
   const [data, setData] = React.useState({})
 
   const fetchData = () => {
-    fetch(process.env.REACT_APP_API_URL + '/api/upgrade?release=' + props.release)
+    fetch(
+      process.env.REACT_APP_API_URL + '/api/upgrade?release=' + props.release
+    )
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
         }
         return response.json()
       })
-      .then(json => {
+      .then((json) => {
         setData(json)
         setLoaded(true)
-      }).catch(error => {
-        setFetchError('Could not retrieve release ' + props.release + ', ' + error)
+      })
+      .catch((error) => {
+        setFetchError(
+          'Could not retrieve release ' + props.release + ', ' + error
+        )
       })
   }
 
@@ -64,25 +76,46 @@ export default function Upgrades (props) {
             <Grid container justifyContent="center" size="xl" className="view">
               <Paper>
                 <Tabs
-                  value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}
+                  value={location.pathname.substring(
+                    location.pathname.lastIndexOf('/') + 1
+                  )}
                   indicatorColor="primary"
                   textColor="primary"
                 >
-                  <Tab label="Upgrade rates by operator" value="operators" component={Link} to={url + '/operators'} />
-                  <Tab label="Upgrade related tests" value="tests" component={Link} to={url + '/tests'} />
-                  <Tab label="Upgrade jobs" value="jobs" component={Link} to={url + '/jobs'} />
+                  <Tab
+                    label="Upgrade rates by operator"
+                    value="operators"
+                    component={Link}
+                    to={url + '/operators'}
+                  />
+                  <Tab
+                    label="Upgrade related tests"
+                    value="tests"
+                    component={Link}
+                    to={url + '/tests'}
+                  />
+                  <Tab
+                    label="Upgrade jobs"
+                    value="jobs"
+                    component={Link}
+                    to={url + '/jobs'}
+                  />
                 </Tabs>
               </Paper>
             </Grid>
             <Switch>
               <Route path={path + '/operators'}>
-                <TestByVariantTable release={props.release} colorScale={[90, 100]} data={data} />
+                <TestByVariantTable
+                  release={props.release}
+                  colorScale={[90, 100]}
+                  data={data}
+                />
               </Route>
               <Route path={path + '/tests'}>
                 <TestTable
                   release={props.release}
                   filterModel={{
-                    items: [BOOKMARKS.UPGRADE]
+                    items: [BOOKMARKS.UPGRADE],
                   }}
                 />
               </Route>
@@ -91,7 +124,7 @@ export default function Upgrades (props) {
                   <JobTable
                     release={props.release}
                     filterModel={{
-                      items: [BOOKMARKS.UPGRADE]
+                      items: [BOOKMARKS.UPGRADE],
                     }}
                   />
                 </Container>
@@ -106,5 +139,5 @@ export default function Upgrades (props) {
 }
 
 Upgrades.propTypes = {
-  release: PropTypes.string.isRequired
+  release: PropTypes.string.isRequired,
 }

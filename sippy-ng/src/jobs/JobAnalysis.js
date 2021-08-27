@@ -1,22 +1,35 @@
-import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
-import { ArrayParam, JsonParam, useQueryParam } from 'use-query-params'
-import Alert from '@material-ui/lab/Alert'
-import { Box, Button, Card, Container, Dialog, Grid, Typography } from '@material-ui/core'
 import './JobAnalysis.css'
-import Divider from '@material-ui/core/Divider'
-import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-import { Link } from 'react-router-dom'
+import { ArrayParam, JsonParam, useQueryParam } from 'use-query-params'
+import {
+  Box,
+  Button,
+  Card,
+  Container,
+  Dialog,
+  Grid,
+  Typography,
+} from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
+import {
+  explainFilter,
+  pathForJobRunsWithFilter,
+  pathForJobsWithFilter,
+  withSort,
+} from '../helpers'
+import { JOB_THRESHOLDS } from '../constants'
 import { JobStackedChart } from './JobStackedChart'
 import { Line } from 'react-chartjs-2'
+import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
+import Alert from '@material-ui/lab/Alert'
+import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
-import { explainFilter, pathForJobRunsWithFilter, pathForJobsWithFilter, withSort } from '../helpers'
+import PropTypes from 'prop-types'
+import React, { Fragment, useEffect } from 'react'
+import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
-import { JOB_THRESHOLDS } from '../constants'
 
-export function JobAnalysis (props) {
+export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_day: {} })
   const [filterModel] = useQueryParam('filters', JsonParam)
@@ -25,8 +38,14 @@ export function JobAnalysis (props) {
 
   const [allTests, setAllTests] = React.useState([])
   const [selectionModel, setSelectionModel] = React.useState([0, 1, 2, 3, 4])
-  const [selectedTests = [], setSelectedTests] = useQueryParam('tests', ArrayParam)
-  const [testFilter = { items: [] }, setTestFilter] = useQueryParam('testFilters', JsonParam)
+  const [selectedTests = [], setSelectedTests] = useQueryParam(
+    'tests',
+    ArrayParam
+  )
+  const [testFilter = { items: [] }, setTestFilter] = useQueryParam(
+    'testFilters',
+    JsonParam
+  )
   const [testSelectionDialog, setTestSelectionDialog] = React.useState(false)
 
   const fetchData = () => {
@@ -34,11 +53,15 @@ export function JobAnalysis (props) {
 
     let queryParams = `release=${props.release}`
     if (filterModel) {
-      queryParams += `&filter=${encodeURIComponent(JSON.stringify(filterModel))}`
+      queryParams += `&filter=${encodeURIComponent(
+        JSON.stringify(filterModel)
+      )}`
     }
 
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`)
+      fetch(
+        `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
+      ),
     ])
       .then(([analysis]) => {
         if (analysis.status !== 200) {
@@ -51,12 +74,15 @@ export function JobAnalysis (props) {
         setAnalysis(analysis)
 
         let allTests = new Map()
-        Object.keys(analysis.by_day)
-          .map((key) => Object.keys(analysis.by_day[key].test_count)
-            .forEach((test) => {
-              const count = allTests.get(test) || { name: test, value: 0 }
-              allTests.set(test, { name: test, value: count.value + analysis.by_day[key].test_count[test] })
-            }))
+        Object.keys(analysis.by_day).map((key) =>
+          Object.keys(analysis.by_day[key].test_count).forEach((test) => {
+            const count = allTests.get(test) || { name: test, value: 0 }
+            allTests.set(test, {
+              name: test,
+              value: count.value + analysis.by_day[key].test_count[test],
+            })
+          })
+        )
 
         allTests = [...allTests.values()].sort((a, b) => b.value - a.value)
 
@@ -75,9 +101,11 @@ export function JobAnalysis (props) {
 
         setAllTests(allTests)
         setLoaded(true)
-      }
-      ).catch(error => {
-        setFetchError('Could not retrieve job analysis ' + props.release + ', ' + error)
+      })
+      .catch((error) => {
+        setFetchError(
+          'Could not retrieve job analysis ' + props.release + ', ' + error
+        )
       })
   }
 
@@ -90,14 +118,12 @@ export function JobAnalysis (props) {
   }
 
   if (!isLoaded) {
-    return (
-      <p>Loading...</p>
-    )
+    return <p>Loading...</p>
   }
 
   const topTestChart = {
     labels: Object.keys(analysis.by_day),
-    datasets: []
+    datasets: [],
   }
 
   const colors = scale('Set2').mode('lch').colors(selectionModel.length)
@@ -110,7 +136,13 @@ export function JobAnalysis (props) {
         backgroundColor: colors[index],
         borderColor: colors[index],
         tension: 0.3,
-        data: Object.keys(analysis.by_day).map((key) => (100 * (1 - (analysis.by_day[key].test_count[allTests[id].name] || 0) / analysis.by_day[key].total_runs)))
+        data: Object.keys(analysis.by_day).map(
+          (key) =>
+            100 *
+            (1 -
+              (analysis.by_day[key].test_count[allTests[id].name] || 0) /
+                analysis.by_day[key].total_runs)
+        ),
       })
     }
   })
@@ -120,13 +152,18 @@ export function JobAnalysis (props) {
       tooltip: {
         callbacks: {
           label: function (context) {
-            const failures = analysis.by_day[context.label].test_count[context.dataset.label] || 0
+            const failures =
+              analysis.by_day[context.label].test_count[
+                context.dataset.label
+              ] || 0
             const runs = analysis.by_day[context.label].total_runs
 
-            return `${context.dataset.label} ${context.raw.toFixed(2)}% (${failures} failed of ${runs} runs)`
-          }
-        }
-      }
+            return `${context.dataset.label} ${context.raw.toFixed(
+              2
+            )}% (${failures} failed of ${runs} runs)`
+          },
+        },
+      },
     },
     scales: {
       y: {
@@ -134,10 +171,10 @@ export function JobAnalysis (props) {
         ticks: {
           callback: (value, index, values) => {
             return `${value}%`
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   }
 
   const requestSearch = (searchValue) => {
@@ -149,13 +186,15 @@ export function JobAnalysis (props) {
       id: 99,
       columnField: 'name',
       operatorValue: 'contains',
-      value: searchValue
+      value: searchValue,
     })
     setTestFilter(currentFilters)
   }
 
   const updateSelectionModel = (m) => {
-    setSelectedTests(allTests.filter((row) => m.includes(row.id)).map((row) => row.name))
+    setSelectedTests(
+      allTests.filter((row) => m.includes(row.id)).map((row) => row.name)
+    )
     setSelectionModel(m)
   }
 
@@ -172,8 +211,7 @@ export function JobAnalysis (props) {
       <SimpleBreadcrumbs
         release={props.release}
         previousPage={
-          <Link
-            to={pathForJobsWithFilter(props.release, filterModel)}>
+          <Link to={pathForJobsWithFilter(props.release, filterModel)}>
             Jobs
           </Link>
         }
@@ -196,15 +234,22 @@ export function JobAnalysis (props) {
               fail={totalRuns - totalSuccess}
               flakes={0}
               caption={
-                <Fragment>{totalRuns} runs, {totalSuccess} successful</Fragment>
+                <Fragment>
+                  {totalRuns} runs, {totalSuccess} successful
+                </Fragment>
               }
             />
           </Grid>
 
           <Grid item md={8}>
-            <Card className="test-failure-card" elevation={5} style={{ height: '100%' }}>
+            <Card
+              className="test-failure-card"
+              elevation={5}
+              style={{ height: '100%' }}
+            >
               <strong>Current filter</strong>:<br />
-              Showing jobs matching {explainFilter(filterModel)}<br />
+              Showing jobs matching {explainFilter(filterModel)}
+              <br />
               <Divider />
               <Button
                 variant="contained"
@@ -215,13 +260,16 @@ export function JobAnalysis (props) {
               >
                 View matching jobs
               </Button>
-
               <Button
                 variant="contained"
                 color="secondary"
                 component={Link}
                 style={{ marginTop: 20 }}
-                to={withSort(pathForJobRunsWithFilter(props.release, filterModel), 'timestamp', 'desc')}
+                to={withSort(
+                  pathForJobRunsWithFilter(props.release, filterModel),
+                  'timestamp',
+                  'desc'
+                )}
               >
                 View matching job runs
               </Button>
@@ -230,9 +278,7 @@ export function JobAnalysis (props) {
 
           <Grid item md={12}>
             <Card className="job-failure-card" elevation={5}>
-              <Typography variant="h5">
-                Job results
-              </Typography>
+              <Typography variant="h5">Job results</Typography>
               <JobStackedChart release={props.release} analysis={analysis} />
             </Card>
           </Grid>
@@ -249,39 +295,50 @@ export function JobAnalysis (props) {
                 <Box hidden={selectionModel.length === 0}>
                   <Line data={topTestChart} options={options} height={100} />
                 </Box>
-                <Button style={{ marginTop: 20 }} variant="contained" color="secondary" onClick={() => setTestSelectionDialog(true)}>Select tests to chart</Button>
-                <Dialog fullWidth={true} maxWidth="lg" onClose={() => setTestSelectionDialog(false)} open={testSelectionDialog}>
+                <Button
+                  style={{ marginTop: 20 }}
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => setTestSelectionDialog(true)}
+                >
+                  Select tests to chart
+                </Button>
+                <Dialog
+                  fullWidth={true}
+                  maxWidth="lg"
+                  onClose={() => setTestSelectionDialog(false)}
+                  open={testSelectionDialog}
+                >
                   <Grid className="test-dialog">
-                    <Typography variant="h6" style={{ marginTop: 20, marginBottom: 20 }}>
+                    <Typography
+                      variant="h6"
+                      style={{ marginTop: 20, marginBottom: 20 }}
+                    >
                       Select tests to chart
                     </Typography>
                     <DataGrid
                       components={{ Toolbar: GridToolbar }}
-                      columns={
-                        [
-                          {
-                            field: 'id',
-                            hide: true,
-                            filterable: false
-                          },
-                          {
-                            field: 'name',
-                            headerName: 'Test name',
-                            flex: 4,
-                            renderCell: (param) => (
-                              <div className="job-name">
-                                {param.value}
-                              </div>
-                            )
-                          },
-                          {
-                            field: 'value',
-                            type: 'number',
-                            headerName: 'Failure count',
-                            flex: 1
-                          }
-                        ]
-                      }
+                      columns={[
+                        {
+                          field: 'id',
+                          hide: true,
+                          filterable: false,
+                        },
+                        {
+                          field: 'name',
+                          headerName: 'Test name',
+                          flex: 4,
+                          renderCell: (param) => (
+                            <div className="job-name">{param.value}</div>
+                          ),
+                        },
+                        {
+                          field: 'value',
+                          type: 'number',
+                          headerName: 'Failure count',
+                          flex: 1,
+                        },
+                      ]}
                       rows={allTests}
                       pageSize={10}
                       rowHeight={60}
@@ -289,18 +346,27 @@ export function JobAnalysis (props) {
                       selectionModel={selectionModel}
                       onSelectionModelChange={(m) => updateSelectionModel(m)}
                       filterModel={testFilter}
-                      onFilterModelChange={(m) => { setTestFilter(m) }}
+                      onFilterModelChange={(m) => {
+                        setTestFilter(m)
+                      }}
                       checkboxSelection
                       componentsProps={{
                         toolbar: {
                           setFilterModel: setTestFilter,
                           clearSearch: () => requestSearch(''),
-                          doSearch: requestSearch
-                        }
+                          doSearch: requestSearch,
+                        },
                       }}
                     />
 
-                    <Button style={{ marginTop: 20 }} variant="contained" color="primary" onClick={() => setTestSelectionDialog(false)}>OK</Button>
+                    <Button
+                      style={{ marginTop: 20 }}
+                      variant="contained"
+                      color="primary"
+                      onClick={() => setTestSelectionDialog(false)}
+                    >
+                      OK
+                    </Button>
                   </Grid>
                 </Dialog>
               </Box>
@@ -313,10 +379,10 @@ export function JobAnalysis (props) {
 }
 
 JobAnalysis.defaultProps = {
-  job: ''
+  job: '',
 }
 
 JobAnalysis.propTypes = {
   release: PropTypes.string.isRequired,
-  job: PropTypes.string
+  job: PropTypes.string,
 }

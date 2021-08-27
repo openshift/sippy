@@ -1,13 +1,13 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { QueryParamProvider } from 'use-query-params'
-import { mount } from 'enzyme'
-import { setupDefaultPolly, withoutMuiID } from '../setupTests'
 import { BrowserRouter } from 'react-router-dom'
+import { mount } from 'enzyme'
+import { QueryParamProvider } from 'use-query-params'
+import { setupDefaultPolly, withoutMuiID } from '../setupTests'
 import JobsDetail from './JobsDetail'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -20,13 +20,13 @@ describe('JobsDetail', () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-                <QueryParamProvider>
-                    <BrowserRouter>
-                        <JobsDetail release="4.8"
-                                    filter="4.8-e2e-gcp-upgrade"
-                        />
-                    </BrowserRouter>)
-                </QueryParamProvider>)
+        <QueryParamProvider>
+          <BrowserRouter>
+            <JobsDetail release="4.8" filter="4.8-e2e-gcp-upgrade" />
+          </BrowserRouter>
+          )
+        </QueryParamProvider>
+      )
     })
 
     expect(wrapper.find('div').contains('Fetching data...')).toBeTruthy()

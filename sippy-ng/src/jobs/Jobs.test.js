@@ -1,14 +1,14 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import { mount } from 'enzyme'
 import { setupPolly } from 'setup-polly-jest'
 import { withoutMuiID } from '../setupTests'
-import path from 'path'
 import Jobs from './Jobs'
-import { BrowserRouter } from 'react-router-dom'
+import path from 'path'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -22,17 +22,20 @@ describe('Jobs', () => {
       persister: require('@pollyjs/persister-fs'),
       persisterOptions: {
         fs: {
-          recordingsDir: path.resolve(__dirname, '../__recordings__')
-        }
-      }
-    }
-    )
+          recordingsDir: path.resolve(__dirname, '../__recordings__'),
+        },
+      },
+    })
   })
 
   it('should match snapshot', async () => {
     let wrapper
     await act(async () => {
-      wrapper = mount(<BrowserRouter><Jobs release="4.8" /></BrowserRouter>)
+      wrapper = mount(
+        <BrowserRouter>
+          <Jobs release="4.8" />
+        </BrowserRouter>
+      )
     })
 
     expect(wrapper.text()).toContain('Jobs')

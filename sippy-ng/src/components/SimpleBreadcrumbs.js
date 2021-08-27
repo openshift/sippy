@@ -1,15 +1,13 @@
+import { Link } from 'react-router-dom'
+import Breadcrumbs from '@material-ui/core/Breadcrumbs'
+import PropTypes from 'prop-types'
 import React from 'react'
 import Typography from '@material-ui/core/Typography'
-import Breadcrumbs from '@material-ui/core/Breadcrumbs'
-import { Link } from 'react-router-dom'
-import PropTypes from 'prop-types'
 
-export default function SimpleBreadcrumbs (props) {
+export default function SimpleBreadcrumbs(props) {
   return (
     <Breadcrumbs aria-label="breadcrumb">
-      <Link to={'/release/' + props.release}>
-        Overview
-      </Link>
+      <Link to={'/release/' + props.release}>Overview</Link>
 
       {props.previousPage ? props.previousPage : ''}
 
@@ -21,5 +19,5 @@ export default function SimpleBreadcrumbs (props) {
 SimpleBreadcrumbs.propTypes = {
   release: PropTypes.string.isRequired,
   previousPage: PropTypes.element,
-  currentPage: PropTypes.string
+  currentPage: PropTypes.string,
 }

@@ -1,27 +1,22 @@
-import PropTypes from 'prop-types'
 import { Card, Container, Grid, Tab, Typography } from '@material-ui/core'
-import { JobStackedChart } from './JobStackedChart'
-import React, { Fragment } from 'react'
-import JobTable from './JobTable'
 import { filterFor } from '../helpers'
-import JobRunsTable from './JobRunsTable'
-import { TabContext, TabList, TabPanel } from '@material-ui/lab'
-import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import { JobStackedChart } from './JobStackedChart'
 import { Link } from 'react-router-dom'
+import { TabContext, TabList, TabPanel } from '@material-ui/lab'
+import JobRunsTable from './JobRunsTable'
+import JobTable from './JobTable'
+import PropTypes from 'prop-types'
+import React, { Fragment } from 'react'
+import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-export default function VariantStatus (props) {
+export default function VariantStatus(props) {
   const [tab, setTab] = React.useState(0)
 
   return (
     <Fragment>
-
       <SimpleBreadcrumbs
         release={props.release}
-        previousPage={
-          <Link to={'/jobs/' + props.release}>
-            Jobs
-          </Link>
-        }
+        previousPage={<Link to={'/jobs/' + props.release}>Jobs</Link>}
         currentPage="Variant Analysis"
       />
       <Container size="xl">
@@ -32,12 +27,18 @@ export default function VariantStatus (props) {
         <Grid container spacing={3}>
           <Grid item md={12}>
             <Card elevation={5} style={{ padding: 20 }}>
-              <Typography variant="h5">
-                Overall
-              </Typography>
+              <Typography variant="h5">Overall</Typography>
               <JobStackedChart
                 release={props.release}
-                filter={{ items: [{ columnField: 'variants', operatorValue: 'contains', value: props.variant }] }}
+                filter={{
+                  items: [
+                    {
+                      columnField: 'variants',
+                      operatorValue: 'contains',
+                      value: props.variant,
+                    },
+                  ],
+                }}
               />
             </Card>
           </Grid>
@@ -55,10 +56,24 @@ export default function VariantStatus (props) {
                 </TabList>
 
                 <TabPanel value={0}>
-                  <JobTable hideControls={true} pageSize={5} release={props.release} filterModel={{ items: [filterFor('variants', 'contains', props.variant)] }} />
+                  <JobTable
+                    hideControls={true}
+                    pageSize={5}
+                    release={props.release}
+                    filterModel={{
+                      items: [filterFor('variants', 'contains', props.variant)],
+                    }}
+                  />
                 </TabPanel>
                 <TabPanel value={1}>
-                  <JobRunsTable pageSize={5} hideControls={true} release={props.release} filterModel={{ items: [filterFor('variants', 'contains', props.variant)] }} />
+                  <JobRunsTable
+                    pageSize={5}
+                    hideControls={true}
+                    release={props.release}
+                    filterModel={{
+                      items: [filterFor('variants', 'contains', props.variant)],
+                    }}
+                  />
                 </TabPanel>
               </TabContext>
             </Card>
@@ -71,5 +86,5 @@ export default function VariantStatus (props) {
 
 VariantStatus.propTypes = {
   release: PropTypes.string,
-  variant: PropTypes.string
+  variant: PropTypes.string,
 }

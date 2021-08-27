@@ -1,19 +1,19 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@material-ui/core'
-import PropTypes from 'prop-types'
-import { makeStyles, useTheme } from '@material-ui/core/styles'
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { scale } from 'chroma-js'
 import { Doughnut } from 'react-chartjs-2'
+import { Link } from 'react-router-dom'
+import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { scale } from 'chroma-js'
+import PropTypes from 'prop-types'
+import React from 'react'
 
 const useStyles = makeStyles({
   cardContent: {
     color: 'black',
-    textAlign: 'center'
+    textAlign: 'center',
   },
-  summaryCard: props => ({
-    height: '100%'
-  })
+  summaryCard: (props) => ({
+    height: '100%',
+  }),
 })
 
 /**
@@ -21,18 +21,22 @@ const useStyles = makeStyles({
  * along with a caption. Used mainly by the ReleaseOverview
  * page.
  */
-export default function SummaryCard (props) {
+export default function SummaryCard(props) {
   const classes = useStyles(props)
   const theme = useTheme()
 
-  const percent = (props.success / ((props.flakes || 0) + props.fail + props.success)) * 100
+  const percent =
+    (props.success / ((props.flakes || 0) + props.fail + props.success)) * 100
 
-  const colors = scale(
-    [
-      theme.palette.error.light,
-      theme.palette.warning.light,
-      theme.palette.success.light
-    ]).domain([props.threshold.error, props.threshold.warning, props.threshold.success])
+  const colors = scale([
+    theme.palette.error.light,
+    theme.palette.warning.light,
+    theme.palette.success.light,
+  ]).domain([
+    props.threshold.error,
+    props.threshold.warning,
+    props.threshold.success,
+  ])
 
   const bgColor = colors(percent).hex()
 
@@ -47,33 +51,35 @@ export default function SummaryCard (props) {
   }
 
   let card = (
-    <Card elevation={5} className={`${classes.summaryCard}`} style={{ backgroundColor: bgColor }}>
-        <CardContent className={`${classes.cardContent}`}>
-          <Typography variant="h6">{props.name}</Typography>
-          <div align="center">
-            <div style={{ width: '70%' }}>
-              <Doughnut
-                data={
+    <Card
+      elevation={5}
+      className={`${classes.summaryCard}`}
+      style={{ backgroundColor: bgColor }}
+    >
+      <CardContent className={`${classes.cardContent}`}>
+        <Typography variant="h6">{props.name}</Typography>
+        <div align="center">
+          <div style={{ width: '70%' }}>
+            <Doughnut
+              data={{
+                labels: labels,
+                datasets: [
                   {
-                    labels: labels,
-                    datasets: [{
-                      label: props.name,
-                      data: data,
-                      borderColor: bgColor,
-                      backgroundColor: color
-                    }]
-                  }}
-
-                options={
-                  {
-                    cutout: '60%'
-                  }
-                }
-              />
-            </div>
-            {props.caption}
+                    label: props.name,
+                    data: data,
+                    borderColor: bgColor,
+                    backgroundColor: color,
+                  },
+                ],
+              }}
+              options={{
+                cutout: '60%',
+              }}
+            />
           </div>
-        </CardContent>
+          {props.caption}
+        </div>
+      </CardContent>
     </Card>
   )
 
@@ -103,7 +109,7 @@ SummaryCard.defaultProps = {
   fail: 0,
   caption: '',
   tooltip: '',
-  units: 'percent'
+  units: 'percent',
 }
 
 SummaryCard.propTypes = {
@@ -118,6 +124,6 @@ SummaryCard.propTypes = {
   threshold: PropTypes.shape({
     success: PropTypes.number,
     warning: PropTypes.number,
-    error: PropTypes.number
-  })
+    error: PropTypes.number,
+  }),
 }

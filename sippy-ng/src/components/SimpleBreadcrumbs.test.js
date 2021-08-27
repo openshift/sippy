@@ -1,9 +1,9 @@
-import React from 'react'
 import { act } from '@testing-library/react'
-import { withoutMuiID } from '../setupTests'
-import { mount } from 'enzyme'
-import SimpleBreadcrumbs from './SimpleBreadcrumbs'
 import { BrowserRouter } from 'react-router-dom'
+import { mount } from 'enzyme'
+import { withoutMuiID } from '../setupTests'
+import React from 'react'
+import SimpleBreadcrumbs from './SimpleBreadcrumbs'
 
 jest.useRealTimers()
 
@@ -12,9 +12,9 @@ describe(SimpleBreadcrumbs, () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-                <BrowserRouter>
-                    <SimpleBreadcrumbs release="4.8" currentPage="Jobs"/>
-                </BrowserRouter>
+        <BrowserRouter>
+          <SimpleBreadcrumbs release="4.8" currentPage="Jobs" />
+        </BrowserRouter>
       )
     })
     expect(wrapper.find('a[href="/release/4.8"]').exists()).toBe(true)
@@ -26,9 +26,9 @@ describe(SimpleBreadcrumbs, () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-                <BrowserRouter>
-                    <SimpleBreadcrumbs release="4.8" currentPage="Jobs"/>
-                </BrowserRouter>
+        <BrowserRouter>
+          <SimpleBreadcrumbs release="4.8" currentPage="Jobs" />
+        </BrowserRouter>
       )
     })
     expect(wrapper.find('p').text()).toContain('Jobs')
