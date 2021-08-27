@@ -327,8 +327,13 @@ function JobTable(props) {
 
     const selectedIDs = new Set(selectedJobs)
     let jobs = rows.filter((row) => selectedIDs.has(row.id))
-    jobs = jobs.map((job) => {
-      return { columnField: 'name', operatorValue: 'equals', value: job.name }
+    jobs = jobs.map((job, id) => {
+      return {
+        id: id,
+        columnField: 'name',
+        operatorValue: 'equals',
+        value: job.name,
+      }
     })
     console.log(jobs)
     return encodeURIComponent(
