@@ -1,0 +1,148 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`JobAnalysis should render correctly 1`] = `
+<nav class="MuiTypography-root MuiBreadcrumbs-root MuiTypography-body1 MuiTypography-colorTextSecondary"
+     aria-label="breadcrumb"
+>
+  <ol class="MuiBreadcrumbs-ol">
+    <li class="MuiBreadcrumbs-li">
+      <a href="/release/4.8">
+        Overview
+      </a>
+    </li>
+    <li aria-hidden="true"
+        class="MuiBreadcrumbs-separator"
+    >
+      /
+    </li>
+    <li class="MuiBreadcrumbs-li">
+      <a href="/jobs/4.8">
+        Jobs
+      </a>
+    </li>
+    <li aria-hidden="true"
+        class="MuiBreadcrumbs-separator"
+    >
+      /
+    </li>
+    <li class="MuiBreadcrumbs-li">
+      <p class="MuiTypography-root MuiTypography-body1">
+        Job Analysis
+      </p>
+    </li>
+  </ol>
+</nav>
+<div class="MuiContainer-root MuiContainer-maxWidthLg">
+  <h3 class="MuiTypography-root MuiTypography-h3"
+      style="text-align: center;"
+  >
+    Job Analysis
+  </h3>
+  <hr class="MuiDivider-root"
+      style="margin: 20px;"
+  >
+  <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
+    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-4">
+      <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-2 makeStyles-summaryCard-3 MuiPaper-elevation5 MuiPaper-rounded"
+           style="background-color: rgb(129, 199, 132);"
+           title
+      >
+        <div class="MuiCardContent-root makeStyles-cardContent-1">
+          <h6 class="MuiTypography-root MuiTypography-h6">
+            Overall
+          </h6>
+          <div align="center">
+            <div style="width: 70%;">
+            </div>
+            5788 runs, 4677 successful
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-8">
+      <div class="MuiPaper-root MuiCard-root test-failure-card MuiPaper-elevation5 MuiPaper-rounded"
+           style="height: 100%;"
+      >
+        <strong>
+          Current filter
+        </strong>
+        <br>
+        Showing jobs matching all
+        <br>
+        <hr class="MuiDivider-root">
+        <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary"
+           tabindex="0"
+           role="button"
+           aria-disabled="false"
+           style="margin-top: 20px; margin-right: 20px;"
+           href="/jobs/4.8"
+        >
+          <span class="MuiButton-label">
+            View matching jobs
+          </span>
+          <span class="MuiTouchRipple-root">
+          </span>
+        </a>
+        <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary"
+           tabindex="0"
+           role="button"
+           aria-disabled="false"
+           style="margin-top: 20px;"
+           href="/jobs/4.8/runs&amp;sortField=timestamp&amp;sort=desc"
+        >
+          <span class="MuiButton-label">
+            View matching job runs
+          </span>
+          <span class="MuiTouchRipple-root">
+          </span>
+        </a>
+      </div>
+    </div>
+    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-12">
+      <div class="MuiPaper-root MuiCard-root job-failure-card MuiPaper-elevation5 MuiPaper-rounded">
+        <h5 class="MuiTypography-root MuiTypography-h5">
+          Job results
+        </h5>
+      </div>
+    </div>
+    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-12">
+      <div class="MuiPaper-root MuiCard-root job-failure-card MuiPaper-elevation5 MuiPaper-rounded">
+        <h5 class="MuiTypography-root MuiTypography-h5">
+          Test results for selected jobs
+          <svg class="MuiSvgIcon-root"
+               focusable="false"
+               viewbox="0 0 24 24"
+               aria-hidden="true"
+               title="By default, this plots the top 5 tests with the most failures in the set of jobs selected. Click the button below to change the list of tests to plot. Only tests with at least one failure during the reporting period are available."
+          >
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+            </path>
+          </svg>
+        </h5>
+        <div class="MuiBox-root MuiBox-root-4"
+             hidden
+        >
+          <p>
+            No test data found.
+          </p>
+        </div>
+        <div class="MuiBox-root MuiBox-root-5">
+          <div class="MuiBox-root MuiBox-root-6">
+          </div>
+          <button class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary"
+                  tabindex="0"
+                  type="button"
+                  style="margin-top: 20px;"
+          >
+            <span class="MuiButton-label">
+              Select tests to chart
+            </span>
+            <span class="MuiTouchRipple-root">
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

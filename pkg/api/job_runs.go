@@ -6,6 +6,8 @@ import (
 	gosort "sort"
 	"strconv"
 
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -66,6 +68,10 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v
 				Variants:     results.Variants,
 				TestGridURL:  results.TestGridURL,
 				JobRunResult: run,
+			}
+
+			if testidentification.IsUpgradeRelatedTest(apiRun.Job) {
+				apiRun.Tags = []string{"upgrade"}
 			}
 
 			if filter != nil {

@@ -1,20 +1,20 @@
-import Popover from '@material-ui/core/Popover'
-import { makeStyles } from '@material-ui/core/styles'
-import Typography from '@material-ui/core/Typography'
-import React from 'react'
-import logo from '../sippy.svg'
 import './SippyLogo.css'
+import { makeStyles } from '@material-ui/core/styles'
+import logo from '../sippy.svg'
+import Popover from '@material-ui/core/Popover'
+import React from 'react'
+import Typography from '@material-ui/core/Typography'
 
 const useStyles = makeStyles((theme) => ({
   popover: {
-    pointerEvents: 'none'
+    pointerEvents: 'none',
   },
   paper: {
-    padding: theme.spacing(1)
-  }
+    padding: theme.spacing(1),
+  },
 }))
 
-export default function SippyLogo () {
+export default function SippyLogo() {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
 
@@ -36,29 +36,37 @@ export default function SippyLogo () {
         onMouseEnter={handlePopoverOpen}
         onMouseLeave={handlePopoverClose}
       >
-        <img className="Sippy-logo" src={logo} alt="CIPI (Continuous Integration Private Investigator) aka Sippy." /><br />
+        <img
+          className="Sippy-logo"
+          src={logo}
+          alt="CIPI (Continuous Integration Private Investigator) aka Sippy."
+        />
+        <br />
       </Typography>
       <Popover
         id="mouse-over-popover"
         className={classes.popover}
         classes={{
-          paper: classes.paper
+          paper: classes.paper,
         }}
         open={open}
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'top',
-          horizontal: 'right'
+          horizontal: 'right',
         }}
         transformOrigin={{
           vertical: 'bottom',
-          horizontal: 'right'
+          horizontal: 'right',
         }}
         onClose={handlePopoverClose}
         disableRestoreFocus
       >
-        <Typography>Hi, I&apos;m Sippy! The Continuous Integration<br />
-          Private Investigator (CIPI).</Typography>
+        <Typography>
+          Hi, I&apos;m Sippy! The Continuous Integration
+          <br />
+          Private Investigator (CIPI).
+        </Typography>
       </Popover>
     </div>
   )

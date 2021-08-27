@@ -1,10 +1,12 @@
 /**
  * bugzillaURL generates a link to a prefilled out bug.
  */
-export default function bugzillaURL (release, item) {
+export default function bugzillaURL(release, item) {
   const title = item.name
   const titleEncoded = encodeURIComponent(title)
-  let url = `https://sippy.ci.openshift.org/sippy-ng/tests/${release}/analysis?test=${encodeURIComponent(item.name)}`
+  let url = `https://sippy.ci.openshift.org/sippy-ng/tests/${release}/analysis?test=${encodeURIComponent(
+    item.name
+  )}`
   if (item.test_grid_url) {
     url = item.test_grid_url
   }
@@ -23,7 +25,7 @@ FIXME: Provide a snippet of the test failure or error from the job log
   return `https://bugzilla.redhat.com/enter_bug.cgi?classification=Red%20Hat&product=OpenShift%20Container%20Platform&cf_internal_whiteboard=buildcop&short_desc=${titleEncoded}&comment=${bugText}&version=4.9&cc=sippy@dptools.openshift.org`
 }
 
-export function bugColor (item) {
+export function bugColor(item) {
   if (item.bugs.length > 0) {
     return 'black'
   } else if (item.associated_bugs.length > 0) {
@@ -33,6 +35,15 @@ export function bugColor (item) {
   }
 }
 
-export function weightedBugComparator (linkedBug1, associatedBug1, linkedBug2, associatedBug2) {
-  return ((100 * linkedBug1.length) + associatedBug1.length) - ((100 * linkedBug2.length) + associatedBug2.length)
+export function weightedBugComparator(
+  linkedBug1,
+  associatedBug1,
+  linkedBug2,
+  associatedBug2
+) {
+  return (
+    100 * linkedBug1.length +
+    associatedBug1.length -
+    (100 * linkedBug2.length + associatedBug2.length)
+  )
 }

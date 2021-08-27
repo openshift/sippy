@@ -1,8 +1,8 @@
-import React from 'react'
 import { act } from '@testing-library/react'
+import { mount } from 'enzyme'
 import { withoutMuiID } from '../setupTests'
 import LastUpdated from './LastUpdated'
-import { mount } from 'enzyme'
+import React from 'react'
 
 const minute = 60 * 1000
 const hour = minute * 60

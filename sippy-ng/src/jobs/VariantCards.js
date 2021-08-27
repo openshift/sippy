@@ -1,14 +1,21 @@
-import { Accordion, AccordionDetails, AccordionSummary, Grid, Tooltip, Typography } from '@material-ui/core'
-import { ExpandMore } from '@material-ui/icons'
-import Info from '@material-ui/icons/Info'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
+import { ExpandMore } from '@material-ui/icons'
+import { pathForVariantAnalysis } from '../helpers'
 import { PropTypes } from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
-import MiniCard from '../components/MiniCard'
 import { VARIANT_THRESHOLDS } from '../constants'
-import { pathForJobVariant } from '../helpers'
+import Info from '@material-ui/icons/Info'
+import MiniCard from '../components/MiniCard'
+import React, { Fragment, useEffect } from 'react'
 
-export default function VariantCards (props) {
+export default function VariantCards(props) {
   const [jobs, setJobs] = React.useState([])
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
@@ -21,11 +28,14 @@ export default function VariantCards (props) {
         }
         return response.json()
       })
-      .then(json => {
+      .then((json) => {
         setJobs(json[props.release].jobPassRateByVariant)
         setLoaded(true)
-      }).catch(error => {
-        setFetchError('Could not retrieve release ' + props.release + ', ' + error)
+      })
+      .catch((error) => {
+        setFetchError(
+          'Could not retrieve release ' + props.release + ', ' + error
+        )
       })
   }
 
@@ -45,14 +55,19 @@ export default function VariantCards (props) {
     return (
       <Grid item key={index} md={2} sm={4}>
         <MiniCard
-          link={`${pathForJobVariant(props.release, job.platform)}&sortField=net_improvement&sort=asc`}
+          link={pathForVariantAnalysis(props.release, job.platform)}
           threshold={VARIANT_THRESHOLDS}
           name={job.platform}
           current={job.passRates.latest.percentage}
           currentRuns={job.passRates.latest.runs}
           previous={job.passRates.prev.percentage}
           previousRuns={job.passRates.prev.runs}
-          tooltip={'Current runs: ' + job.passRates.latest.runs + ', previous runs: ' + job.passRates.prev.runs}
+          tooltip={
+            'Current runs: ' +
+            job.passRates.latest.runs +
+            ', previous runs: ' +
+            job.passRates.prev.runs
+          }
         />
       </Grid>
     )
@@ -100,5 +115,5 @@ export default function VariantCards (props) {
 }
 
 VariantCards.propTypes = {
-  release: PropTypes.string.isRequired
+  release: PropTypes.string.isRequired,
 }

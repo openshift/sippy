@@ -123,12 +123,17 @@ type JobRun struct {
 	ID          int      `json:"id"`
 	BriefName   string   `json:"brief_name"`
 	Variants    []string `json:"variants"`
+	Tags        []string `json:"tags"`
 	TestGridURL string   `json:"testGridURL"`
 	v1.JobRunResult
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
 	switch param {
+	case "name":
+		return ColumnTypeString
+	case "tags":
+		return ColumnTypeArray
 	case "job":
 		return ColumnTypeString
 	case "result":
@@ -146,7 +151,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 
 func (run JobRun) GetStringValue(param string) (string, error) {
 	switch param {
-	case "job":
+	case "job", "name":
 		return run.Job, nil
 	case "result":
 		return string(run.OverallResult), nil
@@ -174,6 +179,8 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "failedTestNames":
 		return run.FailedTestNames, nil
+	case "tags":
+		return run.Tags, nil
 	case "variants":
 		return run.Variants, nil
 	default:

@@ -1,12 +1,12 @@
 import { Button, Grid, TextField } from '@material-ui/core'
-import React, { Fragment } from 'react'
 import PropTypes from 'prop-types'
+import React, { Fragment } from 'react'
 
 /**
  * FilterBox creates a TextField and submit link for filtering
  * a set of results.
  */
-export default function GridToolbarSearchBox (props) {
+export default function GridToolbarSearchBox(props) {
   const [formError, setFormError] = React.useState(false)
 
   const submit = () => {
@@ -29,9 +29,11 @@ export default function GridToolbarSearchBox (props) {
           style={{ border: formError ? 'solid 1px red' : '', width: '50%' }}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           onChange={(e) => props.setValue(e.target.value)}
-        /> &nbsp;&nbsp;
-
-        <Button variant="contained" color="secondary" onClick={submit}>Search</Button>
+        />{' '}
+        &nbsp;&nbsp;
+        <Button variant="contained" color="secondary" onClick={submit}>
+          Search
+        </Button>
       </Grid>
     </Fragment>
   )
@@ -41,5 +43,5 @@ GridToolbarSearchBox.propTypes = {
   value: PropTypes.string,
   required: PropTypes.bool,
   action: PropTypes.func,
-  setValue: PropTypes.func
+  setValue: PropTypes.func,
 }

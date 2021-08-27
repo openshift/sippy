@@ -1,57 +1,57 @@
+import './TestTable.css'
+import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
+import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
+import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
 import { Button, Container, Tooltip } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
-import Alert from '@material-ui/lab/Alert'
+import { generateClasses } from '../datagrid/utils'
+import { Link } from 'react-router-dom'
+import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
+import Alert from '@material-ui/lab/Alert'
+import BugzillaDialog from '../bugzilla/BugzillaDialog'
+import GridToolbar from '../datagrid/GridToolbar'
+import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { StringParam, useQueryParam } from 'use-query-params'
-import BugzillaDialog from '../bugzilla/BugzillaDialog'
-import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
-import PassRateIcon from '../components/PassRateIcon'
-import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import GridToolbar from '../datagrid/GridToolbar'
-import { generateClasses } from '../datagrid/utils'
-import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
-import './TestTable.css'
 
 const bookmarks = [
   {
     name: 'Runs > 10',
-    model: [BOOKMARKS.RUN_10]
+    model: [BOOKMARKS.RUN_10],
   },
   {
     name: 'Upgrade related',
-    model: [BOOKMARKS.UPGRADE]
+    model: [BOOKMARKS.UPGRADE],
   },
   {
     name: 'Install related',
-    model: [BOOKMARKS.INSTALL]
+    model: [BOOKMARKS.INSTALL],
   },
   {
     name: 'Has a linked bug',
-    model: [BOOKMARKS.LINKED_BUG]
+    model: [BOOKMARKS.LINKED_BUG],
   },
   {
     name: 'Has no linked bug',
-    model: [BOOKMARKS.NO_LINKED_BUG]
+    model: [BOOKMARKS.NO_LINKED_BUG],
   },
   {
     name: 'Has an associated bug',
-    model: [BOOKMARKS.ASSOCIATED_BUG]
+    model: [BOOKMARKS.ASSOCIATED_BUG],
   },
   {
     name: 'Has no associated bug',
-    model: [BOOKMARKS.NO_ASSOCIATED_BUG]
+    model: [BOOKMARKS.NO_ASSOCIATED_BUG],
   },
   {
     name: 'Curated by TRT',
-    model: [BOOKMARKS.TRT]
-  }
+    model: [BOOKMARKS.TRT],
+  },
 ]
 
-function TestTable (props) {
+function TestTable(props) {
   const { classes } = props
 
   const columns = [
@@ -62,12 +62,16 @@ function TestTable (props) {
       renderCell: (params) => (
         <div className="test-name">
           <Tooltip title={params.value}>
-            <Link to={'/tests/' + props.release + '/analysis?test=' + params.row.name}>
+            <Link
+              to={
+                '/tests/' + props.release + '/analysis?test=' + params.row.name
+              }
+            >
               {params.value}
             </Link>
           </Tooltip>
         </div>
-      )
+      ),
     },
     {
       field: 'current_pass_percentage',
@@ -76,11 +80,9 @@ function TestTable (props) {
       flex: 0.5,
       renderCell: (params) => (
         <Tooltip title={params.row.current_runs + ' runs'}>
-          <p>
-            {Number(params.value).toFixed(0).toLocaleString()}%
-          </p>
+          <p>{Number(params.value).toFixed(0).toLocaleString()}%</p>
         </Tooltip>
-      )
+      ),
     },
     {
       field: 'net_improvement',
@@ -89,7 +91,7 @@ function TestTable (props) {
       flex: 0.5,
       renderCell: (params) => {
         return <PassRateIcon tooltip={true} improvement={params.value} />
-      }
+      },
     },
     {
       field: 'previous_pass_percentage',
@@ -98,31 +100,36 @@ function TestTable (props) {
       type: 'number',
       renderCell: (params) => (
         <Tooltip title={params.row.previous_runs + ' runs'}>
-          <p>
-            {Number(params.value).toFixed(0).toLocaleString()}%
-          </p>
+          <p>{Number(params.value).toFixed(0).toLocaleString()}%</p>
         </Tooltip>
-      )
+      ),
     },
     {
       field: 'link',
       headerName: ' ',
-      flex: 0.40,
+      flex: 0.4,
       filterable: false,
       renderCell: (params) => {
         return (
           <Tooltip title="Search CI Logs">
-            <Button target="_blank" startIcon={<Search />}
-                    href={'https://search.ci.openshift.org/?search=' + encodeURIComponent(params.row.name) + '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'} />
+            <Button
+              target="_blank"
+              startIcon={<Search />}
+              href={
+                'https://search.ci.openshift.org/?search=' +
+                encodeURIComponent(params.row.name) +
+                '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
+              }
+            />
           </Tooltip>
         )
       },
-      hide: props.briefTable
+      hide: props.briefTable,
     },
     {
       field: 'jobs',
       headerName: ' ',
-      flex: 0.40,
+      flex: 0.4,
       filterable: false,
       renderCell: (params) => {
         return (
@@ -130,33 +137,50 @@ function TestTable (props) {
             <Button
               startIcon={<DirectionsRun />}
               component={Link}
-              to={withSort(pathForJobRunsWithTestFailure(props.release, params.row.name), 'timestamp', 'desc')}
+              to={withSort(
+                pathForJobRunsWithTestFailure(props.release, params.row.name),
+                'timestamp',
+                'desc'
+              )}
             />
           </Tooltip>
         )
       },
-      hide: props.briefTable
+      hide: props.briefTable,
     },
     {
       field: 'bugs',
       headerName: 'Bugs',
-      flex: 0.40,
+      flex: 0.4,
       type: 'number',
       filterable: true,
       renderCell: (params) => {
         return (
-          <Tooltip title={params.value.length + ' linked bugs,' + params.row.associated_bugs.length + ' associated bugs'}>
-            <Button style={{ justifyContent: 'center', color: bugColor(params.row) }} startIcon={<BugReport />} onClick={() => openBugzillaDialog(params.row)} />
+          <Tooltip
+            title={
+              params.value.length +
+              ' linked bugs,' +
+              params.row.associated_bugs.length +
+              ' associated bugs'
+            }
+          >
+            <Button
+              style={{ justifyContent: 'center', color: bugColor(params.row) }}
+              startIcon={<BugReport />}
+              onClick={() => openBugzillaDialog(params.row)}
+            />
           </Tooltip>
         )
       },
       // Weight linked bugs more than associated bugs, but associated bugs are ranked more than not having one at all.
-      sortComparator: (v1, v2, param1, param2) => weightedBugComparator(
-        param1.api.getCellValue(param1.id, 'bugs'),
-        param1.api.getCellValue(param1.id, 'associated_bugs'),
-        param2.api.getCellValue(param2.id, 'bugs'),
-        param2.api.getCellValue(param2.id, 'associated_bugs')),
-      hide: props.briefTable
+      sortComparator: (v1, v2, param1, param2) =>
+        weightedBugComparator(
+          param1.api.getCellValue(param1.id, 'bugs'),
+          param1.api.getCellValue(param1.id, 'associated_bugs'),
+          param2.api.getCellValue(param2.id, 'bugs'),
+          param2.api.getCellValue(param2.id, 'associated_bugs')
+        ),
+      hide: props.briefTable,
     },
 
     // These are here just to allow filtering
@@ -164,25 +188,25 @@ function TestTable (props) {
       field: 'current_runs',
       headerName: 'Current runs',
       hide: true,
-      type: 'number'
+      type: 'number',
     },
     {
       field: 'previous_runs',
       headerName: 'Previous runs',
       hide: true,
-      type: 'number'
+      type: 'number',
     },
     {
       field: 'associated_bugs',
       headerName: 'Associated bugs',
       type: 'number',
-      hide: true
+      hide: true,
     },
     {
       field: 'tags',
       headerName: 'Tags',
-      hide: true
-    }
+      hide: true,
+    },
   ]
 
   const openBugzillaDialog = (test) => {
@@ -202,12 +226,19 @@ function TestTable (props) {
   const [rows, setRows] = React.useState([])
   const [selectedTests, setSelectedTests] = React.useState([])
 
-  const [period = props.period, setPeriod] = useQueryParam('period', StringParam)
+  const [period = props.period, setPeriod] = useQueryParam(
+    'period',
+    StringParam
+  )
 
   const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] = useQueryParam('filters', StringParam)
+  const [filters = JSON.stringify(props.filterModel), setFilters] =
+    useQueryParam('filters', StringParam)
 
-  const [sortField = props.sortField, setSortField] = useQueryParam('sortField', StringParam)
+  const [sortField = props.sortField, setSortField] = useQueryParam(
+    'sortField',
+    StringParam
+  )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const fetchData = () => {
@@ -227,18 +258,26 @@ function TestTable (props) {
     queryString += '&sortField=' + encodeURIComponent(sortField)
     queryString += '&sort=' + encodeURIComponent(sort)
 
-    fetch(process.env.REACT_APP_API_URL + '/api/tests?release=' + props.release + queryString)
+    fetch(
+      process.env.REACT_APP_API_URL +
+        '/api/tests?release=' +
+        props.release +
+        queryString
+    )
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
         }
         return response.json()
       })
-      .then(json => {
+      .then((json) => {
         setRows(json)
         setLoaded(true)
-      }).catch(error => {
-        setFetchError('Could not retrieve tests ' + props.release + ', ' + error)
+      })
+      .catch((error) => {
+        setFetchError(
+          'Could not retrieve tests ' + props.release + ', ' + error
+        )
       })
   }
 
@@ -252,8 +291,15 @@ function TestTable (props) {
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter((f) => f.columnField !== 'name')
-    currentFilters.items.push({ id: 99, columnField: 'name', operatorValue: 'contains', value: searchValue })
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'name'
+    )
+    currentFilters.items.push({
+      id: 99,
+      columnField: 'name',
+      operatorValue: 'contains',
+      value: searchValue,
+    })
     setFilters(JSON.stringify(currentFilters))
   }
 
@@ -267,17 +313,21 @@ function TestTable (props) {
 
   const createTestNameQuery = () => {
     const selectedIDs = new Set(selectedTests)
-    let tests = rows.filter((row) =>
-      selectedIDs.has(row.id)
-    )
-    tests = tests.map((test) =>
-      'test=' + encodeURIComponent(test.name)
-    )
+    let tests = rows.filter((row) => selectedIDs.has(row.id))
+    tests = tests.map((test) => 'test=' + encodeURIComponent(test.name))
     return tests.join('&')
   }
 
   const detailsButton = (
-    <Button component={Link} to={'/tests/' + props.release + '/details?' + createTestNameQuery()} variant="contained" color="primary" style={{ margin: 10 }}>Get Details</Button>
+    <Button
+      component={Link}
+      to={'/tests/' + props.release + '/details?' + createTestNameQuery()}
+      variant="contained"
+      color="primary"
+      style={{ margin: 10 }}
+    >
+      Get Details
+    </Button>
   )
 
   const addFilters = (filter) => {
@@ -321,15 +371,19 @@ function TestTable (props) {
         onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
-        sortModel={[{
-          field: sortField,
-          sort: sort
-        }]}
+        sortModel={[
+          {
+            field: sortField,
+            sort: sort,
+          },
+        ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        onSelectionModelChange={(rows) =>
-          setSelectedTests(rows)
+        onSelectionModelChange={(rows) => setSelectedTests(rows)}
+        getRowClassName={(params) =>
+          classes[
+            'row-percent-' + Math.round(params.row.current_pass_percentage)
+          ]
         }
-        getRowClassName={(params) => classes['row-percent-' + Math.round(params.row.current_pass_percentage)]}
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
@@ -337,14 +391,18 @@ function TestTable (props) {
             doSearch: requestSearch,
             period: period,
             selectPeriod: setPeriod,
-            setFilterModel: (m) => addFilters(m)
-          }
+            setFilterModel: (m) => addFilters(m),
+          },
         }}
       />
 
       {props.hideControls ? '' : detailsButton}
 
-      <BugzillaDialog item={testDetails} isOpen={isBugzillaDialogOpen} close={closeBugzillaDialog} />
+      <BugzillaDialog
+        item={testDetails}
+        isOpen={isBugzillaDialogOpen}
+        close={closeBugzillaDialog}
+      />
     </Container>
   )
 }
@@ -355,10 +413,10 @@ TestTable.defaultProps = {
   pageSize: 25,
   briefTable: false,
   filterModel: {
-    items: []
+    items: [],
   },
   sortField: 'current_pass_percentage',
-  sort: 'asc'
+  sort: 'asc',
 }
 
 TestTable.propTypes = {
@@ -371,7 +429,7 @@ TestTable.propTypes = {
   period: PropTypes.string,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
-  sortField: PropTypes.string
+  sortField: PropTypes.string,
 }
 
 export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)

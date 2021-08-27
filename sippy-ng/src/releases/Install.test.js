@@ -1,13 +1,17 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
+import {
+  expectLoadingPage,
+  setupDefaultPolly,
+  withoutMuiID,
+} from '../setupTests'
 import { mount } from 'enzyme'
-import { Router } from 'react-router-dom'
 import { QueryParamProvider } from 'use-query-params'
-import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTests'
+import { Router } from 'react-router-dom'
 import Install from './Install'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -19,15 +23,17 @@ describe('install', () => {
 
     let wrapper
     await act(async () => {
-      const history = require('history').createMemoryHistory({ basename: '/sippy-ng/' })
+      const history = require('history').createMemoryHistory({
+        basename: '/sippy-ng/',
+      })
       history.push('install/4.8/operators')
 
       wrapper = mount(
-                <QueryParamProvider>
-                    <Router history={history}>
-                        <Install release="4.8" />
-                    </Router>
-                </QueryParamProvider>
+        <QueryParamProvider>
+          <Router history={history}>
+            <Install release="4.8" />
+          </Router>
+        </QueryParamProvider>
       )
     })
 

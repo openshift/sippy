@@ -1,20 +1,27 @@
-import PropTypes from 'prop-types'
-import { Container, Grid, Paper, Tab, Tabs, Typography } from '@material-ui/core'
+import {
+  Container,
+  Grid,
+  Paper,
+  Tab,
+  Tabs,
+  Typography,
+} from '@material-ui/core'
 import { TabContext } from '@material-ui/lab'
+import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
-import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import JobRunsTable from './JobRunsTable'
 import JobsDetail from './JobsDetail'
 import JobTable from './JobTable'
+import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import Variants from './Variants'
-import JobRunsTable from './JobRunsTable'
 
 /**
  * Jobs is the landing page for jobs with tabs for all jobs, variants,
  * and job runs.
  */
-export default function Jobs (props) {
+export default function Jobs(props) {
   const { path, url } = useRouteMatch()
 
   useEffect(() => {
@@ -31,17 +38,44 @@ export default function Jobs (props) {
             <Typography align="center" variant="h4">
               Job health for {props.release}
             </Typography>
-            <Grid container justifyContent="center" width="60%" style={{ margin: 20 }}>
+            <Grid
+              container
+              justifyContent="center"
+              width="60%"
+              style={{ margin: 20 }}
+            >
               <Paper>
                 <Tabs
-                  value={location.pathname.substring(location.pathname.lastIndexOf('/') + 1)}
+                  value={location.pathname.substring(
+                    location.pathname.lastIndexOf('/') + 1
+                  )}
                   indicatorColor="primary"
                   textColor="primary"
                 >
-                  <Tab label="All jobs" value={props.release} component={Link} to={url} />
-                  <Tab label="Jobs by variant" value="variant" component={Link} to={url + '/variant'} />
-                  <Tab label="All job runs" value="runs" component={Link} to={url + '/runs'} />
-                  <Tab label="Job run summary" value="detail" component={Link} to={url + '/detail'} />
+                  <Tab
+                    label="All jobs"
+                    value={props.release}
+                    component={Link}
+                    to={url}
+                  />
+                  <Tab
+                    label="Jobs by variant"
+                    value="variant"
+                    component={Link}
+                    to={url + '/variant'}
+                  />
+                  <Tab
+                    label="All job runs"
+                    value="runs"
+                    component={Link}
+                    to={url + '/runs'}
+                  />
+                  <Tab
+                    label="Job run summary"
+                    value="detail"
+                    component={Link}
+                    to={url + '/detail'}
+                  />
                 </Tabs>
               </Paper>
             </Grid>
@@ -72,5 +106,5 @@ export default function Jobs (props) {
 }
 
 Jobs.propTypes = {
-  release: PropTypes.string.isRequired
+  release: PropTypes.string.isRequired,
 }

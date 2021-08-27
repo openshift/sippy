@@ -1,16 +1,16 @@
-import { PropTypes } from 'prop-types'
-import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
-import React, { Fragment, useEffect } from 'react'
+import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
+import { PropTypes } from 'prop-types'
 import { StringParam, useQueryParam } from 'use-query-params'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import JobDetailTable from './JobDetailTable'
+import React, { Fragment, useEffect } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   backdrop: {
     zIndex: theme.zIndex.drawer + 1,
-    color: '#fff'
-  }
+    color: '#fff',
+  },
 }))
 
 const msPerDay = 86400 * 1000
@@ -18,7 +18,7 @@ const msPerDay = 86400 * 1000
 /**
  * JobsDetail is the landing page for the JobDetailTable.
  */
-export default function JobsDetail (props) {
+export default function JobsDetail(props) {
   const classes = useStyles()
 
   const [query, setQuery] = React.useState('')
@@ -39,7 +39,12 @@ export default function JobsDetail (props) {
         urlQuery = '&job=' + encodeURIComponent(filter)
       }
 
-      fetch(process.env.REACT_APP_API_URL + '/api/jobs/details?release=' + props.release + urlQuery)
+      fetch(
+        process.env.REACT_APP_API_URL +
+          '/api/jobs/details?release=' +
+          props.release +
+          urlQuery
+      )
         .then((response) => {
           if (response.status !== 200) {
             throw new Error('server returned ' + response.status)
@@ -47,34 +52,32 @@ export default function JobsDetail (props) {
 
           return response.json()
         })
-        .then(response => {
+        .then((response) => {
           setData(response)
-          setStartDate(new Date(Math.floor(response.start / msPerDay) * msPerDay))
+          setStartDate(
+            new Date(Math.floor(response.start / msPerDay) * msPerDay)
+          )
           setEndDate(new Date(Math.floor(response.end / msPerDay) * msPerDay))
           setLoaded(true)
         })
-        .catch(error => {
+        .catch((error) => {
           setFetchError(error.toString())
           setLoaded(true)
         })
     }
-  }
-  , [filter]
-  )
+  }, [filter])
 
   if (filter !== '' && !isLoaded) {
     return (
-            <Backdrop className={classes.backdrop} open={!isLoaded}>
-                Fetching data...
-                <CircularProgress color="inherit" />
-            </Backdrop>
+      <Backdrop className={classes.backdrop} open={!isLoaded}>
+        Fetching data...
+        <CircularProgress color="inherit" />
+      </Backdrop>
     )
   }
 
   if (fetchError !== '') {
-    return (
-            <Alert severity="error">Failed to load data: {fetchError}</Alert>
-    )
+    return <Alert severity="error">Failed to load data: {fetchError}</Alert>
   }
 
   const updateFilter = () => {
@@ -83,10 +86,15 @@ export default function JobsDetail (props) {
   }
 
   const filterSearch = (
-        <Fragment>
-            <Alert severity="warning">Enter a search query below</Alert><br />
-            <GridToolbarSearchBox value={query} setValue={setQuery} action={updateFilter} />
-        </Fragment>
+    <Fragment>
+      <Alert severity="warning">Enter a search query below</Alert>
+      <br />
+      <GridToolbarSearchBox
+        value={query}
+        setValue={setQuery}
+        action={updateFilter}
+      />
+    </Fragment>
   )
 
   if (data.jobs.length === 0) {
@@ -100,7 +108,7 @@ export default function JobsDetail (props) {
   const columns = []
   while (ts >= timestampBegin) {
     const d = new Date(ts)
-    const value = (d.getUTCMonth() + 1) + '/' + d.getUTCDate()
+    const value = d.getUTCMonth() + 1 + '/' + d.getUTCDate()
     columns.push(value)
     ts -= msPerDay
   }
@@ -109,16 +117,21 @@ export default function JobsDetail (props) {
   for (const job of data.jobs) {
     const row = {
       name: job.name,
-      results: []
+      results: [],
     }
 
-    for (let today = timestampBegin, tomorrow = timestampBegin + msPerDay;
+    for (
+      let today = timestampBegin, tomorrow = timestampBegin + msPerDay;
       today <= timestampEnd;
-      today += msPerDay, tomorrow += msPerDay) {
+      today += msPerDay, tomorrow += msPerDay
+    ) {
       const day = []
 
       for (let i = 0; i < job.results.length; i++) {
-        if (job.results[i].timestamp >= today && job.results[i].timestamp < tomorrow) {
+        if (
+          job.results[i].timestamp >= today &&
+          job.results[i].timestamp < tomorrow
+        ) {
           const result = {}
           result.name = job.name
           result.id = i
@@ -138,18 +151,18 @@ export default function JobsDetail (props) {
   }
 
   return (
-        <Fragment>
-            {filterSearch}
-            <JobDetailTable release={props.release} rows={rows} columns={columns} />
-        </Fragment>
+    <Fragment>
+      {filterSearch}
+      <JobDetailTable release={props.release} rows={rows} columns={columns} />
+    </Fragment>
   )
 }
 
 JobsDetail.defaultProps = {
-  filter: ''
+  filter: '',
 }
 
 JobsDetail.propTypes = {
   release: PropTypes.string.isRequired,
-  filter: PropTypes.string
+  filter: PropTypes.string,
 }

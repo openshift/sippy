@@ -1,8 +1,8 @@
-import React from 'react'
 import { act } from '@testing-library/react'
-import { withoutMuiID } from '../setupTests'
 import { mount } from 'enzyme'
+import { withoutMuiID } from '../setupTests'
 import PassRateIcon from './PassRateIcon'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -13,7 +13,9 @@ describe(PassRateIcon, () => {
       wrapper = mount(<PassRateIcon improvement={1} />)
     })
 
-    expect(wrapper.find('svg[data-icon="SyncAltRoundedIcon"]').exists()).toBe(true)
+    expect(wrapper.find('svg[data-icon="SyncAltRoundedIcon"]').exists()).toBe(
+      true
+    )
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
   })
 
@@ -23,7 +25,9 @@ describe(PassRateIcon, () => {
       wrapper = mount(<PassRateIcon improvement={3} />)
     })
 
-    expect(wrapper.find('svg[data-icon="ArrowUpwardRoundedIcon"]').exists()).toBe(true)
+    expect(
+      wrapper.find('svg[data-icon="ArrowUpwardRoundedIcon"]').exists()
+    ).toBe(true)
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
   })
 
@@ -33,14 +37,16 @@ describe(PassRateIcon, () => {
       wrapper = mount(<PassRateIcon improvement={-3} />)
     })
 
-    expect(wrapper.find('svg[data-icon="ArrowDownwardRoundedIcon"]').exists()).toBe(true)
+    expect(
+      wrapper.find('svg[data-icon="ArrowDownwardRoundedIcon"]').exists()
+    ).toBe(true)
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
   })
 
   it('renders tooltip', async () => {
     let wrapper
     await act(async () => {
-      wrapper = mount(<PassRateIcon improvement={-3.9999999} tooltip={true}/>)
+      wrapper = mount(<PassRateIcon improvement={-3.9999999} tooltip={true} />)
     })
 
     expect(wrapper.exists()).toBe(true)

@@ -3,13 +3,12 @@ import { scale } from 'chroma-js'
 
 const theme = createTheme()
 
-export function generateClasses (threshold) {
-  const colors = scale(
-    [
-      theme.palette.error.light,
-      theme.palette.warning.light,
-      theme.palette.success.light
-    ]).domain([threshold.error, threshold.warning, threshold.success])
+export function generateClasses(threshold) {
+  const colors = scale([
+    theme.palette.error.light,
+    theme.palette.warning.light,
+    theme.palette.success.light,
+  ]).domain([threshold.error, threshold.warning, threshold.success])
 
   const classes = {}
 
@@ -23,14 +22,14 @@ export function generateClasses (threshold) {
 export const ROW_STYLES = {
   rowSuccess: {
     backgroundColor: theme.palette.success.light,
-    color: 'black'
+    color: 'black',
   },
   rowWarning: {
     backgroundColor: theme.palette.warning.light,
-    color: 'black'
+    color: 'black',
   },
   rowError: {
     backgroundColor: theme.palette.error.light,
-    color: 'black'
-  }
+    color: 'black',
+  },
 }

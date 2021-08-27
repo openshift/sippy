@@ -1,13 +1,13 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { QueryParamProvider } from 'use-query-params'
-import { mount } from 'enzyme'
-import { setupDefaultPolly, withoutMuiID } from '../setupTests'
 import { BrowserRouter } from 'react-router-dom'
+import { mount } from 'enzyme'
+import { QueryParamProvider } from 'use-query-params'
+import { setupDefaultPolly, withoutMuiID } from '../setupTests'
 import JobRunsTable from './JobRunsTable'
+import React from 'react'
 
 jest.useRealTimers()
 
@@ -15,17 +15,21 @@ describe('JobRunsTable', () => {
   setupDefaultPolly()
 
   it('should render correctly', async () => {
-    Date.now = jest.spyOn(Date, 'now').mockImplementation(() => new Date(1628691480000))
+    Date.now = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => new Date(1628691480000))
     const fetchSpy = jest.spyOn(global, 'fetch')
 
     let wrapper
     await act(async () => {
       wrapper = mount(
-                <QueryParamProvider>
-                    <BrowserRouter>
-                        <JobRunsTable release="4.8" />
-                    </BrowserRouter>)
-                </QueryParamProvider>)
+        <QueryParamProvider>
+          <BrowserRouter>
+            <JobRunsTable release="4.8" />
+          </BrowserRouter>
+          )
+        </QueryParamProvider>
+      )
     })
 
     expect(wrapper.text()).toContain('Fetching data')

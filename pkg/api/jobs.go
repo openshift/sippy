@@ -54,6 +54,35 @@ func briefName(job string) string {
 	return briefName.ReplaceAllString(job, "")
 }
 
+func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apitype.Job {
+	job := apitype.Job{
+		ID:                             id,
+		Name:                           current.Name,
+		Variants:                       current.Variants,
+		BriefName:                      briefName(current.Name),
+		CurrentPassPercentage:          current.PassPercentage,
+		CurrentProjectedPassPercentage: current.PassPercentageWithoutInfrastructureFailures,
+		CurrentRuns:                    current.Failures + current.Successes,
+	}
+
+	if previous != nil {
+		job.PreviousPassPercentage = previous.PassPercentage
+		job.PreviousProjectedPassPercentage = previous.PassPercentageWithoutInfrastructureFailures
+		job.PreviousRuns = previous.Failures + previous.Successes
+		job.NetImprovement = current.PassPercentage - previous.PassPercentage
+	}
+
+	job.Bugs = current.BugList
+	job.AssociatedBugs = current.AssociatedBugList
+	job.TestGridURL = current.TestGridURL
+
+	if strings.Contains(job.Name, "-upgrade") {
+		job.Tags = []string{"upgrade"}
+	}
+
+	return job
+}
+
 // PrintJobsReport renders a filtered summary of matching jobs.
 func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.JobResult, manager testidentification.VariantManager) {
 	var filter *Filter
@@ -82,31 +111,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, tw
 	}
 
 	for idx, jobResult := range current {
-		job := apitype.Job{
-			ID:                             idx,
-			Name:                           jobResult.Name,
-			Variants:                       manager.IdentifyVariants(jobResult.Name),
-			BriefName:                      briefName(jobResult.Name),
-			CurrentPassPercentage:          jobResult.PassPercentage,
-			CurrentProjectedPassPercentage: jobResult.PassPercentageWithoutInfrastructureFailures,
-			CurrentRuns:                    jobResult.Failures + jobResult.Successes,
-		}
-
 		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
-		if previous != nil {
-			job.PreviousPassPercentage = prevResult.PassPercentage
-			job.PreviousProjectedPassPercentage = prevResult.PassPercentageWithoutInfrastructureFailures
-			job.PreviousRuns = prevResult.Failures + prevResult.Successes
-			job.NetImprovement = jobResult.PassPercentage - prevResult.PassPercentage
-		}
-
-		job.Bugs = jobResult.BugList
-		job.AssociatedBugs = jobResult.AssociatedBugList
-		job.TestGridURL = jobResult.TestGridURL
-
-		if strings.Contains(job.Name, "-upgrade") {
-			job.Tags = []string{"upgrade"}
-		}
+		job := jobResultToAPI(idx, &current[idx], prevResult)
 
 		if filter != nil {
 			include, err := filter.Filter(job)

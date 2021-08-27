@@ -1,17 +1,22 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import 'jsdom-global/register'
-import React from 'react'
 import { act, waitFor } from '@testing-library/react'
-import { mount } from 'enzyme'
-import ReleaseOverview from './ReleaseOverview'
 import { BrowserRouter } from 'react-router-dom'
+import {
+  expectLoadingPage,
+  setupDefaultPolly,
+  withoutMuiID,
+} from '../setupTests'
+import { mount } from 'enzyme'
 import { QueryParamProvider } from 'use-query-params'
-import { expectLoadingPage, setupDefaultPolly, withoutMuiID } from '../setupTests'
+import React from 'react'
+import ReleaseOverview from './ReleaseOverview'
 
 jest.useRealTimers()
 
 describe('release-overview', () => {
+  const flushPromises = () => new Promise(setImmediate)
   setupDefaultPolly()
 
   it('should render correctly', async () => {
@@ -20,11 +25,11 @@ describe('release-overview', () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-          <QueryParamProvider>
-            <BrowserRouter>
-              <ReleaseOverview release="4.8" />
-            </BrowserRouter>
-          </QueryParamProvider>
+        <QueryParamProvider>
+          <BrowserRouter>
+            <ReleaseOverview release="4.8" />
+          </BrowserRouter>
+        </QueryParamProvider>
       )
     })
 

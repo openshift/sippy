@@ -1,7 +1,7 @@
-import React from 'react'
 import { Tooltip } from '@material-ui/core'
 import ArrowDownwardRoundedIcon from '@material-ui/icons/ArrowDownwardRounded'
 import ArrowUpwardRoundedIcon from '@material-ui/icons/ArrowUpwardRounded'
+import React from 'react'
 import SyncAltRoundedIcon from '@material-ui/icons/SyncAltRounded'
 
 /**
@@ -9,15 +9,30 @@ import SyncAltRoundedIcon from '@material-ui/icons/SyncAltRounded'
  * indicating whether something improved, regressed, or stayed
  * the same.
  */
-export default function PassRateIcon (props) {
+export default function PassRateIcon(props) {
   let icon = ''
 
   if (Math.abs(props.improvement) <= 2) {
-    icon = <SyncAltRoundedIcon data-icon="SyncAltRoundedIcon" style={{ color: 'grey' }} />
+    icon = (
+      <SyncAltRoundedIcon
+        data-icon="SyncAltRoundedIcon"
+        style={{ color: 'grey' }}
+      />
+    )
   } else if (props.improvement >= 2) {
-    icon = <ArrowUpwardRoundedIcon data-icon="ArrowUpwardRoundedIcon" style={{ stroke: 'green', strokeWidth: 3, color: 'green' }} />
+    icon = (
+      <ArrowUpwardRoundedIcon
+        data-icon="ArrowUpwardRoundedIcon"
+        style={{ stroke: 'green', strokeWidth: 3, color: 'green' }}
+      />
+    )
   } else {
-    icon = <ArrowDownwardRoundedIcon data-icon="ArrowDownwardRoundedIcon" style={{ stroke: 'darkred', strokeWidth: 3, color: 'darkred' }} />
+    icon = (
+      <ArrowDownwardRoundedIcon
+        data-icon="ArrowDownwardRoundedIcon"
+        style={{ stroke: 'darkred', strokeWidth: 3, color: 'darkred' }}
+      />
+    )
   }
 
   if (props.tooltip) {
@@ -28,5 +43,5 @@ export default function PassRateIcon (props) {
 }
 
 PassRateIcon.defaultProps = {
-  tooltip: false
+  tooltip: false,
 }
