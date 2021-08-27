@@ -7,6 +7,7 @@ import {
   Container,
   Dialog,
   Grid,
+  Tooltip,
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
@@ -24,6 +25,7 @@ import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
 import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
+import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -247,7 +249,8 @@ export function JobAnalysis(props) {
               elevation={5}
               style={{ height: '100%' }}
             >
-              <strong>Current filter</strong>:<br />
+              <strong>Current filter</strong>
+              <br />
               Showing jobs matching {explainFilter(filterModel)}
               <br />
               <Divider />
@@ -287,6 +290,15 @@ export function JobAnalysis(props) {
             <Card className="job-failure-card" elevation={5}>
               <Typography variant="h5">
                 Test results for selected jobs
+                <Tooltip
+                  title={
+                    'By default, this plots the top 5 tests with the most failures in ' +
+                    'the set of jobs selected. Click the button below to change the list of tests to plot. Only ' +
+                    'tests with at least one failure during the reporting period are available.'
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
               </Typography>
               <Box hidden={allTests.length !== 0}>
                 <p>No test data found.</p>
