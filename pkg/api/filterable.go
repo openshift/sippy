@@ -26,9 +26,11 @@ type Filter struct {
 }
 
 // FilterItem is an individual filter consisting of a field, operator,
-// and value. For example: name contains aws.
+// value and a not boolean that negates the operator. For example:
+// name contains aws, or name not contains aws.
 type FilterItem struct {
 	Field    string `json:"columnField"`
+	Not      bool   `json:"not"`
 	Operator string `json:"operatorValue"`
 	Value    string `json:"value"`
 }
@@ -51,37 +53,42 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 	matches := make([]bool, 0)
 
 	for _, filter := range filters.Items {
-		klog.V(4).Infof("Applying filter: %s %s %s", filter.Field, filter.Operator, filter.Value)
+		var result bool
+		var err error
 
+		klog.V(4).Infof("Applying filter: %s %s %s", filter.Field, filter.Operator, filter.Value)
 		filterType := item.GetFieldType(filter.Field)
 		switch filterType {
 		case apitype.ColumnTypeString:
 			klog.V(4).Infof("Column %s is of string type", filter.Field)
-			result, err := filterString(filter, item)
+			result, err = filterString(filter, item)
 			if err != nil {
 				klog.V(4).Infof("Could not filter string type: %s", err)
 				return false, err
 			}
-			matches = append(matches, result)
 		case apitype.ColumnTypeNumerical:
 			klog.V(4).Infof("Column %s is of numerical type", filter.Field)
-			result, err := filterNumerical(filter, item)
+			result, err = filterNumerical(filter, item)
 			if err != nil {
 				klog.V(4).Infof("Could not filter numerical type: %s", err)
 				return false, err
 			}
-			matches = append(matches, result)
 		case apitype.ColumnTypeArray:
 			klog.V(4).Infof("Column %s is of array type", filter.Field)
-			result, err := filterArray(filter, item)
+			result, err = filterArray(filter, item)
 			if err != nil {
 				klog.V(4).Infof("Could not filter array type: %s", err)
 				return false, err
 			}
-			matches = append(matches, result)
 		default:
 			klog.V(4).Infof("Unknown type of field %s", filter.Field)
 			return false, fmt.Errorf("%s: unknown field or field type", filter.Field)
+		}
+
+		if filter.Not {
+			matches = append(matches, !result)
+		} else {
+			matches = append(matches, result)
 		}
 	}
 

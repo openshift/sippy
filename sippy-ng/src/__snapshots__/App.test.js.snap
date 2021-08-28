@@ -1426,7 +1426,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"
@@ -2147,7 +2147,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"
@@ -2869,7 +2869,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"
@@ -3581,7 +3581,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"
@@ -4293,7 +4293,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"
@@ -5010,7 +5010,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-columnHeaderTitle"
                                    title
                               >
-                                Current Period
+                                Current pass percentage
                               </div>
                               <div class="MuiDataGrid-iconButtonContainer">
                                 <button class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall"

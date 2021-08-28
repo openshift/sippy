@@ -25,11 +25,13 @@ export function explainFilter(filter) {
   const explanations = []
   filter.items.forEach((item) =>
     explanations.push(
-      `('${item.columnField}' ${item.operatorValue} '${item.value}')`
+      `('${item.columnField}' ${item.not ? 'not ' : ''}${item.operatorValue} '${
+        item.value
+      }')`
     )
   )
 
-  return explanations.join(' and ')
+  return explanations.join(` ${filter.linkOperator || 'and'} `)
 }
 
 export function escapeRegex(str) {

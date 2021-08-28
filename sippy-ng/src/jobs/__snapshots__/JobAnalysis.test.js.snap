@@ -69,33 +69,59 @@ exports[`JobAnalysis should render correctly 1`] = `
         <br>
         Showing jobs matching all
         <br>
-        <hr class="MuiDivider-root">
-        <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary"
-           tabindex="0"
-           role="button"
-           aria-disabled="false"
-           style="margin-top: 20px; margin-right: 20px;"
-           href="/jobs/4.8"
+        <hr class="MuiDivider-root"
+            style="margin-bottom: 20px;"
         >
-          <span class="MuiButton-label">
-            View matching jobs
-          </span>
-          <span class="MuiTouchRipple-root">
-          </span>
-        </a>
-        <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary"
-           tabindex="0"
-           role="button"
-           aria-disabled="false"
-           style="margin-top: 20px;"
-           href="/jobs/4.8/runs&amp;sortField=timestamp&amp;sort=desc"
-        >
-          <span class="MuiButton-label">
-            View matching job runs
-          </span>
-          <span class="MuiTouchRipple-root">
-          </span>
-        </a>
+        <div class="MuiGrid-root MuiGrid-container MuiGrid-justify-content-xs-space-between">
+          <button class="MuiButtonBase-root MuiButton-root MuiButton-contained"
+                  tabindex="0"
+                  type="button"
+          >
+            <span class="MuiButton-label">
+              <span class="MuiBadge-root">
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                >
+                  <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z">
+                  </path>
+                </svg>
+                <span class="MuiBadge-badge MuiBadge-anchorOriginTopRightRectangle MuiBadge-colorPrimary MuiBadge-invisible">
+                  0
+                </span>
+              </span>
+              Filters
+            </span>
+            <span class="MuiTouchRipple-root">
+            </span>
+          </button>
+          <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary"
+             tabindex="0"
+             role="button"
+             aria-disabled="false"
+             style="margin-left: 20px; margin-right: 20px;"
+             href="/jobs/4.8"
+          >
+            <span class="MuiButton-label">
+              View matching jobs
+            </span>
+            <span class="MuiTouchRipple-root">
+            </span>
+          </a>
+          <a class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary"
+             tabindex="0"
+             role="button"
+             aria-disabled="false"
+             href="/jobs/4.8/runs&amp;sortField=timestamp&amp;sort=desc"
+          >
+            <span class="MuiButton-label">
+              View matching job runs
+            </span>
+            <span class="MuiTouchRipple-root">
+            </span>
+          </a>
+        </div>
       </div>
     </div>
     <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-12">
@@ -119,15 +145,15 @@ exports[`JobAnalysis should render correctly 1`] = `
             </path>
           </svg>
         </h5>
-        <div class="MuiBox-root MuiBox-root-4"
+        <div class="MuiBox-root MuiBox-root-8"
              hidden
         >
           <p>
             No test data found.
           </p>
         </div>
-        <div class="MuiBox-root MuiBox-root-5">
-          <div class="MuiBox-root MuiBox-root-6">
+        <div class="MuiBox-root MuiBox-root-9">
+          <div class="MuiBox-root MuiBox-root-10">
           </div>
           <button class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedSecondary"
                   tabindex="0"

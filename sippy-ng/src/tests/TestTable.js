@@ -5,9 +5,9 @@ import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
 import { Button, Container, Tooltip } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { generateClasses } from '../datagrid/utils'
+import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -75,7 +75,7 @@ function TestTable(props) {
     },
     {
       field: 'current_pass_percentage',
-      headerName: 'Current Period',
+      headerName: 'Current pass percentage',
       type: 'number',
       flex: 0.5,
       renderCell: (params) => (
@@ -95,7 +95,7 @@ function TestTable(props) {
     },
     {
       field: 'previous_pass_percentage',
-      headerName: 'Previous Period',
+      headerName: 'Previous pass percentage',
       flex: 0.5,
       type: 'number',
       renderCell: (params) => (
@@ -231,9 +231,10 @@ function TestTable(props) {
     StringParam
   )
 
-  const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] =
-    useQueryParam('filters', StringParam)
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+    'filters',
+    JsonParam
+  )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
@@ -243,8 +244,9 @@ function TestTable(props) {
 
   const fetchData = () => {
     let queryString = ''
-    if (filters && filters !== '') {
-      queryString += '&filter=' + encodeURIComponent(filters)
+    if (filterModel && filterModel.items.length > 0) {
+      queryString +=
+        '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
@@ -282,12 +284,8 @@ function TestTable(props) {
   }
 
   useEffect(() => {
-    if (filters && filters !== '') {
-      setFilterModel(JSON.parse(filters))
-    }
-
     fetchData()
-  }, [period, filters, sort, sortField])
+  }, [period, filterModel, sort, sortField])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -300,7 +298,7 @@ function TestTable(props) {
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   if (fetchError !== '') {
@@ -331,11 +329,17 @@ function TestTable(props) {
   )
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
     filter.forEach((item) => {
-      currentFilters.items.push(item)
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
   }
 
   const updateSortModel = (model) => {
@@ -367,8 +371,6 @@ function TestTable(props) {
         rowsPerPageOptions={[5, 10, 25, 50]}
         checkboxSelection={!props.hideControls}
         filterMode="server"
-        filterModel={filterModel}
-        onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
         sortModel={[
@@ -387,11 +389,14 @@ function TestTable(props) {
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
+            columns: columns,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
             period: period,
             selectPeriod: setPeriod,
-            setFilterModel: (m) => addFilters(m),
+            addFilters: addFilters,
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
           },
         }}
       />

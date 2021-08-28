@@ -7,7 +7,7 @@ import './JobAnalysis.css'
 
 export function JobStackedChart(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [analysis, setAnalysis] = React.useState(props.analysis)
+  const [analysis, setAnalysis] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
 
   const fetchData = () => {
@@ -43,11 +43,12 @@ export function JobStackedChart(props) {
 
   useEffect(() => {
     if (props.analysis) {
+      setAnalysis(props.analysis)
       setLoaded(true)
     } else {
       fetchData()
     }
-  }, [])
+  }, [props])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

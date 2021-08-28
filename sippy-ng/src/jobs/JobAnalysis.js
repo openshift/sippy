@@ -1,5 +1,10 @@
 import './JobAnalysis.css'
-import { ArrayParam, JsonParam, useQueryParam } from 'use-query-params'
+import {
+  ArrayParam,
+  JsonParam,
+  useQueryParam,
+  withDefault,
+} from 'use-query-params'
 import {
   Box,
   Button,
@@ -17,6 +22,7 @@ import {
   pathForJobsWithFilter,
   withSort,
 } from '../helpers'
+import { getColumns } from './JobTable'
 import { JOB_THRESHOLDS } from '../constants'
 import { JobStackedChart } from './JobStackedChart'
 import { Line } from 'react-chartjs-2'
@@ -25,6 +31,7 @@ import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
 import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
+import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -34,7 +41,8 @@ import SummaryCard from '../components/SummaryCard'
 export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_day: {} })
-  const [filterModel] = useQueryParam('filters', JsonParam)
+
+  const [filterModel, setFilterModel] = useQueryParam('filters', JsonParam)
 
   const [fetchError, setFetchError] = React.useState('')
 
@@ -44,10 +52,11 @@ export function JobAnalysis(props) {
     'tests',
     ArrayParam
   )
-  const [testFilter = { items: [] }, setTestFilter] = useQueryParam(
+  const [testFilter, setTestFilter] = useQueryParam(
     'testFilters',
-    JsonParam
+    withDefault(JsonParam, { items: [] })
   )
+
   const [testSelectionDialog, setTestSelectionDialog] = React.useState(false)
 
   const fetchData = () => {
@@ -113,7 +122,7 @@ export function JobAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [filterModel])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -208,6 +217,26 @@ export function JobAnalysis(props) {
     .map((key) => analysis.by_day[key].total_runs)
     .reduce((acc, val) => acc + val)
 
+  const columns = [
+    {
+      field: 'id',
+      hide: true,
+      filterable: false,
+    },
+    {
+      field: 'name',
+      headerName: 'Test name',
+      flex: 4,
+      renderCell: (param) => <div className="job-name">{param.value}</div>,
+    },
+    {
+      field: 'value',
+      type: 'number',
+      headerName: 'Failure count',
+      flex: 1,
+    },
+  ]
+
   return (
     <Fragment>
       <SimpleBreadcrumbs
@@ -253,29 +282,36 @@ export function JobAnalysis(props) {
               <br />
               Showing jobs matching {explainFilter(filterModel)}
               <br />
-              <Divider />
-              <Button
-                variant="contained"
-                color="primary"
-                component={Link}
-                style={{ marginTop: 20, marginRight: 20 }}
-                to={pathForJobsWithFilter(props.release, filterModel)}
-              >
-                View matching jobs
-              </Button>
-              <Button
-                variant="contained"
-                color="secondary"
-                component={Link}
-                style={{ marginTop: 20 }}
-                to={withSort(
-                  pathForJobRunsWithFilter(props.release, filterModel),
-                  'timestamp',
-                  'desc'
-                )}
-              >
-                View matching job runs
-              </Button>
+              <Divider style={{ marginBottom: 20 }} />
+              <Grid container justifyContent="space-between">
+                <GridToolbarFilterMenu
+                  standalone={true}
+                  filterModel={filterModel || { items: [] }}
+                  setFilterModel={setFilterModel}
+                  columns={getColumns(props)}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  component={Link}
+                  style={{ marginLeft: 20, marginRight: 20 }}
+                  to={pathForJobsWithFilter(props.release, filterModel)}
+                >
+                  View matching jobs
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithFilter(props.release, filterModel),
+                    'timestamp',
+                    'desc'
+                  )}
+                >
+                  View matching job runs
+                </Button>
+              </Grid>
             </Card>
           </Grid>
 
@@ -330,40 +366,19 @@ export function JobAnalysis(props) {
                     </Typography>
                     <DataGrid
                       components={{ Toolbar: GridToolbar }}
-                      columns={[
-                        {
-                          field: 'id',
-                          hide: true,
-                          filterable: false,
-                        },
-                        {
-                          field: 'name',
-                          headerName: 'Test name',
-                          flex: 4,
-                          renderCell: (param) => (
-                            <div className="job-name">{param.value}</div>
-                          ),
-                        },
-                        {
-                          field: 'value',
-                          type: 'number',
-                          headerName: 'Failure count',
-                          flex: 1,
-                        },
-                      ]}
+                      columns={columns}
                       rows={allTests}
                       pageSize={10}
                       rowHeight={60}
                       autoHeight={true}
+                      filterModel={testFilter}
                       selectionModel={selectionModel}
                       onSelectionModelChange={(m) => updateSelectionModel(m)}
-                      filterModel={testFilter}
-                      onFilterModelChange={(m) => {
-                        setTestFilter(m)
-                      }}
                       checkboxSelection
                       componentsProps={{
                         toolbar: {
+                          columns: columns,
+                          filterModel: testFilter,
                           setFilterModel: setTestFilter,
                           clearSearch: () => requestSearch(''),
                           doSearch: requestSearch,

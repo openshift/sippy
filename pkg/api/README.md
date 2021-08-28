@@ -1,21 +1,17 @@
 # Sippy API
 
-Sippy has a simple REST API at `/api`. There is an older API
-available at `/json` as well, with a single endpoint that displays
-multiple reports.
+Sippy has a simple REST API at `/api`. There is an older API available at `/json` as well, with a single endpoint that
+displays multiple reports.
 
-Note that where the responses include a top-level ID, these are synthetic
-and may change across API calls. These are only used by the frontend
-data tables. Other ID's when provided  such as Bugzilla, Prow ID's, etc
-are accurate.
+Note that where the responses include a top-level ID, these are synthetic and may change across API calls. These are
+only used by the frontend data tables. Other ID's when provided such as Bugzilla, Prow ID's, etc are accurate.
 
 ## Filtering and sorting
 
 ### Filtering
 
-The API's that support filtering, as indicated in their docs below, use a filtering format as follows. This
-corresponds to the filtering options used by Material UI's data tables, but are generally usable outside of
-them as well.
+The API's that support filtering, as indicated in their docs below, use a filtering format as follows. The format is
+similar to the filtering options used by Material UI's data tables internally.
 
 An individual filter is JSON, in the following format:
 
@@ -31,13 +27,25 @@ An individual filter is JSON, in the following format:
 - Numerical operators are: =, !=, <, <=, >, >=
 - Array operators are: contains
 
-A composed filter consists of one or more filters, along with a link operator.  A link operator is either `and` or `or`.
+An optional 'not' field may be specified which inverts the operator. For example, the below filter means name does not
+contain aws:
+
+```json
+{
+  "columnName": "name",
+  "not": true,
+  "operatorValue": "contains",
+  "value": "aws"
+}
+```
+
+A composed filter consists of one or more filters, along with a link operator. A link operator is either `and` or `or`.
 
 Example:
 
 ```json
 {
-  "linkOperator": "or",
+  "linkOperator": "and",
   "items": [
     {
       "columnName": "name",
@@ -46,8 +54,9 @@ Example:
     },
     {
       "columnName": "name",
+      "not": true,
       "operatorValue": "contains",
-      "value": "gcp"
+      "value": "upgrade"
     }
   ]
 }
@@ -64,8 +73,8 @@ You may sort results by any sortable field in the item by specifying `sortField`
 
 Endpoint: `/api/health`
 
-Returns a summary of overall release health, including the percentage of successful runs of each,
-as well as a summary of variant success rates.
+Returns a summary of overall release health, including the percentage of successful runs of each, as well as a summary
+of variant success rates.
 
 <details>
 <summary>Example response</summary>
@@ -122,7 +131,8 @@ as well as a summary of variant success rates.
 
 </details>
 
-### Parameters 
+### Parameters
+
 | Option   | Type           | Description                                                                                                              | Acceptable values                        |
 |----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
@@ -144,7 +154,7 @@ as well as a summary of variant success rates.
 {
   "column_names": [
     "All",
-    "aws",
+    "aws"
   ],
   "description": "Install Rates by Operator by Variant",
   "tests": {
@@ -262,18 +272,16 @@ Endpoint: `/api/jobs`
 
 Endpoint: `/api/jobs/details`
 
-A summary of runs for job(s). Results contains of the following values
-for each job:
+A summary of runs for job(s). Results contains of the following values for each job:
 
-  - S success
-  - F failure (e2e )
-  - f failure (other tests)
-  - U upgrade failure
-  - I setup failure (installer)
-  - N setup failure (infra)
-  - n failure before setup (infra)
-  - R running
-
+- S success
+- F failure (e2e )
+- f failure (other tests)
+- U upgrade failure
+- I setup failure (installer)
+- N setup failure (infra)
+- n failure before setup (infra)
+- R running
 
 <details>
 <Summary>Example response</Summary>
