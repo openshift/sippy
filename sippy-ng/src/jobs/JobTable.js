@@ -5,9 +5,9 @@ import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import { Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { generateClasses } from '../datagrid/utils'
+import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import { pathForExactJobAnalysis, pathForExactJobRuns } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -25,38 +25,8 @@ const bookmarks = [
   { name: 'Has no associated bug', model: [BOOKMARKS.NO_ASSOCIATED_BUG] },
 ]
 
-/**
- * JobTable shows the list of all jobs matching any selected filters,
- * including current and previous pass percentages, net improvement, and
- * bug links.
- */
-function JobTable(props) {
-  const { classes } = props
-
-  const [fetchError, setFetchError] = React.useState('')
-  const [isLoaded, setLoaded] = React.useState(false)
-  const [rows, setRows] = React.useState([])
-  const [selectedJobs, setSelectedJobs] = React.useState([])
-
-  const [period = props.period, setPeriod] = useQueryParam(
-    'period',
-    StringParam
-  )
-
-  const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] =
-    useQueryParam('filters', StringParam)
-
-  const [sortField = props.sortField, setSortField] = useQueryParam(
-    'sortField',
-    StringParam
-  )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
-
-  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
-  const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
-
-  const columns = [
+export const getColumns = (config, openBugzillaDialog) => {
+  return [
     {
       field: 'name',
       headerName: 'Name',
@@ -65,8 +35,8 @@ function JobTable(props) {
         return (
           <div className="job-name">
             <Tooltip title={params.value}>
-              <Link to={pathForExactJobAnalysis(props.release, params.value)}>
-                {props.briefTable ? params.row.brief_name : params.value}
+              <Link to={pathForExactJobAnalysis(config.release, params.value)}>
+                {config.briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
           </div>
@@ -75,7 +45,7 @@ function JobTable(props) {
     },
     {
       field: 'current_pass_percentage',
-      headerName: 'Current Period',
+      headerName: 'Current pass percentage',
       type: 'number',
       flex: 0.75,
       renderCell: (params) => (
@@ -96,7 +66,7 @@ function JobTable(props) {
     },
     {
       field: 'previous_pass_percentage',
-      headerName: 'Previous Period',
+      headerName: 'Previous pass percentage',
       flex: 0.75,
       type: 'number',
       renderCell: (params) => (
@@ -123,7 +93,7 @@ function JobTable(props) {
         )
       },
       filterable: false,
-      hide: props.briefTable,
+      hide: config.briefTable,
     },
     {
       field: 'job_runs',
@@ -136,17 +106,17 @@ function JobTable(props) {
               component={Link}
               style={{ justifyContent: 'center' }}
               startIcon={<DirectionsRun />}
-              to={pathForExactJobRuns(props.release, params.row.name)}
+              to={pathForExactJobRuns(config.release, params.row.name)}
             />
           </Tooltip>
         )
       },
       filterable: false,
-      hide: props.briefTable,
+      hide: config.briefTable,
     },
     {
       field: 'bugs',
-      headerName: 'Bugs',
+      headerName: 'Bug count',
       flex: 0.4,
       type: 'number',
       filterable: true,
@@ -176,11 +146,12 @@ function JobTable(props) {
           param2.api.getCellValue(param2.id, 'bugs'),
           param2.api.getCellValue(param2.id, 'associated_bugs')
         ),
-      hide: props.briefTable,
+      hide: config.briefTable,
     },
     // These are here just to allow filtering
     {
       field: 'variants',
+      type: 'array',
       headerName: 'Variants',
       hide: true,
     },
@@ -208,6 +179,39 @@ function JobTable(props) {
       hide: true,
     },
   ]
+}
+
+/**
+ * JobTable shows the list of all jobs matching any selected filters,
+ * including current and previous pass percentages, net improvement, and
+ * bug links.
+ */
+function JobTable(props) {
+  const { classes } = props
+
+  const [fetchError, setFetchError] = React.useState('')
+  const [isLoaded, setLoaded] = React.useState(false)
+  const [rows, setRows] = React.useState([])
+  const [selectedJobs, setSelectedJobs] = React.useState([])
+
+  const [period = props.period, setPeriod] = useQueryParam(
+    'period',
+    StringParam
+  )
+
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+    'filters',
+    JsonParam
+  )
+
+  const [sortField = props.sortField, setSortField] = useQueryParam(
+    'sortField',
+    StringParam
+  )
+  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
+  const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
 
   const openBugzillaDialog = (job) => {
     setJobDetails(job)
@@ -220,8 +224,9 @@ function JobTable(props) {
 
   const fetchData = () => {
     let queryString = ''
-    if (filters && filters !== '') {
-      queryString += '&filter=' + encodeURIComponent(filters)
+    if (filterModel && filterModel.items.length > 0) {
+      queryString +=
+        '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
@@ -267,16 +272,12 @@ function JobTable(props) {
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   useEffect(() => {
-    if (filters && filters !== '') {
-      setFilterModel(JSON.parse(filters))
-    }
-
     fetchData()
-  }, [period, filters, sort, sortField])
+  }, [period, filterModel, sort, sortField])
 
   const pageTitle = () => {
     if (props.title) {
@@ -297,13 +298,17 @@ function JobTable(props) {
   }
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
     filter.forEach((item) => {
-      if (item.value) {
-        currentFilters.items.push(item)
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
       }
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
   }
 
   const updateSortModel = (model) => {
@@ -322,7 +327,7 @@ function JobTable(props) {
 
   const createFilter = () => {
     if (selectedJobs.length === rows.length || selectedJobs.length === 0) {
-      return filters
+      return encodeURIComponent(JSON.stringify(filterModel))
     }
 
     const selectedIDs = new Set(selectedJobs)
@@ -353,6 +358,8 @@ function JobTable(props) {
     </Button>
   )
 
+  const columns = getColumns(props, openBugzillaDialog)
+
   return (
     /* eslint-disable react/prop-types */
     <Container size="xl">
@@ -363,10 +370,6 @@ function JobTable(props) {
         columns={columns}
         autoHeight={true}
         rowHeight={70}
-        // Filtering:
-        filterMode="server"
-        filterModel={filterModel}
-        onFilterModelChange={(m) => setFilters(JSON.stringify(m))}
         sortingOrder={['desc', 'asc']}
         sortModel={[
           {
@@ -395,7 +398,10 @@ function JobTable(props) {
             doSearch: requestSearch,
             period: period,
             selectPeriod: setPeriod,
-            setFilterModel: (m) => addFilters(m),
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
+            columns: columns,
+            addFilters: (m) => addFilters(m),
           },
         }}
       />

@@ -5,8 +5,9 @@ import (
 	"net/http"
 	gosort "sort"
 	"strconv"
+	"strings"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -70,12 +71,22 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v
 				JobRunResult: run,
 			}
 
-			if testidentification.IsUpgradeRelatedTest(apiRun.Job) {
+			if strings.Contains(results.Name, "-upgrade") {
 				apiRun.Tags = []string{"upgrade"}
 			}
 
 			if filter != nil {
 				include, err := filter.Filter(apiRun)
+
+				// Job runs are a little special, in that we want to let users filter them by fields from the job
+				// itself, too.
+				if err != nil && strings.Contains(err.Error(), "unknown") {
+					currJob := util.FindJobResultForJobName(run.Job, curr)
+					if currJob != nil {
+						prevJob := util.FindJobResultForJobName(run.Job, prev)
+						include, err = filter.Filter(jobResultToAPI(next, currJob, prevJob))
+					}
+				}
 				if err != nil {
 					RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 					return

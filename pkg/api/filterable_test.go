@@ -109,6 +109,25 @@ func TestLinkOperator(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "name_not_contains_gcp",
+			job: apitype.Job{
+				ID:                    1,
+				Name:                  "e2e-aws",
+				CurrentPassPercentage: 90.5,
+			},
+			filter: Filter{
+				Items: []FilterItem{
+					{
+						Field:    "name",
+						Not:      true,
+						Operator: "contains",
+						Value:    "gcp",
+					},
+				},
+			},
+			expected: true,
+		},
 	}
 
 	for _, tc := range cases {

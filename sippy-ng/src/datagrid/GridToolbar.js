@@ -1,11 +1,9 @@
 import { createTheme } from '@material-ui/core/styles'
-import {
-  GridToolbarDensitySelector,
-  GridToolbarFilterButton,
-} from '@material-ui/data-grid'
+import { GridToolbarDensitySelector } from '@material-ui/data-grid'
 import { makeStyles } from '@material-ui/styles'
 import ClearIcon from '@material-ui/icons/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
+import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import IconButton from '@material-ui/core/IconButton'
 import PropTypes from 'prop-types'
@@ -47,11 +45,16 @@ export default function GridToolbar(props) {
   return (
     <div className={classes.root}>
       <div>
-        <GridToolbarFilterButton />
+        <GridToolbarFilterMenu
+          columns={props.columns}
+          filterModel={props.filterModel}
+          setFilterModel={props.setFilterModel}
+        />
+
         {props.bookmarks ? (
           <GridToolbarBookmarkMenu
             bookmarks={props.bookmarks}
-            setFilterModel={props.setFilterModel}
+            setFilterModel={props.addFilters}
           />
         ) : (
           ''
@@ -111,6 +114,9 @@ GridToolbar.propTypes = {
   doSearch: PropTypes.func.isRequired,
   period: PropTypes.string,
   selectPeriod: PropTypes.func,
+  columns: PropTypes.array,
+  filterModel: PropTypes.object,
   setFilterModel: PropTypes.func.isRequired,
+  addFilters: PropTypes.func.isRequired,
   value: PropTypes.string,
 }

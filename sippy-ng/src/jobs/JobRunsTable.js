@@ -8,9 +8,9 @@ import {
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat } from '@material-ui/icons'
+import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import { pathForExactJob, relativeTime } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -24,9 +24,10 @@ export default function JobRunsTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = React.useState(props.filterModel)
-  const [filters = JSON.stringify(props.filterModel), setFilters] =
-    useQueryParam('filters', StringParam)
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+    'filters',
+    JsonParam
+  )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
@@ -55,7 +56,7 @@ export default function JobRunsTable(props) {
     {
       field: 'timestamp',
       headerName: 'Date / Time',
-      filterable: false, // FIXME: probably need server-side date filtering
+      filterable: true,
       flex: 1.25,
       type: 'date',
       valueFormatter: (params) => {
@@ -143,12 +144,64 @@ export default function JobRunsTable(props) {
       headerName: 'Failed tests',
       hide: true,
     },
+
+    // These are fields on the job, not the run - but we can
+    // filter by them.
+    {
+      field: 'name',
+      headerName: 'Name',
+      type: 'string',
+      hide: 'true',
+    },
+    {
+      field: 'tags',
+      headerName: 'Tags',
+      type: 'array',
+      hide: 'true',
+    },
+    {
+      field: 'current_pass_percentage',
+      headerName: 'Current pass percentage',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'current_runs',
+      headerName: 'Current runs',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'previous_runs',
+      headerName: 'Previous runs',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'net_improvement',
+      headerName: 'Net improvement',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'bugs',
+      headerName: 'Bug count',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'associated_bugs',
+      headerName: 'Associated bug count',
+      type: 'number',
+      hide: true,
+    },
   ]
 
   const fetchData = () => {
     let queryString = ''
-    if (filters && filters !== '') {
-      queryString += '&filter=' + encodeURIComponent(filters)
+    if (filterModel && filterModel.items.length > 0) {
+      queryString +=
+        '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
@@ -190,16 +243,12 @@ export default function JobRunsTable(props) {
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel(currentFilters)
   }
 
   useEffect(() => {
-    if (filters && filters !== '') {
-      setFilterModel(JSON.parse(filters))
-    }
-
     fetchData()
-  }, [filters, sort, sortField])
+  }, [filterModel, sort, sortField])
 
   const pageTitle = () => {
     if (props.title) {
@@ -225,11 +274,17 @@ export default function JobRunsTable(props) {
   }
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
     filter.forEach((item) => {
-      currentFilters.items.push(item)
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
     })
-    setFilters(JSON.stringify(currentFilters))
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
   }
 
   const updateSortModel = (model) => {
@@ -307,10 +362,6 @@ export default function JobRunsTable(props) {
       autoHeight={true}
       // Filtering:
       filterMode="server"
-      filterModel={filterModel}
-      onFilterModelChange={(m) =>
-        props.briefTable ? '' : setFilters(JSON.stringify(m))
-      }
       sortingOrder={['desc', 'asc']}
       sortModel={[
         {
@@ -326,9 +377,12 @@ export default function JobRunsTable(props) {
       rowsPerPageOptions={[5, 10, 25, 50]}
       componentsProps={{
         toolbar: {
+          columns: columns,
           clearSearch: () => requestSearch(''),
           doSearch: requestSearch,
-          setFilterModel: (m) => addFilters(m),
+          filterModel: filterModel,
+          setFilterModel: setFilterModel,
+          addFilters: (m) => addFilters(m),
         },
       }}
     />
