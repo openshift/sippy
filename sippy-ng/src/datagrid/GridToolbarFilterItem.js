@@ -10,9 +10,11 @@ import {
   TextField,
 } from '@material-ui/core'
 import { Close } from '@material-ui/icons'
+import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { makeStyles } from '@material-ui/core/styles'
+import DateFnsUtils from '@date-io/date-fns'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { Fragment, useEffect } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   filterMenu: {
@@ -30,6 +32,7 @@ const useStyles = makeStyles((theme) => ({
 
 const operatorValues = {
   number: ['=', '!=', '<', '<=', '>', '>='],
+  date: ['=', '!=', '<', '<=', '>', '>='],
   string: ['contains', 'equals', 'starts with', 'ends with'],
   array: ['contains'],
 }
@@ -139,24 +142,48 @@ export default function GridToolbarFilterItem(props) {
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
       <FormControl>
-        <TextField
-          inputProps={{ 'data-testid': `value-${props.id}` }}
-          error={operatorValueError}
-          id="value"
-          label="Value"
-          onChange={(e) =>
-            props.setFilterModel({
-              columnField: props.filterModel.columnField,
-              not: props.filterModel.not,
-              operatorValue: props.filterModel.operatorValue,
-              value: e.target.value,
-            })
-          }
-          value={props.filterModel.value}
-        />
-        <FormHelperText error={valueError} style={{ marginTop: 12 }}>
-          {columnType === 'number' ? 'Numerical value required' : 'Required'}
-        </FormHelperText>
+        {columnType === 'date' ? (
+          <Fragment>
+            <MuiPickersUtilsProvider utils={DateFnsUtils}>
+              <DateTimePicker
+                showTodayButton
+                disableFuture
+                label="Value"
+                value={new Date(parseInt(props.filterModel.value))}
+                onChange={(e) => {
+                  props.setFilterModel({
+                    columnField: props.filterModel.columnField,
+                    operatorValue: props.filterModel.operatorValue,
+                    value: e.getTime().toString(),
+                  })
+                }}
+              />
+            </MuiPickersUtilsProvider>
+          </Fragment>
+        ) : (
+          <Fragment>
+            <TextField
+              inputProps={{ 'data-testid': `value-${props.id}` }}
+              error={operatorValueError}
+              id="value"
+              label="Value"
+              onChange={(e) =>
+                props.setFilterModel({
+                  columnField: props.filterModel.columnField,
+                  not: props.filterModel.not,
+                  operatorValue: props.filterModel.operatorValue,
+                  value: e.target.value,
+                })
+              }
+              value={props.filterModel.value}
+            />
+            <FormHelperText error={valueError} style={{ marginTop: 12 }}>
+              {columnType === 'number'
+                ? 'Numerical value required'
+                : 'Required'}
+            </FormHelperText>
+          </Fragment>
+        )}
       </FormControl>
     </Grid>
   )

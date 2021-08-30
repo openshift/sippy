@@ -84,8 +84,11 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 }
 
 // PrintJobsReport renders a filtered summary of matching jobs.
-func PrintJobsReport(w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.JobResult, manager testidentification.VariantManager) {
+func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport, manager testidentification.VariantManager) {
 	var filter *Filter
+	currentPeriod := currReport.ByJob
+	twoDayPeriod := twoDayReport.ByJob
+	previousPeriod := prevReport.ByJob
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {

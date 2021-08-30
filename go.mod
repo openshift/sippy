@@ -7,6 +7,7 @@ require (
 	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
+	github.com/montanaflynn/stats v0.6.6
 	github.com/spf13/cobra v0.0.6
 	github.com/valyala/fasttemplate v1.2.1 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect

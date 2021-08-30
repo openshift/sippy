@@ -1,15 +1,29 @@
+import { ArrowBack, ArrowForward, Help } from '@material-ui/icons'
 import {
   BOOKMARKS,
   INFRASTRUCTURE_THRESHOLDS,
   INSTALL_THRESHOLDS,
+  JOB_THRESHOLDS,
+  TEST_THRESHOLDS,
   UPGRADE_THRESHOLDS,
 } from '../constants'
-import { Box, Card, Container, Tooltip, Typography } from '@material-ui/core'
+import {
+  Box,
+  Button,
+  Card,
+  Container,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
+import { hourFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import { Link } from 'react-router-dom'
-import { queryForBookmark } from '../helpers'
+import { NumberParam, useQueryParam } from 'use-query-params'
+import { queryForBookmark, withSort } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
+import Divider from '@material-ui/core/Divider'
 import Grid from '@material-ui/core/Grid'
+import Histogram from '../components/Histogram'
 import InfoIcon from '@material-ui/icons/Info'
 import JobTable from '../jobs/JobTable'
 import PassRateIcon from '../components/PassRateIcon'
@@ -58,6 +72,7 @@ export default function ReleaseOverview(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
 
   const fetchData = () => {
     fetch(
@@ -96,14 +111,15 @@ export default function ReleaseOverview(props) {
   const indicatorCaption = (indicator) => {
     return (
       <Box component="h3">
-        {indicator.current.percentage.toFixed(0)} % ({indicator.current.runs}{' '}
-        runs)&nbsp;
+        {indicator.current.percentage.toFixed(0)}% ({indicator.current.runs}{' '}
+        runs)
+        <br />
         <PassRateIcon
           improvement={
             indicator.current.percentage - indicator.previous.percentage
           }
-        />{' '}
-        &nbsp;
+        />
+        <br />
         {indicator.previous.percentage.toFixed(0)}% ({indicator.previous.runs}{' '}
         runs)
       </Box>
@@ -146,7 +162,8 @@ export default function ReleaseOverview(props) {
                 </Tooltip>
               </Typography>
             </Grid>
-            <Grid item md={4} sm={6}>
+
+            <Grid item md={3} sm={6}>
               <SummaryCard
                 key="infrastructure-summary"
                 threshold={INFRASTRUCTURE_THRESHOLDS}
@@ -162,7 +179,8 @@ export default function ReleaseOverview(props) {
                 tooltip="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
               />
             </Grid>
-            <Grid item md={4} sm={6}>
+
+            <Grid item md={3} sm={6}>
               <SummaryCard
                 key="install-summary"
                 threshold={INSTALL_THRESHOLDS}
@@ -174,7 +192,7 @@ export default function ReleaseOverview(props) {
                 tooltip="How often the install completes successfully."
               />
             </Grid>
-            <Grid item md={4} sm={6}>
+            <Grid item md={3} sm={6}>
               <SummaryCard
                 key="upgrade-summary"
                 threshold={UPGRADE_THRESHOLDS}
@@ -187,9 +205,135 @@ export default function ReleaseOverview(props) {
               />
             </Grid>
 
-            <VariantCards release={props.release} />
+            <Grid item md={3} sm={6}>
+              <SummaryCard
+                key="test-summary"
+                threshold={TEST_THRESHOLDS}
+                link={
+                  '/tests/' +
+                  props.release +
+                  '/details?test=[sig-sippy] openshift-tests should work'
+                }
+                name="Tests"
+                success={data.indicators.tests.current.percentage}
+                fail={100 - data.indicators.tests.current.percentage}
+                caption={indicatorCaption(data.indicators.tests)}
+                tooltip={
+                  'How often e2e tests complete successfully. Sippy tries to figure out which runs ran an e2e test ' +
+                  'suite, and then determine which failed. A low pass rate could be due to any number of temporary ' +
+                  'problems, most of the utility from this noisy metric is monitoring changes over time.'
+                }
+              />
+            </Grid>
+
+            <Grid item md={5} sm={12}>
+              <Card elevation={5} style={{ padding: 20, height: '100%' }}>
+                <Typography variant="h6">
+                  <Link
+                    to={withSort(
+                      `/jobs/${props.release}`,
+                      'current_pass_percentage',
+                      'asc'
+                    )}
+                  >
+                    Job histogram
+                  </Link>
+                  <Tooltip
+                    title={
+                      'Histogram of job pass rates. Bucketed by current period pass percentage. ' +
+                      'Tech preview and never-stable jobs are excluded. The solid line indicates the current ' +
+                      "period's mean, and the dashed line is the previous period."
+                    }
+                  >
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+                <Histogram
+                  data={data.current_statistics.histogram}
+                  current_mean={data.current_statistics.mean}
+                  previous_mean={data.previous_statistics.mean}
+                  release={props.release}
+                />
+                <div align="center">
+                  <span style={{ marginRight: 10 }}>
+                    1Q: {data.current_statistics.quartiles[0].toFixed(0)}%
+                  </span>
+                  <span style={{ marginRight: 10 }}>
+                    2Q: {data.current_statistics.quartiles[1].toFixed(0)}%
+                  </span>
+                  <span style={{ marginRight: 10 }}>
+                    3Q: {data.current_statistics.quartiles[2].toFixed(0)}%
+                  </span>
+                  <span style={{ marginRight: 10 }}>
+                    SD: {data.current_statistics.standard_deviation.toFixed(2)}
+                  </span>
+                </div>
+              </Card>
+            </Grid>
+
+            <Grid item md={7}>
+              <Card elevation={5} style={{ padding: 20, height: '100%' }}>
+                <Typography variant="h6">
+                  <Link
+                    to={`/jobs/${
+                      props.release
+                    }/analysis?filters=${encodeURIComponent(
+                      JSON.stringify({
+                        items: [
+                          ...hourFilter(dayOffset),
+                          BOOKMARKS.NO_TECHPREVIEW,
+                          BOOKMARKS.NO_NEVER_STABLE,
+                        ],
+                        linkOperator: 'and',
+                      })
+                    )}&period=hour}`}
+                  >
+                    {dayOffset === 1
+                      ? 'Last 24 hours'
+                      : `${dayOffset * 24} hours ago`}
+                  </Link>
+                  <Tooltip
+                    title={
+                      'This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. ' +
+                      'The most recent hour will generally look more successful until all jobs finish running. ' +
+                      'Use the arrow buttons below to move back and forward a day. All times are UTC.'
+                    }
+                  >
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+                <JobStackedChart
+                  release={props.release}
+                  period="hour"
+                  filter={{
+                    items: [
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
+                      ...hourFilter(dayOffset),
+                    ],
+                    linkOperator: 'and',
+                  }}
+                />
+                <div align="center">
+                  <Button
+                    onClick={() => setDayOffset(dayOffset + 1)}
+                    startIcon={<ArrowBack />}
+                  />
+                  <Button
+                    style={dayOffset > 1 ? {} : { display: 'none' }}
+                    onClick={() => dayOffset > 1 && setDayOffset(dayOffset - 1)}
+                    startIcon={<ArrowForward />}
+                  />
+                </div>
+              </Card>
+            </Grid>
+
+            <Grid item md={12}>
+              <VariantCards release={props.release} />
+            </Grid>
+
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/jobs/${
@@ -226,9 +370,8 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
-
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/jobs/${
@@ -266,7 +409,7 @@ export default function ReleaseOverview(props) {
               </Card>
             </Grid>
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
@@ -295,9 +438,8 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
-
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/tests/${
@@ -329,9 +471,8 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
-
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/tests/${
@@ -363,9 +504,8 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
-
             <Grid item md={6} sm={12}>
-              <Card enhancement="5" style={{ textAlign: 'center' }}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={

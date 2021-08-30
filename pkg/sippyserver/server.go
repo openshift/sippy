@@ -353,8 +353,9 @@ func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		curr := s.currTestReports[release].CurrentPeriodReport
+		twoDay := s.currTestReports[release].CurrentTwoDayReport
 		prev := s.currTestReports[release].PreviousWeekReport
-		api.PrintOverallReleaseHealth(w, curr, prev)
+		api.PrintOverallReleaseHealth(w, curr, twoDay, prev)
 	}
 }
 
@@ -445,7 +446,7 @@ func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobRunsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
+		api.PrintJobRunsReport(w, req, reports[release].CurrentPeriodReport, reports[release].PreviousWeekReport)
 	}
 }
 
@@ -454,7 +455,7 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].CurrentTwoDayReport.ByJob, reports[release].PreviousWeekReport.ByJob, s.variantManager)
+		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport, s.variantManager)
 	}
 }
 

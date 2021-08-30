@@ -12,7 +12,9 @@ import {
   Select,
   Tooltip,
 } from '@material-ui/core'
+import { explainFilter } from '../helpers'
 import { makeStyles } from '@material-ui/core/styles'
+import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterItem from './GridToolbarFilterItem'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -175,15 +177,11 @@ export default function GridToolbarFilterMenu(props) {
         <div style={{ padding: 10 }}>
           Currently filtered by:
           <ul>
-            {props.filterModel.items.map((item, index) => {
-              return (
-                <li key={`filter-${index}`}>{`${item.columnField} ${
-                  item.not ? 'not ' : ''
-                }${item.operatorValue} ${item.value}`}</li>
-              )
-            })}
+            {explainFilter(props.filterModel).map((item, index) => (
+              <li key={`filter-${index}`}>{item}</li>
+            ))}
           </ul>
-          Linked by: {props.filterModel.linkOperator || 'and'}
+          Link operator: {props.filterModel.linkOperator || 'and'}
         </div>
       )}
     </Fragment>
@@ -222,14 +220,16 @@ export default function GridToolbarFilterMenu(props) {
         <div className={classes.filterMenu}>
           {models.map((item, index) => {
             return (
-              <GridToolbarFilterItem
-                key={`filter-item-${index}`}
-                id={index}
-                columns={props.columns}
-                destroy={() => removeFilter(index)}
-                filterModel={models[index]}
-                setFilterModel={(v) => updateModel(index, v)}
-              />
+              <div key={`filter-item-${index}`} style={{ paddingTop: 20 }}>
+                <GridToolbarFilterItem
+                  id={index}
+                  columns={props.columns}
+                  destroy={() => removeFilter(index)}
+                  filterModel={models[index]}
+                  setFilterModel={(v) => updateModel(index, v)}
+                />
+                <Divider />
+              </div>
             )
           })}
         </div>

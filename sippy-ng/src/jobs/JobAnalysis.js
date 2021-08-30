@@ -2,9 +2,12 @@ import './JobAnalysis.css'
 import {
   ArrayParam,
   JsonParam,
+  NumberParam,
+  StringParam,
   useQueryParam,
   withDefault,
 } from 'use-query-params'
+import { ArrowBack, ArrowForward } from '@material-ui/icons'
 import {
   Box,
   Button,
@@ -23,8 +26,8 @@ import {
   withSort,
 } from '../helpers'
 import { getColumns } from './JobTable'
+import { hourFilter, JobStackedChart } from './JobStackedChart'
 import { JOB_THRESHOLDS } from '../constants'
-import { JobStackedChart } from './JobStackedChart'
 import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
@@ -40,9 +43,11 @@ import SummaryCard from '../components/SummaryCard'
 
 export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [analysis, setAnalysis] = React.useState({ by_day: {} })
+  const [analysis, setAnalysis] = React.useState({ by_period: {} })
 
   const [filterModel, setFilterModel] = useQueryParam('filters', JsonParam)
+  const [period, setPeriod] = useQueryParam('period', StringParam)
+  const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
 
   const [fetchError, setFetchError] = React.useState('')
 
@@ -69,6 +74,10 @@ export function JobAnalysis(props) {
       )}`
     }
 
+    if (period) {
+      queryParams += `&period=${period}`
+    }
+
     Promise.all([
       fetch(
         `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
@@ -85,12 +94,12 @@ export function JobAnalysis(props) {
         setAnalysis(analysis)
 
         let allTests = new Map()
-        Object.keys(analysis.by_day).map((key) =>
-          Object.keys(analysis.by_day[key].test_count).forEach((test) => {
+        Object.keys(analysis.by_period).map((key) =>
+          Object.keys(analysis.by_period[key].test_count).forEach((test) => {
             const count = allTests.get(test) || { name: test, value: 0 }
             allTests.set(test, {
               name: test,
-              value: count.value + analysis.by_day[key].test_count[test],
+              value: count.value + analysis.by_period[key].test_count[test],
             })
           })
         )
@@ -122,7 +131,7 @@ export function JobAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel])
+  }, [filterModel, period])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -133,7 +142,7 @@ export function JobAnalysis(props) {
   }
 
   const topTestChart = {
-    labels: Object.keys(analysis.by_day),
+    labels: Object.keys(analysis.by_period),
     datasets: [],
   }
 
@@ -147,12 +156,12 @@ export function JobAnalysis(props) {
         backgroundColor: colors[index],
         borderColor: colors[index],
         tension: 0.3,
-        data: Object.keys(analysis.by_day).map(
+        data: Object.keys(analysis.by_period).map(
           (key) =>
             100 *
             (1 -
-              (analysis.by_day[key].test_count[allTests[id].name] || 0) /
-                analysis.by_day[key].total_runs)
+              (analysis.by_period[key].test_count[allTests[id].name] || 0) /
+                analysis.by_period[key].total_runs)
         ),
       })
     }
@@ -164,10 +173,10 @@ export function JobAnalysis(props) {
         callbacks: {
           label: function (context) {
             const failures =
-              analysis.by_day[context.label].test_count[
+              analysis.by_period[context.label].test_count[
                 context.dataset.label
               ] || 0
-            const runs = analysis.by_day[context.label].total_runs
+            const runs = analysis.by_period[context.label].total_runs
 
             return `${context.dataset.label} ${context.raw.toFixed(
               2
@@ -209,13 +218,13 @@ export function JobAnalysis(props) {
     setSelectionModel(m)
   }
 
-  const totalSuccess = Object.keys(analysis.by_day)
-    .map((key) => analysis.by_day[key].result_count.S || 0)
-    .reduce((acc, val) => acc + val)
+  const totalSuccess = Object.keys(analysis.by_period)
+    .map((key) => analysis.by_period[key].result_count.S || 0)
+    .reduce((acc, val) => acc + val, 0)
 
-  const totalRuns = Object.keys(analysis.by_day)
-    .map((key) => analysis.by_day[key].total_runs)
-    .reduce((acc, val) => acc + val)
+  const totalRuns = Object.keys(analysis.by_period)
+    .map((key) => analysis.by_period[key].total_runs)
+    .reduce((acc, val) => acc + val, 0)
 
   const columns = [
     {
@@ -237,12 +246,74 @@ export function JobAnalysis(props) {
     },
   ]
 
+  const updateOffset = (newOffset) => {
+    const newFilters = []
+    filterModel &&
+      filterModel.items.forEach((filter) => {
+        if (filter.columnField !== 'timestamp') {
+          newFilters.push(filter)
+        }
+      })
+    newFilters.push(...hourFilter(newOffset))
+    setFilterModel({
+      items: newFilters,
+      linkOperator: filterModel ? filterModel.linkOperator : 'and',
+    })
+    setDayOffset(newOffset)
+  }
+
+  const togglePeriod = () => {
+    const newPeriod = period === 'hour' ? 'day' : 'hour'
+
+    const newFilters = []
+    filterModel &&
+      filterModel.items.forEach((filter) => {
+        if (filter.columnField !== 'timestamp') {
+          newFilters.push(filter)
+        }
+      })
+
+    if (newPeriod === 'hour') {
+      newFilters.push(...hourFilter(dayOffset))
+    }
+
+    setFilterModel({
+      items: newFilters,
+      linkOperator: filterModel ? filterModel.linkOperator : 'and',
+    })
+    setPeriod(newPeriod)
+  }
+
+  function withoutTimestamps(filterModel) {
+    if (!filterModel || filterModel.items === []) {
+      return filterModel
+    }
+
+    let newFilters = []
+    filterModel.items.forEach((filter) => {
+      if (filter.columnField !== 'timestamp') {
+        newFilters.push(filter)
+      }
+    })
+
+    return {
+      items: newFilters,
+      not: filterModel.not,
+      linkOperator: filterModel.linkOperator,
+    }
+  }
+
   return (
     <Fragment>
       <SimpleBreadcrumbs
         release={props.release}
         previousPage={
-          <Link to={pathForJobsWithFilter(props.release, filterModel)}>
+          <Link
+            to={pathForJobsWithFilter(
+              props.release,
+              withoutTimestamps(filterModel)
+            )}
+          >
             Jobs
           </Link>
         }
@@ -280,7 +351,13 @@ export function JobAnalysis(props) {
             >
               <strong>Current filter</strong>
               <br />
-              Showing jobs matching {explainFilter(filterModel)}
+              <ul>
+                {filterModel && filterModel.items.length > 0
+                  ? explainFilter(filterModel).map((item, index) => (
+                      <li key={`filter-${index}`}>{item}</li>
+                    ))
+                  : 'Showing all'}
+              </ul>
               <br />
               <Divider style={{ marginBottom: 20 }} />
               <Grid container justifyContent="space-between">
@@ -288,14 +365,29 @@ export function JobAnalysis(props) {
                   standalone={true}
                   filterModel={filterModel || { items: [] }}
                   setFilterModel={setFilterModel}
-                  columns={getColumns(props)}
+                  columns={[
+                    {
+                      field: 'timestamp',
+                      headerName: 'Date / Time',
+                      filterable: true,
+                      type: 'date',
+                    },
+                    ...getColumns(props),
+                  ]}
                 />
+                <Button variant="contained" onClick={togglePeriod}>
+                  View by {period === 'hour' ? 'day' : 'hour'}
+                </Button>
+
                 <Button
                   variant="contained"
                   color="primary"
                   component={Link}
                   style={{ marginLeft: 20, marginRight: 20 }}
-                  to={pathForJobsWithFilter(props.release, filterModel)}
+                  to={pathForJobsWithFilter(
+                    props.release,
+                    withoutTimestamps(filterModel)
+                  )}
                 >
                   View matching jobs
                 </Button>
@@ -318,7 +410,26 @@ export function JobAnalysis(props) {
           <Grid item md={12}>
             <Card className="job-failure-card" elevation={5}>
               <Typography variant="h5">Job results</Typography>
-              <JobStackedChart release={props.release} analysis={analysis} />
+              <JobStackedChart
+                release={props.release}
+                analysis={analysis}
+                filter={filterModel}
+              />
+              {period === 'hour' ? (
+                <div align="center">
+                  <Button
+                    onClick={() => updateOffset(dayOffset + 1)}
+                    startIcon={<ArrowBack />}
+                  />
+                  <Button
+                    style={dayOffset > 1 ? {} : { display: 'none' }}
+                    onClick={() => dayOffset > 1 && updateOffset(dayOffset - 1)}
+                    startIcon={<ArrowForward />}
+                  />
+                </div>
+              ) : (
+                ''
+              )}
             </Card>
           </Grid>
 

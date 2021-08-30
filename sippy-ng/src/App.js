@@ -104,7 +104,7 @@ export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  const [lastUpdated, setLastUpdated] = React.useState(new Date(0))
+  const [lastUpdated, setLastUpdated] = React.useState(Date.now())
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])

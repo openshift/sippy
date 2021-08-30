@@ -50,6 +50,14 @@ exports[`JobAnalysis should render correctly 1`] = `
         <div class="MuiCardContent-root makeStyles-cardContent-1">
           <h6 class="MuiTypography-root MuiTypography-h6">
             Overall
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+              </path>
+            </svg>
           </h6>
           <div align="center">
             <div style="width: 70%;">
@@ -67,7 +75,9 @@ exports[`JobAnalysis should render correctly 1`] = `
           Current filter
         </strong>
         <br>
-        Showing jobs matching all
+        <ul>
+          Showing all
+        </ul>
         <br>
         <hr class="MuiDivider-root"
             style="margin-bottom: 20px;"
@@ -92,6 +102,16 @@ exports[`JobAnalysis should render correctly 1`] = `
                 </span>
               </span>
               Filters
+            </span>
+            <span class="MuiTouchRipple-root">
+            </span>
+          </button>
+          <button class="MuiButtonBase-root MuiButton-root MuiButton-contained"
+                  tabindex="0"
+                  type="button"
+          >
+            <span class="MuiButton-label">
+              View by hour
             </span>
             <span class="MuiTouchRipple-root">
             </span>

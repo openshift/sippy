@@ -76,7 +76,7 @@ exports[`JobRunsTable should render correctly 1`] = `
   <div class=\\"MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight\\"
        role=\\"grid\\"
        aria-colcount=\\"5\\"
-       aria-rowcount=\\"5745\\"
+       aria-rowcount=\\"5788\\"
        aria-multiselectable=\\"false\\"
   >
     <div>
@@ -370,7 +370,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                 <div class=\\"MuiDataGrid-renderingZone\\"
                      style=\\"max-height: 1300px; width: 250px; transform: translate3d(-0px, -0px, 0);\\"
                 >
-                  <div data-id=\\"119\\"
+                  <div data-id=\\"1911\\"
                        data-rowindex=\\"0\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -380,7 +380,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629885857000\\"
+                         data-value=\\"1627043436000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"0\\"
                          data-colindex=\\"0\\"
@@ -391,15 +391,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"14 days ago\\"
+                      <p title=\\"41 days ago\\"
                          class
                       >
-                        8/25/2021, 10:04:17 AM
+                        7/23/2021, 12:30:36 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"0\\"
                          data-colindex=\\"1\\"
@@ -411,17 +411,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"1006\\"
+                         data-value=\\"67\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"0\\"
                          data-colindex=\\"2\\"
@@ -432,14 +432,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      1,006
+                      67
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"2770\\"
+                  <div data-id=\\"4808\\"
                        data-rowindex=\\"1\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -449,7 +449,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629246111000\\"
+                         data-value=\\"1626372012000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"0\\"
@@ -460,15 +460,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"6 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/18/2021, 12:21:51 AM
+                        7/15/2021, 6:00:12 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"1\\"
@@ -480,17 +480,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"293\\"
+                         data-value=\\"64\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"2\\"
@@ -501,14 +501,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      293
+                      64
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"153\\"
+                  <div data-id=\\"5639\\"
                        data-rowindex=\\"2\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -518,7 +518,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629896452000\\"
+                         data-value=\\"1626375536000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"0\\"
@@ -529,15 +529,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"14 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/25/2021, 1:00:52 PM
+                        7/15/2021, 6:58:56 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"1\\"
@@ -549,17 +549,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"157\\"
+                         data-value=\\"64\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"2\\"
@@ -570,14 +570,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      157
+                      64
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"118\\"
+                  <div data-id=\\"5289\\"
                        data-rowindex=\\"3\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -587,7 +587,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629928828000\\"
+                         data-value=\\"1626781259000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"0\\"
@@ -598,15 +598,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"14 days ago\\"
+                      <p title=\\"44 days ago\\"
                          class
                       >
-                        8/25/2021, 10:00:28 PM
+                        7/20/2021, 11:40:59 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"1\\"
@@ -618,17 +618,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"103\\"
+                         data-value=\\"62\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"2\\"
@@ -639,14 +639,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      103
+                      62
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"248\\"
+                  <div data-id=\\"2103\\"
                        data-rowindex=\\"4\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -656,7 +656,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629918099000\\"
+                         data-value=\\"1627013856000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"4\\"
                          data-colindex=\\"0\\"
@@ -667,15 +667,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"14 days ago\\"
+                      <p title=\\"41 days ago\\"
                          class
                       >
-                        8/25/2021, 7:01:39 PM
+                        7/23/2021, 4:17:36 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"4\\"
                          data-colindex=\\"1\\"
@@ -687,17 +687,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"98\\"
+                         data-value=\\"62\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"4\\"
                          data-colindex=\\"2\\"
@@ -708,14 +708,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      98
+                      62
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"4386\\"
+                  <div data-id=\\"4830\\"
                        data-rowindex=\\"5\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -725,7 +725,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629315969000\\"
+                         data-value=\\"1626355620000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"0\\"
@@ -736,10 +736,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"7 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/18/2021, 7:46:09 PM
+                        7/15/2021, 1:27:00 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
@@ -766,7 +766,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"95\\"
+                         data-value=\\"48\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"2\\"
@@ -777,14 +777,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      95
+                      48
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"2732\\"
+                  <div data-id=\\"4811\\"
                        data-rowindex=\\"6\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -794,7 +794,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629367219000\\"
+                         data-value=\\"1626285647000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"6\\"
                          data-colindex=\\"0\\"
@@ -805,15 +805,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"8 days ago\\"
+                      <p title=\\"49 days ago\\"
                          class
                       >
-                        8/19/2021, 10:00:19 AM
+                        7/14/2021, 6:00:47 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"6\\"
                          data-colindex=\\"1\\"
@@ -825,17 +825,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"85\\"
+                         data-value=\\"41\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"6\\"
                          data-colindex=\\"2\\"
@@ -846,14 +846,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      85
+                      41
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"2730\\"
+                  <div data-id=\\"5758\\"
                        data-rowindex=\\"7\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -863,7 +863,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629453655000\\"
+                         data-value=\\"1626678116000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"0\\"
@@ -874,15 +874,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"9 days ago\\"
+                      <p title=\\"45 days ago\\"
                          class
                       >
-                        8/20/2021, 10:00:55 AM
+                        7/19/2021, 7:01:56 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"1\\"
@@ -894,17 +894,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"68\\"
+                         data-value=\\"38\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"2\\"
@@ -915,14 +915,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      68
+                      38
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"2709\\"
+                  <div data-id=\\"1973\\"
                        data-rowindex=\\"8\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -932,7 +932,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629227445000\\"
+                         data-value=\\"1627411510000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"0\\"
@@ -943,15 +943,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"6 days ago\\"
+                      <p title=\\"36 days ago\\"
                          class
                       >
-                        8/17/2021, 7:10:45 PM
+                        7/27/2021, 6:45:10 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"1\\"
@@ -963,17 +963,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                        <a title=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-ovn-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
+                          release-openshift-ocp-installer-e2e-azure-ovn-4.8
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"64\\"
+                         data-value=\\"38\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"2\\"
@@ -984,14 +984,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      64
+                      38
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"2735\\"
+                  <div data-id=\\"5423\\"
                        data-rowindex=\\"9\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1001,7 +1001,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629237645000\\"
+                         data-value=\\"1626362447000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"9\\"
                          data-colindex=\\"0\\"
@@ -1012,15 +1012,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"6 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/17/2021, 10:00:45 PM
+                        7/15/2021, 3:20:47 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"9\\"
                          data-colindex=\\"1\\"
@@ -1032,17 +1032,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-rt
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"63\\"
+                         data-value=\\"36\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"9\\"
                          data-colindex=\\"2\\"
@@ -1053,14 +1053,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      63
+                      36
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3200\\"
+                  <div data-id=\\"2040\\"
                        data-rowindex=\\"10\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -1070,7 +1070,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629155593000\\"
+                         data-value=\\"1627005640000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"0\\"
@@ -1081,15 +1081,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"41 days ago\\"
                          class
                       >
-                        8/16/2021, 11:13:13 PM
+                        7/23/2021, 2:00:40 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"1\\"
@@ -1101,17 +1101,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"33\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"2\\"
@@ -1122,14 +1122,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      33
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3833\\"
+                  <div data-id=\\"2468\\"
                        data-rowindex=\\"11\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1139,7 +1139,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093756000\\"
+                         data-value=\\"1627085480000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"0\\"
@@ -1150,15 +1150,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"40 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:36 AM
+                        7/24/2021, 12:11:20 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"1\\"
@@ -1170,17 +1170,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-single-node
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"31\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"2\\"
@@ -1191,14 +1191,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      31
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3642\\"
+                  <div data-id=\\"5443\\"
                        data-rowindex=\\"12\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -1208,7 +1208,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093758000\\"
+                         data-value=\\"1626357928000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"12\\"
                          data-colindex=\\"0\\"
@@ -1219,15 +1219,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:38 AM
+                        7/15/2021, 2:05:28 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-e2e-azure-serial-4.8\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"12\\"
                          data-colindex=\\"1\\"
@@ -1239,17 +1239,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"release-openshift-ocp-installer-e2e-azure-serial-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-serial-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-e2e-azure-serial-4.8
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"30\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"12\\"
                          data-colindex=\\"2\\"
@@ -1260,14 +1260,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      30
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3829\\"
+                  <div data-id=\\"2250\\"
                        data-rowindex=\\"13\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1277,7 +1277,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629155590000\\"
+                         data-value=\\"1627411517000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"0\\"
@@ -1288,15 +1288,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"36 days ago\\"
                          class
                       >
-                        8/16/2021, 11:13:10 PM
+                        7/27/2021, 6:45:17 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"1\\"
@@ -1308,17 +1308,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi\\"
+                        <a title=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-serial-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi
+                          release-openshift-ocp-installer-e2e-metal-serial-4.8
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"30\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"2\\"
@@ -1329,14 +1329,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      30
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3302\\"
+                  <div data-id=\\"2686\\"
                        data-rowindex=\\"14\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -1346,7 +1346,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093757000\\"
+                         data-value=\\"1626809709000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"14\\"
                          data-colindex=\\"0\\"
@@ -1357,17 +1357,293 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"43 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:37 AM
+                        7/20/2021, 7:35:09 PM
+                      </p>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                         data-field=\\"job\\"
+                         data-rowindex=\\"14\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
+                        </a>
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"29\\"
+                         data-field=\\"testFailures\\"
+                         data-rowindex=\\"14\\"
+                         data-colindex=\\"2\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"3\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      29
+                    </div>
+                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         class=\\"MuiDataGrid-cell\\"
+                    >
+                    </div>
+                  </div>
+                  <div data-id=\\"2188\\"
+                       data-rowindex=\\"15\\"
+                       role=\\"row\\"
+                       class=\\"Mui-odd MuiDataGrid-row\\"
+                       aria-rowindex=\\"17\\"
+                       aria-selected=\\"false\\"
+                       style=\\"max-height: 52px; min-height: 52px;\\"
+                  >
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"1627270759000\\"
+                         data-field=\\"timestamp\\"
+                         data-rowindex=\\"15\\"
+                         data-colindex=\\"0\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"1\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <p title=\\"38 days ago\\"
+                         class
+                      >
+                        7/26/2021, 3:39:19 AM
+                      </p>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade\\"
+                         data-field=\\"job\\"
+                         data-rowindex=\\"15\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade\\"
+                           class
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade
+                        </a>
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"28\\"
+                         data-field=\\"testFailures\\"
+                         data-rowindex=\\"15\\"
+                         data-colindex=\\"2\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"3\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      28
+                    </div>
+                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         class=\\"MuiDataGrid-cell\\"
+                    >
+                    </div>
+                  </div>
+                  <div data-id=\\"1975\\"
+                       data-rowindex=\\"16\\"
+                       role=\\"row\\"
+                       class=\\"Mui-even MuiDataGrid-row\\"
+                       aria-rowindex=\\"18\\"
+                       aria-selected=\\"false\\"
+                       style=\\"max-height: 52px; min-height: 52px;\\"
+                  >
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"1627161569000\\"
+                         data-field=\\"timestamp\\"
+                         data-rowindex=\\"16\\"
+                         data-colindex=\\"0\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"1\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <p title=\\"39 days ago\\"
+                         class
+                      >
+                        7/24/2021, 9:19:29 PM
+                      </p>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
+                         data-field=\\"job\\"
+                         data-rowindex=\\"16\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                        <a title=\\"release-openshift-ocp-installer-e2e-azure-ovn-4.8\\"
+                           class
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-ovn-4.8%22%7D%5D%7D\\"
+                        >
+                          release-openshift-ocp-installer-e2e-azure-ovn-4.8
+                        </a>
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"28\\"
+                         data-field=\\"testFailures\\"
+                         data-rowindex=\\"16\\"
+                         data-colindex=\\"2\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"3\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      28
+                    </div>
+                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         class=\\"MuiDataGrid-cell\\"
+                    >
+                    </div>
+                  </div>
+                  <div data-id=\\"2641\\"
+                       data-rowindex=\\"17\\"
+                       role=\\"row\\"
+                       class=\\"Mui-odd MuiDataGrid-row\\"
+                       aria-rowindex=\\"19\\"
+                       aria-selected=\\"false\\"
+                       style=\\"max-height: 52px; min-height: 52px;\\"
+                  >
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"1626851228000\\"
+                         data-field=\\"timestamp\\"
+                         data-rowindex=\\"17\\"
+                         data-colindex=\\"0\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"1\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <p title=\\"43 days ago\\"
+                         class
+                      >
+                        7/21/2021, 7:07:08 AM
+                      </p>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                         data-field=\\"job\\"
+                         data-rowindex=\\"17\\"
+                         data-colindex=\\"1\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"2\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                           class
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
+                        >
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
+                        </a>
+                      </div>
+                    </div>
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
+                         role=\\"cell\\"
+                         data-value=\\"27\\"
+                         data-field=\\"testFailures\\"
+                         data-rowindex=\\"17\\"
+                         data-colindex=\\"2\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"3\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      27
+                    </div>
+                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         class=\\"MuiDataGrid-cell\\"
+                    >
+                    </div>
+                  </div>
+                  <div data-id=\\"2078\\"
+                       data-rowindex=\\"18\\"
+                       role=\\"row\\"
+                       class=\\"Mui-even MuiDataGrid-row\\"
+                       aria-rowindex=\\"20\\"
+                       aria-selected=\\"false\\"
+                       style=\\"max-height: 52px; min-height: 52px;\\"
+                  >
+                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                         role=\\"cell\\"
+                         data-value=\\"1627446317000\\"
+                         data-field=\\"timestamp\\"
+                         data-rowindex=\\"18\\"
+                         data-colindex=\\"0\\"
+                         data-rowselected=\\"false\\"
+                         data-editable=\\"false\\"
+                         data-mode=\\"view\\"
+                         aria-colindex=\\"1\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         tabindex=\\"-1\\"
+                    >
+                      <p title=\\"36 days ago\\"
+                         class
+                      >
+                        7/28/2021, 4:25:17 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
                          data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                          data-field=\\"job\\"
-                         data-rowindex=\\"14\\"
+                         data-rowindex=\\"18\\"
                          data-colindex=\\"1\\"
                          data-rowselected=\\"false\\"
                          data-editable=\\"false\\"
@@ -1387,283 +1663,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
-                         data-field=\\"testFailures\\"
-                         data-rowindex=\\"14\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      62
-                    </div>
-                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         class=\\"MuiDataGrid-cell\\"
-                    >
-                    </div>
-                  </div>
-                  <div data-id=\\"3641\\"
-                       data-rowindex=\\"15\\"
-                       role=\\"row\\"
-                       class=\\"Mui-odd MuiDataGrid-row\\"
-                       aria-rowindex=\\"17\\"
-                       aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
-                  >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"1629155589000\\"
-                         data-field=\\"timestamp\\"
-                         data-rowindex=\\"15\\"
-                         data-colindex=\\"0\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <p title=\\"5 days ago\\"
-                         class
-                      >
-                        8/16/2021, 11:13:09 PM
-                      </p>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-e2e-azure-serial-4.8\\"
-                         data-field=\\"job\\"
-                         data-rowindex=\\"15\\"
-                         data-colindex=\\"1\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"release-openshift-ocp-installer-e2e-azure-serial-4.8\\"
-                           class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-azure-serial-4.8%22%7D%5D%7D\\"
-                        >
-                          release-openshift-ocp-installer-e2e-azure-serial-4.8
-                        </a>
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"62\\"
-                         data-field=\\"testFailures\\"
-                         data-rowindex=\\"15\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      62
-                    </div>
-                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         class=\\"MuiDataGrid-cell\\"
-                    >
-                    </div>
-                  </div>
-                  <div data-id=\\"3789\\"
-                       data-rowindex=\\"16\\"
-                       role=\\"row\\"
-                       class=\\"Mui-even MuiDataGrid-row\\"
-                       aria-rowindex=\\"18\\"
-                       aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
-                  >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"1629093758000\\"
-                         data-field=\\"timestamp\\"
-                         data-rowindex=\\"16\\"
-                         data-colindex=\\"0\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <p title=\\"5 days ago\\"
-                         class
-                      >
-                        8/16/2021, 6:02:38 AM
-                      </p>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-ovirt\\"
-                         data-field=\\"job\\"
-                         data-rowindex=\\"16\\"
-                         data-colindex=\\"1\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-ovirt\\"
-                           class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-ovirt%22%7D%5D%7D\\"
-                        >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-ovirt
-                        </a>
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"62\\"
-                         data-field=\\"testFailures\\"
-                         data-rowindex=\\"16\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      62
-                    </div>
-                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         class=\\"MuiDataGrid-cell\\"
-                    >
-                    </div>
-                  </div>
-                  <div data-id=\\"3655\\"
-                       data-rowindex=\\"17\\"
-                       role=\\"row\\"
-                       class=\\"Mui-odd MuiDataGrid-row\\"
-                       aria-rowindex=\\"19\\"
-                       aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
-                  >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"1629155590000\\"
-                         data-field=\\"timestamp\\"
-                         data-rowindex=\\"17\\"
-                         data-colindex=\\"0\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <p title=\\"5 days ago\\"
-                         class
-                      >
-                        8/16/2021, 11:13:10 PM
-                      </p>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn\\"
-                         data-field=\\"job\\"
-                         data-rowindex=\\"17\\"
-                         data-colindex=\\"1\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn\\"
-                           class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn%22%7D%5D%7D\\"
-                        >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn
-                        </a>
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"62\\"
-                         data-field=\\"testFailures\\"
-                         data-rowindex=\\"17\\"
-                         data-colindex=\\"2\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      62
-                    </div>
-                    <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         class=\\"MuiDataGrid-cell\\"
-                    >
-                    </div>
-                  </div>
-                  <div data-id=\\"2985\\"
-                       data-rowindex=\\"18\\"
-                       role=\\"row\\"
-                       class=\\"Mui-even MuiDataGrid-row\\"
-                       aria-rowindex=\\"20\\"
-                       aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
-                  >
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"1629155594000\\"
-                         data-field=\\"timestamp\\"
-                         data-rowindex=\\"18\\"
-                         data-colindex=\\"0\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <p title=\\"5 days ago\\"
-                         class
-                      >
-                        8/16/2021, 11:13:14 PM
-                      </p>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
-                         role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-e2e-aws-upi-4.8\\"
-                         data-field=\\"job\\"
-                         data-rowindex=\\"18\\"
-                         data-colindex=\\"1\\"
-                         data-rowselected=\\"false\\"
-                         data-editable=\\"false\\"
-                         data-mode=\\"view\\"
-                         aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
-                         tabindex=\\"-1\\"
-                    >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"release-openshift-ocp-installer-e2e-aws-upi-4.8\\"
-                           class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-aws-upi-4.8%22%7D%5D%7D\\"
-                        >
-                          release-openshift-ocp-installer-e2e-aws-upi-4.8
-                        </a>
-                      </div>
-                    </div>
-                    <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
-                         role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"18\\"
                          data-colindex=\\"2\\"
@@ -1674,14 +1674,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3087\\"
+                  <div data-id=\\"5502\\"
                        data-rowindex=\\"19\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1691,7 +1691,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629155594000\\"
+                         data-value=\\"1626636415000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"0\\"
@@ -1702,15 +1702,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"45 days ago\\"
                          class
                       >
-                        8/16/2021, 11:13:14 PM
+                        7/18/2021, 7:26:55 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"1\\"
@@ -1722,17 +1722,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-aws\\"
+                        <a title=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-aws%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-aws
+                          release-openshift-ocp-installer-e2e-metal-4.8
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"2\\"
@@ -1743,14 +1743,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3477\\"
+                  <div data-id=\\"4976\\"
                        data-rowindex=\\"20\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -1760,7 +1760,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093760000\\"
+                         data-value=\\"1626616855000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"20\\"
                          data-colindex=\\"0\\"
@@ -1771,15 +1771,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"45 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:40 AM
+                        7/18/2021, 2:00:55 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"20\\"
                          data-colindex=\\"1\\"
@@ -1791,17 +1791,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"20\\"
                          data-colindex=\\"2\\"
@@ -1812,14 +1812,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3609\\"
+                  <div data-id=\\"5146\\"
                        data-rowindex=\\"21\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1829,7 +1829,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093759000\\"
+                         data-value=\\"1626364520000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"21\\"
                          data-colindex=\\"0\\"
@@ -1840,15 +1840,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"48 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:39 AM
+                        7/15/2021, 3:55:20 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-e2e-gcp-serial-4.8\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"21\\"
                          data-colindex=\\"1\\"
@@ -1860,17 +1860,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"release-openshift-ocp-installer-e2e-gcp-serial-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-gcp-serial-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-e2e-gcp-serial-4.8
+                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"21\\"
                          data-colindex=\\"2\\"
@@ -1881,14 +1881,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3474\\"
+                  <div data-id=\\"4977\\"
                        data-rowindex=\\"22\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -1898,7 +1898,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629155594000\\"
+                         data-value=\\"1626588057000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"22\\"
                          data-colindex=\\"0\\"
@@ -1909,15 +1909,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"46 days ago\\"
                          class
                       >
-                        8/16/2021, 11:13:14 PM
+                        7/18/2021, 6:00:57 AM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"22\\"
                          data-colindex=\\"1\\"
@@ -1929,17 +1929,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi-serial
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-serial
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"22\\"
                          data-colindex=\\"2\\"
@@ -1950,14 +1950,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3656\\"
+                  <div data-id=\\"5049\\"
                        data-rowindex=\\"23\\"
                        role=\\"row\\"
                        class=\\"Mui-odd MuiDataGrid-row\\"
@@ -1967,7 +1967,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629093758000\\"
+                         data-value=\\"1626463593000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"23\\"
                          data-colindex=\\"0\\"
@@ -1978,15 +1978,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"47 days ago\\"
                          class
                       >
-                        8/16/2021, 6:02:38 AM
+                        7/16/2021, 7:26:33 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"23\\"
                          data-colindex=\\"1\\"
@@ -1998,17 +1998,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn\\"
+                        <a title=\\"release-openshift-ocp-installer-e2e-metal-serial-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-serial-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-ovn
+                          release-openshift-ocp-installer-e2e-metal-serial-4.8
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"23\\"
                          data-colindex=\\"2\\"
@@ -2019,14 +2019,14 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
                   </div>
-                  <div data-id=\\"3608\\"
+                  <div data-id=\\"2197\\"
                        data-rowindex=\\"24\\"
                        role=\\"row\\"
                        class=\\"Mui-even MuiDataGrid-row\\"
@@ -2036,7 +2036,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"1629155592000\\"
+                         data-value=\\"1627071285000\\"
                          data-field=\\"timestamp\\"
                          data-rowindex=\\"24\\"
                          data-colindex=\\"0\\"
@@ -2047,15 +2047,15 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <p title=\\"5 days ago\\"
+                      <p title=\\"40 days ago\\"
                          class
                       >
-                        8/16/2021, 11:13:12 PM
+                        7/23/2021, 8:14:45 PM
                       </p>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-e2e-gcp-serial-4.8\\"
+                         data-value=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                          data-field=\\"job\\"
                          data-rowindex=\\"24\\"
                          data-colindex=\\"1\\"
@@ -2067,17 +2067,17 @@ exports[`JobRunsTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
-                        <a title=\\"release-openshift-ocp-installer-e2e-gcp-serial-4.8\\"
+                        <a title=\\"release-openshift-ocp-installer-e2e-metal-4.8\\"
                            class
-                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-gcp-serial-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-e2e-metal-4.8%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-e2e-gcp-serial-4.8
+                          release-openshift-ocp-installer-e2e-metal-4.8
                         </a>
                       </div>
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--textRight\\"
                          role=\\"cell\\"
-                         data-value=\\"62\\"
+                         data-value=\\"26\\"
                          data-field=\\"testFailures\\"
                          data-rowindex=\\"24\\"
                          data-colindex=\\"2\\"
@@ -2088,7 +2088,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          tabindex=\\"-1\\"
                     >
-                      62
+                      26
                     </div>
                     <div style=\\"min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
                          class=\\"MuiDataGrid-cell\\"
@@ -2144,7 +2144,7 @@ exports[`JobRunsTable should render correctly 1`] = `
               </svg>
             </div>
             <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-8 MuiTypography-body2 MuiTypography-colorInherit\\">
-              1-25 of 5745
+              1-25 of 5788
             </p>
             <div class=\\"MuiTablePagination-actions\\">
               <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit Mui-disabled Mui-disabled\\"

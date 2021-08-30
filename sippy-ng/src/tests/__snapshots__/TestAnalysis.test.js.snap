@@ -50,6 +50,14 @@ exports[`TestAnalysis should render correctly 1`] = `
         <div class="MuiCardContent-root makeStyles-cardContent-1">
           <h6 class="MuiTypography-root MuiTypography-h6">
             Overall
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+              </path>
+            </svg>
           </h6>
           <div align="center">
             <div style="width: 70%;">
@@ -380,7 +388,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="15 days ago"
+                            <p title="37 days ago"
                                class
                             >
                               7/27/2021, 8:49:29 AM
@@ -428,7 +436,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                           </div>
                         </div>
-                        <div data-id="1"
+                        <div data-id="12"
                              data-rowindex="1"
                              role="row"
                              class="Mui-odd MuiDataGrid-row"
@@ -449,7 +457,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="22 days ago"
+                            <p title="43 days ago"
                                class
                             >
                               7/20/2021, 4:01:02 PM
@@ -497,7 +505,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                           </div>
                         </div>
-                        <div data-id="2"
+                        <div data-id="13"
                              data-rowindex="2"
                              role="row"
                              class="Mui-even MuiDataGrid-row"
@@ -518,7 +526,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="24 days ago"
+                            <p title="45 days ago"
                                class
                             >
                               7/18/2021, 4:00:56 PM
@@ -566,7 +574,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                           </div>
                         </div>
-                        <div data-id="3"
+                        <div data-id="11"
                              data-rowindex="3"
                              role="row"
                              class="Mui-odd MuiDataGrid-row"
@@ -587,7 +595,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="24 days ago"
+                            <p title="45 days ago"
                                class
                             >
                               7/18/2021, 4:00:55 PM
@@ -635,7 +643,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                           </div>
                         </div>
-                        <div data-id="13"
+                        <div data-id="1"
                              data-rowindex="4"
                              role="row"
                              class="Mui-even MuiDataGrid-row"
@@ -656,7 +664,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="24 days ago"
+                            <p title="46 days ago"
                                class
                             >
                               7/18/2021, 3:34:55 AM
@@ -937,6 +945,27 @@ name but are not targeted to the release being reported on."
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
                     scope="row"
                 >
+                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983829">
+                    1983829
+                  </a>
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ovn-kubernetes upgrade jobs are failing disruptive tests
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ASSIGNED
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  Networking
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ---
+                </td>
+              </tr>
+              <tr class="MuiTableRow-root">
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
+                    scope="row"
+                >
                   <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983758">
                     1983758
                   </a>
@@ -973,27 +1002,6 @@ name but are not targeted to the release being reported on."
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                   4.9.0
-                </td>
-              </tr>
-              <tr class="MuiTableRow-root">
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
-                    scope="row"
-                >
-                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983829">
-                    1983829
-                  </a>
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ovn-kubernetes upgrade jobs are failing disruptive tests
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ASSIGNED
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  Networking
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ---
                 </td>
               </tr>
             </tbody>

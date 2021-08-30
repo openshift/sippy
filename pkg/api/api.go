@@ -340,6 +340,6 @@ func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
 	}
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(w, `{message: "could not marshal results: %s"}`, err)
+		fmt.Fprintf(w, `{"message": "could not marshal results: %s"}`, err)
 	}
 }

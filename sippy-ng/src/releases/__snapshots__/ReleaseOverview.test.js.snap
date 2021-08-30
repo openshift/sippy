@@ -105,7 +105,7 @@ exports[`release-overview should render correctly 1`] = `
           </svg>
         </h5>
       </div>
-      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
         <a class="MuiBox-root MuiBox-root-8"
            href="/tests/4.8/details?test=[sig-sippy] infrastructure should work"
         >
@@ -116,12 +116,21 @@ exports[`release-overview should render correctly 1`] = `
             <div class="MuiCardContent-root makeStyles-cardContent-5">
               <h6 class="MuiTypography-root MuiTypography-h6">
                 Infrastructure
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                >
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+                  </path>
+                </svg>
               </h6>
               <div align="center">
                 <div style="width: 70%;">
                 </div>
                 <h3 class="MuiBox-root MuiBox-root-9">
-                  94 % (1111 runs)&nbsp;
+                  94% (1111 runs)
+                  <br>
                   <svg class="MuiSvgIcon-root"
                        focusable="false"
                        viewbox="0 0 24 24"
@@ -132,14 +141,15 @@ exports[`release-overview should render correctly 1`] = `
                     <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
                     </path>
                   </svg>
-                  &nbsp;93% (1130 runs)
+                  <br>
+                  93% (1130 runs)
                 </h3>
               </div>
             </div>
           </div>
         </a>
       </div>
-      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
         <a class="MuiBox-root MuiBox-root-11"
            href="/install/4.8"
         >
@@ -150,12 +160,21 @@ exports[`release-overview should render correctly 1`] = `
             <div class="MuiCardContent-root makeStyles-cardContent-5">
               <h6 class="MuiTypography-root MuiTypography-h6">
                 Install
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                >
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+                  </path>
+                </svg>
               </h6>
               <div align="center">
                 <div style="width: 70%;">
                 </div>
                 <h3 class="MuiBox-root MuiBox-root-12">
-                  99 % (2679 runs)&nbsp;
+                  99% (2679 runs)
+                  <br>
                   <svg class="MuiSvgIcon-root"
                        focusable="false"
                        viewbox="0 0 24 24"
@@ -166,14 +185,15 @@ exports[`release-overview should render correctly 1`] = `
                     <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
                     </path>
                   </svg>
-                  &nbsp;99% (2866 runs)
+                  <br>
+                  99% (2866 runs)
                 </h3>
               </div>
             </div>
           </div>
         </a>
       </div>
-      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-4">
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
         <a class="MuiBox-root MuiBox-root-14"
            href="/upgrade/4.8"
         >
@@ -184,12 +204,21 @@ exports[`release-overview should render correctly 1`] = `
             <div class="MuiCardContent-root makeStyles-cardContent-5">
               <h6 class="MuiTypography-root MuiTypography-h6">
                 Upgrade
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                >
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+                  </path>
+                </svg>
               </h6>
               <div align="center">
                 <div style="width: 70%;">
                 </div>
                 <h3 class="MuiBox-root MuiBox-root-15">
-                  96 % (212 runs)&nbsp;
+                  96% (212 runs)
+                  <br>
                   <svg class="MuiSvgIcon-root"
                        focusable="false"
                        viewbox="0 0 24 24"
@@ -200,887 +229,1052 @@ exports[`release-overview should render correctly 1`] = `
                     <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
                     </path>
                   </svg>
-                  &nbsp;96% (246 runs)
+                  <br>
+                  96% (246 runs)
                 </h3>
               </div>
             </div>
           </div>
         </a>
       </div>
-      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-12">
-        <h5 class="MuiTypography-root MuiTypography-h5">
-          Variant status
-          <svg class="MuiSvgIcon-root"
-               focusable="false"
-               viewbox="0 0 24 24"
-               aria-hidden="true"
-               title="Variant status shows the current and previous pass rates for each variant. A variant is jobs grouped by platform, SDN, architecture, etc."
-          >
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
-            </path>
-          </svg>
-        </h5>
-      </div>
-      <div class="MuiPaper-root MuiAccordion-root MuiAccordion-rounded MuiPaper-elevation5 MuiPaper-rounded"
-           style="margin: 10px; border-radius: 5px;"
-      >
-        <div class="MuiButtonBase-root MuiAccordionSummary-root"
-             tabindex="0"
-             role="button"
-             aria-disabled="false"
-             aria-expanded="false"
-             aria-controls="variant-content"
-             id="variant-header"
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3">
+        <a class="MuiBox-root MuiBox-root-17"
+           href="/tests/4.8/details?test=[sig-sippy] openshift-tests should work"
         >
-          <div class="MuiAccordionSummary-content">
-            <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-221"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D"
+          <div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-6 makeStyles-summaryCard-16 MuiPaper-elevation5 MuiPaper-rounded"
+               style="background-color: rgb(205, 189, 99);"
+               title="How often e2e tests complete successfully. Sippy tries to figure out which runs ran an e2e test suite, and then determine which failed. A low pass rate could be due to any number of temporary problems, most of the utility from this noisy metric is monitoring changes over time."
+          >
+            <div class="MuiCardContent-root makeStyles-cardContent-5">
+              <h6 class="MuiTypography-root MuiTypography-h6">
+                Tests
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
                 >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-220 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(229, 115, 115);"
-                       title="Current runs: 13, previous runs: 14"
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+                  </path>
+                </svg>
+              </h6>
+              <div align="center">
+                <div style="width: 70%;">
+                </div>
+                <h3 class="MuiBox-root MuiBox-root-18">
+                  68% (925 runs)
+                  <br>
+                  <svg class="MuiSvgIcon-root"
+                       focusable="false"
+                       viewbox="0 0 24 24"
+                       aria-hidden="true"
+                       data-icon="ArrowUpwardRoundedIcon"
+                       style="stroke: green; stroke-width: 3; color: green;"
                   >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        s390x
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          0.0%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="SyncAltRoundedIcon"
-                               style="color: grey;"
-                          >
-                            <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                            </path>
-                          </svg>
-                          0.0%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-223"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D"
-                >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-222 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(236, 132, 105);"
-                       title="Current runs: 13, previous runs: 14"
-                  >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        ppc64le
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          15.4%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="ArrowDownwardRoundedIcon"
-                               style="stroke: darkred; stroke-width: 3; color: darkred;"
-                          >
-                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                            </path>
-                          </svg>
-                          21.4%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-225"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D"
-                >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-224 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(242, 149, 96);"
-                       title="Current runs: 54, previous runs: 56"
-                  >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        osd
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          29.6%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="ArrowDownwardRoundedIcon"
-                               style="stroke: darkred; stroke-width: 3; color: darkred;"
-                          >
-                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                            </path>
-                          </svg>
-                          35.7%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-227"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D"
-                >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-226 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(242, 150, 95);"
-                       title="Current runs: 251, previous runs: 286"
-                  >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        upgrade
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          31.1%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="ArrowUpwardRoundedIcon"
-                               style="stroke: green; stroke-width: 3; color: green;"
-                          >
-                            <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                            </path>
-                          </svg>
-                          25.9%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-229"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D"
-                >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-228 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(243, 150, 95);"
-                       title="Current runs: 16, previous runs: 16"
-                  >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        proxy
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          31.3%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="ArrowDownwardRoundedIcon"
-                               style="stroke: darkred; stroke-width: 3; color: darkred;"
-                          >
-                            <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                            </path>
-                          </svg>
-                          50.0%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                <a class="MuiBox-root MuiBox-root-231"
-                   href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D"
-                >
-                  <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-230 MuiPaper-elevation5 MuiPaper-rounded"
-                       style="background-color: rgb(246, 160, 90);"
-                       title="Current runs: 132, previous runs: 125"
-                  >
-                    <div class="MuiCardContent-root makeStyles-cardContent-218"
-                         style="text-align: center;"
-                    >
-                      <h6 class="MuiTypography-root MuiTypography-h6">
-                        metal-ipi
-                      </h6>
-                      <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                           style="margin: 20px; text-align: center;"
-                      >
-                        <div align="center">
-                          39.4%
-                          <svg class="MuiSvgIcon-root"
-                               focusable="false"
-                               viewbox="0 0 24 24"
-                               aria-hidden="true"
-                               data-icon="ArrowUpwardRoundedIcon"
-                               style="stroke: green; stroke-width: 3; color: green;"
-                          >
-                            <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                            </path>
-                          </svg>
-                          33.6%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
+                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                    </path>
+                  </svg>
+                  <br>
+                  63% (938 runs)
+                </h3>
               </div>
             </div>
           </div>
-          <div class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon MuiIconButton-edgeEnd"
-               aria-disabled="false"
-               aria-hidden="true"
-          >
-            <span class="MuiIconButton-label">
-              <svg class="MuiSvgIcon-root"
-                   focusable="false"
-                   viewbox="0 0 24 24"
-                   aria-hidden="true"
-              >
-                <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
-                </path>
-              </svg>
+        </a>
+      </div>
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-5">
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
+             style="padding: 20px; height: 100%;"
+        >
+          <h6 class="MuiTypography-root MuiTypography-h6">
+            <a href="/jobs/4.8&amp;sortField=current_pass_percentage&amp;sort=asc">
+              Job histogram
+            </a>
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+                 title="Histogram of job pass rates. Bucketed by current period pass percentage. Tech preview and never-stable jobs are excluded. The solid line indicates the current period's mean, and the dashed line is the previous period."
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+              </path>
+            </svg>
+          </h6>
+          <div align="center">
+            <span style="margin-right: 10px;">
+              1Q: 28%
             </span>
-            <span class="MuiTouchRipple-root">
+            <span style="margin-right: 10px;">
+              2Q: 60%
+            </span>
+            <span style="margin-right: 10px;">
+              3Q: 85%
+            </span>
+            <span style="margin-right: 10px;">
+              SD: 35.40
             </span>
           </div>
         </div>
-        <div class="MuiCollapse-root MuiCollapse-hidden"
-             style="min-height: 0px;"
+      </div>
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-7">
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
+             style="padding: 20px; height: 100%;"
         >
-          <div class="MuiCollapse-wrapper">
-            <div class="MuiCollapse-wrapperInner">
-              <div aria-labelledby="variant-header"
-                   id="variant-content"
-                   role="region"
-              >
-                <div class="MuiAccordionDetails-root">
-                  <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3"
-                       style="margin-right: 20px;"
+          <h6 class="MuiTypography-root MuiTypography-h6">
+            <a href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3E%22%2C%22value%22%3A%221628605080000%22%7D%2C%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3C%3D%22%2C%22value%22%3A%221628691480000%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;period=hour}">
+              Last 24 hours
+            </a>
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+                 title="This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. The most recent hour will generally look more successful until all jobs finish running. Use the arrow buttons below to move back and forward a day. All times are UTC."
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+              </path>
+            </svg>
+          </h6>
+          <div align="center">
+            <button class="MuiButtonBase-root MuiButton-root MuiButton-text"
+                    tabindex="0"
+                    type="button"
+            >
+              <span class="MuiButton-label">
+                <span class="MuiButton-startIcon MuiButton-iconSizeMedium">
+                  <svg class="MuiSvgIcon-root"
+                       focusable="false"
+                       viewbox="0 0 24 24"
+                       aria-hidden="true"
                   >
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-233"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D"
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z">
+                    </path>
+                  </svg>
+                </span>
+              </span>
+              <span class="MuiTouchRipple-root">
+              </span>
+            </button>
+            <button class="MuiButtonBase-root MuiButton-root MuiButton-text"
+                    tabindex="0"
+                    type="button"
+                    style="display: none;"
+            >
+              <span class="MuiButton-label">
+                <span class="MuiButton-startIcon MuiButton-iconSizeMedium">
+                  <svg class="MuiSvgIcon-root"
+                       focusable="false"
+                       viewbox="0 0 24 24"
+                       aria-hidden="true"
+                  >
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z">
+                    </path>
+                  </svg>
+                </span>
+              </span>
+              <span class="MuiTouchRipple-root">
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-md-12">
+        <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-12">
+          <h5 class="MuiTypography-root MuiTypography-h5">
+            Variant status
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+                 title="Variant status shows the current and previous pass rates for each variant. A variant is jobs grouped by platform, SDN, architecture, etc."
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
+              </path>
+            </svg>
+          </h5>
+        </div>
+        <div class="MuiPaper-root MuiAccordion-root MuiAccordion-rounded MuiPaper-elevation5 MuiPaper-rounded"
+             style="margin: 10px; border-radius: 5px;"
+        >
+          <div class="MuiButtonBase-root MuiAccordionSummary-root"
+               tabindex="0"
+               role="button"
+               aria-disabled="false"
+               aria-expanded="false"
+               aria-controls="variant-content"
+               id="variant-header"
+          >
+            <div class="MuiAccordionSummary-content">
+              <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-224"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-223 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(229, 115, 115);"
+                         title="Current runs: 13, previous runs: 14"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
                       >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-232 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(248, 164, 87);"
-                             title="Current runs: 138, previous runs: 142"
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          s390x
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
-                          >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              azure
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                          <div align="center">
+                            0.0%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="SyncAltRoundedIcon"
+                                 style="color: grey;"
                             >
-                              <div align="center">
-                                43.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="SyncAltRoundedIcon"
-                                     style="color: grey;"
-                                >
-                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                  </path>
-                                </svg>
-                                43.7%
+                              <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                              </path>
+                            </svg>
+                            0.0%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-226"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-225 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(236, 132, 105);"
+                         title="Current runs: 13, previous runs: 14"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
+                      >
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          ppc64le
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
+                        >
+                          <div align="center">
+                            15.4%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="ArrowDownwardRoundedIcon"
+                                 style="stroke: darkred; stroke-width: 3; color: darkred;"
+                            >
+                              <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                              </path>
+                            </svg>
+                            21.4%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-228"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-227 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(242, 149, 96);"
+                         title="Current runs: 54, previous runs: 56"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
+                      >
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          osd
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
+                        >
+                          <div align="center">
+                            29.6%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="ArrowDownwardRoundedIcon"
+                                 style="stroke: darkred; stroke-width: 3; color: darkred;"
+                            >
+                              <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                              </path>
+                            </svg>
+                            35.7%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-230"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-229 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(242, 150, 95);"
+                         title="Current runs: 251, previous runs: 286"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
+                      >
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          upgrade
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
+                        >
+                          <div align="center">
+                            31.1%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="ArrowUpwardRoundedIcon"
+                                 style="stroke: green; stroke-width: 3; color: green;"
+                            >
+                              <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                              </path>
+                            </svg>
+                            25.9%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-232"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-231 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(243, 150, 95);"
+                         title="Current runs: 16, previous runs: 16"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
+                      >
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          proxy
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
+                        >
+                          <div align="center">
+                            31.3%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="ArrowDownwardRoundedIcon"
+                                 style="stroke: darkred; stroke-width: 3; color: darkred;"
+                            >
+                              <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                              </path>
+                            </svg>
+                            50.0%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+                <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                  <a class="MuiBox-root MuiBox-root-234"
+                     href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D"
+                  >
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-233 MuiPaper-elevation5 MuiPaper-rounded"
+                         style="background-color: rgb(246, 160, 90);"
+                         title="Current runs: 132, previous runs: 125"
+                    >
+                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                           style="text-align: center;"
+                      >
+                        <h6 class="MuiTypography-root MuiTypography-h6">
+                          metal-ipi
+                        </h6>
+                        <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                             style="margin: 20px; text-align: center;"
+                        >
+                          <div align="center">
+                            39.4%
+                            <svg class="MuiSvgIcon-root"
+                                 focusable="false"
+                                 viewbox="0 0 24 24"
+                                 aria-hidden="true"
+                                 data-icon="ArrowUpwardRoundedIcon"
+                                 style="stroke: green; stroke-width: 3; color: green;"
+                            >
+                              <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                              </path>
+                            </svg>
+                            33.6%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="MuiButtonBase-root MuiIconButton-root MuiAccordionSummary-expandIcon MuiIconButton-edgeEnd"
+                 aria-disabled="false"
+                 aria-hidden="true"
+            >
+              <span class="MuiIconButton-label">
+                <svg class="MuiSvgIcon-root"
+                     focusable="false"
+                     viewbox="0 0 24 24"
+                     aria-hidden="true"
+                >
+                  <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z">
+                  </path>
+                </svg>
+              </span>
+              <span class="MuiTouchRipple-root">
+              </span>
+            </div>
+          </div>
+          <div class="MuiCollapse-root MuiCollapse-hidden"
+               style="min-height: 0px;"
+          >
+            <div class="MuiCollapse-wrapper">
+              <div class="MuiCollapse-wrapperInner">
+                <div aria-labelledby="variant-header"
+                     id="variant-content"
+                     role="region"
+                >
+                  <div class="MuiAccordionDetails-root">
+                    <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3"
+                         style="margin-right: 20px;"
+                    >
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-236"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D"
+                        >
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-235 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(248, 164, 87);"
+                               title="Current runs: 138, previous runs: 142"
+                          >
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
+                            >
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                azure
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  43.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="SyncAltRoundedIcon"
+                                       style="color: grey;"
+                                  >
+                                    <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                    </path>
+                                  </svg>
+                                  43.7%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-235"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-234 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(250, 169, 85);"
-                             title="Current runs: 40, previous runs: 33"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-238"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-237 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(250, 169, 85);"
+                               title="Current runs: 40, previous runs: 33"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              compact
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                47.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                42.4%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                compact
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  47.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  42.4%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-237"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-236 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(251, 172, 83);"
-                             title="Current runs: 113, previous runs: 142"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-240"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-239 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(251, 172, 83);"
+                               title="Current runs: 113, previous runs: 142"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              ovn
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                50.4%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                40.8%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                ovn
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  50.4%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  40.8%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-239"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-238 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(253, 177, 80);"
-                             title="Current runs: 93, previous runs: 89"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-242"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-241 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(253, 177, 80);"
+                               title="Current runs: 93, previous runs: 89"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              vsphere-ipi
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                54.8%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowDownwardRoundedIcon"
-                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                >
-                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                                  </path>
-                                </svg>
-                                58.4%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                vsphere-ipi
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  54.8%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowDownwardRoundedIcon"
+                                       style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                  >
+                                    <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                    </path>
+                                  </svg>
+                                  58.4%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-241"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-240 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(254, 180, 78);"
-                             title="Current runs: 348, previous runs: 377"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-244"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-243 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(254, 180, 78);"
+                               title="Current runs: 348, previous runs: 377"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              aws
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                57.8%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                54.9%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                aws
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  57.8%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  54.9%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-243"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-242 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(254, 182, 78);"
-                             title="Current runs: 187, previous runs: 190"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-246"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-245 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(254, 182, 78);"
+                               title="Current runs: 187, previous runs: 190"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              gcp
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                58.8%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                47.9%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                gcp
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  58.8%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  47.9%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-245"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-244 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(251, 183, 79);"
-                             title="Current runs: 33, previous runs: 36"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-248"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-247 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(251, 183, 79);"
+                               title="Current runs: 33, previous runs: 36"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              single-node
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                60.6%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="SyncAltRoundedIcon"
-                                     style="color: grey;"
-                                >
-                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                  </path>
-                                </svg>
-                                61.1%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                single-node
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  60.6%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="SyncAltRoundedIcon"
+                                       style="color: grey;"
+                                  >
+                                    <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                    </path>
+                                  </svg>
+                                  61.1%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-247"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-246 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(245, 184, 81);"
-                             title="Current runs: 13, previous runs: 13"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-250"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-249 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(245, 184, 81);"
+                               title="Current runs: 13, previous runs: 13"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              realtime
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                61.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                38.5%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                realtime
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  61.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  38.5%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-249"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-248 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(189, 191, 106);"
-                             title="Current runs: 44, previous runs: 44"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-252"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-251 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(189, 191, 106);"
+                               title="Current runs: 44, previous runs: 44"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              metal-upi
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                70.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                61.4%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                metal-upi
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  70.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  61.4%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-251"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-250 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(183, 192, 109);"
-                             title="Current runs: 214, previous runs: 209"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-254"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-253 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(183, 192, 109);"
+                               title="Current runs: 214, previous runs: 209"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              serial
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                71.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="SyncAltRoundedIcon"
-                                     style="color: grey;"
-                                >
-                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                  </path>
-                                </svg>
-                                70.3%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                serial
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  71.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="SyncAltRoundedIcon"
+                                       style="color: grey;"
+                                  >
+                                    <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                    </path>
+                                  </svg>
+                                  70.3%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-253"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-252 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(179, 193, 110);"
-                             title="Current runs: 43, previous runs: 43"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-256"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-255 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(179, 193, 110);"
+                               title="Current runs: 43, previous runs: 43"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              ovirt
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                72.1%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                48.8%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                ovirt
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  72.1%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  48.8%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-255"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-254 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(175, 193, 112);"
-                             title="Current runs: 44, previous runs: 44"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-258"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-257 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(175, 193, 112);"
+                               title="Current runs: 44, previous runs: 44"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              openstack
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                72.7%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                70.5%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                openstack
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  72.7%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  70.5%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-257"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-256 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(141, 197, 127);"
-                             title="Current runs: 73, previous runs: 68"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-260"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-259 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(141, 197, 127);"
+                               title="Current runs: 73, previous runs: 68"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              vsphere-upi
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                78.1%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                75.0%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                vsphere-upi
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  78.1%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  75.0%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-259"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-258 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(129, 199, 132);"
-                             title="Current runs: 28, previous runs: 28"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-262"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-261 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(129, 199, 132);"
+                               title="Current runs: 28, previous runs: 28"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              fips
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                85.7%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowDownwardRoundedIcon"
-                                     style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                >
-                                  <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                                  </path>
-                                </svg>
-                                89.3%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                fips
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  85.7%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowDownwardRoundedIcon"
+                                       style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                  >
+                                    <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                    </path>
+                                  </svg>
+                                  89.3%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-261"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-260 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(129, 199, 132);"
-                             title="Current runs: 28, previous runs: 26"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-264"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-263 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(129, 199, 132);"
+                               title="Current runs: 28, previous runs: 26"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              metal-assisted
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                85.7%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="ArrowUpwardRoundedIcon"
-                                     style="stroke: green; stroke-width: 3; color: green;"
-                                >
-                                  <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
-                                  </path>
-                                </svg>
-                                76.9%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                metal-assisted
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  85.7%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="ArrowUpwardRoundedIcon"
+                                       style="stroke: green; stroke-width: 3; color: green;"
+                                  >
+                                    <path d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 00-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z">
+                                    </path>
+                                  </svg>
+                                  76.9%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-263"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-262 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgb(129, 199, 132);"
-                             title="Current runs: 1632, previous runs: 1805"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-266"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-265 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgb(129, 199, 132);"
+                               title="Current runs: 1632, previous runs: 1805"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              promote
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              <div align="center">
-                                99.5%
-                                <svg class="MuiSvgIcon-root"
-                                     focusable="false"
-                                     viewbox="0 0 24 24"
-                                     aria-hidden="true"
-                                     data-icon="SyncAltRoundedIcon"
-                                     style="color: grey;"
-                                >
-                                  <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
-                                  </path>
-                                </svg>
-                                99.4%
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                promote
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                <div align="center">
+                                  99.5%
+                                  <svg class="MuiSvgIcon-root"
+                                       focusable="false"
+                                       viewbox="0 0 24 24"
+                                       aria-hidden="true"
+                                       data-icon="SyncAltRoundedIcon"
+                                       style="color: grey;"
+                                  >
+                                    <path d="M21.65 7.65l-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM2.35 16.35l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7z">
+                                    </path>
+                                  </svg>
+                                  99.4%
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
-                    </div>
-                    <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                      <a class="MuiBox-root MuiBox-root-265"
-                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D"
-                      >
-                        <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-219 makeStyles-miniCard-264 MuiPaper-elevation5 MuiPaper-rounded"
-                             style="background-color: rgba(0, 0, 0, 0.38);"
-                             title="Current runs: 0, previous runs: 0"
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-268"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D"
                         >
-                          <div class="MuiCardContent-root makeStyles-cardContent-218"
-                               style="text-align: center;"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-267 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgba(0, 0, 0, 0.38);"
+                               title="Current runs: 0, previous runs: 0"
                           >
-                            <h6 class="MuiTypography-root MuiTypography-h6">
-                              never-stable
-                            </h6>
-                            <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
-                                 style="margin: 20px; text-align: center;"
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
                             >
-                              No data
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                never-stable
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                No data
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </a>
+                        </a>
+                      </div>
+                      <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
+                        <a class="MuiBox-root MuiBox-root-270"
+                           href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%5D%7D"
+                        >
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-269 MuiPaper-elevation5 MuiPaper-rounded"
+                               style="background-color: rgba(0, 0, 0, 0.38);"
+                               title="Current runs: 0, previous runs: 0"
+                          >
+                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                                 style="text-align: center;"
+                            >
+                              <h6 class="MuiTypography-root MuiTypography-h6">
+                                techpreview
+                              </h6>
+                              <div class="MuiGrid-root MuiGrid-container MuiGrid-align-items-xs-center"
+                                   style="margin: 20px; text-align: center;"
+                              >
+                                No data
+                              </div>
+                            </div>
+                          </div>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1090,8 +1284,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -1308,10 +1501,10 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="39"
+                            <div data-id="68"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-38-54 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-38-57 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -1389,10 +1582,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="62"
+                            <div data-id="45"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-row-percent-69-85 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-row-percent-69-88 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -1470,10 +1663,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="33"
+                            <div data-id="73"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-33-49 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-33-52 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -1551,10 +1744,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="28"
+                            <div data-id="79"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-row-percent-31-47 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-row-percent-31-50 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -1632,10 +1825,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="70"
+                            <div data-id="34"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-77-93 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-77-96 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -1736,10 +1929,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -1761,7 +1954,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -1812,8 +2005,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -2029,10 +2221,10 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="37"
+                            <div data-id="79"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-0-16 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -2110,10 +2302,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="33"
+                            <div data-id="98"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd JobTable-row-percent-0-16 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-row-percent-0-19 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -2191,10 +2383,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="3"
+                            <div data-id="56"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-0-16 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -2272,10 +2464,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="72"
+                            <div data-id="41"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd JobTable-row-percent-50-66 MuiDataGrid-row"
+                                 class="Mui-odd JobTable-row-percent-50-69 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -2353,10 +2545,10 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="53"
+                            <div data-id="107"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even JobTable-row-percent-0-16 MuiDataGrid-row"
+                                 class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 70px; min-height: 70px;"
@@ -2457,10 +2649,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -2482,7 +2674,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -2533,8 +2725,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -2754,7 +2945,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-37-154 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-37-157 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -2833,7 +3024,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="49"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-83-200 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-83-203 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -2912,7 +3103,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="27"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-50-167 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-50-170 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -2991,7 +3182,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="48"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-83-200 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-83-203 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3070,7 +3261,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="55"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-89-206 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-89-209 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3169,10 +3360,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3194,7 +3385,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -3245,8 +3436,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -3466,7 +3656,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="6"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-50-167 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-50-170 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3545,7 +3735,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="7"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-50-167 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-50-170 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3624,7 +3814,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="5"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-50-167 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-50-170 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3703,7 +3893,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="12"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-75-192 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-75-195 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3782,7 +3972,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="13"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-75-192 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-75-195 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -3881,10 +4071,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -3906,7 +4096,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -3957,8 +4147,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -4178,7 +4367,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="25"
                                  data-rowindex="0"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-37-154 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-37-157 MuiDataGrid-row"
                                  aria-rowindex="2"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -4257,7 +4446,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="49"
                                  data-rowindex="1"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-83-200 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-83-203 MuiDataGrid-row"
                                  aria-rowindex="3"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -4336,7 +4525,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="27"
                                  data-rowindex="2"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-50-167 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-50-170 MuiDataGrid-row"
                                  aria-rowindex="4"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -4415,7 +4604,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="48"
                                  data-rowindex="3"
                                  role="row"
-                                 class="Mui-odd TestTable-row-percent-83-200 MuiDataGrid-row"
+                                 class="Mui-odd TestTable-row-percent-83-203 MuiDataGrid-row"
                                  aria-rowindex="5"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -4494,7 +4683,7 @@ exports[`release-overview should render correctly 1`] = `
                             <div data-id="55"
                                  data-rowindex="4"
                                  role="row"
-                                 class="Mui-even TestTable-row-percent-89-206 MuiDataGrid-row"
+                                 class="Mui-even TestTable-row-percent-89-209 MuiDataGrid-row"
                                  aria-rowindex="6"
                                  aria-selected="false"
                                  style="max-height: 100px; min-height: 100px;"
@@ -4593,10 +4782,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -4618,7 +4807,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4669,8 +4858,7 @@ exports[`release-overview should render correctly 1`] = `
         </div>
       </div>
       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-12 MuiGrid-grid-md-6">
-        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation1 MuiPaper-rounded"
-             enhancement="5"
+        <div class="MuiPaper-root MuiCard-root MuiPaper-elevation5 MuiPaper-rounded"
              style="text-align: center;"
         >
           <a class="MuiTypography-root MuiTypography-h5"
@@ -4915,10 +5103,10 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         Rows per page:
                       </p>
-                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-268 MuiTablePagination-selectRoot">
+                      <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-273 MuiTablePagination-selectRoot">
                         <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
                              tabindex="0"
                              role="button"
@@ -4940,7 +5128,7 @@ exports[`release-overview should render correctly 1`] = `
                           </path>
                         </svg>
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-267 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-272 MuiTypography-body2 MuiTypography-colorInherit">
                         0-0 of 0
                       </p>
                       <div class="MuiTablePagination-actions">
