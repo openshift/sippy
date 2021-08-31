@@ -37,42 +37,48 @@ export const TEST_THRESHOLDS = {
 // Saved searches
 export const BOOKMARKS = {
   RUN_1: {
-    id: 1,
     columnField: 'current_runs',
     operatorValue: '>=',
     value: '1',
   },
   RUN_10: {
-    id: 1,
     columnField: 'current_runs',
     operatorValue: '>=',
     value: '10',
   },
+  NO_NEVER_STABLE: {
+    columnField: 'variants',
+    not: true,
+    operatorValue: 'contains',
+    value: 'never-stable',
+  },
+  NO_TECHPREVIEW: {
+    columnField: 'variants',
+    not: true,
+    operatorValue: 'contains',
+    value: 'techpreview',
+  },
   UPGRADE: {
-    id: 2,
     columnField: 'tags',
     operatorValue: 'contains',
     value: 'upgrade',
   },
   INSTALL: {
-    id: 3,
     columnField: 'tags',
     operatorValue: 'contains',
     value: 'install',
   },
-  LINKED_BUG: { id: 4, columnField: 'bugs', operatorValue: '>', value: '0' },
-  NO_LINKED_BUG: { id: 5, columnField: 'bugs', operatorValue: '=', value: '0' },
+  LINKED_BUG: { columnField: 'bugs', operatorValue: '>', value: '0' },
+  NO_LINKED_BUG: { columnField: 'bugs', operatorValue: '=', value: '0' },
   ASSOCIATED_BUG: {
-    id: 6,
     columnField: 'associated_bugs',
     operatorValue: '>',
     value: '0',
   },
   NO_ASSOCIATED_BUG: {
-    id: 7,
     columnField: 'associated_bugs',
     operatorValue: '=',
     value: '0',
   },
-  TRT: { id: 8, columnField: 'tags', operatorValue: 'contains', value: 'trt' },
+  TRT: { columnField: 'tags', operatorValue: 'contains', value: 'trt' },
 }

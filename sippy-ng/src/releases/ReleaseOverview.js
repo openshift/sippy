@@ -22,13 +22,13 @@ import VariantCards from '../jobs/VariantCards'
 
 export const TOOLTIP = 'Top level release indicators showing product health'
 export const REGRESSED_TOOLTIP =
-  'Shows the most regressed items this week vs. last week, for those with more than 10 runs'
+  'Shows the most regressed items this week vs. last week, for those with more than 10 runs, excluding never-stable and techpreview.'
 export const NOBUG_TOOLTIP =
   'Shows the list of tests ordered by least successful and without a bug, for those with more than 10 runs'
 export const TRT_TOOLTIP =
   'Shows a curated list of tests selected by the TRT team'
 export const TWODAY_WARNING =
-  'Shows the last 2 days compared to the last 7 days, sorted by most regressed.'
+  'Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable and techpreview.'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -195,7 +195,9 @@ export default function ReleaseOverview(props) {
                   to={`/jobs/${
                     props.release
                   }?sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_10
+                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_TECHPREVIEW
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -212,7 +214,11 @@ export default function ReleaseOverview(props) {
                   sort="asc"
                   limit={10}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_10],
+                    items: [
+                      BOOKMARKS.RUN_10,
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
+                    ],
                   }}
                   pageSize={5}
                   release={props.release}
@@ -228,7 +234,9 @@ export default function ReleaseOverview(props) {
                   to={`/jobs/${
                     props.release
                   }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_1
+                    BOOKMARKS.RUN_1,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_TECHPREVIEW
                   )}`}
                   variant="h5"
                 >
@@ -244,7 +252,11 @@ export default function ReleaseOverview(props) {
                   sort="asc"
                   limit={10}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_1],
+                    items: [
+                      BOOKMARKS.RUN_1,
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
+                    ],
                   }}
                   pageSize={5}
                   period="twoDay"
