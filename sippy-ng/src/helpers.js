@@ -115,7 +115,24 @@ export function pathForJobVariant(release, variant) {
 
 // Helpers used by the above
 export function filterFor(column, operator, value) {
-  return { id: 99, columnField: column, operatorValue: operator, value: value }
+  return { columnField: column, operatorValue: operator, value: value }
+}
+
+export function withoutUnstable() {
+  return [
+    {
+      columnField: 'variants',
+      not: true,
+      operators: 'contains',
+      value: 'never-stable',
+    },
+    {
+      columnField: 'variants',
+      not: true,
+      operators: 'contains',
+      value: 'tech-preview',
+    },
+  ]
 }
 
 function multiple(...filters) {

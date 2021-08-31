@@ -149,7 +149,7 @@ exports[`TestsDetail should render correctly 1`] = `
             <p class=\\"MuiTypography-root cell-name MuiTypography-body1\\"
                title=\\"[sig-api-machinery] Kubernetes APIs remain available for new connections\\"
             >
-              <a href=\\"/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20for%20new%20connections%22%7D%5D%7D\\">
+              <a href=\\"/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20for%20new%20connections%22%7D%5D%7D\\">
                 [sig-api-machinery] Kubernetes APIs remain available for new connections
               </a>
             </p>
@@ -314,7 +314,7 @@ exports[`TestsDetail should render correctly 1`] = `
             <p class=\\"MuiTypography-root cell-name MuiTypography-body1\\"
                title=\\"[sig-api-machinery] Kubernetes APIs remain available with reused connections\\"
             >
-              <a href=\\"/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20with%20reused%20connections%22%7D%5D%7D\\">
+              <a href=\\"/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-api-machinery%5D%20Kubernetes%20APIs%20remain%20available%20with%20reused%20connections%22%7D%5D%7D\\">
                 [sig-api-machinery] Kubernetes APIs remain available with reused connections
               </a>
             </p>

@@ -381,7 +381,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
                         >
                           release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
                         </a>
@@ -474,7 +474,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
                         >
                           release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
                         </a>
@@ -567,7 +567,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
                         </a>
@@ -660,7 +660,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-calico\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-calico%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-calico%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-aws-calico
                         </a>
@@ -753,7 +753,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
                         </a>
@@ -846,7 +846,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
                         >
                           release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
                         </a>
@@ -939,7 +939,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-kuryr\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-kuryr%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-kuryr%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-kuryr
                         </a>
@@ -1032,7 +1032,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-compact\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-compact%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-compact%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-compact
                         </a>
@@ -1125,7 +1125,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-ppc64le\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-ppc64le%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-ppc64le%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-ppc64le
                         </a>
@@ -1218,7 +1218,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
                         </a>
@@ -1311,7 +1311,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
                         </a>
@@ -1404,7 +1404,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
                         </a>
@@ -1497,7 +1497,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
                         </a>
@@ -1590,7 +1590,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
                         >
                           release-openshift-origin-installer-e2e-aws-disruptive-4.8
                         </a>
@@ -1683,7 +1683,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
                         </a>
@@ -1776,7 +1776,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-ovn-network-stress\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-ovn-network-stress%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-ovn-network-stress%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-aws-ovn-network-stress
                         </a>
@@ -1869,7 +1869,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
                         </a>
@@ -1962,7 +1962,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-upgrade
                         </a>
@@ -2055,7 +2055,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack
                         </a>
@@ -2148,7 +2148,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade
                         </a>
@@ -2241,7 +2241,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade
                         </a>
@@ -2334,7 +2334,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-remote-libvirt-s390x
                         </a>
@@ -2427,7 +2427,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi
                         </a>
@@ -2520,7 +2520,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
                         </a>
@@ -2613,7 +2613,7 @@ exports[`JobTable should render correctly 1`] = `
                       <div class=\\"job-name\\">
                         <a title=\\"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22id%22%3A99%2C%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x%22%7D%5D%7D\\"
                         >
                           periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-e2e-compact-remote-libvirt-s390x
                         </a>
