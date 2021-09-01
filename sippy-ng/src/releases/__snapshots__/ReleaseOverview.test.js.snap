@@ -1686,7 +1686,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="78"
+                            <div data-id="75"
                                  data-rowindex="2"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-33-52 MuiDataGrid-row"
@@ -1848,7 +1848,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="38"
+                            <div data-id="35"
                                  data-rowindex="4"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-77-96 MuiDataGrid-row"
@@ -2219,7 +2219,7 @@ exports[`release-overview should render correctly 1`] = `
                           <div class="MuiDataGrid-renderingZone"
                                style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                           >
-                            <div data-id="100"
+                            <div data-id="104"
                                  data-rowindex="0"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"
@@ -2300,7 +2300,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="102"
+                            <div data-id="85"
                                  data-rowindex="1"
                                  role="row"
                                  class="Mui-odd JobTable-row-percent-0-19 MuiDataGrid-row"
@@ -2381,7 +2381,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="68"
+                            <div data-id="56"
                                  data-rowindex="2"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"
@@ -2462,7 +2462,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="38"
+                            <div data-id="36"
                                  data-rowindex="3"
                                  role="row"
                                  class="Mui-odd JobTable-row-percent-50-69 MuiDataGrid-row"
@@ -2543,7 +2543,7 @@ exports[`release-overview should render correctly 1`] = `
                               >
                               </div>
                             </div>
-                            <div data-id="65"
+                            <div data-id="76"
                                  data-rowindex="4"
                                  role="row"
                                  class="Mui-even JobTable-row-percent-0-19 MuiDataGrid-row"

@@ -820,7 +820,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                viewbox="0 0 24 24"
                aria-hidden="true"
                title="Linked bugs are bugs that mention the failing test name
-and are targeted to the release being reported on."
+and are targeted or found in the release being reported on."
           >
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
             </path>
@@ -853,6 +853,11 @@ and are targeted to the release being reported on."
                     scope="col"
                 >
                   Component
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Found In
                 </th>
                 <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
                     scope="col"
@@ -880,6 +885,8 @@ and are targeted to the release being reported on."
                   Node
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                   4.8.0
                 </td>
               </tr>
@@ -899,114 +906,15 @@ and are targeted to the release being reported on."
                viewbox="0 0 24 24"
                aria-hidden="true"
                title="Associated bugs are bugs that mention the failing test
-name but are not targeted to the release being reported on."
+name but are not targeted or found in the release being reported on."
           >
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
             </path>
           </svg>
         </p>
-        <div class="MuiPaper-root MuiTableContainer-root MuiPaper-elevation1 MuiPaper-rounded"
-             style="margin-top: 20px;"
-        >
-          <table class="MuiTable-root"
-                 aria-label="bug-table"
-          >
-            <thead class="MuiTableHead-root">
-              <tr class="MuiTableRow-root MuiTableRow-head">
-                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
-                    scope="col"
-                >
-                  Bug ID
-                </th>
-                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
-                    scope="col"
-                >
-                  Summary
-                </th>
-                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
-                    scope="col"
-                >
-                  Status
-                </th>
-                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
-                    scope="col"
-                >
-                  Component
-                </th>
-                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
-                    scope="col"
-                >
-                  Target Release
-                </th>
-              </tr>
-            </thead>
-            <tbody class="MuiTableBody-root">
-              <tr class="MuiTableRow-root">
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
-                    scope="row"
-                >
-                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983829">
-                    1983829
-                  </a>
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ovn-kubernetes upgrade jobs are failing disruptive tests
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ASSIGNED
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  Networking
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ---
-                </td>
-              </tr>
-              <tr class="MuiTableRow-root">
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
-                    scope="row"
-                >
-                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983758">
-                    1983758
-                  </a>
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  upgrades are failing on disruptive tests
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  NEW
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  Routing
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  ---
-                </td>
-              </tr>
-              <tr class="MuiTableRow-root">
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
-                    scope="row"
-                >
-                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1943334">
-                    1943334
-                  </a>
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  [ovnkube] node pod should taint NoSchedule on termination; clear on startup
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  VERIFIED
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  Networking
-                </td>
-                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
-                  4.9.0
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <p class="MuiTypography-root MuiTypography-body1">
+          None found
+        </p>
       </div>
     </div>
   </div>

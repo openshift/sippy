@@ -189,10 +189,21 @@ func (c *bugCache) listBugsInternal(release, jobName, testName string, invertRel
 	bugList := c.jobBlockers[GetJobKey(jobName)]
 	for i := range bugList {
 		bug := bugList[i]
-		for _, r := range bug.TargetRelease {
-			if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-				ret = append(ret, bug)
-				break
+		// If a target release is set, we prefer that, but if the bug was found in the version we're interested in,
+		// we consider that a linked bug and not an associated bug too.
+		if len(bug.TargetRelease) == 1 && bug.TargetRelease[0] == "---" {
+			for _, r := range bug.Version {
+				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
+					ret = append(ret, bug)
+					break
+				}
+			}
+		} else {
+			for _, r := range bug.TargetRelease {
+				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
+					ret = append(ret, bug)
+					break
+				}
 			}
 		}
 	}
@@ -203,11 +214,19 @@ func (c *bugCache) listBugsInternal(release, jobName, testName string, invertRel
 	bugList = c.cache[testName]
 	for i := range bugList {
 		bug := bugList[i]
-		for _, r := range bug.TargetRelease {
-
-			if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-				ret = append(ret, bug)
-				break
+		if len(bug.TargetRelease) == 1 && bug.TargetRelease[0] == "---" {
+			for _, r := range bug.Version {
+				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
+					ret = append(ret, bug)
+					break
+				}
+			}
+		} else {
+			for _, r := range bug.TargetRelease {
+				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
+					ret = append(ret, bug)
+					break
+				}
 			}
 		}
 	}
