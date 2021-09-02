@@ -17,6 +17,7 @@ import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
 const bookmarks = [
+  { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
   { name: 'Upgrade related', model: [BOOKMARKS.UPGRADE] },
   { name: 'Has a linked bug', model: [BOOKMARKS.LINKED_BUG] },

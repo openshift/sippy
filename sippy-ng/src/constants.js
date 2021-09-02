@@ -36,6 +36,11 @@ export const TEST_THRESHOLDS = {
 
 // Saved searches
 export const BOOKMARKS = {
+  NEW_JOBS: {
+    columnField: 'previous_runs',
+    operatorValue: '=',
+    value: '0',
+  },
   RUN_1: {
     columnField: 'current_runs',
     operatorValue: '>=',

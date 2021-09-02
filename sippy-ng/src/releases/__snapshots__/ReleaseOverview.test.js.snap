@@ -327,7 +327,7 @@ exports[`release-overview should render correctly 1`] = `
                  focusable="false"
                  viewbox="0 0 24 24"
                  aria-hidden="true"
-                 title="This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. The most recent hour will generally look more successful until all jobs finish running. Use the arrow buttons below to move back and forward a day. All times are UTC."
+                 title="This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. The most recent hour will generally look more successful until all jobs finish running because it will be heavily biased towards the shortest jobs(more likely to have already completed) which also tend to be the most reliable. Use the arrow buttons below to move back and forward a day. All times are UTC."
             >
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
               </path>
