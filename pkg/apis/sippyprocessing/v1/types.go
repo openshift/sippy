@@ -16,6 +16,15 @@ const (
 	PreviousReport ReportType = "previous"
 )
 
+// Statistics is a type that contains statistical summaries.
+type Statistics struct {
+	Mean              float64   `json:"mean"`
+	StandardDeviation float64   `json:"standard_deviation"`
+	Histogram         []int     `json:"histogram"`
+	Quartiles         []float64 `json:"quartiles"`
+	P95               float64   `json:"p95"`
+}
+
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
 	// ReportType contains the type of the report, e.g. current, two day, or previous.
@@ -26,6 +35,9 @@ type TestReport struct {
 	// is the value of release.
 	Release   string    `json:"release"`
 	Timestamp time.Time `json:"timestamp"`
+
+	// Job statistical analysis:
+	JobStatistics Statistics `json:"statistics"`
 
 	// TopLevelIndicators is a curated list of metrics, that describe the overall health of the release independent of
 	// individual jobs or variants.
@@ -79,6 +91,8 @@ type TopLevelIndicators struct {
 	// Upgrade indicates how successful we are with upgrading onto clusters that have already installed.
 	// Low Upgrade pass rates means clusters are not able to upgrade.  This should stop us from shipping the product.
 	Upgrade FailingTestResult
+	// Tests indicates how successful we are in running the e2e test suites across all job runs.
+	Tests FailingTestResult
 	// FinalOperatorState indicates how often test runs finish with every operator healthy
 	FinalOperatorHealth FailingTestResult
 	// Variants contains a metric for overall health. Success is the variant pass rate over 80%, flake over 60%, fail under

@@ -16,8 +16,13 @@ import ReleaseOverview from './ReleaseOverview'
 jest.useRealTimers()
 
 describe('release-overview', () => {
-  const flushPromises = () => new Promise(setImmediate)
   setupDefaultPolly()
+
+  beforeEach(() => {
+    Date.now = jest
+      .spyOn(Date, 'now')
+      .mockImplementation(() => new Date(1628691480000))
+  })
 
   it('should render correctly', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch')
@@ -46,6 +51,6 @@ describe('release-overview', () => {
     // Latch the number of API calls this page makes. Increase if needed,
     // but this is used to prevent useEffect() being stuck in loops
     // due to state changes
-    expect(fetchSpy).toHaveBeenCalledTimes(8)
+    expect(fetchSpy).toHaveBeenCalledTimes(9)
   })
 })

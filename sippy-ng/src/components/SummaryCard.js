@@ -3,6 +3,7 @@ import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
 import { scale } from 'chroma-js'
+import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -57,7 +58,10 @@ export default function SummaryCard(props) {
       style={{ backgroundColor: bgColor }}
     >
       <CardContent className={`${classes.cardContent}`}>
-        <Typography variant="h6">{props.name}</Typography>
+        <Typography variant="h6">
+          {props.name}
+          <InfoIcon />
+        </Typography>
         <div align="center">
           <div style={{ width: '70%' }}>
             <Doughnut
@@ -73,6 +77,11 @@ export default function SummaryCard(props) {
                 ],
               }}
               options={{
+                plugins: {
+                  legend: {
+                    display: false,
+                  },
+                },
                 cutout: '60%',
               }}
             />

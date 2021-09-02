@@ -18,10 +18,13 @@ jest.useRealTimers()
 describe('TestAnalysis', () => {
   setupDefaultPolly()
 
-  it('should render correctly', async () => {
+  beforeEach(() => {
     Date.now = jest
       .spyOn(Date, 'now')
       .mockImplementation(() => new Date(1628691480000))
+  })
+
+  it('should render correctly', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch')
 
     let wrapper

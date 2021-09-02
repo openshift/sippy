@@ -10,14 +10,14 @@ import (
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
-type dayResult struct {
+type analysisResult struct {
 	TotalRuns        int                                        `json:"total_runs"`
 	ResultCount      map[v1sippyprocessing.JobOverallResult]int `json:"result_count"`
 	TestFailureCount map[string]int                             `json:"test_count"`
 }
 
 type apiJobAnalysisResult struct {
-	ByDay map[string]dayResult `json:"by_day"`
+	ByPeriod map[string]analysisResult `json:"by_period"`
 }
 
 func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v1sippyprocessing.TestReport) {
@@ -32,14 +32,38 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 		}
 	}
 
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = "day"
+	}
+
 	results := apiJobAnalysisResult{
-		ByDay: make(map[string]dayResult),
+		ByPeriod: make(map[string]analysisResult),
 	}
 
 	allJobs := append(curr.ByJob, prev.ByJob...)
+	var timestampFilter *Filter
 	for index, job := range allJobs {
 		prevJob := util.FindJobResultForJobName(job.Name, prev.ByJob)
 		if filter != nil {
+			newItems := make([]FilterItem, 0)
+			timestampItems := make([]FilterItem, 0)
+			for _, item := range filter.Items {
+				if item.Field != "timestamp" {
+					newItems = append(newItems, item)
+				} else {
+					timestampItems = append(timestampItems, item)
+				}
+				filter.Items = newItems
+
+				if len(timestampItems) > 0 {
+					timestampFilter = &Filter{
+						Items:        timestampItems,
+						LinkOperator: filter.LinkOperator,
+					}
+				}
+			}
+
 			include, err := filter.Filter(jobResultToAPI(index, &allJobs[index], prevJob))
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
@@ -52,16 +76,33 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 		}
 
 		for _, run := range job.AllRuns {
-			date := time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02")
+			if timestampFilter != nil {
+				include, err := timestampFilter.Filter(jobRunToAPIJobRun(0, job, run))
+				if err != nil {
+					RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
+					return
+				}
 
-			var result dayResult
-			if _, ok := results.ByDay[date]; !ok {
-				result = dayResult{
+				if !include {
+					continue
+				}
+			}
+
+			var date string
+			if period == "day" {
+				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02")
+			} else {
+				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02 15:00")
+			}
+
+			var result analysisResult
+			if _, ok := results.ByPeriod[date]; !ok {
+				result = analysisResult{
 					ResultCount:      make(map[v1sippyprocessing.JobOverallResult]int),
 					TestFailureCount: make(map[string]int),
 				}
 			} else {
-				result = results.ByDay[date]
+				result = results.ByPeriod[date]
 			}
 
 			result.TotalRuns++
@@ -82,7 +123,7 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 				result.ResultCount[run.OverallResult]++
 			}
 
-			results.ByDay[date] = result
+			results.ByPeriod[date] = result
 		}
 	}
 

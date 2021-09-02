@@ -1,11 +1,30 @@
 import { Line } from 'react-chartjs-2'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { Fragment, useEffect } from 'react'
 
 import './JobAnalysis.css'
+import { pathForJobsInPercentile } from '../helpers'
+import { useHistory } from 'react-router-dom'
+
+export const hourFilter = (dayOffset) => {
+  return [
+    {
+      columnField: 'timestamp',
+      operatorValue: '>',
+      value: `${Date.now() - dayOffset * 1000 * 60 * 60 * 24}`,
+    },
+    {
+      columnField: 'timestamp',
+      operatorValue: '<=',
+      value: `${Date.now() - (dayOffset - 1) * 1000 * 60 * 60 * 24}`,
+    },
+  ]
+}
 
 export function JobStackedChart(props) {
+  const history = useHistory()
+
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
@@ -18,19 +37,19 @@ export function JobStackedChart(props) {
       )}`
     }
 
-    Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
-      ),
-    ])
-      .then(([analysis]) => {
+    if (props.period) {
+      queryParams += `&period=${props.period}`
+    }
+
+    fetch(`${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`)
+      .then((analysis) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)
         }
 
-        return Promise.all([analysis.json()])
+        return analysis.json()
       })
-      .then(([analysis]) => {
+      .then((analysis) => {
         setAnalysis(analysis)
         setLoaded(true)
       })
@@ -55,11 +74,11 @@ export function JobStackedChart(props) {
   }
 
   if (!isLoaded) {
-    return <p>Loading...</p>
+    return <p>Loading</p>
   }
 
   const resultChart = {
-    labels: Object.keys(analysis.by_day),
+    labels: Object.keys(analysis.by_period),
     datasets: [],
   }
 
@@ -98,6 +117,14 @@ export function JobStackedChart(props) {
     },
   }
 
+  const handleClick = (e) => {
+    history.push(
+      `/jobs/${props.release}/analysis?period=hour&filters=${encodeURIComponent(
+        JSON.stringify(props.filter)
+      )}`
+    )
+  }
+
   const colorByName = {}
   Object.keys(resultTypes).forEach((key) => {
     colorByName[resultTypes[key].name] = resultTypes[key].color
@@ -114,11 +141,11 @@ export function JobStackedChart(props) {
       xAxisID: 'x',
       borderColor: resultTypes[result].color,
       backgroundColor: resultTypes[result].color,
-      data: Object.keys(analysis.by_day).map(
+      data: Object.keys(analysis.by_period).map(
         (key) =>
           100 *
-          ((analysis.by_day[key].result_count[result] || 0) /
-            analysis.by_day[key].total_runs)
+          ((analysis.by_period[key].result_count[result] || 0) /
+            analysis.by_period[key].total_runs)
       ),
     })
   })
@@ -147,6 +174,15 @@ export function JobStackedChart(props) {
         onHover: handleHover,
         onLeave: handleLeave,
       },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            return `${context.formattedValue}% (${
+              analysis.by_period[context.label].total_runs
+            } total runs)`
+          },
+        },
+      },
     },
     scales: {
       x: {
@@ -174,7 +210,8 @@ export function JobStackedChart(props) {
       key="result-chart"
       data={resultChart}
       options={options}
-      height={100}
+      height={120}
+      getElementAtEvent={handleClick}
     />
   )
 }
@@ -182,5 +219,6 @@ export function JobStackedChart(props) {
 JobStackedChart.propTypes = {
   release: PropTypes.string.isRequired,
   filter: PropTypes.object,
+  period: PropTypes.string,
   analysis: PropTypes.object,
 }

@@ -25,15 +25,6 @@ global.fetch = fetch
 // See: https://github.com/vuejs/vue-test-utils/issues/974
 global.requestAnimationFrame = (cb) => cb()
 
-// When injecting multiple filters, material table complains.
-const originalError = console.error.bind(console.error)
-
-global.console.error = (log) => {
-  if (!log.toString().includes('Warning: Failed')) {
-    originalError(log.toString())
-  }
-}
-
 // Set API URL for Sippy
 process.env.REACT_APP_API_URL = 'http://localhost:8080'
 

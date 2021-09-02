@@ -1,13 +1,15 @@
 package testreportconversion
 
 import (
+	"math"
 	"sort"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/montanaflynn/stats"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
 func FilterJobResultTests(jobResult *sippyprocessingv1.JobResult, testFilterFn TestResultFilterFunc) *sippyprocessingv1.JobResult {
@@ -59,6 +61,52 @@ func filterPertinentInfrequentJobResults(
 	}
 
 	return filtered
+}
+
+func isNeverStable(result sippyprocessingv1.JobResult) bool {
+	for _, variant := range result.Variants {
+		if variant == "never-stable" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippyprocessingv1.Statistics {
+	jobStatistics := sippyprocessingv1.Statistics{}
+	percentages := []float64{}
+	jobStatistics.Histogram = make([]int, 10)
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].PassPercentage > results[j].PassPercentage
+	})
+
+	for _, result := range results {
+		if isNeverStable(result) {
+			continue
+		}
+		index := int(math.Floor(result.PassPercentage / 10))
+		if index == 10 { // 100% gets bucketed in the 10th bucket
+			index = 9
+		}
+		jobStatistics.Histogram[index]++
+
+		percentages = append(percentages, result.PassPercentage)
+	}
+
+	data := stats.LoadRawData(percentages)
+	mean, _ := stats.Mean(data)
+	sd, _ := stats.StandardDeviation(data)
+	quartiles, _ := stats.Quartile(data)
+	p95, _ := stats.Percentile(data, 95)
+
+	jobStatistics.Mean = mean
+	jobStatistics.StandardDeviation = sd
+	jobStatistics.Quartiles = []float64{quartiles.Q1, quartiles.Q2, quartiles.Q3}
+	jobStatistics.P95 = p95
+
+	return jobStatistics
 }
 
 // convertRawJobResultsToProcessedJobResults performs no filtering

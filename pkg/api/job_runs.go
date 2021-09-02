@@ -46,9 +46,21 @@ func (runs apiRunResults) limit(req *http.Request) apiRunResults {
 
 type apiRunResults []apitype.JobRun
 
+func jobRunToAPIJobRun(id int, job v1sippyprocessing.JobResult, result v1sippyprocessing.JobRunResult) apitype.JobRun {
+	return apitype.JobRun{
+		ID:           id,
+		BriefName:    briefName(job.Name),
+		Variants:     job.Variants,
+		TestGridURL:  job.TestGridURL,
+		JobRunResult: result,
+	}
+}
+
 // PrintJobRunsReport renders the detailed list of runs for matching jobs.
-func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v1sippyprocessing.JobResult) {
+func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, currReport, prevReport v1sippyprocessing.TestReport) {
 	var filter *Filter
+	curr := currReport.ByJob
+	prev := prevReport.ByJob
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
@@ -63,13 +75,7 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, curr, prev []v
 	next := 0
 	for _, results := range append(curr, prev...) {
 		for _, run := range results.AllRuns {
-			apiRun := apitype.JobRun{
-				ID:           next,
-				BriefName:    briefName(results.Name),
-				Variants:     results.Variants,
-				TestGridURL:  results.TestGridURL,
-				JobRunResult: run,
-			}
+			apiRun := jobRunToAPIJobRun(next, results, run)
 
 			if strings.Contains(results.Name, "-upgrade") {
 				apiRun.Tags = []string{"upgrade"}

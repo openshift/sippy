@@ -31,6 +31,8 @@ func PrepareTestReport(
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
+	stats := calculateJobResultStatistics(allJobResults)
+
 	allTestResultsByName := getTestResultsByName(allJobResults)
 
 	standardTestResultFilterFn := StandardTestResultFilter(minRuns, successThreshold)
@@ -54,6 +56,8 @@ func PrepareTestReport(
 	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName], variantManager)
 	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName], variantManager)
 	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
+	tests := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.OpenShiftTestsName], variantManager)
+
 	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
 	// Only generate promotion warnings based on current reporting
@@ -63,13 +67,15 @@ func PrepareTestReport(
 	}
 
 	testReport := sippyprocessingv1.TestReport{
-		ReportType: reportType,
-		Release:    reportName,
-		Timestamp:  reportTimestamp,
+		ReportType:    reportType,
+		Release:       reportName,
+		Timestamp:     reportTimestamp,
+		JobStatistics: stats,
 		TopLevelIndicators: sippyprocessingv1.TopLevelIndicators{
 			Infrastructure:      infra,
 			Install:             install,
 			Upgrade:             upgrade,
+			Tests:               tests,
 			FinalOperatorHealth: finalOperatorHealth,
 			Variant:             variantHealth,
 		},

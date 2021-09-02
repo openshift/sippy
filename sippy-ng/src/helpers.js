@@ -4,7 +4,7 @@ export function relativeTime(date) {
   const minute = 1000 * 60 // Milliseconds in a minute
   const hour = 60 * minute // Milliseconds in an hour
   const day = 24 * hour // Milliseconds in a day
-  const millisAgo = date.getTime() - Date.now()
+  const millisAgo = date.getTime() - new Date().getTime()
 
   if (Math.abs(millisAgo) < hour) {
     return Math.round(Math.abs(millisAgo) / minute) + ' minutes ago'
@@ -25,13 +25,15 @@ export function explainFilter(filter) {
   const explanations = []
   filter.items.forEach((item) =>
     explanations.push(
-      `('${item.columnField}' ${item.not ? 'not ' : ''}${item.operatorValue} '${
-        item.value
-      }')`
+      `${item.columnField} ${item.not ? 'not ' : ''} ${item.operatorValue} ${
+        item.columnField === 'timestamp'
+          ? new Date(parseInt(item.value)).toLocaleString()
+          : item.value
+      }`
     )
   )
 
-  return explanations.join(` ${filter.linkOperator || 'and'} `)
+  return explanations
 }
 
 export function escapeRegex(str) {
@@ -113,6 +115,16 @@ export function pathForJobVariant(release, variant) {
   )}`
 }
 
+export function pathForJobsInPercentile(release, start, end) {
+  return `/jobs/${release}?${multiple(
+    filterFor('current_pass_percentage', '>=', `${start}`),
+    filterFor('current_pass_percentage', '<', `${end}`),
+    not(filterFor('variants', 'contains', 'never-stable'))
+  )}`
+}
+
+export function pathForJobAnalysis(release) {}
+
 // Helpers used by the above
 export function filterFor(column, operator, value) {
   return { columnField: column, operatorValue: operator, value: value }
@@ -143,4 +155,9 @@ function multiple(...filters) {
 
 function single(filter) {
   return `filters=${encodeURIComponent(JSON.stringify({ items: [filter] }))}`
+}
+
+function not(filter) {
+  filter.not = true
+  return filter
 }

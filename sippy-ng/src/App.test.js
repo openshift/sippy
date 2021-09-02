@@ -2,9 +2,14 @@
 
 import 'jsdom-global/register'
 import { act, waitFor } from '@testing-library/react'
+import {
+  expectLoadingPage,
+  setupDefaultPolly,
+  withoutMuiID,
+} from './setupTests'
 import { mount } from 'enzyme'
+import { QueryParamProvider } from 'use-query-params'
 import { Router } from 'react-router-dom'
-import { setupDefaultPolly, withoutMuiID } from './setupTests'
 import App from './App'
 import React from 'react'
 
@@ -30,22 +35,24 @@ describe('app', () => {
     let wrapper
     await act(async () => {
       wrapper = mount(
-        <Router history={history}>
-          <App />
-        </Router>
+        <QueryParamProvider>
+          <Router history={history}>
+            <App />
+          </Router>
+        </QueryParamProvider>
       )
     })
 
-    expect(wrapper.find('p').contains('Loading...')).toBeTruthy()
+    expectLoadingPage(wrapper).toBeTruthy()
 
     await waitFor(() => {
       wrapper.update()
-      expect(wrapper.find('p').contains('Loading...')).toBeFalsy()
+      expectLoadingPage(wrapper).toBeFalsy()
     })
 
     expect(wrapper.exists()).toBe(true)
     expect(wrapper.text()).toContain('Infrastructure')
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
-    expect(fetchSpy).toHaveBeenCalledTimes(11)
+    expect(fetchSpy).toHaveBeenCalledTimes(12)
   })
 })
