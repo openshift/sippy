@@ -295,7 +295,7 @@ export default function ReleaseOverview(props) {
                   <Tooltip
                     title={
                       'This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. ' +
-                      'The most recent hour will generally look more successful until all jobs finish running. ' +
+                      'The most recent hour will generally look more successful until all jobs finish running because it will be heavily biased towards the shortest jobs(more likely to have already completed) which also tend to be the most reliable. ' +
                       'Use the arrow buttons below to move back and forward a day. All times are UTC.'
                     }
                   >
