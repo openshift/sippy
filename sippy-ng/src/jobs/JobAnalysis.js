@@ -19,17 +19,17 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import {
-  explainFilter,
-  pathForJobRunsWithFilter,
-  pathForJobsWithFilter,
-  withSort,
-} from '../helpers'
+import { filterList } from '../datagrid/utils'
 import { getColumns } from './JobTable'
 import { hourFilter, JobStackedChart } from './JobStackedChart'
 import { JOB_THRESHOLDS } from '../constants'
 import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
+import {
+  pathForJobRunsWithFilter,
+  pathForJobsWithFilter,
+  withSort,
+} from '../helpers'
 import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
 import Divider from '@material-ui/core/Divider'
@@ -351,13 +351,7 @@ export function JobAnalysis(props) {
             >
               <strong>Current filter</strong>
               <br />
-              <ul>
-                {filterModel && filterModel.items.length > 0
-                  ? explainFilter(filterModel).map((item, index) => (
-                      <li key={`filter-${index}`}>{item}</li>
-                    ))
-                  : 'Showing all'}
-              </ul>
+              {filterList(filterModel, setFilterModel)}
               <br />
               <Divider style={{ marginBottom: 20 }} />
               <Grid container justifyContent="space-between">

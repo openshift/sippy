@@ -11,10 +11,10 @@ import {
 } from '@material-ui/core'
 import { Close } from '@material-ui/icons'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
+import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
 import { makeStyles } from '@material-ui/core/styles'
-import DateFnsUtils from '@date-io/date-fns'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   filterMenu: {
@@ -144,12 +144,18 @@ export default function GridToolbarFilterItem(props) {
       <FormControl>
         {columnType === 'date' ? (
           <Fragment>
-            <MuiPickersUtilsProvider utils={DateFnsUtils}>
+            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
               <DateTimePicker
                 showTodayButton
                 disableFuture
                 label="Value"
-                value={new Date(parseInt(props.filterModel.value))}
+                format="yyyy-MM-dd HH:mm 'UTC'"
+                ampm={false}
+                value={
+                  props.filterModel.value === ''
+                    ? null
+                    : new Date(parseInt(props.filterModel.value))
+                }
                 onChange={(e) => {
                   props.setFilterModel({
                     columnField: props.filterModel.columnField,

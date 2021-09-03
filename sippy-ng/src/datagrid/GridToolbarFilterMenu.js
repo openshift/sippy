@@ -12,7 +12,7 @@ import {
   Select,
   Tooltip,
 } from '@material-ui/core'
-import { explainFilter } from '../helpers'
+import { filterTooltip } from './utils'
 import { makeStyles } from '@material-ui/core/styles'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterItem from './GridToolbarFilterItem'
@@ -169,27 +169,9 @@ export default function GridToolbarFilterMenu(props) {
     </FormControl>
   )
 
-  const tooltip = (
-    <Fragment>
-      {filterItems === 0 ? (
-        'No filters applied'
-      ) : (
-        <div style={{ padding: 10 }}>
-          Currently filtered by:
-          <ul>
-            {explainFilter(props.filterModel).map((item, index) => (
-              <li key={`filter-${index}`}>{item}</li>
-            ))}
-          </ul>
-          Link operator: {props.filterModel.linkOperator || 'and'}
-        </div>
-      )}
-    </Fragment>
-  )
-
   return (
     <Fragment>
-      <Tooltip title={tooltip}>
+      <Tooltip title={filterTooltip(props.filterModel)}>
         <Button
           aria-describedby={id}
           color={props.standalone ? 'default' : 'primary'}

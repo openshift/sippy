@@ -20,6 +20,7 @@
     "chroma-js": "^2.1.2",
     "clsx": "^1.1.1",
     "date-fns": "^2.0.0-beta.5",
+    "date-fns-tz": "^1.1.6",
     "npm-install-missing": "^0.1.4",
     "query-string": "^7.0.1",
     "react": "^17.0.2",

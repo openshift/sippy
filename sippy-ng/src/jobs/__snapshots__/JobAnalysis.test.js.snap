@@ -75,9 +75,7 @@ exports[`JobAnalysis should render correctly 1`] = `
           Current filter
         </strong>
         <br>
-        <ul>
-          Showing all
-        </ul>
+        Showing all results
         <br>
         <hr class="MuiDivider-root"
             style="margin-bottom: 20px;"
@@ -86,6 +84,7 @@ exports[`JobAnalysis should render correctly 1`] = `
           <button class="MuiButtonBase-root MuiButton-root MuiButton-contained"
                   tabindex="0"
                   type="button"
+                  title="Showing all results"
           >
             <span class="MuiButton-label">
               <span class="MuiBadge-root">
@@ -133,7 +132,7 @@ exports[`JobAnalysis should render correctly 1`] = `
              tabindex="0"
              role="button"
              aria-disabled="false"
-             href="/jobs/4.8/runs&amp;sortField=timestamp&amp;sort=desc"
+             href="/jobs/4.8/runs?sortField=timestamp&amp;sort=desc"
           >
             <span class="MuiButton-label">
               View matching job runs
