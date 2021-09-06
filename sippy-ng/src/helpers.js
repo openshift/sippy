@@ -4,7 +4,7 @@ export function relativeTime(date) {
   const minute = 1000 * 60 // Milliseconds in a minute
   const hour = 60 * minute // Milliseconds in an hour
   const day = 24 * hour // Milliseconds in a day
-  const millisAgo = date.getTime() - new Date().getTime()
+  const millisAgo = date.getTime() - Date.now()
 
   if (Math.abs(millisAgo) < hour) {
     return Math.round(Math.abs(millisAgo) / minute) + ' minutes ago'
