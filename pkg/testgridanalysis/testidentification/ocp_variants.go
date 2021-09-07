@@ -78,6 +78,7 @@ var (
 	openshiftJobsNeverStableForVariants = sets.NewString(
 		// Experimental jobs that are under active development
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-hypershift",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
 
 		// Pending removal - https://github.com/openshift/release/pull/21560
 		// Remove when Sippy no longer has any runs
@@ -85,34 +86,53 @@ var (
 
 		// https://issues.redhat.com/browse/OSD-8071
 		"release-openshift-ocp-osd-aws-nightly-4.9",
+		"release-openshift-ocp-osd-aws-nightly-4.10",
 		"release-openshift-ocp-osd-gcp-nightly-4.9",
+		"release-openshift-ocp-osd-gcp-nightly-4.10",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1999130
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-assisted-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-assisted-ipv6",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979966
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel7",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
+		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-s390x",
+		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-s390x",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1989100
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-openstack-ovn",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-ovn",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979962
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-compact",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-compact",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-compact-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-compact-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-network-stress",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-ovn-network-stress",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-ovn-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-compact",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-compact",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-compact-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-compact-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-compact",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-compact",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-compact-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-compact-upgrade",
 		"release-openshift-ocp-installer-e2e-metal-compact-4.9",
+		"release-openshift-ocp-installer-e2e-metal-compact-4.10",
 		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.9",
+		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.10",
 	)
 )
 

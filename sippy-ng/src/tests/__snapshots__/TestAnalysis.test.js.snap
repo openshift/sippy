@@ -388,7 +388,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="37 days ago"
+                            <p title="15 days ago"
                                class
                             >
                               7/27/2021, 8:49:29 AM
@@ -457,7 +457,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="44 days ago"
+                            <p title="22 days ago"
                                class
                             >
                               7/20/2021, 4:01:02 PM
@@ -526,7 +526,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="46 days ago"
+                            <p title="24 days ago"
                                class
                             >
                               7/18/2021, 4:00:56 PM
@@ -595,7 +595,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="46 days ago"
+                            <p title="24 days ago"
                                class
                             >
                               7/18/2021, 4:00:55 PM
@@ -664,7 +664,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                tabindex="-1"
                           >
-                            <p title="47 days ago"
+                            <p title="24 days ago"
                                class
                             >
                               7/18/2021, 3:34:55 AM
