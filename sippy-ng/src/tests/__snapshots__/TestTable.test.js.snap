@@ -16,6 +16,7 @@ exports[`TestTable should render correctly 1`] = `
             <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary\\"
                     tabindex=\\"0\\"
                     type=\\"button\\"
+                    title=\\"Showing all results\\"
             >
               <span class=\\"MuiButton-label\\">
                 <span class=\\"MuiBadge-root\\">

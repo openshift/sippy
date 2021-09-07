@@ -35,6 +35,18 @@ if they change.
 **If you are prompted to update any snapshots, ensure the changes are
 expected.**
 
+### Managing time
+
+When snapshotting pages that use date or time, the test must mock out
+Date.now() to ensure consistent snapshots.  You can use jest's spy
+functions:
+
+```javascript
+  Date.now = jest
+    .spyOn(Date, 'now')
+    .mockImplementation(() => new Date(1628691480000))
+```
+
 ### Updating snapshots
 
 When changing any of the UI, snapshots will need to be retaken. Run `npm
@@ -56,6 +68,10 @@ And then run:
 ```
 POLLY_MODE=record npm test
 ``````
+
+For some reason (not yet determined), updating Polly recordings and the
+snapshots doesn't work in the same run. First re-record the API results
+(you'll get snapshot errors), then run the snapshot update as above.
 
 If you need to move on to something other than 4.8GA, please update this
 section.

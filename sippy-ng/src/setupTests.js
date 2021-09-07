@@ -35,7 +35,7 @@ if (!process.env.POLLY_MODE) {
 }
 
 export const setupDefaultPolly = () => {
-  const context = setupPolly({
+  return setupPolly({
     mode: process.env.POLLY_MODE,
     adapters: [require('@pollyjs/adapter-node-http')],
     persister: require('@pollyjs/persister-fs'),
@@ -45,7 +45,6 @@ export const setupDefaultPolly = () => {
       },
     },
   })
-  return context
 }
 
 export const expectLoadingPage = (wrapper) =>

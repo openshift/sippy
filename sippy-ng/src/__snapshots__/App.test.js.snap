@@ -517,7 +517,7 @@ exports[`app should render correctly 1`] = `
                  style="padding: 20px; height: 100%;"
             >
               <h6 class="MuiTypography-root MuiTypography-h6">
-                <a href="/jobs/4.8&amp;sortField=current_pass_percentage&amp;sort=asc">
+                <a href="/jobs/4.8?sortField=current_pass_percentage&amp;sort=asc">
                   Job histogram
                 </a>
                 <svg class="MuiSvgIcon-root"
