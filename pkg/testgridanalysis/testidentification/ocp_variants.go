@@ -10,6 +10,7 @@ import (
 
 var (
 	// variant regexes
+	arm64Regex   = regexp.MustCompile(`(?i)-arm64`)
 	awsRegex     = regexp.MustCompile(`(?i)-aws`)
 	azureRegex   = regexp.MustCompile(`(?i)-azure`)
 	compactRegex = regexp.MustCompile(`(?i)-compact`)
@@ -40,6 +41,7 @@ var (
 	singleNodeRegex = regexp.MustCompile(`(?i)-single-node`)
 
 	allOpenshiftVariants = sets.NewString(
+		"arm64",
 		"aws",
 		"azure",
 		"compact",
@@ -171,6 +173,10 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")
 		return variants
+	}
+
+	if arm64Regex.MatchString(jobName) {
+		variants = append(variants, "arm64")
 	}
 
 	if awsRegex.MatchString(jobName) {
