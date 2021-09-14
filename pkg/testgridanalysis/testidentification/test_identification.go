@@ -29,6 +29,7 @@ var customJobSetupContainers = sets.NewString(
 	"e2e-metal-ipi-ovn-dualstack-local-gateway-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-upgrade-baremetalds-devscripts-setup container test",
 	"e2e-metal-single-node-live-iso-baremetalds-packet-setup",
+	"e2e-openshift-proxy-ipi-install-install",
 	"e2e-openstack-upgrade-ipi-install",
 	"e2e-ovirt-ipi-install-install container test",
 	"e2e-vsphere-ipi-install-vsphere",
