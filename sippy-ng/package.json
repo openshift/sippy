@@ -15,7 +15,7 @@
     "@testing-library/user-event": "^12.8.3",
     "axios": "^0.21.4",
     "chart.js": "^3.5.1",
-    "chartjs-plugin-annotation": "^1.0.0",
+    "chartjs-plugin-annotation": "^1.0.2",
     "chartjs-plugin-trendline": "^0.1.1",
     "chroma-js": "^2.1.2",
     "clsx": "^1.1.1",

@@ -175,6 +175,9 @@ func (o *Options) Run() error {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
+
+		// Fetch OpenShift PerfScale Data from ElasticSearch as well:
+
 		return nil
 	}
 
