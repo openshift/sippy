@@ -20,6 +20,7 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import SearchIcon from '@material-ui/icons/Search'
 import SippyLogo from './SippyLogo'
+import TableChartIcon from '@material-ui/icons/TableChart'
 
 export default function Sidebar(props) {
   const classes = useTheme()
@@ -145,6 +146,19 @@ export default function Sidebar(props) {
                     <ApartmentIcon />
                   </ListItemIcon>
                   <ListItemText primary="Infrastructure" />
+                </ListItem>
+
+                <ListItem
+                  key={'workload-metrics-' + index}
+                  component={Link}
+                  to={'/workloadmetrics/' + release}
+                  button
+                  className={classes.nested}
+                >
+                  <ListItemIcon>
+                    <TableChartIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Workload Metrics" />
                 </ListItem>
               </List>
             </Collapse>

@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 
 	rice "github.com/GeertJohan/go.rice"
 
@@ -37,6 +39,7 @@ type Options struct {
 	Output                  string
 	FailureClusterThreshold int
 	FetchData               string
+	FetchPerfScaleData      bool
 	ListenAddr              string
 	Server                  bool
 	SkipBugLookup           bool
@@ -83,6 +86,7 @@ func main() {
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
+	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
@@ -165,18 +169,34 @@ func (o *Options) Validate() error {
 		}
 	}
 
+	if o.FetchPerfScaleData && o.FetchData == "" {
+		return fmt.Errorf("must specify --fetch-data with --fetch-perfscale-data")
+	}
+
 	return nil
 }
 
 func (o *Options) Run() error {
 	if o.FetchData != "" {
 		dashboards := []string{}
+
 		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
 
-		// Fetch OpenShift PerfScale Data from ElasticSearch as well:
+		// Fetch OpenShift PerfScale Data from ElasticSearch:
+		if o.FetchPerfScaleData {
+			scaleJobsDir := path.Join(o.FetchData, perfscaleanalysis.ScaleJobsSubDir)
+			err := os.MkdirAll(scaleJobsDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir)
+			if err != nil {
+				return err
+			}
+		}
 
 		return nil
 	}

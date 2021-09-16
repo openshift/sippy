@@ -24,6 +24,7 @@ import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
+import WorkloadMetricsOverview from './workloadmetrics/WorkloadMetricsOverview'
 
 const drawerWidth = 240
 
@@ -229,6 +230,16 @@ export default function App(props) {
               <Route path="/about">
                 <p>Hello, world!</p>
               </Route>
+
+              <Route
+                path="/workloadmetrics/:release"
+                render={(props) => (
+                  <WorkloadMetricsOverview
+                    key={'workload-metrics-' + props.match.params.release}
+                    release={props.match.params.release}
+                  />
+                )}
+              />
 
               <Route
                 path="/release/:release"

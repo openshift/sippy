@@ -13,6 +13,7 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -194,4 +195,42 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 		Start: min,
 		End:   max,
 	}.limit(req))
+}
+
+// PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.
+func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Request, release string, currScaleJobReports []workloadmetricsv1.WorkloadMetricsRow) {
+
+	var filter *Filter
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
+
+	filteredScaleJobs := []*workloadmetricsv1.WorkloadMetricsRow{}
+	for idx, row := range currScaleJobReports {
+		if release != "" && row.Release != release {
+			continue
+		}
+
+		if filter != nil {
+			include, err := filter.Filter(&currScaleJobReports[idx])
+			if err != nil {
+				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
+				return
+			}
+
+			if !include {
+				continue
+			}
+		}
+
+		filteredScaleJobs = append(filteredScaleJobs, &currScaleJobReports[idx])
+	}
+
+	RespondWithJSON(http.StatusOK, w, filteredScaleJobs)
+
 }
