@@ -82,10 +82,6 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
 
-		// Pending removal - https://github.com/openshift/release/pull/21560
-		// Remove when Sippy no longer has any runs
-		"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.9",
-
 		// https://issues.redhat.com/browse/OSD-8071
 		"release-openshift-ocp-osd-aws-nightly-4.9",
 		"release-openshift-ocp-osd-gcp-nightly-4.9",
@@ -93,6 +89,16 @@ var (
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979966
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel7",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2003646
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel8",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2006346
+		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2006243
+		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-upgrade",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
@@ -110,21 +116,15 @@ var (
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979962
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-compact",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-compact-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-ovn-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-ovn-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-compact",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-compact",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-compact-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-compact-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-compact",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-compact",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-compact-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-compact-upgrade",
 		"release-openshift-ocp-installer-e2e-metal-compact-4.9",
-		"release-openshift-ocp-installer-e2e-metal-compact-4.10",
 		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.9",
 		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.10",
 	)
