@@ -76,7 +76,9 @@ export function filterTooltip(filter) {
 
     return (
       <li key={`filter-${index}`}>
-        {`${item.columnField} ${item.operatorValue} ${value}`}{' '}
+        {`${item.columnField}${item.not ? ' not ' : ' '}${
+          item.operatorValue
+        } ${value}`}
         {description ? `(${description})` : ''}
       </li>
     )

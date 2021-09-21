@@ -1,7 +1,6 @@
 package testreportconversion
 
 import (
-	"k8s.io/klog"
 	"math"
 	"sort"
 
@@ -109,8 +108,7 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 	data := stats.LoadRawData(percentages)
 	mean, _ := stats.Mean(data)
 	sd, _ := stats.StandardDeviation(data)
-	quartiles, err := stats.Quartile(data)
-	klog.V(1).Info(err)
+	quartiles, _ := stats.Quartile(data)
 	p95, _ := stats.Percentile(data, 95)
 
 	jobStatistics.Mean = mean
