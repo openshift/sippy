@@ -73,6 +73,16 @@ func isNeverStable(result sippyprocessingv1.JobResult) bool {
 	return false
 }
 
+// The zero-value of a float64 in go is NaN, however you cannot marshal that
+// value to JSON. This converts a NaN to zero.
+func convertNaNToZero(f float64) float64 {
+	if math.IsNaN(f) {
+		return 0.0
+	}
+
+	return f
+}
+
 func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippyprocessingv1.Statistics {
 	jobStatistics := sippyprocessingv1.Statistics{}
 	percentages := []float64{}
@@ -103,7 +113,11 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 
 	jobStatistics.Mean = mean
 	jobStatistics.StandardDeviation = sd
-	jobStatistics.Quartiles = []float64{quartiles.Q1, quartiles.Q2, quartiles.Q3}
+	jobStatistics.Quartiles = []float64{
+		convertNaNToZero(quartiles.Q1),
+		convertNaNToZero(quartiles.Q2),
+		convertNaNToZero(quartiles.Q3),
+	}
 	jobStatistics.P95 = p95
 
 	return jobStatistics
