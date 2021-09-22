@@ -80,7 +80,7 @@ BugzillaDialog.defaultProps = {
 }
 
 BugzillaDialog.propTypes = {
-  release: PropTypes.string,
+  release: PropTypes.string.isRequired,
   item: PropTypes.object.isRequired,
   classes: PropTypes.object,
   isOpen: PropTypes.bool,

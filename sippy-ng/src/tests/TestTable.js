@@ -404,6 +404,7 @@ function TestTable(props) {
       {props.hideControls ? '' : detailsButton}
 
       <BugzillaDialog
+        release={props.release}
         item={testDetails}
         isOpen={isBugzillaDialogOpen}
         close={closeBugzillaDialog}
