@@ -408,6 +408,7 @@ function JobTable(props) {
       />
       {props.briefTable ? '' : detailsButton}
       <BugzillaDialog
+        release={props.release}
         item={jobDetails}
         isOpen={isBugzillaDialogOpen}
         close={closeBugzillaDialog}

@@ -37,7 +37,12 @@ describe(BugzillaDialog, () => {
   beforeEach(async () => {
     await act(async () => {
       wrapper = mount(
-        <BugzillaDialog isOpen={true} close={() => {}} item={item} />
+        <BugzillaDialog
+          release="4.8"
+          isOpen={true}
+          close={() => {}}
+          item={item}
+        />
       )
     })
     wrapper.update()
