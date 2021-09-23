@@ -51,7 +51,7 @@ export const getColumns = (config, openBugzillaDialog) => {
       flex: 0.75,
       renderCell: (params) => (
         <div className="percentage-cell">
-          {Number(params.value).toFixed(0).toLocaleString()}%<br />
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
           <small>({params.row.current_runs} runs)</small>
         </div>
       ),
@@ -72,7 +72,7 @@ export const getColumns = (config, openBugzillaDialog) => {
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
-          {Number(params.value).toFixed(0).toLocaleString()}%<br />
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
           <small>({params.row.previous_runs} runs)</small>
         </div>
       ),

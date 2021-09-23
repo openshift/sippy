@@ -4,10 +4,14 @@ import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
 import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
 import { Button, Container, Tooltip } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
+import {
+  escapeRegex,
+  pathForJobRunsWithTestFailure,
+  withSort,
+} from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
-import { pathForJobRunsWithTestFailure, withSort } from '../helpers'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -80,7 +84,7 @@ function TestTable(props) {
       flex: 0.5,
       renderCell: (params) => (
         <Tooltip title={params.row.current_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(0).toLocaleString()}%</p>
+          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
         </Tooltip>
       ),
     },
@@ -100,7 +104,7 @@ function TestTable(props) {
       type: 'number',
       renderCell: (params) => (
         <Tooltip title={params.row.previous_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(0).toLocaleString()}%</p>
+          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
         </Tooltip>
       ),
     },
@@ -117,7 +121,7 @@ function TestTable(props) {
               startIcon={<Search />}
               href={
                 'https://search.ci.openshift.org/?search=' +
-                encodeURIComponent(params.row.name) +
+                encodeURIComponent(escapeRegex(params.row.name)) +
                 '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
               }
             />

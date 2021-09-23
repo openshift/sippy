@@ -404,7 +404,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -495,7 +495,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"3 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -586,7 +586,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -677,7 +677,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -768,7 +768,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -859,7 +859,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -950,7 +950,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1041,7 +1041,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1132,7 +1132,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1223,7 +1223,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1314,7 +1314,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1405,7 +1405,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1496,7 +1496,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1587,7 +1587,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"2 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1678,7 +1678,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1769,7 +1769,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1860,7 +1860,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -1951,7 +1951,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2042,7 +2042,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"3 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2133,7 +2133,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2224,7 +2224,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2315,7 +2315,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2406,7 +2406,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2497,7 +2497,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"
@@ -2588,7 +2588,7 @@ exports[`TestTable should render correctly 1`] = `
                       <p title=\\"1 runs\\"
                          class
                       >
-                        0%
+                        0.0%
                       </p>
                     </div>
                     <div style=\\"min-width: 250px; max-width: 250px; line-height: 99px; min-height: 100px; max-height: 100px;\\"

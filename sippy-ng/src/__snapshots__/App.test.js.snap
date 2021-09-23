@@ -1776,7 +1776,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      38%
+                                      38.5%
                                       <br>
                                       <small>
                                         (13 runs)
@@ -1857,7 +1857,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      69%
+                                      69.2%
                                       <br>
                                       <small>
                                         (13 runs)
@@ -1938,7 +1938,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      33%
+                                      33.3%
                                       <br>
                                       <small>
                                         (15 runs)
@@ -2019,7 +2019,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      31%
+                                      31.3%
                                       <br>
                                       <small>
                                         (16 runs)
@@ -2100,7 +2100,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      77%
+                                      76.9%
                                       <br>
                                       <small>
                                         (13 runs)
@@ -2496,7 +2496,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0%
+                                      0.0%
                                       <br>
                                       <small>
                                         (1 runs)
@@ -2577,7 +2577,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0%
+                                      0.0%
                                       <br>
                                       <small>
                                         (1 runs)
@@ -2658,7 +2658,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0%
+                                      0.0%
                                       <br>
                                       <small>
                                         (2 runs)
@@ -2739,7 +2739,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      50%
+                                      50.0%
                                       <br>
                                       <small>
                                         (2 runs)
@@ -2820,7 +2820,7 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0%
+                                      0.0%
                                       <br>
                                       <small>
                                         (2 runs)
@@ -3219,7 +3219,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="46 runs"
                                        class
                                     >
-                                      37%
+                                      37.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -3298,7 +3298,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="12 runs"
                                        class
                                     >
-                                      83%
+                                      83.3%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -3377,7 +3377,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="16 runs"
                                        class
                                     >
-                                      50%
+                                      50.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -3456,7 +3456,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="48 runs"
                                        class
                                     >
-                                      83%
+                                      83.3%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -3535,7 +3535,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="37 runs"
                                        class
                                     >
-                                      89%
+                                      89.2%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -3930,7 +3930,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="2 runs"
                                        class
                                     >
-                                      50%
+                                      50.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4009,7 +4009,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="2 runs"
                                        class
                                     >
-                                      50%
+                                      50.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4088,7 +4088,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="2 runs"
                                        class
                                     >
-                                      50%
+                                      50.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4167,7 +4167,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="4 runs"
                                        class
                                     >
-                                      75%
+                                      75.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4246,7 +4246,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="8 runs"
                                        class
                                     >
-                                      75%
+                                      75.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4641,7 +4641,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="46 runs"
                                        class
                                     >
-                                      37%
+                                      37.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4720,7 +4720,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="12 runs"
                                        class
                                     >
-                                      83%
+                                      83.3%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4799,7 +4799,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="16 runs"
                                        class
                                     >
-                                      50%
+                                      50.0%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4878,7 +4878,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="48 runs"
                                        class
                                     >
-                                      83%
+                                      83.3%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
@@ -4957,7 +4957,7 @@ exports[`app should render correctly 1`] = `
                                     <p title="37 runs"
                                        class
                                     >
-                                      89%
+                                      89.2%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
