@@ -402,7 +402,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -495,7 +495,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (6 runs)
@@ -588,7 +588,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -681,7 +681,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (6 runs)
@@ -774,7 +774,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -867,7 +867,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -960,7 +960,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1053,7 +1053,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1146,7 +1146,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (40 runs)
@@ -1239,7 +1239,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1332,7 +1332,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1425,7 +1425,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1518,7 +1518,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (6 runs)
@@ -1611,7 +1611,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1704,7 +1704,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -1797,7 +1797,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (13 runs)
@@ -1890,7 +1890,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (6 runs)
@@ -1983,7 +1983,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -2076,7 +2076,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (6 runs)
@@ -2169,7 +2169,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        0%
+                        0.0%
                         <br>
                         <small>
                           (3 runs)
@@ -2262,7 +2262,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        15%
+                        15.4%
                         <br>
                         <small>
                           (13 runs)
@@ -2355,7 +2355,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        17%
+                        16.7%
                         <br>
                         <small>
                           (6 runs)
@@ -2448,7 +2448,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        23%
+                        23.1%
                         <br>
                         <small>
                           (13 runs)
@@ -2541,7 +2541,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        25%
+                        25.0%
                         <br>
                         <small>
                           (4 runs)
@@ -2634,7 +2634,7 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"percentage-cell\\">
-                        25%
+                        25.0%
                         <br>
                         <small>
                           (24 runs)
