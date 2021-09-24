@@ -171,7 +171,7 @@ exports[`TestAnalysis should render correctly 1`] = `
         </a>
         <div class="MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight"
              role="grid"
-             aria-colcount="5"
+             aria-colcount="7"
              aria-rowcount="14"
              aria-multiselectable="false"
         >
@@ -186,7 +186,7 @@ exports[`TestAnalysis should render correctly 1`] = `
               <div class="MuiDataGrid-columnHeaderWrapper scroll"
                    aria-rowindex="1"
                    role="row"
-                   style="transform: translate3d(-0px, 0, 0); min-width: 250px;"
+                   style="transform: translate3d(-0px, 0, 0); min-width: 350px;"
               >
                 <div class="MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader"
                      data-field="timestamp"
@@ -345,7 +345,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                     </svg>
                   </div>
                 </div>
-                <div style="min-width: 100px; max-width: 100px; line-height: 55px; min-height: 56px; max-height: 56px;"
+                <div style="min-width: 200px; max-width: 200px; line-height: 55px; min-height: 56px; max-height: 56px;"
                      class="MuiDataGrid-cell"
                 >
                 </div>
@@ -359,13 +359,13 @@ exports[`TestAnalysis should render correctly 1`] = `
                      style="top: 56px; overflow-y: hidden;"
                 >
                   <div class="MuiDataGrid-dataContainer"
-                       style="min-width: 250px; min-height: 260px;"
+                       style="min-width: 350px; min-height: 260px;"
                   >
                     <div class="MuiDataGrid-viewport"
                          style="min-width: 0; max-width: 0; max-height: 260px;"
                     >
                       <div class="MuiDataGrid-renderingZone"
-                           style="max-height: 260px; width: 250px; transform: translate3d(-0px, -0px, 0);"
+                           style="max-height: 260px; width: 350px; transform: translate3d(-0px, -0px, 0);"
                       >
                         <div data-id="0"
                              data-rowindex="0"
@@ -431,7 +431,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                             7
                           </div>
-                          <div style="min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -500,7 +500,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                             12
                           </div>
-                          <div style="min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -569,7 +569,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                             12
                           </div>
-                          <div style="min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -638,7 +638,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                             11
                           </div>
-                          <div style="min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -707,7 +707,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                           >
                             9
                           </div>
-                          <div style="min-width: 100px; max-width: 100px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>

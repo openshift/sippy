@@ -7,7 +7,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { DirectionsBoat } from '@material-ui/icons'
+import { DirectionsBoat, Folder, GridOn } from '@material-ui/icons'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import { pathForExactJob, relativeTime } from '../helpers'
@@ -38,12 +38,12 @@ export default function JobRunsTable(props) {
   const tooltips = {
     S: 'Success',
     F: 'Failure (e2e)',
-    f: 'failure (other tests)',
-    U: 'upgrade failure',
-    I: 'setup failure (installer)',
-    N: 'setup failure (infrastructure)',
-    n: 'failure before setup (infra)',
-    R: 'running',
+    f: 'Failure (other tests)',
+    U: 'Upgrade failure',
+    I: 'Setup failure (installer)',
+    N: 'Setup failure (infrastructure)',
+    n: 'Failure before setup (infra)',
+    R: 'Running',
   }
 
   const columns = [
@@ -73,7 +73,7 @@ export default function JobRunsTable(props) {
     {
       field: 'job',
       headerName: 'Job name',
-      flex: props.briefTable ? 1 : 3,
+      flex: props.briefTable ? 1 : 2,
       renderCell: (params) => {
         return (
           <div
@@ -97,12 +97,13 @@ export default function JobRunsTable(props) {
       field: 'testFailures',
       headerName: 'Test Failures',
       type: 'number',
-      flex: 0.5,
+      flex: 0.4,
     },
     {
       field: 'result',
       headerName: 'Result',
-      flex: 0.5,
+      flex: 0.4,
+      enums: tooltips,
       renderCell: (params) => {
         return (
           <Tooltip title={tooltips[params.value]}>
@@ -117,9 +118,49 @@ export default function JobRunsTable(props) {
       },
     },
     {
+      field: 'testGridURL',
+      headerName: ' ',
+      flex: 0.25,
+      renderCell: (params) => {
+        return (
+          <Tooltip title="TestGrid">
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<GridOn />}
+              href={params.value}
+            />
+          </Tooltip>
+        )
+      },
+      filterable: false,
+    },
+    {
+      field: 'artifactsURL',
+      headerName: ' ',
+      flex: 0.25,
+      renderCell: (params) => {
+        if (!params.value || params.value === '') {
+          return ''
+        }
+
+        return (
+          <Tooltip title="View artifacts">
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<Folder />}
+              href={params.value}
+            />
+          </Tooltip>
+        )
+      },
+      filterable: false,
+    },
+    {
       field: 'url',
       headerName: ' ',
-      flex: 0.4,
+      flex: 0.25,
       renderCell: (params) => {
         return (
           <Tooltip title="View in Prow">
@@ -193,6 +234,48 @@ export default function JobRunsTable(props) {
       field: 'associated_bugs',
       headerName: 'Associated bug count',
       type: 'number',
+      hide: true,
+    },
+    {
+      headerName: 'Test suites',
+      field: 'test_suites',
+      type: 'array',
+      enums: {
+        upgrade: 'Upgrade',
+        parallel: 'Parallel',
+        serial: 'Serial',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'Topology',
+      field: 'topology',
+      type: 'string',
+      enums: {
+        ha: 'High-availability',
+        single: 'Single node',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'IP Mode',
+      field: 'ip_mode',
+      type: 'string',
+      enums: {
+        ipv4: 'IPv4',
+        ipv6: 'IPv6',
+        dualstack: 'Dualstack',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'Network',
+      field: 'network',
+      type: 'string',
+      enums: {
+        ovn: 'OVNKubernetes',
+        sdn: 'OpenshiftSDN',
+      },
       hide: true,
     },
   ]
@@ -413,7 +496,7 @@ JobRunsTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'testFailures',
+  sortField: 'timestamp',
   sort: 'desc',
 }
 

@@ -151,6 +151,48 @@ export const getColumns = (config, openBugzillaDialog) => {
     },
     // These are here just to allow filtering
     {
+      headerName: 'Test suites',
+      field: 'test_suites',
+      type: 'array',
+      enums: {
+        upgrade: 'Upgrade',
+        parallel: 'Parallel',
+        serial: 'Serial',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'Topology',
+      field: 'topology',
+      type: 'string',
+      enums: {
+        ha: 'High-availability',
+        single: 'Single node',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'IP Mode',
+      field: 'ip_mode',
+      type: 'string',
+      enums: {
+        ipv4: 'IPv4',
+        ipv6: 'IPv6',
+        dualstack: 'Dualstack',
+      },
+      hide: true,
+    },
+    {
+      headerName: 'Network',
+      field: 'network',
+      type: 'string',
+      enums: {
+        ovn: 'OVNKubernetes',
+        sdn: 'OpenshiftSDN',
+      },
+      hide: true,
+    },
+    {
       field: 'variants',
       type: 'array',
       headerName: 'Variants',

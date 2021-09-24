@@ -5,6 +5,7 @@ import {
   FormHelperText,
   Grid,
   InputLabel,
+  Menu,
   MenuItem,
   Select,
   TextField,
@@ -45,9 +46,11 @@ export default function GridToolbarFilterItem(props) {
   const classes = useStyles()
 
   let columnType = 'string'
+  let enums = {}
   props.columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
+      enums = col.enums || enums
     }
   })
 
@@ -67,6 +70,85 @@ export default function GridToolbarFilterItem(props) {
   const valueError =
     props.filterModel.errors && props.filterModel.errors.includes('value')
 
+  const inputField = (columnType) => {
+    if (columnType === 'date') {
+      return (
+        <Fragment>
+          <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
+            <DateTimePicker
+              showTodayButton
+              disableFuture
+              label="Value"
+              format="yyyy-MM-dd HH:mm 'UTC'"
+              ampm={false}
+              value={
+                props.filterModel.value === ''
+                  ? null
+                  : new Date(parseInt(props.filterModel.value))
+              }
+              onChange={(e) => {
+                props.setFilterModel({
+                  columnField: props.filterModel.columnField,
+                  operatorValue: props.filterModel.operatorValue,
+                  value: e.getTime().toString(),
+                })
+              }}
+            />
+          </MuiPickersUtilsProvider>
+        </Fragment>
+      )
+    } else if (Object.keys(enums).length !== 0) {
+      return (
+        <Fragment>
+          <InputLabel id={`value-${props.id}`}>Value</InputLabel>
+          <Select
+            autoWidth
+            labelId={`value-${props.id}`}
+            id={`value-select-${props.id}`}
+            value={props.filterModel.value}
+            onChange={(e) =>
+              props.setFilterModel({
+                columnField: props.filterModel.columnField,
+                not: props.filterModel.not,
+                operatorValue: props.filterModel.operatorValue,
+                value: e.target.value,
+              })
+            }
+          >
+            {Object.keys(enums).map((k, i) => (
+              <MenuItem key={`menu-value-${props.id}-${i}`} value={k}>
+                {enums[k]}
+              </MenuItem>
+            ))}
+          </Select>
+        </Fragment>
+      )
+    } else {
+      return (
+        <Fragment>
+          <TextField
+            inputProps={{ 'data-testid': `value-${props.id}` }}
+            error={operatorValueError}
+            id="value"
+            label="Value"
+            onChange={(e) =>
+              props.setFilterModel({
+                columnField: props.filterModel.columnField,
+                not: props.filterModel.not,
+                operatorValue: props.filterModel.operatorValue,
+                value: e.target.value,
+              })
+            }
+            value={props.filterModel.value}
+          />
+          <FormHelperText error={valueError} style={{ marginTop: 12 }}>
+            {columnType === 'number' ? 'Numerical value required' : 'Required'}
+          </FormHelperText>
+        </Fragment>
+      )
+    }
+  }
+
   return (
     <Grid container>
       <Button startIcon={<Close />} onClick={props.destroy} />
@@ -85,6 +167,9 @@ export default function GridToolbarFilterItem(props) {
           {props.columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
+            )
+            .sort((a, b) =>
+              a.field === b.field ? 0 : a.field < b.field ? -1 : 1
             )
             .map((col) => (
               <MenuItem key={col.field} value={col.field}>
@@ -141,55 +226,8 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>
-        {columnType === 'date' ? (
-          <Fragment>
-            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-              <DateTimePicker
-                showTodayButton
-                disableFuture
-                label="Value"
-                format="yyyy-MM-dd HH:mm 'UTC'"
-                ampm={false}
-                value={
-                  props.filterModel.value === ''
-                    ? null
-                    : new Date(parseInt(props.filterModel.value))
-                }
-                onChange={(e) => {
-                  props.setFilterModel({
-                    columnField: props.filterModel.columnField,
-                    operatorValue: props.filterModel.operatorValue,
-                    value: e.getTime().toString(),
-                  })
-                }}
-              />
-            </MuiPickersUtilsProvider>
-          </Fragment>
-        ) : (
-          <Fragment>
-            <TextField
-              inputProps={{ 'data-testid': `value-${props.id}` }}
-              error={operatorValueError}
-              id="value"
-              label="Value"
-              onChange={(e) =>
-                props.setFilterModel({
-                  columnField: props.filterModel.columnField,
-                  not: props.filterModel.not,
-                  operatorValue: props.filterModel.operatorValue,
-                  value: e.target.value,
-                })
-              }
-              value={props.filterModel.value}
-            />
-            <FormHelperText error={valueError} style={{ marginTop: 12 }}>
-              {columnType === 'number'
-                ? 'Numerical value required'
-                : 'Required'}
-            </FormHelperText>
-          </Fragment>
-        )}
+      <FormControl style={{ minWidth: 240 }}>
+        {inputField(columnType)}
       </FormControl>
     </Grid>
   )
