@@ -81,6 +81,9 @@ var (
 		// Experimental jobs that are under active development
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-aws-ipi",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-aws-upi",
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-gcp-ipi",
 
 		// https://issues.redhat.com/browse/OSD-8071
 		"release-openshift-ocp-osd-aws-nightly-4.9",
@@ -94,11 +97,20 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel8",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2006346
+		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
 		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2006243
-		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-metal-ipi-upgrade",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-upgrade",
+		// https://bugzilla.redhat.com/show_bug.cgi?id=1936917
+		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-calico",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-calico",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2007580
+		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-cilium",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-cilium",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2006947
+		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-proxy",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-proxy",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
