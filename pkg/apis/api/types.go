@@ -32,6 +32,13 @@ type Job struct {
 	BriefName string   `json:"brief_name"`
 	Variants  []string `json:"variants"`
 
+	Network                     string   `json:"network,omitempty"`
+	IPMode                      string   `json:"ip_mode,omitempty"`
+	Topology                    string   `json:"topology,omitempty"`
+	TestSuites                  []string `json:"test_suites,omitempty"`
+	GCSBucketName               string   `json:"gcs_bucket_name,omitempty"`
+	GCSJobHistoryLocationPrefix string   `json:"gcs_job_history_location_prefix,omitempty"`
+
 	CurrentPassPercentage          float64 `json:"current_pass_percentage"`
 	CurrentProjectedPassPercentage float64 `json:"current_projected_pass_percentage"`
 	CurrentRuns                    int     `json:"current_runs"`
@@ -62,6 +69,10 @@ func (job Job) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "test_grid_url":
 		return ColumnTypeString
+	case "network", "ip_mode", "topology", "gcs_bucket_name", "gcs_job_history_location_prefix":
+		return ColumnTypeString
+	case "test_suites":
+		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
 	}
@@ -75,6 +86,16 @@ func (job Job) GetStringValue(param string) (string, error) {
 		return job.BriefName, nil
 	case "test_grid_url":
 		return job.TestGridURL, nil
+	case "network":
+		return job.Network, nil
+	case "ip_mode":
+		return job.IPMode, nil
+	case "topology":
+		return job.Topology, nil
+	case "gcs_bucket_name":
+		return job.GCSBucketName, nil
+	case "gcs_job_history_location_prefix":
+		return job.GCSJobHistoryLocationPrefix, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
@@ -113,6 +134,8 @@ func (job Job) GetArrayValue(param string) ([]string, error) {
 		return job.Tags, nil
 	case "variants":
 		return job.Variants, nil
+	case "test_suites":
+		return job.TestSuites, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
@@ -120,11 +143,12 @@ func (job Job) GetArrayValue(param string) ([]string, error) {
 
 // JobRun contains a full accounting of a job run's history, with a synthetic ID.
 type JobRun struct {
-	ID          int      `json:"id"`
-	BriefName   string   `json:"brief_name"`
-	Variants    []string `json:"variants"`
-	Tags        []string `json:"tags"`
-	TestGridURL string   `json:"testGridURL"`
+	ID           int      `json:"id"`
+	BriefName    string   `json:"brief_name"`
+	Variants     []string `json:"variants"`
+	Tags         []string `json:"tags"`
+	TestGridURL  string   `json:"testGridURL"`
+	ArtifactsURL string   `json:"artifactsURL"`
 	v1.JobRunResult
 }
 
@@ -142,7 +166,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "variants":
 		return ColumnTypeArray
-	case "testGridURL":
+	case "testGridURL", "artifactsURL", "url":
 		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
@@ -157,6 +181,10 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 		return string(run.OverallResult), nil
 	case "testGridURL":
 		return run.TestGridURL, nil
+	case "artifactsURL":
+		return run.ArtifactsURL, nil
+	case "url":
+		return run.URL, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}

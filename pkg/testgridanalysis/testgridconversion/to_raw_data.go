@@ -137,6 +137,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				if !ok {
 					jrr = testgridanalysisapi.RawJobRunResult{
 						Job:       job.Name,
+						JobRunID:  job.ChangeLists[i],
 						JobRunURL: joburl,
 						Timestamp: job.Timestamps[i],
 					}

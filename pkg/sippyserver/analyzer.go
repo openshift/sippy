@@ -5,6 +5,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/openshift/sippy/pkg/bigqueryanalysis"
+
+	bigqueryv1 "github.com/openshift/sippy/pkg/apis/bigquery/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -76,7 +79,13 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
-	return a.prepareTestReportFromData(dashboard.ReportName, reportType, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	bigQueryJobDetails, err := bigqueryanalysis.LoadDataFromDisk(a.TestGridLoadingConfig.LocalData)
+	if err != nil {
+		klog.Warningf("No BigQuery credentials found, skipping...")
+		bigQueryJobDetails = nil
+	}
+
+	return a.prepareTestReportFromData(dashboard.ReportName, reportType, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, bigQueryJobDetails, lastUpdateTime)
 }
 
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
@@ -88,6 +97,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 	testGridJobDetails []testgridv1.JobDetails,
+	bigQueryJobDetails []bigqueryv1.Job,
 	lastUpdateTime time.Time,
 ) sippyprocessingv1.TestReport {
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
@@ -112,6 +122,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 		a.DisplayDataConfig.TestSuccessThreshold,
 		a.RawJobResultsAnalysisConfig.NumDays,
 		warnings,
+		bigQueryJobDetails,
 		lastUpdateTime,
 		a.DisplayDataConfig.FailureClusterThreshold,
 	)
@@ -125,13 +136,18 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	bugCache buganalysis.BugCache,
 ) StandardReport {
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
+	bigQueryJobDetails, err := bigqueryanalysis.LoadDataFromDisk(a.TestGridLoadingConfig.LocalData)
+	if err != nil {
+		klog.Warningf("No BigQuery credentials found, skipping...")
+		bigQueryJobDetails = nil
+	}
 
 	currTimePeriodConfig := a.deepCopy()
-	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.CurrentReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.CurrentReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, bigQueryJobDetails, lastUpdateTime)
 
 	currentTwoDayPeriodConfig := a.deepCopy()
 	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
-	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.TwoDayReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.TwoDayReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, bigQueryJobDetails, lastUpdateTime)
 
 	previousSevenDayPeriodConfig := a.deepCopy()
 	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
@@ -140,7 +156,7 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
 	}
 	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
-	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.PreviousReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.PreviousReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, bigQueryJobDetails, lastUpdateTime)
 
 	return StandardReport{
 		CurrentPeriodReport: currentTimePeriodReport,

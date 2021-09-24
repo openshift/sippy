@@ -175,6 +175,7 @@ const (
 )
 
 type JobRunResult struct {
+	ID              string           `json:"id"`
 	Job             string           `json:"job"`
 	URL             string           `json:"url"`
 	TestFailures    int              `json:"testFailures"`
@@ -186,8 +187,17 @@ type JobRunResult struct {
 }
 
 type JobResult struct {
-	Name                                        string         `json:"name"`
-	Variants                                    []string       `json:"variants"`
+	Name                        string   `json:"name"`
+	Variants                    []string `json:"variants"`
+	Network                     string   `json:"network"`
+	IPMode                      string   `json:"ipMode"`
+	Topology                    string   `json:"topology"`
+	RunsUpgrade                 bool     `json:"runsUpgrade"`
+	RunsE2EParallel             bool     `json:"runsE2EParallel"`
+	RunsE2ESerial               bool     `json:"RunsE2ESerial"`
+	GCSBucketName               string   `json:"gcsBucketName"`
+	GCSJobHistoryLocationPrefix string   `json:"gcsJobHistoryLocationPrefix"`
+
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`
 	InfrastructureFailures                      int            `json:"infrastructureFailures"`

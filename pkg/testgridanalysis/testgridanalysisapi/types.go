@@ -47,6 +47,7 @@ type RawTestResult struct {
 type RawJobRunResult struct {
 	Job             string
 	JobRunURL       string
+	JobRunID        string
 	TestFailures    int
 	FailedTestNames []string
 	Failed          bool

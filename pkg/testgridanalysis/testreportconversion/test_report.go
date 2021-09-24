@@ -5,6 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/openshift/sippy/pkg/bigqueryanalysis"
+
+	bigqueryv1 "github.com/openshift/sippy/pkg/apis/bigquery/v1"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -25,12 +28,15 @@ func PrepareTestReport(
 	successThreshold float64, // indicates an upper bound on how successful a test can be before it is excluded
 	numDays int, // indicates how many days of data to collect
 	analysisWarnings []string,
+	bigQueryJobResults []bigqueryv1.Job,
 	reportTimestamp time.Time, // TODO seems like we could derive this from our raw data
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
+	allJobResults = bigqueryanalysis.InsertBigQueryDataToJobs(bigQueryJobResults, allJobResults)
+
 	stats := calculateJobResultStatistics(allJobResults)
 
 	allTestResultsByName := getTestResultsByName(allJobResults)

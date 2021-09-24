@@ -26,9 +26,9 @@ func FindTestResult(test string, testResults []sippyprocessingv1.TestResult) *si
 }
 
 func FindJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobResult) *sippyprocessingv1.JobResult {
-	for _, v := range jobRunsByJob {
+	for idx, v := range jobRunsByJob {
 		if v.Name == job {
-			return &v
+			return &jobRunsByJob[idx]
 		}
 	}
 	return nil

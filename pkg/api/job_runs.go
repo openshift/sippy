@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	gosort "sort"
 	"strconv"
@@ -47,11 +48,17 @@ func (runs apiRunResults) limit(req *http.Request) apiRunResults {
 type apiRunResults []apitype.JobRun
 
 func jobRunToAPIJobRun(id int, job v1sippyprocessing.JobResult, result v1sippyprocessing.JobRunResult) apitype.JobRun {
+	artifacts := ""
+	if job.GCSJobHistoryLocationPrefix != "" && job.GCSBucketName != "" && result.ID != "" {
+		artifacts = fmt.Sprintf("https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s/%s", job.GCSBucketName, job.GCSJobHistoryLocationPrefix, result.ID)
+	}
+
 	return apitype.JobRun{
 		ID:           id,
 		BriefName:    briefName(job.Name),
 		Variants:     job.Variants,
 		TestGridURL:  job.TestGridURL,
+		ArtifactsURL: artifacts,
 		JobRunResult: result,
 	}
 }

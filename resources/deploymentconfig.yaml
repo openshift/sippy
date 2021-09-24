@@ -72,15 +72,23 @@ spec:
         terminationMessagePolicy: File
         command:
         - /bin/fetchdata.sh
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/bigquery/credentials
         volumeMounts:
         - mountPath: /data
           name: data
+        - name: bigquery-credentials
+          mountPath: /etc/bigquery
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
       volumes:
+      - name: bigquery-credentials
+        secret:
+          secretName: bigquery-credentials
       - name: data
         persistentVolumeClaim:
           claimName: sippy

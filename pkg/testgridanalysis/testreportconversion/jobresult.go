@@ -201,6 +201,7 @@ func convertRawJobResultToProcessedJobResult(
 
 func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobRunResult {
 	return sippyprocessingv1.JobRunResult{
+		ID:              jrr.JobRunID,
 		Job:             jrr.Job,
 		URL:             jrr.JobRunURL,
 		TestFailures:    jrr.TestFailures,

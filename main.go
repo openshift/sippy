@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
 	rice "github.com/GeertJohan/go.rice"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	bigqueryhelpers "github.com/openshift/sippy/pkg/bigqueryanalysis"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
@@ -175,6 +175,7 @@ func (o *Options) Run() error {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
+		bigqueryhelpers.DownloadData(o.OpenshiftReleases, o.FetchData)
 		return nil
 	}
 
