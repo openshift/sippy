@@ -96,9 +96,14 @@ var (
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2003646
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel8",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2006346
-		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
+		// https://bugzilla.redhat.com/show_bug.cgi?id=20000754
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-parallel",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-proxy",
 		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
+		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2008201
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-az",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2007850
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-fips-serial",
