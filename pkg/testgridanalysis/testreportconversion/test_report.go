@@ -53,12 +53,12 @@ func PrepareTestReport(
 	curatedTests := getCuratedTests(bugzillaRelease, allTestResultsByName)
 
 	// the top level indicators should exclude jobs that are not yet stable, because those failures are not informative
-	infra := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName], variantManager)
-	install := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.InstallTestName], variantManager)
-	upgrade := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
-	tests := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.OpenShiftTestsName], variantManager)
+	infra := excludeNeverStableAndTechPreviewJobs(allTestResultsByName[testgridanalysisapi.InfrastructureTestName], variantManager)
+	install := excludeNeverStableAndTechPreviewJobs(allTestResultsByName[testgridanalysisapi.InstallTestName], variantManager)
+	upgrade := excludeNeverStableAndTechPreviewJobs(allTestResultsByName[testgridanalysisapi.UpgradeTestName], variantManager)
+	tests := excludeNeverStableAndTechPreviewJobs(allTestResultsByName[testgridanalysisapi.OpenShiftTestsName], variantManager)
 
-	finalOperatorHealth := excludeNeverStableJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
+	finalOperatorHealth := excludeNeverStableAndTechPreviewJobs(allTestResultsByName[testgridanalysisapi.FinalOperatorHealthTestName], variantManager)
 
 	// Only generate promotion warnings based on current reporting
 	if reportType == sippyprocessingv1.CurrentReport {
