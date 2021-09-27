@@ -3,6 +3,7 @@ package testreportconversion
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 
@@ -227,7 +228,7 @@ func (filterFn TestResultFilterFunc) FilterTestResults(testResults []sippyproces
 	return filteredResults
 }
 
-func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult, variantManager testidentification.VariantManager) sippyprocessingv1.FailingTestResult {
+func excludeNeverStableAndTechPreviewJobs(in sippyprocessingv1.FailingTestResult, variantManager testidentification.VariantManager) sippyprocessingv1.FailingTestResult {
 	filteredFailingTestResult := sippyprocessingv1.FailingTestResult{
 		TestName:                in.TestName,
 		TestResultAcrossAllJobs: sippyprocessingv1.TestResult{Name: in.TestName},
@@ -235,7 +236,7 @@ func excludeNeverStableJobs(in sippyprocessingv1.FailingTestResult, variantManag
 	}
 
 	for _, jobResult := range in.JobResults {
-		if variantManager.IsJobNeverStable(jobResult.Name) {
+		if variantManager.IsJobNeverStable(jobResult.Name) || strings.Contains(jobResult.Name, "techpreview") {
 			continue
 		}
 		filteredFailingTestResult.JobResults = append(filteredFailingTestResult.JobResults, jobResult)

@@ -1,9 +1,8 @@
-import { ArrowBack, ArrowForward, Help } from '@material-ui/icons'
+import { ArrowBack, ArrowForward } from '@material-ui/icons'
 import {
   BOOKMARKS,
   INFRASTRUCTURE_THRESHOLDS,
   INSTALL_THRESHOLDS,
-  JOB_THRESHOLDS,
   TEST_THRESHOLDS,
   UPGRADE_THRESHOLDS,
 } from '../constants'
@@ -19,9 +18,13 @@ import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { hourFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import { Link } from 'react-router-dom'
 import { NumberParam, useQueryParam } from 'use-query-params'
-import { queryForBookmark, withSort } from '../helpers'
+import {
+  pathForJobsWithFilter,
+  queryForBookmark,
+  withoutUnstable,
+  withSort,
+} from '../helpers'
 import Alert from '@material-ui/lab/Alert'
-import Divider from '@material-ui/core/Divider'
 import Grid from '@material-ui/core/Grid'
 import Histogram from '../components/Histogram'
 import InfoIcon from '@material-ui/icons/Info'
@@ -231,7 +234,9 @@ export default function ReleaseOverview(props) {
                 <Typography variant="h6">
                   <Link
                     to={withSort(
-                      `/jobs/${props.release}`,
+                      pathForJobsWithFilter(props.release, {
+                        items: withoutUnstable(),
+                      }),
                       'current_pass_percentage',
                       'asc'
                     )}

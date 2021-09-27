@@ -63,9 +63,9 @@ func filterPertinentInfrequentJobResults(
 	return filtered
 }
 
-func isNeverStable(result sippyprocessingv1.JobResult) bool {
+func isNeverStableOrTechPreview(result sippyprocessingv1.JobResult) bool {
 	for _, variant := range result.Variants {
-		if variant == "never-stable" {
+		if variant == "never-stable" || variant == "techpreview" {
 			return true
 		}
 	}
@@ -93,7 +93,7 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 	})
 
 	for _, result := range results {
-		if isNeverStable(result) {
+		if isNeverStableOrTechPreview(result) {
 			continue
 		}
 		index := int(math.Floor(result.PassPercentage / 10))
