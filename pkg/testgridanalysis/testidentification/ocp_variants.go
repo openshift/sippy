@@ -100,6 +100,22 @@ var (
 		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
 		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
 
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2007850
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-fips-serial",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-fips-serial",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-fips-serial",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-fips",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2007692
+		"release-openshift-origin-installer-old-rhcos-e2e-aws-4.9",
+		"release-openshift-origin-installer-old-rhcos-e2e-aws-4.10",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2008128
+		"release-openshift-origin-installer-e2e-azure-shared-vpc-4.9",
+		"release-openshift-origin-installer-e2e-azure-shared-vpc-4.10",
+		"release-openshift-origin-installer-e2e-aws-shared-vpc-4.9",
+		"release-openshift-origin-installer-e2e-aws-shared-vpc-4.10",
+
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1936917
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-calico",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-calico",
