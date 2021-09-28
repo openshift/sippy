@@ -63,6 +63,12 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'techpreview',
   },
+  NO_MULTISTAGE_OR_TEMPLATE: {
+    columnField: 'name',
+    not: true,
+    operatorValue: 'contains',
+    value: 'operator.Run ',
+  },
   UPGRADE: {
     columnField: 'tags',
     operatorValue: 'contains',
