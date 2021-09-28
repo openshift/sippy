@@ -89,6 +89,12 @@ var (
 		"release-openshift-ocp-osd-aws-nightly-4.9",
 		"release-openshift-ocp-osd-gcp-nightly-4.9",
 
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2008313
+		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-ovn-upgrade-rollback",
+		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-upgrade-rollback",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-ovn-upgrade-rollback",
+		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-upgrade-rollback",
+
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979966
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel7",
@@ -97,6 +103,7 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel8",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=20000754
+		"release-openshift-ocp-installer-e2e-aws-mirrors-4.10",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-parallel",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-proxy",
 		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
