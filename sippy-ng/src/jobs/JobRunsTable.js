@@ -10,7 +10,7 @@ import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat, Folder, GridOn } from '@material-ui/icons'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
-import { pathForExactJob, relativeTime } from '../helpers'
+import { millisToTime, pathForExactJob, relativeTime } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -57,7 +57,7 @@ export default function JobRunsTable(props) {
       field: 'timestamp',
       headerName: 'Date / Time',
       filterable: true,
-      flex: 1.25,
+      flex: 0.75,
       type: 'date',
       valueFormatter: (params) => {
         return new Date(params.value)
@@ -73,17 +73,10 @@ export default function JobRunsTable(props) {
     {
       field: 'job',
       headerName: 'Job name',
-      flex: props.briefTable ? 1 : 2,
+      flex: 1.25,
       renderCell: (params) => {
         return (
-          <div
-            style={{
-              display: 'block',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
+          <div className="job-name">
             <Tooltip title={params.value}>
               <Link to={pathForExactJob(props.release, params.value)}>
                 {props.briefTable ? params.row.brief_name : params.value}
@@ -97,7 +90,35 @@ export default function JobRunsTable(props) {
       field: 'testFailures',
       headerName: 'Test Failures',
       type: 'number',
-      flex: 0.4,
+      flex: 0.3,
+    },
+    {
+      field: 'duration',
+      type: 'number',
+      headerName: 'Duration',
+      flex: 0.35,
+      renderCell: (params) => {
+        if (params.value === 0) {
+          return ''
+        }
+
+        return millisToTime(params.value)
+      },
+      hide: props.briefTable,
+    },
+    {
+      field: 'cluster',
+      type: 'string',
+      headerName: 'Cluster',
+      flex: 0.35,
+      hide: props.briefTable,
+    },
+    {
+      field: 'releaseTag',
+      headerName: 'Release tag',
+      flex: 0.75,
+      renderCell: (params) => <div className="job-name">{params.value}</div>,
+      hide: props.briefTable,
     },
     {
       field: 'result',
@@ -121,6 +142,7 @@ export default function JobRunsTable(props) {
       field: 'testGridURL',
       headerName: ' ',
       flex: 0.25,
+      hide: props.briefTable,
       renderCell: (params) => {
         return (
           <Tooltip title="TestGrid">
@@ -139,6 +161,7 @@ export default function JobRunsTable(props) {
       field: 'artifactsURL',
       headerName: ' ',
       flex: 0.25,
+      hide: props.briefTable,
       renderCell: (params) => {
         if (!params.value || params.value === '') {
           return ''
@@ -161,6 +184,7 @@ export default function JobRunsTable(props) {
       field: 'url',
       headerName: ' ',
       flex: 0.25,
+      hide: props.briefTable,
       renderCell: (params) => {
         return (
           <Tooltip title="View in Prow">
@@ -185,7 +209,6 @@ export default function JobRunsTable(props) {
       headerName: 'Failed tests',
       hide: true,
     },
-
     // These are fields on the job, not the run - but we can
     // filter by them.
     {
@@ -441,6 +464,7 @@ export default function JobRunsTable(props) {
     <DataGrid
       components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
       rows={rows}
+      rowHeight={70}
       columns={columns}
       autoHeight={true}
       // Filtering:

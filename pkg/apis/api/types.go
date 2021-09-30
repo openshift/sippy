@@ -148,7 +148,7 @@ type JobRun struct {
 	Variants     []string `json:"variants"`
 	Tags         []string `json:"tags"`
 	TestGridURL  string   `json:"testGridURL"`
-	ArtifactsURL string   `json:"artifactsURL"`
+	ArtifactsURL string   `json:"artifactsURL,omitempty"`
 	v1.JobRunResult
 }
 
@@ -166,6 +166,12 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "variants":
 		return ColumnTypeArray
+	case "duration":
+		return ColumnTypeNumerical
+	case "releaseTag":
+		return ColumnTypeString
+	case "cluster":
+		return ColumnTypeString
 	case "testGridURL", "artifactsURL", "url":
 		return ColumnTypeString
 	default:
@@ -177,6 +183,10 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 	switch param {
 	case "job", "name":
 		return run.Job, nil
+	case "releaseTag":
+		return run.ReleaseTag, nil
+	case "cluster":
+		return run.Cluster, nil
 	case "result":
 		return string(run.OverallResult), nil
 	case "testGridURL":
@@ -194,6 +204,8 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 	switch param {
 	case "id":
 		return float64(run.ID), nil
+	case "duration":
+		return float64(run.Duration), nil
 	case "testFailures":
 		return float64(run.TestFailures), nil
 	case "timestamp":

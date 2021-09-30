@@ -29,6 +29,7 @@ func PrepareTestReport(
 	numDays int, // indicates how many days of data to collect
 	analysisWarnings []string,
 	bigQueryJobResults []bigqueryv1.Job,
+	bigQueryJobRunResults []bigqueryv1.JobRun,
 	reportTimestamp time.Time, // TODO seems like we could derive this from our raw data
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
 ) sippyprocessingv1.TestReport {
@@ -36,6 +37,7 @@ func PrepareTestReport(
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
 	allJobResults = bigqueryanalysis.InsertBigQueryDataToJobs(bigQueryJobResults, allJobResults)
+	allJobResults = bigqueryanalysis.InsertBigQueryDataToJobRuns(bigQueryJobRunResults, allJobResults)
 
 	stats := calculateJobResultStatistics(allJobResults)
 

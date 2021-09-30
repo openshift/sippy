@@ -65,3 +65,32 @@ func (client *Client) GetJobs(ctx context.Context, releases []string) ([]v1.Job,
 
 	return jobs, nil
 }
+
+func (client *Client) GetJobRuns(ctx context.Context, releases []string) ([]v1.JobRun, error) {
+	runs := make([]v1.JobRun, 0)
+	query := client.Query(`
+		SELECT
+			*
+		FROM ` + "`ci_data.JobRuns`")
+	// TODO: WHERE Release IN UNNEST(@releases) -- Release not currently in job run table, only release tag
+
+	it, err := query.Read(ctx)
+	if err != nil {
+		return runs, err
+	}
+
+	for {
+		run := v1.JobRun{}
+		err := it.Next(&run)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return runs, err
+		}
+
+		runs = append(runs, run)
+	}
+
+	return runs, nil
+}

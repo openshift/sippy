@@ -75,7 +75,7 @@ exports[`JobRunsTable should render correctly 1`] = `
 >
   <div class=\\"MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight\\"
        role=\\"grid\\"
-       aria-colcount=\\"7\\"
+       aria-colcount=\\"10\\"
        aria-rowcount=\\"5788\\"
        aria-multiselectable=\\"false\\"
   >
@@ -190,7 +190,7 @@ exports[`JobRunsTable should render correctly 1`] = `
         <div class=\\"MuiDataGrid-columnHeaderWrapper scroll\\"
              aria-rowindex=\\"1\\"
              role=\\"row\\"
-             style=\\"transform: translate3d(-0px, 0, 0); min-width: 350px;\\"
+             style=\\"transform: translate3d(-0px, 0, 0); min-width: 500px;\\"
         >
           <div class=\\"MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader\\"
                data-field=\\"timestamp\\"
@@ -349,7 +349,7 @@ exports[`JobRunsTable should render correctly 1`] = `
               </svg>
             </div>
           </div>
-          <div style=\\"min-width: 200px; max-width: 200px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
+          <div style=\\"min-width: 350px; max-width: 350px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
                class=\\"MuiDataGrid-cell\\"
           >
           </div>
@@ -357,19 +357,19 @@ exports[`JobRunsTable should render correctly 1`] = `
       </div>
       <div style=\\"overflow: visible; width: 0px;\\">
         <div class=\\"MuiDataGrid-windowContainer\\"
-             style=\\"width: 0px; height: 1356px;\\"
+             style=\\"width: 0px; height: 1806px;\\"
         >
           <div class=\\"MuiDataGrid-window\\"
                style=\\"top: 56px; overflow-y: hidden;\\"
           >
             <div class=\\"MuiDataGrid-dataContainer\\"
-                 style=\\"min-width: 350px; min-height: 1300px;\\"
+                 style=\\"min-width: 500px; min-height: 1750px;\\"
             >
               <div class=\\"MuiDataGrid-viewport\\"
-                   style=\\"min-width: 0; max-width: 0; max-height: 1300px;\\"
+                   style=\\"min-width: 0; max-width: 0; max-height: 1750px;\\"
               >
                 <div class=\\"MuiDataGrid-renderingZone\\"
-                     style=\\"max-height: 1300px; width: 350px; transform: translate3d(-0px, -0px, 0);\\"
+                     style=\\"max-height: 1750px; width: 500px; transform: translate3d(-0px, -0px, 0);\\"
                 >
                   <div data-id=\\"66\\"
                        data-rowindex=\\"0\\"
@@ -377,7 +377,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"2\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -389,7 +389,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -408,10 +408,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -430,12 +430,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -446,7 +446,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"3\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -458,7 +458,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -477,10 +477,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -499,12 +499,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -515,7 +515,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"4\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -527,7 +527,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -546,10 +546,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -568,12 +568,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -584,7 +584,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"5\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -596,7 +596,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -615,10 +615,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -637,12 +637,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -653,7 +653,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"6\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -665,7 +665,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -684,10 +684,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -706,12 +706,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -722,7 +722,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"7\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -734,7 +734,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -753,10 +753,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -775,12 +775,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -791,7 +791,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"8\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -803,7 +803,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -822,10 +822,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -844,12 +844,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -860,7 +860,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"9\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -872,7 +872,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -891,10 +891,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -913,12 +913,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -929,7 +929,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"10\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -941,7 +941,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -960,10 +960,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -982,12 +982,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -998,7 +998,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"11\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1010,7 +1010,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1029,10 +1029,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -1051,12 +1051,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1067,7 +1067,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"12\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1079,7 +1079,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1098,10 +1098,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -1120,12 +1120,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1136,7 +1136,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"13\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1148,7 +1148,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1167,10 +1167,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -1189,12 +1189,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1205,7 +1205,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"14\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1217,7 +1217,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1236,10 +1236,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -1258,12 +1258,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1274,7 +1274,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"15\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1286,7 +1286,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1305,10 +1305,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -1327,12 +1327,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1343,7 +1343,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"16\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1355,7 +1355,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1374,10 +1374,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -1396,12 +1396,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1412,7 +1412,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"17\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1424,7 +1424,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1443,10 +1443,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -1465,12 +1465,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1481,7 +1481,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"18\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1493,7 +1493,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1512,10 +1512,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -1534,12 +1534,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1550,7 +1550,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"19\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1562,7 +1562,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1581,10 +1581,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -1603,12 +1603,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1619,7 +1619,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"20\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1631,7 +1631,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1650,10 +1650,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -1672,12 +1672,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1688,7 +1688,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"21\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1700,7 +1700,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1719,10 +1719,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -1741,12 +1741,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1757,7 +1757,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"22\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1769,7 +1769,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1788,10 +1788,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -1810,12 +1810,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1826,7 +1826,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"23\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1838,7 +1838,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1857,10 +1857,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -1879,12 +1879,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1895,7 +1895,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"24\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1907,7 +1907,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1926,10 +1926,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-ppc64le%22%7D%5D%7D\\"
@@ -1948,12 +1948,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -1964,7 +1964,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-odd MuiDataGrid-row\\"
                        aria-rowindex=\\"25\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -1976,7 +1976,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -1995,10 +1995,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8-s390x%22%7D%5D%7D\\"
@@ -2017,12 +2017,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>
@@ -2033,7 +2033,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                        class=\\"Mui-even MuiDataGrid-row\\"
                        aria-rowindex=\\"26\\"
                        aria-selected=\\"false\\"
-                       style=\\"max-height: 52px; min-height: 52px;\\"
+                       style=\\"max-height: 70px; min-height: 70px;\\"
                   >
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
@@ -2045,7 +2045,7 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"1\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       <p title=\\"14 days ago\\"
@@ -2064,10 +2064,10 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"2\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
-                      <div style=\\"display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;\\">
+                      <div class=\\"job-name\\">
                         <a title=\\"promote-release-openshift-machine-os-content-e2e-aws-4.8\\"
                            class
                            href=\\"/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22promote-release-openshift-machine-os-content-e2e-aws-4.8%22%7D%5D%7D\\"
@@ -2086,12 +2086,12 @@ exports[`JobRunsTable should render correctly 1`] = `
                          data-editable=\\"false\\"
                          data-mode=\\"view\\"
                          aria-colindex=\\"3\\"
-                         style=\\"min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                         style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          tabindex=\\"-1\\"
                     >
                       0
                     </div>
-                    <div style=\\"min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;\\"
+                    <div style=\\"min-width: 350px; max-width: 350px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
                          class=\\"MuiDataGrid-cell\\"
                     >
                     </div>

@@ -2,6 +2,10 @@
 // and not supported in all browsers, and it's not in node yet.
 import React from 'react'
 
+const minute = 1000 * 60 // Milliseconds in a minute
+const hour = 60 * minute // Milliseconds in an hour
+const day = 24 * hour // Milliseconds in a day
+
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".
 // This is because the ES6 Intl.RelativeTime isn't available in all environments yet,
 // e.g. Safari and NodeJS.
@@ -9,10 +13,6 @@ export function relativeTime(date) {
   if (!date instanceof Date) {
     date = new Date(date)
   }
-
-  const minute = 1000 * 60 // Milliseconds in a minute
-  const hour = 60 * minute // Milliseconds in an hour
-  const day = 24 * hour // Milliseconds in a day
 
   const millisAgo = date.getTime() - Date.now()
   if (Math.abs(millisAgo) < hour) {
@@ -24,6 +24,13 @@ export function relativeTime(date) {
   } else {
     return Math.round(Math.abs(millisAgo) / day) + ' days ago'
   }
+}
+
+export function millisToTime(millis) {
+  let hours = Math.floor(millis / hour)
+  let minutes = ((millis % hour) / minute).toFixed(0)
+
+  return `${hours}h${minutes}m`
 }
 
 export function escapeRegex(str) {

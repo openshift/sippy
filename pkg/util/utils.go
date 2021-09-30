@@ -34,6 +34,15 @@ func FindJobResultForJobName(job string, jobRunsByJob []sippyprocessingv1.JobRes
 	return nil
 }
 
+func FindJobRunResultByID(id string, jobRuns []sippyprocessingv1.JobRunResult) *sippyprocessingv1.JobRunResult {
+	for idx, v := range jobRuns {
+		if v.ID == id {
+			return &jobRuns[idx]
+		}
+	}
+	return nil
+}
+
 func FindVariantResultsForName(variant string, allVariants []sippyprocessingv1.VariantResults) *sippyprocessingv1.VariantResults {
 	for _, v := range allVariants {
 		if v.VariantName == variant {

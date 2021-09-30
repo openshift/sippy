@@ -171,7 +171,7 @@ exports[`TestAnalysis should render correctly 1`] = `
         </a>
         <div class="MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight"
              role="grid"
-             aria-colcount="7"
+             aria-colcount="4"
              aria-rowcount="14"
              aria-multiselectable="false"
         >
@@ -186,7 +186,7 @@ exports[`TestAnalysis should render correctly 1`] = `
               <div class="MuiDataGrid-columnHeaderWrapper scroll"
                    aria-rowindex="1"
                    role="row"
-                   style="transform: translate3d(-0px, 0, 0); min-width: 350px;"
+                   style="transform: translate3d(-0px, 0, 0); min-width: 200px;"
               >
                 <div class="MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader"
                      data-field="timestamp"
@@ -345,7 +345,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                     </svg>
                   </div>
                 </div>
-                <div style="min-width: 200px; max-width: 200px; line-height: 55px; min-height: 56px; max-height: 56px;"
+                <div style="min-width: 50px; max-width: 50px; line-height: 55px; min-height: 56px; max-height: 56px;"
                      class="MuiDataGrid-cell"
                 >
                 </div>
@@ -353,19 +353,19 @@ exports[`TestAnalysis should render correctly 1`] = `
             </div>
             <div style="overflow: visible; width: 0px;">
               <div class="MuiDataGrid-windowContainer"
-                   style="width: 0px; height: 316px;"
+                   style="width: 0px; height: 406px;"
               >
                 <div class="MuiDataGrid-window"
                      style="top: 56px; overflow-y: hidden;"
                 >
                   <div class="MuiDataGrid-dataContainer"
-                       style="min-width: 350px; min-height: 260px;"
+                       style="min-width: 200px; min-height: 350px;"
                   >
                     <div class="MuiDataGrid-viewport"
-                         style="min-width: 0; max-width: 0; max-height: 260px;"
+                         style="min-width: 0; max-width: 0; max-height: 350px;"
                     >
                       <div class="MuiDataGrid-renderingZone"
-                           style="max-height: 260px; width: 350px; transform: translate3d(-0px, -0px, 0);"
+                           style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                       >
                         <div data-id="0"
                              data-rowindex="0"
@@ -373,7 +373,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                              class="Mui-even MuiDataGrid-row"
                              aria-rowindex="2"
                              aria-selected="false"
-                             style="max-height: 52px; min-height: 52px;"
+                             style="max-height: 70px; min-height: 70px;"
                         >
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                role="cell"
@@ -385,7 +385,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="1"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             <p title="15 days ago"
@@ -404,10 +404,10 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="2"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
-                            <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="job-name">
                               <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade"
                                  class
                                  href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-upgrade%22%7D%5D%7D"
@@ -426,12 +426,12 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="3"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             7
                           </div>
-                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -442,7 +442,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                              class="Mui-odd MuiDataGrid-row"
                              aria-rowindex="3"
                              aria-selected="false"
-                             style="max-height: 52px; min-height: 52px;"
+                             style="max-height: 70px; min-height: 70px;"
                         >
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                role="cell"
@@ -454,7 +454,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="1"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             <p title="22 days ago"
@@ -473,10 +473,10 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="2"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
-                            <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="job-name">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8"
                                  class
                                  href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D"
@@ -495,12 +495,12 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="3"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             12
                           </div>
-                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -511,7 +511,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                              class="Mui-even MuiDataGrid-row"
                              aria-rowindex="4"
                              aria-selected="false"
-                             style="max-height: 52px; min-height: 52px;"
+                             style="max-height: 70px; min-height: 70px;"
                         >
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                role="cell"
@@ -523,7 +523,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="1"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             <p title="24 days ago"
@@ -542,10 +542,10 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="2"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
-                            <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="job-name">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8"
                                  class
                                  href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D"
@@ -564,12 +564,12 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="3"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             12
                           </div>
-                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -580,7 +580,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                              class="Mui-odd MuiDataGrid-row"
                              aria-rowindex="5"
                              aria-selected="false"
-                             style="max-height: 52px; min-height: 52px;"
+                             style="max-height: 70px; min-height: 70px;"
                         >
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                role="cell"
@@ -592,7 +592,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="1"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             <p title="24 days ago"
@@ -611,10 +611,10 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="2"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
-                            <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="job-name">
                               <a title="release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8"
                                  class
                                  href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8%22%7D%5D%7D"
@@ -633,12 +633,12 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="3"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             11
                           </div>
-                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>
@@ -649,7 +649,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                              class="Mui-even MuiDataGrid-row"
                              aria-rowindex="6"
                              aria-selected="false"
-                             style="max-height: 52px; min-height: 52px;"
+                             style="max-height: 70px; min-height: 70px;"
                         >
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                role="cell"
@@ -661,7 +661,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="1"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             <p title="24 days ago"
@@ -680,10 +680,10 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="2"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
-                            <div style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div class="job-name">
                               <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-azure-upgrade"
                                  class
                                  href="/jobs/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-upgrade%22%7D%5D%7D"
@@ -702,12 +702,12 @@ exports[`TestAnalysis should render correctly 1`] = `
                                data-editable="false"
                                data-mode="view"
                                aria-colindex="3"
-                               style="min-width: 50px; max-width: 50px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                               style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                tabindex="-1"
                           >
                             9
                           </div>
-                          <div style="min-width: 200px; max-width: 200px; line-height: 51px; min-height: 52px; max-height: 52px;"
+                          <div style="min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;"
                                class="MuiDataGrid-cell"
                           >
                           </div>

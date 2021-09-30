@@ -183,6 +183,10 @@ type JobRunResult struct {
 	Failed          bool             `json:"failed"`
 	Succeeded       bool             `json:"succeeded"`
 	Timestamp       int              `json:"timestamp"`
+	Duration        int64            `json:"duration"`
+	ReleaseTag      string           `json:"releaseTag"`
+	Cluster         string           `json:"cluster"`
+	Status          string           `json:"status"`
 	OverallResult   JobOverallResult `json:"result"`
 }
 
