@@ -41,7 +41,7 @@ var (
 	singleNodeRegex = regexp.MustCompile(`(?i)-single-node`)
 
 	allOpenshiftVariants = sets.NewString(
-		"arm64",
+		"aws-arm64",
 		"aws",
 		"azure",
 		"compact",
@@ -201,7 +201,7 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 
 	if arm64Regex.MatchString(jobName) {
-		variants = append(variants, "arm64")
+		variants = append(variants, "aws-arm64")
 	}
 
 	if awsRegex.MatchString(jobName) {
