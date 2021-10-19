@@ -258,7 +258,8 @@ export default function ReleaseOverview(props) {
                   }?sortField=net_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_10,
                     BOOKMARKS.NO_NEVER_STABLE,
-                    BOOKMARKS.NO_TECHPREVIEW
+                    BOOKMARKS.NO_TECHPREVIEW,
+                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -279,6 +280,7 @@ export default function ReleaseOverview(props) {
                       BOOKMARKS.RUN_10,
                       BOOKMARKS.NO_NEVER_STABLE,
                       BOOKMARKS.NO_TECHPREVIEW,
+                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
                     ],
                   }}
                   pageSize={5}
@@ -330,7 +332,8 @@ export default function ReleaseOverview(props) {
                 <Typography
                   component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
-                    BOOKMARKS.RUN_10
+                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}&sortField=net_improvement&sort=asc`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -347,7 +350,10 @@ export default function ReleaseOverview(props) {
                   sort="asc"
                   limit={10}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_10],
+                    items: [
+                      BOOKMARKS.RUN_10,
+                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                    ],
                   }}
                   pageSize={5}
                   briefTable={true}
@@ -362,7 +368,8 @@ export default function ReleaseOverview(props) {
                   to={`/tests/${
                     props.release
                   }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_1
+                    BOOKMARKS.RUN_1,
+                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -379,7 +386,10 @@ export default function ReleaseOverview(props) {
                   sort="asc"
                   limit={10}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_1],
+                    items: [
+                      BOOKMARKS.RUN_1,
+                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                    ],
                   }}
                   pageSize={5}
                   period="twoDay"
@@ -396,7 +406,8 @@ export default function ReleaseOverview(props) {
                     props.release
                   }?sortField=net_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_10,
-                    BOOKMARKS.NO_LINKED_BUG
+                    BOOKMARKS.NO_LINKED_BUG,
+                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -412,7 +423,11 @@ export default function ReleaseOverview(props) {
                   sortField="net_improvement"
                   sort="asc"
                   filterModel={{
-                    items: [BOOKMARKS.RUN_10, BOOKMARKS.NO_LINKED_BUG],
+                    items: [
+                      BOOKMARKS.RUN_10,
+                      BOOKMARKS.NO_LINKED_BUG,
+                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                    ],
                   }}
                   limit={10}
                   pageSize={5}
