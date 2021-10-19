@@ -81,9 +81,7 @@ var (
 		// Experimental jobs that are under active development
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-aws-ipi",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-aws-upi",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-cucushift-gcp-ipi",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 
 		// https://issues.redhat.com/browse/OSD-8071
 		"release-openshift-ocp-osd-aws-nightly-4.9",
@@ -96,30 +94,12 @@ var (
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2003646
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel8",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=20000754
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-parallel",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-proxy",
-		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
-		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
-
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2008201
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-az",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2007850
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-fips-serial",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-fips-serial",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-fips-serial",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-fips",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2007692
 		"release-openshift-origin-installer-old-rhcos-e2e-aws-4.9",
 		"release-openshift-origin-installer-old-rhcos-e2e-aws-4.10",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2008128
-		"release-openshift-origin-installer-e2e-azure-shared-vpc-4.9",
-		"release-openshift-origin-installer-e2e-azure-shared-vpc-4.10",
-		"release-openshift-origin-installer-e2e-aws-shared-vpc-4.9",
-		"release-openshift-origin-installer-e2e-aws-shared-vpc-4.10",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1936917
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-calico",
@@ -160,6 +140,10 @@ var (
 		"release-openshift-ocp-installer-e2e-metal-compact-4.9",
 		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.9",
 		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.10",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2012844
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-assisted",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-assisted-ipv6",
 	)
 )
 
