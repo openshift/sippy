@@ -170,7 +170,7 @@ func (o *Options) Validate() error {
 	}
 
 	if o.FetchPerfScaleData && o.FetchData == "" {
-		return fmt.Errorf("must specify --fetch-data with --fetch-perfscale-data")
+		return fmt.Errorf("must specify --fetch-data with --fetch-openshift-perfscale-data")
 	}
 
 	return nil
