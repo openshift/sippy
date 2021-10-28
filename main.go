@@ -178,6 +178,11 @@ func (o *Options) Validate() error {
 
 func (o *Options) Run() error {
 	if o.FetchData != "" {
+		err := os.MkdirAll(o.FetchData, os.ModePerm)
+		if err != nil {
+			return err
+		}
+
 		dashboards := []string{}
 
 		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
