@@ -1,9 +1,12 @@
 package sippyserver
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,9 +15,11 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
+	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"k8s.io/klog"
@@ -57,14 +62,15 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
-	syntheticTestManager      testgridconversion.SyntheticTestManager
-	variantManager            testidentification.VariantManager
-	bugCache                  buganalysis.BugCache
-	testReportGeneratorConfig TestReportGeneratorConfig
-	currTestReports           map[string]StandardReport
-	sippyNG                   *rice.Box
-	static                    *rice.Box
-	httpServer                *http.Server
+	syntheticTestManager       testgridconversion.SyntheticTestManager
+	variantManager             testidentification.VariantManager
+	bugCache                   buganalysis.BugCache
+	testReportGeneratorConfig  TestReportGeneratorConfig
+	currTestReports            map[string]StandardReport
+	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
+	sippyNG                    *rice.Box
+	static                     *rice.Box
+	httpServer                 *http.Server
 }
 
 type TestGridDashboardCoordinates struct {
@@ -94,6 +100,27 @@ func (s *Server) RefreshData() {
 	s.bugCache.Clear()
 	for _, dashboard := range s.dashboardCoordinates {
 		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+	}
+
+	// TODO: skip if not enabled or data does not exist.
+	// Load the scale job reports from disk:
+	scaleJobsFilePath := filepath.Join(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
+		perfscaleanalysis.ScaleJobsSubDir, perfscaleanalysis.ScaleJobsFilename)
+	if _, err := os.Stat(scaleJobsFilePath); err == nil {
+		klog.V(4).Infof("loading scale job data from: %s", scaleJobsFilePath)
+		jsonFile, err := os.Open(scaleJobsFilePath)
+		if err != nil {
+			klog.Errorf("error opening %s: %v", scaleJobsFilePath, err)
+		}
+		defer jsonFile.Close()
+		scaleJobsBytes, err := ioutil.ReadAll(jsonFile)
+		if err != nil {
+			klog.Errorf("error reading %s: %v", scaleJobsFilePath, err)
+		}
+		err = json.Unmarshal(scaleJobsBytes, &s.perfscaleMetricsJobReports)
+		if err != nil {
+			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
+		}
 	}
 	klog.Infof("Refresh complete")
 }
@@ -459,6 +486,15 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
+	reports := s.perfscaleMetricsJobReports
+
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintPerfscaleWorkloadMetricsReport(w, req, release, reports)
+	}
+}
+
 func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
 	serveMux := http.NewServeMux()
@@ -503,6 +539,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
