@@ -22,6 +22,8 @@ import (
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"k8s.io/klog"
 )
 
@@ -95,6 +97,13 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+var (
+	jobPassRatioTwoDayMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_job_2d_pass_ratio",
+		Help: "Ratio of passed job runs for the given job in the last 2 days",
+	}, []string{"name"})
+)
+
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
@@ -122,6 +131,13 @@ func (s *Server) RefreshData() {
 			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
+
+	// Report metrics for all jobs:
+	for reportName, stdTestReport := range s.currTestReports {
+		klog.Infof("reportName: " + reportName + ", " + stdTestReport.CurrentPeriodReport.Release)
+		jobPassRatioTwoDayMetric.WithLabelValues(reportName).Set(1.0)
+	}
+
 	klog.Infof("Refresh complete")
 }
 

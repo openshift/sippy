@@ -4,24 +4,25 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"regexp"
 	"strings"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/perfscaleanalysis"
-
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/cobra"
+	"k8s.io/klog"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/spf13/cobra"
-	"k8s.io/klog"
 )
 
 type Options struct {
@@ -218,6 +219,12 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) runServerMode() error {
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", nil)
+	}()
+
 	// This embeds the contents of the two static directories directly into the binary. It
 	// needs to be in main.go, so rice can find it when injecting the contents.
 	sippyNG, err := rice.FindBox("./sippy-ng/build")
