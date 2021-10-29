@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"regexp/syntax"
 	"strings"
@@ -232,10 +231,6 @@ func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
 
 func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	searchResults := make(map[string][]bugsv1.Bug)
-
-	if val, _ := os.LookupEnv("DISABLE_BUGZILLA"); val == "1" {
-		return searchResults, nil
-	}
 
 	v := url.Values{}
 	v.Set("type", "bug")
