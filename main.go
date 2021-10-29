@@ -378,8 +378,10 @@ func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
 	}
 
 	return sippyserver.TestGridLoadingConfig{
-		LocalData: o.LocalData,
-		JobFilter: jobFilter,
+		LocalData:    o.LocalData,
+		JobFilter:    jobFilter,
+		ReportLoader: sippyserver.LoadReportsFromDisk,
+		Loader:       testgridhelpers.LoadTestGridDataFromDisk,
 	}
 }
 
