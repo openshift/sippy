@@ -97,6 +97,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
+	s.bugCache.Clear()
 
 	s.currTestReports = s.testReportGeneratorConfig.TestGridLoadingConfig.ReportLoader(
 		s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData)
