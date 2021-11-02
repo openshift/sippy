@@ -83,9 +83,23 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 
-		// https://issues.redhat.com/browse/OSD-8071
-		"release-openshift-ocp-osd-aws-nightly-4.9",
-		"release-openshift-ocp-osd-gcp-nightly-4.9",
+		// TODO: Figure out where to report problems for these
+		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-aws-cucushift-ipi",
+		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-gcp-cucushift-ipi",
+		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-baremetal-cucushift-ipi",
+		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-baremetal-cucushift-ipi",
+		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-openstack-cucushift-ipi",
+
+		// Reported on slack to SD-CICD
+		"release-openshift-ocp-osd-aws-nightly-4.10",
+		"release-openshift-ocp-osd-gcp-nightly-4.10",
+
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2019375
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-proxy",
+
+		// TODO: Add bug, currently being investigated
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-compact",
+		"release-openshift-ocp-installer-e2e-metal-compact-4.10",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979966
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
@@ -111,39 +125,22 @@ var (
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2006947
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-proxy",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-proxy",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-remote-libvirt-s390x",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1989100
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-openstack-ovn",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-ovn",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=1979962
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-compact",
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2019376
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-ovn-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-ovn-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-compact",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-compact",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-compact",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-compact",
-		"release-openshift-ocp-installer-e2e-metal-compact-4.9",
-		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.9",
-		"release-openshift-origin-installer-e2e-aws-sdn-network-stress-4.10",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2012844
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-assisted",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-assisted-ipv6",
 	)
 )
 
