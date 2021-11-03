@@ -24,6 +24,31 @@ spec:
       labels:
         deploymentconfig: sippy-historical
     spec:
+      initContainers:
+      - args:
+        - --gen-reports
+        - --local-data
+        - /historical-data/common
+        - --release
+        - "4.4"
+        - --release
+        - "4.5"
+        - --release
+        - "4.6"
+        - --release
+        - "4.7"
+        - --release
+        - "4.8"
+        - --release
+        - "4.9"
+        - --server
+        - --start-day
+        - "-1"
+        command:
+        - /bin/sippy
+        image: docker.io/openshift/sippy
+        imagePullPolicy: Always
+        name: sippy-generate
       containers:
       - args:
         - --local-data
@@ -45,7 +70,7 @@ spec:
         - "-1"
         command:
         - /bin/sippy
-        image: image-registry.openshift-image-registry.svc:5000/bparees/sippy@sha256:35df0be865e4820a76f350ae65d077eb83b41c8cacb286291badf65e0654b5b7
+        image: docker.io/openshift/sippy
         imagePullPolicy: Always
         name: sippy
         ports:
@@ -68,7 +93,7 @@ spec:
       automatic: true
       containerNames:
       - sippy
-      - fetchdata
+      - sippy-generate
       from:
         kind: ImageStreamTag
         name: sippy:latest

@@ -16,6 +16,8 @@ spec:
   strategy:
     activeDeadlineSeconds: 21600
     type: Recreate
+    recreateParams:
+      timeoutSeconds: 1200
   template:
     metadata:
       annotations:
@@ -24,6 +26,15 @@ spec:
       labels:
         deploymentconfig: sippy
     spec:
+      initContainers:
+        command:
+        - /bin/gen-reports.sh
+        image: docker.io/openshift/sippy
+        imagePullPolicy: Always
+        name: sippy-generate
+        volumeMounts:
+        - mountPath: /data
+          name: data
       containers:
       - image: docker.io/openshift/sippy
         imagePullPolicy: Always
@@ -91,6 +102,7 @@ spec:
       automatic: true
       containerNames:
       - sippy
+      - sippy-generate
       - fetchdata
       from:
         kind: ImageStreamTag
