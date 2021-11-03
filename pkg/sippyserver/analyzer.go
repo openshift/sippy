@@ -20,6 +20,9 @@ import (
 // Allows one to pass in an alternative testgrid loader func for testing.
 type TestGridLoader func(string, []string, *regexp.Regexp) ([]testgridv1.JobDetails, time.Time)
 
+// Allows one to pass in an alternative report loader func for testing.
+type ReportLoader func(localData string) map[string]StandardReport
+
 // TestGridLoadingOptions control the data which is loaded from disk into the testgrid structs
 type TestGridLoadingConfig struct {
 	// LocalData is the directory where the testgrid data is stored
@@ -28,6 +31,8 @@ type TestGridLoadingConfig struct {
 	JobFilter *regexp.Regexp
 	// The function to load TestGrid results from disk, used for testing.
 	Loader TestGridLoader
+	// The function to load report data from disk, used for testing.
+	ReportLoader ReportLoader
 }
 
 func (t TestGridLoadingConfig) loadWithFilter(dashboards []string, jobFilter *regexp.Regexp) ([]testgridv1.JobDetails, time.Time) {

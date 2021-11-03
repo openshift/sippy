@@ -26,7 +26,7 @@ import (
 )
 
 func NewServer(
-	testGridLoadingOptions TestGridLoadingConfig,
+	testGridLoadingConfig TestGridLoadingConfig,
 	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
@@ -46,7 +46,7 @@ func NewServer(
 		variantManager:       variantManager,
 		bugCache:             bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
-			TestGridLoadingConfig:       testGridLoadingOptions,
+			TestGridLoadingConfig:       testGridLoadingConfig,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
 			DisplayDataConfig:           displayDataOptions,
 		},
@@ -98,9 +98,9 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
-	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
-	}
+
+	s.currTestReports = s.testReportGeneratorConfig.TestGridLoadingConfig.ReportLoader(
+		s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData)
 
 	// TODO: skip if not enabled or data does not exist.
 	// Load the scale job reports from disk:
@@ -122,6 +122,7 @@ func (s *Server) RefreshData() {
 			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
+
 	klog.Infof("Refresh complete")
 }
 
@@ -285,9 +286,10 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	testReportConfig := TestReportGeneratorConfig{
 		TestGridLoadingConfig: TestGridLoadingConfig{
-			LocalData: s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
-			Loader:    s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
-			JobFilter: jobFilter,
+			LocalData:    s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
+			Loader:       s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
+			ReportLoader: s.testReportGeneratorConfig.TestGridLoadingConfig.ReportLoader,
+			JobFilter:    jobFilter,
 		},
 		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
 			StartDay: startDay,
@@ -561,4 +563,29 @@ func (s *Server) Serve() {
 
 func (s *Server) GetHTTPServer() *http.Server {
 	return s.httpServer
+}
+
+func LoadReportsFromDisk(localData string) map[string]StandardReport {
+	// Load reports from disk:
+	testReportsFilePath := filepath.Join(localData,
+		"test-reports", "current-reports.json")
+	if _, err := os.Stat(testReportsFilePath); err != nil {
+		klog.Exitf("%s does not exist, must run with --fetch-data first", testReportsFilePath)
+	}
+	klog.V(4).Infof("loading test reports: %s", testReportsFilePath)
+	testReportsJSONFile, err := os.Open(testReportsFilePath)
+	if err != nil {
+		klog.Exitf("error opening %s: %v", testReportsFilePath, err)
+	}
+	defer testReportsJSONFile.Close()
+	testReportBytes, err := ioutil.ReadAll(testReportsJSONFile)
+	if err != nil {
+		klog.Exitf("error reading %s: %v", testReportsFilePath, err)
+	}
+	testReports := map[string]StandardReport{}
+	err = json.Unmarshal(testReportBytes, &testReports)
+	if err != nil {
+		klog.Exitf("error parsing json from %s: %v", testReportsFilePath, err)
+	}
+	return testReports
 }
