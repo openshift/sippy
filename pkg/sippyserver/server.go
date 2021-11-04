@@ -570,8 +570,7 @@ func LoadReportsFromDisk(localData string) map[string]StandardReport {
 	testReportsFilePath := filepath.Join(localData,
 		"test-reports", "current-reports.json")
 	if _, err := os.Stat(testReportsFilePath); err != nil {
-		klog.Errorf("%s does not exist, no data to display until sippy --fetch-data is run", testReportsFilePath)
-		return map[string]StandardReport{}
+		klog.Exitf("%s does not exist, must run with --fetch-data first", testReportsFilePath)
 	}
 	klog.V(4).Infof("loading test reports: %s", testReportsFilePath)
 	testReportsJSONFile, err := os.Open(testReportsFilePath)
