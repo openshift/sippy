@@ -97,26 +97,9 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
-
-	// Load reports from disk:
-	testReportsFilePath := filepath.Join(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
-		"test-reports", "current-reports.json")
-	if _, err := os.Stat(testReportsFilePath); err != nil {
-		klog.Exitf("%s does not exist, must run with --fetch-data first", testReportsFilePath)
-	}
-	klog.V(4).Infof("loading test reports: %s", testReportsFilePath)
-	testReportsJsonFile, err := os.Open(testReportsFilePath)
-	if err != nil {
-		klog.Exitf("error opening %s: %v", testReportsFilePath, err)
-	}
-	defer testReportsJsonFile.Close()
-	testReportBytes, err := ioutil.ReadAll(testReportsJsonFile)
-	if err != nil {
-		klog.Exitf("error reading %s: %v", testReportsFilePath, err)
-	}
-	err = json.Unmarshal(testReportBytes, &s.currTestReports)
-	if err != nil {
-		klog.Exitf("error parsing json from %s: %v", testReportsFilePath, err)
+	s.bugCache.Clear()
+	for _, dashboard := range s.dashboardCoordinates {
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -139,7 +122,6 @@ func (s *Server) RefreshData() {
 			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
-
 	klog.Infof("Refresh complete")
 }
 

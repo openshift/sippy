@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -191,53 +189,6 @@ func (o *Options) Run() error {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
-		/*
-		server := sippyserver.NewServer(
-			o.toTestGridLoadingConfig(),
-			o.toRawJobResultsAnalysisConfig(),
-			o.toDisplayDataConfig(),
-			o.ToTestGridDashboardCoordinates(),
-			o.ListenAddr,
-			o.getSyntheticTestManager(),
-			o.getVariantManager(),
-			o.getBugCache(),
-			sippyNG,
-			static,
-		)
-		*/
-
-		// Generate reports and seralize to disk:
-		trgc := sippyserver.TestReportGeneratorConfig{
-			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-			DisplayDataConfig:           o.toDisplayDataConfig(),
-		}
-
-		testReports := map[string]sippyserver.StandardReport{}
-		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dashboard,
-				o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
-		}
-
-		localData := trgc.TestGridLoadingConfig.LocalData
-		testReportDir := path.Join(localData, "test-reports")
-		err = os.MkdirAll(testReportDir, os.ModePerm)
-		klog.Infof("creating: %s", testReportDir)
-		if err != nil {
-			klog.Errorf("error creating directory: " + err.Error())
-		}
-		klog.Infof("marshalling test report json")
-		jsonBytes, err := json.MarshalIndent(testReports, "", "    ")
-		if err != nil {
-			klog.Errorf("error marshalling data: " + err.Error())
-		}
-		reportsFile := filepath.Join(testReportDir, "current-reports.json")
-		klog.Infof("writing test reports json to: %s", reportsFile)
-		err = ioutil.WriteFile(reportsFile, jsonBytes, 0600)
-		if err != nil {
-			klog.Errorf("error writing data: " + err.Error())
-		}
-
 
 		// Fetch OpenShift PerfScale Data from ElasticSearch:
 		if o.FetchPerfScaleData {
