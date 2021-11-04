@@ -572,12 +572,12 @@ func LoadReportsFromDisk(localData string) map[string]StandardReport {
 		klog.Exitf("%s does not exist, must run with --fetch-data first", testReportsFilePath)
 	}
 	klog.V(4).Infof("loading test reports: %s", testReportsFilePath)
-	testReportsJSONFile, err := os.Open(testReportsFilePath)
+	testReportsJsonFile, err := os.Open(testReportsFilePath)
 	if err != nil {
 		klog.Exitf("error opening %s: %v", testReportsFilePath, err)
 	}
-	defer testReportsJSONFile.Close()
-	testReportBytes, err := ioutil.ReadAll(testReportsJSONFile)
+	defer testReportsJsonFile.Close()
+	testReportBytes, err := ioutil.ReadAll(testReportsJsonFile)
 	if err != nil {
 		klog.Exitf("error reading %s: %v", testReportsFilePath, err)
 	}
