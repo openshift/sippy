@@ -67,7 +67,7 @@ spec:
           protocol: TCP
         resources:
           limits:
-            memory: 4G
+            memory: 500M
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:

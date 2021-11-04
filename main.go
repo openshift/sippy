@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -43,7 +40,6 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
-	GenReports              bool
 	ListenAddr              string
 	Server                  bool
 	SkipBugLookup           bool
@@ -90,7 +86,6 @@ func main() {
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
-	flags.BoolVar(&opt.GenReports, "gen-reports", opt.GenReports, "Generate reports from testgrid data in --local-data, required for --server")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
@@ -178,28 +173,11 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --fetch-data with --fetch-openshift-perfscale-data")
 	}
 
-	if o.Server && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --server with --fetch-data")
-	}
-
-	if o.Server && o.GenReports {
-		return fmt.Errorf("cannot specify --server with --gen-reports")
-	}
-
-	if o.GenReports && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --gen-reports with --fetch-data")
-	}
-
-	if o.GenReports && o.LocalData == "" {
-		return fmt.Errorf("must specify --local-data with --gen-reports")
-	}
-
 	return nil
 }
 
 func (o *Options) Run() error {
 	if o.FetchData != "" {
-		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
 		if err != nil {
 			return err
@@ -225,47 +203,6 @@ func (o *Options) Run() error {
 			}
 		}
 
-		elapsed := time.Since(start)
-		klog.Infof("Testgrid data fetched in: %s", elapsed)
-
-		return nil
-	}
-
-	if o.GenReports {
-		start := time.Now()
-		// Generate reports and serialize to disk:
-		trgc := sippyserver.TestReportGeneratorConfig{
-			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-			DisplayDataConfig:           o.toDisplayDataConfig(),
-		}
-
-		testReports := map[string]sippyserver.StandardReport{}
-		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dashboard,
-				o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
-		}
-
-		localData := trgc.TestGridLoadingConfig.LocalData
-		testReportDir := path.Join(localData, "test-reports")
-		err := os.MkdirAll(testReportDir, os.ModePerm)
-		klog.Infof("creating: %s", testReportDir)
-		if err != nil {
-			klog.Errorf("error creating directory: " + err.Error())
-		}
-		klog.Infof("marshalling test report json")
-		jsonBytes, err := json.MarshalIndent(testReports, "", "    ")
-		if err != nil {
-			klog.Errorf("error marshalling data: " + err.Error())
-		}
-		reportsFile := filepath.Join(testReportDir, "current-reports.json")
-		klog.Infof("writing test reports json to: %s", reportsFile)
-		err = ioutil.WriteFile(reportsFile, jsonBytes, 0600)
-		if err != nil {
-			klog.Errorf("error writing data: " + err.Error())
-		}
-		elapsed := time.Since(start)
-		klog.Infof("Reports generated in: %s", elapsed)
 		return nil
 	}
 
@@ -378,10 +315,8 @@ func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
 	}
 
 	return sippyserver.TestGridLoadingConfig{
-		LocalData:    o.LocalData,
-		JobFilter:    jobFilter,
-		ReportLoader: sippyserver.LoadReportsFromDisk,
-		Loader:       testgridhelpers.LoadTestGridDataFromDisk,
+		LocalData: o.LocalData,
+		JobFilter: jobFilter,
 	}
 }
 

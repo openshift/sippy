@@ -8,8 +8,6 @@ while [ true ]; do
   echo "Fetching new testgrid data"
   rm -rf /data/*
   /bin/sippy -v 4 --fetch-data /data --fetch-openshift-perfscale-data --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10
-  echo "Generating reports"
-  /bin/sippy -v 4 --gen-reports --local-data /data --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
