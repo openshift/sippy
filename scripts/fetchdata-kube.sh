@@ -7,9 +7,7 @@ sleep 60 # 1 minutes
 while [ true ]; do
   echo "Fetching new testgrid data"
   rm -rf /data/*
-  /bin/sippy --fetch-data /data
-  echo "Generating reports"
-  /bin/sippy -v 4 --gen-reports --local-data /data --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing=
+  /bin/sippy --fetch-data /data --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing= -v 4
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"

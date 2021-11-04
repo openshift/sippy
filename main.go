@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -43,7 +42,6 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
-	GenReports              bool
 	ListenAddr              string
 	Server                  bool
 	SkipBugLookup           bool
@@ -90,7 +88,6 @@ func main() {
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
-	flags.BoolVar(&opt.GenReports, "gen-reports", opt.GenReports, "Generate reports from testgrid data in --local-data, required for --server")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
@@ -178,28 +175,11 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --fetch-data with --fetch-openshift-perfscale-data")
 	}
 
-	if o.Server && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --server with --fetch-data")
-	}
-
-	if o.Server && o.GenReports {
-		return fmt.Errorf("cannot specify --server with --gen-reports")
-	}
-
-	if o.GenReports && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --gen-reports with --fetch-data")
-	}
-
-	if o.GenReports && o.LocalData == "" {
-		return fmt.Errorf("must specify --local-data with --gen-reports")
-	}
-
 	return nil
 }
 
 func (o *Options) Run() error {
 	if o.FetchData != "" {
-		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
 		if err != nil {
 			return err
@@ -211,29 +191,22 @@ func (o *Options) Run() error {
 			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
+		/*
+		server := sippyserver.NewServer(
+			o.toTestGridLoadingConfig(),
+			o.toRawJobResultsAnalysisConfig(),
+			o.toDisplayDataConfig(),
+			o.ToTestGridDashboardCoordinates(),
+			o.ListenAddr,
+			o.getSyntheticTestManager(),
+			o.getVariantManager(),
+			o.getBugCache(),
+			sippyNG,
+			static,
+		)
+		*/
 
-		// Fetch OpenShift PerfScale Data from ElasticSearch:
-		if o.FetchPerfScaleData {
-			scaleJobsDir := path.Join(o.FetchData, perfscaleanalysis.ScaleJobsSubDir)
-			err := os.MkdirAll(scaleJobsDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir)
-			if err != nil {
-				return err
-			}
-		}
-
-		elapsed := time.Since(start)
-		klog.Infof("Testgrid data fetched in: %s", elapsed)
-
-		return nil
-	}
-
-	if o.GenReports {
-		start := time.Now()
-		// Generate reports and serialize to disk:
+		// Generate reports and seralize to disk:
 		trgc := sippyserver.TestReportGeneratorConfig{
 			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
 			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
@@ -248,7 +221,7 @@ func (o *Options) Run() error {
 
 		localData := trgc.TestGridLoadingConfig.LocalData
 		testReportDir := path.Join(localData, "test-reports")
-		err := os.MkdirAll(testReportDir, os.ModePerm)
+		err = os.MkdirAll(testReportDir, os.ModePerm)
 		klog.Infof("creating: %s", testReportDir)
 		if err != nil {
 			klog.Errorf("error creating directory: " + err.Error())
@@ -264,8 +237,21 @@ func (o *Options) Run() error {
 		if err != nil {
 			klog.Errorf("error writing data: " + err.Error())
 		}
-		elapsed := time.Since(start)
-		klog.Infof("Reports generated in: %s", elapsed)
+
+
+		// Fetch OpenShift PerfScale Data from ElasticSearch:
+		if o.FetchPerfScaleData {
+			scaleJobsDir := path.Join(o.FetchData, perfscaleanalysis.ScaleJobsSubDir)
+			err := os.MkdirAll(scaleJobsDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir)
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 
