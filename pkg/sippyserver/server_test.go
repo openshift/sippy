@@ -442,22 +442,6 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 		},
 	}
 
-	trgc := sippyserver.TestReportGeneratorConfig{
-		TestGridLoadingConfig:       loadingConfig,
-		RawJobResultsAnalysisConfig: analysisConfig,
-		DisplayDataConfig:           displayConfig,
-	}
-	testReports := map[string]sippyserver.StandardReport{}
-	for _, dashboard := range dashboardCoordinates {
-		testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dashboard,
-			testgridconversion.NewOpenshiftSyntheticTestManager(),
-			testidentification.NewOpenshiftVariantManager(),
-			buganalysis.NewNoOpBugCache())
-	}
-	loadingConfig.ReportLoader = func(_ string) map[string]sippyserver.StandardReport {
-		return testReports
-	}
-
 	listenAddr := fmt.Sprintf(":%d", port)
 
 	// Configure the Sippy server.
