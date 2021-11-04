@@ -98,11 +98,23 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 var (
-	jobPassRatioTwoDayMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_job_2d_pass_ratio",
-		Help: "Ratio of passed job runs for the given job in the last 2 days",
-	}, []string{"name"})
+	jobPassRatioMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_job_pass_ratio",
+		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
+	}, []string{"release", "period", "name"})
 )
+
+func (s *Server) refreshMetrics() {
+
+	// Report metrics for all jobs:
+	for r, stdReport := range s.currTestReports {
+		for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
+			for _, jobResult := range testReport.ByJob {
+				jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
+			}
+		}
+	}
+}
 
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
@@ -131,12 +143,7 @@ func (s *Server) RefreshData() {
 			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
-
-	// Report metrics for all jobs:
-	for reportName, stdTestReport := range s.currTestReports {
-		klog.Infof("reportName: " + reportName + ", " + stdTestReport.CurrentPeriodReport.Release)
-		jobPassRatioTwoDayMetric.WithLabelValues(reportName).Set(1.0)
-	}
+	s.refreshMetrics()
 
 	klog.Infof("Refresh complete")
 }
