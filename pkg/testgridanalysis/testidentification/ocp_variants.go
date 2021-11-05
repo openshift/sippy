@@ -83,6 +83,11 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 
+		// aws-upi is being moved to a step-registry job
+		// BZ: https://bugzilla.redhat.com/show_bug.cgi?id=2020622
+		"release-openshift-ocp-installer-e2e-aws-upi-4.10",
+		"release-openshift-ocp-installer-e2e-aws-upi-4.9",
+
 		// TODO: Figure out where to report problems for these
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-aws-cucushift-ipi",
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-gcp-cucushift-ipi",
