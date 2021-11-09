@@ -222,7 +222,10 @@ func (o *Options) runServerMode() error {
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":2112", nil)
+		err := http.ListenAndServe(":2112", nil)
+		if err != nil {
+			panic(err)
+		}
 	}()
 
 	// This embeds the contents of the two static directories directly into the binary. It
