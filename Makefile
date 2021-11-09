@@ -7,7 +7,11 @@ CHECK := $(foreach dep,$(DEPS),\
 all: test build
 
 build: clean npm
+	# Needed to embed static contents until go 1.17, which can do it natively.
+	# This however modifies go.mod, so we need to tidy and vendor after to clean things up.
 	go get -u github.com/GeertJohan/go.rice/rice
+	go mod tidy
+	go mod vendor
 	cd sippy-ng; npm run build
 	go build -mod=vendor .
 	rice append -i . --exec sippy

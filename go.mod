@@ -11,6 +11,6 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cobra v0.0.6
 	github.com/tidwall/gjson v1.9.4
-	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect
+	golang.org/x/sys v0.0.0-20211109184856-51b60fd695b3 // indirect
 	k8s.io/klog v1.0.0
 )
