@@ -51,6 +51,9 @@ spec:
         ports:
         - containerPort: 8080
           protocol: TCP
+        - name: metrics
+          containerPort: 2112
+          protocol: TCP
         resources:
           limits:
             memory: 1500M

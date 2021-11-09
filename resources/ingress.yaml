@@ -18,3 +18,6 @@ spec:
           - backend:
               serviceName: sippy
               servicePort: 8080
+          - backend:
+              serviceName: metrics
+              servicePort: 2112
