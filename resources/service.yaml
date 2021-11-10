@@ -8,7 +8,8 @@ metadata:
   name: sippy
 spec:
   ports:
-  - port: 8080
+  - name: www
+    port: 8080
     protocol: TCP
     targetPort: 8080
   - name: metrics
