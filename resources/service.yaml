@@ -11,6 +11,9 @@ spec:
   - port: 8080
     protocol: TCP
     targetPort: 8080
+  - name: metrics
+    port: 2112
+    protocol: TCP
   selector:
     deploymentconfig: sippy
   sessionAffinity: None
