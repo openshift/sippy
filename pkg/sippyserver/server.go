@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db"
+
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -38,6 +40,7 @@ func NewServer(
 	bugCache buganalysis.BugCache,
 	sippyNG *rice.Box,
 	static *rice.Box,
+	dbClient *db.DB,
 ) *Server {
 
 	server := &Server{
@@ -55,6 +58,7 @@ func NewServer(
 		currTestReports: map[string]StandardReport{},
 		sippyNG:         sippyNG,
 		static:          static,
+		db:              dbClient,
 	}
 
 	return server
@@ -73,6 +77,7 @@ type Server struct {
 	sippyNG                    *rice.Box
 	static                     *rice.Box
 	httpServer                 *http.Server
+	db                         *db.DB
 }
 
 type TestGridDashboardCoordinates struct {
@@ -338,6 +343,21 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
+	api.PrintReleasesReport(w, req, s.db)
+}
+func (s *Server) jsonReleasePullRequestsReport(w http.ResponseWriter, req *http.Request) {
+	api.PrintPullRequestsReport(w, req, s.db)
+}
+
+func (s *Server) jsonReleaseJobRunsReport(w http.ResponseWriter, req *http.Request) {
+	api.PrintReleaseJobRunsReport(w, req, s.db)
+}
+
+func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
+	api.PrintReleaseHealthReport(w, req, s.db)
+}
+
 func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -563,6 +583,10 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
+	serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
+	serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
+	serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
+	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
