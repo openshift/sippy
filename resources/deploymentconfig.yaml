@@ -29,7 +29,11 @@ spec:
         imagePullPolicy: Always
         name: sippy
         ports:
-        - containerPort: 8080
+        - name: www
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 2112
           protocol: TCP
         resources:
           limits:
@@ -64,9 +68,6 @@ spec:
         name: fetchdata
         ports:
         - containerPort: 8080
-          protocol: TCP
-        - name: metrics
-          containerPort: 2112
           protocol: TCP
         resources:
           limits:
