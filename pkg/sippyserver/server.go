@@ -583,9 +583,13 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
-	serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
-	serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
-	serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
+
+	if s.db != nil {
+		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
+		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
+		serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
+	}
+
 	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
