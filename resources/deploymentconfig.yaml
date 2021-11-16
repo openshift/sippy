@@ -60,9 +60,30 @@ spec:
         - --end-day
         - "7"
         - --server
+        env:
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: dsn
         volumeMounts:
         - mountPath: /data
           name: data
+      - image: quay.io/enterprisedb/postgresql
+        imagePullPolicy: Always
+        name: postgres
+        resources:
+          limits:
+            memory: 2G
+        env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+        volumeMounts:
+          - mountPath: /var/lib/postgresql/data
+            name: db
       - image: docker.io/openshift/sippy
         imagePullPolicy: Always
         name: fetchdata
@@ -76,9 +97,19 @@ spec:
         terminationMessagePolicy: File
         command:
         - /bin/fetchdata.sh
+        env:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: /etc/bigquery/credentials
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: dsn
         volumeMounts:
         - mountPath: /data
           name: data
+        - mountPath: /etc/bigquery
+          name: bigquery-credentials
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -88,6 +119,12 @@ spec:
       - name: data
         persistentVolumeClaim:
           claimName: sippy
+      - name: db
+        persistentVolumeClaim:
+          claimName: sippy-db
+      - name: bigquery-credentials
+        secret:
+          secretName: bigquery-credentials
   test: false
   triggers:
   - type: ConfigChange

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"gorm.io/gorm"
 	"k8s.io/klog"
 )
 
@@ -16,6 +17,26 @@ type LinkOperator string
 const (
 	LinkOperatorAnd LinkOperator = "and"
 	LinkOperatorOr  LinkOperator = "or"
+)
+
+// Operator defines an operator used for filter items such as equals, contains, etc,
+// as well as the arithmetic operators like ==, !=, >, etc.
+type Operator string
+
+const (
+	OperatorContains   Operator = "contains"
+	OperatorEquals     Operator = "equals"
+	OperatorStartsWith Operator = "starts with"
+	OperatorEndsWith   Operator = "ends with"
+	OperatorIsEmpty    Operator = "is empty"
+	OperatorIsNotEmpty Operator = "is not empty"
+
+	OperatorArithmeticEquals              Operator = "="
+	OperatorArithmeticNotEquals           Operator = "!="
+	OperatorArithmeticGreaterThan         Operator = ">"
+	OperatorArithmeticGreaterThanOrEquals Operator = ">="
+	OperatorArithmeticLessThan            Operator = "<"
+	OperatorArithmeticLessThanOrEquals    Operator = "<="
 )
 
 // Filter is a collection of FilterItem, with a link operator. It is used to chain
@@ -29,10 +50,155 @@ type Filter struct {
 // value and a not boolean that negates the operator. For example:
 // name contains aws, or name not contains aws.
 type FilterItem struct {
-	Field    string `json:"columnField"`
-	Not      bool   `json:"not"`
-	Operator string `json:"operatorValue"`
-	Value    string `json:"value"`
+	Field    string   `json:"columnField"`
+	Not      bool     `json:"not"`
+	Operator Operator `json:"operatorValue"`
+	Value    string   `json:"value"`
+}
+
+func (f FilterItem) orFilterToSQL(db *gorm.DB) *gorm.DB { //nolint
+	switch f.Operator {
+	case OperatorContains:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		} else {
+			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		}
+	case OperatorEquals, OperatorArithmeticEquals:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q != ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q = ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticGreaterThan:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q > ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticGreaterThanOrEquals:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q < ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticLessThan:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q < ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticLessThanOrEquals:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q > ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticNotEquals:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q = ?", f.Field), f.Value)
+		} else {
+			db = db.Or(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+		}
+	case OperatorStartsWith:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+		} else {
+			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+		}
+	case OperatorEndsWith:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+		} else {
+			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+		}
+	case OperatorIsEmpty:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q != ?", f.Field), nil)
+		} else {
+			db = db.Or(fmt.Sprintf("%q = ?", f.Field), nil)
+		}
+	case OperatorIsNotEmpty:
+		if f.Not {
+			db = db.Or(fmt.Sprintf("%q = ?", f.Field), nil)
+		} else {
+			db = db.Or(fmt.Sprintf("%q != ?", f.Field), nil)
+		}
+	}
+	return db
+}
+
+func (f FilterItem) andFilterToSQL(db *gorm.DB) *gorm.DB { //nolint
+	switch f.Operator {
+	case OperatorContains:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		} else {
+			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		}
+	case OperatorEquals, OperatorArithmeticEquals:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q = ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q = ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticGreaterThan:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q > ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q > ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticGreaterThanOrEquals:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticLessThan:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q < ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q < ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticLessThanOrEquals:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+		}
+	case OperatorArithmeticNotEquals:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+		} else {
+			db = db.Where(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+		}
+	case OperatorStartsWith:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+		} else {
+			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+		}
+	case OperatorEndsWith:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+		} else {
+			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+		}
+	case OperatorIsEmpty:
+		if f.Not {
+			db = db.Not(fmt.Sprintf("%q = ?", f.Field), nil)
+		} else {
+			db = db.Where(fmt.Sprintf("%q = ?", f.Field), nil)
+		}
+	case OperatorIsNotEmpty:
+		if f.Not {
+			db = db.Where(fmt.Sprintf("%q = ?", f.Field), nil)
+		} else {
+			db = db.Not(fmt.Sprintf("%q = ?", f.Field), nil)
+		}
+	}
+
+	return db
 }
 
 // Filterable interface is for anything that can be filtered, it needs to
@@ -42,6 +208,18 @@ type Filterable interface {
 	GetStringValue(param string) (string, error)
 	GetNumericalValue(param string) (float64, error)
 	GetArrayValue(param string) ([]string, error)
+}
+
+func (filters Filter) ToSQL(db *gorm.DB) *gorm.DB {
+	for _, f := range filters.Items {
+		if filters.LinkOperator == LinkOperatorAnd {
+			db = f.orFilterToSQL(db)
+		} else if filters.LinkOperator == LinkOperatorOr {
+			db = f.orFilterToSQL(db)
+		}
+	}
+
+	return db
 }
 
 // Filter applies the selected filters to a filterable item.
@@ -126,17 +304,17 @@ func filterString(filter FilterItem, item Filterable) (bool, error) {
 	comparison := filter.Value
 
 	switch filter.Operator {
-	case "contains":
+	case OperatorContains:
 		return strings.Contains(value, comparison), nil
-	case "equals":
+	case OperatorEquals:
 		return value == comparison, nil
-	case "starts with":
+	case OperatorStartsWith:
 		return strings.HasPrefix(value, comparison), nil
-	case "ends with":
+	case OperatorEndsWith:
 		return strings.HasSuffix(value, comparison), nil
-	case "is empty":
+	case OperatorIsEmpty:
 		return value == "", nil
-	case "is not empty":
+	case OperatorIsNotEmpty:
 		return value != "", nil
 	default:
 		return false, fmt.Errorf("unknown string field operator %s", filter.Operator)
@@ -159,21 +337,21 @@ func filterNumerical(filter FilterItem, item Filterable) (bool, error) {
 	}
 
 	switch filter.Operator {
-	case "=":
+	case OperatorArithmeticEquals:
 		return value == comparison, nil
-	case "!=":
+	case OperatorArithmeticNotEquals:
 		return value != comparison, nil
-	case ">":
+	case OperatorArithmeticGreaterThan:
 		return value > comparison, nil
-	case "<":
+	case OperatorArithmeticLessThan:
 		return value < comparison, nil
-	case ">=":
+	case OperatorArithmeticGreaterThanOrEquals:
 		return value >= comparison, nil
-	case "<=":
+	case OperatorArithmeticLessThanOrEquals:
 		return value <= comparison, nil
-	case "is empty":
+	case OperatorIsEmpty:
 		return value == 0, nil
-	case "is not empty":
+	case OperatorIsNotEmpty:
 		return value != 0, nil
 	default:
 		return false, fmt.Errorf("unknown numeric field operator %s", filter.Operator)

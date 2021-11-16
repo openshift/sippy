@@ -456,6 +456,7 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 		buganalysis.NewNoOpBugCache(),
 		nil,
 		nil,
+		nil,
 	)
 
 	// Refresh data and generate reports.
