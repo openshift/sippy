@@ -1,6 +1,7 @@
 package db
 
 import (
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -34,6 +35,28 @@ func New(dsn string) (*DB, error) {
 	if err := db.AutoMigrate(&models.JobRun{}); err != nil {
 		return nil, err
 	}
+
+	/*
+		if err := db.AutoMigrate(&v1.JobRunResult{}); err != nil {
+			return nil, err
+		}
+	*/
+
+	if err := db.AutoMigrate(&v1.JobResult{}); err != nil {
+		return nil, err
+	}
+
+	/*
+
+		if err := db.AutoMigrate(&v1.TestResult{}); err != nil {
+			return nil, err
+		}
+
+		if err := db.AutoMigrate(&bugsv1.Bug{}); err != nil {
+			return nil, err
+		}
+
+	*/
 
 	return &DB{
 		DB: db,

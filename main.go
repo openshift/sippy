@@ -17,6 +17,7 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm/clause"
 	"k8s.io/klog"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -232,8 +233,6 @@ func (o *Options) Run() error {
 			if err := bge.ExportData(context.Background(), dbc); err != nil {
 				return err
 			}
-		} else {
-			klog.V(1).Infof("")
 		}
 
 		// Fetch OpenShift PerfScale Data from ElasticSearch:
@@ -256,8 +255,16 @@ func (o *Options) Run() error {
 	}
 
 	if o.GenReports {
+		if o.DSN == "" {
+			klog.Fatal("--database-dsn is required")
+		}
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+
 		start := time.Now()
-		// Generate reports and serialize to disk:
+		// Generate reports and store in db.
 		trgc := sippyserver.TestReportGeneratorConfig{
 			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
 			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
@@ -272,7 +279,7 @@ func (o *Options) Run() error {
 
 		localData := trgc.TestGridLoadingConfig.LocalData
 		testReportDir := path.Join(localData, "test-reports")
-		err := os.MkdirAll(testReportDir, os.ModePerm)
+		err = os.MkdirAll(testReportDir, os.ModePerm)
 		klog.Infof("creating: %s", testReportDir)
 		if err != nil {
 			klog.Errorf("error creating directory: " + err.Error())
@@ -290,7 +297,14 @@ func (o *Options) Run() error {
 		}
 		elapsed := time.Since(start)
 		klog.Infof("Reports generated in: %s", elapsed)
-		return nil
+
+		// Store report data in postgres:
+
+		rows := make([]v1.JobResult, 0)
+		rows = append(rows, testReports["4.10"].CurrentTwoDayReport.ByJob[0])
+		err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+
+		return err
 	}
 
 	if !o.Server {

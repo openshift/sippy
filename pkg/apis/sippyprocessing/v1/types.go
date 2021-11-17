@@ -5,6 +5,8 @@ package v1
 import (
 	"time"
 
+	"gorm.io/gorm"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -27,6 +29,7 @@ type Statistics struct {
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
+	gorm.Model
 	// ReportType contains the type of the report, e.g. current, two day, or previous.
 	ReportType ReportType `json:"reportType"`
 
@@ -147,6 +150,7 @@ type FailingTestJobResult struct {
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
 // always have complete data, not partial data.
 type TestResult struct {
+	gorm.Model
 	Name           string  `json:"name"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
@@ -156,9 +160,9 @@ type TestResult struct {
 	// Inside of a release, only bugs matching the release are present.
 	// TODO Inside a particular job, only bugs matching the job are present.
 	// TODO Inside a variant, only bugs matching the variant are present.
-	BugList []bugsv1.Bug `json:"bugList"`
+	BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
-	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList" gorm:"-"`
 }
 
 type JobOverallResult string
@@ -175,6 +179,7 @@ const (
 )
 
 type JobRunResult struct {
+	gorm.Model
 	Job             string           `json:"job"`
 	URL             string           `json:"url"`
 	TestFailures    int              `json:"testFailures"`
@@ -186,8 +191,9 @@ type JobRunResult struct {
 }
 
 type JobResult struct {
+	gorm.Model
 	Name                                        string         `json:"name"`
-	Variants                                    []string       `json:"variants"`
+	Variants                                    []string       `json:"variants" gorm:"-"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`
 	InfrastructureFailures                      int            `json:"infrastructureFailures"`
@@ -196,15 +202,15 @@ type JobResult struct {
 	PassPercentageWithKnownFailures             float64        `json:"passPercentageWithKnownFailures"`
 	PassPercentageWithoutInfrastructureFailures float64        `json:"passPercentageWithoutInfrastructureFailures"`
 	TestGridURL                                 string         `json:"testGridURL"`
-	AllRuns                                     []JobRunResult `json:"allRuns"`
+	AllRuns                                     []JobRunResult `json:"allRuns" gorm:"-"`
 
-	BugList []bugsv1.Bug `json:"bugList"`
+	BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
-	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList" gorm:"-"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
 	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
-	TestResults []TestResult `json:"results"`
+	TestResults []TestResult `json:"results" gorm:"-"`
 }
 
 type SortedBugzillaComponentResult struct {
