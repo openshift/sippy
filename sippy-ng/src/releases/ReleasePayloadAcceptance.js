@@ -1,23 +1,11 @@
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Container,
-  Grid,
-  Tooltip,
-  Typography,
-} from '@material-ui/core'
-import { CheckCircle, CompareArrows, Error, Help } from '@material-ui/icons'
+import { Box, Card, CardContent, Grid, Typography } from '@material-ui/core'
+import { CheckCircle, Error, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { DataGrid } from '@material-ui/data-grid'
 import { filterFor, relativeTime } from '../helpers'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
-import { Link, useHistory } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
-import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -75,12 +63,19 @@ function ReleasePayloadAcceptance(props) {
 
   let cards = []
   rows.forEach((row) => {
-    const when = new Date().getTime() - new Date(row.releaseTime).getTime()
-    let bgColor = theme.palette.error.light
-    let icon = <Error style={{ fill: 'maroon' }} />
-    if (when <= 24 * 60 * 60 * 1000) {
-      bgColor = theme.palette.success.light
-      icon = <CheckCircle style={{ fill: 'green' }} />
+    let bgColor = theme.palette.grey.A100
+    let icon = <Help />
+    let text = 'Unknown'
+    if (row.releaseTime && row.releaseTime != '') {
+      text = relativeTime(new Date(row.releaseTime))
+      const when = new Date().getTime() - new Date(row.releaseTime).getTime()
+      if (when <= 24 * 60 * 60 * 1000) {
+        bgColor = theme.palette.success.light
+        icon = <CheckCircle style={{ fill: 'green' }} />
+      } else {
+        bgColor = theme.palette.error.light
+        icon = <Error style={{ fill: 'maroon' }} />
+      }
     }
 
     let filter = {
@@ -99,7 +94,6 @@ function ReleasePayloadAcceptance(props) {
       >
         <Card
           elevation={5}
-          className={`${classes.miniCard}`}
           style={{ backgroundColor: bgColor, margin: 20, width: 200 }}
         >
           <CardContent
@@ -115,7 +109,7 @@ function ReleasePayloadAcceptance(props) {
               alignItems="center"
               style={{ margin: 20, textAlign: 'center' }}
             >
-              {icon}&nbsp;{relativeTime(new Date(row.releaseTime))}
+              {icon}&nbsp;{text}
             </Grid>
           </CardContent>
         </Card>

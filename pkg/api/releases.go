@@ -50,6 +50,11 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 	RespondWithJSON(http.StatusOK, w, jobRuns)
 }
 
+type apiReleaseTag struct {
+	models.ReleaseTag
+	FailedJobNames string `gorm:"column:failedJobNames" json:"failedJobNames,omitempty"`
+}
+
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
@@ -64,8 +69,27 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		return
 	}
 
-	releases := make([]models.ReleaseTag, 0)
-	q.Find(&releases)
+	releases := make([]apiReleaseTag, 0)
+
+	// This join looks up the names of failed jobs, if any, and returns them as
+	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
+	q.Table("release_tags").
+		Select(`release_tags.*, job_runs."failedJobNames"`).
+		Joins(`LEFT OUTER JOIN 
+   			(
+				SELECT
+					release_tags."releaseTag", json_agg(job_runs."jobName") AS "failedJobNames"
+				FROM
+					job_runs
+   				JOIN
+					release_tags ON release_tags."releaseTag" = job_runs."releaseTag"
+   				WHERE
+					job_runs.state = 'Failed'
+	   			GROUP BY
+					release_tags."releaseTag"
+			) job_runs using ("releaseTag")`).
+		Scan(&releases)
+
 	RespondWithJSON(http.StatusOK, w, releases)
 }
 

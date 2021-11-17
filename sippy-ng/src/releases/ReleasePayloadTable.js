@@ -58,9 +58,27 @@ function ReleasePayloadTable(props) {
       },
     },
     {
+      field: 'failedJobNames',
+      headerName: 'Failed jobs',
+      sortable: false,
+      filterable: false,
+      flex: 0.75,
+      renderCell: (params) => {
+        if (params.value && params.value !== '') {
+          const jobs = JSON.parse(params.value)
+          return (
+            <Tooltip title={jobs.join(', ')}>
+              <Typography>{jobs.length}</Typography>
+            </Tooltip>
+          )
+        }
+        return '0'
+      },
+    },
+    {
       field: 'releaseTag',
       headerName: 'Tag',
-      flex: 5,
+      flex: 4,
       renderCell: (params) => {
         return (
           <Link
@@ -86,7 +104,7 @@ function ReleasePayloadTable(props) {
     {
       field: 'releaseTime',
       headerName: 'Time',
-      flex: 2.5,
+      flex: 2,
       type: 'date',
       valueFormatter: (params) => {
         return new Date(params.value)
