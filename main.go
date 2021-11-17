@@ -210,8 +210,6 @@ func (o *Options) Run() error {
 			if err := bge.ExportData(context.Background(), dbc); err != nil {
 				return err
 			}
-		} else {
-			klog.V(1).Infof("")
 		}
 
 		// Fetch OpenShift PerfScale Data from ElasticSearch:
