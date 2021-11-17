@@ -213,7 +213,7 @@ type Filterable interface {
 func (filters Filter) ToSQL(db *gorm.DB) *gorm.DB {
 	for _, f := range filters.Items {
 		if filters.LinkOperator == LinkOperatorAnd {
-			db = f.orFilterToSQL(db)
+			db = f.andFilterToSQL(db)
 		} else if filters.LinkOperator == LinkOperatorOr {
 			db = f.orFilterToSQL(db)
 		}
