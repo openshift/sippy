@@ -5,6 +5,7 @@ package v1
 import (
 	"time"
 
+	pq "github.com/lib/pq"
 	"gorm.io/gorm"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -198,7 +199,7 @@ type JobResult struct {
 	UpdatedAt time.Time
 
 	Name                                        string         `json:"name" gorm:"primaryKey"`
-	Variants                                    []string       `json:"variants" gorm:"-"`
+	Variants                                    pq.StringArray `json:"variants" gorm:"type:text[]"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`
 	InfrastructureFailures                      int            `json:"infrastructureFailures"`
