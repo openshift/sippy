@@ -8,6 +8,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
@@ -74,6 +75,7 @@ type TestReportGeneratorConfig struct {
 //  3. uses the RawJobResults to produce a bug cache of relevant bugs
 //  4. converts the result of that into a display API object.
 func (a *TestReportGeneratorConfig) PrepareTestReport(
+	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	reportType sippyprocessingv1.ReportType,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
@@ -81,11 +83,12 @@ func (a *TestReportGeneratorConfig) PrepareTestReport(
 	bugCache buganalysis.BugCache,
 ) sippyprocessingv1.TestReport {
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
-	return a.prepareTestReportFromData(dashboard.ReportName, reportType, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	return a.prepareTestReportFromData(dbc, dashboard.ReportName, reportType, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 }
 
 // prepareTestReportFromData should always remain private unless refactored. it's a convenient way to re-use the test grid data deserialized from disk.
 func (a *TestReportGeneratorConfig) prepareTestReportFromData(
+	dbc *db.DB,
 	reportName string,
 	reportType sippyprocessingv1.ReportType,
 	bugzillaRelease string,
@@ -107,6 +110,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 	warnings = append(warnings, bugCacheWarnings...)
 
 	return testreportconversion.PrepareTestReport(
+		dbc,
 		reportName,
 		reportType,
 		rawJobResults,
@@ -124,6 +128,7 @@ func (a *TestReportGeneratorConfig) prepareTestReportFromData(
 
 // PrepareStandardTestReports returns the current period, current two day period, and the previous seven days period
 func (a TestReportGeneratorConfig) PrepareStandardTestReports(
+	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
@@ -132,11 +137,11 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 	testGridJobDetails, lastUpdateTime := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 
 	currTimePeriodConfig := a.deepCopy()
-	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.CurrentReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTimePeriodReport := currTimePeriodConfig.prepareTestReportFromData(dbc, dashboard.ReportName, sippyprocessingv1.CurrentReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	currentTwoDayPeriodConfig := a.deepCopy()
 	currentTwoDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 2
-	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.TwoDayReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	currentTwoDayReport := currentTwoDayPeriodConfig.prepareTestReportFromData(dbc, dashboard.ReportName, sippyprocessingv1.TwoDayReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	previousSevenDayPeriodConfig := a.deepCopy()
 	if a.RawJobResultsAnalysisConfig.StartDay >= 0 {
@@ -145,7 +150,7 @@ func (a TestReportGeneratorConfig) PrepareStandardTestReports(
 		previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.StartDay = a.RawJobResultsAnalysisConfig.StartDay - a.RawJobResultsAnalysisConfig.NumDays
 	}
 	previousSevenDayPeriodConfig.RawJobResultsAnalysisConfig.NumDays = 7
-	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dashboard.ReportName, sippyprocessingv1.PreviousReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
+	previousSevenDayReport := previousSevenDayPeriodConfig.prepareTestReportFromData(dbc, dashboard.ReportName, sippyprocessingv1.PreviousReport, dashboard.BugzillaRelease, syntheticTestManager, variantManager, bugCache, testGridJobDetails, lastUpdateTime)
 
 	return StandardReport{
 		CurrentPeriodReport: currentTimePeriodReport,

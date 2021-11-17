@@ -334,7 +334,8 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		releasehtml.WriteLandingPage(w, reportNames)
 		return
 	}
-	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
+	// TODO: db connection handed off as nil here
+	testReports := testReportConfig.PrepareStandardTestReports(nil, dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHTMLReport(w, req,
 		testReports.CurrentPeriodReport,

@@ -8,11 +8,15 @@ import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"gorm.io/gorm/clause"
+	"k8s.io/klog"
 )
 
 func PrepareTestReport(
+	dbc *db.DB,
 	reportName string,
 	reportType sippyprocessingv1.ReportType,
 	rawData testgridanalysisapi.RawData,
@@ -27,10 +31,20 @@ func PrepareTestReport(
 	analysisWarnings []string,
 	reportTimestamp time.Time, // TODO seems like we could derive this from our raw data
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
+
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
+
+	// Load all job results into database:
+	err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(allJobResults).Error
+	if err != nil {
+		// TODO: return err?
+		klog.Fatalf("error loading database: %v", err)
+	}
+	klog.Fatal("exiting prematurely")
+
 	stats := calculateJobResultStatistics(allJobResults)
 
 	allTestResultsByName := getTestResultsByName(allJobResults)

@@ -178,6 +178,7 @@ const (
 	JobUnknown               JobOverallResult = "f"
 )
 
+// JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
 type JobRunResult struct {
 	gorm.Model
 	Job             string           `json:"job"`
@@ -190,9 +191,13 @@ type JobRunResult struct {
 	OverallResult   JobOverallResult `json:"result"`
 }
 
+// JobResult is a core sippy model aggregating status, statistics, and variants for a given prow job.
 type JobResult struct {
-	gorm.Model
-	Name                                        string         `json:"name"`
+	ID        uint
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	Name                                        string         `json:"name" gorm:"primaryKey"`
 	Variants                                    []string       `json:"variants" gorm:"-"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`

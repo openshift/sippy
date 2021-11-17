@@ -273,7 +273,7 @@ func (o *Options) Run() error {
 
 		testReports := map[string]sippyserver.StandardReport{}
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dashboard,
+			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dbc, dashboard,
 				o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 		}
 
@@ -300,9 +300,10 @@ func (o *Options) Run() error {
 
 		// Store report data in postgres:
 
-		rows := make([]v1.JobResult, 0)
-		rows = append(rows, testReports["4.10"].CurrentTwoDayReport.ByJob[0])
-		err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+		//rows := make([]v1.JobResult, 0)
+		//rows = append(rows, testReports["4.10"].CurrentTwoDayReport.ByJob[0])
+		klog.Infof("populating database")
+		err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(testReports["4.10"].CurrentTwoDayReport.ByJob).Error
 
 		return err
 	}
@@ -374,7 +375,15 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
+	if o.DSN == "" {
+		klog.Fatal("--database-dsn is required")
+	}
+	dbc, err := db.New(o.DSN)
+	if err != nil {
+		return err
+	}
+
+	testReport := analyzer.PrepareTestReport(dbc, o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
 	return enc.Encode(testReport.ByTest)
