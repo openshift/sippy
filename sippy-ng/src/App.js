@@ -1,6 +1,7 @@
 import './App.css'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
+import { filterFor } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { QueryParamProvider } from 'use-query-params'
 import { Route, Switch } from 'react-router-dom'
@@ -18,6 +19,8 @@ import LastUpdated from './components/LastUpdated'
 import MenuIcon from '@material-ui/icons/Menu'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
+import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
+import ReleasePayloads from './releases/ReleasePayloads'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -236,6 +239,27 @@ export default function App(props) {
                 render={(props) => (
                   <WorkloadMetricsOverview
                     key={'workload-metrics-' + props.match.params.release}
+                    release={props.match.params.release}
+                  />
+                )}
+              />
+
+              <Route
+                path="/release/:release/tags/:tag"
+                render={(props) => (
+                  <ReleasePayloadDetails
+                    key={'release-details-' + props.match.params.release}
+                    release={props.match.params.release}
+                    releaseTag={props.match.params.tag}
+                  />
+                )}
+              />
+
+              <Route
+                path="/release/:release/tags"
+                render={(props) => (
+                  <ReleasePayloads
+                    key={'release-tags-' + props.match.params.release}
                     release={props.match.params.release}
                   />
                 )}

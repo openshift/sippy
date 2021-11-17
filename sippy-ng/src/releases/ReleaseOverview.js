@@ -1,19 +1,6 @@
 import { ArrowBack, ArrowForward } from '@material-ui/icons'
-import {
-  BOOKMARKS,
-  INFRASTRUCTURE_THRESHOLDS,
-  INSTALL_THRESHOLDS,
-  TEST_THRESHOLDS,
-  UPGRADE_THRESHOLDS,
-} from '../constants'
-import {
-  Box,
-  Button,
-  Card,
-  Container,
-  Tooltip,
-  Typography,
-} from '@material-ui/core'
+import { BOOKMARKS } from '../constants'
+import { Button, Card, Container, Tooltip, Typography } from '@material-ui/core'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { hourFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import { Link } from 'react-router-dom'
@@ -31,6 +18,8 @@ import InfoIcon from '@material-ui/icons/Info'
 import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+import ReleasePayloadAcceptance from './ReleasePayloadAcceptance'
+import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestTable from '../tests/TestTable'
 import TopLevelIndicators from './TopLevelIndicators'
@@ -141,6 +130,7 @@ export default function ReleaseOverview(props) {
               release={props.release}
               indicators={data.indicators}
             />
+
             <Grid item md={5} sm={12}>
               <Card elevation={5} style={{ padding: 20, height: '100%' }}>
                 <Typography variant="h6">
@@ -242,6 +232,43 @@ export default function ReleaseOverview(props) {
                     startIcon={<ArrowForward />}
                   />
                 </div>
+              </Card>
+            </Grid>
+
+            <Grid item md={12}>
+              <Typography style={{ textAlign: 'left' }} variant="h5">
+                <Link to={`/release/${props.release}/tags`}>
+                  Payload acceptance
+                </Link>
+                <Tooltip
+                  title={
+                    'These cards show the last accepted payload for each architecture/stream combination.'
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+
+              <Card
+                elevation={5}
+                style={{
+                  width: '100%',
+                  padding: 10,
+                  marginRight: 20,
+                  margin: 10,
+                }}
+              >
+                <Grid
+                  container
+                  spacing={3}
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <ReleasePayloadAcceptance
+                    release={props.release}
+                    rowsPerPageOptions={[5]}
+                  />
+                </Grid>
               </Card>
             </Grid>
 
