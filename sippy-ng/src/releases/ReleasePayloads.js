@@ -21,12 +21,10 @@ function ReleasePayloads(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Tags" />
-      <Container size="xl">
-        <Typography variant="h4" gutterBottom className={classes.title}>
-          Release Payloads
-        </Typography>
-        <ReleasePayloadTable release={props.release} />
-      </Container>
+      <Typography variant="h4" gutterBottom className={classes.title}>
+        Release Payloads
+      </Typography>
+      <ReleasePayloadTable release={props.release} />
     </Fragment>
   )
 }

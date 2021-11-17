@@ -78,7 +78,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		Joins(`LEFT OUTER JOIN 
    			(
 				SELECT
-					release_tags."releaseTag", json_agg(job_runs."jobName") AS "failedJobNames"
+					release_tags."releaseTag", json_agg(job_runs."jobName" ORDER BY job_runs."jobName" asc) AS "failedJobNames"
 				FROM
 					job_runs
    				JOIN

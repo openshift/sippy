@@ -1,6 +1,7 @@
 import { ArrowBack, ArrowForward } from '@material-ui/icons'
 import { BOOKMARKS } from '../constants'
 import { Button, Card, Container, Tooltip, Typography } from '@material-ui/core'
+import { CapabilitiesContext } from '../App'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { hourFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import { Link } from 'react-router-dom'
@@ -235,42 +236,52 @@ export default function ReleaseOverview(props) {
               </Card>
             </Grid>
 
-            <Grid item md={12}>
-              <Typography style={{ textAlign: 'left' }} variant="h5">
-                <Link to={`/release/${props.release}/tags`}>
-                  Payload acceptance
-                </Link>
-                <Tooltip
-                  title={
-                    'These cards show the last accepted payload for each architecture/stream combination.'
-                  }
-                >
-                  <InfoIcon />
-                </Tooltip>
-              </Typography>
+            <CapabilitiesContext.Consumer>
+              {(value) => {
+                if (!value.includes('releases')) {
+                  return
+                }
 
-              <Card
-                elevation={5}
-                style={{
-                  width: '100%',
-                  padding: 10,
-                  marginRight: 20,
-                  margin: 10,
-                }}
-              >
-                <Grid
-                  container
-                  spacing={3}
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <ReleasePayloadAcceptance
-                    release={props.release}
-                    rowsPerPageOptions={[5]}
-                  />
-                </Grid>
-              </Card>
-            </Grid>
+                return (
+                  <Grid item md={12}>
+                    <Typography style={{ textAlign: 'left' }} variant="h5">
+                      <Link to={`/release/${props.release}/tags`}>
+                        Payload acceptance
+                      </Link>
+                      <Tooltip
+                        title={
+                          'These cards show the last accepted payload for each architecture/stream combination.'
+                        }
+                      >
+                        <InfoIcon />
+                      </Tooltip>
+                    </Typography>
+
+                    <Card
+                      elevation={5}
+                      style={{
+                        width: '100%',
+                        padding: 10,
+                        marginRight: 20,
+                        margin: 10,
+                      }}
+                    >
+                      <Grid
+                        container
+                        spacing={3}
+                        justifyContent="center"
+                        alignItems="center"
+                      >
+                        <ReleasePayloadAcceptance
+                          release={props.release}
+                          rowsPerPageOptions={[5]}
+                        />
+                      </Grid>
+                    </Card>
+                  </Grid>
+                )
+              }}
+            </CapabilitiesContext.Consumer>
 
             <Grid item md={12}>
               <VariantCards release={props.release} />

@@ -1,0 +1,11 @@
+.clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+
+    line-height: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: break-spaces;
+    word-wrap: break-word;
+}

@@ -1,4 +1,5 @@
-import { Button, Container, Tooltip, Typography } from '@material-ui/core'
+import './ReleasePayloadTable.css'
+import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { CheckCircle, CompareArrows, Error, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
@@ -57,24 +58,7 @@ function ReleasePayloadTable(props) {
         }
       },
     },
-    {
-      field: 'failedJobNames',
-      headerName: 'Failed jobs',
-      sortable: false,
-      filterable: false,
-      flex: 0.75,
-      renderCell: (params) => {
-        if (params.value && params.value !== '') {
-          const jobs = JSON.parse(params.value)
-          return (
-            <Tooltip title={jobs.join(', ')}>
-              <Typography>{jobs.length}</Typography>
-            </Tooltip>
-          )
-        }
-        return '0'
-      },
-    },
+
     {
       field: 'releaseTag',
       headerName: 'Tag',
@@ -167,6 +151,30 @@ function ReleasePayloadTable(props) {
         }
       },
       hide: props.briefTable,
+    },
+    {
+      field: 'failedJobNames',
+      headerName: 'Failed jobs',
+      sortable: false,
+      filterable: false,
+      flex: 4,
+      renderCell: (params) => {
+        if (params.value && params.value !== '') {
+          const jobs = JSON.parse(params.value)
+          return (
+            <Tooltip title={`${jobs.length} jobs failed: ${jobs.join(', ')}`}>
+              <Box
+                component={Link}
+                to={`/release/${props.release}/tags/${params.row.releaseTag}`}
+                className="clamped"
+              >
+                {jobs.join(', ')}
+              </Box>
+            </Tooltip>
+          )
+        }
+        return ''
+      },
     },
   ]
 
@@ -282,6 +290,7 @@ function ReleasePayloadTable(props) {
       components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
+      rowHeight={70}
       autoHeight={true}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
