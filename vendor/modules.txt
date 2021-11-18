@@ -61,6 +61,10 @@ github.com/jackc/pgx/v4/stdlib
 github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.2
 github.com/jinzhu/now
+# github.com/lib/pq v1.10.2
+github.com/lib/pq
+github.com/lib/pq/oid
+github.com/lib/pq/scram
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/montanaflynn/stats v0.6.6

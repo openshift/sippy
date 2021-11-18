@@ -346,7 +346,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
 	capabilities := make([]string, 0)
 	if s.db != nil {
-		capabilities = append(capabilities, "releases")
+		capabilities = append(capabilities, "openshift_releases")
 	}
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
 }

@@ -159,16 +159,19 @@ function ReleasePayloadTable(props) {
       filterable: false,
       flex: 4,
       renderCell: (params) => {
-        if (params.value && params.value !== '') {
-          const jobs = JSON.parse(params.value)
+        if (params.value && params.value.length > 0) {
           return (
-            <Tooltip title={`${jobs.length} jobs failed: ${jobs.join(', ')}`}>
+            <Tooltip
+              title={`${params.value.length} jobs failed: ${params.value.join(
+                ', '
+              )}`}
+            >
               <Box
                 component={Link}
                 to={`/release/${props.release}/tags/${params.row.releaseTag}`}
                 className="clamped"
               >
-                {jobs.join(', ')}
+                {params.value.join(', ')}
               </Box>
             </Tooltip>
           )

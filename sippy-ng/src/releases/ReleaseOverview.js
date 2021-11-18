@@ -238,7 +238,7 @@ export default function ReleaseOverview(props) {
 
             <CapabilitiesContext.Consumer>
               {(value) => {
-                if (!value.includes('releases')) {
+                if (!value.includes('openshift_releases')) {
                   return
                 }
 

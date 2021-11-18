@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -52,7 +53,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 
 type apiReleaseTag struct {
 	models.ReleaseTag
-	FailedJobNames string `gorm:"column:failedJobNames" json:"failedJobNames,omitempty"`
+	FailedJobNames pq.StringArray `gorm:"type:text[];column:failedJobNames" json:"failedJobNames,omitempty"`
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -78,7 +79,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		Joins(`LEFT OUTER JOIN 
    			(
 				SELECT
-					release_tags."releaseTag", json_agg(job_runs."jobName" ORDER BY job_runs."jobName" asc) AS "failedJobNames"
+					release_tags."releaseTag", array_agg(job_runs."jobName" ORDER BY job_runs."jobName" asc) AS "failedJobNames"
 				FROM
 					job_runs
    				JOIN

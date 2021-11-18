@@ -91,7 +91,7 @@ export default function Sidebar(props) {
                 </ListItem>
                 <CapabilitiesContext.Consumer>
                   {(value) => {
-                    if (value.includes('releases')) {
+                    if (value.includes('openshift_releases')) {
                       return (
                         <ListItem
                           key={'release-tags-' + index}
