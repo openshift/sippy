@@ -343,6 +343,14 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
+	capabilities := make([]string, 0)
+	if s.db != nil {
+		capabilities = append(capabilities, "openshift_releases")
+	}
+	api.RespondWithJSON(http.StatusOK, w, capabilities)
+}
+
 func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
 	api.PrintReleasesReport(w, req, s.db)
 }
@@ -596,6 +604,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
+
+	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

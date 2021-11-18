@@ -1,6 +1,7 @@
 import './App.css'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
+import { filterFor } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { QueryParamProvider } from 'use-query-params'
 import { Route, Switch } from 'react-router-dom'
@@ -18,6 +19,8 @@ import LastUpdated from './components/LastUpdated'
 import MenuIcon from '@material-ui/icons/Menu'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
+import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
+import ReleasePayloads from './releases/ReleasePayloads'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -101,6 +104,8 @@ const lightMode = {
   },
 }
 
+export const CapabilitiesContext = React.createContext([])
+
 export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
@@ -109,36 +114,40 @@ export default function App(props) {
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])
+  const [capabilities, setCapabilities] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
 
-  const fetchReleases = () => {
-    fetch(process.env.REACT_APP_API_URL + '/api/releases')
-      .then((response) => {
-        if (response.status !== 200) {
-          setFetchError(
-            'Could not retrieve releases, server returned ' + response.status
-          )
+  const fetchData = () => {
+    Promise.all([
+      fetch(process.env.REACT_APP_API_URL + '/api/releases'),
+      fetch(process.env.REACT_APP_API_URL + '/api/capabilities'),
+    ])
+      .then(([releases, capabilities]) => {
+        if (releases.status !== 200) {
+          throw new Error('server returned ' + releases.status)
         }
-        return response.json()
+
+        if (capabilities.status !== 200) {
+          throw new Error('server returned ' + capabilities.status)
+        }
+        return Promise.all([releases.json(), capabilities.json()])
       })
-      .then((json) => {
-        if (json.releases) {
-          setReleases(json.releases)
-          setLastUpdated(new Date(json.last_updated))
-          setLoaded(true)
-        } else {
-          throw new Error('no releases found')
-        }
+      .then(([releases, capabilities]) => {
+        setReleases(releases['releases'])
+        setCapabilities(capabilities)
+        setLastUpdated(new Date(releases.last_updated))
+        setLoaded(true)
       })
       .catch((error) => {
-        setFetchError('Could not retrieve releases, ' + error)
         setLoaded(true)
+        setLastUpdated(Date.now())
+        setFetchError('could not retrieve data:' + error)
       })
   }
 
   useEffect(() => {
     if (!isLoaded) {
-      fetchReleases()
+      fetchData()
     }
   })
 
@@ -164,164 +173,190 @@ export default function App(props) {
   }
 
   return (
-    <MuiThemeProvider theme={createTheme(lightMode)}>
-      <CssBaseline />
-      <QueryParamProvider ReactRouterRoute={Route}>
-        <div className={classes.root}>
-          <AppBar
-            position="fixed"
-            className={clsx(classes.appBar, {
-              [classes.appBarShift]: drawerOpen,
-            })}
-          >
-            <Toolbar edge="start">
-              <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                onClick={handleDrawerOpen}
-                edge="start"
-                className={clsx(classes.menuButton, drawerOpen && classes.hide)}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Grid
-                container
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <Typography variant="h6" className={classes.title}>
-                  Sippy
-                </Typography>
-                <LastUpdated lastUpdated={lastUpdated} />
-              </Grid>
-            </Toolbar>
-          </AppBar>
+    <CapabilitiesContext.Provider value={capabilities}>
+      <MuiThemeProvider theme={createTheme(lightMode)}>
+        <CssBaseline />
+        <QueryParamProvider ReactRouterRoute={Route}>
+          <div className={classes.root}>
+            <AppBar
+              position="fixed"
+              className={clsx(classes.appBar, {
+                [classes.appBarShift]: drawerOpen,
+              })}
+            >
+              <Toolbar edge="start">
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  onClick={handleDrawerOpen}
+                  edge="start"
+                  className={clsx(
+                    classes.menuButton,
+                    drawerOpen && classes.hide
+                  )}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Grid
+                  container
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography variant="h6" className={classes.title}>
+                    Sippy
+                  </Typography>
+                  <LastUpdated lastUpdated={lastUpdated} />
+                </Grid>
+              </Toolbar>
+            </AppBar>
 
-          <Drawer
-            className={classes.drawer}
-            variant="persistent"
-            anchor="left"
-            open={drawerOpen}
-            classes={{
-              paper: classes.drawerPaper,
-            }}
-          >
-            <div className={classes.drawerHeader}>
-              <IconButton onClick={handleDrawerClose}>
-                {theme.direction === 'ltr' ? (
-                  <ChevronLeftIcon />
-                ) : (
-                  <ChevronRightIcon />
-                )}
-              </IconButton>
-            </div>
-            <Sidebar releases={releases} />
-          </Drawer>
+            <Drawer
+              className={classes.drawer}
+              variant="persistent"
+              anchor="left"
+              open={drawerOpen}
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+            >
+              <div className={classes.drawerHeader}>
+                <IconButton onClick={handleDrawerClose}>
+                  {theme.direction === 'ltr' ? (
+                    <ChevronLeftIcon />
+                  ) : (
+                    <ChevronRightIcon />
+                  )}
+                </IconButton>
+              </div>
+              <Sidebar releases={releases} />
+            </Drawer>
 
-          <main
-            className={clsx(classes.content, {
-              [classes.contentShift]: drawerOpen,
-            })}
-          >
-            <div className={classes.drawerHeader} />
+            <main
+              className={clsx(classes.content, {
+                [classes.contentShift]: drawerOpen,
+              })}
+            >
+              <div className={classes.drawerHeader} />
 
-            {/* eslint-disable react/prop-types */}
-            <Switch>
-              <Route path="/about">
-                <p>Hello, world!</p>
-              </Route>
+              {/* eslint-disable react/prop-types */}
+              <Switch>
+                <Route path="/about">
+                  <p>Hello, world!</p>
+                </Route>
 
-              <Route
-                path="/workloadmetrics/:release"
-                render={(props) => (
-                  <WorkloadMetricsOverview
-                    key={'workload-metrics-' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/workloadmetrics/:release"
+                  render={(props) => (
+                    <WorkloadMetricsOverview
+                      key={'workload-metrics-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/release/:release"
-                render={(props) => (
-                  <ReleaseOverview
-                    key={'release-overview-' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/release/:release/tags/:tag"
+                  render={(props) => (
+                    <ReleasePayloadDetails
+                      key={'release-details-' + props.match.params.release}
+                      release={props.match.params.release}
+                      releaseTag={props.match.params.tag}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/variants/:release/:variant"
-                render={(props) => (
-                  <VariantStatus
-                    release={props.match.params.release}
-                    variant={props.match.params.variant}
-                  />
-                )}
-              />
+                <Route
+                  path="/release/:release/tags"
+                  render={(props) => (
+                    <ReleasePayloads
+                      key={'release-tags-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/jobs/:release/analysis"
-                render={(props) => (
-                  <JobAnalysis release={props.match.params.release} />
-                )}
-              />
+                <Route
+                  path="/release/:release"
+                  render={(props) => (
+                    <ReleaseOverview
+                      key={'release-overview-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/jobs/:release"
-                render={(props) => (
-                  <Jobs
-                    key={'jobs-' + props.match.params.release}
-                    title={'Job results for ' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/variants/:release/:variant"
+                  render={(props) => (
+                    <VariantStatus
+                      release={props.match.params.release}
+                      variant={props.match.params.variant}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/tests/:release/analysis"
-                render={(props) => (
-                  <TestAnalysis release={props.match.params.release} />
-                )}
-              />
+                <Route
+                  path="/jobs/:release/analysis"
+                  render={(props) => (
+                    <JobAnalysis release={props.match.params.release} />
+                  )}
+                />
 
-              <Route
-                path="/tests/:release"
-                render={(props) => (
-                  <Tests
-                    key={'tests-' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/jobs/:release"
+                  render={(props) => (
+                    <Jobs
+                      key={'jobs-' + props.match.params.release}
+                      title={'Job results for ' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
 
-              <Route
-                path="/upgrade/:release"
-                render={(props) => (
-                  <Upgrades
-                    key={'upgrades-' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/tests/:release/analysis"
+                  render={(props) => (
+                    <TestAnalysis release={props.match.params.release} />
+                  )}
+                />
 
-              <Route
-                path="/install/:release"
-                render={(props) => (
-                  <Install
-                    key={'install-' + props.match.params.release}
-                    release={props.match.params.release}
-                  />
-                )}
-              />
+                <Route
+                  path="/tests/:release"
+                  render={(props) => (
+                    <Tests
+                      key={'tests-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
 
-              <Route path="/">{landingPage}</Route>
-            </Switch>
-            {/* eslint-enable react/prop-types */}
-          </main>
-        </div>
-      </QueryParamProvider>
-    </MuiThemeProvider>
+                <Route
+                  path="/upgrade/:release"
+                  render={(props) => (
+                    <Upgrades
+                      key={'upgrades-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/install/:release"
+                  render={(props) => (
+                    <Install
+                      key={'install-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
+                />
+
+                <Route path="/">{landingPage}</Route>
+              </Switch>
+              {/* eslint-enable react/prop-types */}
+            </main>
+          </div>
+        </QueryParamProvider>
+      </MuiThemeProvider>
+    </CapabilitiesContext.Provider>
   )
 }

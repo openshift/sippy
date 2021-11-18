@@ -10,6 +10,7 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20210823155509-845c8efe54a7
 	github.com/googleapis/gax-go v1.0.3 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
+	github.com/lib/pq v1.10.2
 	github.com/montanaflynn/stats v0.6.6
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0

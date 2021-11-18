@@ -1,4 +1,11 @@
-import { BugReport, ExpandLess, ExpandMore, GitHub } from '@material-ui/icons'
+import {
+  BugReport,
+  ExpandLess,
+  ExpandMore,
+  FileCopyOutlined,
+  GitHub,
+} from '@material-ui/icons'
+import { CapabilitiesContext } from '../App'
 import { Link } from 'react-router-dom'
 import { ListSubheader, useTheme } from '@material-ui/core'
 import ApartmentIcon from '@material-ui/icons/Apartment'
@@ -82,6 +89,26 @@ export default function Sidebar(props) {
                   </ListItemIcon>
                   <ListItemText primary="Overview" />
                 </ListItem>
+                <CapabilitiesContext.Consumer>
+                  {(value) => {
+                    if (value.includes('openshift_releases')) {
+                      return (
+                        <ListItem
+                          key={'release-tags-' + index}
+                          component={Link}
+                          to={`/release/${release}/tags`}
+                          button
+                          className={classes.nested}
+                        >
+                          <ListItemIcon>
+                            <FileCopyOutlined />
+                          </ListItemIcon>
+                          <ListItemText primary="Payloads" />
+                        </ListItem>
+                      )
+                    }
+                  }}
+                </CapabilitiesContext.Consumer>
                 <ListItem
                   key={'release-jobs-' + index}
                   component={Link}
