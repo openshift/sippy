@@ -421,6 +421,7 @@ TestTable.defaultProps = {
   limit: 0,
   hideControls: false,
   pageSize: 25,
+  period: 'default',
   briefTable: false,
   filterModel: {
     items: [],
