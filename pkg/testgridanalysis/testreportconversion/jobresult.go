@@ -3,6 +3,8 @@ package testreportconversion
 import (
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/montanaflynn/stats"
 
@@ -200,7 +202,11 @@ func convertRawJobResultToProcessedJobResult(
 }
 
 func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobRunResult {
+	// Add a ProwID we can use as a key in our db, by extracting from the end of the URL:
+	tokens := strings.Split(jrr.JobRunURL, "/")
+	prowID, _ := strconv.ParseInt(tokens[len(tokens)-1], 10, 64)
 	return sippyprocessingv1.JobRunResult{
+		ProwID:          prowID,
 		Job:             jrr.Job,
 		URL:             jrr.JobRunURL,
 		TestFailures:    jrr.TestFailures,

@@ -181,11 +181,15 @@ const (
 
 // JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
 type JobRunResult struct {
-	gorm.Model
+	ID        uint
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	ProwID          int64            `json:"prowID" gorm:"primaryKey"`
 	Job             string           `json:"job"`
 	URL             string           `json:"url"`
 	TestFailures    int              `json:"testFailures"`
-	FailedTestNames []string         `json:"failedTestNames"`
+	FailedTestNames pq.StringArray   `json:"failedTestNames" gorm:"type:text[]"`
 	Failed          bool             `json:"failed"`
 	Succeeded       bool             `json:"succeeded"`
 	Timestamp       int              `json:"timestamp"`
@@ -208,7 +212,7 @@ type JobResult struct {
 	PassPercentageWithKnownFailures             float64        `json:"passPercentageWithKnownFailures"`
 	PassPercentageWithoutInfrastructureFailures float64        `json:"passPercentageWithoutInfrastructureFailures"`
 	TestGridURL                                 string         `json:"testGridURL"`
-	AllRuns                                     []JobRunResult `json:"allRuns" gorm:"-"`
+	AllRuns                                     []JobRunResult `json:"allRuns" gorm:"foreignKey:Job"`
 
 	BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release

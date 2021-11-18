@@ -36,11 +36,9 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	/*
-		if err := db.AutoMigrate(&v1.JobRunResult{}); err != nil {
-			return nil, err
-		}
-	*/
+	if err := db.AutoMigrate(&v1.JobRunResult{}); err != nil {
+		return nil, err
+	}
 
 	if err := db.AutoMigrate(&v1.JobResult{}); err != nil {
 		return nil, err

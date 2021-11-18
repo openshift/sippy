@@ -38,10 +38,14 @@ func PrepareTestReport(
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
 
 	// Load all job results into database:
-	err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(allJobResults).Error
-	if err != nil {
-		// TODO: return err?
-		klog.Fatalf("error loading database: %v", err)
+	klog.Info("loading all job results into db")
+	for i := range allJobResults {
+		// Can't bulk load them all as we hit a postgres limit for the transaction.
+		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&allJobResults[i]).Error
+		if err != nil {
+			// TODO: return err?
+			klog.Fatalf("error loading database job result %s: %v", allJobResults[i].Name, err)
+		}
 	}
 	klog.Fatal("exiting prematurely")
 
