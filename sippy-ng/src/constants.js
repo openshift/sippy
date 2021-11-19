@@ -69,6 +69,12 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'operator.Run ',
   },
+  WITHOUT_OVERALL_JOB_RESULT: {
+    columnField: 'name',
+    not: true,
+    operatorValue: 'contains',
+    value: '.Overall',
+  },
   UPGRADE: {
     columnField: 'tags',
     operatorValue: 'contains',

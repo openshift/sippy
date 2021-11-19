@@ -372,7 +372,7 @@ function TestTable(props) {
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
         pageSize={props.pageSize}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rowsPerPageOptions={props.rowsPerPageOptions}
         checkboxSelection={!props.hideControls}
         filterMode="server"
         sortingMode="server"
@@ -422,6 +422,7 @@ TestTable.defaultProps = {
   hideControls: false,
   pageSize: 25,
   period: 'default',
+  rowsPerPageOptions: [5, 10, 25, 50, 100],
   briefTable: false,
   filterModel: {
     items: [],
@@ -441,6 +442,7 @@ TestTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
+  rowsPerPageOptions: PropTypes.array,
 }
 
 export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)

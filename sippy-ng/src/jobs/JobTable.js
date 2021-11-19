@@ -386,7 +386,7 @@ function JobTable(props) {
         disableColumnMenu={true}
         checkboxSelection={!props.briefTable}
         onSelectionModelChange={(rows) => setSelectedJobs(rows)}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rowsPerPageOptions={props.rowsPerPageOptions}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.current_pass_percentage)
@@ -422,6 +422,7 @@ JobTable.defaultProps = {
   pageSize: 25,
   period: 'default',
   briefTable: false,
+  rowsPerPageOptions: [5, 10, 25, 50, 100],
   filterModel: {
     items: [],
   },
@@ -442,6 +443,7 @@ JobTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
+  rowsPerPageOptions: PropTypes.array,
 }
 
 export default withStyles(generateClasses(JOB_THRESHOLDS))(JobTable)
