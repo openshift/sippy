@@ -38,8 +38,8 @@ func PrepareTestReport(
 	allJobResults := convertRawJobResultsToProcessedJobResults(
 		reportName, rawData, bugCache, bugzillaRelease, variantManager)
 
-	// Load all job results into database if we've been given a database connection.
-	// Soon this will be manadatory and assumed.
+	// Load all job and test results into database if we've been given a database connection.
+	// Soon the db connection will be mandatory.
 	if dbc != nil {
 		klog.Info("loading job results into db")
 		for i := range allJobResults {
@@ -47,9 +47,10 @@ func PrepareTestReport(
 			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&allJobResults[i]).Error
 			if err != nil {
 				// TODO: return err?
-				klog.Fatalf("error loading database job result %s: %v", allJobResults[i].Name, err)
+				klog.Fatalf("error loading job result %s into db: %v", allJobResults[i].Name, err)
 			}
 		}
+		klog.Info("done loading job results")
 	}
 
 	stats := calculateJobResultStatistics(allJobResults)

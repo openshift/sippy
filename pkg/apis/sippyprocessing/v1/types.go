@@ -151,8 +151,13 @@ type FailingTestJobResult struct {
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
 // always have complete data, not partial data.
 type TestResult struct {
-	gorm.Model
-	Name           string  `json:"name"`
+	ID        uint
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	// Two primary keys = composite primary key.
+	Name           string  `json:"name" gorm:"primaryKey; not null"`
+	Job            string  `json:"job" gorm:"primaryKey; not null"` // Not used in all cases, but important for the main mapping in the db.
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
 	Flakes         int     `json:"flakes"`
@@ -202,8 +207,8 @@ type JobResult struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Release                                     string         `json:"release" gorm:"varchar(10)"`
 	Name                                        string         `json:"name" gorm:"primaryKey"`
+	Release                                     string         `json:"release" gorm:"varchar(10)"`
 	Variants                                    pq.StringArray `json:"variants" gorm:"type:text[]"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`
@@ -221,7 +226,7 @@ type JobResult struct {
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
 	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
-	TestResults []TestResult `json:"results" gorm:"-"`
+	TestResults []TestResult `json:"results" gorm:"foreignKey:Job;References:Name"`
 }
 
 type SortedBugzillaComponentResult struct {
