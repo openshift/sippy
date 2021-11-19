@@ -28,7 +28,7 @@ exports[`app should render correctly 1`] = `
         <h6 class="MuiTypography-root makeStyles-title-2 MuiTypography-h6">
           Sippy
         </h6>
-        Last updated 189 hours ago
+        Last updated 8 days ago
       </div>
     </div>
   </header>

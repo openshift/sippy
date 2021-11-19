@@ -1,9 +1,9 @@
 import './App.css'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
-import { filterFor } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { QueryParamProvider } from 'use-query-params'
+import { relativeTime } from './helpers'
 import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import Alert from '@material-ui/lab/Alert'
@@ -15,7 +15,6 @@ import Drawer from '@material-ui/core/Drawer'
 import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
 import Jobs from './jobs/Jobs'
-import LastUpdated from './components/LastUpdated'
 import MenuIcon from '@material-ui/icons/Menu'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
@@ -205,7 +204,7 @@ export default function App(props) {
                   <Typography variant="h6" className={classes.title}>
                     Sippy
                   </Typography>
-                  <LastUpdated lastUpdated={lastUpdated} />
+                  Last updated {relativeTime(lastUpdated)}
                 </Grid>
               </Toolbar>
             </AppBar>

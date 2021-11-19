@@ -18,7 +18,8 @@ export function relativeTime(date) {
   if (Math.abs(millisAgo) < hour) {
     return Math.round(Math.abs(millisAgo) / minute) + ' minutes ago'
   } else if (Math.abs(millisAgo) < day) {
-    return Math.round(Math.abs(millisAgo) / hour) + ' hours ago'
+    let hours = Math.round(Math.abs(millisAgo) / hour)
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`
   } else if (Math.abs(millisAgo) < 1.5 * day) {
     return 'about a day ago'
   } else {
