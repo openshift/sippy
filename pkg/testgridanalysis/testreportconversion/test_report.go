@@ -35,7 +35,8 @@ func PrepareTestReport(
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
+	allJobResults := convertRawJobResultsToProcessedJobResults(
+		reportName, rawData, bugCache, bugzillaRelease, variantManager)
 
 	// Load all job results into database if we've been given a database connection.
 	// Soon this will be manadatory and assumed.

@@ -202,6 +202,7 @@ type JobResult struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
+	Release                                     string         `json:"release" gorm:"varchar(10)"`
 	Name                                        string         `json:"name" gorm:"primaryKey"`
 	Variants                                    pq.StringArray `json:"variants" gorm:"type:text[]"`
 	Failures                                    int            `json:"failures"`

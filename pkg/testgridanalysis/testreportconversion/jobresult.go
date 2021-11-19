@@ -127,6 +127,7 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 
 // convertRawJobResultsToProcessedJobResults performs no filtering
 func convertRawJobResultsToProcessedJobResults(
+	reportName string, // techincally the release, i.e. "4.10"
 	rawData testgridanalysisapi.RawData,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
@@ -136,7 +137,7 @@ func convertRawJobResultsToProcessedJobResults(
 	rawJobResults := rawData.JobResults
 
 	for _, rawJobResult := range rawJobResults {
-		job := convertRawJobResultToProcessedJobResult(rawJobResult, bugCache, bugzillaRelease, manager)
+		job := convertRawJobResultToProcessedJobResult(reportName, rawJobResult, bugCache, bugzillaRelease, manager)
 		jobs = append(jobs, job)
 	}
 
@@ -146,6 +147,7 @@ func convertRawJobResultsToProcessedJobResults(
 }
 
 func convertRawJobResultToProcessedJobResult(
+	reportName string,
 	rawJobResult testgridanalysisapi.RawJobResult,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
 	bugzillaRelease string, // required to limit bugs to those that apply to the release in question,
@@ -153,6 +155,7 @@ func convertRawJobResultToProcessedJobResult(
 ) sippyprocessingv1.JobResult {
 	job := sippyprocessingv1.JobResult{
 		Name:              rawJobResult.JobName,
+		Release:           reportName,
 		Variants:          manager.IdentifyVariants(rawJobResult.JobName),
 		TestGridURL:       rawJobResult.TestGridJobURL,
 		TestResults:       convertRawTestResultsToProcessedTestResults(rawJobResult.JobName, rawJobResult.TestResults, bugCache, bugzillaRelease),
