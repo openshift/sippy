@@ -570,6 +570,10 @@ func (s *Server) Serve() {
 
 	// Re-direct "/" to sippy-ng
 	serveMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/" {
+			http.NotFound(w, req)
+			return
+		}
 		http.Redirect(w, req, "/sippy-ng/", 301)
 	})
 
