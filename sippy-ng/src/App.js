@@ -109,7 +109,7 @@ export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  const [lastUpdated, setLastUpdated] = React.useState(Date.now())
+  const [lastUpdated, setLastUpdated] = React.useState(null)
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])
@@ -139,7 +139,6 @@ export default function App(props) {
       })
       .catch((error) => {
         setLoaded(true)
-        setLastUpdated(Date.now())
         setFetchError('could not retrieve data:' + error)
       })
   }
@@ -204,7 +203,8 @@ export default function App(props) {
                   <Typography variant="h6" className={classes.title}>
                     Sippy
                   </Typography>
-                  Last updated {relativeTime(lastUpdated)}
+                  Last updated{' '}
+                  {lastUpdated !== null ? relativeTime(lastUpdated) : 'unknown'}
                 </Grid>
               </Toolbar>
             </AppBar>
