@@ -449,7 +449,7 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 	}
 	testReports := map[string]sippyserver.StandardReport{}
 	for _, dashboard := range dashboardCoordinates {
-		testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dashboard,
+		testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(nil, dashboard,
 			testgridconversion.NewOpenshiftSyntheticTestManager(),
 			testidentification.NewOpenshiftVariantManager(),
 			buganalysis.NewNoOpBugCache())

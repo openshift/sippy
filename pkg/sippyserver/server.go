@@ -125,8 +125,10 @@ func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
 
-	s.currTestReports = s.testReportGeneratorConfig.TestGridLoadingConfig.ReportLoader(
-		s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData)
+	for _, dashboard := range s.dashboardCoordinates {
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
+			s.db, dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+	}
 
 	// TODO: skip if not enabled or data does not exist.
 	// Load the scale job reports from disk:
@@ -614,30 +616,4 @@ func (s *Server) Serve() {
 
 func (s *Server) GetHTTPServer() *http.Server {
 	return s.httpServer
-}
-
-func LoadReportsFromDisk(localData string) map[string]StandardReport {
-	// Load reports from disk:
-	testReportsFilePath := filepath.Join(localData,
-		"test-reports", "current-reports.json")
-	if _, err := os.Stat(testReportsFilePath); err != nil {
-		klog.Errorf("%s does not exist, no data to display until sippy --fetch-data is run", testReportsFilePath)
-		return map[string]StandardReport{}
-	}
-	klog.V(4).Infof("loading test reports: %s", testReportsFilePath)
-	testReportsJSONFile, err := os.Open(testReportsFilePath)
-	if err != nil {
-		klog.Exitf("error opening %s: %v", testReportsFilePath, err)
-	}
-	defer testReportsJSONFile.Close()
-	testReportBytes, err := ioutil.ReadAll(testReportsJSONFile)
-	if err != nil {
-		klog.Exitf("error reading %s: %v", testReportsFilePath, err)
-	}
-	testReports := map[string]StandardReport{}
-	err = json.Unmarshal(testReportBytes, &testReports)
-	if err != nil {
-		klog.Exitf("error parsing json from %s: %v", testReportsFilePath, err)
-	}
-	return testReports
 }

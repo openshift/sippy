@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -17,7 +15,6 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
-	"gorm.io/gorm/clause"
 	"k8s.io/klog"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -201,6 +198,15 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --local-data with --gen-reports")
 	}
 
+	if o.GenReports && o.DSN == "" {
+		// TODO: expand to required for server as well once we're ready
+		return fmt.Errorf("must specify --database-dsn with --gen-reports")
+	}
+
+	if !o.Server && !o.GenReports && o.FetchData == "" && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with for cli reports")
+	}
+
 	return nil
 }
 
@@ -255,55 +261,27 @@ func (o *Options) Run() error {
 	}
 
 	if o.GenReports {
-		if o.DSN == "" {
-			klog.Fatal("--database-dsn is required")
-		}
 		dbc, err := db.New(o.DSN)
 		if err != nil {
 			return err
 		}
 
 		start := time.Now()
-		// Generate reports and store in db.
 		trgc := sippyserver.TestReportGeneratorConfig{
 			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
 			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
 			DisplayDataConfig:           o.toDisplayDataConfig(),
 		}
 
+		// Generate reports and store in the db:
 		testReports := map[string]sippyserver.StandardReport{}
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dbc, dashboard,
 				o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 		}
 
-		localData := trgc.TestGridLoadingConfig.LocalData
-		testReportDir := path.Join(localData, "test-reports")
-		err = os.MkdirAll(testReportDir, os.ModePerm)
-		klog.Infof("creating: %s", testReportDir)
-		if err != nil {
-			klog.Errorf("error creating directory: " + err.Error())
-		}
-		klog.Infof("marshalling test report json")
-		jsonBytes, err := json.MarshalIndent(testReports, "", "    ")
-		if err != nil {
-			klog.Errorf("error marshalling data: " + err.Error())
-		}
-		reportsFile := filepath.Join(testReportDir, "current-reports.json")
-		klog.Infof("writing test reports json to: %s", reportsFile)
-		err = ioutil.WriteFile(reportsFile, jsonBytes, 0600)
-		if err != nil {
-			klog.Errorf("error writing data: " + err.Error())
-		}
 		elapsed := time.Since(start)
 		klog.Infof("Reports generated in: %s", elapsed)
-
-		// Store report data in postgres:
-
-		//rows := make([]v1.JobResult, 0)
-		//rows = append(rows, testReports["4.10"].CurrentTwoDayReport.ByJob[0])
-		klog.Infof("populating database")
-		err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(testReports["4.10"].CurrentTwoDayReport.ByJob).Error
 
 		return err
 	}
@@ -375,9 +353,6 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	if o.DSN == "" {
-		klog.Fatal("--database-dsn is required")
-	}
 	dbc, err := db.New(o.DSN)
 	if err != nil {
 		return err
@@ -444,10 +419,10 @@ func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
 	}
 
 	return sippyserver.TestGridLoadingConfig{
-		LocalData:    o.LocalData,
-		JobFilter:    jobFilter,
-		ReportLoader: sippyserver.LoadReportsFromDisk,
-		Loader:       testgridhelpers.LoadTestGridDataFromDisk,
+		LocalData: o.LocalData,
+		JobFilter: jobFilter,
+		//ReportLoader: sippyserver.LoadReportsFromDisk,
+		Loader: testgridhelpers.LoadTestGridDataFromDisk,
 	}
 }
 

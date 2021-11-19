@@ -33,6 +33,7 @@ type TestGridLoadingConfig struct {
 	// The function to load TestGrid results from disk, used for testing.
 	Loader TestGridLoader
 	// The function to load report data from disk, used for testing.
+	// TODO: may not be used in final product.
 	ReportLoader ReportLoader
 }
 

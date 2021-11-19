@@ -37,17 +37,19 @@ func PrepareTestReport(
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
 
-	// Load all job results into database:
-	klog.Info("loading all job results into db")
-	for i := range allJobResults {
-		// Can't bulk load them all as we hit a postgres limit for the transaction.
-		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&allJobResults[i]).Error
-		if err != nil {
-			// TODO: return err?
-			klog.Fatalf("error loading database job result %s: %v", allJobResults[i].Name, err)
+	// Load all job results into database if we've been given a database connection.
+	// Soon this will be manadatory and assumed.
+	if dbc != nil {
+		klog.Info("loading job results into db")
+		for i := range allJobResults {
+			// Can't bulk load them all as we hit a postgres limit for the transaction.
+			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&allJobResults[i]).Error
+			if err != nil {
+				// TODO: return err?
+				klog.Fatalf("error loading database job result %s: %v", allJobResults[i].Name, err)
+			}
 		}
 	}
-	klog.Fatal("exiting prematurely")
 
 	stats := calculateJobResultStatistics(allJobResults)
 
