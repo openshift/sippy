@@ -60,6 +60,31 @@ exports[`JobTable should render correctly 1`] = `
               <span class=\\"MuiTouchRipple-root\\">
               </span>
             </button>
+            <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary\\"
+                    tabindex=\\"0\\"
+                    type=\\"button\\"
+                    aria-controls=\\"period-menu\\"
+                    aria-haspopup=\\"true\\"
+                    title=\\"The period to report on. When selecting two days, the
+    previous two days are compared with the previous 7 days. A default report typically
+    compares the previous 7 days to the prior 7 day period.\\"
+            >
+              <span class=\\"MuiButton-label\\">
+                <span class=\\"MuiButton-startIcon MuiButton-iconSizeMedium\\">
+                  <svg class=\\"MuiSvgIcon-root\\"
+                       focusable=\\"false\\"
+                       viewbox=\\"0 0 24 24\\"
+                       aria-hidden=\\"true\\"
+                  >
+                    <path d=\\"M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5zm18-4H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 16H7V3h14v14zm-8-2l4-8V5h-6v2h4l-4 8h2z\\">
+                    </path>
+                  </svg>
+                </span>
+                Period
+              </span>
+              <span class=\\"MuiTouchRipple-root\\">
+              </span>
+            </button>
             <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-textSizeSmall MuiButton-sizeSmall\\"
                     tabindex=\\"0\\"
                     type=\\"button\\"
@@ -368,7 +393,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"0\\"
                          data-colindex=\\"1\\"
@@ -380,11 +405,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
                         >
-                          release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -461,7 +486,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"1\\"
                          data-colindex=\\"1\\"
@@ -473,11 +498,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
                         </a>
                       </div>
                     </div>
@@ -498,7 +523,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (6 runs)
+                          (3 runs)
                         </small>
                       </div>
                     </div>
@@ -554,7 +579,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                         data-value=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"2\\"
                          data-colindex=\\"1\\"
@@ -566,11 +591,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                        <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
+                          release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
                         </a>
                       </div>
                     </div>
@@ -591,7 +616,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (3 runs)
+                          (6 runs)
                         </small>
                       </div>
                     </div>
@@ -647,7 +672,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"3\\"
                          data-colindex=\\"1\\"
@@ -659,11 +684,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade
                         </a>
                       </div>
                     </div>
@@ -684,7 +709,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (6 runs)
+                          (3 runs)
                         </small>
                       </div>
                     </div>
@@ -740,7 +765,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"4\\"
                          data-colindex=\\"1\\"
@@ -752,11 +777,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -777,7 +802,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (3 runs)
+                          (6 runs)
                         </small>
                       </div>
                     </div>
@@ -833,7 +858,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"5\\"
                          data-colindex=\\"1\\"
@@ -845,11 +870,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
                         </a>
                       </div>
                     </div>
@@ -926,7 +951,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"6\\"
                          data-colindex=\\"1\\"
@@ -938,11 +963,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade
                         </a>
                       </div>
                     </div>
@@ -1019,7 +1044,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                         data-value=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"7\\"
                          data-colindex=\\"1\\"
@@ -1031,11 +1056,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                        <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
+                          release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8
                         </a>
                       </div>
                     </div>
@@ -1112,7 +1137,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"8\\"
                          data-colindex=\\"1\\"
@@ -1124,11 +1149,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
                         </a>
                       </div>
                     </div>
@@ -1149,7 +1174,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (40 runs)
+                          (3 runs)
                         </small>
                       </div>
                     </div>
@@ -1205,7 +1230,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
+                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"9\\"
                          data-colindex=\\"1\\"
@@ -1217,11 +1242,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
+                        <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
+                          release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
                         </a>
                       </div>
                     </div>
@@ -1242,7 +1267,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (3 runs)
+                          (13 runs)
                         </small>
                       </div>
                     </div>
@@ -1298,7 +1323,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                         data-value=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"10\\"
                          data-colindex=\\"1\\"
@@ -1310,11 +1335,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                        <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
                         >
-                          release-openshift-origin-installer-e2e-aws-disruptive-4.8
+                          release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
                         </a>
                       </div>
                     </div>
@@ -1391,7 +1416,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                         data-value=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"11\\"
                          data-colindex=\\"1\\"
@@ -1403,11 +1428,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                        <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
+                          release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
                         </a>
                       </div>
                     </div>
@@ -1428,7 +1453,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (3 runs)
+                          (6 runs)
                         </small>
                       </div>
                     </div>
@@ -1484,7 +1509,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"12\\"
                          data-colindex=\\"1\\"
@@ -1496,11 +1521,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
                         </a>
                       </div>
                     </div>
@@ -1521,7 +1546,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (6 runs)
+                          (3 runs)
                         </small>
                       </div>
                     </div>
@@ -1577,7 +1602,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
+                         data-value=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"13\\"
                          data-colindex=\\"1\\"
@@ -1589,11 +1614,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
+                        <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8
+                          release-openshift-origin-installer-e2e-aws-disruptive-4.8
                         </a>
                       </div>
                     </div>
@@ -1670,7 +1695,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"14\\"
                          data-colindex=\\"1\\"
@@ -1682,11 +1707,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
                         </a>
                       </div>
                     </div>
@@ -1763,7 +1788,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"15\\"
                          data-colindex=\\"1\\"
@@ -1775,11 +1800,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
                         >
-                          release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
                         </a>
                       </div>
                     </div>
@@ -1800,7 +1825,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (13 runs)
+                          (6 runs)
                         </small>
                       </div>
                     </div>
@@ -1856,7 +1881,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                         data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"16\\"
                          data-colindex=\\"1\\"
@@ -1868,11 +1893,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                        <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
+                          periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance
                         </a>
                       </div>
                     </div>
@@ -1893,7 +1918,7 @@ exports[`JobTable should render correctly 1`] = `
                         0.0%
                         <br>
                         <small>
-                          (6 runs)
+                          (40 runs)
                         </small>
                       </div>
                     </div>
@@ -1949,7 +1974,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"17\\"
                          data-colindex=\\"1\\"
@@ -1961,11 +1986,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
                         </a>
                       </div>
                     </div>
@@ -2042,7 +2067,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"18\\"
                          data-colindex=\\"1\\"
@@ -2054,11 +2079,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
                         >
-                          release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
                         </a>
                       </div>
                     </div>
@@ -2135,7 +2160,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"19\\"
                          data-colindex=\\"1\\"
@@ -2147,11 +2172,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
                         </a>
                       </div>
                     </div>
@@ -2600,7 +2625,7 @@ exports[`JobTable should render correctly 1`] = `
                     </div>
                     <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
                          role=\\"cell\\"
-                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-upgrade\\"
+                         data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
                          data-field=\\"name\\"
                          data-rowindex=\\"24\\"
                          data-colindex=\\"1\\"
@@ -2612,11 +2637,11 @@ exports[`JobTable should render correctly 1`] = `
                          tabindex=\\"-1\\"
                     >
                       <div class=\\"job-name\\">
-                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-upgrade\\"
+                        <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
                            class
-                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-upgrade%22%7D%5D%7D\\"
+                           href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial%22%7D%5D%7D\\"
                         >
-                          periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-upgrade
+                          periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial
                         </a>
                       </div>
                     </div>
@@ -2637,7 +2662,7 @@ exports[`JobTable should render correctly 1`] = `
                         25.0%
                         <br>
                         <small>
-                          (24 runs)
+                          (4 runs)
                         </small>
                       </div>
                     </div>

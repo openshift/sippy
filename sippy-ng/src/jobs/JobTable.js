@@ -420,6 +420,7 @@ function JobTable(props) {
 JobTable.defaultProps = {
   hideControls: false,
   pageSize: 25,
+  period: 'default',
   briefTable: false,
   filterModel: {
     items: [],
