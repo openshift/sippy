@@ -49,7 +49,7 @@ func TestSippyserverSmokeTest(t *testing.T) {
 
 	// These are partial test cases grouped by path and HTTP status.
 	groupedTestCases := byPathAndStatus{
-		"/": byStatus{
+		"/legacy": byStatus{
 			http.StatusOK: testCases{
 				{
 					args: knownReleaseURLArgs,
@@ -171,16 +171,6 @@ func TestSippyserverSmokeTest(t *testing.T) {
 				},
 				{
 					args: unknownReleaseURLArgs,
-				},
-			},
-		},
-		"/jobs": byStatus{
-			http.StatusOK: testCases{
-				{
-					args: emptyURLArgs,
-				},
-				{
-					args: knownReleaseURLArgs,
 				},
 			},
 		},
