@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"k8s.io/klog"
+
 	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -95,6 +97,12 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 }
 
 func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
+	type apiResult struct {
+		models.ReleaseTag
+		LastPhase string `json:"lastPhase"`
+		Count     int    `json:"count"`
+	}
+
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
@@ -117,7 +125,20 @@ func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient
 		return
 	}
 
-	RespondWithJSON(http.StatusOK, w, results)
+	apiResults := make([]apiResult, 0)
+	for _, archStream := range results {
+		phase, count, err := models.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release)
+		if err != nil {
+			klog.V(1).Infof("got error when trying to find last payload status: %s", err.Error())
+		}
+		apiResults = append(apiResults, apiResult{
+			ReleaseTag: archStream,
+			LastPhase:  phase,
+			Count:      count,
+		})
+	}
+
+	RespondWithJSON(http.StatusOK, w, apiResults)
 }
 
 func filterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB) (*gorm.DB, error) {
