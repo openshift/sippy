@@ -83,6 +83,15 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-hypershift",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 
+		// Single-node openshift jobs are currently failing conformance
+		// tests fairly often, and the team is currently working on bringing
+		// the pass percentage up.
+		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-arm64-single-node",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
+		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node-serial",
+
 		// TODO: Figure out where to report problems for these
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-aws-cucushift-ipi",
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-gcp-cucushift-ipi",
