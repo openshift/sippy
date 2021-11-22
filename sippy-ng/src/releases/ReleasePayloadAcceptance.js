@@ -1,5 +1,12 @@
-import { Box, Card, CardContent, Grid, Typography } from '@material-ui/core'
-import { CheckCircle, Error, Help } from '@material-ui/icons'
+import {
+  Box,
+  Card,
+  CardContent,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
+import { CheckCircle, Error, Help, Warning } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { filterFor, relativeTime } from '../helpers'
 import { Link } from 'react-router-dom'
@@ -66,15 +73,25 @@ function ReleasePayloadAcceptance(props) {
     let bgColor = theme.palette.grey.A100
     let icon = <Help />
     let text = 'Unknown'
+    let tooltip = 'No information is available.'
     if (row.releaseTime && row.releaseTime != '') {
+      tooltip = `The last ${row.count} releases were ${row.lastPhase}`
       text = relativeTime(new Date(row.releaseTime))
       const when = new Date().getTime() - new Date(row.releaseTime).getTime()
-      if (when <= 24 * 60 * 60 * 1000) {
+
+      if (row.lastPhase === 'Accepted' && when <= 24 * 60 * 60 * 1000) {
+        // If we had an accepted release in the last 24 hours, we're green
         bgColor = theme.palette.success.light
         icon = <CheckCircle style={{ fill: 'green' }} />
-      } else {
+      } else if (row.lastPhase === 'Rejected') {
+        // If the last payload was rejected, we are red.
         bgColor = theme.palette.error.light
         icon = <Error style={{ fill: 'maroon' }} />
+      } else {
+        // Otherwise we are yellow -- e.g., last release payload was accepted
+        // but it's been several days.
+        bgColor = theme.palette.warning.light
+        icon = <Warning style={{ fill: 'goldenrod' }} />
       }
     }
 
@@ -92,27 +109,29 @@ function ReleasePayloadAcceptance(props) {
           JSON.stringify(filter)
         )}`}
       >
-        <Card
-          elevation={5}
-          style={{ backgroundColor: bgColor, margin: 20, width: 200 }}
-        >
-          <CardContent
-            className={`${classes.cardContent}`}
-            style={{ textAlign: 'center' }}
+        <Tooltip title={tooltip}>
+          <Card
+            elevation={5}
+            style={{ backgroundColor: bgColor, margin: 20, width: 200 }}
           >
-            <Typography variant="h6">
-              {row.architecture} {row.stream}
-            </Typography>
-            <Grid
-              container
-              direction="row"
-              alignItems="center"
-              style={{ margin: 20, textAlign: 'center' }}
+            <CardContent
+              className={`${classes.cardContent}`}
+              style={{ textAlign: 'center' }}
             >
-              {icon}&nbsp;{text}
-            </Grid>
-          </CardContent>
-        </Card>
+              <Typography variant="h6">
+                {row.architecture} {row.stream}
+              </Typography>
+              <Grid
+                container
+                direction="row"
+                alignItems="center"
+                style={{ margin: 20, textAlign: 'center' }}
+              >
+                {icon}&nbsp;{text}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Tooltip>
       </Box>
     )
   })
