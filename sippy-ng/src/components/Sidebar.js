@@ -4,6 +4,7 @@ import {
   ExpandMore,
   FileCopyOutlined,
   GitHub,
+  Restore,
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
 import { Link } from 'react-router-dom'
@@ -248,6 +249,12 @@ export default function Sidebar(props) {
             <GitHub />
           </ListItemIcon>
           <ListItemText primary="GitHub Repo" />
+        </ListItem>
+        <ListItem button component="a" href="/legacy" key="Legacy">
+          <ListItemIcon>
+            <Restore />
+          </ListItemIcon>
+          <ListItemText primary="Legacy Interface" />
         </ListItem>
         <Divider />
         <div align="center">

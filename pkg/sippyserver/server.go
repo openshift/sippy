@@ -566,10 +566,19 @@ func (s *Server) Serve() {
 
 		http.StripPrefix("/sippy-ng/", http.FileServer(fs)).ServeHTTP(w, r)
 	})
-
 	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(s.static.HTTPBox())))
 
-	serveMux.HandleFunc("/", s.printHTMLReport)
+	// Re-direct "/" to sippy-ng
+	serveMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/" {
+			http.NotFound(w, req)
+			return
+		}
+		http.Redirect(w, req, "/sippy-ng/", 301)
+	})
+
+	// Preserve old sippy at /legacy for now
+	serveMux.HandleFunc("/legacy", s.printHTMLReport)
 	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
 	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
 

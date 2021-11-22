@@ -28,7 +28,7 @@ exports[`app should render correctly 1`] = `
         <h6 class="MuiTypography-root makeStyles-title-2 MuiTypography-h6">
           Sippy
         </h6>
-        Last updated 189 hours ago
+        Last updated 8 days ago
       </div>
     </div>
   </header>
@@ -207,6 +207,29 @@ exports[`app should render correctly 1`] = `
           <div class="MuiListItemText-root">
             <span class="MuiTypography-root MuiListItemText-primary MuiTypography-body1 MuiTypography-displayBlock">
               GitHub Repo
+            </span>
+          </div>
+          <span class="MuiTouchRipple-root">
+          </span>
+        </a>
+        <a class="MuiButtonBase-root MuiListItem-root MuiListItem-gutters MuiListItem-button"
+           tabindex="0"
+           aria-disabled="false"
+           href="/legacy"
+        >
+          <div class="MuiListItemIcon-root">
+            <svg class="MuiSvgIcon-root"
+                 focusable="false"
+                 viewbox="0 0 24 24"
+                 aria-hidden="true"
+            >
+              <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z">
+              </path>
+            </svg>
+          </div>
+          <div class="MuiListItemText-root">
+            <span class="MuiTypography-root MuiListItemText-primary MuiTypography-body1 MuiTypography-displayBlock">
+              Legacy Interface
             </span>
           </div>
           <span class="MuiTouchRipple-root">
@@ -551,7 +574,7 @@ exports[`app should render correctly 1`] = `
                  style="padding: 20px; height: 100%;"
             >
               <h6 class="MuiTypography-root MuiTypography-h6">
-                <a href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3E%22%2C%22value%22%3A%221628605080000%22%7D%2C%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3C%3D%22%2C%22value%22%3A%221628691480000%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;period=hour}">
+                <a href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3E%22%2C%22value%22%3A%221628605080000%22%7D%2C%7B%22columnField%22%3A%22timestamp%22%2C%22operatorValue%22%3A%22%3C%3D%22%2C%22value%22%3A%221628691480000%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;period=hour}">
                   Last 24 hours
                 </a>
                 <svg class="MuiSvgIcon-root"
@@ -1543,7 +1566,7 @@ exports[`app should render correctly 1`] = `
             >
               <a class="MuiTypography-root MuiTypography-h5"
                  style="text-align: center;"
-                 href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                 href="/jobs/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
               >
                 Most regressed jobs
                 <svg class="MuiSvgIcon-root"
@@ -1755,7 +1778,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="66"
+                                <div data-id="69"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-38-125 MuiDataGrid-row"
@@ -1917,7 +1940,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="76"
+                                <div data-id="78"
                                      data-rowindex="2"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-33-120 MuiDataGrid-row"
@@ -2079,7 +2102,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="37"
+                                <div data-id="38"
                                      data-rowindex="4"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-77-164 MuiDataGrid-row"
@@ -2184,31 +2207,6 @@ exports[`app should render correctly 1`] = `
                           <div class="MuiTablePagination-spacer">
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -2263,7 +2261,7 @@ exports[`app should render correctly 1`] = `
                  style="text-align: center;"
             >
               <a class="MuiTypography-root MuiTypography-h5"
-                 href="/jobs/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                 href="/jobs/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
               >
                 Most regressed jobs (two day)
                 <svg class="MuiSvgIcon-root"
@@ -2475,7 +2473,7 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="77"
+                                <div data-id="100"
                                      data-rowindex="0"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
@@ -2556,7 +2554,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="57"
+                                <div data-id="102"
                                      data-rowindex="1"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-0-87 MuiDataGrid-row"
@@ -2637,7 +2635,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="66"
+                                <div data-id="68"
                                      data-rowindex="2"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
@@ -2718,7 +2716,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="42"
+                                <div data-id="38"
                                      data-rowindex="3"
                                      role="row"
                                      class="Mui-odd JobTable-row-percent-50-137 MuiDataGrid-row"
@@ -2799,7 +2797,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="91"
+                                <div data-id="65"
                                      data-rowindex="4"
                                      role="row"
                                      class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
@@ -2904,31 +2902,6 @@ exports[`app should render correctly 1`] = `
                           <div class="MuiTablePagination-spacer">
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -2984,7 +2957,7 @@ exports[`app should render correctly 1`] = `
             >
               <a class="MuiTypography-root MuiTypography-h5"
                  style="text-align: center;"
-                 href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;sortField=net_improvement&amp;sort=asc"
+                 href="/tests/4.8?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22.Overall%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&amp;sortField=net_improvement&amp;sort=asc"
               >
                 Most regressed tests
                 <svg class="MuiSvgIcon-root"
@@ -3615,31 +3588,6 @@ exports[`app should render correctly 1`] = `
                           <div class="MuiTablePagination-spacer">
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -3695,7 +3643,7 @@ exports[`app should render correctly 1`] = `
             >
               <a class="MuiTypography-root MuiTypography-h5"
                  style="text-align: center;"
-                 href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                 href="/tests/4.8?period=twoDay&amp;sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%221%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22.Overall%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
               >
                 Most regressed tests (two day)
                 <svg class="MuiSvgIcon-root"
@@ -4326,31 +4274,6 @@ exports[`app should render correctly 1`] = `
                           <div class="MuiTablePagination-spacer">
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -4406,7 +4329,7 @@ exports[`app should render correctly 1`] = `
             >
               <a class="MuiTypography-root MuiTypography-h5"
                  style="text-align: center;"
-                 href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22bugs%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                 href="/tests/4.8?sortField=net_improvement&amp;sort=asc&amp;filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%2210%22%7D%2C%7B%22columnField%22%3A%22bugs%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22.Overall%22%7D%2C%7B%22columnField%22%3A%22name%22%2C%22not%22%3Atrue%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22operator.Run%20%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
               >
                 Top failing tests without a bug
                 <svg class="MuiSvgIcon-root"
@@ -5037,31 +4960,6 @@ exports[`app should render correctly 1`] = `
                           <div class="MuiTablePagination-spacer">
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             1-5 of 10
                           </p>
                           <div class="MuiTablePagination-actions">
@@ -5356,31 +5254,6 @@ exports[`app should render correctly 1`] = `
                       <div class="MuiTablePagination-root">
                         <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                           <div class="MuiTablePagination-spacer">
-                          </div>
-                          <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
-                            Rows per page:
-                          </p>
-                          <div class="MuiInputBase-root MuiTablePagination-input makeStyles-input-343 MuiTablePagination-selectRoot">
-                            <div class="MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input"
-                                 tabindex="0"
-                                 role="button"
-                                 aria-haspopup="listbox"
-                            >
-                              5
-                            </div>
-                            <input aria-hidden="true"
-                                   tabindex="-1"
-                                   class="MuiSelect-nativeInput"
-                                   value="5"
-                            >
-                            <svg class="MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon"
-                                 focusable="false"
-                                 viewbox="0 0 24 24"
-                                 aria-hidden="true"
-                            >
-                              <path d="M7 10l5 5 5-5z">
-                              </path>
-                            </svg>
                           </div>
                           <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-342 MuiTypography-body2 MuiTypography-colorInherit">
                             0-0 of 0

@@ -1,9 +1,9 @@
 import './App.css'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
-import { filterFor } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { QueryParamProvider } from 'use-query-params'
+import { relativeTime } from './helpers'
 import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import Alert from '@material-ui/lab/Alert'
@@ -15,7 +15,6 @@ import Drawer from '@material-ui/core/Drawer'
 import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
 import Jobs from './jobs/Jobs'
-import LastUpdated from './components/LastUpdated'
 import MenuIcon from '@material-ui/icons/Menu'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
@@ -110,7 +109,7 @@ export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  const [lastUpdated, setLastUpdated] = React.useState(Date.now())
+  const [lastUpdated, setLastUpdated] = React.useState(null)
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])
@@ -140,7 +139,6 @@ export default function App(props) {
       })
       .catch((error) => {
         setLoaded(true)
-        setLastUpdated(Date.now())
         setFetchError('could not retrieve data:' + error)
       })
   }
@@ -205,7 +203,8 @@ export default function App(props) {
                   <Typography variant="h6" className={classes.title}>
                     Sippy
                   </Typography>
-                  <LastUpdated lastUpdated={lastUpdated} />
+                  Last updated{' '}
+                  {lastUpdated !== null ? relativeTime(lastUpdated) : 'unknown'}
                 </Grid>
               </Toolbar>
             </AppBar>
