@@ -190,7 +190,7 @@ type JobRunResult struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	ProwID          int64            `json:"prowID" gorm:"primaryKey"`
+	ProwID          uint             `json:"prowID" gorm:"primaryKey"`
 	Job             string           `json:"job"`
 	URL             string           `json:"url"`
 	TestFailures    int              `json:"testFailures"`
