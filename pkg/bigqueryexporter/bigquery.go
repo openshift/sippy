@@ -52,7 +52,13 @@ func (client *Client) ExportData(ctx context.Context, dbClient *db.DB) error {
 
 func (client *Client) ExportReleaseTags(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.ReleaseTag, 0)
-	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseTags`) WHERE id > @lastID)")
+
+	// Note: BigQuery does not support autoincrementing primary keys, so we use
+	// ROW_NUMBER() OVER(...) -- this produces stable ID's if we do not
+	// remove older records. Currently, we use BQ as append-only and for the
+	// foreseeable future will probably maintain release information
+	// indefinitely (it's not a lot of data).
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseTags` ORDER BY releaseTag ASC) WHERE id > @lastID")
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "lastID",
@@ -81,7 +87,13 @@ func (client *Client) ExportReleaseTags(ctx context.Context, dbClient *db.DB) er
 
 func (client *Client) ExportPullRequests(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.PullRequest, 0)
-	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleasePullRequests`) WHERE id > @lastID")
+
+	// Note: BigQuery does not support autoincrementing primary keys, so we use
+	// ROW_NUMBER() OVER(...) -- this produces stable ID's if we do not
+	// remove older records. Currently, we use BQ as append-only and for the
+	// foreseeable future will probably maintain release information
+	// indefinitely (it's not a lot of data).
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleasePullRequests` ORDER BY releaseTag ASC) WHERE id > @lastID")
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "lastID",
@@ -109,7 +121,13 @@ func (client *Client) ExportPullRequests(ctx context.Context, dbClient *db.DB) e
 
 func (client *Client) ExportRepositories(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.Repository, 0)
-	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseRepositories`) WHERE id > @lastID")
+
+	// Note: BigQuery does not support autoincrementing primary keys, so we use
+	// ROW_NUMBER() OVER(...) -- this produces stable ID's if we do not
+	// remove older records. Currently, we use BQ as append-only and for the
+	// foreseeable future will probably maintain release information
+	// indefinitely (it's not a lot of data).
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseRepositories` ORDER BY releaseTag ASC) WHERE id > @lastID")
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "lastID",
@@ -138,7 +156,13 @@ func (client *Client) ExportRepositories(ctx context.Context, dbClient *db.DB) e
 
 func (client *Client) ExportJobRuns(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.JobRun, 0)
-	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseJobRuns`) WHERE id > @lastID")
+
+	// Note: BigQuery does not support autoincrementing primary keys, so we use
+	// ROW_NUMBER() OVER(...) -- this produces stable ID's if we do not
+	// remove older records. Currently, we use BQ as append-only and for the
+	// foreseeable future will probably maintain release information
+	// indefinitely (it's not a lot of data).
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseJobRuns` ORDER BY releaseTag ASC) WHERE id > @lastID")
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "lastID",
