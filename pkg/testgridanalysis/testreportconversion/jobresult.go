@@ -125,8 +125,8 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 	return jobStatistics
 }
 
-// convertRawJobResultsToProcessedJobResults performs no filtering
-func convertRawJobResultsToProcessedJobResults(
+// ConvertRawJobResultsToProcessedJobResults performs no filtering
+func ConvertRawJobResultsToProcessedJobResults(
 	reportName string, // technically the release, i.e. "4.10"
 	rawData testgridanalysisapi.RawData,
 	bugCache buganalysis.BugCache, // required to associate tests with bug

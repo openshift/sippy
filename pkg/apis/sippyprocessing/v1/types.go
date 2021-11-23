@@ -190,15 +190,16 @@ type JobRunResult struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	ProwID          uint             `json:"prowID" gorm:"primaryKey"`
-	Job             string           `json:"job"`
-	URL             string           `json:"url"`
-	TestFailures    int              `json:"testFailures"`
-	FailedTestNames pq.StringArray   `json:"failedTestNames" gorm:"type:text[]"`
-	Failed          bool             `json:"failed"`
-	Succeeded       bool             `json:"succeeded"`
-	Timestamp       int              `json:"timestamp"`
-	OverallResult   JobOverallResult `json:"result"`
+	ProwID          uint           `json:"prowID" gorm:"primaryKey"`
+	Job             string         `json:"job"`
+	URL             string         `json:"url"`
+	TestFailures    int            `json:"testFailures"`
+	FailedTestNames pq.StringArray `json:"failedTestNames" gorm:"type:text[]"`
+	Failed          bool           `json:"failed"`
+	Succeeded       bool           `json:"succeeded"`
+	// Timestamp is milliseconds since epoch when this job was run.
+	Timestamp     int              `json:"timestamp"`
+	OverallResult JobOverallResult `json:"result"`
 }
 
 // JobResult is a core sippy model aggregating status, statistics, and variants for a given prow job.

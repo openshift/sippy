@@ -274,10 +274,16 @@ func (o *Options) Run() error {
 		}
 
 		// Generate reports and store in the db:
-		testReports := map[string]sippyserver.StandardReport{}
+		//testReports := map[string]sippyserver.StandardReport{}
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dbc, dashboard,
-				o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
+			trgc.PrepareDatabase(dbc, dashboard,
+				o.getVariantManager(),
+				o.getSyntheticTestManager(), o.getBugCache())
+
+			/*
+				testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dbc, dashboard,
+					o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
+			*/
 		}
 
 		elapsed := time.Since(start)
