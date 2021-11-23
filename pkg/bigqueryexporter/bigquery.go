@@ -52,10 +52,13 @@ func (client *Client) ExportData(ctx context.Context, dbClient *db.DB) error {
 
 func (client *Client) ExportReleaseTags(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.ReleaseTag, 0)
-	query := client.Query(`
-		SELECT
-			ROW_NUMBER() OVER() id, *
-		FROM ` + "`ci_data.ReleaseTags`")
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseTags`) WHERE id > @lastID)")
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "lastID",
+			Value: dbClient.LastID("release_tags"),
+		},
+	}
 	it, err := query.Read(ctx)
 	if err != nil {
 		return err
@@ -73,15 +76,18 @@ func (client *Client) ExportReleaseTags(ctx context.Context, dbClient *db.DB) er
 		rows = append(rows, row)
 	}
 
-	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&rows, dbClient.BatchSize).Error
 }
 
 func (client *Client) ExportPullRequests(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.PullRequest, 0)
-	query := client.Query(`
-		SELECT
-			ROW_NUMBER() OVER() id, *
-		FROM ` + "`ci_data.ReleasePullRequests`")
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleasePullRequests`) WHERE id > @lastID")
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "lastID",
+			Value: dbClient.LastID("pull_requests"),
+		},
+	}
 	it, err := query.Read(ctx)
 	if err != nil {
 		return err
@@ -98,15 +104,18 @@ func (client *Client) ExportPullRequests(ctx context.Context, dbClient *db.DB) e
 		}
 		rows = append(rows, row)
 	}
-	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&rows, dbClient.BatchSize).Error
 }
 
 func (client *Client) ExportRepositories(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.Repository, 0)
-	query := client.Query(`
-		SELECT
-			ROW_NUMBER() OVER() id, *
-		FROM ` + "`ci_data.ReleaseRepositories`")
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseRepositories`) WHERE id > @lastID")
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "lastID",
+			Value: dbClient.LastID("repositories"),
+		},
+	}
 	it, err := query.Read(ctx)
 	if err != nil {
 		return err
@@ -124,15 +133,18 @@ func (client *Client) ExportRepositories(ctx context.Context, dbClient *db.DB) e
 		rows = append(rows, row)
 	}
 
-	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&rows, dbClient.BatchSize).Error
 }
 
 func (client *Client) ExportJobRuns(ctx context.Context, dbClient *db.DB) error {
 	rows := make([]models.JobRun, 0)
-	query := client.Query(`
-		SELECT
-			ROW_NUMBER() OVER() id, *
-		FROM ` + "`ci_data.ReleaseJobRuns`")
+	query := client.Query(`SELECT * FROM (SELECT ROW_NUMBER() OVER() id, * FROM ` + "`ci_data.ReleaseJobRuns`) WHERE id > @lastID")
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "lastID",
+			Value: dbClient.LastID("job_runs"),
+		},
+	}
 	it, err := query.Read(ctx)
 	if err != nil {
 		return err
@@ -150,5 +162,5 @@ func (client *Client) ExportJobRuns(ctx context.Context, dbClient *db.DB) error 
 		rows = append(rows, row)
 	}
 
-	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&rows).Error
+	return dbClient.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&rows, dbClient.BatchSize).Error
 }

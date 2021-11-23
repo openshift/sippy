@@ -53,12 +53,12 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 	RespondWithJSON(http.StatusOK, w, jobRuns)
 }
 
-type apiReleaseTag struct {
-	models.ReleaseTag
-	FailedJobNames pq.StringArray `gorm:"type:text[];column:failedJobNames" json:"failedJobNames,omitempty"`
-}
-
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
+	type apiReleaseTag struct {
+		models.ReleaseTag
+		FailedJobNames pq.StringArray `gorm:"type:text[];column:failedJobNames" json:"failedJobNames,omitempty"`
+	}
+
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
