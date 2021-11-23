@@ -1,6 +1,7 @@
 package testreportconversion
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -56,6 +57,15 @@ func PrepareTestReport(
 			}
 		}
 
+		testCache := map[string]uint{}
+		var tests []models.Test
+		dbc.DB.Find(&tests)
+		for _, idn := range tests {
+			if _, ok := testCache[idn.Name]; !ok {
+				testCache[idn.Name] = idn.ID
+			}
+		}
+
 		/*
 			prowJobRunCache := map[string]uint{}
 			var idNames []models.IDName
@@ -102,6 +112,25 @@ func PrepareTestReport(
 					Timestamp:     time.Unix(int64(jobRun.Timestamp), 0),
 					OverallResult: jobRun.OverallResult,
 				}
+
+				failedTests := make([]models.Test, len(jobRun.FailedTestNames))
+				for i, ftn := range jobRun.FailedTestNames {
+					ft := models.Test{}
+					r := dbc.DB.Where("name = ?", ftn).First(&ft)
+					if errors.Is(r.Error, gorm.ErrRecordNotFound) {
+						ft = models.Test{
+							Name: ftn,
+						}
+						err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
+						if err != nil {
+							// TODO: return err?
+							klog.Fatalf("error loading test into db: %v", ft.Name, err)
+						}
+					}
+					failedTests[i] = ft
+				}
+				pjr.FailedTests = failedTests
+
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
 				if err != nil {
 					// TODO: return err?

@@ -41,11 +41,17 @@ type ProwJobRun struct {
 	ProwJob   ProwJob
 	ProwJobID uint
 
-	URL          string
-	TestFailures int
-	//FailedTestNames pq.StringArray   `gorm:"type:text[]"`
+	URL           string
+	TestFailures  int
+	FailedTests   []Test `gorm:"many2many:prow_job_run_failed_tests;"`
 	Failed        bool
 	Succeeded     bool
 	Timestamp     time.Time
 	OverallResult v1.JobOverallResult
+}
+
+type Test struct {
+	gorm.Model
+
+	Name string `gorm:"unique"`
 }

@@ -43,6 +43,10 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&models.Test{}); err != nil {
+		return nil, err
+	}
+
 	return &DB{
 		DB: db,
 	}, nil
