@@ -26,8 +26,9 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
-		StartDay:             a.RawJobResultsAnalysisConfig.StartDay,
-		NumDays:              a.RawJobResultsAnalysisConfig.NumDays,
+		// Load the last 30 days of data:
+		StartDay: 30,
+		NumDays:  30,
 	}
 	rawJobResults, _ := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
 
@@ -85,9 +86,6 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				if err != nil {
 					// TODO: return err?
 					klog.Fatalf("error loading prow job into db: %v", allJobResults[i].Name, err)
-				}
-				if dbProwJob.ID == 0 {
-					klog.Fatalf("you screwed up")
 				}
 				prowJobCache[jr.Name] = dbProwJob.ID
 			}

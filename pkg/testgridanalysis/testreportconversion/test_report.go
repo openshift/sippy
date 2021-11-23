@@ -14,7 +14,7 @@ import (
 )
 
 func PrepareTestReport(
-	dbc *db.DB,
+	dbc *db.DB, // TODO: Remove?
 	reportName string,
 	reportType sippyprocessingv1.ReportType,
 	rawData testgridanalysisapi.RawData,
