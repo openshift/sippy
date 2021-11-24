@@ -529,7 +529,7 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport, s.variantManager)
+		api.PrintJobsReport(w, req, s.db, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport, s.variantManager)
 	}
 }
 

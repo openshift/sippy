@@ -13,6 +13,7 @@ import (
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -50,6 +51,7 @@ type Options struct {
 	Server                  bool
 	SkipBugLookup           bool
 	DSN                     string
+	DevanTempDebug          bool
 }
 
 func main() {
@@ -102,6 +104,7 @@ func main() {
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
+	flags.BoolVar(&opt.DevanTempDebug, "devan-temp-debug", opt.DevanTempDebug, "Devan's temporary debugging shortcut that should not be committed")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
 	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
@@ -211,6 +214,17 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error {
+	// TODO: remove all this
+	if o.DevanTempDebug {
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+
+		api.BuildJobResults(dbc)
+		return nil
+	}
+
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
