@@ -162,7 +162,8 @@ func filterFailureGroups(
 				continue
 			}
 
-			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR))
+			// TODO: what test result to use here? Based on the caller, it looks like it doesn't matter if we skip the param here:
+			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR, []sippyprocessingv1.TestResult{}))
 		}
 	}
 

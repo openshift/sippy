@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/montanaflynn/stats"
+	"k8s.io/klog"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -164,14 +165,15 @@ func convertRawJobResultToProcessedJobResult(
 	}
 
 	for _, rawJRR := range rawJobResult.JobRunResults {
-		job.AllRuns = append(job.AllRuns, convertRawToJobRunResult(rawJRR))
+		jrr := convertRawToJobRunResult(rawJRR, job.TestResults)
+		job.AllRuns = append(job.AllRuns, jrr)
 
 		if rawJRR.Failed {
 			job.Failures++
 		} else if rawJRR.Succeeded {
 			job.Successes++
 		}
-		if rawJRR.Failed && areAllFailuresKnown(rawJRR, job.TestResults) {
+		if jrr.KnownFailure {
 			job.KnownFailures++
 		}
 		// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
@@ -179,10 +181,9 @@ func convertRawJobResultToProcessedJobResult(
 		// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
 		//           failed due to infra issues or not.  probably not infra.
 		// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
-		if rawJRR.SetupStatus != testgridanalysisapi.Success && rawJRR.SetupStatus != testgridanalysisapi.Unknown {
+		if jrr.InfrastructureFailure {
 			job.InfrastructureFailures++
 		}
-
 	}
 
 	// Ensure jobs are ordered by timestamp
@@ -198,26 +199,38 @@ func convertRawJobResultToProcessedJobResult(
 	// we should make it clear this is an invalid value.
 	// TODO wire a warning. This is strictly better than nothing at the moment though.
 	if job.InfrastructureFailures > job.Failures {
+		klog.V(1).Infof("WARNING: detected more infra failures than failures which should not be possible, for job: %s", job.Name)
 		job.PassPercentageWithoutInfrastructureFailures = -1
 	}
 
 	return job
 }
 
-func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobRunResult {
+func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult, testResults []sippyprocessingv1.TestResult) sippyprocessingv1.JobRunResult {
 	// Add a ProwID we can use as a key in our db, by extracting from the end of the URL:
 	tokens := strings.Split(jrr.JobRunURL, "/")
 	prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
+	knownFailure := jrr.Failed && areAllFailuresKnown(jrr, testResults)
+
+	// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
+	// failure - we saw the test result, it failed
+	// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
+	//           failed due to infra issues or not.  probably not infra.
+	// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
+	infraFailure := jrr.SetupStatus != testgridanalysisapi.Success && jrr.SetupStatus != testgridanalysisapi.Unknown
+
 	return sippyprocessingv1.JobRunResult{
-		ProwID:          uint(prowID),
-		Job:             jrr.Job,
-		URL:             jrr.JobRunURL,
-		TestFailures:    jrr.TestFailures,
-		FailedTestNames: jrr.FailedTestNames,
-		Failed:          jrr.Failed,
-		Succeeded:       jrr.Succeeded,
-		Timestamp:       jrr.Timestamp,
-		OverallResult:   jrr.OverallResult,
+		ProwID:                uint(prowID),
+		Job:                   jrr.Job,
+		URL:                   jrr.JobRunURL,
+		TestFailures:          jrr.TestFailures,
+		FailedTestNames:       jrr.FailedTestNames,
+		Failed:                jrr.Failed,
+		KnownFailure:          knownFailure,
+		InfrastructureFailure: infraFailure,
+		Succeeded:             jrr.Succeeded,
+		Timestamp:             jrr.Timestamp,
+		OverallResult:         jrr.OverallResult,
 	}
 }
 

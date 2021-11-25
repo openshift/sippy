@@ -41,10 +41,14 @@ type ProwJobRun struct {
 	ProwJob   ProwJob
 	ProwJobID uint
 
-	URL           string
-	TestFailures  int
-	FailedTests   []Test `gorm:"many2many:prow_job_run_failed_tests;"`
-	Failed        bool
+	URL          string
+	TestFailures int
+	FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
+	Failed       bool
+	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
+	InfrastructureFailure bool
+	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
+	KnownFailure  bool
 	Succeeded     bool
 	Timestamp     time.Time
 	OverallResult v1.JobOverallResult

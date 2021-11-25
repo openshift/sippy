@@ -96,13 +96,15 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 					Model: gorm.Model{
 						ID: jobRun.ProwID,
 					},
-					ProwJobID:     prowJobCache[jr.Name],
-					URL:           jobRun.URL,
-					TestFailures:  jobRun.TestFailures,
-					Failed:        jobRun.Failed,
-					Succeeded:     jobRun.Succeeded,
-					Timestamp:     time.Unix(int64(jobRun.Timestamp)/1000, 0), // Timestamp is in millis since epoch
-					OverallResult: jobRun.OverallResult,
+					ProwJobID:             prowJobCache[jr.Name],
+					URL:                   jobRun.URL,
+					TestFailures:          jobRun.TestFailures,
+					Failed:                jobRun.Failed,
+					InfrastructureFailure: jobRun.InfrastructureFailure,
+					KnownFailure:          jobRun.KnownFailure,
+					Succeeded:             jobRun.Succeeded,
+					Timestamp:             time.Unix(int64(jobRun.Timestamp)/1000, 0), // Timestamp is in millis since epoch
+					OverallResult:         jobRun.OverallResult,
 				}
 
 				failedTests := make([]models.Test, len(jobRun.FailedTestNames))
@@ -122,6 +124,9 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 					failedTests[i] = ft
 				}
 				pjr.FailedTests = failedTests
+
+				// TODO: still missing some things like infra failures from jobresult.go
+				// convertRawJobResultToProcessedJobResult
 
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
 				if err != nil {

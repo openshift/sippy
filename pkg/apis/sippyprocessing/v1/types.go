@@ -196,7 +196,11 @@ type JobRunResult struct {
 	TestFailures    int            `json:"testFailures"`
 	FailedTestNames pq.StringArray `json:"failedTestNames" gorm:"type:text[]"`
 	Failed          bool           `json:"failed"`
-	Succeeded       bool           `json:"succeeded"`
+	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
+	InfrastructureFailure bool `json:"infrastructureFailure"`
+	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
+	KnownFailure bool `json:"knownFailure"`
+	Succeeded    bool `json:"succeeded"`
 	// Timestamp is milliseconds since epoch when this job was run.
 	Timestamp     int              `json:"timestamp"`
 	OverallResult JobOverallResult `json:"result"`
