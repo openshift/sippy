@@ -187,7 +187,7 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 	klog.Infof("found %d unique jobs in current period", len(currentJobPassFails))
 
 	var prevJobPassFails []jobPassFailCounts
-	r = dbc.DB.Raw(jobPassesAndFailsQuery, startDate, boundaryDate, startDate, boundaryDate, startDate, boundaryDate).Scan(&prevJobPassFails)
+	r = dbc.DB.Raw(jobPassesAndFailsQuery, startDate, now, startDate, now, startDate, now).Scan(&prevJobPassFails)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return jobReports, r.Error
@@ -195,7 +195,6 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 	klog.Infof("found %d unique jobs in prior period", len(prevJobPassFails))
 
 	for _, jr := range currentJobPassFails {
-		klog.Infof("curr job: %v", jr)
 
 		runs := jr.Passes + jr.Fails
 		var passPercentage float64
@@ -217,7 +216,6 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 
 		if prevJobIdx >= 0 {
 			prevJob := prevJobPassFails[prevJobIdx]
-			klog.Infof("prev job: %v", prevJob)
 			prevRuns := prevJob.Passes + prevJob.Fails
 			var prevPassPercentage float64
 			if prevRuns > 0 {
