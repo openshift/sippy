@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"k8s.io/klog"
@@ -169,13 +170,14 @@ func BuildJobResults(dbc *db.DB) (jobsAPIResult, error) {
 jr.prow_job_id, 
 j.name,
 j.release,
+j.variants,
 j.test_grid_url,
 (SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 't' AND timestamp BETWEEN ? AND ?) as passes, 
 (SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 'f' AND timestamp BETWEEN ? AND ?) as fails
 FROM prow_job_runs AS jr, prow_jobs AS j 
 WHERE jr.timestamp BETWEEN ? AND ?
   AND jr.prow_job_id = j.id
-GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url`
+GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 	var currentJobPassFails []jobPassFailCounts
 	r := dbc.DB.Raw(jobPassesAndFailsQuery, boundaryDate, now, boundaryDate, now, boundaryDate, now).Scan(&currentJobPassFails)
 	if r.Error != nil {
@@ -202,9 +204,9 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url`
 		}
 
 		job := apitype.Job{
-			ID:   jr.ProwJobID,
-			Name: jr.Name,
-			//Variants:                       current.Variants,
+			ID:                    jr.ProwJobID,
+			Name:                  jr.Name,
+			Variants:              jr.Variants,
 			BriefName:             briefName(jr.Name),
 			CurrentPassPercentage: passPercentage,
 			//CurrentProjectedPassPercentage: current.PassPercentageWithoutInfrastructureFailures,
@@ -243,11 +245,15 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url`
 	klog.Infof("BuildJobResult completed in: %s", elapsed)
 
 	// TODO: temporary print to json for testing
-	_, err := json.MarshalIndent(jobReports, "", "  ")
-	if err != nil {
-		fmt.Println("Can't serialize", jobReports)
+	for _, jRep := range jobReports {
+		if jRep.Name == "periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-serial" {
+			bytes, err := json.MarshalIndent(jRep, "", "  ")
+			if err != nil {
+				fmt.Println("Can't serialize", jobReports)
+			}
+			fmt.Println(string(bytes))
+		}
 	}
-	//fmt.Println(string(bytes))
 	return jobReports, nil
 }
 
@@ -255,6 +261,7 @@ type jobPassFailCounts struct {
 	ProwJobID   int
 	Name        string
 	Release     string
+	Variants    pq.StringArray `gorm:"type:text[]"`
 	TestGridURL string
 	Passes      int
 	Fails       int
