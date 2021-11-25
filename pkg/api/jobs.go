@@ -115,8 +115,10 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
+	// Otherwise the default of last 7 days vs last 14 days.
 	var current, previous []v1sippyprocessing.JobResult
-	switch req.URL.Query().Get("period") {
+	period := req.URL.Query().Get("period")
+	switch period {
 	case "twoDay":
 		current = twoDayPeriod
 		previous = currentPeriod
@@ -145,7 +147,7 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 	}
 
 	if dbc != nil {
-		_, err := BuildJobResults(dbc)
+		_, err := BuildJobResults(dbc, period)
 		if err != nil {
 			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Report generation error: " + err.Error()})
 		}
@@ -156,14 +158,25 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
-func BuildJobResults(dbc *db.DB) (jobsAPIResult, error) {
+func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 	now := time.Now()
 	jobReports := jobsAPIResult{}
+
+	// TODO: use actual start/num days settings from CLI once we understand what should
+	// be happening here, previous seems to include current. See PrepareStandardTestReports.
+	// Note that the CLI/most of the code says "start date" for what is actually the
+	// end of the date range, and does a walk back.
+	currDays := 7
+	prevDays := 14
+	if period == "twoDay" {
+		currDays = 2
+		prevDays = 9 // 7 + 2
+	}
 	// TODO: 2 here because i thought the default was curr period vs prev period,
 	// but I don't see where we look further than 7 days in default config.
 	// TODO: forcing to 7 days for now
-	startDate := time.Now().Add(time.Duration(-1*7*2*24) * time.Hour)
-	boundaryDate := time.Now().Add(time.Duration(-1*7*24) * time.Hour)
+	startDate := time.Now().Add(time.Duration(-1*prevDays*24) * time.Hour)
+	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
 	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
 
 	jobPassesAndFailsQuery := `SELECT 
