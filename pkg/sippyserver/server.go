@@ -127,7 +127,7 @@ func (s *Server) RefreshData() {
 
 	for _, dashboard := range s.dashboardCoordinates {
 		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
-			s.db, dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+			dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -315,10 +315,9 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 	testReportConfig := TestReportGeneratorConfig{
 		TestGridLoadingConfig: TestGridLoadingConfig{
-			LocalData:    s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
-			Loader:       s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
-			ReportLoader: s.testReportGeneratorConfig.TestGridLoadingConfig.ReportLoader,
-			JobFilter:    jobFilter,
+			LocalData: s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
+			Loader:    s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
+			JobFilter: jobFilter,
 		},
 		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
 			StartDay: startDay,
@@ -337,7 +336,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// TODO: db connection handed off as nil here
-	testReports := testReportConfig.PrepareStandardTestReports(nil, dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
+	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHTMLReport(w, req,
 		testReports.CurrentPeriodReport,

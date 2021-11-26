@@ -8,13 +8,11 @@ import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
 func PrepareTestReport(
-	dbc *db.DB, // TODO: Remove?
 	reportName string,
 	reportType sippyprocessingv1.ReportType,
 	rawData testgridanalysisapi.RawData,

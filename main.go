@@ -351,12 +351,7 @@ func (o *Options) runCLIReportMode() error {
 		DisplayDataConfig:           o.toDisplayDataConfig(),
 	}
 
-	dbc, err := db.New(o.DSN)
-	if err != nil {
-		return err
-	}
-
-	testReport := analyzer.PrepareTestReport(dbc, o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
+	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
 
 	enc := json.NewEncoder(os.Stdout)
 	return enc.Encode(testReport.ByTest)
@@ -419,8 +414,6 @@ func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
 	return sippyserver.TestGridLoadingConfig{
 		LocalData: o.LocalData,
 		JobFilter: jobFilter,
-		//ReportLoader: sippyserver.LoadReportsFromDisk,
-		Loader: testgridhelpers.LoadTestGridDataFromDisk,
 	}
 }
 

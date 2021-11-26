@@ -5,7 +5,6 @@ package v1
 import (
 	"time"
 
-	pq "github.com/lib/pq"
 	"gorm.io/gorm"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -151,13 +150,7 @@ type FailingTestJobResult struct {
 // TestResult is a reporting type, not an intermediate type.  It represents the complete view of a given test.  It should
 // always have complete data, not partial data.
 type TestResult struct {
-	ID        uint
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	// Two primary keys = composite primary key.
-	Name           string  `json:"name" gorm:"primaryKey; not null"`
-	Job            string  `json:"job" gorm:"primaryKey; not null"` // Not used in all cases, but important for the main mapping in the db.
+	Name           string  `json:"name"`
 	Successes      int     `json:"successes"`
 	Failures       int     `json:"failures"`
 	Flakes         int     `json:"flakes"`
@@ -166,9 +159,9 @@ type TestResult struct {
 	// Inside of a release, only bugs matching the release are present.
 	// TODO Inside a particular job, only bugs matching the job are present.
 	// TODO Inside a variant, only bugs matching the variant are present.
-	BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
+	BugList []bugsv1.Bug `json:"bugList"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
-	AssociatedBugList []bugsv1.Bug `json:"associatedBugList" gorm:"-"`
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 }
 
 type JobOverallResult string
@@ -186,16 +179,12 @@ const (
 
 // JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
 type JobRunResult struct {
-	ID        uint
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	ProwID          uint           `json:"prowID" gorm:"primaryKey"`
-	Job             string         `json:"job"`
-	URL             string         `json:"url"`
-	TestFailures    int            `json:"testFailures"`
-	FailedTestNames pq.StringArray `json:"failedTestNames" gorm:"type:text[]"`
-	Failed          bool           `json:"failed"`
+	ProwID          uint     `json:"prowID"`
+	Job             string   `json:"job"`
+	URL             string   `json:"url"`
+	TestFailures    int      `json:"testFailures"`
+	FailedTestNames []string `json:"failedTestNames"`
+	Failed          bool     `json:"failed"`
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool `json:"infrastructureFailure"`
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
@@ -208,13 +197,9 @@ type JobRunResult struct {
 
 // JobResult is a core sippy model aggregating status, statistics, and variants for a given prow job.
 type JobResult struct {
-	ID        uint
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	Name                                        string         `json:"name" gorm:"primaryKey"`
-	Release                                     string         `json:"release" gorm:"varchar(10)"`
-	Variants                                    pq.StringArray `json:"variants" gorm:"type:text[]"`
+	Name                                        string         `json:"name"`
+	Release                                     string         `json:"release"`
+	Variants                                    []string       `json:"variants"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`
 	InfrastructureFailures                      int            `json:"infrastructureFailures"`
@@ -223,15 +208,15 @@ type JobResult struct {
 	PassPercentageWithKnownFailures             float64        `json:"passPercentageWithKnownFailures"`
 	PassPercentageWithoutInfrastructureFailures float64        `json:"passPercentageWithoutInfrastructureFailures"`
 	TestGridURL                                 string         `json:"testGridURL"`
-	AllRuns                                     []JobRunResult `json:"allRuns" gorm:"foreignKey:Job"`
+	AllRuns                                     []JobRunResult `json:"allRuns"`
 
-	BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
+	BugList []bugsv1.Bug `json:"bugList"`
 	// AssociatedBugList are bugs that match the test/job, but do not match the target release
-	AssociatedBugList []bugsv1.Bug `json:"associatedBugList" gorm:"-"`
+	AssociatedBugList []bugsv1.Bug `json:"associatedBugList"`
 
 	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
 	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
-	TestResults []TestResult `json:"results" gorm:"foreignKey:Job;References:Name"`
+	TestResults []TestResult `json:"results"`
 }
 
 type SortedBugzillaComponentResult struct {

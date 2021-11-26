@@ -7,7 +7,7 @@ sleep 60 # 1 minutes
 while [ true ]; do
   echo "Fetching new testgrid data"
   rm -rf /data/*
-  /bin/sippy --fetch-data /data
+  /bin/sippy --fetch-data /data --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing= -v 4
   echo "Loading database"
   /bin/sippy -v 4 --load-database --local-data /data --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing=
   echo "Done fetching data, refreshing server"
