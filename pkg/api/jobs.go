@@ -159,6 +159,33 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
+// PrintDBJobsReport renders a filtered summary of matching jobs.
+func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
+	dbc *db.DB) {
+
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
+
+	period := req.URL.Query().Get("period")
+	jobsResult, err := BuildJobResults(dbc, period)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobsResult.
+		sort(req).
+		limit(req))
+}
+
 func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 	now := time.Now()
 

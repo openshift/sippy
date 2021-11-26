@@ -533,6 +533,13 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) jsonExperimentalJobsReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintDBJobsReport(w, req, s.db)
+	}
+}
+
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.perfscaleMetricsJobReports
 
@@ -586,6 +593,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+	// Temporary endpoint while we work out the use of the db, will move to above endpoint once ready.
+	serveMux.HandleFunc("/api/experimental/jobs", s.jsonExperimentalJobsReport)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 
 	if s.db != nil {
