@@ -13,6 +13,7 @@ import (
 	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"k8s.io/klog"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
@@ -160,7 +161,6 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 
 func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 	now := time.Now()
-	jobReports := jobsAPIResult{}
 
 	// TODO: use actual start/num days settings from CLI once we understand what should
 	// be happening here, previous seems to include current. See PrepareStandardTestReports.
@@ -179,98 +179,104 @@ func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
 	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
 
-	jobPassesAndFailsQuery := `SELECT 
-jr.prow_job_id, 
-j.name,
-j.release,
-j.variants,
-j.test_grid_url,
-(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 't' AND timestamp BETWEEN ? AND ?) as passes, 
-(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 'f' AND timestamp BETWEEN ? AND ?) as fails,
-(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND infrastructure_failure = 't' AND timestamp BETWEEN ? AND ?) as infrastructure_fails
-FROM prow_job_runs AS jr, prow_jobs AS j 
-WHERE jr.timestamp BETWEEN ? AND ?
-  AND jr.prow_job_id = j.id
-GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
-	var currentJobPassFails []jobPassFailCounts
-	r := dbc.DB.Raw(jobPassesAndFailsQuery, boundaryDate, now, boundaryDate, now, boundaryDate, now, boundaryDate, now).Scan(&currentJobPassFails)
-	if r.Error != nil {
-		klog.Error(r.Error)
-		return jobReports, r.Error
+	// Load all ProwJobs and create a map of db ID to ProwJob:
+	var allJobs []models.ProwJob
+	dbr := dbc.DB.Find(&allJobs)
+	if dbr.Error != nil {
+		klog.Error(dbr)
+		return []apitype.Job{}, dbr.Error
 	}
-	klog.Infof("found %d unique jobs in current period", len(currentJobPassFails))
+	allJobsByID := mapProwJobsByID(allJobs)
+	klog.V(3).Infof("Found %d jobs", len(allJobs))
 
-	var prevJobPassFails []jobPassFailCounts
-	r = dbc.DB.Raw(jobPassesAndFailsQuery, startDate, now, startDate, now, startDate, now, startDate, now).Scan(&prevJobPassFails)
-	if r.Error != nil {
-		klog.Error(r.Error)
-		return jobReports, r.Error
+	// Load all ProwJobRuns in our period timestamp range:
+	var jobRunsInPeriod []models.ProwJobRun
+	dbr = dbc.DB.Where("timestamp BETWEEN ? AND ?", startDate, now).Find(&jobRunsInPeriod)
+	if dbr.Error != nil {
+		klog.Error(dbr)
+		return []apitype.Job{}, dbr.Error
 	}
-	klog.Infof("found %d unique jobs in prior period", len(prevJobPassFails))
+	klog.V(3).Infof("Found %d job runs in period between %s and %s",
+		len(jobRunsInPeriod),
+		startDate.Format(time.RFC3339),
+		now.Format(time.RFC3339))
 
-	for _, jr := range currentJobPassFails {
+	// Build a map of job ID to the API job result we'll return.
+	// Iterate all job results, incrementing counters on the job result we'll return.
+	apiJobResults := map[uint]*apitype.Job{}
+	for _, jobRun := range jobRunsInPeriod {
+		job := allJobsByID[jobRun.ProwJobID]
+		if _, ok := apiJobResults[job.ID]; !ok {
 
-		runs := jr.Passes + jr.Fails
-		var passPercentage float64
-		var projectedPassPercentage float64
-		if runs > 0 {
-			passPercentage = (float64(jr.Passes) / float64(runs)) * 100
-			projectedPassPercentage = (float64(jr.Passes+jr.InfrastructureFails) / float64(runs)) * 100
-		}
-
-		job := apitype.Job{
-			ID:                             jr.ProwJobID,
-			Name:                           jr.Name,
-			Variants:                       jr.Variants,
-			BriefName:                      briefName(jr.Name),
-			CurrentPassPercentage:          passPercentage,
-			CurrentProjectedPassPercentage: projectedPassPercentage,
-			CurrentRuns:                    runs,
-		}
-
-		prevJobIdx := findPrevJobPassFails(prevJobPassFails, jr.ProwJobID)
-
-		if prevJobIdx >= 0 {
-			prevJob := prevJobPassFails[prevJobIdx]
-			prevRuns := prevJob.Passes + prevJob.Fails
-			var prevPassPercentage float64
-			var prevProjectedPassPercentage float64
-			if prevRuns > 0 {
-				prevPassPercentage = (float64(prevJob.Passes) / float64(prevRuns)) * 100
-				prevProjectedPassPercentage = (float64(prevJob.Passes+prevJob.InfrastructureFails) / float64(prevRuns)) * 100
+			apiJobResults[job.ID] = &apitype.Job{
+				ID:          int(job.ID),
+				Name:        job.Name,
+				BriefName:   briefName(job.Name),
+				Variants:    job.Variants,
+				TestGridURL: job.TestGridURL,
 			}
-
-			job.PreviousPassPercentage = prevPassPercentage
-			job.PreviousProjectedPassPercentage = prevProjectedPassPercentage
-			job.PreviousRuns = prevRuns
-			job.NetImprovement = passPercentage - prevPassPercentage
 		}
 
-		//job.Bugs = current.BugList
-		//job.AssociatedBugs = current.AssociatedBugList
-		job.TestGridURL = jr.TestGridURL
+		// NOTE: Previous period includes current, thus all results increment previous counters,
+		// and if the timestamp is *after* our boundary date, they also increment current counters.
+		jobAcc := apiJobResults[job.ID]
 
-		if strings.Contains(job.Name, "-upgrade") {
-			job.Tags = []string{"upgrade"}
+		jobAcc.PreviousRuns++
+		if jobRun.Timestamp.After(boundaryDate) {
+			jobAcc.CurrentRuns++
 		}
 
-		jobReports = append(jobReports, job)
+		if jobRun.Succeeded {
+			jobAcc.PreviousPasses++
+			if jobRun.Timestamp.After(boundaryDate) {
+				jobAcc.CurrentPasses++
+			}
+		}
+
+		if jobRun.Failed {
+			jobAcc.PreviousFails++
+			if jobRun.InfrastructureFailure {
+				jobAcc.PreviousInfraFails++
+			}
+			if jobRun.Timestamp.After(boundaryDate) {
+				jobAcc.CurrentFails++
+				if jobRun.InfrastructureFailure {
+					jobAcc.CurrentInfraFails++
+				}
+			}
+		}
+
+	}
+
+	// Now that we've processed all job results, calculate percentages on the results we'll return:
+	finalAPIJobResult := make([]apitype.Job, 0, len(apiJobResults))
+	for _, v := range apiJobResults {
+		if v.CurrentRuns > 0 {
+			v.CurrentPassPercentage = float64(v.CurrentPasses) / float64(v.CurrentRuns) * 100
+			v.CurrentProjectedPassPercentage = float64(v.CurrentPasses+v.CurrentInfraFails) / float64(v.CurrentRuns) * 100
+		}
+		if v.PreviousRuns > 0 {
+			v.PreviousPassPercentage = float64(v.PreviousPasses) / float64(v.PreviousRuns) * 100
+			v.PreviousProjectedPassPercentage = float64(v.PreviousPasses+v.PreviousInfraFails) / float64(v.PreviousRuns) * 100
+		}
+		v.NetImprovement = v.CurrentPassPercentage - v.PreviousPassPercentage
+		finalAPIJobResult = append(finalAPIJobResult, *v)
 	}
 
 	elapsed := time.Since(now)
 	klog.Infof("BuildJobResult completed in: %s", elapsed)
 
 	// TODO: temporary print to json for testing
-	for _, jRep := range jobReports {
+	for _, jRep := range finalAPIJobResult {
 		if jRep.Name == "periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-serial" {
 			bytes, err := json.MarshalIndent(jRep, "", "  ")
 			if err != nil {
-				fmt.Println("Can't serialize", jobReports)
+				fmt.Println("Can't serialize", jRep)
 			}
 			fmt.Println(string(bytes))
 		}
 	}
-	return jobReports, nil
+	return finalAPIJobResult, nil
 }
 
 type jobPassFailCounts struct {
@@ -282,6 +288,14 @@ type jobPassFailCounts struct {
 	Passes              int
 	Fails               int
 	InfrastructureFails int
+}
+
+func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
+	result := map[uint]models.ProwJob{}
+	for _, pj := range allProwJobs {
+		result[pj.ID] = pj
+	}
+	return result
 }
 
 // Find the previous job pass/fail in the slice for the given job ID, if any.
