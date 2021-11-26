@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"regexp"
 	gosort "sort"
@@ -289,16 +288,6 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 	elapsed := time.Since(now)
 	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(finalAPIJobResult))
 
-	// TODO: temporary print to json for testing
-	for _, jRep := range finalAPIJobResult {
-		if jRep.Name == "periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-serial" {
-			bytes, err := json.MarshalIndent(jRep, "", "  ")
-			if err != nil {
-				fmt.Println("Can't serialize", jRep)
-			}
-			fmt.Println(string(bytes))
-		}
-	}
 	return finalAPIJobResult, nil
 }
 
