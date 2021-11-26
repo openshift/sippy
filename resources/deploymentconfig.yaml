@@ -105,6 +105,11 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: dsn
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: dsn
         volumeMounts:
         - mountPath: /data
           name: data

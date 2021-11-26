@@ -45,7 +45,7 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
-	GenReports              bool
+	LoadDatabase            bool
 	ListenAddr              string
 	Server                  bool
 	SkipBugLookup           bool
@@ -94,7 +94,7 @@ func main() {
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
-	flags.BoolVar(&opt.GenReports, "gen-reports", opt.GenReports, "Generate reports from testgrid data in --local-data, required for --server")
+	flags.BoolVar(&opt.LoadDatabase, "load-database", opt.LoadDatabase, "Process testgrid data in --local-data and store in database")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
@@ -186,24 +186,23 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("cannot specify --server with --fetch-data")
 	}
 
-	if o.Server && o.GenReports {
-		return fmt.Errorf("cannot specify --server with --gen-reports")
+	if o.Server && o.LoadDatabase {
+		return fmt.Errorf("cannot specify --server with --load-database")
 	}
 
-	if o.GenReports && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --gen-reports with --fetch-data")
+	if o.LoadDatabase && o.FetchData != "" {
+		return fmt.Errorf("cannot specify --load-database with --fetch-data")
 	}
 
-	if o.GenReports && o.LocalData == "" {
-		return fmt.Errorf("must specify --local-data with --gen-reports")
+	if o.LoadDatabase && o.LocalData == "" {
+		return fmt.Errorf("must specify --local-data with --load-database")
 	}
 
-	if o.GenReports && o.DSN == "" {
-		// TODO: expand to required for server as well once we're ready
-		return fmt.Errorf("must specify --database-dsn with --gen-reports")
+	if o.LoadDatabase && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database")
 	}
 
-	if !o.Server && !o.GenReports && o.FetchData == "" && o.DSN == "" {
+	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
 		return fmt.Errorf("must specify --database-dsn with for cli reports")
 	}
 
@@ -260,7 +259,7 @@ func (o *Options) Run() error {
 		return nil
 	}
 
-	if o.GenReports {
+	if o.LoadDatabase {
 		dbc, err := db.New(o.DSN)
 		if err != nil {
 			return err
@@ -273,21 +272,14 @@ func (o *Options) Run() error {
 			DisplayDataConfig:           o.toDisplayDataConfig(),
 		}
 
-		// Generate reports and store in the db:
-		//testReports := map[string]sippyserver.StandardReport{}
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 			trgc.PrepareDatabase(dbc, dashboard,
 				o.getVariantManager(),
 				o.getSyntheticTestManager(), o.getBugCache())
-
-			/*
-				testReports[dashboard.ReportName] = trgc.PrepareStandardTestReports(dbc, dashboard,
-					o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
-			*/
 		}
 
 		elapsed := time.Since(start)
-		klog.Infof("Reports generated in: %s", elapsed)
+		klog.Infof("Database loaded in: %s", elapsed)
 
 		return err
 	}
