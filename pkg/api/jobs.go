@@ -147,13 +147,6 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 		jobs = append(jobs, job)
 	}
 
-	if dbc != nil {
-		_, err := BuildJobResults(dbc, period)
-		if err != nil {
-			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Report generation error: " + err.Error()})
-		}
-	}
-
 	RespondWithJSON(http.StatusOK, w, jobs.
 		sort(req).
 		limit(req))
@@ -161,7 +154,7 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 
 // PrintDBJobsReport renders a filtered summary of matching jobs.
 func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
-	dbc *db.DB) {
+	dbc *db.DB, release string) {
 
 	var filter *Filter
 
@@ -175,7 +168,7 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 	}
 
 	period := req.URL.Query().Get("period")
-	jobsResult, err := BuildJobResults(dbc, period)
+	jobsResult, err := BuildJobResults(dbc, period, release)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -186,7 +179,7 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
-func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
+func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) {
 	now := time.Now()
 
 	// TODO: use actual start/num days settings from CLI once we understand what should
@@ -208,7 +201,7 @@ func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 
 	// Load all ProwJobs and create a map of db ID to ProwJob:
 	var allJobs []models.ProwJob
-	dbr := dbc.DB.Find(&allJobs)
+	dbr := dbc.DB.Find(&allJobs).Where("release = ?", release)
 	if dbr.Error != nil {
 		klog.Error(dbr)
 		return []apitype.Job{}, dbr.Error
@@ -218,7 +211,10 @@ func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 
 	// Load all ProwJobRuns in our period timestamp range:
 	var jobRunsInPeriod []models.ProwJobRun
-	dbr = dbc.DB.Where("timestamp BETWEEN ? AND ?", startDate, now).Find(&jobRunsInPeriod)
+	dbr = dbc.DB.
+		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+		Where("timestamp BETWEEN ? AND ?", startDate, now).
+		Where("prow_jobs.release = ?", release).Find(&jobRunsInPeriod)
 	if dbr.Error != nil {
 		klog.Error(dbr)
 		return []apitype.Job{}, dbr.Error
@@ -291,7 +287,7 @@ func BuildJobResults(dbc *db.DB, period string) (jobsAPIResult, error) {
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in: %s", elapsed)
+	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(finalAPIJobResult))
 
 	// TODO: temporary print to json for testing
 	for _, jRep := range finalAPIJobResult {

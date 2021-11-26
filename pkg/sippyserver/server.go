@@ -536,7 +536,7 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonExperimentalJobsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintDBJobsReport(w, req, s.db)
+		api.PrintDBJobsReport(w, req, s.db, release)
 	}
 }
 
