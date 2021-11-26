@@ -8,7 +8,7 @@ while [ true ]; do
   echo "Fetching new testgrid data"
   rm -rf /data/*
   /bin/sippy --fetch-data /data
-  echo "Generating reports"
+  echo "Loading database"
   /bin/sippy -v 4 --load-database --local-data /data --dashboard=kube-master=sig-release-master-blocking,sig-release-master-informing=
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh

@@ -14,14 +14,14 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"k8s.io/klog"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
 
 type jobsAPIResult []apitype.Job
+
+const periodTwoDay = "twoDay"
 
 func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 	sortField := req.URL.Query().Get("sortField")
@@ -89,12 +89,7 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 }
 
 // PrintJobsReport renders a filtered summary of matching jobs.
-func PrintJobsReport(w http.ResponseWriter, req *http.Request,
-	dbc *db.DB,
-	currReport,
-	twoDayReport,
-	prevReport v1sippyprocessing.TestReport,
-	manager testidentification.VariantManager) {
+func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
 
 	var filter *Filter
 	currentPeriod := currReport.ByJob
@@ -118,7 +113,7 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request,
 	var current, previous []v1sippyprocessing.JobResult
 	period := req.URL.Query().Get("period")
 	switch period {
-	case "twoDay":
+	case periodTwoDay:
 		current = twoDayPeriod
 		previous = currentPeriod
 	default:
@@ -186,7 +181,7 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 	// end of the date range, and does a walk back.
 	currDays := 7
 	prevDays := 14
-	if period == "twoDay" {
+	if period == periodTwoDay {
 		currDays = 2
 		prevDays = 9 // 7 + 2
 	}

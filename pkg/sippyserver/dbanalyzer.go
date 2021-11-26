@@ -61,17 +61,6 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 			}
 		}
 
-		/*
-			prowJobRunCache := map[string]uint{}
-			var idNames []models.IDName
-			dbc.DB.Model(&models.ProwJob{}).Find(&idNames)
-			for _, idn := range idNames {
-				if _, ok := prowJobCache[idn.Name]; !ok {
-					prowJobCache[idn.Name] = idn.ID
-				}
-			}
-		*/
-
 		for i := range allJobResults {
 			jr := allJobResults[i]
 			// Create ProwJob if we don't have one already:
@@ -85,7 +74,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&dbProwJob).Error
 				if err != nil {
 					// TODO: return err?
-					klog.Fatalf("error loading prow job into db: %v", allJobResults[i].Name, err)
+					klog.Fatalf("error loading prow job into db: %s - %v", allJobResults[i].Name, err)
 				}
 				prowJobCache[jr.Name] = dbProwJob.ID
 			}
@@ -118,7 +107,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 						err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
 						if err != nil {
 							// TODO: return err?
-							klog.Fatalf("error loading test into db: %v", ft.Name, err)
+							klog.Fatalf("error loading test into db: %s - %v", ft.Name, err)
 						}
 					}
 					failedTests[i] = ft
@@ -131,7 +120,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
 				if err != nil {
 					// TODO: return err?
-					klog.Fatalf("error loading prow job into db: %v", allJobResults[i].Name, err)
+					klog.Fatalf("error loading prow job into db: %s - %v", allJobResults[i].Name, err)
 				}
 
 			}
