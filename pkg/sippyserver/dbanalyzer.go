@@ -27,7 +27,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
 		// Load the last 30 days of data:
-		StartDay: 30,
+		StartDay: 0,
 		NumDays:  30,
 	}
 	rawJobResults, _ := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
