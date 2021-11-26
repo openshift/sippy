@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -191,9 +190,6 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 		currDays = 2
 		prevDays = 9 // 7 + 2
 	}
-	// TODO: 2 here because i thought the default was curr period vs prev period,
-	// but I don't see where we look further than 7 days in default config.
-	// TODO: forcing to 7 days for now
 	startDate := time.Now().Add(time.Duration(-1*prevDays*24) * time.Hour)
 	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
 	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
@@ -239,31 +235,32 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 			}
 		}
 
-		// NOTE: Previous period includes current, thus all results increment previous counters,
-		// and if the timestamp is *after* our boundary date, they also increment current counters.
 		jobAcc := apiJobResults[job.ID]
 
-		jobAcc.PreviousRuns++
 		if jobRun.Timestamp.After(boundaryDate) {
 			jobAcc.CurrentRuns++
+		} else {
+			jobAcc.PreviousRuns++
 		}
 
 		if jobRun.Succeeded {
-			jobAcc.PreviousPasses++
 			if jobRun.Timestamp.After(boundaryDate) {
 				jobAcc.CurrentPasses++
+			} else {
+				jobAcc.PreviousPasses++
 			}
 		}
 
 		if jobRun.Failed {
-			jobAcc.PreviousFails++
-			if jobRun.InfrastructureFailure {
-				jobAcc.PreviousInfraFails++
-			}
 			if jobRun.Timestamp.After(boundaryDate) {
 				jobAcc.CurrentFails++
 				if jobRun.InfrastructureFailure {
 					jobAcc.CurrentInfraFails++
+				}
+			} else {
+				jobAcc.PreviousFails++
+				if jobRun.InfrastructureFailure {
+					jobAcc.PreviousInfraFails++
 				}
 			}
 		}
@@ -291,34 +288,12 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 	return finalAPIJobResult, nil
 }
 
-type jobPassFailCounts struct {
-	ProwJobID           int
-	Name                string
-	Release             string
-	Variants            pq.StringArray `gorm:"type:text[]"`
-	TestGridURL         string
-	Passes              int
-	Fails               int
-	InfrastructureFails int
-}
-
 func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
 	result := map[uint]models.ProwJob{}
 	for _, pj := range allProwJobs {
 		result[pj.ID] = pj
 	}
 	return result
-}
-
-// Find the previous job pass/fail in the slice for the given job ID, if any.
-// Returns slice index if found, -1 if not.
-func findPrevJobPassFails(jobs []jobPassFailCounts, jobID int) int {
-	for i, pjpf := range jobs {
-		if pjpf.ProwJobID == jobID {
-			return i
-		}
-	}
-	return -1
 }
 
 type jobDetail struct {
