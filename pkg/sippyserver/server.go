@@ -593,7 +593,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	// Temporary endpoint while we work out the use of the db, will move to above endpoint once ready.
-	serveMux.HandleFunc("/api/experimental/jobs", s.jsonExperimentalJobsReport)
+	serveMux.HandleFunc("/api-ex/jobs", s.jsonExperimentalJobsReport)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 
 	if s.db != nil {
