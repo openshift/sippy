@@ -186,13 +186,14 @@ j.release,
 j.variants,
 j.test_grid_url,
 (SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 't' AND timestamp BETWEEN ? AND ?) as passes, 
-(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 'f' AND timestamp BETWEEN ? AND ?) as fails
+(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND succeeded = 'f' AND timestamp BETWEEN ? AND ?) as fails,
+(SELECT COUNT(*) FROM prow_job_runs WHERE prow_job_id = jr.prow_job_id AND infrastructure_failure = 't' AND timestamp BETWEEN ? AND ?) as infrastructure_fails
 FROM prow_job_runs AS jr, prow_jobs AS j 
 WHERE jr.timestamp BETWEEN ? AND ?
   AND jr.prow_job_id = j.id
 GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 	var currentJobPassFails []jobPassFailCounts
-	r := dbc.DB.Raw(jobPassesAndFailsQuery, boundaryDate, now, boundaryDate, now, boundaryDate, now).Scan(&currentJobPassFails)
+	r := dbc.DB.Raw(jobPassesAndFailsQuery, boundaryDate, now, boundaryDate, now, boundaryDate, now, boundaryDate, now).Scan(&currentJobPassFails)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return jobReports, r.Error
@@ -200,7 +201,7 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 	klog.Infof("found %d unique jobs in current period", len(currentJobPassFails))
 
 	var prevJobPassFails []jobPassFailCounts
-	r = dbc.DB.Raw(jobPassesAndFailsQuery, startDate, now, startDate, now, startDate, now).Scan(&prevJobPassFails)
+	r = dbc.DB.Raw(jobPassesAndFailsQuery, startDate, now, startDate, now, startDate, now, startDate, now).Scan(&prevJobPassFails)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return jobReports, r.Error
@@ -211,18 +212,20 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 
 		runs := jr.Passes + jr.Fails
 		var passPercentage float64
+		var projectedPassPercentage float64
 		if runs > 0 {
 			passPercentage = (float64(jr.Passes) / float64(runs)) * 100
+			projectedPassPercentage = (float64(jr.Passes+jr.InfrastructureFails) / float64(runs)) * 100
 		}
 
 		job := apitype.Job{
-			ID:                    jr.ProwJobID,
-			Name:                  jr.Name,
-			Variants:              jr.Variants,
-			BriefName:             briefName(jr.Name),
-			CurrentPassPercentage: passPercentage,
-			//CurrentProjectedPassPercentage: current.PassPercentageWithoutInfrastructureFailures,
-			CurrentRuns: runs,
+			ID:                             jr.ProwJobID,
+			Name:                           jr.Name,
+			Variants:                       jr.Variants,
+			BriefName:                      briefName(jr.Name),
+			CurrentPassPercentage:          passPercentage,
+			CurrentProjectedPassPercentage: projectedPassPercentage,
+			CurrentRuns:                    runs,
 		}
 
 		prevJobIdx := findPrevJobPassFails(prevJobPassFails, jr.ProwJobID)
@@ -231,12 +234,14 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 			prevJob := prevJobPassFails[prevJobIdx]
 			prevRuns := prevJob.Passes + prevJob.Fails
 			var prevPassPercentage float64
+			var prevProjectedPassPercentage float64
 			if prevRuns > 0 {
 				prevPassPercentage = (float64(prevJob.Passes) / float64(prevRuns)) * 100
+				prevProjectedPassPercentage = (float64(prevJob.Passes+prevJob.InfrastructureFails) / float64(prevRuns)) * 100
 			}
 
 			job.PreviousPassPercentage = prevPassPercentage
-			//job.PreviousProjectedPassPercentage = previous.PassPercentageWithoutInfrastructureFailures
+			job.PreviousProjectedPassPercentage = prevProjectedPassPercentage
 			job.PreviousRuns = prevRuns
 			job.NetImprovement = passPercentage - prevPassPercentage
 		}
@@ -269,13 +274,14 @@ GROUP BY jr.prow_job_id, j.name, j.release, j.test_grid_url, j.variants`
 }
 
 type jobPassFailCounts struct {
-	ProwJobID   int
-	Name        string
-	Release     string
-	Variants    pq.StringArray `gorm:"type:text[]"`
-	TestGridURL string
-	Passes      int
-	Fails       int
+	ProwJobID           int
+	Name                string
+	Release             string
+	Variants            pq.StringArray `gorm:"type:text[]"`
+	TestGridURL         string
+	Passes              int
+	Fails               int
+	InfrastructureFails int
 }
 
 // Find the previous job pass/fail in the slice for the given job ID, if any.
