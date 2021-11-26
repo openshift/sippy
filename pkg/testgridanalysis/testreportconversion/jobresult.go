@@ -207,7 +207,6 @@ func convertRawJobResultToProcessedJobResult(
 }
 
 func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult, testResults []sippyprocessingv1.TestResult) sippyprocessingv1.JobRunResult {
-	// Add a ProwID we can use as a key in our db, by extracting from the end of the URL:
 	tokens := strings.Split(jrr.JobRunURL, "/")
 	prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
 	knownFailure := jrr.Failed && areAllFailuresKnown(jrr, testResults)

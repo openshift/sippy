@@ -1,9 +1,9 @@
 package sippyserver
 
 import (
-	"errors"
 	"time"
 
+	errors "github.com/pkg/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/klog"
@@ -22,7 +22,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 	variantManager testidentification.VariantManager,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	bugCache buganalysis.BugCache, // required to associate tests with bug
-) {
+) error {
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
@@ -73,8 +73,7 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				}
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&dbProwJob).Error
 				if err != nil {
-					// TODO: return err?
-					klog.Fatalf("error loading prow job into db: %s - %v", allJobResults[i].Name, err)
+					return errors.Wrapf(err, "error loading prow job into db: %s", allJobResults[i].Name)
 				}
 				prowJobCache[jr.Name] = dbProwJob.ID
 			}
@@ -106,21 +105,16 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 						}
 						err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
 						if err != nil {
-							// TODO: return err?
-							klog.Fatalf("error loading test into db: %s - %v", ft.Name, err)
+							return errors.Wrapf(err, "error loading test into db: %s", ft.Name)
 						}
 					}
 					failedTests[i] = ft
 				}
 				pjr.FailedTests = failedTests
 
-				// TODO: still missing some things like infra failures from jobresult.go
-				// convertRawJobResultToProcessedJobResult
-
 				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
 				if err != nil {
-					// TODO: return err?
-					klog.Fatalf("error loading prow job into db: %s - %v", allJobResults[i].Name, err)
+					return errors.Wrapf(err, "error loading prow job into db: %s", allJobResults[i].Name)
 				}
 
 			}
@@ -128,5 +122,5 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 		}
 		klog.Info("done loading ProwJobs")
 	}
-
+	return nil
 }
