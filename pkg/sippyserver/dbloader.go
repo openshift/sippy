@@ -60,9 +60,12 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 		}
 	}
 
+	jobRuns := []models.ProwJobRun{}
 	for i := range allJobResults {
 		jr := allJobResults[i]
 		// Create ProwJob if we don't have one already:
+		// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
+		// would not make it to the db.
 		if _, ok := prowJobCache[allJobResults[i].Name]; !ok {
 			dbProwJob := models.ProwJob{
 				Name:        jr.Name,
@@ -110,15 +113,14 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				failedTests[i] = ft
 			}
 			pjr.FailedTests = failedTests
-
-			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
-			if err != nil {
-				return errors.Wrapf(err, "error loading prow job into db: %s", allJobResults[i].Name)
-			}
-
+			jobRuns = append(jobRuns, pjr)
 		}
-
 	}
+	err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(jobRuns, 100).Error
+	if err != nil {
+		return errors.Wrap(err, "error loading prow jobs into db")
+	}
+
 	klog.Info("done loading ProwJobs")
 
 	return nil

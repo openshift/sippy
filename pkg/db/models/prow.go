@@ -16,14 +16,6 @@ type ProwJob struct {
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[]"`
 	TestGridURL string
-
-	// BugList []bugsv1.Bug `json:"bugList" gorm:"-"`
-	// AssociatedBugList are bugs that match the test/job, but do not match the target release
-	// AssociatedBugList []bugsv1.Bug `json:"associatedBugList" gorm:"-"`
-
-	// TestResults holds entries for each test that is a part of this aggregation.  Each entry aggregates the results
-	// of all runs of a single test.  The array is sorted from lowest PassPercentage to highest PassPercentage
-	// TestResults []TestResult `json:"results" gorm:"foreignKey:Job;References:Name"`
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used
