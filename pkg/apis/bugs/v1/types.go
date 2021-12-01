@@ -18,5 +18,6 @@ type BugzillaBug struct {
 	LastChangeTime time.Time `json:"last_change_time"`
 	Summary        string    `json:"summary"`
 	TargetRelease  []string  `json:"target_release"`
+	Version        []string  `json:"version"`
 	Component      []string  `json:"component"`
 }

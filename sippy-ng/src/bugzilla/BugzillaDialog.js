@@ -9,10 +9,10 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
 export const LINKED_BUGS = `Linked bugs are bugs that mention the failing test name
-and are targeted to the release being reported on.`
+and are targeted or found in the release being reported on.`
 
 export const ASSOCIATED_BUGS = `Associated bugs are bugs that mention the failing test
-name but are not targeted to the release being reported on.`
+name but are not targeted or found in the release being reported on.`
 
 /**
  * BugzillaDialog shows the bugs both linked and associated with a

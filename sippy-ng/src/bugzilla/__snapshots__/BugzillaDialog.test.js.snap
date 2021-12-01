@@ -63,7 +63,7 @@ exports[`BugzillaDialog renders correctly 1`] = `
                viewbox="0 0 24 24"
                aria-hidden="true"
                title="Linked bugs are bugs that mention the failing test name
-and are targeted to the release being reported on."
+and are targeted or found in the release being reported on."
           >
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
             </path>
@@ -96,6 +96,11 @@ and are targeted to the release being reported on."
                     scope="col"
                 >
                   Component
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Found In
                 </th>
                 <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
                     scope="col"
@@ -123,6 +128,8 @@ and are targeted to the release being reported on."
                   Installer
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                   4.8.0
                 </td>
               </tr>
@@ -138,7 +145,7 @@ and are targeted to the release being reported on."
                viewbox="0 0 24 24"
                aria-hidden="true"
                title="Associated bugs are bugs that mention the failing test
-name but are not targeted to the release being reported on."
+name but are not targeted or found in the release being reported on."
           >
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
             </path>
@@ -175,6 +182,11 @@ name but are not targeted to the release being reported on."
                 <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
                     scope="col"
                 >
+                  Found In
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
                   Target Release
                 </th>
               </tr>
@@ -196,6 +208,8 @@ name but are not targeted to the release being reported on."
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                   Installer
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                 </td>
                 <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
                   ---

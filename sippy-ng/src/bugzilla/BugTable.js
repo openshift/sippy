@@ -25,6 +25,7 @@ export default function BugTable(props) {
             <TableCell>Summary</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Component</TableCell>
+            <TableCell>Found In</TableCell>
             <TableCell>Target Release</TableCell>
           </TableRow>
         </TableHead>
@@ -37,6 +38,7 @@ export default function BugTable(props) {
               <TableCell>{bug.summary}</TableCell>
               <TableCell>{bug.status}</TableCell>
               <TableCell>{bug.component}</TableCell>
+              <TableCell>{bug.version}</TableCell>
               <TableCell>{bug.target_release}</TableCell>
             </TableRow>
           ))}
