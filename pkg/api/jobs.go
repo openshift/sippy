@@ -7,10 +7,12 @@ import (
 	gosort "sort"
 	"strconv"
 	"strings"
+	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
+	"k8s.io/klog"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
@@ -18,6 +20,8 @@ import (
 )
 
 type jobsAPIResult []apitype.Job
+
+const periodTwoDay = "twoDay"
 
 func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 	sortField := req.URL.Query().Get("sortField")
@@ -85,7 +89,8 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 }
 
 // PrintJobsReport renders a filtered summary of matching jobs.
-func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport, manager testidentification.VariantManager) {
+func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
+
 	var filter *Filter
 	currentPeriod := currReport.ByJob
 	twoDayPeriod := twoDayReport.ByJob
@@ -104,9 +109,11 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
+	// Otherwise the default of last 7 days vs last 14 days.
 	var current, previous []v1sippyprocessing.JobResult
-	switch req.URL.Query().Get("period") {
-	case "twoDay":
+	period := req.URL.Query().Get("period")
+	switch period {
+	case periodTwoDay:
 		current = twoDayPeriod
 		previous = currentPeriod
 	default:
@@ -136,6 +143,152 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 	RespondWithJSON(http.StatusOK, w, jobs.
 		sort(req).
 		limit(req))
+}
+
+// PrintDBJobsReport renders a filtered summary of matching jobs.
+func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
+	dbc *db.DB, release string) {
+
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
+
+	period := req.URL.Query().Get("period")
+	jobsResult, err := BuildJobResults(dbc, period, release)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobsResult.
+		sort(req).
+		limit(req))
+}
+
+func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) {
+	now := time.Now()
+
+	// TODO: use actual start/num days settings from CLI once we understand what should
+	// be happening here, previous seems to include current. See PrepareStandardTestReports.
+	// Note that the CLI/most of the code says "start date" for what is actually the
+	// end of the date range, and does a walk back.
+	currDays := 7
+	prevDays := 14
+	if period == periodTwoDay {
+		currDays = 2
+		prevDays = 9 // 7 + 2
+	}
+	startDate := time.Now().Add(time.Duration(-1*prevDays*24) * time.Hour)
+	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
+	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
+
+	// Load all ProwJobs and create a map of db ID to ProwJob:
+	var allJobs []models.ProwJob
+	dbr := dbc.DB.Find(&allJobs).Where("release = ?", release)
+	if dbr.Error != nil {
+		klog.Error(dbr)
+		return []apitype.Job{}, dbr.Error
+	}
+	allJobsByID := mapProwJobsByID(allJobs)
+	klog.V(3).Infof("Found %d jobs", len(allJobs))
+
+	// Load all ProwJobRuns in our period timestamp range:
+	var jobRunsInPeriod []models.ProwJobRun
+	dbr = dbc.DB.
+		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+		Where("timestamp BETWEEN ? AND ?", startDate, now).
+		Where("prow_jobs.release = ?", release).Find(&jobRunsInPeriod)
+	if dbr.Error != nil {
+		klog.Error(dbr)
+		return []apitype.Job{}, dbr.Error
+	}
+	klog.V(3).Infof("Found %d job runs in period between %s and %s",
+		len(jobRunsInPeriod),
+		startDate.Format(time.RFC3339),
+		now.Format(time.RFC3339))
+
+	// Build a map of job ID to the API job result we'll return.
+	// Iterate all job results, incrementing counters on the job result we'll return.
+	apiJobResults := map[uint]*apitype.Job{}
+	for _, jobRun := range jobRunsInPeriod {
+		job := allJobsByID[jobRun.ProwJobID]
+		if _, ok := apiJobResults[job.ID]; !ok {
+
+			apiJobResults[job.ID] = &apitype.Job{
+				ID:          int(job.ID),
+				Name:        job.Name,
+				BriefName:   briefName(job.Name),
+				Variants:    job.Variants,
+				TestGridURL: job.TestGridURL,
+			}
+		}
+
+		jobAcc := apiJobResults[job.ID]
+
+		if jobRun.Timestamp.After(boundaryDate) {
+			jobAcc.CurrentRuns++
+		} else {
+			jobAcc.PreviousRuns++
+		}
+
+		if jobRun.Succeeded {
+			if jobRun.Timestamp.After(boundaryDate) {
+				jobAcc.CurrentPasses++
+			} else {
+				jobAcc.PreviousPasses++
+			}
+		}
+
+		if jobRun.Failed {
+			if jobRun.Timestamp.After(boundaryDate) {
+				jobAcc.CurrentFails++
+				if jobRun.InfrastructureFailure {
+					jobAcc.CurrentInfraFails++
+				}
+			} else {
+				jobAcc.PreviousFails++
+				if jobRun.InfrastructureFailure {
+					jobAcc.PreviousInfraFails++
+				}
+			}
+		}
+
+	}
+
+	// Now that we've processed all job results, calculate percentages on the results we'll return:
+	finalAPIJobResult := make([]apitype.Job, 0, len(apiJobResults))
+	for _, v := range apiJobResults {
+		if v.CurrentRuns > 0 {
+			v.CurrentPassPercentage = float64(v.CurrentPasses) / float64(v.CurrentRuns) * 100
+			v.CurrentProjectedPassPercentage = float64(v.CurrentPasses+v.CurrentInfraFails) / float64(v.CurrentRuns) * 100
+		}
+		if v.PreviousRuns > 0 {
+			v.PreviousPassPercentage = float64(v.PreviousPasses) / float64(v.PreviousRuns) * 100
+			v.PreviousProjectedPassPercentage = float64(v.PreviousPasses+v.PreviousInfraFails) / float64(v.PreviousRuns) * 100
+		}
+		v.NetImprovement = v.CurrentPassPercentage - v.PreviousPassPercentage
+		finalAPIJobResult = append(finalAPIJobResult, *v)
+	}
+
+	elapsed := time.Since(now)
+	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(finalAPIJobResult))
+
+	return finalAPIJobResult, nil
+}
+
+func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
+	result := map[uint]models.ProwJob{}
+	for _, pj := range allProwJobs {
+		result[pj.ID] = pj
+	}
+	return result
 }
 
 type jobDetail struct {

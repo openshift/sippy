@@ -30,7 +30,7 @@ import (
 )
 
 func NewServer(
-	testGridLoadingOptions TestGridLoadingConfig,
+	testGridLoadingConfig TestGridLoadingConfig,
 	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
@@ -51,7 +51,7 @@ func NewServer(
 		variantManager:       variantManager,
 		bugCache:             bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
-			TestGridLoadingConfig:       testGridLoadingOptions,
+			TestGridLoadingConfig:       testGridLoadingConfig,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
 			DisplayDataConfig:           displayDataOptions,
 		},
@@ -124,8 +124,10 @@ func (s *Server) refreshMetrics() {
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
 	s.bugCache.Clear()
+
 	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
+			dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -333,6 +335,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 		releasehtml.WriteLandingPage(w, reportNames)
 		return
 	}
+	// TODO: db connection handed off as nil here
 	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
 
 	releasehtml.PrintHTMLReport(w, req,
@@ -533,7 +536,14 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport, s.variantManager)
+		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport)
+	}
+}
+
+func (s *Server) jsonExperimentalJobsReport(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintDBJobsReport(w, req, s.db, release)
 	}
 }
 
@@ -599,6 +609,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+	// Temporary endpoint while we work out the use of the db, will move to above endpoint once ready.
+	serveMux.HandleFunc("/api-ex/jobs", s.jsonExperimentalJobsReport)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 
 	if s.db != nil {

@@ -1,6 +1,8 @@
 package v1
 
-import "time"
+import (
+	"time"
+)
 
 // Bug is used to represent bugs in some serialized content.  It also tracks some additional metadata.
 type Bug struct {

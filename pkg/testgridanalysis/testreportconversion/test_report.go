@@ -27,10 +27,13 @@ func PrepareTestReport(
 	analysisWarnings []string,
 	reportTimestamp time.Time, // TODO seems like we could derive this from our raw data
 	failureClusterThreshold int, // TODO I don't think we even display this anymore
+
 ) sippyprocessingv1.TestReport {
 
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	allJobResults := convertRawJobResultsToProcessedJobResults(rawData, bugCache, bugzillaRelease, variantManager)
+	allJobResults := ConvertRawJobResultsToProcessedJobResults(
+		reportName, rawData, bugCache, bugzillaRelease, variantManager)
+
 	stats := calculateJobResultStatistics(allJobResults)
 
 	allTestResultsByName := getTestResultsByName(allJobResults)
@@ -157,7 +160,8 @@ func filterFailureGroups(
 				continue
 			}
 
-			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR))
+			// TODO: what test result to use here? Based on the caller, it looks like it doesn't matter if we skip the param here:
+			filteredJrr = append(filteredJrr, convertRawToJobRunResult(rawJRR, []sippyprocessingv1.TestResult{}))
 		}
 	}
 

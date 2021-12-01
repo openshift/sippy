@@ -40,6 +40,18 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&models.ProwJob{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&models.ProwJobRun{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&models.Test{}); err != nil {
+		return nil, err
+	}
+
 	return &DB{
 		DB:        db,
 		BatchSize: 1024,

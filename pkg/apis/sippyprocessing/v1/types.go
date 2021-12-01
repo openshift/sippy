@@ -5,6 +5,8 @@ package v1
 import (
 	"time"
 
+	"gorm.io/gorm"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -27,6 +29,7 @@ type Statistics struct {
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
+	gorm.Model
 	// ReportType contains the type of the report, e.g. current, two day, or previous.
 	ReportType ReportType `json:"reportType"`
 
@@ -174,19 +177,28 @@ const (
 	JobUnknown               JobOverallResult = "f"
 )
 
+// JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
 type JobRunResult struct {
-	Job             string           `json:"job"`
-	URL             string           `json:"url"`
-	TestFailures    int              `json:"testFailures"`
-	FailedTestNames []string         `json:"failedTestNames"`
-	Failed          bool             `json:"failed"`
-	Succeeded       bool             `json:"succeeded"`
-	Timestamp       int              `json:"timestamp"`
-	OverallResult   JobOverallResult `json:"result"`
+	ProwID          uint     `json:"prowID"`
+	Job             string   `json:"job"`
+	URL             string   `json:"url"`
+	TestFailures    int      `json:"testFailures"`
+	FailedTestNames []string `json:"failedTestNames"`
+	Failed          bool     `json:"failed"`
+	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
+	InfrastructureFailure bool `json:"infrastructureFailure"`
+	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
+	KnownFailure bool `json:"knownFailure"`
+	Succeeded    bool `json:"succeeded"`
+	// Timestamp is milliseconds since epoch when this job was run.
+	Timestamp     int              `json:"timestamp"`
+	OverallResult JobOverallResult `json:"result"`
 }
 
+// JobResult is a core sippy model aggregating status, statistics, and variants for a given prow job.
 type JobResult struct {
 	Name                                        string         `json:"name"`
+	Release                                     string         `json:"release"`
 	Variants                                    []string       `json:"variants"`
 	Failures                                    int            `json:"failures"`
 	KnownFailures                               int            `json:"knownFailures"`

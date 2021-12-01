@@ -10,6 +10,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -44,6 +45,7 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
+	LoadDatabase            bool
 	ListenAddr              string
 	Server                  bool
 	SkipBugLookup           bool
@@ -92,6 +94,7 @@ func main() {
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
+	flags.BoolVar(&opt.LoadDatabase, "load-database", opt.LoadDatabase, "Process testgrid data in --local-data and store in database")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
@@ -179,11 +182,36 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --fetch-data with --fetch-openshift-perfscale-data")
 	}
 
+	if o.Server && o.FetchData != "" {
+		return fmt.Errorf("cannot specify --server with --fetch-data")
+	}
+
+	if o.Server && o.LoadDatabase {
+		return fmt.Errorf("cannot specify --server with --load-database")
+	}
+
+	if o.LoadDatabase && o.FetchData != "" {
+		return fmt.Errorf("cannot specify --load-database with --fetch-data")
+	}
+
+	if o.LoadDatabase && o.LocalData == "" {
+		return fmt.Errorf("must specify --local-data with --load-database")
+	}
+
+	if o.LoadDatabase && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database")
+	}
+
+	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with for cli reports")
+	}
+
 	return nil
 }
 
 func (o *Options) Run() error {
 	if o.FetchData != "" {
+		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
 		if err != nil {
 			return err
@@ -225,7 +253,38 @@ func (o *Options) Run() error {
 			}
 		}
 
+		elapsed := time.Since(start)
+		klog.Infof("Testgrid data fetched in: %s", elapsed)
+
 		return nil
+	}
+
+	if o.LoadDatabase {
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+
+		start := time.Now()
+		trgc := sippyserver.TestReportGeneratorConfig{
+			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
+			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
+			DisplayDataConfig:           o.toDisplayDataConfig(),
+		}
+
+		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
+			err := trgc.PrepareDatabase(dbc, dashboard,
+				o.getVariantManager(),
+				o.getSyntheticTestManager(), o.getBugCache())
+			if err != nil {
+				return err
+			}
+		}
+
+		elapsed := time.Since(start)
+		klog.Infof("Database loaded in: %s", elapsed)
+
+		return err
 	}
 
 	if !o.Server {
