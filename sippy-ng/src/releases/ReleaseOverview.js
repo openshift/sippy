@@ -32,7 +32,7 @@ export const NOBUG_TOOLTIP =
 export const TRT_TOOLTIP =
   'Shows a curated list of tests selected by the TRT team'
 export const TWODAY_WARNING =
-  'Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable and techpreview.'
+  'Shows results with more than 5 runs over the last 2 days compared to the last 7 days sorted by most regressed, excluding never-stable and techpreview.'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -340,7 +340,7 @@ export default function ReleaseOverview(props) {
                   limit={10}
                   rowsPerPageOptions={[5]}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_1, ...withoutUnstable()],
+                    items: [BOOKMARKS.RUN_5, ...withoutUnstable()],
                   }}
                   pageSize={5}
                   period="twoDay"
@@ -414,7 +414,7 @@ export default function ReleaseOverview(props) {
                   rowsPerPageOptions={[5]}
                   filterModel={{
                     items: [
-                      BOOKMARKS.RUN_1,
+                      BOOKMARKS.RUN_5,
                       BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                       BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
                     ],
