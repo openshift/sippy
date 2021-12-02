@@ -413,7 +413,7 @@ JobRunsTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'testFailures',
+  sortField: 'timestamp',
   sort: 'desc',
 }
 
