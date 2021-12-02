@@ -912,9 +912,74 @@ name but are not targeted or found in the release being reported on."
             </path>
           </svg>
         </p>
-        <p class="MuiTypography-root MuiTypography-body1">
-          None found
-        </p>
+        <div class="MuiPaper-root MuiTableContainer-root MuiPaper-elevation1 MuiPaper-rounded"
+             style="margin-top: 20px;"
+        >
+          <table class="MuiTable-root"
+                 aria-label="bug-table"
+          >
+            <thead class="MuiTableHead-root">
+              <tr class="MuiTableRow-root MuiTableRow-head">
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Bug ID
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Summary
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Status
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Component
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Found In
+                </th>
+                <th class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeSmall"
+                    scope="col"
+                >
+                  Target Release
+                </th>
+              </tr>
+            </thead>
+            <tbody class="MuiTableBody-root">
+              <tr class="MuiTableRow-root">
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall"
+                    scope="row"
+                >
+                  <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1983758">
+                    1983758
+                  </a>
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  upgrades are failing on disruptive tests
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ASSIGNED
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  Routing
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  4.9
+                </td>
+                <td class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeSmall">
+                  ---
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

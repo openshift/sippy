@@ -2268,7 +2268,7 @@ exports[`app should render correctly 1`] = `
                      focusable="false"
                      viewbox="0 0 24 24"
                      aria-hidden="true"
-                     title="Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable and techpreview."
+                     title="Shows results with more than 5 runs over the last 2 days compared to the last 7 days sorted by most regressed, excluding never-stable and techpreview."
                 >
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
                   </path>
@@ -2473,17 +2473,17 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 350px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="104"
+                                <div data-id="52"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-13-100 MuiDataGrid-row"
                                      aria-rowindex="2"
                                      aria-selected="false"
                                      style="max-height: 70px; min-height: 70px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade"
+                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-ipv6"
                                        data-field="name"
                                        data-rowindex="0"
                                        data-colindex="0"
@@ -2495,17 +2495,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="job-name">
-                                      <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade"
+                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-ipv6"
                                          class
-                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade%22%7D%5D%7D"
+                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-ipv6%22%7D%5D%7D"
                                       >
-                                        e2e-aws-upgrade
+                                        e2e-metal-ipi-ovn-ipv6
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="0"
+                                       data-value="12.5"
                                        data-field="current_pass_percentage"
                                        data-rowindex="0"
                                        data-colindex="1"
@@ -2517,16 +2517,16 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0.0%
+                                      12.5%
                                       <br>
                                       <small>
-                                        (1 runs)
+                                        (8 runs)
                                       </small>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-66.66666666666666"
+                                       data-value="-30.357142857142854"
                                        data-field="net_improvement"
                                        data-rowindex="0"
                                        data-colindex="2"
@@ -2543,7 +2543,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-66.67%"
+                                         title="-30.36%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -2554,17 +2554,17 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="85"
+                                <div data-id="31"
                                      data-rowindex="1"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-0-87 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-60-147 MuiDataGrid-row"
                                      aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 70px; min-height: 70px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation"
+                                       data-value="periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel"
                                        data-field="name"
                                        data-rowindex="1"
                                        data-colindex="0"
@@ -2576,17 +2576,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="job-name">
-                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation"
+                                      <a title="periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel"
                                          class
-                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-gcp-libvirt-cert-rotation%22%7D%5D%7D"
+                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-parallel%22%7D%5D%7D"
                                       >
-                                        e2e-gcp-libvirt-cert-rotation
+                                        e2e-openstack-parallel
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="0"
+                                       data-value="60"
                                        data-field="current_pass_percentage"
                                        data-rowindex="1"
                                        data-colindex="1"
@@ -2598,16 +2598,16 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0.0%
+                                      60.0%
                                       <br>
                                       <small>
-                                        (1 runs)
+                                        (5 runs)
                                       </small>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-57.14285714285714"
+                                       data-value="-16.19047619047619"
                                        data-field="net_improvement"
                                        data-rowindex="1"
                                        data-colindex="2"
@@ -2624,7 +2624,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-57.14%"
+                                         title="-16.19%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -2635,17 +2635,17 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="56"
+                                <div data-id="53"
                                      data-rowindex="2"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-13-100 MuiDataGrid-row"
                                      aria-rowindex="4"
                                      aria-selected="false"
                                      style="max-height: 70px; min-height: 70px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia"
+                                       data-value="release-openshift-ocp-osd-aws-nightly-4.8"
                                        data-field="name"
                                        data-rowindex="2"
                                        data-colindex="0"
@@ -2657,17 +2657,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="job-name">
-                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia"
+                                      <a title="release-openshift-ocp-osd-aws-nightly-4.8"
                                          class
-                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-virtualmedia%22%7D%5D%7D"
+                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-osd-aws-nightly-4.8%22%7D%5D%7D"
                                       >
-                                        e2e-metal-ipi-virtualmedia
+                                        release-openshift-ocp-osd-aws-nightly-4.8
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="0"
+                                       data-value="12.5"
                                        data-field="current_pass_percentage"
                                        data-rowindex="2"
                                        data-colindex="1"
@@ -2679,16 +2679,16 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0.0%
+                                      12.5%
                                       <br>
                                       <small>
-                                        (2 runs)
+                                        (8 runs)
                                       </small>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-50"
+                                       data-value="-13.425925925925924"
                                        data-field="net_improvement"
                                        data-rowindex="2"
                                        data-colindex="2"
@@ -2705,7 +2705,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-50.00%"
+                                         title="-13.43%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -2716,17 +2716,17 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="36"
+                                <div data-id="51"
                                      data-rowindex="3"
                                      role="row"
-                                     class="Mui-odd JobTable-row-percent-50-137 MuiDataGrid-row"
+                                     class="Mui-odd JobTable-row-percent-17-104 MuiDataGrid-row"
                                      aria-rowindex="5"
                                      aria-selected="false"
                                      style="max-height: 70px; min-height: 70px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted"
+                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi"
                                        data-field="name"
                                        data-rowindex="3"
                                        data-colindex="0"
@@ -2738,17 +2738,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="job-name">
-                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted"
+                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi"
                                          class
-                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-assisted%22%7D%5D%7D"
+                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi%22%7D%5D%7D"
                                       >
-                                        e2e-metal-assisted
+                                        e2e-metal-ipi
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="50"
+                                       data-value="16.666666666666664"
                                        data-field="current_pass_percentage"
                                        data-rowindex="3"
                                        data-colindex="1"
@@ -2760,16 +2760,16 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      50.0%
+                                      16.7%
                                       <br>
                                       <small>
-                                        (2 runs)
+                                        (6 runs)
                                       </small>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-42.85714285714286"
+                                       data-value="-12.74509803921569"
                                        data-field="net_improvement"
                                        data-rowindex="3"
                                        data-colindex="2"
@@ -2786,7 +2786,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-42.86%"
+                                         title="-12.75%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -2797,17 +2797,17 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="76"
+                                <div data-id="30"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even JobTable-row-percent-0-87 MuiDataGrid-row"
+                                     class="Mui-even JobTable-row-percent-60-147 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 70px; min-height: 70px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack"
+                                       data-value="periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi"
                                        data-field="name"
                                        data-rowindex="4"
                                        data-colindex="0"
@@ -2819,17 +2819,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="job-name">
-                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack"
+                                      <a title="periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi"
                                          class
-                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-metal-ipi-ovn-dualstack%22%7D%5D%7D"
+                                         href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-upi%22%7D%5D%7D"
                                       >
-                                        e2e-metal-ipi-ovn-dualstack
+                                        e2e-vsphere-upi
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="0"
+                                       data-value="60"
                                        data-field="current_pass_percentage"
                                        data-rowindex="4"
                                        data-colindex="1"
@@ -2841,16 +2841,16 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="percentage-cell">
-                                      0.0%
+                                      60.0%
                                       <br>
                                       <small>
-                                        (2 runs)
+                                        (10 runs)
                                       </small>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-38.46153846153847"
+                                       data-value="-11.05263157894737"
                                        data-field="net_improvement"
                                        data-rowindex="4"
                                        data-colindex="2"
@@ -2867,7 +2867,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-38.46%"
+                                         title="-11.05%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -3650,7 +3650,7 @@ exports[`app should render correctly 1`] = `
                      focusable="false"
                      viewbox="0 0 24 24"
                      aria-hidden="true"
-                     title="Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable and techpreview."
+                     title="Shows results with more than 5 runs over the last 2 days compared to the last 7 days sorted by most regressed, excluding never-stable and techpreview."
                 >
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
                   </path>
@@ -3855,90 +3855,11 @@ exports[`app should render correctly 1`] = `
                               <div class="MuiDataGrid-renderingZone"
                                    style="max-height: 500px; width: 200px; transform: translate3d(-0px, -0px, 0);"
                               >
-                                <div data-id="12"
+                                <div data-id="3"
                                      data-rowindex="0"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-75-263 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-20-208 MuiDataGrid-row"
                                      aria-rowindex="2"
-                                     aria-selected="false"
-                                     style="max-height: 100px; min-height: 100px;"
-                                >
-                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
-                                       role="cell"
-                                       data-value="TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
-                                       data-field="name"
-                                       data-rowindex="0"
-                                       data-colindex="0"
-                                       data-rowselected="false"
-                                       data-editable="false"
-                                       data-mode="view"
-                                       aria-colindex="1"
-                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
-                                       tabindex="-1"
-                                  >
-                                    <div class="test-name">
-                                      <a title="TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
-                                         class
-                                         href="/tests/4.8/analysis?test=TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)"
-                                      >
-                                        TestInstall_test_install.start_install_and_wait_for_installed(openshift_version=4.8)
-                                      </a>
-                                    </div>
-                                  </div>
-                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
-                                       role="cell"
-                                       data-value="75"
-                                       data-field="current_pass_percentage"
-                                       data-rowindex="0"
-                                       data-colindex="1"
-                                       data-rowselected="false"
-                                       data-editable="false"
-                                       data-mode="view"
-                                       aria-colindex="2"
-                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
-                                       tabindex="-1"
-                                  >
-                                    <p title="4 runs"
-                                       class
-                                    >
-                                      75.0%
-                                    </p>
-                                  </div>
-                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
-                                       role="cell"
-                                       data-value="-21.15384615384616"
-                                       data-field="net_improvement"
-                                       data-rowindex="0"
-                                       data-colindex="2"
-                                       data-rowselected="false"
-                                       data-editable="false"
-                                       data-mode="view"
-                                       aria-colindex="3"
-                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
-                                       tabindex="-1"
-                                  >
-                                    <svg class="MuiSvgIcon-root"
-                                         focusable="false"
-                                         viewbox="0 0 24 24"
-                                         aria-hidden="true"
-                                         data-icon="ArrowDownwardRoundedIcon"
-                                         style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-21.15%"
-                                    >
-                                      <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
-                                      </path>
-                                    </svg>
-                                  </div>
-                                  <div style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
-                                       class="MuiDataGrid-cell"
-                                  >
-                                  </div>
-                                </div>
-                                <div data-id="3"
-                                     data-rowindex="1"
-                                     role="row"
-                                     class="Mui-odd TestTable-row-percent-20-208 MuiDataGrid-row"
-                                     aria-rowindex="3"
                                      aria-selected="false"
                                      style="max-height: 100px; min-height: 100px;"
                                 >
@@ -3946,7 +3867,7 @@ exports[`app should render correctly 1`] = `
                                        role="cell"
                                        data-value="[install] [Suite: operators] [OSD] RBAC Operator Operator Upgrade should upgrade from the replaced version"
                                        data-field="name"
-                                       data-rowindex="1"
+                                       data-rowindex="0"
                                        data-colindex="0"
                                        data-rowselected="false"
                                        data-editable="false"
@@ -3968,7 +3889,7 @@ exports[`app should render correctly 1`] = `
                                        role="cell"
                                        data-value="20"
                                        data-field="current_pass_percentage"
-                                       data-rowindex="1"
+                                       data-rowindex="0"
                                        data-colindex="1"
                                        data-rowselected="false"
                                        data-editable="false"
@@ -3987,7 +3908,7 @@ exports[`app should render correctly 1`] = `
                                        role="cell"
                                        data-value="-16.95652173913043"
                                        data-field="net_improvement"
-                                       data-rowindex="1"
+                                       data-rowindex="0"
                                        data-colindex="2"
                                        data-rowselected="false"
                                        data-editable="false"
@@ -4003,6 +3924,85 @@ exports[`app should render correctly 1`] = `
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
                                          title="-16.96%"
+                                    >
+                                      <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
+                                      </path>
+                                    </svg>
+                                  </div>
+                                  <div style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
+                                       class="MuiDataGrid-cell"
+                                  >
+                                  </div>
+                                </div>
+                                <div data-id="16"
+                                     data-rowindex="1"
+                                     role="row"
+                                     class="Mui-odd TestTable-row-percent-83-271 MuiDataGrid-row"
+                                     aria-rowindex="3"
+                                     aria-selected="false"
+                                     style="max-height: 100px; min-height: 100px;"
+                                >
+                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
+                                       role="cell"
+                                       data-value="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                       data-field="name"
+                                       data-rowindex="1"
+                                       data-colindex="0"
+                                       data-rowselected="false"
+                                       data-editable="false"
+                                       data-mode="view"
+                                       aria-colindex="1"
+                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
+                                       tabindex="-1"
+                                  >
+                                    <div class="test-name">
+                                      <a title="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                         class
+                                         href="/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                      >
+                                        [sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
+                                      </a>
+                                    </div>
+                                  </div>
+                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
+                                       role="cell"
+                                       data-value="83.33333333333334"
+                                       data-field="current_pass_percentage"
+                                       data-rowindex="1"
+                                       data-colindex="1"
+                                       data-rowselected="false"
+                                       data-editable="false"
+                                       data-mode="view"
+                                       aria-colindex="2"
+                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
+                                       tabindex="-1"
+                                  >
+                                    <p title="6 runs"
+                                       class
+                                    >
+                                      83.3%
+                                    </p>
+                                  </div>
+                                  <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
+                                       role="cell"
+                                       data-value="-14.62585034013604"
+                                       data-field="net_improvement"
+                                       data-rowindex="1"
+                                       data-colindex="2"
+                                       data-rowselected="false"
+                                       data-editable="false"
+                                       data-mode="view"
+                                       aria-colindex="3"
+                                       style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
+                                       tabindex="-1"
+                                  >
+                                    <svg class="MuiSvgIcon-root"
+                                         focusable="false"
+                                         viewbox="0 0 24 24"
+                                         aria-hidden="true"
+                                         data-icon="ArrowDownwardRoundedIcon"
+                                         style="stroke: darkred; stroke-width: 3; color: darkred;"
+                                         title="-14.63%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>
@@ -4092,7 +4092,7 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="16"
+                                <div data-id="18"
                                      data-rowindex="3"
                                      role="row"
                                      class="Mui-odd TestTable-row-percent-83-271 MuiDataGrid-row"
@@ -4102,7 +4102,7 @@ exports[`app should render correctly 1`] = `
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                       data-value="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                        data-field="name"
                                        data-rowindex="3"
                                        data-colindex="0"
@@ -4114,11 +4114,11 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="test-name">
-                                      <a title="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                      <a title="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                          class
-                                         href="/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                         href="/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                       >
-                                        [sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (Always)[LinuxOnly], pod created with an initial fsgroup, new pod fsgroup applied to volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
+                                        [sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
                                       </a>
                                     </div>
                                   </div>
@@ -4171,17 +4171,17 @@ exports[`app should render correctly 1`] = `
                                   >
                                   </div>
                                 </div>
-                                <div data-id="18"
+                                <div data-id="30"
                                      data-rowindex="4"
                                      role="row"
-                                     class="Mui-even TestTable-row-percent-83-271 MuiDataGrid-row"
+                                     class="Mui-even TestTable-row-percent-93-281 MuiDataGrid-row"
                                      aria-rowindex="6"
                                      aria-selected="false"
                                      style="max-height: 100px; min-height: 100px;"
                                 >
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
                                        role="cell"
-                                       data-value="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                       data-value="[sig-network] NetworkPolicy [LinuxOnly] NetworkPolicy between server and client should support a 'default-deny-all' policy [Feature:NetworkPolicy] [Skipped:Network/OpenShiftSDN/Multitenant] [Skipped:Network/OpenShiftSDN] [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                        data-field="name"
                                        data-rowindex="4"
                                        data-colindex="0"
@@ -4193,17 +4193,17 @@ exports[`app should render correctly 1`] = `
                                        tabindex="-1"
                                   >
                                     <div class="test-name">
-                                      <a title="[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                      <a title="[sig-network] NetworkPolicy [LinuxOnly] NetworkPolicy between server and client should support a 'default-deny-all' policy [Feature:NetworkPolicy] [Skipped:Network/OpenShiftSDN/Multitenant] [Skipped:Network/OpenShiftSDN] [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                          class
-                                         href="/tests/4.8/analysis?test=[sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]"
+                                         href="/tests/4.8/analysis?test=[sig-network] NetworkPolicy [LinuxOnly] NetworkPolicy between server and client should support a 'default-deny-all' policy [Feature:NetworkPolicy] [Skipped:Network/OpenShiftSDN/Multitenant] [Skipped:Network/OpenShiftSDN] [Suite:openshift/conformance/parallel] [Suite:k8s]"
                                       >
-                                        [sig-storage] In-tree Volumes [Driver: azure-disk] [Testpattern: Dynamic PV (default fs)] fsgroupchangepolicy (OnRootMismatch)[LinuxOnly], pod created with an initial fsgroup, volume contents ownership changed in first pod, new pod with different fsgroup applied to the volume contents [Suite:openshift/conformance/parallel] [Suite:k8s]
+                                        [sig-network] NetworkPolicy [LinuxOnly] NetworkPolicy between server and client should support a 'default-deny-all' policy [Feature:NetworkPolicy] [Skipped:Network/OpenShiftSDN/Multitenant] [Skipped:Network/OpenShiftSDN] [Suite:openshift/conformance/parallel] [Suite:k8s]
                                       </a>
                                     </div>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="83.33333333333334"
+                                       data-value="93.33333333333333"
                                        data-field="current_pass_percentage"
                                        data-rowindex="4"
                                        data-colindex="1"
@@ -4214,15 +4214,15 @@ exports[`app should render correctly 1`] = `
                                        style="min-width: 50px; max-width: 50px; line-height: 99px; min-height: 100px; max-height: 100px;"
                                        tabindex="-1"
                                   >
-                                    <p title="6 runs"
+                                    <p title="15 runs"
                                        class
                                     >
-                                      83.3%
+                                      93.3%
                                     </p>
                                   </div>
                                   <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight"
                                        role="cell"
-                                       data-value="-14.62585034013604"
+                                       data-value="-5.6140350877193015"
                                        data-field="net_improvement"
                                        data-rowindex="4"
                                        data-colindex="2"
@@ -4239,7 +4239,7 @@ exports[`app should render correctly 1`] = `
                                          aria-hidden="true"
                                          data-icon="ArrowDownwardRoundedIcon"
                                          style="stroke: darkred; stroke-width: 3; color: darkred;"
-                                         title="-14.63%"
+                                         title="-5.61%"
                                     >
                                       <path d="M11 5v11.17l-4.88-4.88c-.39-.39-1.03-.39-1.42 0-.39.39-.39 1.02 0 1.41l6.59 6.59c.39.39 1.02.39 1.41 0l6.59-6.59c.39-.39.39-1.02 0-1.41a.9959.9959 0 00-1.41 0L13 16.17V5c0-.55-.45-1-1-1s-1 .45-1 1z">
                                       </path>

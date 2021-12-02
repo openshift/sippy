@@ -287,6 +287,20 @@ export default function JobRunsTable(props) {
     })
   }
 
+  const filterByResult = (result) => {
+    const filtersWithoutResult = filterModel.items.filter(
+      (i) => i.columnField !== 'result'
+    )
+
+    setFilterModel({
+      items: [
+        ...filtersWithoutResult,
+        { columnField: 'result', operatorValue: 'equals', value: result },
+      ],
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
+
   const updateSortModel = (model) => {
     if (model.length === 0) {
       return
@@ -303,49 +317,53 @@ export default function JobRunsTable(props) {
 
   const legend = (
     <div>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('S')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-S">S</span>
         </span>{' '}
         success
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('F')} className="legend-item">
         <span className="results results-demo">
-          <span className="result result-F">F</span>
+          <span className="result result-F">
+            <a onClick={() => filterByResult('F')}>F</a>
+          </span>
         </span>{' '}
         failure (e2e)
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('f')} className="legend-item">
         <span className="results results-demo">
-          <span className="result result-f">f</span>
+          <span className="result result-f">
+            <a onClick={() => filterByResult('f')}>f</a>
+          </span>
         </span>{' '}
         failure (other tests)
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('U')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-U">U</span>
         </span>{' '}
         upgrade failure
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('I')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-I">I</span>
         </span>{' '}
         setup failure (installer)
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('N')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-N">N</span>
         </span>{' '}
         setup failure (infra)
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('n')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-n">n</span>
         </span>{' '}
         failure before setup (infra)
       </span>
-      <span className="legend-item">
+      <span onClick={() => filterByResult('R')} className="legend-item">
         <span className="results results-demo">
           <span className="result result-R">R</span>
         </span>{' '}
