@@ -391,7 +391,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <p title="15 days ago"
                                class
                             >
-                              7/27/2021, 8:49:29 AM
+                              2021-07-27, 8:49:29 a.m.
                             </p>
                           </div>
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
@@ -460,7 +460,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <p title="22 days ago"
                                class
                             >
-                              7/20/2021, 4:01:02 PM
+                              2021-07-20, 4:01:02 p.m.
                             </p>
                           </div>
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
@@ -529,7 +529,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <p title="24 days ago"
                                class
                             >
-                              7/18/2021, 4:00:56 PM
+                              2021-07-18, 4:00:56 p.m.
                             </p>
                           </div>
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
@@ -598,7 +598,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <p title="24 days ago"
                                class
                             >
-                              7/18/2021, 4:00:55 PM
+                              2021-07-18, 4:00:55 p.m.
                             </p>
                           </div>
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"
@@ -667,7 +667,7 @@ exports[`TestAnalysis should render correctly 1`] = `
                             <p title="24 days ago"
                                class
                             >
-                              7/18/2021, 3:34:55 AM
+                              2021-07-18, 3:34:55 a.m.
                             </p>
                           </div>
                           <div class="MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft"

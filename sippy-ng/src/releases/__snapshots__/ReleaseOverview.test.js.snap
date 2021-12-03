@@ -405,14 +405,14 @@ exports[`release-overview should render correctly 1`] = `
             <div class="MuiAccordionSummary-content">
               <div class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3">
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-224"
+                  <a class="MuiBox-root MuiBox-root-227"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22s390x%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-223 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-226 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(229, 115, 115);"
                          title="Current runs: 13, previous runs: 14"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -441,14 +441,14 @@ exports[`release-overview should render correctly 1`] = `
                   </a>
                 </div>
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-226"
+                  <a class="MuiBox-root MuiBox-root-229"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ppc64le%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-225 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-228 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(236, 132, 105);"
                          title="Current runs: 13, previous runs: 14"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -477,14 +477,14 @@ exports[`release-overview should render correctly 1`] = `
                   </a>
                 </div>
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-228"
+                  <a class="MuiBox-root MuiBox-root-231"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22osd%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-227 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-230 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(242, 149, 96);"
                          title="Current runs: 54, previous runs: 56"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -513,14 +513,14 @@ exports[`release-overview should render correctly 1`] = `
                   </a>
                 </div>
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-230"
+                  <a class="MuiBox-root MuiBox-root-233"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22upgrade%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-229 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-232 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(242, 150, 95);"
                          title="Current runs: 251, previous runs: 286"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -549,14 +549,14 @@ exports[`release-overview should render correctly 1`] = `
                   </a>
                 </div>
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-232"
+                  <a class="MuiBox-root MuiBox-root-235"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22proxy%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-231 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-234 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(243, 150, 95);"
                          title="Current runs: 16, previous runs: 16"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -585,14 +585,14 @@ exports[`release-overview should render correctly 1`] = `
                   </a>
                 </div>
                 <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                  <a class="MuiBox-root MuiBox-root-234"
+                  <a class="MuiBox-root MuiBox-root-237"
                      href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-ipi%22%7D%5D%7D"
                   >
-                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-233 MuiPaper-elevation5 MuiPaper-rounded"
+                    <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-236 MuiPaper-elevation5 MuiPaper-rounded"
                          style="background-color: rgb(246, 160, 90);"
                          title="Current runs: 132, previous runs: 125"
                     >
-                      <div class="MuiCardContent-root makeStyles-cardContent-221"
+                      <div class="MuiCardContent-root makeStyles-cardContent-224"
                            style="text-align: center;"
                       >
                         <h6 class="MuiTypography-root MuiTypography-h6">
@@ -654,14 +654,14 @@ exports[`release-overview should render correctly 1`] = `
                          style="margin-right: 20px;"
                     >
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-236"
+                        <a class="MuiBox-root MuiBox-root-239"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22azure%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-235 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-238 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(248, 164, 87);"
                                title="Current runs: 138, previous runs: 142"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -690,14 +690,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-238"
+                        <a class="MuiBox-root MuiBox-root-241"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22compact%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-237 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-240 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(250, 169, 85);"
                                title="Current runs: 40, previous runs: 33"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -726,14 +726,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-240"
+                        <a class="MuiBox-root MuiBox-root-243"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovn%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-239 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-242 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(251, 172, 83);"
                                title="Current runs: 113, previous runs: 142"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -762,14 +762,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-242"
+                        <a class="MuiBox-root MuiBox-root-245"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-ipi%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-241 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-244 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(253, 177, 80);"
                                title="Current runs: 93, previous runs: 89"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -798,14 +798,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-244"
+                        <a class="MuiBox-root MuiBox-root-247"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22aws%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-243 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-246 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(254, 180, 78);"
                                title="Current runs: 348, previous runs: 377"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -834,14 +834,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-246"
+                        <a class="MuiBox-root MuiBox-root-249"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22gcp%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-245 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-248 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(254, 182, 78);"
                                title="Current runs: 187, previous runs: 190"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -870,14 +870,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-248"
+                        <a class="MuiBox-root MuiBox-root-251"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22single-node%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-247 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-250 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(251, 183, 79);"
                                title="Current runs: 33, previous runs: 36"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -906,14 +906,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-250"
+                        <a class="MuiBox-root MuiBox-root-253"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22realtime%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-249 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-252 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(245, 184, 81);"
                                title="Current runs: 13, previous runs: 13"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -942,14 +942,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-252"
+                        <a class="MuiBox-root MuiBox-root-255"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-upi%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-251 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-254 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(189, 191, 106);"
                                title="Current runs: 44, previous runs: 44"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -978,14 +978,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-254"
+                        <a class="MuiBox-root MuiBox-root-257"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22serial%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-253 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-256 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(183, 192, 109);"
                                title="Current runs: 214, previous runs: 209"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1014,14 +1014,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-256"
+                        <a class="MuiBox-root MuiBox-root-259"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22ovirt%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-255 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-258 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(179, 193, 110);"
                                title="Current runs: 43, previous runs: 43"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1050,14 +1050,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-258"
+                        <a class="MuiBox-root MuiBox-root-261"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22openstack%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-257 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-260 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(175, 193, 112);"
                                title="Current runs: 44, previous runs: 44"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1086,14 +1086,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-260"
+                        <a class="MuiBox-root MuiBox-root-263"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22vsphere-upi%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-259 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-262 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(141, 197, 127);"
                                title="Current runs: 73, previous runs: 68"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1122,14 +1122,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-262"
+                        <a class="MuiBox-root MuiBox-root-265"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22fips%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-261 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-264 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(129, 199, 132);"
                                title="Current runs: 28, previous runs: 28"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1158,14 +1158,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-264"
+                        <a class="MuiBox-root MuiBox-root-267"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22metal-assisted%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-263 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-266 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(129, 199, 132);"
                                title="Current runs: 28, previous runs: 26"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1194,14 +1194,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-266"
+                        <a class="MuiBox-root MuiBox-root-269"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22promote%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-265 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-268 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgb(129, 199, 132);"
                                title="Current runs: 1632, previous runs: 1805"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1230,14 +1230,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-268"
+                        <a class="MuiBox-root MuiBox-root-271"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22arm64%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-267 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-270 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgba(0, 0, 0, 0.38);"
                                title="Current runs: 0, previous runs: 0"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1253,14 +1253,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-270"
+                        <a class="MuiBox-root MuiBox-root-273"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22never-stable%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-269 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-272 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgba(0, 0, 0, 0.38);"
                                title="Current runs: 0, previous runs: 0"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1276,14 +1276,14 @@ exports[`release-overview should render correctly 1`] = `
                         </a>
                       </div>
                       <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2">
-                        <a class="MuiBox-root MuiBox-root-272"
+                        <a class="MuiBox-root MuiBox-root-275"
                            href="/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22contains%22%2C%22value%22%3A%22techpreview%22%7D%5D%7D"
                         >
-                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-222 makeStyles-miniCard-271 MuiPaper-elevation5 MuiPaper-rounded"
+                          <div class="MuiPaper-root MuiCard-root makeStyles-miniCard-225 makeStyles-miniCard-274 MuiPaper-elevation5 MuiPaper-rounded"
                                style="background-color: rgba(0, 0, 0, 0.38);"
                                title="Current runs: 0, previous runs: 0"
                           >
-                            <div class="MuiCardContent-root makeStyles-cardContent-221"
+                            <div class="MuiCardContent-root makeStyles-cardContent-224"
                                  style="text-align: center;"
                             >
                               <h6 class="MuiTypography-root MuiTypography-h6">
@@ -1952,7 +1952,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -2647,7 +2647,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -3333,7 +3333,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4019,7 +4019,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -4705,7 +4705,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         1-5 of 10
                       </p>
                       <div class="MuiTablePagination-actions">
@@ -5001,7 +5001,7 @@ exports[`release-overview should render correctly 1`] = `
                     <div class="MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters">
                       <div class="MuiTablePagination-spacer">
                       </div>
-                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-274 MuiTypography-body2 MuiTypography-colorInherit">
+                      <p class="MuiTypography-root MuiTablePagination-caption makeStyles-caption-222 MuiTypography-body2 MuiTypography-colorInherit">
                         0-0 of 0
                       </p>
                       <div class="MuiTablePagination-actions">

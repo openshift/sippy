@@ -49,7 +49,6 @@ type Job struct {
 	PreviousInfraFails              int     `json:"previous_infra_fails,omitempty"`
 	NetImprovement                  float64 `json:"net_improvement"`
 
-	Tags           []string     `json:"tags"`
 	TestGridURL    string       `json:"test_grid_url"`
 	Bugs           []bugsv1.Bug `json:"bugs"`
 	AssociatedBugs []bugsv1.Bug `json:"associated_bugs"`
@@ -117,8 +116,6 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 
 func (job Job) GetArrayValue(param string) ([]string, error) {
 	switch param {
-	case "tags":
-		return job.Tags, nil
 	case "variants":
 		return job.Variants, nil
 	default:

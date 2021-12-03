@@ -77,10 +77,6 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, currReport, pr
 		for _, run := range results.AllRuns {
 			apiRun := jobRunToAPIJobRun(next, results, run)
 
-			if strings.Contains(results.Name, "-upgrade") {
-				apiRun.Tags = []string{"upgrade"}
-			}
-
 			if filter != nil {
 				include, err := filter.Filter(apiRun)
 

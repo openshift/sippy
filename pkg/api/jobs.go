@@ -81,10 +81,6 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 	job.AssociatedBugs = current.AssociatedBugList
 	job.TestGridURL = current.TestGridURL
 
-	if strings.Contains(job.Name, "-upgrade") {
-		job.Tags = []string{"upgrade"}
-	}
-
 	return job
 }
 
