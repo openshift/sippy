@@ -154,12 +154,6 @@ export default function JobRunsTable(props) {
       hide: 'true',
     },
     {
-      field: 'tags',
-      headerName: 'Tags',
-      type: 'array',
-      hide: 'true',
-    },
-    {
       field: 'current_pass_percentage',
       headerName: 'Current pass percentage',
       type: 'number',

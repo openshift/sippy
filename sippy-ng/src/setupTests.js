@@ -15,6 +15,8 @@ export const withoutMuiID = (wrapper) =>
       .html()
       .replace(/id="mui-[0-9]*"/g, '')
       .replace(/aria-labelledby="(mui-[0-9]* *)*"/g, '')
+      .replace(/makeStyles-.*-[0-9]*/, '')
+      .replace(/MuiBox-root-.*-[0-9]*/, '')
   )
 
 Enzyme.configure({ adapter: new Adapter() })

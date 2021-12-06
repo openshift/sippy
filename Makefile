@@ -18,7 +18,7 @@ build: clean npm
 
 test: npm
 	go test -v ./...
-	cd sippy-ng; CI=true npm test -- --coverage
+	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 
 lint: npm
 	golangci-lint run ./...

@@ -174,11 +174,6 @@ export const getColumns = (config, openBugzillaDialog) => {
       type: 'number',
       hide: true,
     },
-    {
-      field: 'tags',
-      headerName: 'Tags',
-      hide: true,
-    },
   ]
 }
 
