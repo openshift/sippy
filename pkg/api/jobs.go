@@ -175,108 +175,55 @@ func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) 
 	// be happening here, previous seems to include current. See PrepareStandardTestReports.
 	// Note that the CLI/most of the code says "start date" for what is actually the
 	// end of the date range, and does a walk back.
-	currDays := 7
-	prevDays := 14
-	if period == periodTwoDay {
-		currDays = 2
-		prevDays = 9 // 7 + 2
-	}
-	startDate := time.Now().Add(time.Duration(-1*prevDays*24) * time.Hour)
-	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
-	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
-
-	// Load all ProwJobs and create a map of db ID to ProwJob:
-	var allJobs []models.ProwJob
-	dbr := dbc.DB.Find(&allJobs).Where("release = ?", release)
-	if dbr.Error != nil {
-		klog.Error(dbr)
-		return []apitype.Job{}, dbr.Error
-	}
-	allJobsByID := mapProwJobsByID(allJobs)
-	klog.V(3).Infof("Found %d jobs", len(allJobs))
-
-	// Load all ProwJobRuns in our period timestamp range:
-	var jobRunsInPeriod []models.ProwJobRun
-	dbr = dbc.DB.
-		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
-		Where("timestamp BETWEEN ? AND ?", startDate, now).
-		Where("prow_jobs.release = ?", release).Find(&jobRunsInPeriod)
-	if dbr.Error != nil {
-		klog.Error(dbr)
-		return []apitype.Job{}, dbr.Error
-	}
-	klog.V(3).Infof("Found %d job runs in period between %s and %s",
-		len(jobRunsInPeriod),
-		startDate.Format(time.RFC3339),
-		now.Format(time.RFC3339))
-
-	// Build a map of job ID to the API job result we'll return.
-	// Iterate all job results, incrementing counters on the job result we'll return.
-	apiJobResults := map[uint]*apitype.Job{}
-	for _, jobRun := range jobRunsInPeriod {
-		job := allJobsByID[jobRun.ProwJobID]
-		if _, ok := apiJobResults[job.ID]; !ok {
-
-			apiJobResults[job.ID] = &apitype.Job{
-				ID:          int(job.ID),
-				Name:        job.Name,
-				BriefName:   briefName(job.Name),
-				Variants:    job.Variants,
-				TestGridURL: job.TestGridURL,
-			}
+	/*
+		currDays := 7
+		prevDays := 14
+		if period == periodTwoDay {
+			currDays = 2
+			prevDays = 9 // 7 + 2
 		}
+	*/
 
-		jobAcc := apiJobResults[job.ID]
-
-		if jobRun.Timestamp.After(boundaryDate) {
-			jobAcc.CurrentRuns++
-		} else {
-			jobAcc.PreviousRuns++
-		}
-
-		if jobRun.Succeeded {
-			if jobRun.Timestamp.After(boundaryDate) {
-				jobAcc.CurrentPasses++
-			} else {
-				jobAcc.PreviousPasses++
-			}
-		}
-
-		if jobRun.Failed {
-			if jobRun.Timestamp.After(boundaryDate) {
-				jobAcc.CurrentFails++
-				if jobRun.InfrastructureFailure {
-					jobAcc.CurrentInfraFails++
-				}
-			} else {
-				jobAcc.PreviousFails++
-				if jobRun.InfrastructureFailure {
-					jobAcc.PreviousInfraFails++
-				}
-			}
-		}
-
-	}
-
-	// Now that we've processed all job results, calculate percentages on the results we'll return:
-	finalAPIJobResult := make([]apitype.Job, 0, len(apiJobResults))
-	for _, v := range apiJobResults {
-		if v.CurrentRuns > 0 {
-			v.CurrentPassPercentage = float64(v.CurrentPasses) / float64(v.CurrentRuns) * 100
-			v.CurrentProjectedPassPercentage = float64(v.CurrentPasses+v.CurrentInfraFails) / float64(v.CurrentRuns) * 100
-		}
-		if v.PreviousRuns > 0 {
-			v.PreviousPassPercentage = float64(v.PreviousPasses) / float64(v.PreviousRuns) * 100
-			v.PreviousProjectedPassPercentage = float64(v.PreviousPasses+v.PreviousInfraFails) / float64(v.PreviousRuns) * 100
-		}
-		v.NetImprovement = v.CurrentPassPercentage - v.PreviousPassPercentage
-		finalAPIJobResult = append(finalAPIJobResult, *v)
+	var jobReports []apitype.Job
+	jobsQuery := `WITH results AS (
+        select prow_jobs.name as pj_name,
+				prow_jobs.variants as pj_variants,
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_failures,
+                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_infra_fails,
+                coalesce(count(case when succeeded = true AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_passes,
+                coalesce(count(case when succeeded = false AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_fails,        
+                coalesce(count(case when timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_infra_fails
+        FROM prow_job_runs 
+        JOIN prow_jobs 
+                ON prow_jobs.id = prow_job_runs.prow_job_id                 
+                and timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW()
+        group by prow_jobs.name, prow_jobs.variants
+)
+SELECT *,
+	REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
+        current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+        (current_passes + current_infra_fails) * 100.0 / NULLIF(current_runs, 0) AS current_projected_pass_percentage,
+        current_fails * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
+        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
+        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
+FROM results
+JOIN prow_jobs ON prow_jobs.name = results.pj_name;
+`
+	r := dbc.DB.Raw(jobsQuery).Scan(&jobReports)
+	if r.Error != nil {
+		klog.Error(r.Error)
+		return []apitype.Job{}, r.Error
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(finalAPIJobResult))
+	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(jobReports))
 
-	return finalAPIJobResult, nil
+	return jobReports, nil
 }
 
 func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
