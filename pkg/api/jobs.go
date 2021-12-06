@@ -7,6 +7,7 @@ import (
 	gosort "sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -188,18 +189,18 @@ func BuildJobResults(dbc *db.DB, period, release string, filter *Filter) (jobsAP
 	jobsQuery := `WITH results AS (
         select prow_jobs.name as pj_name,
 				prow_jobs.variants as pj_variants,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_failures,
-                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end), 0) as previous_infra_fails,
-                coalesce(count(case when succeeded = true AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_passes,
-                coalesce(count(case when succeeded = false AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_fails,        
-                coalesce(count(case when timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp > NOW() - INTERVAL '7 DAY' then 1 end), 0) as current_infra_fails
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_failures,
+                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_infra_fails,
+                coalesce(count(case when succeeded = true AND timestamp > NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as current_passes,
+                coalesce(count(case when succeeded = false AND timestamp > NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as current_fails,        
+                coalesce(count(case when timestamp > NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as current_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp > NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as current_infra_fails
         FROM prow_job_runs 
         JOIN prow_jobs 
                 ON prow_jobs.id = prow_job_runs.prow_job_id                 
-                and timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW()
+                and timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW()
         group by prow_jobs.name, prow_jobs.variants
 )
 SELECT *,
@@ -214,7 +215,12 @@ SELECT *,
 FROM results
 JOIN prow_jobs ON prow_jobs.name = results.pj_name
 `
-	r := dbc.DB.Raw(jobsQuery).Scan(&jobReports)
+	intervals := map[string]interface{}{"startInterval": "14 DAY", "boundaryInterval": "7 DAY"}
+	t := template.Must(template.New("").Parse(jobsQuery))
+	sb := &strings.Builder{}
+	t.Execute(sb, intervals)
+
+	r := dbc.DB.Raw(sb.String()).Scan(&jobReports)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return []apitype.Job{}, r.Error
