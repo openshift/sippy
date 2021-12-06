@@ -157,7 +157,7 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 	}
 
 	period := req.URL.Query().Get("period")
-	jobsResult, err := BuildJobResults(dbc, period, release)
+	jobsResult, err := BuildJobResults(dbc, period, release, filter)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -168,7 +168,7 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
-func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) {
+func BuildJobResults(dbc *db.DB, period, release string, filter *Filter) (jobsAPIResult, error) {
 	now := time.Now()
 
 	// TODO: use actual start/num days settings from CLI once we understand what should
@@ -212,7 +212,7 @@ SELECT *,
         previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
         (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results
-JOIN prow_jobs ON prow_jobs.name = results.pj_name;
+JOIN prow_jobs ON prow_jobs.name = results.pj_name
 `
 	r := dbc.DB.Raw(jobsQuery).Scan(&jobReports)
 	if r.Error != nil {
@@ -220,10 +220,27 @@ JOIN prow_jobs ON prow_jobs.name = results.pj_name;
 		return []apitype.Job{}, r.Error
 	}
 
-	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(jobReports))
+	// Apply filtering to what we pulled from the db. Perfect world we'd incorporate this into the query instead.
+	filteredJobReports := make([]apitype.Job, 0, len(jobReports))
+	for _, jobReport := range jobReports {
+		if filter != nil {
+			include, err := filter.Filter(jobReport)
+			if err != nil {
+				return []apitype.Job{}, err
+			}
 
-	return jobReports, nil
+			if !include {
+				continue
+			}
+		}
+
+		filteredJobReports = append(filteredJobReports, jobReport)
+	}
+
+	elapsed := time.Since(now)
+	klog.Infof("BuildJobResult completed in %s with %d results from db, filtered down to %s", elapsed, len(jobReports), len(filteredJobReports))
+
+	return filteredJobReports, nil
 }
 
 func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
