@@ -1,24 +1,9 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`SummaryCard shows overview 1`] = `
-<div class="MuiPaper-root MuiCard-root makeStyles-summaryCard-2 makeStyles-summaryCard-3 MuiPaper-elevation5 MuiPaper-rounded"
-     style="background-color: rgb(240, 143, 99);"
-     title
->
-  <div class="MuiCardContent-root makeStyles-cardContent-1">
-    <h6 class="MuiTypography-root MuiTypography-h6">
-      <svg class="MuiSvgIcon-root"
-           focusable="false"
-           viewbox="0 0 24 24"
-           aria-hidden="true"
-      >
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z">
-        </path>
-      </svg>
-    </h6>
-    <div align="center">
-      <div style="width: 70%;">
-      </div>
+<div class="MuiPaper-root MuiCard-root V7h2v2z">
+  <div align="center">
+    <div style="width: 70%;">
     </div>
   </div>
 </div>
