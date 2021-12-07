@@ -99,10 +99,6 @@ var (
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-baremetal-cucushift-ipi",
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-openstack-cucushift-ipi",
 
-		// Reported on slack to SD-CICD
-		"release-openshift-ocp-osd-aws-nightly-4.10",
-		"release-openshift-ocp-osd-gcp-nightly-4.10",
-
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2019375
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-openstack-proxy",
 
@@ -123,6 +119,7 @@ var (
 
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade",
+		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-azure-upgrade",
 
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-cilium",
@@ -153,9 +150,7 @@ var (
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-s390x",
 		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-uwm",
 		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-gcp-ovn-upgrade",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-ovn-local-gateway",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-fips",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-fips",
+		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-gcp-ovn-upgrade",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-libvirt-cert-rotation",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-compact",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-proxy",
@@ -165,7 +160,6 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp-libvirt-cert-rotation",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-compact",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-az",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-fips",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-proxy",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1979966
@@ -195,10 +189,6 @@ var (
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-s390x",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=1989100
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-openstack-ovn",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-openstack-ovn",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2019376
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-network-stress",
