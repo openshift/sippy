@@ -234,7 +234,8 @@ func BuildJobResults(dbc *db.DB, release string, start, boundary, end time.Time,
         FROM prow_job_runs 
         JOIN prow_jobs 
                 ON prow_jobs.id = prow_job_runs.prow_job_id                 
-                and timestamp BETWEEN @start AND @end 
+				AND prow_jobs.release = @release
+                AND timestamp BETWEEN @start AND @end 
         group by prow_jobs.name, prow_jobs.variants
 )
 SELECT *,
@@ -250,7 +251,10 @@ FROM results
 JOIN prow_jobs ON prow_jobs.name = results.pj_name
 `
 	r := dbc.DB.Raw(jobsQuery,
-		sql.Named("start", start), sql.Named("boundary", boundary), sql.Named("end", end)).Scan(&jobReports)
+		sql.Named("start", start),
+		sql.Named("boundary", boundary),
+		sql.Named("end", end),
+		sql.Named("release", release)).Scan(&jobReports)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return []apitype.Job{}, r.Error
