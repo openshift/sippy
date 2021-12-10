@@ -1,18 +1,18 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	gosort "sort"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 	"k8s.io/klog"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -157,21 +157,55 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	period := req.URL.Query().Get("period")
-	// TODO: use actual start/num days settings from CLI once we understand what should
-	// be happening here, previous seems to include current. See PrepareStandardTestReports.
-	// Note that the CLI/most of the code says "start date" for what is actually the
-	// end of the date range, and does a walk back.
-	/*
-		currDays := 7
-		prevDays := 14
-		if period == periodTwoDay {
-			currDays = 2
-			prevDays = 9 // 7 + 2
-		}
-	*/
+	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
+	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
+	var start time.Time
+	var boundary time.Time
+	var end time.Time
+	var err error
 
-	jobsResult, err := BuildJobResults(dbc, period, release, filter)
+	startParam := req.URL.Query().Get("start")
+	if startParam != "" {
+		start, err = time.Parse("2006-01-02", startParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
+			return
+		}
+	} else {
+		// Default start to 14 days ago
+		start = time.Now().Add(-14 * 24 * time.Hour)
+	}
+
+	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
+	// for callers to know to specify one day beyond.
+	boundaryParam := req.URL.Query().Get("boundary")
+	if boundaryParam != "" {
+		boundary, err = time.Parse("2006-01-02", boundaryParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
+			return
+		}
+	} else {
+		// Default boundary to 7 days ago
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+
+	}
+
+	endParam := req.URL.Query().Get("end")
+	if endParam != "" {
+		end, err = time.Parse("2006-01-02", endParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
+			return
+		}
+	} else {
+		// Default end to now
+		end = time.Now()
+	}
+
+	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	jobsResult, err := BuildJobResults(dbc, release, start, boundary, end, filter)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -182,25 +216,25 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
-func BuildJobResults(dbc *db.DB, period, release string, filter *Filter) (jobsAPIResult, error) {
+func BuildJobResults(dbc *db.DB, release string, start, boundary, end time.Time, filter *Filter) (jobsAPIResult, error) {
 	now := time.Now()
 
 	var jobReports []apitype.Job
 	jobsQuery := `WITH results AS (
         select prow_jobs.name as pj_name,
 				prow_jobs.variants as pj_variants,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_failures,
-                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.boundaryInterval}}' then 1 end), 0) as previous_infra_fails,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL '{{.boundaryInterval}}' AND NOW() - INTERVAL '{{.endInterval}}' then 1 end), 0) as current_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL '{{.boundaryInterval}}' AND NOW() - INTERVAL '{{.endInterval}}' then 1 end), 0) as current_fails,        
-                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '{{.boundaryInterval}}' AND NOW() - INTERVAL '{{.endInterval}}' then 1 end), 0) as current_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL '{{.boundaryInterval}}' AND NOW() - INTERVAL '{{.endInterval}}' then 1 end), 0) as current_infra_fails
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_failures,
+                coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_infra_fails,
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
+                coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_infra_fails
         FROM prow_job_runs 
         JOIN prow_jobs 
                 ON prow_jobs.id = prow_job_runs.prow_job_id                 
-                and timestamp BETWEEN NOW() - INTERVAL '{{.startInterval}}' AND NOW() - INTERVAL '{{.endInterval}}'
+                and timestamp BETWEEN @start AND @end 
         group by prow_jobs.name, prow_jobs.variants
 )
 SELECT *,
@@ -215,20 +249,8 @@ SELECT *,
 FROM results
 JOIN prow_jobs ON prow_jobs.name = results.pj_name
 `
-	// Using a string template here to replace params we re-use many times in the query. This is sub-optimal
-	// but all attempts to use a named param with gorm have hit a weird error likely in the postgresql libraries
-	// complaining about a syntax error near $1 (which doesn't exist in the logged query, and the logged query
-	// works fine when run separately). For now it's text templating.
-	//
-	// However this likely means we need to watch out for sql injection, so any test getting subbed into the query
-	// should not come directly from the API request's query parameters. We must translate/validate explicitly and
-	// carefully.
-	intervals := map[string]interface{}{"startInterval": "14 DAY", "boundaryInterval": "7 DAY", "endInterval": "14 DAY"}
-	t := template.Must(template.New("").Parse(jobsQuery))
-	sb := &strings.Builder{}
-	t.Execute(sb, intervals)
-
-	r := dbc.DB.Raw(sb.String()).Scan(&jobReports)
+	r := dbc.DB.Raw(jobsQuery,
+		sql.Named("start", start), sql.Named("boundary", boundary), sql.Named("end", end)).Scan(&jobReports)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return []apitype.Job{}, r.Error
@@ -255,14 +277,6 @@ JOIN prow_jobs ON prow_jobs.name = results.pj_name
 	klog.Infof("BuildJobResult completed in %s with %d results from db, filtered down to %s", elapsed, len(jobReports), len(filteredJobReports))
 
 	return filteredJobReports, nil
-}
-
-func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
-	result := map[uint]models.ProwJob{}
-	for _, pj := range allProwJobs {
-		result[pj.ID] = pj
-	}
-	return result
 }
 
 type jobDetail struct {
