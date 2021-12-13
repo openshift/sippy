@@ -278,7 +278,7 @@ JOIN prow_jobs ON prow_jobs.name = results.pj_name
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results from db, filtered down to %s", elapsed, len(jobReports), len(filteredJobReports))
+	klog.Infof("BuildJobResult completed in %s with %d results from db, filtered down to %d", elapsed, len(jobReports), len(filteredJobReports))
 
 	return filteredJobReports, nil
 }
