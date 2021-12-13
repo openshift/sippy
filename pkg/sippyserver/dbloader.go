@@ -74,6 +74,14 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 		}
 	}
 
+	// lastJobRunStoredCache will map prow job db ID to the last timestamp we have for that job.
+	// This is used to speed up subsequent updates of the database, as we can ignore job runs older than
+	// our last recorded timestamp on the assumption we must have already stored them.
+	/*
+		lastJobRunStoredCache := map[uint]time.Time{}
+		dbc.DB.Model(&models.ProwJobRun{}).Find()
+	*/
+
 	//jobRuns := []models.ProwJobRun{}
 	for i := range rawJobResults.JobResults {
 		jr := rawJobResults.JobResults[i]
@@ -148,6 +156,12 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 				return errors.Wrap(err, "error loading prow jobs into db")
 			}
 
+			// Update to create test run join table entries now that we know the pjr ID.
+			err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Save(&pjr).Error
+			if err != nil {
+				return errors.Wrap(err, "error updating prow job run with tests")
+			}
+
 			testRuns := make([]models.ProwJobRunTest, len(jobRun.TestResults))
 			for i, tr := range jobRun.TestResults {
 				if _, ok := testCache[tr.Name]; !ok {
@@ -169,12 +183,9 @@ func (a TestReportGeneratorConfig) PrepareDatabase(
 					Status:       int(tr.Status),
 				}
 			}
-
-			// Update to create test run join table entries now that we know the pjr ID.
-			pjr.Tests = testRuns
-			err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Save(&pjr).Error
+			err = dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(testRuns, 100).Error
 			if err != nil {
-				return errors.Wrap(err, "error updating prow job run with tests")
+				return errors.Wrap(err, "error loading prow job run test data into db")
 			}
 
 			//jobRuns = append(jobRuns, pjr)
