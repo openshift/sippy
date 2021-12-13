@@ -44,11 +44,21 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	/*
+		if err := db.SetupJoinTable(&models.ProwJobRun{}, "Tests", &models.ProwJobRunTest{}); err != nil {
+			return nil, err
+		}
+	*/
+
 	if err := db.AutoMigrate(&models.ProwJobRun{}); err != nil {
 		return nil, err
 	}
 
 	if err := db.AutoMigrate(&models.Test{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
 		return nil, err
 	}
 

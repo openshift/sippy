@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 // 1. TestGrid contains jobs
@@ -32,7 +33,7 @@ type RawJobResult struct {
 }
 
 // RawTestResult is an intermediate datatype that may not have complete or consistent data when interrogated.
-// It holds data about an individual test that may have happened in may different jobs and job runs.
+// It holds data about an individual test that may have happened in many different jobs and job runs.
 // It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete
 type RawTestResult struct {
 	Name       string
@@ -42,6 +43,12 @@ type RawTestResult struct {
 	Flakes     int
 }
 
+// RawJobRunTestResult represents an execution of a test in a job run, and whether it was success, failure, or a flake.
+type RawJobRunTestResult struct {
+	Name   string
+	Status testgridv1.TestStatus
+}
+
 // RawJobRunResult is an intermediate datatype that may not have complete or consistent data when interrogated.
 // It holds data for an individual run of a given job.
 type RawJobRunResult struct {
@@ -49,6 +56,7 @@ type RawJobRunResult struct {
 	JobRunURL       string
 	TestFailures    int
 	FailedTestNames []string
+	TestResults     []RawJobRunTestResult
 	Failed          bool
 	Succeeded       bool
 

@@ -5,6 +5,7 @@ package v1
 import (
 	"time"
 
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"gorm.io/gorm"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -193,6 +194,17 @@ type JobRunResult struct {
 	// Timestamp is milliseconds since epoch when this job was run.
 	Timestamp     int              `json:"timestamp"`
 	OverallResult JobOverallResult `json:"result"`
+}
+
+// RawJobRunTestResult represents an execution of a test in a job run, and whether it was success, failure, or a flake.
+type RawJobRunTestResult struct {
+	Name   string
+	Status testgridv1.TestStatus
+}
+
+type JobRunTest struct {
+	Name     string
+	Statuses []TestResult `json:"statuses"`
 }
 
 // JobResult is a core sippy model aggregating status, statistics, and variants for a given prow job.

@@ -50,6 +50,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+		// TODO: this needs to get removed, but carefully. We need to see the suite names.
 		for _, prefix := range testSuitePrefixes {
 			test.Name = strings.TrimPrefix(test.Name, prefix)
 		}
@@ -105,7 +106,7 @@ func isOverallTest(testName string, job testgridv1.JobDetails) bool {
 	return testName == overall || testName == fmt.Sprintf("%s.%s", job.Name, overall)
 }
 
-// processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
+// processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
@@ -147,6 +148,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 						Timestamp: job.Timestamps[i],
 					}
 				}
+
+				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+					Name:   test.Name,
+					Status: result.Value,
+				})
+
 				switch {
 				case isOverallTest(test.Name, job):
 					jrr.Succeeded = true
