@@ -225,17 +225,17 @@ func (o *Options) Run() error {
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
 
 		if o.DSN != "" && os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-			bge, err := bigqueryexporter.New(context.Background())
-			if err != nil {
-				return err
-			}
-
 			dbc, err := db.New(o.DSN)
 			if err != nil {
 				return err
 			}
 
-			if err := bge.ExportData(context.Background(), dbc); err != nil {
+			bge, err := bigqueryexporter.New(context.Background(), dbc)
+			if err != nil {
+				return err
+			}
+
+			if err := bge.ExportData(context.Background()); err != nil {
 				return err
 			}
 		}

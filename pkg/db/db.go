@@ -18,7 +18,7 @@ type DB struct {
 
 func New(dsn string) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
 		return nil, err
