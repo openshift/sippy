@@ -5,10 +5,8 @@ package v1
 import (
 	"time"
 
-	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
-	"gorm.io/gorm"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 type ReportType string
@@ -30,7 +28,6 @@ type Statistics struct {
 
 // TestReport is a type that lives in service of producing the html rendering for sippy.
 type TestReport struct {
-	gorm.Model
 	// ReportType contains the type of the report, e.g. current, two day, or previous.
 	ReportType ReportType `json:"reportType"`
 

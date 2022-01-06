@@ -36,8 +36,8 @@ type ProwJobRun struct {
 	URL          string
 	TestFailures int
 	FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
-	//Tests        []ProwJobRunTest `gorm:"many2many:prow_job_run_tests;"`
-	Failed bool
+	Tests        []ProwJobRunTest
+	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
@@ -55,9 +55,10 @@ type Test struct {
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
 // that execution.
 type ProwJobRunTest struct {
-	ProwJobRunID uint `gorm:"primaryKey"`
-	TestID       uint `gorm:"primaryKey"`
-	Status       int  `gorm:"type:smallint"`
+	gorm.Model
+	ProwJobRunID uint
+	TestID       uint
+	Status       int `gorm:"type:smallint"`
 	CreatedAt    time.Time
 	DeletedAt    gorm.DeletedAt
 }

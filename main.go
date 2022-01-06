@@ -273,7 +273,7 @@ func (o *Options) Run() error {
 		}
 
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			err := trgc.PrepareDatabase(dbc, dashboard,
+			err := trgc.LoadDatabase(dbc, dashboard,
 				o.getVariantManager(),
 				o.getSyntheticTestManager(), o.getBugCache())
 			if err != nil {
