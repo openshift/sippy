@@ -107,6 +107,12 @@ var (
 		Name: "sippy_job_pass_ratio",
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
 	}, []string{"release", "period", "name"})
+
+	matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "sippy_matview_refresh_millis",
+		Help:    "Milliseconds to refresh our postgresql materialized views",
+		Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
+	}, []string{"view"})
 )
 
 func (s *Server) refreshMetrics() {
@@ -117,6 +123,29 @@ func (s *Server) refreshMetrics() {
 			for _, jobResult := range testReport.ByJob {
 				jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
 			}
+		}
+	}
+}
+
+// refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
+// for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
+// main postgresql tables.
+func (s *Server) refreshMaterializedViews() {
+
+	if s.db == nil {
+		klog.Info("skipping materialized view refresh as server has no db connection provided")
+		return
+	}
+
+	for _, pmv := range db.PostgresMatViews {
+		start := time.Now()
+		if res := s.db.DB.Exec(
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
+			klog.Errorf("error refreshing materialized view %s: %v", pmv.Name, res.Error)
+		} else {
+			elapsed := time.Since(start)
+			klog.Infof("Refreshed materialized view %s in %s", pmv.Name, elapsed)
+			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 }
@@ -151,6 +180,7 @@ func (s *Server) RefreshData() {
 		}
 	}
 	s.refreshMetrics()
+	s.refreshMaterializedViews()
 
 	klog.Infof("Refresh complete")
 }

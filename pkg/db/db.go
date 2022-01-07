@@ -55,9 +55,11 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
-		return nil, err
-	}
+	/*
+		if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+			return nil, err
+		}
+	*/
 
 	if err = createPostgresMaterializedViews(db); err != nil {
 		return nil, err
@@ -86,17 +88,17 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
 
 		// TODO: temporary, just for developing this
-		db.Exec("DROP MATERIALIZED VIEW IF EXISTS ?", pmv.name)
+		db.Exec("DROP MATERIALIZED VIEW IF EXISTS ?", pmv.Name)
 
 		var count int64
-		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.name).Count(&count); res.Error != nil {
+		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
 			return res.Error
 		}
 		if count == 0 {
-			klog.Infof("creating missing materialized view: %s", pmv.name)
+			klog.Infof("creating missing materialized view: %s", pmv.Name)
 			if res := db.Exec(
-				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.name, pmv.definition)); res.Error != nil {
-				klog.Errorf("error creating materialized view %s: %v", pmv.name, res.Error)
+				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.Name, pmv.Definition)); res.Error != nil {
+				klog.Errorf("error creating materialized view %s: %v", pmv.Name, res.Error)
 				return res.Error
 			}
 		}
@@ -104,13 +106,13 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 	return nil
 }
 
-type postgresMaterializedView struct {
-	name       string
-	definition string
-	namedArgs  []sql.NamedArg
+type PostgresMaterializedView struct {
+	Name       string
+	Definition string
+	NamedArgs  []sql.NamedArg
 }
 
-var PostgresMatViews = []postgresMaterializedView{
+var PostgresMatViews = []PostgresMaterializedView{
 	/*
 		{
 			name:       "prow_job_report_7d_matview",
@@ -123,8 +125,8 @@ var PostgresMatViews = []postgresMaterializedView{
 
 	*/
 	{
-		name:       "prow_test_report_7d_matview",
-		definition: testReportMatView,
+		Name:       "prow_test_report_7d_matview",
+		Definition: testReportMatView,
 		/*
 			namedArgs: []sql.NamedArg{
 				sql.Named("start", "INTERVAL 14 DAY"),
