@@ -430,6 +430,26 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) jsonExperimentalTestsReport(w http.ResponseWriter, req *http.Request) {
+	/*
+		if release != "" {
+			currTests := s.currTestReports[release].CurrentPeriodReport.ByTest
+			twoDay := s.currTestReports[release].CurrentTwoDayReport.ByTest
+			prevTests := s.currTestReports[release].PreviousWeekReport.ByTest
+
+			api.PrintTestsJSON(release, w, req, currTests, twoDay, prevTests)
+		}
+	*/
+
+	/*
+		release := s.getReleaseOrFail(w, req)
+		if release != "" {
+			api.PrintDBTestsReport(w, req, s.db, release)
+		}
+	*/
+
+}
+
 func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -652,6 +672,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
+	serveMux.HandleFunc("/api-ex/tests", s.jsonExperimentalTestsReport)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
