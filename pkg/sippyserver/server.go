@@ -431,22 +431,10 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonExperimentalTestsReport(w http.ResponseWriter, req *http.Request) {
-	/*
-		if release != "" {
-			currTests := s.currTestReports[release].CurrentPeriodReport.ByTest
-			twoDay := s.currTestReports[release].CurrentTwoDayReport.ByTest
-			prevTests := s.currTestReports[release].PreviousWeekReport.ByTest
-
-			api.PrintTestsJSON(release, w, req, currTests, twoDay, prevTests)
-		}
-	*/
-
-	/*
-		release := s.getReleaseOrFail(w, req)
-		if release != "" {
-			api.PrintDBTestsReport(w, req, s.db, release)
-		}
-	*/
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintDBTestsReport(release, w, req, s.db)
+	}
 
 }
 

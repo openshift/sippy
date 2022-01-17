@@ -1,13 +1,18 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	gosort "sort"
 	"strconv"
+	"time"
+
+	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -131,4 +136,116 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 	RespondWithJSON(http.StatusOK, w, tests.
 		sort(req).
 		limit(req))
+}
+
+func PrintDBTestsReport(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
+	tests := testsAPIResult{}
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
+
+	// If requesting a two day report, we make the comparison between the last
+	// period (typically 7 days) and the last two days.
+	/* TODO: right now we're just assuming current, last 7 days vs previous 7 days, need to add support
+	 for two day, but also juggle with what we tried to do with the job table with arbitrary slice dates
+	var current, previous []v1sippyprocessing.FailingTestResult
+	switch req.URL.Query().Get("period") {
+	case "twoDay":
+		current = twoDayPeriod
+		previous = currentPeriod
+	default:
+		current = currentPeriod
+		previous = previousPeriod
+	}
+	*/
+
+	testsResult, err := BuildTestsResults(dbc, release, filter)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+
+	RespondWithJSON(http.StatusOK, w, testsResult.
+		sort(req).
+		limit(req))
+	RespondWithJSON(http.StatusOK, w, tests.
+		sort(req).
+		limit(req))
+}
+
+func BuildTestsResults(dbc *db.DB, release string, filter *Filter) (testsAPIResult, error) {
+	now := time.Now()
+
+	var testReports []apitype.Test
+	q := `SELECT * FROM prow_test_report_7d_matview`
+	r := dbc.DB.Raw(q,
+		sql.Named("release", release)).Scan(&testReports)
+	if r.Error != nil {
+		klog.Error(r.Error)
+		return []apitype.Test{}, r.Error
+	}
+
+	// Apply filtering to what we pulled from the db. Perfect world we'd incorporate this into the query instead.
+	filteredReports := make([]apitype.Test, 0, len(testReports))
+	for _, testReport := range testReports {
+		if filter != nil {
+			include, err := filter.Filter(testReport)
+			if err != nil {
+				return []apitype.Test{}, err
+			}
+
+			if !include {
+				continue
+			}
+		}
+
+		filteredReports = append(filteredReports, testReport)
+	}
+
+	elapsed := time.Since(now)
+	klog.Infof("BuildTestsResult completed in %s with %d results from db, filtered down to %d", elapsed, len(testReports), len(filteredReports))
+
+	return filteredReports, nil
+}
+
+type testDetail struct {
+	Name string `
+json:
+	"name"
+	`
+	Results []v1sippyprocessing.TestResult `
+json:
+	"results"
+	`
+}
+
+type testsDetailAPIResult struct {
+	Tests []testDetail `
+json:
+	"tests"
+	`
+	Start int `
+json:
+	"start"
+	`
+	End int `
+json:
+	"end"
+	`
+}
+
+func (tests testsDetailAPIResult) limit(req *http.Request) testsDetailAPIResult {
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	if limit > 0 && len(tests.Tests) >= limit {
+		tests.Tests = tests.Tests[:limit]
+	}
+
+	return tests
 }

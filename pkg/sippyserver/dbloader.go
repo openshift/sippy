@@ -223,7 +223,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 			*/
 
 			jobRunsToCreate = append(jobRunsToCreate, pjr)
-			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&pjr).Error
+			err := dbc.DB.Create(&pjr).Error
 			if err != nil {
 				return errors.Wrap(err, "error loading prow job runs into db")
 			}

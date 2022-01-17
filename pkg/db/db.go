@@ -55,11 +55,9 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	/*
-		if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
-			return nil, err
-		}
-	*/
+	if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+		return nil, err
+	}
 
 	if err = createPostgresMaterializedViews(db); err != nil {
 		return nil, err
@@ -88,7 +86,7 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
 
 		// TODO: temporary, just for developing this
-		db.Exec("DROP MATERIALIZED VIEW IF EXISTS ?", pmv.Name)
+		db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name))
 
 		var count int64
 		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
@@ -173,11 +171,11 @@ JOIN prow_jobs ON prow_jobs.name = results.pj_name;`
 
 const testReportMatView = `
 WITH results AS (
-    SELECT tests.name                                                                                    AS testname,
+    SELECT tests.name                                                                                    AS name,
            coalesce(count(case
                               when status = 1 AND
                                    timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
-                    0)                                                                                   AS previous_passes,
+                    0)                                                                                   AS previous_successes,
            coalesce(count(case
                               when status = 13 AND
                                    timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
@@ -190,7 +188,7 @@ WITH results AS (
                    count(case when timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
                    0)                                                                                    as previous_runs,
            coalesce(count(case when status = 1 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_passes,
+                    0)                                                                                   AS current_successes,
            coalesce(count(case when status = 13 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
                     0)                                                                                   AS current_flakes,
            coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
@@ -202,10 +200,10 @@ WITH results AS (
     GROUP BY tests.name
 )
 SELECT *,
-       current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
+       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results;
 `
