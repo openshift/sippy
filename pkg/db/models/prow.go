@@ -58,7 +58,7 @@ type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
 	TestID       uint
-	Status       int `gorm:"type:smallint"`
+	Status       int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
 	CreatedAt    time.Time
 	DeletedAt    gorm.DeletedAt
 }
