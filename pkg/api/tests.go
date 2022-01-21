@@ -153,20 +153,14 @@ func PrintDBTestsReport(release string, w http.ResponseWriter, req *http.Request
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
-	/* TODO: right now we're just assuming current, last 7 days vs previous 7 days, need to add support
-	 for two day, but also juggle with what we tried to do with the job table with arbitrary slice dates
-	var current, previous []v1sippyprocessing.FailingTestResult
-	switch req.URL.Query().Get("period") {
-	case "twoDay":
-		current = twoDayPeriod
-		previous = currentPeriod
-	default:
-		current = currentPeriod
-		previous = previousPeriod
+	//var current, previous []v1sippyprocessing.FailingTestResult
+	period := req.URL.Query().Get("period")
+	if period != "current" && period != "twoDay" {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
+		return
 	}
-	*/
 
-	testsResult, err := BuildTestsResults(dbc, release, filter)
+	testsResult, err := BuildTestsResults(dbc, release, period, filter)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -180,11 +174,14 @@ func PrintDBTestsReport(release string, w http.ResponseWriter, req *http.Request
 		limit(req))
 }
 
-func BuildTestsResults(dbc *db.DB, release string, filter *Filter) (testsAPIResult, error) {
+func BuildTestsResults(dbc *db.DB, release, period string, filter *Filter) (testsAPIResult, error) {
 	now := time.Now()
 
 	var testReports []apitype.Test
 	q := `SELECT * FROM prow_test_report_7d_matview`
+	if period == "twoDay" {
+		q = `SELECT * FROM prow_test_report_2d_matview`
+	}
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release)).Scan(&testReports)
 	if r.Error != nil {

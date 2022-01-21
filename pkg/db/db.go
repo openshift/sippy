@@ -124,13 +124,17 @@ var PostgresMatViews = []PostgresMaterializedView{
 	*/
 	{
 		Name:       "prow_test_report_7d_matview",
-		Definition: testReportMatView,
+		Definition: testReportMatView7dVs7d,
 		/*
 			namedArgs: []sql.NamedArg{
 				sql.Named("start", "INTERVAL 14 DAY"),
 				sql.Named("boundary", "INTERVAL 7 DAY"),
 			},
 		*/
+	},
+	{
+		Name:       "prow_test_report_2d_matview",
+		Definition: testReportMatView2dVs7d,
 	},
 }
 
@@ -169,7 +173,7 @@ FROM results
 JOIN prow_jobs ON prow_jobs.name = results.pj_name;`
 */
 
-const testReportMatView = `
+const testReportMatView7dVs7d = `
 WITH results AS (
     SELECT tests.name                                                                                    AS name,
            coalesce(count(case
@@ -194,6 +198,44 @@ WITH results AS (
            coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
                     0)                                                                                   AS current_failures,
            coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end), 0) as current_runs
+    FROM prow_job_run_tests
+             JOIN tests ON tests.id = prow_job_run_tests.test_id
+             JOIN prow_job_runs on prow_job_runs.id = prow_job_run_tests.prow_job_run_id
+    GROUP BY tests.name
+)
+SELECT *,
+       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
+       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
+FROM results;
+`
+const testReportMatView2dVs7d = `
+WITH results AS (
+    SELECT tests.name                                                                                    AS name,
+           coalesce(count(case
+                              when status = 1 AND
+                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
+                    0)                                                                                   AS previous_successes,
+           coalesce(count(case
+                              when status = 13 AND
+                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
+                    0)                                                                                   AS previous_flakes,
+           coalesce(count(case
+                              when status = 12 AND
+                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
+                    0)                                                                                   AS previous_failures,
+           coalesce(
+                   count(case when timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
+                   0)                                                                                    as previous_runs,
+           coalesce(count(case when status = 1 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
+                    0)                                                                                   AS current_successes,
+           coalesce(count(case when status = 13 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
+                    0)                                                                                   AS current_flakes,
+           coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
+                    0)                                                                                   AS current_failures,
+           coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end), 0) as current_runs
     FROM prow_job_run_tests
              JOIN tests ON tests.id = prow_job_run_tests.test_id
              JOIN prow_job_runs on prow_job_runs.id = prow_job_run_tests.prow_job_run_id
