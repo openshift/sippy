@@ -6,6 +6,7 @@ import (
 	"net/http"
 	gosort "sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/klog"
@@ -178,10 +179,33 @@ func BuildTestsResults(dbc *db.DB, release, period string, filter *Filter) (test
 	now := time.Now()
 
 	var testReports []apitype.Test
-	q := `SELECT * FROM prow_test_report_7d_matview`
+	// This query takes the variants out of the picture and adds in percentages
+	q := `
+WITH results AS (
+    SELECT name,
+           sum(current_runs)       AS current_runs,
+           sum(current_successes)  AS current_successes,
+           sum(current_failures)   AS current_failures,
+           sum(current_flakes)     AS current_flakes,
+           sum(previous_runs)      AS previous_runs,
+           sum(previous_successes) AS previous_successes,
+           sum(previous_failures)  AS previous_failures,
+           sum(previous_flakes)    AS previous_flakes
+    FROM prow_test_report_7d_matview
+    GROUP BY name
+)
+SELECT *,
+       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
+       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
+FROM results;
+`
 	if period == "twoDay" {
-		q = `SELECT * FROM prow_test_report_2d_matview`
+		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
 	}
+
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release)).Scan(&testReports)
 	if r.Error != nil {

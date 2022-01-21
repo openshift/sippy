@@ -1,8 +1,8 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/openshift/sippy/pkg/db/models"
 	"gorm.io/driver/postgres"
@@ -94,8 +94,14 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 		}
 		if count == 0 {
 			klog.Infof("creating missing materialized view: %s", pmv.Name)
+
+			vd := pmv.Definition
+			for k, v := range pmv.ReplaceStrings {
+				vd = strings.ReplaceAll(vd, k, v)
+			}
+
 			if res := db.Exec(
-				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.Name, pmv.Definition)); res.Error != nil {
+				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.Name, vd)); res.Error != nil {
 				klog.Errorf("error creating materialized view %s: %v", pmv.Name, res.Error)
 				return res.Error
 			}
@@ -105,147 +111,50 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 }
 
 type PostgresMaterializedView struct {
-	Name       string
+	// Name is the name of the materialized view in postgres.
+	Name string
+	// Definition is the material view definition.
 	Definition string
-	NamedArgs  []sql.NamedArg
+	// ReplaceStrings is a map of strings we want to replace in the create view statement, allowing for re-use.
+	ReplaceStrings map[string]string
 }
 
 var PostgresMatViews = []PostgresMaterializedView{
-	/*
-		{
-			name:       "prow_job_report_7d_matview",
-			definition: jobReportMatView,
-			namedArgs: []sql.NamedArg{
-				sql.Named("start", "INTERVAL 14 DAY"),
-				sql.Named("boundary", "INTERVAL 7 DAY"),
-			},
-		},
-
-	*/
 	{
 		Name:       "prow_test_report_7d_matview",
-		Definition: testReportMatView7dVs7d,
-		/*
-			namedArgs: []sql.NamedArg{
-				sql.Named("start", "INTERVAL 14 DAY"),
-				sql.Named("boundary", "INTERVAL 7 DAY"),
-			},
-		*/
+		Definition: testReportMatView,
+		ReplaceStrings: map[string]string{
+			"|||START|||":    "NOW() - INTERVAL '14 DAY'",
+			"|||BOUNDARY|||": "NOW() - INTERVAL '7 DAY'",
+			"|||END|||":      "NOW()",
+		},
 	},
 	{
 		Name:       "prow_test_report_2d_matview",
-		Definition: testReportMatView2dVs7d,
+		Definition: testReportMatView,
+		ReplaceStrings: map[string]string{
+			"|||START|||":    "NOW() - INTERVAL '9 DAY'",
+			"|||BOUNDARY|||": "NOW() - INTERVAL '2 DAY'",
+			"|||END|||":      "NOW()",
+		},
 	},
 }
 
-// jobReportMatView is a postgresql materialized view showing current vs previous period
-// results.
-// TODO: unused right now
-/*
-const jobReportMatView = `
-WITH results AS (
-        select prow_jobs.name as pj_name,
-				prow_jobs.variants as pj_variants,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN NOW() - INTERVAL @start AND NOW() - INTERVAL @boundary then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN NOW() - INTERVAL @start AND NOW() - INTERVAL @boundary then 1 end), 0) as previous_failures,
-                coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL @start AND NOW() - INTERVAL @boundary then 1 end), 0) as previous_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN NOW() - INTERVAL @start AND NOW() - INTERVAL @boundary then 1 end), 0) as previous_infra_fails,
-                coalesce(count(case when succeeded = true AND timestamp > NOW() - INTERVAL @boundary then 1 end), 0) as current_passes,
-                coalesce(count(case when succeeded = false AND timestamp > NOW() - INTERVAL @boundary then 1 end), 0) as current_fails,
-                coalesce(count(case when timestamp > NOW() - INTERVAL @boundary then 1 end), 0) as current_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp > NOW() - INTERVAL @boundary then 1 end), 0) as current_infra_fails
-        FROM prow_job_runs
-        JOIN prow_jobs
-                ON prow_jobs.id = prow_job_runs.prow_job_id
-                and timestamp BETWEEN NOW() - INTERVAL @start AND NOW()
-        group by prow_jobs.name, prow_jobs.variants
-)
-SELECT *,
-	REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
-        current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-        (current_passes + current_infra_fails) * 100.0 / NULLIF(current_runs, 0) AS current_projected_pass_percentage,
-        current_fails * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
-        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results
-JOIN prow_jobs ON prow_jobs.name = results.pj_name;`
-*/
-
-const testReportMatView7dVs7d = `
-WITH results AS (
-    SELECT tests.name                                                                                    AS name,
-           coalesce(count(case
-                              when status = 1 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
-                    0)                                                                                   AS previous_successes,
-           coalesce(count(case
-                              when status = 13 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
-                    0)                                                                                   AS previous_flakes,
-           coalesce(count(case
-                              when status = 12 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
-                    0)                                                                                   AS previous_failures,
-           coalesce(
-                   count(case when timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() - INTERVAL '7 DAY' then 1 end),
-                   0)                                                                                    as previous_runs,
-           coalesce(count(case when status = 1 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_successes,
-           coalesce(count(case when status = 13 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_flakes,
-           coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_failures,
-           coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '7 DAY' AND NOW() then 1 end), 0) as current_runs
-    FROM prow_job_run_tests
-             JOIN tests ON tests.id = prow_job_run_tests.test_id
-             JOIN prow_job_runs on prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    GROUP BY tests.name
-)
-SELECT *,
-       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results;
-`
-const testReportMatView2dVs7d = `
-WITH results AS (
-    SELECT tests.name                                                                                    AS name,
-           coalesce(count(case
-                              when status = 1 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
-                    0)                                                                                   AS previous_successes,
-           coalesce(count(case
-                              when status = 13 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
-                    0)                                                                                   AS previous_flakes,
-           coalesce(count(case
-                              when status = 12 AND
-                                   timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
-                    0)                                                                                   AS previous_failures,
-           coalesce(
-                   count(case when timestamp BETWEEN NOW() - INTERVAL '9 DAY' AND NOW() - INTERVAL '2 DAY' then 1 end),
-                   0)                                                                                    as previous_runs,
-           coalesce(count(case when status = 1 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_successes,
-           coalesce(count(case when status = 13 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_flakes,
-           coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end),
-                    0)                                                                                   AS current_failures,
-           coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '2 DAY' AND NOW() then 1 end), 0) as current_runs
-    FROM prow_job_run_tests
-             JOIN tests ON tests.id = prow_job_run_tests.test_id
-             JOIN prow_job_runs on prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    GROUP BY tests.name
-)
-SELECT *,
-       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results;
+const testReportMatView = `
+SELECT 
+	tests.name AS name,
+	coalesce(count(case when status = 1 AND timestamp BETWEEN |||START||| AND |||BOUNDARY||| then 1 end), 0) AS previous_successes,
+    coalesce(count(case when status = 13 AND timestamp BETWEEN |||START||| AND |||BOUNDARY||| then 1 end), 0) AS previous_flakes,
+    coalesce(count(case when status = 12 AND timestamp BETWEEN |||START||| AND |||BOUNDARY||| then 1 end), 0) AS previous_failures,
+    coalesce(count(case when timestamp BETWEEN |||START||| AND |||BOUNDARY||| then 1 end), 0) as previous_runs,
+    coalesce(count(case when status = 1 AND timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) AS current_successes,
+    coalesce(count(case when status = 13 AND timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) AS current_flakes,
+    coalesce(count(case when status = 12 AND timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) AS current_failures,
+    coalesce(count(case when timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) as current_runs,
+    prow_jobs.variants
+FROM prow_job_run_tests
+    JOIN tests ON tests.id = prow_job_run_tests.test_id
+    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
+    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
+GROUP BY tests.name, prow_jobs.variants
 `
