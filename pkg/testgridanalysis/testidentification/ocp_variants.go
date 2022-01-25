@@ -89,8 +89,6 @@ var (
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-arm64-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node-serial",
 
 		// TODO: Figure out where to report problems for these
 		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-aws-cucushift-ipi",
@@ -115,14 +113,12 @@ var (
 		"release-openshift-ocp-installer-e2e-metal-serial-4.10",
 
 		// TODO: Add bug as these are investigated. These have been near 0% for 2 weeks.
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-ovn-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
 
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-s390x",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-s390x",
 
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade",
 
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-cilium",
@@ -145,18 +141,12 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-from-stable-4.7-e2e-aws-upgrade",
 		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-from-stable-4.8-e2e-aws-upgrade",
 
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-serial-aws-arm64",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-upgrade-from-nightly-4.9-ocp-e2e-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-s390x",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-s390x",
 		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-uwm",
 		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-gcp-ovn-upgrade",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-ovn-local-gateway",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-fips",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-fips",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-libvirt-cert-rotation",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-compact",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-proxy",
 		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.8-e2e-aws-upgrade-paused",
