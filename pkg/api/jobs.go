@@ -142,8 +142,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 		limit(req))
 }
 
-// PrintDBJobsReport renders a filtered summary of matching jobs.
-func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
+// PrintJobsReportFromDB renders a filtered summary of matching jobs.
+func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, release string) {
 
 	var filter *Filter

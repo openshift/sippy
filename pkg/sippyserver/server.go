@@ -430,7 +430,7 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) jsonExperimentalTestsReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintDBTestsReport(release, w, req, s.db)
@@ -578,10 +578,10 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) jsonExperimentalJobsReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintDBJobsReport(w, req, s.db, release)
+		api.PrintJobsReportFromDB(w, req, s.db, release)
 	}
 }
 
@@ -641,31 +641,35 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/json", s.printJSONReport)
 
 	// New API's
-	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
-	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+
+	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
-	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
-	// Temporary endpoint while we work out the use of the db, will move to above endpoint once ready.
-	serveMux.HandleFunc("/api-ex/jobs", s.jsonExperimentalJobsReport)
-	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 
+	// Experimental jobs endpoints to match the above:
+	serveMux.HandleFunc("/api-ex/jobs", s.jsonJobsReportFromDB)
+
+	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
+	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
+	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
+
+	// Experimental tests endpoints to match the above:
+	serveMux.HandleFunc("/api-ex/tests", s.jsonTestsReportFromDB)
+
+	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
+	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
 	}
 
-	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
-	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
-	serveMux.HandleFunc("/api-ex/tests", s.jsonExperimentalTestsReport)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
-	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
-
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
+	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
+	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
+	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
