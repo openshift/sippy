@@ -144,7 +144,7 @@ func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper b
 }
 
 func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
-	if testResult.Name == "Overall" || testResult.Name == "Pod" || testidentification.IsSetupContainerEquivalent(testResult.Name) {
+	if testResult.Name == "Overall" || testResult.Name == "Pod" || testidentification.IsInstallStepEquivalent(testResult.Name) {
 		return false
 	}
 	return true

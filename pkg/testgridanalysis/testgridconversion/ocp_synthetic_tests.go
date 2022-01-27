@@ -32,10 +32,10 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 	}
 
 	for jobName, jobResults := range rawJobResults.JobResults {
-		numRunsWithoutSetup := 0
+		numRunsWithoutInstall := 0
 		for jrrKey, jrr := range jobResults.JobRunResults {
-			if jrr.SetupStatus == "" {
-				numRunsWithoutSetup++
+			if jrr.InstallStatus == "" {
+				numRunsWithoutInstall++
 			}
 
 			syntheticTests := map[string]*syntheticTestResult{
@@ -58,8 +58,8 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					break
 				}
 			}
-			setupFailed := jrr.Failed && jrr.SetupStatus != testgridanalysisapi.Success
-			setupSucceeded := jrr.Succeeded || jrr.SetupStatus == testgridanalysisapi.Success
+			installFailed := jrr.Failed && jrr.InstallStatus != testgridanalysisapi.Success
+			installSucceeded := jrr.Succeeded || jrr.InstallStatus == testgridanalysisapi.Success
 
 			switch {
 			case !hasFinalOperatorResults:
@@ -72,8 +72,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			// set overall installed status
 			switch {
-			case setupSucceeded:
-				// if setup succeeded, we are guaranteed that installation succeeded.
+			case installSucceeded:
 				syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
 				// if the test succeeded, then the operator install tests should all be passes
 				for _, operatorState := range jrr.FinalOperatorStates {
@@ -88,7 +87,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 				// if we don't have any operator results, then don't count this an install one way or the other.  This was an infra failure
 
 			default:
-				// the setup failed and we have some operator results, which means the install started. This is a failure
+				// the installation failed and we have some operator results, which means the install started. This is a failure
 				syntheticTests[testgridanalysisapi.InstallTestName].fail = 1
 
 				// if the test failed, then the operator install tests should match the operator state
@@ -107,8 +106,8 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			// set overall install timeout status
 			switch {
-			case !setupSucceeded && hasFinalOperatorResults && allOperatorsSuccessfulAtEndOfRun:
-				// the setup failed and yet all operators were successful in the end.  This means we had a weird problem.  Probably a timeout failure.
+			case !installSucceeded && hasFinalOperatorResults && allOperatorsSuccessfulAtEndOfRun:
+				// the install failed and yet all operators were successful in the end.  This means we had a weird problem.  Probably a timeout failure.
 				syntheticTests[testgridanalysisapi.InstallTimeoutTestName].fail = 1
 
 			default:
@@ -118,10 +117,10 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			// set the infra status
 			switch {
-			case matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer):
-				// do nothing.  If we don't have a setup container, we have no way of determining infrastructure
+			case matchJobRegexList(jobName, jobRegexesWithKnownInstallIssues):
+				// do nothing.  If we don't have an install test, we have no way of determining infrastructure
 
-			case setupFailed && !hasFinalOperatorResults:
+			case installFailed && !hasFinalOperatorResults:
 				// we only count failures as infra if we have no operator results.  If we got any operator working, then CI infra was working.
 				syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
 
@@ -131,7 +130,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			// set the update status
 			switch {
-			case setupFailed:
+			case installFailed:
 				// do nothing
 			case !jrr.UpgradeStarted:
 			// do nothing
@@ -180,17 +179,17 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 				addTestResult(jobResults.TestResults, nil, testName, result.pass, result.fail, 0)
 			}
 
-			if jrr.SetupStatus == "" && matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
-				jrr.SetupStatus = testgridanalysisapi.Unknown
+			if jrr.InstallStatus == "" && matchJobRegexList(jobName, jobRegexesWithKnownInstallIssues) {
+				jrr.InstallStatus = testgridanalysisapi.Unknown
 			}
 
 			jrr.OverallResult = jobRunStatus(jrr)
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
 
-		if numRunsWithoutSetup > 0 && numRunsWithoutSetup == len(jobResults.JobRunResults) {
-			if !matchJobRegexList(jobName, jobRegexesWithKnownBadSetupContainer) {
-				warnings = append(warnings, fmt.Sprintf("%q is missing a test setup job to indicate successful installs", jobName))
+		if numRunsWithoutInstall > 0 && numRunsWithoutInstall == len(jobResults.JobRunResults) {
+			if !matchJobRegexList(jobName, jobRegexesWithKnownInstallIssues) {
+				warnings = append(warnings, fmt.Sprintf("%q is missing a test install job to indicate successful installs", jobName))
 			}
 		}
 
@@ -210,7 +209,7 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.
 		return sippyprocessingv1.JobRunning
 	}
 
-	if result.SetupStatus == failure {
+	if result.InstallStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
 			return sippyprocessingv1.JobInfrastructureFailure
 		}
@@ -222,7 +221,7 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.
 	if result.OpenShiftTestsStatus == failure {
 		return sippyprocessingv1.JobTestFailure
 	}
-	if result.SetupStatus == "" {
+	if result.InstallStatus == "" {
 		return sippyprocessingv1.JobNoResults
 	}
 	return sippyprocessingv1.JobUnknown
@@ -230,9 +229,10 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.
 
 // this a list of job name regexes that either do not install the product (bug) or have
 // never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
-var jobRegexesWithKnownBadSetupContainer = sets.NewString(
+var jobRegexesWithKnownInstallIssues = sets.NewString(
 	`promote-release-openshift-machine-os-content-e2e-aws-4\.[0-9].*`,
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
+	"periodic-ci-openshift-release-master-nightly-4.10-credentials-request-freeze",
 	"release-openshift-ocp-osd",
 )
 
