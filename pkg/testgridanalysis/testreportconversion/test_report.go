@@ -3,6 +3,7 @@ package testreportconversion
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -33,6 +34,8 @@ func PrepareTestReport(
 	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
 	allJobResults := ConvertRawJobResultsToProcessedJobResults(
 		reportName, rawData, bugCache, bugzillaRelease, variantManager)
+
+	removeUninterestingTests(allJobResults)
 
 	stats := calculateJobResultStatistics(allJobResults)
 
@@ -103,6 +106,18 @@ func PrepareTestReport(
 	}
 
 	return testReport
+}
+
+func removeUninterestingTests(results []sippyprocessingv1.JobResult) {
+	for i := range results {
+		result := results[i]
+		for j := len(result.TestResults) - 1; j >= 0; j-- {
+			testResult := result.TestResults[j]
+			if strings.HasSuffix(testResult.Name, ".Overall") { // .Overall is a suffix for a test that doesn't add value
+				result.TestResults = append(result.TestResults[:j], result.TestResults[j+1:]...)
+			}
+		}
+	}
 }
 
 func generatePromotionWarnings(variants []sippyprocessingv1.VariantResults) []string {
