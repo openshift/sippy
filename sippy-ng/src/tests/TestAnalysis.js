@@ -105,7 +105,27 @@ export function TestAnalysis(props) {
     return (100 * (1 - failures / runs)).toFixed(2)
   }
 
-  const chart = {
+  const byJobChart = {
+    labels: Object.keys(analysis.by_day),
+    datasets: [
+      {
+        type: 'line',
+        label: 'overall',
+        tension: 0.25,
+        borderColor: 'black',
+        backgroundColor: 'black',
+        fill: false,
+        data: Object.keys(analysis.by_day).map((key) => {
+          const failures = analysis.by_day[key].overall.failures
+          const runs = analysis.by_day[key].overall.runs
+
+          return inversePercentage(failures, runs)
+        }),
+      },
+    ],
+  }
+
+  const byVariantChart = {
     labels: Object.keys(analysis.by_day),
     datasets: [
       {
@@ -149,7 +169,7 @@ export function TestAnalysis(props) {
 
   const colors = scale('Set2').mode('lch').colors(jobs.size)
 
-  const options = {
+  const byJobChartOptions = {
     plugins: {
       tooltip: {
         callbacks: {
@@ -191,6 +211,51 @@ export function TestAnalysis(props) {
     },
   }
 
+  const byVariantChartOptions = {
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            let failures, runs
+
+            if (context.dataset.label === 'overall') {
+              failures = analysis.by_day[context.label].overall.failures || 0
+              runs = analysis.by_day[context.label].overall.runs
+            } else {
+              failures = analysis.by_day[context.label].by_variant[
+                context.dataset.label
+              ]
+                ? analysis.by_day[context.label].by_variant[
+                    context.dataset.label
+                  ].failures
+                : 0
+              runs = analysis.by_day[context.label].by_variant[
+                context.dataset.label
+              ]
+                ? analysis.by_day[context.label].by_variant[
+                    context.dataset.label
+                  ].runs
+                : 0
+            }
+
+            return `${context.dataset.label} ${context.raw}% (${failures}/${runs} runs failed)`
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        max: 100,
+        ticks: {
+          callback: (value, index, values) => {
+            return `${value}%`
+          },
+        },
+      },
+    },
+  }
+
+  let index = 0
   variants.forEach((variant) => {
     variantFailures.push(
       Object.keys(analysis.by_day)
@@ -201,11 +266,33 @@ export function TestAnalysis(props) {
         })
         .reduce((acc, val) => acc + val)
     )
+
+    byVariantChart.datasets.push({
+      type: 'line',
+      label: `${variant}`,
+      tension: 0.25,
+      yAxisID: 'y',
+      borderColor: colors[index],
+      backgroundColor: colors[index],
+      data: Object.keys(analysis.by_day).map((key) => {
+        const failures = analysis.by_day[key].by_variant[variant]
+          ? analysis.by_day[key].by_variant[variant].failures
+          : 0
+        const runs = analysis.by_day[key].by_variant[variant]
+          ? analysis.by_day[key].by_variant[variant].runs
+          : 0
+        // Percentage of variant runs not exhibiting failure, i.e.
+        // an approximation of the pass rate
+        return inversePercentage(failures, runs)
+      }),
+    })
+
+    index++
   })
 
-  let index = 0
+  index = 0
   jobs.forEach((job) => {
-    chart.datasets.push({
+    byJobChart.datasets.push({
       type: 'line',
       label: `${job}`,
       tension: 0.25,
@@ -326,12 +413,28 @@ export function TestAnalysis(props) {
           <Grid item md={12}>
             <Card className="test-failure-card" elevation={5}>
               <Typography variant="h5">
-                Pass rate{' '}
-                <Tooltip title="Test pass rate is approximated as how many job runs on the given day without a test failure. Only jobs with at least one failure over the reporting period are shown individually.">
+                Pass Rate By Job{' '}
+                <Tooltip title="Test pass rate is approximated by number of job runs on the given day without a test failure. Only jobs with at least one failure over the reporting period are shown individually.">
                   <InfoIcon />
                 </Tooltip>
               </Typography>
-              <Line data={chart} options={options} height={80} />
+              <Line data={byJobChart} options={byJobChartOptions} height={80} />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Pass Rate By Variant{' '}
+                <Tooltip title="Test pass rate is approximated by number of job runs on the given day without a test failure. Only variants with at least one failure over the reporting period are shown individually.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <Line
+                data={byVariantChart}
+                options={byVariantChartOptions}
+                height={80}
+              />
             </Card>
           </Grid>
 

@@ -48,7 +48,8 @@ describe('TestAnalysis', () => {
       expectLoadingPage(wrapper).toBeFalsy()
     })
 
-    expect(wrapper.text()).toContain('Pass rate')
+    expect(wrapper.text()).toContain('Pass Rate By Job')
+    expect(wrapper.text()).toContain('Pass Rate By Variant')
     expect(wrapper.exists()).toBe(true)
     expect(withoutMuiID(wrapper)).toMatchSnapshot()
     expect(fetchSpy).toHaveBeenCalledTimes(3)
