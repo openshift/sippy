@@ -32,10 +32,10 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 	}
 
 	for jobName, jobResults := range rawJobResults.JobResults {
-		numRunsWithoutInstall := 0
+		numsWithoutInstallIndicator := 0
 		for jrrKey, jrr := range jobResults.JobRunResults {
 			if jrr.InstallStatus == "" {
-				numRunsWithoutInstall++
+				numsWithoutInstallIndicator++
 			}
 
 			syntheticTests := map[string]*syntheticTestResult{
@@ -187,7 +187,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 			jobResults.JobRunResults[jrrKey] = jrr
 		}
 
-		if numRunsWithoutInstall > 0 && numRunsWithoutInstall == len(jobResults.JobRunResults) {
+		if numsWithoutInstallIndicator > 0 && numsWithoutInstallIndicator == len(jobResults.JobRunResults) {
 			if !matchJobRegexList(jobName, jobRegexesWithKnownInstallIssues) {
 				warnings = append(warnings, fmt.Sprintf("%q is missing a test install job to indicate successful installs", jobName))
 			}
@@ -231,7 +231,9 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.
 // never had a passing install. both should be fixed over time, but this reduces noise as we ratchet down.
 var jobRegexesWithKnownInstallIssues = sets.NewString(
 	`promote-release-openshift-machine-os-content-e2e-aws-4\.[0-9].*`,
+	"periodic-ci-openshift-multiarch-master-nightly-4.8-ocp-installer-remote-libvirt-ppc64le",
 	"periodic-ci-openshift-origin-release-3.11-e2e-gcp",
+	"periodic-ci-openshift-release-master-nightly-4.7-e2e-powervs",
 	"periodic-ci-openshift-release-master-nightly-4.10-credentials-request-freeze",
 	"release-openshift-ocp-osd",
 )
