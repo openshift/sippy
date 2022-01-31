@@ -195,6 +195,23 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-ovn-network-stress",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-ovn-network-stress",
+
+		// metal jobs are all failing due to EOL of centos8
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2048687
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-virtualmedia",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-ovn-dualstack",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-compact",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-upgrade-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-metal-ipi-upgrade-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-ovn-dualstack",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-ovn-dualstack-local-gateway",
+		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-metal-ipi-upgrade",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-ovn-ipv6",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-ipv4",
+		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-virtualmedia",
 	)
 )
 
