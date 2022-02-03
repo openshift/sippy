@@ -86,7 +86,7 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
 
 		// TODO: temporary, just for developing this
-		db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name))
+		//db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name))
 
 		var count int64
 		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
@@ -151,10 +151,10 @@ SELECT
     coalesce(count(case when status = 13 AND timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) AS current_flakes,
     coalesce(count(case when status = 12 AND timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) AS current_failures,
     coalesce(count(case when timestamp BETWEEN |||BOUNDARY||| AND |||END||| then 1 end), 0) as current_runs,
-    prow_jobs.variants
+    prow_jobs.variants, prow_jobs.release
 FROM prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-GROUP BY tests.name, prow_jobs.variants
+GROUP BY tests.name, prow_jobs.variants, prow_jobs.release
 `

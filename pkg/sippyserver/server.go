@@ -433,7 +433,7 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintDBTestsReport(release, w, req, s.db)
+		api.PrintTestsJSONFromDB(release, w, req, s.db)
 	}
 
 }
@@ -444,6 +444,15 @@ func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request)
 		currTests := s.currTestReports[release].CurrentPeriodReport
 		prevTests := s.currTestReports[release].PreviousWeekReport
 		api.PrintTestsDetailsJSON(w, req, currTests, prevTests)
+	}
+}
+
+func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	// Filter to test names containing this query param:
+	testSubstring := req.URL.Query()["test"]
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
 }
 
@@ -656,6 +665,7 @@ func (s *Server) Serve() {
 
 	// Experimental tests endpoints to match the above:
 	serveMux.HandleFunc("/api-ex/tests", s.jsonTestsReportFromDB)
+	serveMux.HandleFunc("/api-ex/tests/details", s.jsonTestDetailsReportFromDB)
 
 	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)

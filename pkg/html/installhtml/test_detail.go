@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util/sets"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -27,6 +28,30 @@ func TestDetailTests(format ResponseFormat, curr, prev sippyprocessingv1.TestRep
 	}
 
 	return dataForTestsByVariant.getTableHTML("Details for Tests", "TestDetailByVariant", "Test Details by Variant", variants.List(), noChange)
+}
+
+func TestDetailTestsFromDB(db *db.DB, format ResponseFormat, release string, testSubstrings []string) (string, error) {
+	dataForTestsByVariant, err := getDataForTestsByVariantFromDB(
+		db,
+		release,
+		testSubstrings,
+		neverMatch,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	variants := sets.String{}
+	for _, byVariant := range dataForTestsByVariant.testNameToVariantToTestResult {
+		variants.Insert(sets.StringKeySet(byVariant).UnsortedList()...)
+	}
+
+	if format == JSON {
+		return dataForTestsByVariant.getTableJSON("Details for Tests", "Test Details by Variant",
+			variants.List(), noChange), nil
+	}
+
+	return dataForTestsByVariant.getTableHTML("Details for Tests", "TestDetailByVariant", "Test Details by Variant", variants.List(), noChange), nil
 }
 
 func summaryTestDetailRelatedTests(curr, prev sippyprocessingv1.TestReport, testSubstrings []string, numDays int, release string) string {

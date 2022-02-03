@@ -23,6 +23,15 @@ func PrintTestsDetailsJSON(w http.ResponseWriter, req *http.Request, current, pr
 	RespondWithJSON(http.StatusOK, w, installhtml.TestDetailTests(installhtml.JSON, current, previous, req.URL.Query()["test"]))
 }
 
+func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, db *db.DB) {
+	responseStr, err := installhtml.TestDetailTestsFromDB(db, installhtml.JSON, release, testSubstrings)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+	RespondWithJSON(http.StatusOK, w, responseStr)
+}
+
 type testsAPIResult []apitype.Test
 
 func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
@@ -139,7 +148,7 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 		limit(req))
 }
 
-func PrintDBTestsReport(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
+func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
 	tests := testsAPIResult{}
 	var filter *Filter
 
@@ -192,6 +201,7 @@ WITH results AS (
            sum(previous_failures)  AS previous_failures,
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
+	WHERE release = @release
     GROUP BY name
 )
 SELECT *,

@@ -197,8 +197,9 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // Test contains the full accounting of a test's history, with a synthetic ID. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Variant string `json:"variant,omitempty"`
 
 	CurrentSuccesses      int     `json:"current_successes"`
 	CurrentFailures       int     `json:"current_failures"`
