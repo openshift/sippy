@@ -651,21 +651,21 @@ func (s *Server) Serve() {
 
 	// New API's
 
+	// api-ex endpoints are experimental replacements for their non-ex counterparts. They return identical response
+	// formats, and exist for now so we can compare the data against the old, ensure it's working correctly, and
+	// eventually replace the old with the UI none the wiser.
+
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+	serveMux.HandleFunc("/api-ex/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 
-	// Experimental jobs endpoints to match the above:
-	serveMux.HandleFunc("/api-ex/jobs", s.jsonJobsReportFromDB)
-
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
-
-	// Experimental tests endpoints to match the above:
 	serveMux.HandleFunc("/api-ex/tests", s.jsonTestsReportFromDB)
+	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api-ex/tests/details", s.jsonTestDetailsReportFromDB)
+	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 
 	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
