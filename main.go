@@ -45,6 +45,7 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
+	InitDatabase            bool
 	LoadDatabase            bool
 	ListenAddr              string
 	Server                  bool
@@ -95,6 +96,7 @@ func main() {
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
 	flags.BoolVar(&opt.LoadDatabase, "load-database", opt.LoadDatabase, "Process testgrid data in --local-data and store in database")
+	flags.BoolVar(&opt.InitDatabase, "init-database", opt.InitDatabase, "Initialize postgresql database tables and materialized views")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
@@ -257,6 +259,11 @@ func (o *Options) Run() error {
 		klog.Infof("Testgrid data fetched in: %s", elapsed)
 
 		return nil
+	}
+
+	if o.InitDatabase {
+		_, err := db.New(o.DSN)
+		return err
 	}
 
 	if o.LoadDatabase {
