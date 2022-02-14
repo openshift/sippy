@@ -130,6 +130,10 @@ var PostgresMatViews = []PostgresMaterializedView{
 		},
 	},
 	{
+		Name:       "prow_test_analysis_14d_matview",
+		Definition: testAnalysisMatView,
+	},
+	{
 		Name:       "prow_test_report_2d_matview",
 		Definition: testReportMatView,
 		ReplaceStrings: map[string]string{
@@ -157,4 +161,21 @@ FROM prow_job_run_tests
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 GROUP BY tests.name, prow_jobs.variants, prow_jobs.release
+`
+
+const testAnalysisMatView = `
+SELECT tests.name AS name,
+       date(prow_job_runs.timestamp) as date,
+       unnest(prow_jobs.variants) as variant, 
+       prow_jobs.release,
+       coalesce(count(case when timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() then 1 end), 0) as runs,
+       coalesce(count(case when status = 1 AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() then 1 end), 0) AS passes,
+       coalesce(count(case when status = 13 AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() then 1 end), 0) AS flakes,
+       coalesce(count(case when status = 12 AND timestamp BETWEEN NOW() - INTERVAL '14 DAY' AND NOW() then 1 end), 0) AS failures
+FROM prow_job_run_tests
+         JOIN tests ON tests.id = prow_job_run_tests.test_id
+         JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
+         JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
+WHERE timestamp > NOW() - INTERVAL '14 DAY'
+GROUP BY tests.name, date, variant, prow_jobs.release
 `
