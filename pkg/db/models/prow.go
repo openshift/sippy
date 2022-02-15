@@ -62,3 +62,17 @@ type ProwJobRunTest struct {
 	CreatedAt    time.Time
 	DeletedAt    gorm.DeletedAt
 }
+
+// TestAnalysisByVariantRow models our materialize view for test results by date, and job+variant.
+type TestAnalysisByVariantRow struct {
+	Date     time.Time
+	TestID   uint
+	TestName string
+	Variant  string // may not be used depending on calling query
+	JobName  string // may not be used depending on calling query
+	Release  string
+	Runs     int
+	Passes   int
+	Flakes   int
+	Failures int
+}

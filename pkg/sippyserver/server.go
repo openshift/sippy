@@ -419,6 +419,26 @@ func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request
 	}
 }
 
+func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.Request) {
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+	release := req.URL.Query().Get("release")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'release' is required.",
+		})
+		return
+	}
+	api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
+}
+
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -666,6 +686,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 	serveMux.HandleFunc("/api-ex/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
+	serveMux.HandleFunc("/api-ex/tests/analysis", s.jsonTestAnalysisReportFromDB)
 
 	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
