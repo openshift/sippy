@@ -436,7 +436,10 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 		})
 		return
 	}
-	api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
+	err := api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
+	if err != nil {
+		klog.Errorf("error querying test analysis from db: %v", err)
+	}
 }
 
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {

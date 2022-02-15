@@ -63,8 +63,10 @@ type ProwJobRunTest struct {
 	DeletedAt    gorm.DeletedAt
 }
 
-// TestAnalysisByVariantRow models our materialize view for test results by date, and job+variant.
-type TestAnalysisByVariantRow struct {
+// TestAnalysisRow models our materialize view for test results by date, and job+variant.
+// The only one of the Variant/JobName fields will be used depending on which view
+// we're querying.
+type TestAnalysisRow struct {
 	Date     time.Time
 	TestID   uint
 	TestName string
