@@ -702,6 +702,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
 	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+	serveMux.HandleFunc("/api-ex/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 

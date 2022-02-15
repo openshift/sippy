@@ -147,7 +147,7 @@ func getDataForTestsByVariantFromDB(
 	db *db.DB,
 	release string,
 	testSubStrings []string,
-	isAggregateTest testreportconversion.TestResultFilterFunc,
+	isAggregateTest testreportconversion.TestResultFilterFunc, // TODO: is this needed?
 ) (testsByVariant, error) {
 	ret := testsByVariant{
 		aggregateResultByTestName:      map[string]*currPrevFailedTestResult{}, // not used in output, maybe we can skip

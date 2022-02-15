@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	"github.com/openshift/sippy/pkg/util"
@@ -16,7 +17,8 @@ import (
 )
 
 func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.TestReport) string {
-	dataForTestsByVariant := getDataForTestsByVariant(
+	var dataForTestsByVariant testsByVariant
+	dataForTestsByVariant = getDataForTestsByVariant(
 		curr, prev,
 		func(testResult sippyprocessingv1.TestResult) bool {
 			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix)
@@ -25,6 +27,7 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 			return testResult.Name == testgridanalysisapi.InstallTestName
 		},
 	)
+
 	// compute variants columns before we add the special "All" column
 	variantColumns := sets.StringKeySet(dataForTestsByVariant.aggregationToOverallTestResult).List()
 
@@ -50,6 +53,50 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 	}
 
 	return dataForTestsByVariant.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Variant", columnNames, getOperatorFromTest)
+}
+
+func InstallOperatorTestsFromDB(db *db.DB, release string) (string, error) {
+	testSubstrings := []string{
+		testgridanalysisapi.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
+		testgridanalysisapi.InstallTestName,       // TODO: would prefer exct matching for this
+	}
+	dataForTestsByVariant, err := getDataForTestsByVariantFromDB(
+		db,
+		release,
+		testSubstrings,
+		neverMatch,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	//TODO: Remove tests that don't meet our explicit rules?
+
+	// compute variants columns before we add the special "All" column
+	variantColumns := sets.StringKeySet(dataForTestsByVariant.aggregationToOverallTestResult).List()
+
+	// we add an "All" column for all variants. Fill in the aggregate data for that key
+	for _, testName := range sets.StringKeySet(dataForTestsByVariant.aggregateResultByTestName).List() {
+		dataForTestsByVariant.testNameToVariantToTestResult[testName]["All"] = dataForTestsByVariant.aggregateResultByTestName[testName].toCurrPrevTestResult()
+	}
+
+	/*
+		// TODO:
+
+		// fill in the data for the first row's "All" column
+		var prevTestResult *sippyprocessingv1.TestResult
+		if installTest := util.FindFailedTestResult(testgridanalysisapi.InstallTestName, prev.ByTest); installTest != nil {
+			prevTestResult = &installTest.TestResultAcrossAllJobs
+		}
+		dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
+			curr: util.FindFailedTestResult(testgridanalysisapi.InstallTestName, curr.ByTest).TestResultAcrossAllJobs,
+			prev: prevTestResult,
+		}
+	*/
+
+	columnNames := append([]string{"All"}, variantColumns...)
+
+	return dataForTestsByVariant.getTableJSON("Install Rates by Operator", "Install Rates by Operator by Variant", columnNames, getOperatorFromTest), nil
 }
 
 func isInstallRelatedTest(testResult sippyprocessingv1.TestResult) bool {

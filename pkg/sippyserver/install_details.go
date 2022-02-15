@@ -66,6 +66,14 @@ func (s *Server) jsonInstallReport(w http.ResponseWriter, req *http.Request) {
 	)
 }
 
+func (s *Server) jsonInstallReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+
+	api.PrintInstallJSONReportFromDB(w, s.db,
+		release,
+	)
+}
+
 func (s *Server) printOperatorHealthHTMLReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
 	if _, ok := s.currTestReports[reportName]; !ok {
