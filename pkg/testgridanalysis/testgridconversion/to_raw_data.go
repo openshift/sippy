@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
@@ -50,10 +49,6 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
-		// TODO: this needs to get removed, but carefully. We need to see the suite names.
-		for _, prefix := range testSuitePrefixes {
-			test.Name = strings.TrimPrefix(test.Name, prefix)
-		}
 		job.Tests[i] = test
 		processTest(rawJobResults, job, test, startCol, endCol)
 	}
@@ -87,17 +82,7 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-// testSuitePrefixes is a list of suite prefixes to remove from test names
-var testSuitePrefixes = []string{
-	"openshift-tests.",
-	"Cluster upgrade.",
-	"Symptom detection.",
-	"Operator results.",
-	"OSD e2e suite.",
-	"Log Metrics.",
-}
-
-// ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
+// ignoreTestRegex is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 // isOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
