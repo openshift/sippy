@@ -62,6 +62,8 @@ func PrintTestAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev 
 				result = results.ByDay[date]
 			}
 
+			// Warning: this is incrementing overall job runs regardless if the job actually included our test or not.
+			// Can lead to wildly inaccurate results. New version of API below has this fixed.
 			result.Overall.Runs++
 
 			// Runs by job
@@ -164,12 +166,6 @@ GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, fail
 		var dayResult testResultDay
 		if _, ok := results.ByDay[date]; !ok {
 			dayResult = testResultDay{
-				Overall: counts{
-					Failures: 0,
-					Runs:     0,
-					Passes:   0,
-					Flakes:   0,
-				},
 				ByVariant: make(map[string]*counts),
 				ByJob:     make(map[string]*counts),
 			}
@@ -204,12 +200,18 @@ GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, fail
 				// the briefName() function will map to the same value for some jobs, this appears to be intentional.
 				// As such if we see a brief job name that we already have, we need to increment it's counters.
 				//klog.Infof("incrementing counters for job %s (briefname: %s) on date %s", row.JobName, briefName(row.JobName), date)
-				dayResult.ByJob[briefName(row.JobName)].Runs = dayResult.ByJob[briefName(row.JobName)].Runs + row.Runs
-				dayResult.ByJob[briefName(row.JobName)].Passes = dayResult.ByJob[briefName(row.JobName)].Passes + row.Passes
-				dayResult.ByJob[briefName(row.JobName)].Flakes = dayResult.ByJob[briefName(row.JobName)].Flakes + row.Flakes
-				dayResult.ByJob[briefName(row.JobName)].Failures = dayResult.ByJob[briefName(row.JobName)].Failures + row.Failures
+				dayResult.ByJob[briefName(row.JobName)].Runs += row.Runs
+				dayResult.ByJob[briefName(row.JobName)].Passes += row.Passes
+				dayResult.ByJob[briefName(row.JobName)].Flakes += row.Flakes
+				dayResult.ByJob[briefName(row.JobName)].Failures += row.Failures
 			}
 
+			// Increment our overall counter using the rows with job names, as these are distinct.
+			// (unlike variants which can overlap and would cause double counted test runs)
+			dayResult.Overall.Runs += row.Runs
+			dayResult.Overall.Passes += row.Passes
+			dayResult.Overall.Flakes += row.Flakes
+			dayResult.Overall.Failures += row.Failures
 		}
 
 		results.ByDay[date] = dayResult
