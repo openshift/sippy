@@ -31,6 +31,7 @@ func TestDetailTests(format ResponseFormat, curr, prev sippyprocessingv1.TestRep
 }
 
 func TestDetailTestsFromDB(db *db.DB, format ResponseFormat, release string, testSubstrings []string) (string, error) {
+	// TODO: use the new approach from install_by_operators.go
 	dataForTestsByVariant, err := getDataForTestsByVariantFromDB(
 		db,
 		release,

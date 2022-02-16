@@ -454,11 +454,8 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintTestsJSONFromDB(release, w, req, s.db)
-	}
-
+	release := req.URL.Query().Get("release")
+	api.PrintTestsJSONFromDB(release, w, req, s.db)
 }
 
 func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
