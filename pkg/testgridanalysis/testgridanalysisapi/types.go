@@ -60,9 +60,9 @@ type RawJobRunResult struct {
 	Failed          bool
 	Succeeded       bool
 
-	// SetupStatus can be "", "Success", "Failure"
+	// InstallStatus can be "", "Success", "Failure"
 	// Used to create synthetic tests.
-	SetupStatus         string
+	InstallStatus       string
 	FinalOperatorStates []OperatorState
 
 	// UpgradeStarted is true if the test attempted to start an upgrade based on the CVO succeeding (or failing) to acknowledge a request

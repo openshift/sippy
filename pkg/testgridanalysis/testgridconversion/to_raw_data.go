@@ -143,16 +143,16 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				switch {
 				case isOverallTest(test.Name, job):
 					jrr.Succeeded = true
-					// if the overall job succeeded, setup is always considered successful, even for jobs
-					// that don't have an explicitly defined setup test.
-					jrr.SetupStatus = testgridanalysisapi.Success
+					// if the overall job succeeded, install is always considered successful, even for jobs
+					// that don't have an explicitly defined install test.
+					jrr.InstallStatus = testgridanalysisapi.Success
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
 						Name:  testidentification.GetOperatorNameFromTest(test.Name),
 						State: testgridanalysisapi.Success,
 					})
-				case testidentification.IsSetupContainerEquivalent(test.Name):
-					jrr.SetupStatus = testgridanalysisapi.Success
+				case testidentification.IsInstallStepEquivalent(test.Name):
+					jrr.InstallStatus = testgridanalysisapi.Success
 				case testidentification.IsUpgradeStartedTest(test.Name):
 					jrr.UpgradeStarted = true
 				case testidentification.IsOperatorsUpgradedTest(test.Name):
@@ -182,7 +182,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
 				if !isOverallTest(test.Name, job) &&
-					!testidentification.IsSetupContainerEquivalent(test.Name) {
+					!testidentification.IsInstallStepEquivalent(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
@@ -195,8 +195,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 						Name:  testidentification.GetOperatorNameFromTest(test.Name),
 						State: testgridanalysisapi.Failure,
 					})
-				case testidentification.IsSetupContainerEquivalent(test.Name):
-					jrr.SetupStatus = testgridanalysisapi.Failure
+				case testidentification.IsInstallStepEquivalent(test.Name):
+					jrr.InstallStatus = testgridanalysisapi.Failure
 				case testidentification.IsUpgradeStartedTest(test.Name):
 					jrr.UpgradeStarted = true // this is still true because we definitely started
 				case testidentification.IsOperatorsUpgradedTest(test.Name):
@@ -235,9 +235,9 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
 	// strip out tests that don't have predictive or diagnostic value
 	// we have to know about overall to be able to set the global success or failure.
-	// we have to know about container setup to be able to set infra failures
+	// we have to know about install equivalent tests to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if !isOverallTest(test.Name, job) && !testidentification.IsSetupContainerEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
+	if !isOverallTest(test.Name, job) && !testidentification.IsInstallStepEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
 		return
 	}
 

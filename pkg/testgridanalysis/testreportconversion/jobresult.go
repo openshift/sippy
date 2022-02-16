@@ -176,11 +176,11 @@ func convertRawJobResultToProcessedJobResult(
 		if jrr.KnownFailure {
 			job.KnownFailures++
 		}
-		// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
+		// success - we saw the install/infra test result, it succeeded (or the whole job succeeeded)
 		// failure - we saw the test result, it failed
-		// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
+		// unknown - we know this job doesn't have an install test, and the job didn't succeed, so we don't know if it
 		//           failed due to infra issues or not.  probably not infra.
-		// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
+		// emptystring - we expected to see a test result for an install test but we didn't and the overall job failed, probably infra
 		if jrr.InfrastructureFailure {
 			job.InfrastructureFailures++
 		}
@@ -211,12 +211,12 @@ func convertRawToJobRunResult(jrr testgridanalysisapi.RawJobRunResult, testResul
 	prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
 	knownFailure := jrr.Failed && areAllFailuresKnown(jrr, testResults)
 
-	// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
+	// success - we saw the install/infra test result, it succeeded (or the whole job succeeeded)
 	// failure - we saw the test result, it failed
-	// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
+	// unknown - we know this job doesn't have an install test, and the job didn't succeed, so we don't know if it
 	//           failed due to infra issues or not.  probably not infra.
-	// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
-	infraFailure := jrr.SetupStatus != testgridanalysisapi.Success && jrr.SetupStatus != testgridanalysisapi.Unknown
+	// emptystring - we expected to see a test result for an install test but we didn't and the overall job failed, probably infra
+	infraFailure := jrr.InstallStatus != testgridanalysisapi.Success && jrr.InstallStatus != testgridanalysisapi.Unknown
 
 	return sippyprocessingv1.JobRunResult{
 		ProwID:                uint(prowID),
