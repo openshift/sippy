@@ -89,8 +89,8 @@ type OperatorState struct {
 }
 
 const (
-	OperatorUpgradePrefix       = "Operator upgrade "
-	OperatorFinalHealthPrefix   = "operator conditions "
+	OperatorUpgradePrefix       = "Cluster upgrade.Operator upgrade "
+	OperatorFinalHealthPrefix   = "Operator results.operator conditions "
 	FinalOperatorHealthTestName = `[sig-sippy] tests should finish with healthy operators`
 
 	InfrastructureTestName = `[sig-sippy] infrastructure should work`

@@ -350,7 +350,7 @@ func (o *Options) runServerMode() error {
 	)
 
 	// Restore this for old APIs to function
-	//server.RefreshData() // force a data refresh once before serving.
+	server.RefreshData() // force a data refresh once before serving.
 
 	server.Serve()
 	return nil

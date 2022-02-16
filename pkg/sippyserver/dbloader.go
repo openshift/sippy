@@ -136,7 +136,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 			// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
 			//           failed due to infra issues or not.  probably not infra.
 			// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
-			infraFailure := jobRun.SetupStatus != testgridanalysisapi.Success && jobRun.SetupStatus != testgridanalysisapi.Unknown
+			infraFailure := jobRun.InstallStatus != testgridanalysisapi.Success && jobRun.InstallStatus != testgridanalysisapi.Unknown
 
 			pjr := models.ProwJobRun{
 				Model: gorm.Model{
