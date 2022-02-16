@@ -107,5 +107,5 @@ const (
 var (
 	// TODO: add [sig-sippy] here as well so we can more clearly identify and substring search
 	OperatorInstallPrefix          = "operator install "
-	OperatorConditionsTestCaseName = regexp.MustCompile("operator install (?P<operator>.*)")
+	OperatorConditionsTestCaseName = regexp.MustCompile("^operator install (?P<operator>.*)")
 )
