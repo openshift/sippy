@@ -187,6 +187,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.TestFailures++
 				}
 
+				// TODO: should we also add failures to jrr.TestResults so everything is in one place? Kill off FailedTestNames
+
 				switch {
 				case isOverallTest(test.Name, job):
 					jrr.Failed = true

@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
+	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -16,7 +16,7 @@ func NewOpenshiftSyntheticTestManager() SyntheticTestManager {
 	return openshiftSyntheticManager{}
 }
 
-// createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
+// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 // and potentially producing synthetic test results and aggregations to better inform sippy.
 // This needs to be called after all the JobDetails have been processed.
 // returns warnings found in the data. Not failures to process it.
@@ -146,7 +146,6 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 							pass: 1,
 						}
 					}
-
 				} else {
 					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
 					// if the test failed, then the operator upgrade tests should match the operator state
@@ -172,10 +171,18 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 			}
 
 			for testName, result := range syntheticTests {
+				// convert the result.pass or .fail to the status value we use for test results:
+				testResultStatus := v1.TestStatusSuccess // assume success to start with
 				if result.fail > 0 {
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
+					testResultStatus = v1.TestStatusFailure
 				}
+				// Inject successful test results as well.
+				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+					Name:   testName,
+					Status: testResultStatus,
+				})
 				addTestResult(jobResults.TestResults, nil, testName, result.pass, result.fail, 0)
 			}
 

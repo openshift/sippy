@@ -29,6 +29,8 @@ type RawJobResult struct {
 	JobRunResults map[string]RawJobRunResult
 
 	// TestResults is a map from test.Name to the aggregated results for each run of that test inside the job
+	// TODO: rename to indicate this is aggregated across all job runs. The name currently is identical to a field
+	// on each JobRunResult.
 	TestResults map[string]RawTestResult
 }
 
@@ -55,7 +57,7 @@ type RawJobRunResult struct {
 	Job             string
 	JobRunURL       string
 	TestFailures    int
-	FailedTestNames []string
+	FailedTestNames []string // TODO: drop this and favor TestResults going forward, it has caused bugs.
 	TestResults     []RawJobRunTestResult
 	Failed          bool
 	Succeeded       bool
