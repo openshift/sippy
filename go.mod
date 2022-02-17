@@ -15,6 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cobra v0.0.6
+	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/gjson v1.9.4
 	github.com/valyala/fasttemplate v1.2.1 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
