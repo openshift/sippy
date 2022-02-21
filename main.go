@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path"
@@ -12,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -28,6 +29,12 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
+
+//go:embed sippy-ng/build
+var sippyNG embed.FS
+
+//go:embed static
+var static embed.FS
 
 type Options struct {
 	LocalData         string
@@ -299,7 +306,6 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) runServerMode() error {
-
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
 		err := http.ListenAndServe(":2112", nil)
@@ -308,24 +314,18 @@ func (o *Options) runServerMode() error {
 		}
 	}()
 
-	// This embeds the contents of the two static directories directly into the binary. It
-	// needs to be in main.go, so rice can find it when injecting the contents.
-	sippyNG, err := rice.FindBox("./sippy-ng/build")
-	if err != nil {
-		panic(err)
-	}
-
-	static, err := rice.FindBox("./static")
-	if err != nil {
-		panic(err)
-	}
-
 	var dbc *db.DB
+	var err error
 	if o.DSN != "" {
 		dbc, err = db.New(o.DSN)
 		if err != nil {
 			return err
 		}
+	}
+
+	webRoot, err := fs.Sub(sippyNG, "sippy-ng/build")
+	if err != nil {
+		return err
 	}
 
 	server := sippyserver.NewServer(
@@ -337,8 +337,8 @@ func (o *Options) runServerMode() error {
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
 		o.getBugCache(),
-		sippyNG,
-		static,
+		webRoot,
+		&static,
 		dbc,
 	)
 

@@ -3,6 +3,7 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
@@ -38,8 +38,8 @@ func NewServer(
 	syntheticTestManager testgridconversion.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
-	sippyNG *rice.Box,
-	static *rice.Box,
+	sippyNG fs.FS,
+	static fs.FS,
 	dbClient *db.DB,
 ) *Server {
 
@@ -74,8 +74,8 @@ type Server struct {
 	testReportGeneratorConfig  TestReportGeneratorConfig
 	currTestReports            map[string]StandardReport
 	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
-	sippyNG                    *rice.Box
-	static                     *rice.Box
+	sippyNG                    fs.FS
+	static                     fs.FS
 	httpServer                 *http.Server
 	db                         *db.DB
 }
@@ -563,7 +563,7 @@ func (s *Server) Serve() {
 	// Handle serving React version of frontend with support for browser router, i.e. anything not found
 	// goes to index.html
 	serveMux.HandleFunc("/sippy-ng/", func(w http.ResponseWriter, r *http.Request) {
-		fs := s.sippyNG.HTTPBox()
+		fs := s.sippyNG
 		if r.URL.Path != "/sippy-ng/" {
 			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
 			if _, err := fs.Open(fullPath); err != nil {
@@ -573,10 +573,10 @@ func (s *Server) Serve() {
 				r.URL.Path = "/sippy-ng/"
 			}
 		}
-
-		http.StripPrefix("/sippy-ng/", http.FileServer(fs)).ServeHTTP(w, r)
+		http.StripPrefix("/sippy-ng/", http.FileServer(http.FS(fs))).ServeHTTP(w, r)
 	})
-	serveMux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(s.static.HTTPBox())))
+
+	serveMux.Handle("/static/", http.FileServer(http.FS(s.static)))
 
 	// Re-direct "/" to sippy-ng
 	serveMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
