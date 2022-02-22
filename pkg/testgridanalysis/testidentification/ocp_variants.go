@@ -90,12 +90,19 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
 
-		// TODO: Figure out where to report problems for these
-		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-aws-cucushift-ipi",
-		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-gcp-cucushift-ipi",
-		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-baremetal-cucushift-ipi",
-		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-baremetal-cucushift-ipi",
-		"periodic-ci-openshift-verification-tests-master-ocp-4.10-e2e-openstack-cucushift-ipi",
+		// QE jobs, formerly named with "cucushift", tracked here: https://issues.redhat.com/browse/OCPQE-8577
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-azure-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-baremetal-ipi",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-azure-ipi",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-azure-ipi",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-baremetal-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-aws-ipi-destructive",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-openstack-ipi",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-aws-ipi-destructive",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-openstack-ipi",
+		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-baremetal-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-baremetal-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-azure-ipi",
 
 		// Reported on slack to SD-CICD
 		"release-openshift-ocp-osd-aws-nightly-4.10",
