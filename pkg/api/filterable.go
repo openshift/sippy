@@ -307,7 +307,8 @@ func filterString(filter FilterItem, item Filterable) (bool, error) {
 	case OperatorContains:
 		return strings.Contains(value, comparison), nil
 	case OperatorEquals:
-		return value == comparison, nil
+		// We've seen tests sneak in with trailing whitespace, handle this for equals comparisons:
+		return strings.TrimSpace(value) == comparison, nil
 	case OperatorStartsWith:
 		return strings.HasPrefix(value, comparison), nil
 	case OperatorEndsWith:
