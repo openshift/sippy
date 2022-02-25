@@ -1,8 +1,10 @@
 package sippyserver
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
@@ -32,7 +34,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		// Load the last 30 days of data.  Note that we do not prune data today, so we'll be accumulating
 		// data over time for now.
 		StartDay: 0,
-		NumDays:  30,
+		NumDays:  14,
 	}
 	rawJobResults, _ := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
 
@@ -59,6 +61,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	// Build up a cache of all prow jobs we know about to speedup data entry.
 	// Maps job name to db ID.
 	prowJobCache := map[string]uint{}
+	prowJobCacheLock := &sync.RWMutex{}
 	var idNames []models.IDName
 	dbc.DB.Model(&models.ProwJob{}).Find(&idNames)
 	for _, idn := range idNames {
@@ -67,14 +70,6 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		}
 	}
 	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
-
-	// Cache the IDs of all known ProwJobRuns. Will be used to skip job run and test results we've already committed.
-	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
-	allKnownJobRuns := []models.ProwJobRun{}
-	dbc.DB.Select("id").Find(&allKnownJobRuns)
-	for _, kjr := range allKnownJobRuns {
-		prowJobRunCache[kjr.ID] = true
-	}
 
 	// First pass we just create any new ProwJobs we do not already have. This will allow us to run the second pass
 	// inserts in parallel without conflicts.
@@ -101,6 +96,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	// Cache all tests by name to their ID, used for the join object.
 	testCache := map[string]uint{}
+	testCacheLock := &sync.RWMutex{}
 	dbc.DB.Model(&models.Test{}).Find(&idNames)
 	for _, idn := range idNames {
 		if _, ok := testCache[idn.Name]; !ok {
@@ -114,120 +110,16 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	// committed at the same time.
 	//
 	// TODO: parallelize with goroutines for faster entry
+	jobResultCtr := 0
 	for i := range rawJobResults.JobResults {
+		jobResultCtr++
 		jr := rawJobResults.JobResults[i]
-
-		jobRunsToCreate := []models.ProwJobRun{}
-		// CreateJobRuns if we don't have them already:
-		for _, jobRun := range jr.JobRunResults {
-			tokens := strings.Split(jobRun.JobRunURL, "/")
-			prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
-
-			if _, ok := prowJobRunCache[uint(prowID)]; ok {
-				// skip job runs we already have:
-				continue
-			}
-
-			// TODO: copy whatever's happening in jobresults.go
-			//knownFailure := jobRun.Failed && areAllFailuresKnown(jrr, testResults)
-
-			// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
-			// failure - we saw the test result, it failed
-			// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
-			//           failed due to infra issues or not.  probably not infra.
-			// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
-			infraFailure := jobRun.InstallStatus != testgridanalysisapi.Success && jobRun.InstallStatus != testgridanalysisapi.Unknown
-
-			pjr := models.ProwJobRun{
-				Model: gorm.Model{
-					ID: uint(prowID),
-				},
-				ProwJobID:             prowJobCache[jr.JobName],
-				URL:                   jobRun.JobRunURL,
-				TestFailures:          jobRun.TestFailures,
-				Failed:                jobRun.Failed,
-				InfrastructureFailure: infraFailure,
-				KnownFailure:          false, // TODO: see above
-				Succeeded:             jobRun.Succeeded,
-				Timestamp:             time.Unix(int64(jobRun.Timestamp)/1000, 0), // Timestamp is in millis since epoch
-				OverallResult:         jobRun.OverallResult,
-			}
-
-			// Add all test run results to the ProwJobRun. Due to oddness in the underlying structures, this requires
-			// processing both the TestResults and the FailedTestNames, which are not in the TestResults.
-			testRuns := make([]models.ProwJobRunTest, 0, len(jobRun.TestResults)+len(jobRun.FailedTestNames))
-			for _, tr := range jobRun.TestResults {
-				// TODO: Move outside this loop so we can cache faster.
-				if _, ok := testCache[tr.Name]; !ok {
-					klog.Info("Creating new test row: %s", tr.Name)
-					t := models.Test{
-						Name: tr.Name,
-					}
-					err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
-					if err != nil {
-						return errors.Wrapf(err, "error loading test into db: %s", t.Name)
-					}
-					testCache[tr.Name] = t.ID
-				}
-				testID := testCache[tr.Name]
-
-				testRuns = append(testRuns, models.ProwJobRunTest{
-					TestID:       testID,
-					ProwJobRunID: pjr.ID,
-					Status:       int(tr.Status),
-				})
-			}
-
-			for _, ftn := range jobRun.FailedTestNames {
-				if _, ok := testCache[ftn]; !ok {
-					klog.Info("Creating new test row: %s", ftn)
-					t := models.Test{
-						Name: ftn,
-					}
-					err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
-					if err != nil {
-						return errors.Wrapf(err, "error loading test into db: %s", t.Name)
-					}
-					testCache[ftn] = t.ID
-				}
-				testID := testCache[ftn]
-
-				testRuns = append(testRuns, models.ProwJobRunTest{
-					TestID:       testID,
-					ProwJobRunID: pjr.ID,
-					Status:       int(v1.TestStatusFailure),
-				})
-			}
-
-			pjr.Tests = testRuns
-
-			//jobRuns = append(jobRuns, pjr)
-
-			/*
-				failedTests := make([]models.Test, len(jobRun.FailedTestNames))
-				for i, ftn := range jobRun.FailedTestNames {
-					ft := models.Test{}
-					r := dbc.DB.Where("name = ?", ftn).First(&ft)
-					if errors.Is(r.Error, gorm.ErrRecordNotFound) {
-						ft = models.Test{
-							Name: ftn,
-						}
-						err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
-						if err != nil {
-							return errors.Wrapf(err, "error loading test into db: %s", ft.Name)
-						}
-					}
-					failedTests[i] = ft
-				}
-				pjr.FailedTests = failedTests
-			*/
-
-			jobRunsToCreate = append(jobRunsToCreate, pjr)
-			err := dbc.DB.Create(&pjr).Error
-			if err != nil {
-				return errors.Wrap(err, "error loading prow job runs into db")
-			}
+		jobStatus := fmt.Sprintf("%d/%d", jobResultCtr, len(rawJobResults.JobResults))
+		err := LoadJob(dbc, prowJobCache, prowJobCacheLock, testCache, testCacheLock, jr, jobStatus)
+		if err != nil {
+			return err
 		}
+
 		/*
 			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(jobRunsToCreate, 50).Error
 			if err != nil {
@@ -238,5 +130,146 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	klog.Info("done loading ProwJobRuns")
 
+	return nil
+}
+
+func LoadJob(
+	dbc *db.DB,
+	prowJobCache map[string]uint,
+	prowJobCacheLock *sync.RWMutex,
+	testCache map[string]uint,
+	testCacheLock *sync.RWMutex,
+	jr testgridanalysisapi.RawJobResult,
+	jobStatus string) error {
+
+	// Cache the IDs of all known ProwJobRuns for this job. Will be used to skip job run and test results we've already processed.
+	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
+	knownJobRuns := []models.ProwJobRun{}
+	prowJobCacheLock.RLock()
+	prowJobID := prowJobCache[jr.JobName]
+	prowJobCacheLock.RUnlock()
+	dbc.DB.Select("id").Where("prow_job_id = ?", prowJobID).Find(&knownJobRuns)
+	klog.Infof("Found %d known job runs for %s", len(knownJobRuns), jr.JobName)
+	for _, kjr := range knownJobRuns {
+		prowJobRunCache[kjr.ID] = true
+	}
+
+	jobRunsToCreate := []models.ProwJobRun{}
+	// CreateJobRuns if we don't have them already:
+	jobRunResultCtr := 0
+	for _, jobRun := range jr.JobRunResults {
+		jobRunResultCtr++
+		tokens := strings.Split(jobRun.JobRunURL, "/")
+		prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
+
+		if _, ok := prowJobRunCache[uint(prowID)]; ok {
+			// skip job runs we already have:
+			continue
+		}
+
+		// TODO: copy whatever's happening in jobresults.go
+		//knownFailure := jobRun.Failed && areAllFailuresKnown(jrr, testResults)
+
+		// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
+		// failure - we saw the test result, it failed
+		// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
+		//           failed due to infra issues or not.  probably not infra.
+		// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
+		infraFailure := jobRun.InstallStatus != testgridanalysisapi.Success && jobRun.InstallStatus != testgridanalysisapi.Unknown
+
+		pjr := models.ProwJobRun{
+			Model: gorm.Model{
+				ID: uint(prowID),
+			},
+			ProwJobID:             prowJobID,
+			URL:                   jobRun.JobRunURL,
+			TestFailures:          jobRun.TestFailures,
+			Failed:                jobRun.Failed,
+			InfrastructureFailure: infraFailure,
+			KnownFailure:          false, // TODO: see above
+			Succeeded:             jobRun.Succeeded,
+			Timestamp:             time.Unix(int64(jobRun.Timestamp)/1000, 0), // Timestamp is in millis since epoch
+			OverallResult:         jobRun.OverallResult,
+		}
+
+		// Add all test run results to the ProwJobRun. Due to oddness in the underlying structures, this requires
+		// processing both the TestResults and the FailedTestNames, which are not in the TestResults.
+		testRuns := make([]models.ProwJobRunTest, 0, len(jobRun.TestResults)+len(jobRun.FailedTestNames))
+		for _, tr := range jobRun.TestResults {
+			testCacheLock.RLock()
+			if _, ok := testCache[tr.Name]; !ok {
+				klog.Infof("Creating new test row: %s", tr.Name)
+				t := models.Test{
+					Name: tr.Name,
+				}
+				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
+				if err != nil {
+					return errors.Wrapf(err, "error loading test into db: %s", t.Name)
+				}
+				testCache[tr.Name] = t.ID
+			}
+			testID := testCache[tr.Name]
+			testCacheLock.RUnlock()
+
+			testRuns = append(testRuns, models.ProwJobRunTest{
+				TestID:       testID,
+				ProwJobRunID: pjr.ID,
+				Status:       int(tr.Status),
+			})
+		}
+
+		for _, ftn := range jobRun.FailedTestNames {
+			testCacheLock.RLock()
+			if _, ok := testCache[ftn]; !ok {
+				klog.Info("Creating new test row: %s", ftn)
+				t := models.Test{
+					Name: ftn,
+				}
+				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
+				if err != nil {
+					return errors.Wrapf(err, "error loading test into db: %s", t.Name)
+				}
+				testCache[ftn] = t.ID
+			}
+			testID := testCache[ftn]
+			testCacheLock.RUnlock()
+
+			testRuns = append(testRuns, models.ProwJobRunTest{
+				TestID:       testID,
+				ProwJobRunID: pjr.ID,
+				Status:       int(v1.TestStatusFailure),
+			})
+		}
+
+		pjr.Tests = testRuns
+
+		//jobRuns = append(jobRuns, pjr)
+
+		/*
+			failedTests := make([]models.Test, len(jobRun.FailedTestNames))
+			for i, ftn := range jobRun.FailedTestNames {
+				ft := models.Test{}
+				r := dbc.DB.Where("name = ?", ftn).First(&ft)
+				if errors.Is(r.Error, gorm.ErrRecordNotFound) {
+					ft = models.Test{
+						Name: ftn,
+					}
+					err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
+					if err != nil {
+						return errors.Wrapf(err, "error loading test into db: %s", ft.Name)
+					}
+				}
+				failedTests[i] = ft
+			}
+			pjr.FailedTests = failedTests
+		*/
+
+		jobRunsToCreate = append(jobRunsToCreate, pjr)
+		err := dbc.DB.Create(&pjr).Error
+		if err != nil {
+			return errors.Wrap(err, "error loading prow job runs into db")
+		}
+		klog.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
+	}
 	return nil
 }
