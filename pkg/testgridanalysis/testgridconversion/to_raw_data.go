@@ -100,9 +100,9 @@ var testSuitePrefixes = []string{
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 // isOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
-// the test name changed from "Overall" to "[jobName].Overall", and for now we need to support both.
-func isOverallTest(testName string, job testgridv1.JobDetails) bool {
-	return testName == overall || testName == fmt.Sprintf("%s.%s", job.Name, overall)
+// the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
+func isOverallTest(testName string) bool {
+	return testName == overall || strings.HasSuffix(testName, ".Overall")
 }
 
 // processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
@@ -148,7 +148,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					}
 				}
 				switch {
-				case isOverallTest(test.Name, job):
+				case isOverallTest(test.Name):
 					jrr.Succeeded = true
 					// if the overall job succeeded, install is always considered successful, even for jobs
 					// that don't have an explicitly defined install test.
@@ -188,14 +188,14 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if !isOverallTest(test.Name, job) &&
+				if !isOverallTest(test.Name) &&
 					!testidentification.IsInstallStepEquivalent(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
 
 				switch {
-				case isOverallTest(test.Name, job):
+				case isOverallTest(test.Name):
 					jrr.Failed = true
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
@@ -244,7 +244,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about install equivalent tests to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if !isOverallTest(test.Name, job) && !testidentification.IsInstallStepEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
+	if !isOverallTest(test.Name) && !testidentification.IsInstallStepEquivalent(test.Name) && ignoreTestRegex.MatchString(test.Name) {
 		return
 	}
 
