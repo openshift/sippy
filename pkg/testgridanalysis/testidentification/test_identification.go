@@ -6,6 +6,8 @@ import (
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var customJobInstallNames = sets.NewString(
@@ -66,25 +68,47 @@ var customJobInstallNames = sets.NewString(
 	"vsphere-upi-upi-install-vsphere",
 )
 
+const installStepName = "install should succeed: overall"
+
+var (
+	// The following two metrics are temporary counters helping us to decide when to remove old style identification.
+	totalJobRunWithOldInstallIdentificationMetric = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "sippy_total_runs_with_old_install_identification",
+		Help: "Total job runs with old style install identification",
+	})
+	totalJobRunWithNewInstallIdentificationMetric = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "sippy_total_runs_with_new_install_identification",
+		Help: "Total job runs with new style install identification",
+	})
+)
+
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether install succeeded
 // Install steps have different names in different jobs. This is heavily dependent on the actual UPI jobs, but they turn out to be different.
 // When this needs updating,  it shows up as installs timing out in weird numbers
 func IsInstallStepEquivalent(testName string) bool {
+	if strings.Contains(testName, installStepName) {
+		totalJobRunWithNewInstallIdentificationMetric.Inc()
+		return true
+	}
 	for installName := range customJobInstallNames {
 		if strings.Contains(testName, installName) {
+			totalJobRunWithOldInstallIdentificationMetric.Inc()
 			return true
 		}
 	}
 
 	if strings.HasSuffix(testName, "container setup") {
+		totalJobRunWithOldInstallIdentificationMetric.Inc()
 		return true
 	}
 
 	//  kube uses this to mean the installation worked.  It's not perfectly analogous, but it's close.
 	if testName == "Up" {
+		totalJobRunWithOldInstallIdentificationMetric.Inc()
 		return true
 	}
 	if strings.HasSuffix(testName, "create-cluster") {
+		totalJobRunWithOldInstallIdentificationMetric.Inc()
 		return true
 	}
 
