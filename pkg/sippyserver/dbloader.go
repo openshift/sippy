@@ -105,6 +105,19 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	}
 	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
 
+	// Cache all test suites by name to their ID, used for the join object.
+	// Unlike other caches used in this area, this one is purely populated from the db.go initialization, we
+	// only recognize certain suite names as test authors have used . liberally such that we cannot make any other
+	// assumptions about what prefix is a suite name and what isn't.
+	suiteCache := map[string]uint{}
+	dbc.DB.Model(&models.Suite{}).Find(&idNames)
+	for _, idn := range idNames {
+		if _, ok := suiteCache[idn.Name]; !ok {
+			suiteCache[idn.Name] = idn.ID
+		}
+	}
+	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
+
 	// Second pass we create all ProwJobRuns we do not already have.
 	// ProwJobRuns are created individually in a transaction to ensure we get the job run, and all it's test results
 	// committed at the same time.
@@ -115,7 +128,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		jobResultCtr++
 		jr := rawJobResults.JobResults[i]
 		jobStatus := fmt.Sprintf("%d/%d", jobResultCtr, len(rawJobResults.JobResults))
-		err := LoadJob(dbc, prowJobCache, prowJobCacheLock, testCache, testCacheLock, jr, jobStatus)
+		err := LoadJob(dbc, prowJobCache, prowJobCacheLock, suiteCache, testCache, testCacheLock, jr, jobStatus)
 		if err != nil {
 			return err
 		}
@@ -137,6 +150,7 @@ func LoadJob(
 	dbc *db.DB,
 	prowJobCache map[string]uint,
 	prowJobCacheLock *sync.RWMutex,
+	suiteCache map[string]uint,
 	testCache map[string]uint,
 	testCacheLock *sync.RWMutex,
 	jr testgridanalysisapi.RawJobResult,
@@ -196,73 +210,44 @@ func LoadJob(
 		// processing both the TestResults and the FailedTestNames, which are not in the TestResults.
 		testRuns := make([]models.ProwJobRunTest, 0, len(jobRun.TestResults)+len(jobRun.FailedTestNames))
 		for _, tr := range jobRun.TestResults {
-			testCacheLock.RLock()
-			if _, ok := testCache[tr.Name]; !ok {
-				klog.Infof("Creating new test row: %s", tr.Name)
-				t := models.Test{
-					Name: tr.Name,
-				}
-				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
-				if err != nil {
-					return errors.Wrapf(err, "error loading test into db: %s", t.Name)
-				}
-				testCache[tr.Name] = t.ID
-			}
-			testID := testCache[tr.Name]
-			testCacheLock.RUnlock()
+			suiteID, testName := getSuiteIDAndTestName(suiteCache, tr.Name)
 
-			testRuns = append(testRuns, models.ProwJobRunTest{
+			testID, err := getOrCreateTestID(dbc, testName, testCache, testCacheLock)
+			if err != nil {
+				return err
+			}
+
+			pjrt := models.ProwJobRunTest{
 				TestID:       testID,
 				ProwJobRunID: pjr.ID,
 				Status:       int(tr.Status),
-			})
+			}
+			if suiteID > 0 {
+				pjrt.SuiteID = &suiteID
+			}
+			testRuns = append(testRuns, pjrt)
 		}
 
 		for _, ftn := range jobRun.FailedTestNames {
-			testCacheLock.RLock()
-			if _, ok := testCache[ftn]; !ok {
-				klog.Info("Creating new test row: %s", ftn)
-				t := models.Test{
-					Name: ftn,
-				}
-				err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
-				if err != nil {
-					return errors.Wrapf(err, "error loading test into db: %s", t.Name)
-				}
-				testCache[ftn] = t.ID
-			}
-			testID := testCache[ftn]
-			testCacheLock.RUnlock()
+			suiteID, testName := getSuiteIDAndTestName(testCache, ftn)
 
-			testRuns = append(testRuns, models.ProwJobRunTest{
+			testID, err := getOrCreateTestID(dbc, testName, testCache, testCacheLock)
+			if err != nil {
+				return err
+			}
+
+			pjrt := models.ProwJobRunTest{
 				TestID:       testID,
 				ProwJobRunID: pjr.ID,
 				Status:       int(v1.TestStatusFailure),
-			})
+			}
+			if suiteID > 0 {
+				pjrt.SuiteID = &suiteID
+			}
+			testRuns = append(testRuns, pjrt)
 		}
 
 		pjr.Tests = testRuns
-
-		//jobRuns = append(jobRuns, pjr)
-
-		/*
-			failedTests := make([]models.Test, len(jobRun.FailedTestNames))
-			for i, ftn := range jobRun.FailedTestNames {
-				ft := models.Test{}
-				r := dbc.DB.Where("name = ?", ftn).First(&ft)
-				if errors.Is(r.Error, gorm.ErrRecordNotFound) {
-					ft = models.Test{
-						Name: ftn,
-					}
-					err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&ft).Error
-					if err != nil {
-						return errors.Wrapf(err, "error loading test into db: %s", ft.Name)
-					}
-				}
-				failedTests[i] = ft
-			}
-			pjr.FailedTests = failedTests
-		*/
 
 		jobRunsToCreate = append(jobRunsToCreate, pjr)
 		err := dbc.DB.Create(&pjr).Error
@@ -272,4 +257,40 @@ func LoadJob(
 		klog.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
 	}
 	return nil
+}
+
+// getSuiteIDAndTestName uses the suiteCache from the db to determine if the testname starts with a known test suite
+// prefix. If so we return the suiteID to associate with on the test run row, otherwise 0.
+func getSuiteIDAndTestName(suiteCache map[string]uint, origTestName string) (suiteID uint, testName string) {
+	for suitePrefix, suiteID := range suiteCache {
+		if strings.HasPrefix(origTestName, suitePrefix+".") {
+			return suiteID, origTestName[len(suitePrefix)+1:]
+		}
+
+	}
+	return 0, origTestName
+}
+
+func getOrCreateTestID(
+	dbc *db.DB,
+	testName string,
+	testCache map[string]uint,
+	testCacheLock *sync.RWMutex) (testID uint, err error) {
+
+	testCacheLock.RLock()
+	if _, ok := testCache[testName]; !ok {
+		klog.Infof("Creating new test row: %s", testName)
+		t := models.Test{
+			Name: testName,
+		}
+		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
+		if err != nil {
+			return 0, errors.Wrapf(err, "error loading test into db: %s", testName)
+		}
+		testCache[testName] = t.ID
+	}
+	testID = testCache[testName]
+	testCacheLock.RUnlock()
+
+	return testID, nil
 }

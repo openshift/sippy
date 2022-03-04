@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"k8s.io/klog"
 )
@@ -55,7 +57,19 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&models.Suite{}); err != nil {
+		return nil, err
+	}
+
 	if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+		return nil, err
+	}
+
+	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
+	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
+	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
+	// change this happens without thinking to update sippy.
+	if err = populateTestSuitesInDB(db); err != nil {
 		return nil, err
 	}
 
@@ -203,3 +217,38 @@ FROM prow_job_run_tests
 WHERE timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY tests.name, tests.id, date, release, job_name
 `
+
+// testSuitePrefixes are known test suites we want to detect in testgrid test names (appears as suiteName.testName)
+// and parse out so we can view results for the same test across any suite it might be used in. The suite info is
+// stored on the ProwJobRunTest row allowing us to query data specific to a suite if needed.
+var testSuitePrefixes = []string{
+	"openshift-tests",         // a primary origin test suite name
+	"openshift-tests-upgrade", // a primary origin test suite name
+	"sippy",                   // used for all synthetic tests sippy adds
+	//"Symptom detection.",       // TODO: origin unknown, possibly deprecated
+	//"OSD e2e suite.",           // TODO: origin unknown, possibly deprecated
+	//"Log Metrics.",             // TODO: origin unknown, possibly deprecated
+}
+
+func populateTestSuitesInDB(db *gorm.DB) error {
+	for _, suiteName := range testSuitePrefixes {
+		s := models.Suite{}
+		res := db.Where("name = ?", suiteName).First(&s)
+		if res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				s = models.Suite{
+					Name: suiteName,
+				}
+				err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&s).Error
+				if err != nil {
+					return errors.Wrapf(err, "error loading suite into db: %s", suiteName)
+				} else {
+					klog.V(1).Infof("Created new test suite: %s", suiteName)
+				}
+			} else {
+				return res.Error
+			}
+		}
+	}
+	return nil
+}

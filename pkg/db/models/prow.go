@@ -49,7 +49,7 @@ type ProwJobRun struct {
 
 type Test struct {
 	gorm.Model
-	Name string `gorm:"unique"`
+	Name string `gorm:"uniqueIndex"`
 }
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
@@ -58,9 +58,17 @@ type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
 	TestID       uint
-	Status       int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
-	CreatedAt    time.Time
-	DeletedAt    gorm.DeletedAt
+	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
+	SuiteID   *uint
+	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
+	CreatedAt time.Time
+	DeletedAt gorm.DeletedAt
+}
+
+// Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.
+type Suite struct {
+	gorm.Model
+	Name string `gorm:"uniqueIndex"`
 }
 
 // TestAnalysisRow models our materialize view for test results by date, and job+variant.

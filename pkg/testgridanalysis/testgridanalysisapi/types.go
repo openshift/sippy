@@ -91,15 +91,15 @@ type OperatorState struct {
 }
 
 const (
-	OperatorUpgradePrefix       = "Cluster upgrade.Operator upgrade "
-	OperatorFinalHealthPrefix   = "Operator results.operator conditions "
-	FinalOperatorHealthTestName = `[sig-sippy] tests should finish with healthy operators`
+	OperatorUpgradePrefix       = "sippy.[sig-sippy] operator upgrade "
+	OperatorFinalHealthPrefix   = "sippy.[sig-sippy] operator conditions "
+	FinalOperatorHealthTestName = "sippy.[sig-sippy] tests should finish with healthy operators"
 
-	InfrastructureTestName = `[sig-sippy] infrastructure should work`
-	InstallTestName        = `[sig-sippy] install should work`
-	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
-	UpgradeTestName        = `[sig-sippy] upgrade should work`
-	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
+	InfrastructureTestName = `sippy.[sig-sippy] infrastructure should work`
+	InstallTestName        = `sippy.[sig-sippy] install should work`
+	InstallTimeoutTestName = `sippy.[sig-sippy] install should not timeout`
+	UpgradeTestName        = `sippy.[sig-sippy] upgrade should work`
+	OpenShiftTestsName     = `sippy.[sig-sippy] openshift-tests should work`
 
 	Success = "Success"
 	Failure = "Failure"
