@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -102,6 +103,8 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 			CurrentFlakes:         test.TestResultAcrossAllJobs.Flakes,
 			CurrentPassPercentage: test.TestResultAcrossAllJobs.PassPercentage,
 			CurrentRuns:           test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures + test.TestResultAcrossAllJobs.Flakes,
+			Bugs:                  []v1.Bug{},
+			AssociatedBugs:        []v1.Bug{},
 		}
 
 		if testPrev != nil {
@@ -113,8 +116,12 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 			row.NetImprovement = row.CurrentPassPercentage - row.PreviousPassPercentage
 		}
 
-		row.Bugs = test.TestResultAcrossAllJobs.BugList
-		row.AssociatedBugs = test.TestResultAcrossAllJobs.AssociatedBugList
+		if test.TestResultAcrossAllJobs.BugList != nil {
+			row.Bugs = test.TestResultAcrossAllJobs.BugList
+		}
+		if test.TestResultAcrossAllJobs.AssociatedBugList != nil {
+			row.AssociatedBugs = test.TestResultAcrossAllJobs.AssociatedBugList
+		}
 
 		if testidentification.IsCuratedTest(release, row.Name) {
 			row.Tags = append(row.Tags, "trt")
@@ -241,6 +248,10 @@ FROM results;
 		// Need fake IDs for the javscript tables:
 		testReport.ID = fakeIdCtr
 		fakeIdCtr++
+
+		// TODO: do we need bugs linked here?
+		testReport.Bugs = []v1.Bug{}
+		testReport.AssociatedBugs = []v1.Bug{}
 
 		filteredReports = append(filteredReports, testReport)
 	}
