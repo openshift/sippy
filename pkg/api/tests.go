@@ -95,7 +95,7 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 		testPrev := util.FindFailedTestResult(test.TestName, previous)
 
 		row := apitype.Test{
-			ID:                    idx,
+			ID:                    idx + 1,
 			Name:                  test.TestName,
 			CurrentSuccesses:      test.TestResultAcrossAllJobs.Successes,
 			CurrentFailures:       test.TestResultAcrossAllJobs.Failures,
