@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/openshift/sippy/pkg/util"
-
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 type analysisResult struct {
