@@ -225,6 +225,7 @@ FROM results;
 
 	// Apply filtering to what we pulled from the db. Perfect world we'd incorporate this into the query instead.
 	filteredReports := make([]apitype.Test, 0, len(testReports))
+	fakeIdCtr := 1
 	for _, testReport := range testReports {
 		if filter != nil {
 			include, err := filter.Filter(testReport)
@@ -236,6 +237,10 @@ FROM results;
 				continue
 			}
 		}
+
+		// Need fake IDs for the javscript tables:
+		testReport.ID = fakeIdCtr
+		fakeIdCtr++
 
 		filteredReports = append(filteredReports, testReport)
 	}
