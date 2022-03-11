@@ -284,6 +284,7 @@ func (o *Options) Run() error {
 				o.getVariantManager(),
 				o.getSyntheticTestManager(), o.getBugCache())
 			if err != nil {
+				klog.Error(err)
 				return err
 			}
 		}

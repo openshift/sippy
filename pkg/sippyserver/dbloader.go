@@ -7,8 +7,10 @@ import (
 	"sync"
 	"time"
 
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -60,13 +62,13 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	// Build up a cache of all prow jobs we know about to speedup data entry.
 	// Maps job name to db ID.
-	prowJobCache := map[string]uint{}
+	prowJobCache := map[string]*models.ProwJob{}
 	prowJobCacheLock := &sync.RWMutex{}
-	var idNames []models.IDName
-	dbc.DB.Model(&models.ProwJob{}).Find(&idNames)
-	for _, idn := range idNames {
-		if _, ok := prowJobCache[idn.Name]; !ok {
-			prowJobCache[idn.Name] = idn.ID
+	var allJobs []*models.ProwJob
+	dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
+	for _, j := range allJobs {
+		if _, ok := prowJobCache[j.Name]; !ok {
+			prowJobCache[j.Name] = j
 		}
 	}
 	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
@@ -80,27 +82,28 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
 		// would not make it to the db.
 		if _, ok := prowJobCache[jr.JobName]; !ok {
-			dbProwJob := models.ProwJob{
+			dbProwJob := &models.ProwJob{
 				Name:        jr.JobName,
 				Release:     dashboard.ReportName,
 				Variants:    variantManager.IdentifyVariants(jr.JobName),
 				TestGridURL: jr.TestGridJobURL,
 			}
-			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&dbProwJob).Error
+			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 			if err != nil {
 				return errors.Wrapf(err, "error loading prow job into db: %s", jr.JobName)
 			}
-			prowJobCache[jr.JobName] = dbProwJob.ID
+			prowJobCache[jr.JobName] = dbProwJob
 		}
 	}
 
 	// Cache all tests by name to their ID, used for the join object.
-	testCache := map[string]uint{}
+	testCache := map[string]*models.Test{}
 	testCacheLock := &sync.RWMutex{}
-	dbc.DB.Model(&models.Test{}).Find(&idNames)
-	for _, idn := range idNames {
+	allTests := []*models.Test{}
+	dbc.DB.Model(&models.Test{}).Find(&allTests)
+	for _, idn := range allTests {
 		if _, ok := testCache[idn.Name]; !ok {
-			testCache[idn.Name] = idn.ID
+			testCache[idn.Name] = idn
 		}
 	}
 	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
@@ -110,6 +113,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	// only recognize certain suite names as test authors have used . liberally such that we cannot make any other
 	// assumptions about what prefix is a suite name and what isn't.
 	suiteCache := map[string]uint{}
+	idNames := []models.IDName{}
 	dbc.DB.Model(&models.Suite{}).Find(&idNames)
 	for _, idn := range idNames {
 		if _, ok := suiteCache[idn.Name]; !ok {
@@ -143,15 +147,20 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	klog.Info("done loading ProwJobRuns")
 
+	// TODO: skip if bz lookup option disabled or in kube mode
+	if err := LoadBugs(dbc, bugCache, testCache, prowJobCache); err != nil {
+		return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+	}
+
 	return nil
 }
 
 func LoadJob(
 	dbc *db.DB,
-	prowJobCache map[string]uint,
+	prowJobCache map[string]*models.ProwJob,
 	prowJobCacheLock *sync.RWMutex,
 	suiteCache map[string]uint,
-	testCache map[string]uint,
+	testCache map[string]*models.Test,
 	testCacheLock *sync.RWMutex,
 	jr testgridanalysisapi.RawJobResult,
 	jobStatus string) error {
@@ -160,9 +169,9 @@ func LoadJob(
 	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
 	knownJobRuns := []models.ProwJobRun{}
 	prowJobCacheLock.RLock()
-	prowJobID := prowJobCache[jr.JobName]
+	prowJob := prowJobCache[jr.JobName]
 	prowJobCacheLock.RUnlock()
-	dbc.DB.Select("id").Where("prow_job_id = ?", prowJobID).Find(&knownJobRuns)
+	dbc.DB.Select("id").Where("prow_job_id = ?", prowJob.ID).Find(&knownJobRuns)
 	klog.Infof("Found %d known job runs for %s", len(knownJobRuns), jr.JobName)
 	for _, kjr := range knownJobRuns {
 		prowJobRunCache[kjr.ID] = true
@@ -195,7 +204,7 @@ func LoadJob(
 			Model: gorm.Model{
 				ID: uint(prowID),
 			},
-			ProwJobID:             prowJobID,
+			ProwJobID:             prowJob.ID,
 			URL:                   jobRun.JobRunURL,
 			TestFailures:          jobRun.TestFailures,
 			Failed:                jobRun.Failed,
@@ -229,7 +238,7 @@ func LoadJob(
 		}
 
 		for _, ftn := range jobRun.FailedTestNames {
-			suiteID, testName := getSuiteIDAndTestName(testCache, ftn)
+			suiteID, testName := getSuiteIDAndTestName(suiteCache, ftn)
 
 			testID, err := getOrCreateTestID(dbc, testName, testCache, testCacheLock)
 			if err != nil {
@@ -274,23 +283,122 @@ func getSuiteIDAndTestName(suiteCache map[string]uint, origTestName string) (sui
 func getOrCreateTestID(
 	dbc *db.DB,
 	testName string,
-	testCache map[string]uint,
+	testCache map[string]*models.Test,
 	testCacheLock *sync.RWMutex) (testID uint, err error) {
 
 	testCacheLock.RLock()
 	if _, ok := testCache[testName]; !ok {
 		klog.Infof("Creating new test row: %s", testName)
-		t := models.Test{
+		t := &models.Test{
 			Name: testName,
 		}
-		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&t).Error
+		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(t).Error
 		if err != nil {
 			return 0, errors.Wrapf(err, "error loading test into db: %s", testName)
 		}
-		testCache[testName] = t.ID
+		testCache[testName] = t
 	}
-	testID = testCache[testName]
+	testID = testCache[testName].ID
 	testCacheLock.RUnlock()
 
 	return testID, nil
+}
+
+func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
+	klog.Info("querying bugzilla for test/job associations")
+	bugCache.Clear()
+
+	testNames := make([]string, 0, len(testCache))
+	for t := range testCache {
+		testNames = append(testNames, t)
+	}
+	if err := bugCache.UpdateForFailedTests(sets.StringKeySet(testCache).List()...); err != nil {
+		klog.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+	}
+	if err := bugCache.UpdateJobBlockers(sets.StringKeySet(jobCache).List()...); err != nil {
+		klog.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+	}
+
+	klog.Info("syncing bugzilla test/job associations to db")
+
+	// For now, clear all existing Bugs in the DB and rebuild. If this is too costly we should do it more intelligently.
+	//dbc.DB.Where("1 = 1").Delete(&models.Bug{})
+	//dbc.DB.Exec("DELETE FROM bug_tests")
+	//dbc.DB.Exec("DELETE FROM bugs")
+
+	// Merge the test/job bugs into one list, associated with each failing test or job, mapped to our db model for the bug.
+	dbExpectedBugs := map[int64]*models.Bug{}
+
+	for testName, apiBugArr := range bugCache.ListAllTestBugs() {
+		for _, apiBug := range apiBugArr {
+			if _, ok := dbExpectedBugs[apiBug.ID]; !ok {
+				newBug := convertAPIBugToDBBug(apiBug)
+				dbExpectedBugs[apiBug.ID] = newBug
+			}
+			if _, ok := testCache[testName]; !ok {
+				// Shouldn't be possible, if it is we want to know.
+				panic("Test name in bug cache does not exist in db: " + testName)
+			}
+			dbExpectedBugs[apiBug.ID].Tests = append(dbExpectedBugs[apiBug.ID].Tests, *testCache[testName])
+		}
+	}
+
+	for jobName, apiBugArr := range bugCache.ListAllJobBlockingBugs() {
+		for _, apiBug := range apiBugArr {
+			if _, ok := dbExpectedBugs[apiBug.ID]; !ok {
+				newBug := convertAPIBugToDBBug(apiBug)
+				dbExpectedBugs[apiBug.ID] = newBug
+			}
+			if _, ok := jobCache[jobName]; !ok {
+				// Shouldn't be possible, if it is we want to know.
+				panic("Job name in bug cache does not exist in db: " + jobName)
+			}
+			dbExpectedBugs[apiBug.ID].Jobs = append(dbExpectedBugs[apiBug.ID].Jobs, *jobCache[jobName])
+		}
+	}
+
+	for _, bug := range dbExpectedBugs {
+		res := db.DB.Clauses(clause.OnConflict{
+			UpdateAll: true,
+		}).Create(bug)
+		if res.Error != nil {
+			klog.Errorf("error creating bug: %s %v", res.Error, bug)
+			return errors.Wrap(res.Error, "error creating bug")
+		}
+		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
+		err := db.DB.Model(&bug).Association("Tests").Replace(bug.Tests)
+		if err != nil {
+			klog.Errorf("error updating bug test associations: %s %v", err, bug)
+			return errors.Wrap(res.Error, "error updating bug test assocations")
+		}
+	}
+
+	return nil
+}
+
+func convertAPIBugToDBBug(apiBug bugsv1.Bug) *models.Bug {
+	newBug := &models.Bug{
+		Model: gorm.Model{
+			ID: uint(apiBug.ID),
+		},
+		Status:         apiBug.Status,
+		LastChangeTime: apiBug.LastChangeTime,
+		Summary:        apiBug.Summary,
+		URL:            apiBug.URL,
+		FailureCount:   apiBug.FailureCount,
+		FlakeCount:     apiBug.FlakeCount,
+		Tests:          []models.Test{},
+	}
+	// We are assuming single valued for each of these despite the fact the bz models appear to support
+	// multi-valued, OpenShift does not use this if so.
+	if len(apiBug.TargetRelease) > 0 {
+		newBug.TargetRelease = apiBug.TargetRelease[0]
+	}
+	if len(apiBug.Version) > 0 {
+		newBug.Version = apiBug.Version[0]
+	}
+	if len(apiBug.Component) > 0 {
+		newBug.Component = apiBug.Component[0]
+	}
+	return newBug
 }

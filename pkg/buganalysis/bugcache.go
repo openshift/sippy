@@ -22,11 +22,12 @@ import (
 type BugCache interface {
 	ListJobBlockingBugs(job string) []bugsv1.Bug
 	ListBugs(release, variant, testName string) []bugsv1.Bug
+	ListAllTestBugs() map[string][]bugsv1.Bug
+	ListAllJobBlockingBugs() map[string][]bugsv1.Bug
 	// ListAssociatedBugs lists bugs that match the testname or variant, but do not match the specified release
 	ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug
 	UpdateForFailedTests(failedTestNames ...string) error
 	UpdateJobBlockers(jobNames ...string) error
-
 	Clear()
 	// LastUpdateError returns the last update error, if one exists
 	LastUpdateError() error
@@ -42,6 +43,12 @@ func (*noOpBugCache) ListJobBlockingBugs(job string) []bugsv1.Bug {
 }
 func (*noOpBugCache) ListBugs(release, variant, testName string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
+}
+func (*noOpBugCache) ListAllTestBugs() map[string][]bugsv1.Bug {
+	return map[string][]bugsv1.Bug{}
+}
+func (*noOpBugCache) ListAllJobBlockingBugs() map[string][]bugsv1.Bug {
+	return map[string][]bugsv1.Bug{}
 }
 func (*noOpBugCache) ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug {
 	return []bugsv1.Bug{}
@@ -65,7 +72,7 @@ type bugCache struct {
 	lock sync.RWMutex
 	// maps test name to any bugzilla bug mentioning the test name
 	testBugsCache map[string][]bugsv1.Bug
-	// jobBlockersBugCache is indexed by getJobKey(jobName) and lists the bugs that are considered to be responsible for all failures on a job
+	// jobBlockersBugCache is indexed by getJobKey(jobName) and lists the bugs that are considered to be responsible for all failures on a job.
 	jobBlockersBugCache map[string][]bugsv1.Bug
 	lastUpdateError     error
 }
@@ -132,6 +139,7 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 
 	var lastUpdateError error
 	batchTestNames := []string{}
+	queryCtr := 0
 	for i, testName := range failedTestNames {
 		if _, found := ret[testName]; found {
 			continue
@@ -150,6 +158,7 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 		}
 
 		r, err := findBugs(batchTestNames)
+		queryCtr++
 		for k, v := range r {
 			ret[k] = v
 		}
@@ -158,6 +167,7 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 		}
 		batchTestNames = []string{}
 	}
+	klog.V(4).Infof("findBugsForFailedTests made %d bugzilla requests", queryCtr)
 
 	return ret, lastUpdateError
 }
@@ -247,6 +257,22 @@ func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
 	defer c.lock.RUnlock()
 
 	return c.jobBlockersBugCache[GetJobKey(jobName)]
+}
+
+func (c *bugCache) ListAllTestBugs() map[string][]bugsv1.Bug {
+	return c.testBugsCache
+}
+
+func (c *bugCache) ListAllJobBlockingBugs() map[string][]bugsv1.Bug {
+	// Our job blocker cache is of format "job=[jobname]=all". For purposes of this function we need to
+	// return just the job name.
+	jobNameToBugs := map[string][]bugsv1.Bug{}
+	for jobSearchStr, bugs := range c.jobBlockersBugCache {
+		trimmed := strings.TrimPrefix(jobSearchStr, "job=")
+		trimmed = strings.TrimSuffix(trimmed, "=all")
+		jobNameToBugs[trimmed] = bugs
+	}
+	return jobNameToBugs
 }
 
 func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {

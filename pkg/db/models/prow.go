@@ -86,3 +86,23 @@ type TestAnalysisRow struct {
 	Flakes   int
 	Failures int
 }
+
+// NOTE: Unfortunate duplication of bugzilla types here, comments in the api/bugs/v1 package indicate we don't own
+// the definitijon of a bugzilla bug and need to match their API. When syncing to DB we'll convert to these customized
+// db types.
+
+// Bug represents a Bugzilla bug.
+type Bug struct {
+	gorm.Model
+	Status         string
+	LastChangeTime time.Time
+	Summary        string
+	TargetRelease  string
+	Version        string
+	Component      string
+	URL            string
+	FailureCount   int
+	FlakeCount     int
+	Tests          []Test    `gorm:"many2many:bug_tests;"`
+	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
+}
