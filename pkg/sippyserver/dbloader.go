@@ -28,13 +28,14 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
 	syntheticTestManager testgridconversion.SyntheticTestManager,
-	bugCache buganalysis.BugCache, // required to associate tests with bug
+	loadBugs bool,
+	bugCache buganalysis.BugCache,
 ) error {
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
-		// Load the last 30 days of data.  Note that we do not prune data today, so we'll be accumulating
-		// data over time for now.
+		// Load the last 14 days of data.  Note that we do not prune data today, so we'll be accumulating
+		// data over time. Goal is 3 months.
 		StartDay: 0,
 		NumDays:  14,
 	}
@@ -51,17 +52,10 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	}
 	klog.V(4).Infof("total test results from testgrid data: %d", testCtr)
 
-	// allJobResults holds all the job results with all the test results.  It contains complete frequency information and
-	/*
-		allJobResults := testreportconversion.ConvertRawJobResultsToProcessedJobResults(
-			dashboard.ReportName, rawJobResults, bugCache, dashboard.BugzillaRelease, variantManager)
-	*/
-
 	// Load all job and test results into database:
 	klog.V(4).Info("loading ProwJobs into db")
 
 	// Build up a cache of all prow jobs we know about to speedup data entry.
-	// Maps job name to db ID.
 	prowJobCache := map[string]*models.ProwJob{}
 	prowJobCacheLock := &sync.RWMutex{}
 	var allJobs []*models.ProwJob
@@ -147,9 +141,10 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	klog.Info("done loading ProwJobRuns")
 
-	// TODO: skip if bz lookup option disabled or in kube mode
-	if err := LoadBugs(dbc, bugCache, testCache, prowJobCache); err != nil {
-		return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+	if loadBugs {
+		if err := LoadBugs(dbc, bugCache, testCache, prowJobCache); err != nil {
+			return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+		}
 	}
 
 	return nil
@@ -308,10 +303,6 @@ func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*mo
 	klog.Info("querying bugzilla for test/job associations")
 	bugCache.Clear()
 
-	testNames := make([]string, 0, len(testCache))
-	for t := range testCache {
-		testNames = append(testNames, t)
-	}
 	if err := bugCache.UpdateForFailedTests(sets.StringKeySet(testCache).List()...); err != nil {
 		klog.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}

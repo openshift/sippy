@@ -280,9 +280,10 @@ func (o *Options) Run() error {
 		}
 
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
+			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 			err := trgc.LoadDatabase(dbc, dashboard,
 				o.getVariantManager(),
-				o.getSyntheticTestManager(), o.getBugCache())
+				o.getSyntheticTestManager(), loadBugs, o.getBugCache())
 			if err != nil {
 				klog.Error(err)
 				return err
