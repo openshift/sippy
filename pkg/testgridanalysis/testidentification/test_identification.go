@@ -9,6 +9,8 @@ import (
 )
 
 var customJobInstallNames = sets.NewString(
+	"aws-ipi-ipi-install-install-stableinitial",
+	"azure-upi-upi-install-azure",
 	"e2e-44-stable-to-45-ci-ipi-install-install-stableinitial",
 	"e2e-aws-hypershift-ipi-install",
 	"e2e-aws-proxy-ipi-install-install",
@@ -17,11 +19,13 @@ var customJobInstallNames = sets.NewString(
 	"e2e-aws-workers-rhel7-ipi-install-install",
 	"e2e-azure-cucushift-upi-upi-install-azure",
 	"e2e-azure-upgrade-ipi-conf-azure",
+	"e2e-azure-upi-upi-install-azure",
 	"e2e-azurestack-csi-upi-install-azurestack",
 	"e2e-baremetal-cucushift-ipi-baremetalds-devscripts-setup",
 	"e2e-gcp-cucushift-upi-upi-install-gcp",
 	"e2e-gcp-libvirt-cert-rotation-openshift-e2e-gcp-libvirt-cert-rotation-setup",
 	"e2e-gcp-upgrade-ipi-install-install-stableinitial",
+	"e2e-gcp-upi-upi-install-gcp",
 	"e2e-metal-assisted-baremetalds-assisted-setup",
 	"e2e-metal-assisted-ipv6-baremetalds-assisted-setup",
 	"e2e-metal-assisted-onprem-baremetalds-assisted-setup",
@@ -38,6 +42,7 @@ var customJobInstallNames = sets.NewString(
 	"e2e-metal-ipi-ovn-dualstack-local-gateway-baremetalds-devscripts-setup",
 	"e2e-metal-ipi-upgrade-baremetalds-devscripts-setup container test",
 	"e2e-metal-ipi-upgrade-ovn-ipv6-baremetalds-devscripts-setup",
+	"e2e-metal-ipi-virtualmedia-baremetalds-devscripts-setup ",
 	"e2e-metal-single-node-live-iso-baremetalds-sno-setup",
 	"e2e-openshift-proxy-ipi-install-install",
 	"e2e-openstack-upgrade-ipi-install",
@@ -53,10 +58,12 @@ var customJobInstallNames = sets.NewString(
 	"install-stableinitial container test",
 	"ipi-install-libvirt-install",
 	"ocp-installer-remote-libvirt-ppc64le-ipi-install-libvirt-install",
+	"ocp-installer-remote-libvirt-s390x-ipi-install-libvirt-install",
 	"upgrade-verification-tests-azure-upi-upi-install-azure",
 	"upgrade-verification-tests-baremetal-ipi-baremetalds-devscripts-setup",
 	"upgrade-verification-tests-gcp-upi-upi-install-gcp",
 	"upgrade-verification-tests-vsphere-upi-upi-install-vsphere",
+	"vsphere-upi-upi-install-vsphere",
 )
 
 // TODO We should instead try to detect whether we fail in a pre-step to determine whether install succeeded

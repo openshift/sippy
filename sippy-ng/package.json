@@ -82,7 +82,7 @@
     "jest-serializer-html": "^7.1.0",
     "jsdom": "16.7.0",
     "jsdom-global": "3.0.2",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "prettier": "^2.3.2",
     "prettier-eslint": "^13.0.0",
     "react-scripts": "4.0.3",

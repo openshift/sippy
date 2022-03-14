@@ -40,6 +40,8 @@ spec:
         - "4.8"
         - --release
         - "4.9"
+        - --release
+        - "4.10"
         - --server
         - --start-day
         - "-1"
