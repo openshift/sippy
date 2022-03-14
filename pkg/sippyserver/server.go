@@ -746,13 +746,13 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport) // TODO: port to db
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 
-		serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport) // TODO: port to db
-		serveMux.HandleFunc("/api/health", s.jsonHealthReport)             // TODO: port to db
+		serveMux.HandleFunc("/api/health", s.jsonHealthReport) // TODO: port to db
 		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
 		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
 	}
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
+	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
