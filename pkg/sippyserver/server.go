@@ -41,6 +41,7 @@ func NewServer(
 	sippyNG *rice.Box,
 	static *rice.Box,
 	dbClient *db.DB,
+	dbOnlyMOde bool,
 ) *Server {
 
 	server := &Server{
@@ -59,6 +60,7 @@ func NewServer(
 		sippyNG:         sippyNG,
 		static:          static,
 		db:              dbClient,
+		dbOnlyMode:      dbOnlyMOde,
 	}
 
 	return server
@@ -78,6 +80,10 @@ type Server struct {
 	static                     *rice.Box
 	httpServer                 *http.Server
 	db                         *db.DB
+	// dbOnlyMode disabled all use of the in-memory analysis from testgrid files on disk, instead relying on
+	// the postgresql database. Swaps each API endpoint for an equivalent.
+	// This flag is temporary and will eventually become the default.
+	dbOnlyMode bool
 }
 
 type TestGridDashboardCoordinates struct {
@@ -131,6 +137,7 @@ func (s *Server) refreshMetrics() {
 // for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
 // main postgresql tables.
 func (s *Server) refreshMaterializedViews() {
+	klog.Info("refreshing materialized views")
 
 	if s.db == nil {
 		klog.Info("skipping materialized view refresh as server has no db connection provided")
@@ -152,11 +159,16 @@ func (s *Server) refreshMaterializedViews() {
 
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
-	s.bugCache.Clear()
 
-	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
-			dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+	if !s.dbOnlyMode {
+		s.bugCache.Clear()
+
+		for _, dashboard := range s.dashboardCoordinates {
+			s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
+				dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+		}
+	} else {
+		s.refreshMaterializedViews()
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -180,7 +192,6 @@ func (s *Server) RefreshData() {
 		}
 	}
 	s.refreshMetrics()
-	s.refreshMaterializedViews()
 
 	klog.Infof("Refresh complete")
 }
@@ -664,55 +675,54 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", 301)
 	})
 
-	// Preserve old sippy at /legacy for now
-	serveMux.HandleFunc("/legacy", s.printHTMLReport)
-	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
-	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	// Fork the endpoints if we're using postgresql db only mode vs the old in-memory.
+	// Temporary until we drop the old legacy mode.
+	if s.dbOnlyMode {
+		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
+		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+		serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
+		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
+		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
+	} else {
+		// Preserve old sippy at /legacy for now
+		serveMux.HandleFunc("/legacy", s.printHTMLReport)
+		serveMux.HandleFunc("/install", s.printInstallHTMLReport)
+		serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+		serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+		serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
+		serveMux.HandleFunc("/detailed", s.detailed)
+		serveMux.HandleFunc("/refresh", s.refresh)
+		serveMux.HandleFunc("/canary", s.printCanaryReport)
+		serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+		// Old API
+		serveMux.HandleFunc("/json", s.printJSONReport)
 
-	serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
-	serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
-	serveMux.HandleFunc("/detailed", s.detailed)
-	serveMux.HandleFunc("/refresh", s.refresh)
-	serveMux.HandleFunc("/canary", s.printCanaryReport)
-	serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+		// New API's
+		serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
+		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport) // TODO: port to db
+		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)         // TODO: port to db
 
-	// Old API
-	serveMux.HandleFunc("/json", s.printJSONReport)
+		serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
+		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
+		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 
-	// New API's
+		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport) // TODO: port to db
+		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)             // TODO: port to db
 
-	// api-ex endpoints are experimental replacements for their non-ex counterparts. They return identical response
-	// formats, and exist for now so we can compare the data against the old, ensure it's working correctly, and
-	// eventually replace the old with the UI none the wiser.
+		serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport) // TODO: port to db
+		serveMux.HandleFunc("/api/health", s.jsonHealthReport)             // TODO: port to db
+		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
+	}
 
-	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
-	serveMux.HandleFunc("/api-ex/jobs", s.jsonJobsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
-	serveMux.HandleFunc("/api-ex/jobs/details", s.jsonJobsDetailsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
-	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
-
-	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
-	serveMux.HandleFunc("/api-ex/tests", s.jsonTestsReportFromDB)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
-	serveMux.HandleFunc("/api-ex/tests/details", s.jsonTestDetailsReportFromDB)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
-	serveMux.HandleFunc("/api-ex/tests/analysis", s.jsonTestAnalysisReportFromDB)
-
-	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
+	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
 	}
-
-	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
-	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
-	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
-	serveMux.HandleFunc("/api-ex/install", s.jsonInstallReportFromDB)
-	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
-	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

@@ -49,6 +49,7 @@ type Options struct {
 	LoadDatabase            bool
 	ListenAddr              string
 	Server                  bool
+	DBOnlyMode              bool
 	SkipBugLookup           bool
 	DSN                     string
 }
@@ -103,6 +104,7 @@ func main() {
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
+	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
@@ -349,10 +351,16 @@ func (o *Options) runServerMode() error {
 		sippyNG,
 		static,
 		dbc,
+		o.DBOnlyMode,
 	)
 
-	// Restore this for old APIs to function
-	server.RefreshData() // force a data refresh once before serving.
+	if !o.DBOnlyMode {
+		// force a data refresh in the background, materialized views will not be populated if this is the first start against
+		// this database.
+		server.RefreshData()
+	}
+	// The above should not be required for db mode, we create the matviews if missing during db init, and that
+	// will do an implicit refresh
 
 	server.Serve()
 	return nil

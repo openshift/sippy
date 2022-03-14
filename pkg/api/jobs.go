@@ -363,7 +363,7 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 		klog.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
 		return res.Error
 	}
-	klog.Infof("loaded %s ProwJobRuns from db since %s", len(prowJobRuns), since.Format(time.RFC3339))
+	klog.Infof("loaded %d ProwJobRuns from db since %s", len(prowJobRuns), since.Format(time.RFC3339))
 
 	jobDetails := map[string]*jobDetail{}
 	for _, pjr := range prowJobRuns {
