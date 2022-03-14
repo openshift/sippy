@@ -35,9 +35,9 @@ type ProwJobRun struct {
 
 	URL          string
 	TestFailures int
-	FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
-	Tests        []ProwJobRunTest
-	Failed       bool
+	//FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
+	Tests  []ProwJobRunTest
+	Failed bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
@@ -58,6 +58,7 @@ type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
 	TestID       uint
+	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
 	SuiteID   *uint
 	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start

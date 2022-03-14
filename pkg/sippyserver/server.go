@@ -589,6 +589,17 @@ func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request)
 	}
 }
 
+func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req, false)
+	jobName := req.URL.Query().Get("job")
+	if release != "" && jobName != "" {
+		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
+		if err != nil {
+			klog.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
+		}
+	}
+}
+
 func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
 	release := s.getReleaseOrFail(w, req, true)
@@ -677,6 +688,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 	serveMux.HandleFunc("/api-ex/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
+	serveMux.HandleFunc("/api-ex/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 

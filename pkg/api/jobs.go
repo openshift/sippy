@@ -13,6 +13,7 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"k8s.io/klog"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -340,6 +341,71 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 		Start: min,
 		End:   max,
 	}.limit(req))
+}
+
+// PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
+func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string) error {
+	var min, max int
+
+	// List all ProwJobRuns for the given release in the last two weeks.
+	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
+	since := time.Now().Add(-14 * 24 * time.Hour)
+
+	prowJobRuns := []*models.ProwJobRun{}
+	res := dbc.DB.Joins("ProwJob").
+		Where("name LIKE ?", "%"+jobSearchStr+"%").
+		Where("timestamp > ?", since).
+		Where("release = ?", release).
+		Preload("Tests", "status = ?", 12). // Only pre-load test results with failure status.
+		Preload("Tests.Test").
+		Find(&prowJobRuns)
+	if res.Error != nil {
+		klog.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
+		return res.Error
+	}
+	klog.Infof("loaded %s ProwJobRuns from db since %s", len(prowJobRuns), since.Format(time.RFC3339))
+
+	jobDetails := map[string]*jobDetail{}
+	for _, pjr := range prowJobRuns {
+		jobName := pjr.ProwJob.Name
+		if _, ok := jobDetails[jobName]; !ok {
+			jobDetails[jobName] = &jobDetail{Name: jobName, Results: []v1sippyprocessing.JobRunResult{}}
+		}
+
+		// Build string array of failed test names for compat with the existing API response:
+		failedTestNames := make([]string, 0, len(pjr.Tests))
+		for _, t := range pjr.Tests {
+			failedTestNames = append(failedTestNames, t.Test.Name)
+		}
+
+		newRun := v1sippyprocessing.JobRunResult{
+			ProwID:                pjr.ID,
+			Job:                   jobName,
+			URL:                   pjr.URL,
+			TestFailures:          pjr.TestFailures,
+			FailedTestNames:       failedTestNames,
+			Failed:                pjr.Failed,
+			InfrastructureFailure: pjr.InfrastructureFailure,
+			KnownFailure:          pjr.KnownFailure,
+			Succeeded:             pjr.Succeeded,
+			Timestamp:             int(pjr.Timestamp.Unix() * 1000),
+			OverallResult:         pjr.OverallResult,
+		}
+		jobDetails[jobName].Results = append(jobDetails[jobName].Results, newRun)
+	}
+
+	// Convert our map to a list for return:
+	jobs := make([]jobDetail, 0, len(jobDetails))
+	for _, jobDetail := range jobDetails {
+		jobs = append(jobs, *jobDetail)
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobDetailAPIResult{
+		Jobs:  jobs,
+		Start: min,
+		End:   max,
+	}.limit(req))
+	return nil
 }
 
 // PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.
