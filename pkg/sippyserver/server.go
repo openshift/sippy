@@ -505,6 +505,40 @@ func (s *Server) jsonReleasesReport(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
+func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+	type jsonResponse struct {
+		Releases    []string  `json:"releases"`
+		LastUpdated time.Time `json:"last_updated"`
+	}
+	type Release struct {
+		Release string
+	}
+
+	response := jsonResponse{}
+
+	var releases []Release
+	res := s.db.DB.Raw("SELECT DISTINCT(release) FROM prow_jobs").Scan(&releases)
+	if res.Error != nil {
+		klog.Errorf("error querying releases from db: %v", res.Error)
+	}
+	for _, release := range releases {
+		response.Releases = append(response.Releases, release.Release)
+	}
+
+	type LastUpdated struct {
+		Max time.Time
+	}
+	var lastUpdated LastUpdated
+	// Assume our last update is the last time we inserted a prow job run.
+	res = s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+	if res.Error != nil {
+		klog.Errorf("error querying last updated from db: %v", res.Error)
+	}
+	response.LastUpdated = lastUpdated.Max
+
+	api.RespondWithJSON(http.StatusOK, w, response)
+}
+
 func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req, true)
 	if release != "" {
@@ -684,6 +718,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
 		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
+		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
 	} else {
 		// Preserve old sippy at /legacy for now
 		serveMux.HandleFunc("/legacy", s.printHTMLReport)
@@ -709,7 +744,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 
 		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport) // TODO: port to db
-		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)             // TODO: port to db
+		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 
 		serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport) // TODO: port to db
 		serveMux.HandleFunc("/api/health", s.jsonHealthReport)             // TODO: port to db
