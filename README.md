@@ -67,6 +67,20 @@ Valid parameters include:
 
 * `jobTestCount` - number of failing tests to report on for each job definition
 
+## Historical usage
+
+At GA of an OpenShift release, take a snapshot of the current data by
+running the following:
+
+```
+$ ./sippy -v 1 --fetch-data ./historical-data/4.10GA --release 4.10
+$ cd historical-data
+$ ./rename.sh
+```
+
+Update the deployment config for the historical instance, and commit the
+results.
+
 ## Non-OCP usage
 
 Sippy can be pointed at an arbitrary test-grid dashboard with a more limited featureset.
