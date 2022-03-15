@@ -37,7 +37,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
 				{testgridanalysisapi.InstallTestName, tgv1.TestStatusSuccess},
 				{testgridanalysisapi.FinalOperatorHealthTestName, tgv1.TestStatusSuccess},
-				{"operator install openshift-apiserver", tgv1.TestStatusSuccess},
+				{"sippy.operator install openshift-apiserver", tgv1.TestStatusSuccess},
 			},
 		},
 		{
@@ -56,7 +56,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
 				{testgridanalysisapi.InstallTestName, tgv1.TestStatusFailure},
 				{testgridanalysisapi.FinalOperatorHealthTestName, tgv1.TestStatusSuccess},
-				{"operator install openshift-apiserver", tgv1.TestStatusSuccess},
+				{"sippy.operator install openshift-apiserver", tgv1.TestStatusSuccess},
 			},
 		},
 	}
@@ -75,6 +75,7 @@ func assertJobRunTestResult(t *testing.T, rjr testgridanalysisapi.RawJobResult, 
 	for _, etr := range expectedTestResults {
 		var found bool
 		for _, tr := range rjr.JobRunResults[job1RunURL1].TestResults {
+			t.Logf("test: %s", tr.Name)
 			if tr.Name == etr.Name {
 				assert.Equal(t, etr.Status, tr.Status, "expected test found but with incorrect status")
 				found = true

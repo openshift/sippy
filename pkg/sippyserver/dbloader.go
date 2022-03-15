@@ -70,7 +70,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	// First pass we just create any new ProwJobs we do not already have. This will allow us to run the second pass
 	// inserts in parallel without conflicts.
 	for i := range rawJobResults.JobResults {
-		klog.V(4).Infof("Loading prow job %d of %d", i, len(rawJobResults.JobResults))
+		klog.V(4).Infof("Loading prow job %s of %d", i, len(rawJobResults.JobResults))
 		jr := rawJobResults.JobResults[i]
 		// Create ProwJob if we don't have one already:
 		// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex

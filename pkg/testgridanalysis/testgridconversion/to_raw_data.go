@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
