@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -288,14 +289,26 @@ func (o *Options) Run() error {
 			DisplayDataConfig:           o.toDisplayDataConfig(),
 		}
 
+		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
-			err := trgc.LoadDatabase(dbc, dashboard,
-				o.getVariantManager(),
-				o.getSyntheticTestManager(), loadBugs, o.getBugCache())
+			err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
 			if err != nil {
 				klog.Error(err)
 				return err
+			}
+		}
+
+		if loadBugs {
+			testCache, err := sippyserver.LoadTestCache(dbc)
+			if err != nil {
+				return err
+			}
+			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
+			if err != nil {
+				return err
+			}
+			if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
+				return errors.Wrapf(err, "error syncing bugzilla bugs to db")
 			}
 		}
 

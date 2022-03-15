@@ -23,15 +23,12 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
-// revive:disable:flag-parameter
 func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
-	syntheticTestManager testgridconversion.SyntheticTestManager,
-	loadBugs bool,
-	bugCache buganalysis.BugCache,
-) error {
+	syntheticTestManager testgridconversion.SyntheticTestManager) error {
+
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
@@ -53,20 +50,15 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	// Load all job and test results into database:
 	klog.V(4).Info("loading ProwJobs into db")
 
-	// Build up a cache of all prow jobs we know about to speedup data entry.
-	prowJobCache := map[string]*models.ProwJob{}
-	prowJobCacheLock := &sync.RWMutex{}
-	var allJobs []*models.ProwJob
-	dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
-	for _, j := range allJobs {
-		if _, ok := prowJobCache[j.Name]; !ok {
-			prowJobCache[j.Name] = j
-		}
+	// Load cache of all known prow jobs from DB:
+	prowJobCache, err := LoadProwJobCache(dbc)
+	if err != nil {
+		return err
 	}
-	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
+	prowJobCacheLock := &sync.RWMutex{}
 
 	// First pass we just create any new ProwJobs we do not already have. This will allow us to run the second pass
-	// inserts in parallel without conflicts.
+	// inserts in parallel without conflicts. (we do not presently do this, but may be a good future optimization)
 	for i := range rawJobResults.JobResults {
 		klog.V(4).Infof("Loading prow job %s of %d", i, len(rawJobResults.JobResults))
 		jr := rawJobResults.JobResults[i]
@@ -88,17 +80,12 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		}
 	}
 
-	// Cache all tests by name to their ID, used for the join object.
-	testCache := map[string]*models.Test{}
-	testCacheLock := &sync.RWMutex{}
-	allTests := []*models.Test{}
-	dbc.DB.Model(&models.Test{}).Find(&allTests)
-	for _, idn := range allTests {
-		if _, ok := testCache[idn.Name]; !ok {
-			testCache[idn.Name] = idn
-		}
+	// Load cache of all known tests from db:
+	testCache, err := LoadTestCache(dbc)
+	if err != nil {
+		return err
 	}
-	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
+	testCacheLock := &sync.RWMutex{}
 
 	// Cache all test suites by name to their ID, used for the join object.
 	// Unlike other caches used in this area, this one is purely populated from the db.go initialization, we
@@ -128,24 +115,44 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		if err != nil {
 			return err
 		}
-
-		/*
-			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(jobRunsToCreate, 50).Error
-			if err != nil {
-				return errors.Wrap(err, "error loading prow job runs into db")
-			}
-		*/
 	}
 
 	klog.Info("done loading ProwJobRuns")
 
-	if loadBugs {
-		if err := LoadBugs(dbc, bugCache, testCache, prowJobCache); err != nil {
-			return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+	return nil
+}
+
+func LoadTestCache(dbc *db.DB) (map[string]*models.Test, error) {
+	// Cache all tests by name to their ID, used for the join object.
+	testCache := map[string]*models.Test{}
+	allTests := []*models.Test{}
+	res := dbc.DB.Model(&models.Test{}).Find(&allTests)
+	if res.Error != nil {
+		return map[string]*models.Test{}, res.Error
+	}
+	for _, idn := range allTests {
+		if _, ok := testCache[idn.Name]; !ok {
+			testCache[idn.Name] = idn
 		}
 	}
+	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
+	return testCache, nil
+}
 
-	return nil
+func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
+	prowJobCache := map[string]*models.ProwJob{}
+	var allJobs []*models.ProwJob
+	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
+	if res.Error != nil {
+		return map[string]*models.ProwJob{}, res.Error
+	}
+	for _, j := range allJobs {
+		if _, ok := prowJobCache[j.Name]; !ok {
+			prowJobCache[j.Name] = j
+		}
+	}
+	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
+	return prowJobCache, nil
 }
 
 func LoadJob(
