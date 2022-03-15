@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -208,6 +210,33 @@ type Filterable interface {
 	GetStringValue(param string) (string, error)
 	GetNumericalValue(param string) (float64, error)
 	GetArrayValue(param string) ([]string, error)
+}
+
+func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB) (*gorm.DB, error) {
+	filter := &Filter{}
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			return nil, fmt.Errorf("could not marshal filter: %w", err)
+		}
+	}
+	q := filter.ToSQL(dbClient)
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	if sortField == "" {
+		sortField = defaultSortField
+	}
+	if sort == "" {
+		sort = defaultSort
+	}
+	q.Order(fmt.Sprintf("%q %s", sortField, sort))
+
+	return q, nil
 }
 
 func (filters Filter) ToSQL(db *gorm.DB) *gorm.DB {
