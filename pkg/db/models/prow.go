@@ -35,9 +35,8 @@ type ProwJobRun struct {
 
 	URL          string
 	TestFailures int
-	//FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
-	Tests  []ProwJobRunTest
-	Failed bool
+	Tests        []ProwJobRunTest
+	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.

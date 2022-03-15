@@ -73,11 +73,11 @@ func New(dsn string) (*DB, error) {
 	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
 	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
 	// change this happens without thinking to update sippy.
-	if err = populateTestSuitesInDB(db); err != nil {
+	if err := populateTestSuitesInDB(db); err != nil {
 		return nil, err
 	}
 
-	if err = createPostgresMaterializedViews(db); err != nil {
+	if err := createPostgresMaterializedViews(db); err != nil {
 		return nil, err
 	}
 
@@ -102,9 +102,6 @@ func (db *DB) LastID(table string) int {
 
 func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
-
-		// TODO: temporary, just for developing this
-		//db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name))
 
 		var count int64
 		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
@@ -229,9 +226,9 @@ var testSuitePrefixes = []string{
 	"openshift-tests",         // a primary origin test suite name
 	"openshift-tests-upgrade", // a primary origin test suite name
 	"sippy",                   // used for all synthetic tests sippy adds
-	//"Symptom detection.",       // TODO: origin unknown, possibly deprecated
-	//"OSD e2e suite.",           // TODO: origin unknown, possibly deprecated
-	//"Log Metrics.",             // TODO: origin unknown, possibly deprecated
+	// "Symptom detection.",       // TODO: origin unknown, possibly deprecated
+	// "OSD e2e suite.",           // TODO: origin unknown, possibly deprecated
+	// "Log Metrics.",             // TODO: origin unknown, possibly deprecated
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
@@ -239,19 +236,17 @@ func populateTestSuitesInDB(db *gorm.DB) error {
 		s := models.Suite{}
 		res := db.Where("name = ?", suiteName).First(&s)
 		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				s = models.Suite{
-					Name: suiteName,
-				}
-				err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&s).Error
-				if err != nil {
-					return errors.Wrapf(err, "error loading suite into db: %s", suiteName)
-				} else {
-					klog.V(1).Infof("Created new test suite: %s", suiteName)
-				}
-			} else {
+			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				return res.Error
 			}
+			s = models.Suite{
+				Name: suiteName,
+			}
+			err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&s).Error
+			if err != nil {
+				return errors.Wrapf(err, "error loading suite into db: %s", suiteName)
+			}
+			klog.V(1).Infof("Created new test suite: %s", suiteName)
 		}
 	}
 	return nil

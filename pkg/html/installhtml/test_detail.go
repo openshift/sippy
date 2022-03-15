@@ -30,14 +30,9 @@ func TestDetailTests(format ResponseFormat, curr, prev sippyprocessingv1.TestRep
 	return dataForTestsByVariant.getTableHTML("Details for Tests", "TestDetailByVariant", "Test Details by Variant", variants.List(), noChange)
 }
 
-func TestDetailTestsFromDB(db *db.DB, format ResponseFormat, release string, testSubstrings []string) (string, error) {
+func TestDetailTestsFromDB(dbc *db.DB, format ResponseFormat, release string, testSubstrings []string) (string, error) {
 	// TODO: use the new approach from install_by_operators.go
-	dataForTestsByVariant, err := getDataForTestsByVariantFromDB(
-		db,
-		release,
-		testSubstrings,
-		neverMatch,
-	)
+	dataForTestsByVariant, err := getDataForTestsByVariantFromDB(dbc, release, testSubstrings)
 	if err != nil {
 		return "", err
 	}

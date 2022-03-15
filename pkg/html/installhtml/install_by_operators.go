@@ -18,8 +18,7 @@ import (
 )
 
 func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.TestReport) string {
-	var dataForTestsByVariant testsByVariant
-	dataForTestsByVariant = getDataForTestsByVariant(
+	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		func(testResult sippyprocessingv1.TestResult) bool {
 			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix)
@@ -56,7 +55,7 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 	return dataForTestsByVariant.getTableHTML("Install Rates by Operator", "InstallRatesByOperator", "Install Rates by Operator by Variant", columnNames, getOperatorFromTest)
 }
 
-func InstallOperatorTestsFromDB(db *db.DB, release string) (string, error) {
+func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	// Using substring search here is a little funky, we'd prefer prefix matching for the operator tests.
 	// For the overall test, the exact match on the InstallTestName const which includes [sig-sippy] isn't working,
 	// so we have to use a simpler substring.
@@ -65,7 +64,7 @@ func InstallOperatorTestsFromDB(db *db.DB, release string) (string, error) {
 		"install should work",                     // TODO: would prefer exact matching on the full InstallTestName const
 	}
 
-	testReports, err := queryTestReports(db, release, testSubstrings)
+	testReports, err := queryTestReports(dbc, release, testSubstrings)
 	if err != nil {
 		return "", err
 	}

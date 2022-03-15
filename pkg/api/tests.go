@@ -24,8 +24,8 @@ func PrintTestsDetailsJSON(w http.ResponseWriter, req *http.Request, current, pr
 	RespondWithJSON(http.StatusOK, w, installhtml.TestDetailTests(installhtml.JSON, current, previous, req.URL.Query()["test"]))
 }
 
-func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, db *db.DB) {
-	responseStr, err := installhtml.TestDetailTestsFromDB(db, installhtml.JSON, release, testSubstrings)
+func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
+	responseStr, err := installhtml.TestDetailTestsFromDB(dbc, installhtml.JSON, release, testSubstrings)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
 		return
@@ -84,7 +84,7 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 	// period (typically 7 days) and the last two days.
 	var current, previous []v1sippyprocessing.FailingTestResult
 	switch req.URL.Query().Get("period") {
-	case "twoDay":
+	case periodTwoDay:
 		current = twoDayPeriod
 		previous = currentPeriod
 	default:
@@ -170,7 +170,6 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
-	//var current, previous []v1sippyprocessing.FailingTestResult
 	period := req.URL.Query().Get("period")
 	if period != "current" && period != "twoDay" {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
@@ -232,7 +231,7 @@ FROM results;
 
 	// Apply filtering to what we pulled from the db. Perfect world we'd incorporate this into the query instead.
 	filteredReports := make([]apitype.Test, 0, len(testReports))
-	fakeIdCtr := 1
+	fakeIDCtr := 1
 	for _, testReport := range testReports {
 		if filter != nil {
 			include, err := filter.Filter(testReport)
@@ -246,8 +245,8 @@ FROM results;
 		}
 
 		// Need fake IDs for the javscript tables:
-		testReport.ID = fakeIdCtr
-		fakeIdCtr++
+		testReport.ID = fakeIDCtr
+		fakeIDCtr++
 
 		// TODO: do we need bugs linked here?
 		testReport.Bugs = []v1.Bug{}
@@ -263,29 +262,14 @@ FROM results;
 }
 
 type testDetail struct {
-	Name string `
-json:
-	"name"
-	`
-	Results []v1sippyprocessing.TestResult `
-json:
-	"results"
-	`
+	Name    string                         `json:"name"`
+	Results []v1sippyprocessing.TestResult `json:"results"`
 }
 
 type testsDetailAPIResult struct {
-	Tests []testDetail `
-json:
-	"tests"
-	`
-	Start int `
-json:
-	"start"
-	`
-	End int `
-json:
-	"end"
-	`
+	Tests []testDetail `json:"tests"`
+	Start int          `json:"start"`
+	End   int          `json:"end"`
 }
 
 func (tests testsDetailAPIResult) limit(req *http.Request) testsDetailAPIResult {

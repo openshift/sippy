@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
+// revive:disable:flag-parameter
 func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
@@ -34,8 +35,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
-		// Load the last 14 days of data.  Note that we do not prune data today, so we'll be accumulating
-		// data over time. Goal is 3 months.
+		// Load the last 14 days of data.
 		StartDay: 0,
 		NumDays:  14,
 	}
@@ -45,9 +45,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	testCtr := 0
 	for _, rjr := range rawJobResults.JobResults {
 		for _, rjrr := range rjr.JobRunResults {
-			for _ = range rjrr.TestResults {
-				testCtr++
-			}
+			testCtr += len(rjrr.TestResults)
 		}
 	}
 	klog.V(4).Infof("total test results from testgrid data: %d", testCtr)
@@ -172,7 +170,6 @@ func LoadJob(
 		prowJobRunCache[kjr.ID] = true
 	}
 
-	jobRunsToCreate := []models.ProwJobRun{}
 	// CreateJobRuns if we don't have them already:
 	jobRunResultCtr := 0
 	for _, jobRun := range jr.JobRunResults {
@@ -186,7 +183,7 @@ func LoadJob(
 		}
 
 		// TODO: copy whatever's happening in jobresults.go
-		//knownFailure := jobRun.Failed && areAllFailuresKnown(jrr, testResults)
+		// knownFailure := jobRun.Failed && areAllFailuresKnown(jrr, testResults)
 
 		// success - we saw the setup/infra test result, it succeeded (or the whole job succeeeded)
 		// failure - we saw the test result, it failed
@@ -253,7 +250,6 @@ func LoadJob(
 
 		pjr.Tests = testRuns
 
-		jobRunsToCreate = append(jobRunsToCreate, pjr)
 		err := dbc.DB.Create(&pjr).Error
 		if err != nil {
 			return errors.Wrap(err, "error loading prow job runs into db")
@@ -299,7 +295,8 @@ func getOrCreateTestID(
 	return testID, nil
 }
 
-func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
+// LoadBugs does a bulk query of all our test names, 50 at a time, to bugzilla and then syncs the associations to the db.
+func LoadBugs(dbc *db.DB, bugCache buganalysis.BugCache, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
 	klog.Info("querying bugzilla for test/job associations")
 	bugCache.Clear()
 
@@ -311,11 +308,6 @@ func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*mo
 	}
 
 	klog.Info("syncing bugzilla test/job associations to db")
-
-	// For now, clear all existing Bugs in the DB and rebuild. If this is too costly we should do it more intelligently.
-	//dbc.DB.Where("1 = 1").Delete(&models.Bug{})
-	//dbc.DB.Exec("DELETE FROM bug_tests")
-	//dbc.DB.Exec("DELETE FROM bugs")
 
 	// Merge the test/job bugs into one list, associated with each failing test or job, mapped to our db model for the bug.
 	dbExpectedBugs := map[int64]*models.Bug{}
@@ -349,7 +341,7 @@ func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*mo
 	}
 
 	for _, bug := range dbExpectedBugs {
-		res := db.DB.Clauses(clause.OnConflict{
+		res := dbc.DB.Clauses(clause.OnConflict{
 			UpdateAll: true,
 		}).Create(bug)
 		if res.Error != nil {
@@ -357,7 +349,7 @@ func LoadBugs(db *db.DB, bugCache buganalysis.BugCache, testCache map[string]*mo
 			return errors.Wrap(res.Error, "error creating bug")
 		}
 		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
-		err := db.DB.Model(&bug).Association("Tests").Replace(bug.Tests)
+		err := dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
 		if err != nil {
 			klog.Errorf("error updating bug test associations: %s %v", err, bug)
 			return errors.Wrap(res.Error, "error updating bug test assocations")

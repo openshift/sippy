@@ -144,19 +144,14 @@ func getDataForTestsByVariant(
 	return ret
 }
 
-func getDataForTestsByVariantFromDB(
-	db *db.DB,
-	release string,
-	testSubStrings []string,
-	isAggregateTest testreportconversion.TestResultFilterFunc, // TODO: is this needed?
-) (testsByVariant, error) {
+func getDataForTestsByVariantFromDB(dbc *db.DB, release string, testSubStrings []string) (testsByVariant, error) {
 	ret := testsByVariant{
 		aggregateResultByTestName:      map[string]*currPrevFailedTestResult{}, // not used in output, maybe we can skip
 		testNameToVariantToTestResult:  map[string]map[string]*currPrevTestResult{},
 		aggregationToOverallTestResult: map[string]*currPrevTestResult{}, // may not be used in output in our first use case
 	}
 
-	testReports, err := queryTestReports(db, release, testSubStrings)
+	testReports, err := queryTestReports(dbc, release, testSubStrings)
 	if err != nil {
 		return ret, err
 	}
@@ -166,7 +161,7 @@ func getDataForTestsByVariantFromDB(
 	// We *may* not need to populate ret.aggregationToOverallTestResult either, as this is only needed sometimes below.
 	// TODO: ^^ when? who calls it this way?
 
-	// We have a pretty clean list of TestResults by variant from the db, but transform to the old datastructure
+	// We have a pretty clean list of TestResults by variant from the dbc, but transform to the old datastructure
 	// to re-use the response writing logic below.
 	for _, tr := range testReports {
 		if _, ok := ret.testNameToVariantToTestResult[tr.Name]; !ok {
@@ -199,7 +194,7 @@ func getDataForTestsByVariantFromDB(
 
 // queryTestReports returns a test report for every test in the db matching the given substrings.
 func queryTestReports(
-	db *db.DB,
+	dbc *db.DB,
 	release string,
 	testSubStrings []string,
 ) ([]api.Test, error) {
@@ -234,7 +229,7 @@ SELECT *,
        (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results;
 `
-	r := db.DB.Raw(q,
+	r := dbc.DB.Raw(q,
 		sql.Named("release", release),
 		sql.Named("testsubstrings", testSubstringFilter)).Scan(&testReports)
 	if r.Error != nil {

@@ -28,16 +28,16 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				JobRunResults: map[string]testgridanalysisapi.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(true, true, v1.JobSucceeded,
 						[]testgridanalysisapi.OperatorState{
-							{"openshift-apiserver", "Success"},
+							{Name: "openshift-apiserver", State: "Success"},
 						},
 					),
 				},
 				TestResults: map[string]testgridanalysisapi.RawTestResult{},
 			},
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{testgridanalysisapi.InstallTestName, tgv1.TestStatusSuccess},
-				{testgridanalysisapi.FinalOperatorHealthTestName, tgv1.TestStatusSuccess},
-				{"sippy.operator install openshift-apiserver", tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 		},
 		{
@@ -47,16 +47,16 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				JobRunResults: map[string]testgridanalysisapi.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(false, false, v1.JobInstallFailure,
 						[]testgridanalysisapi.OperatorState{
-							{"openshift-apiserver", "Success"},
+							{Name: "openshift-apiserver", State: "Success"},
 						},
 					),
 				},
 				TestResults: map[string]testgridanalysisapi.RawTestResult{},
 			},
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{testgridanalysisapi.InstallTestName, tgv1.TestStatusFailure},
-				{testgridanalysisapi.FinalOperatorHealthTestName, tgv1.TestStatusSuccess},
-				{"sippy.operator install openshift-apiserver", tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusFailure},
+				{Name: testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 		},
 	}
@@ -85,6 +85,7 @@ func assertJobRunTestResult(t *testing.T, rjr testgridanalysisapi.RawJobResult, 
 	}
 }
 
+// revive:disable:flag-parameter
 func getStatusStr(success bool) string {
 	if success {
 		return "Success"

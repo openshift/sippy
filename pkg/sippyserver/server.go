@@ -411,7 +411,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		curr := s.currTestReports[release].CurrentPeriodReport
 		prev := s.currTestReports[release].PreviousWeekReport
@@ -421,7 +421,7 @@ func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		curr := s.currTestReports[release].CurrentPeriodReport
 		prev := s.currTestReports[release].PreviousWeekReport
@@ -439,7 +439,7 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 		})
 		return
 	}
-	release := s.getReleaseOrFail(w, req, false)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		err := api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
 		if err != nil {
@@ -449,7 +449,7 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		currTests := s.currTestReports[release].CurrentPeriodReport.ByTest
 		twoDay := s.currTestReports[release].CurrentTwoDayReport.ByTest
@@ -460,14 +460,14 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, false)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintTestsJSONFromDB(release, w, req, s.db)
 	}
 }
 
 func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		currTests := s.currTestReports[release].CurrentPeriodReport
 		prevTests := s.currTestReports[release].PreviousWeekReport
@@ -478,7 +478,7 @@ func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request)
 func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	// Filter to test names containing this query param:
 	testSubstring := req.URL.Query()["test"]
-	release := s.getReleaseOrFail(w, req, false)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
@@ -540,7 +540,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 }
 
 func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		curr := s.currTestReports[release].CurrentPeriodReport
 		twoDay := s.currTestReports[release].CurrentTwoDayReport
@@ -600,7 +600,7 @@ func (s *Server) htmlVariantsReport(w http.ResponseWriter, req *http.Request) {
 	releasehtml.PrintVariantsReport(w, release, variant, current, previous, timestamp)
 }
 
-func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request, checkLegacyReportExists bool) string {
+func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) string {
 	release := req.URL.Query().Get("release")
 	reports := s.currTestReports
 
@@ -612,7 +612,7 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request, chec
 		return release
 	}
 
-	if checkLegacyReportExists {
+	if !s.dbOnlyMode {
 		if _, ok := reports[release]; !ok {
 			api.RespondWithJSON(http.StatusNotFound, w, map[string]interface{}{
 				"code":    "404",
@@ -628,14 +628,14 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request, chec
 func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
 
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobDetailsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
 	}
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, false)
+	release := s.getReleaseOrFail(w, req)
 	jobName := req.URL.Query().Get("job")
 	if release != "" && jobName != "" {
 		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
@@ -647,7 +647,7 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobRunsReport(w, req, reports[release].CurrentPeriodReport, reports[release].PreviousWeekReport)
 	}
@@ -656,14 +656,14 @@ func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.currTestReports
 
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport)
 	}
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req, false)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobsReportFromDB(w, req, s.db, release)
 	}
@@ -672,7 +672,7 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.perfscaleMetricsJobReports
 
-	release := s.getReleaseOrFail(w, req, true)
+	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintPerfscaleWorkloadMetricsReport(w, req, release, reports)
 	}

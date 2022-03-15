@@ -103,7 +103,7 @@ func PrintTestAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev 
 	RespondWithJSON(http.StatusOK, w, results)
 }
 
-func PrintTestAnalysisJSONFromDB(db *db.DB, w http.ResponseWriter, release, testName string) error {
+func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, release, testName string) error {
 	results := apiTestByDayresults{
 		ByDay: make(map[string]testResultDay),
 	}
@@ -126,7 +126,7 @@ FROM prow_test_analysis_by_variant_14d_matview
 WHERE release = @release AND test_name = @testname
 GROUP BY test_id, test_name, date, release, variant, runs, passes, flakes, failures
 `
-	r := db.DB.Raw(q1,
+	r := dbc.DB.Raw(q1,
 		sql.Named("release", release),
 		sql.Named("testname", testName)).Scan(&byVariantAnalysisRows)
 	if r.Error != nil {
@@ -150,7 +150,7 @@ FROM prow_test_analysis_by_job_14d_matview
 WHERE release = @release AND test_name = @testname
 GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, failures
 `
-	r = db.DB.Raw(q2,
+	r = dbc.DB.Raw(q2,
 		sql.Named("release", release),
 		sql.Named("testname", testName)).Scan(&byJobAnalysisRows)
 	if r.Error != nil {
@@ -175,21 +175,19 @@ GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, fail
 
 		// We're reusing the same model object when we query by variant or job, so we fork based on what field is set
 		if row.Variant != "" {
-			if _, ok := dayResult.ByVariant[row.Variant]; !ok {
-				dayResult.ByVariant[row.Variant] = &counts{
-					Runs:     row.Runs,
-					Passes:   row.Passes,
-					Flakes:   row.Flakes,
-					Failures: row.Failures,
-				}
-			} else {
+			if _, ok := dayResult.ByVariant[row.Variant]; ok {
 				// Should not happen if our query is correct.
 				return fmt.Errorf("test '%s' showed duplicate variant '%s' row on date '%s'", testName, row.Variant, date)
+			}
+			dayResult.ByVariant[row.Variant] = &counts{
+				Runs:     row.Runs,
+				Passes:   row.Passes,
+				Flakes:   row.Flakes,
+				Failures: row.Failures,
 			}
 		} else {
 			// Assuming that if row.Variant is not set, row.JobName must be.
 			if _, ok := dayResult.ByJob[briefName(row.JobName)]; !ok {
-				//klog.Infof("adding job %s (briefname: %s) on date %s", row.JobName, briefName(row.JobName), date)
 				dayResult.ByJob[briefName(row.JobName)] = &counts{
 					Runs:     row.Runs,
 					Passes:   row.Passes,
@@ -199,7 +197,6 @@ GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, fail
 			} else {
 				// the briefName() function will map to the same value for some jobs, this appears to be intentional.
 				// As such if we see a brief job name that we already have, we need to increment it's counters.
-				//klog.Infof("incrementing counters for job %s (briefname: %s) on date %s", row.JobName, briefName(row.JobName), date)
 				dayResult.ByJob[briefName(row.JobName)].Runs += row.Runs
 				dayResult.ByJob[briefName(row.JobName)].Passes += row.Passes
 				dayResult.ByJob[briefName(row.JobName)].Flakes += row.Flakes

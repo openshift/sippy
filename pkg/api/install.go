@@ -14,8 +14,8 @@ func PrintInstallJSONReport(w http.ResponseWriter, req *http.Request, report, pr
 }
 
 // PrintInstallJSONReportFromDB renders a report showing the success/fail rates of operator installation.
-func PrintInstallJSONReportFromDB(w http.ResponseWriter, db *db.DB, release string) {
-	jsonStr, err := installhtml.InstallOperatorTestsFromDB(db, release)
+func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
+	jsonStr, err := installhtml.InstallOperatorTestsFromDB(dbc, release)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not generate install report:" + err.Error()})
 	}
