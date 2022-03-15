@@ -81,6 +81,10 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := createPostgresFunctions(db); err != nil {
+		return nil, err
+	}
+
 	return &DB{
 		DB:        db,
 		BatchSize: 1024,
@@ -217,6 +221,90 @@ FROM prow_job_run_tests
          JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY tests.name, tests.id, date, release, job_name
+`
+
+type PostgresSetReturningFunction struct {
+	// Name is the name of the set returning function.
+	Name string
+	// Definition is the material view definition.
+	Definition string
+}
+
+func createPostgresFunctions(db *gorm.DB) error {
+	for _, pmv := range PostgresMatViews {
+		vd := pmv.Definition
+		for k, v := range pmv.ReplaceStrings {
+			vd = strings.ReplaceAll(vd, k, v)
+		}
+
+		if res := db.Exec(jobResultFunction); res.Error != nil {
+			klog.Errorf("error creating materialized view %s: %v", pmv.Name, res.Error)
+			return res.Error
+		}
+	}
+	return nil
+}
+
+const jobResultFunction = `
+create or replace function job_results(release text, start timestamp, boundary timestamp, endstamp timestamp)
+  returns table (pj_name text,
+        pj_variants text[],                                       
+        previous_passes bigint,                                                                                                                                            
+        previous_failures bigint,                                                                                                                                             
+        previous_runs bigint,                                                                                                                       
+        previous_infra_fails bigint,                                                                                                                                                         
+        current_passes bigint,                                                                                                                                            
+        current_fails bigint,                                                                                                                                                     
+        current_runs bigint,                                                                                                                       
+        current_infra_fails bigint,                                                                                                                                                        
+        id bigint,
+        created_at timestamp,
+        updated_at timestamp,                                               
+        deleted_at timestamp,
+        name text,                                                                            
+        release text,                              
+        variants text[],
+        test_grid_url text,
+        brief_name text,                                                                                                                  
+        current_pass_percentage real,                                               
+        current_projected_pass_percentage REAL,
+        current_failure_percentage real,                                              
+        previous_pass_percentage real,                                                 
+        previous_projected_pass_percentage real,
+        previous_failure_percentage real,                                                   
+        net_improvement real)                                                                                                       
+as          
+$body$                                            
+WITH results AS (
+        select prow_jobs.name as pj_name, prow_jobs.variants as pj_variants,
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_failures,
+                coalesce(count(case when timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_infra_fails,
+                coalesce(count(case when succeeded = true AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_passes,
+                coalesce(count(case when succeeded = false AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_fails,        
+                coalesce(count(case when timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_infra_fails
+        FROM prow_job_runs 
+        JOIN prow_jobs 
+                ON prow_jobs.id = prow_job_runs.prow_job_id                 
+                                AND prow_jobs.release = $1
+                AND timestamp BETWEEN $2 AND $4 
+        group by prow_jobs.name, prow_jobs.variants
+)
+SELECT *,
+        REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
+        current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+        (current_passes + current_infra_fails) * 100.0 / NULLIF(current_runs, 0) AS current_projected_pass_percentage,
+        current_fails * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
+        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
+        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
+FROM results
+JOIN prow_jobs ON prow_jobs.name = results.pj_name
+$body$
+language sql;
 `
 
 // testSuitePrefixes are known test suites we want to detect in testgrid test names (appears as suiteName.testName)

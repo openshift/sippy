@@ -1,9 +1,10 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"gorm.io/gorm"
 	"net/http"
 	"regexp"
 	gosort "sort"
@@ -206,7 +207,12 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	jobsResult, err := BuildJobResults(dbc, release, start, boundary, end, filter)
+	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", dbc.DB)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+	jobsResult, err := BuildJobResults(q, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -217,71 +223,34 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		limit(req))
 }
 
-func BuildJobResults(dbc *db.DB, release string, start, boundary, end time.Time, filter *Filter) (jobsAPIResult, error) {
+func BuildJobResults(q *gorm.DB, release string, start, boundary, end time.Time) (jobsAPIResult, error) {
 	now := time.Now()
 
-	var jobReports []apitype.Job
-	jobsQuery := `WITH results AS (
-        select prow_jobs.name as pj_name,
-				prow_jobs.variants as pj_variants,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_failures,
-                coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_infra_fails,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
-                coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_infra_fails
-        FROM prow_job_runs 
-        JOIN prow_jobs 
-                ON prow_jobs.id = prow_job_runs.prow_job_id                 
-				AND prow_jobs.release = @release
-                AND timestamp BETWEEN @start AND @end 
-        group by prow_jobs.name, prow_jobs.variants
-)
-SELECT *,
-	REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
-        current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-        (current_passes + current_infra_fails) * 100.0 / NULLIF(current_runs, 0) AS current_projected_pass_percentage,
-        current_fails * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
-        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results
-JOIN prow_jobs ON prow_jobs.name = results.pj_name
-`
-	r := dbc.DB.Raw(jobsQuery,
-		sql.Named("start", start),
-		sql.Named("boundary", boundary),
-		sql.Named("end", end),
-		sql.Named("release", release)).Scan(&jobReports)
+	jobReports := make([]apitype.Job, 0)
+	r := q.Table("job_results(?, ?, ?, ?)",
+		release, start, boundary, end)
 	if r.Error != nil {
 		klog.Error(r.Error)
 		return []apitype.Job{}, r.Error
 	}
 
-	// Apply filtering to what we pulled from the db. Perfect world we'd incorporate this into the query instead.
-	filteredJobReports := make([]apitype.Job, 0, len(jobReports))
-	for _, jobReport := range jobReports {
-		if filter != nil {
-			include, err := filter.Filter(jobReport)
-			if err != nil {
-				return []apitype.Job{}, err
-			}
+	r.Scan(&jobReports)
+	elapsed := time.Since(now)
+	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
 
-			if !include {
-				continue
-			}
+	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
+	// instead of empty array. Quick hack to make this work.
+	for i, j := range jobReports {
+		if len(j.Bugs) == 0 {
+			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
 		}
 
-		filteredJobReports = append(filteredJobReports, jobReport)
+		if len(j.AssociatedBugs) == 0 {
+			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
+		}
 	}
 
-	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results from db, filtered down to %d", elapsed, len(jobReports), len(filteredJobReports))
-
-	return filteredJobReports, nil
+	return jobReports, nil
 }
 
 type jobDetail struct {
