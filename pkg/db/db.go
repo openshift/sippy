@@ -231,16 +231,9 @@ type PostgresSetReturningFunction struct {
 }
 
 func createPostgresFunctions(db *gorm.DB) error {
-	for _, pmv := range PostgresMatViews {
-		vd := pmv.Definition
-		for k, v := range pmv.ReplaceStrings {
-			vd = strings.ReplaceAll(vd, k, v)
-		}
-
-		if res := db.Exec(jobResultFunction); res.Error != nil {
-			klog.Errorf("error creating materialized view %s: %v", pmv.Name, res.Error)
-			return res.Error
-		}
+	if res := db.Exec(jobResultFunction); res.Error != nil {
+		klog.Errorf("error creating postgres function: %v", res.Error)
+		return res.Error
 	}
 	return nil
 }
