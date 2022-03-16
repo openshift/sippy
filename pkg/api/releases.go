@@ -2,8 +2,9 @@ package api
 
 import (
 	"fmt"
-	"k8s.io/klog"
 	"net/http"
+
+	"k8s.io/klog"
 
 	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"

@@ -3,14 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"gorm.io/gorm"
 	"net/http"
 	"regexp"
 	gosort "sort"
 	"strconv"
 	"strings"
 	"time"
+
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
