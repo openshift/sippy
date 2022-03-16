@@ -223,13 +223,6 @@ WHERE timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY tests.name, tests.id, date, release, job_name
 `
 
-type PostgresSetReturningFunction struct {
-	// Name is the name of the set returning function.
-	Name string
-	// Definition is the material view definition.
-	Definition string
-}
-
 func createPostgresFunctions(db *gorm.DB) error {
 	if res := db.Exec(jobResultFunction); res.Error != nil {
 		klog.Errorf("error creating postgres function: %v", res.Error)

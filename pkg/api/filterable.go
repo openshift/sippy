@@ -58,14 +58,26 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
-func (f FilterItem) orFilterToSQL(db *gorm.DB) *gorm.DB { //nolint
+func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
 	switch f.Operator {
 	case OperatorContains:
-		if f.Not {
-			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
-		} else {
-			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		// "contains" is an overloaded operator: 1) see if an array field contains an item,
+		// 2) string contains a substring, so we need to know the field type.
+		switch filterable.GetFieldType(f.Field) {
+		case apitype.ColumnTypeArray:
+			if f.Not {
+				db = db.Or(fmt.Sprintf("? != ALL(%s)", f.Field), f.Value)
+			} else {
+				db = db.Or(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+			}
+		default:
+			if f.Not {
+				db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+			} else {
+				db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+			}
 		}
+
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
 			db = db.Or(fmt.Sprintf("%q != ?", f.Field), f.Value)
@@ -130,13 +142,22 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB) *gorm.DB { //nolint
 	return db
 }
 
-func (f FilterItem) andFilterToSQL(db *gorm.DB) *gorm.DB { //nolint
+func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
 	switch f.Operator {
 	case OperatorContains:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+		switch filterable.GetFieldType(f.Field) {
+		case apitype.ColumnTypeArray:
+			if f.Not {
+				db = db.Not(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+			} else {
+				db = db.Where(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+			}
+		default:
+			if f.Not {
+				db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+			} else {
+				db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+			}
 		}
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
@@ -212,7 +233,7 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
-func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB) (*gorm.DB, error) {
+func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	filter := &Filter{}
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
@@ -220,7 +241,7 @@ func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort 
 			return nil, fmt.Errorf("could not marshal filter: %w", err)
 		}
 	}
-	q := filter.ToSQL(dbClient)
+	q := filter.ToSQL(dbClient, filterable)
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit > 0 {
 		q = q.Limit(limit)
@@ -239,12 +260,12 @@ func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort 
 	return q, nil
 }
 
-func (filters Filter) ToSQL(db *gorm.DB) *gorm.DB {
+func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	for _, f := range filters.Items {
 		if filters.LinkOperator == LinkOperatorAnd || filters.LinkOperator == "" {
-			db = f.andFilterToSQL(db)
+			db = f.andFilterToSQL(db, filterable)
 		} else if filters.LinkOperator == LinkOperatorOr {
-			db = f.orFilterToSQL(db)
+			db = f.orFilterToSQL(db, filterable)
 		}
 	}
 
