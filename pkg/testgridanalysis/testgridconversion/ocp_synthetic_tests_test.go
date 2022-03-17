@@ -17,9 +17,10 @@ const (
 
 func TestSyntheticSippyTestGeneration(t *testing.T) {
 	testCases := []struct {
-		name                string
-		rawJobResults       testgridanalysisapi.RawJobResult
-		expectedTestResults []testgridanalysisapi.RawJobRunTestResult
+		name                    string
+		rawJobResults           testgridanalysisapi.RawJobResult
+		expectedTestResults     []testgridanalysisapi.RawJobRunTestResult
+		expectedFailedTestNames []string
 	}{
 		{
 			name: "successful install adds successful operator tests",
@@ -54,9 +55,11 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]testgridanalysisapi.RawTestResult{},
 			},
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{Name: testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusFailure},
 				{Name: testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
 				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
+			},
+			expectedFailedTestNames: []string{
+				testgridanalysisapi.InstallTestName,
 			},
 		},
 	}
@@ -66,6 +69,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 			rjr := tc.rawJobResults
 			testMgr.CreateSyntheticTests(testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{job1Name: rjr}})
 			assertJobRunTestResult(t, rjr, tc.expectedTestResults)
+			assertFailedTestNames(t, rjr, tc.expectedFailedTestNames)
 
 		})
 	}
@@ -82,6 +86,19 @@ func assertJobRunTestResult(t *testing.T, rjr testgridanalysisapi.RawJobResult, 
 			}
 		}
 		assert.True(t, found, "expected test was not found: %s", etr.Name)
+	}
+}
+
+func assertFailedTestNames(t *testing.T, rjr testgridanalysisapi.RawJobResult, expectedFailedTestNames []string) {
+	for _, tn := range expectedFailedTestNames {
+		var found bool
+		for _, tr := range rjr.JobRunResults[job1RunURL1].FailedTestNames {
+			t.Logf("test: %s", tn)
+			if tr == tn {
+				found = true
+			}
+		}
+		assert.True(t, found, "expected failed test was not found: %s", tn)
 	}
 }
 
