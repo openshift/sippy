@@ -20,6 +20,11 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
+const (
+	testReport7dMatView = "prow_test_report_7d_matview"
+	testReport2dMatView = "prow_test_report_2d_matview"
+)
+
 func PrintTestsDetailsJSON(w http.ResponseWriter, req *http.Request, current, previous v1sippyprocessing.TestReport) {
 	RespondWithJSON(http.StatusOK, w, installhtml.TestDetailTests(installhtml.JSON, current, previous, req.URL.Query()["test"]))
 }
@@ -215,7 +220,7 @@ SELECT *,
 FROM results;
 `
 	if period == "twoDay" {
-		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
+		q = strings.ReplaceAll(q, testReport7dMatView, testReport2dMatView)
 	}
 
 	r := dbc.DB.Raw(q,
