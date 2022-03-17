@@ -174,6 +174,9 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
 			return
 		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
+		start = time.Now().Add(-9 * 24 * time.Hour)
 	} else {
 		// Default start to 14 days ago
 		start = time.Now().Add(-14 * 24 * time.Hour)
@@ -188,6 +191,8 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
 			return
 		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
 	} else {
 		// Default boundary to 7 days ago
 		boundary = time.Now().Add(-7 * 24 * time.Hour)

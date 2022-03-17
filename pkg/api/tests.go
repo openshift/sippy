@@ -170,7 +170,7 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
 	period := req.URL.Query().Get("period")
-	if period != "current" && period != "twoDay" {
+	if period != "" && period != "default" && period != "current" && period != "twoDay" {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
 		return
 	}
