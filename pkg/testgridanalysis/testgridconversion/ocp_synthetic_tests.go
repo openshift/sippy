@@ -172,17 +172,16 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			for testName, result := range syntheticTests {
 				// convert the result.pass or .fail to the status value we use for test results:
-				testResultStatus := v1.TestStatusSuccess // assume success to start with
 				if result.fail > 0 {
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
-					testResultStatus = v1.TestStatusFailure
+				} else {
+					// Add successful test results as well.
+					jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+						Name:   testName,
+						Status: v1.TestStatusSuccess,
+					})
 				}
-				// Inject successful test results as well.
-				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
-					Name:   testName,
-					Status: testResultStatus,
-				})
 				addTestResult(jobResults.TestResults, nil, testName, result.pass, result.fail, 0)
 			}
 
