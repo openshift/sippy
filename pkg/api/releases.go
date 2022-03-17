@@ -2,8 +2,9 @@ package api
 
 import (
 	"fmt"
-	"k8s.io/klog"
 	"net/http"
+
+	"k8s.io/klog"
 
 	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -17,7 +18,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -36,7 +37,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -60,7 +61,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
