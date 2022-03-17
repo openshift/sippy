@@ -156,7 +156,6 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 }
 
 func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-	tests := testsAPIResult{}
 	var filter *Filter
 
 	queryFilter := req.URL.Query().Get("filter")
@@ -183,9 +182,6 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 	}
 
 	RespondWithJSON(http.StatusOK, w, testsResult.
-		sort(req).
-		limit(req))
-	RespondWithJSON(http.StatusOK, w, tests.
 		sort(req).
 		limit(req))
 }
