@@ -214,6 +214,10 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --database-dsn with --load-database")
 	}
 
+	if o.DBOnlyMode && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --db-only-mode")
+	}
+
 	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
 		return fmt.Errorf("must specify --database-dsn with for cli reports")
 	}
