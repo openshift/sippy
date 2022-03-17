@@ -40,7 +40,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			syntheticTests := map[string]*syntheticTestResult{
 				testgridanalysisapi.InstallTestName:             &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTimeoutTestName},
 				testgridanalysisapi.InfrastructureTestName:      &syntheticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 				testgridanalysisapi.FinalOperatorHealthTestName: &syntheticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
 				testgridanalysisapi.OpenShiftTestsName:          &syntheticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
