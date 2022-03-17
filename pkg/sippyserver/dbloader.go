@@ -57,7 +57,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	}
 	prowJobCacheLock := &sync.RWMutex{}
 
-	// First pass we just create any new ProwJobs we do not already have. This will allow us to run the second pass
+	// First pass we just create/update all ProwJobs. This will allow us to run the second pass
 	// inserts in parallel without conflicts. (we do not presently do this, but may be a good future optimization)
 	for i := range rawJobResults.JobResults {
 		klog.V(4).Infof("Loading prow job %s of %d", i, len(rawJobResults.JobResults))
@@ -77,6 +77,12 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 				return errors.Wrapf(err, "error loading prow job into db: %s", jr.JobName)
 			}
 			prowJobCache[jr.JobName] = dbProwJob
+		} else {
+			// Ensure the job is up to date, especially for variants.
+			dbProwJob := prowJobCache[jr.JobName]
+			dbProwJob.Variants = variantManager.IdentifyVariants(jr.JobName)
+			dbProwJob.TestGridURL = jr.TestGridJobURL
+			dbc.DB.Save(&dbProwJob)
 		}
 	}
 
