@@ -10,12 +10,13 @@ import (
 
 var (
 	// variant regexes
-	arm64Regex   = regexp.MustCompile(`(?i)-arm64`)
-	awsRegex     = regexp.MustCompile(`(?i)-aws`)
-	azureRegex   = regexp.MustCompile(`(?i)-azure`)
-	compactRegex = regexp.MustCompile(`(?i)-compact`)
-	fipsRegex    = regexp.MustCompile(`(?i)-fips`)
-	metalRegex   = regexp.MustCompile(`(?i)-metal`)
+	arm64Regex    = regexp.MustCompile(`(?i)-arm64`)
+	assistedRegex = regexp.MustCompile(`(?i)-assisted`)
+	awsRegex      = regexp.MustCompile(`(?i)-aws`)
+	azureRegex    = regexp.MustCompile(`(?i)-azure`)
+	compactRegex  = regexp.MustCompile(`(?i)-compact`)
+	fipsRegex     = regexp.MustCompile(`(?i)-fips`)
+	metalRegex    = regexp.MustCompile(`(?i)-metal`)
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
@@ -42,6 +43,7 @@ var (
 
 	allOpenshiftVariants = sets.NewString(
 		"arm64",
+		"assisted",
 		"aws",
 		"azure",
 		"compact",
@@ -257,6 +259,10 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 
 	if arm64Regex.MatchString(jobName) {
 		variants = append(variants, "arm64")
+	}
+
+	if assistedRegex.MatchString(jobName) {
+		variants = append(variants, "assisted")
 	}
 
 	if awsRegex.MatchString(jobName) {
