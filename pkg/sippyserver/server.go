@@ -41,6 +41,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	dbOnlyMOde bool,
 ) *Server {
 
 	server := &Server{
@@ -59,6 +60,7 @@ func NewServer(
 		sippyNG:         sippyNG,
 		static:          static,
 		db:              dbClient,
+		dbOnlyMode:      dbOnlyMOde,
 	}
 
 	return server
@@ -78,6 +80,10 @@ type Server struct {
 	static                     fs.FS
 	httpServer                 *http.Server
 	db                         *db.DB
+	// dbOnlyMode disabled all use of the in-memory analysis from testgrid files on disk, instead relying on
+	// the postgresql database. Swaps each API endpoint for an equivalent.
+	// This flag is temporary and will eventually become the default.
+	dbOnlyMode bool
 }
 
 type TestGridDashboardCoordinates struct {
@@ -107,6 +113,12 @@ var (
 		Name: "sippy_job_pass_ratio",
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
 	}, []string{"release", "period", "name"})
+
+	matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "sippy_matview_refresh_millis",
+		Help:    "Milliseconds to refresh our postgresql materialized views",
+		Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
+	}, []string{"view"})
 )
 
 func (s *Server) refreshMetrics() {
@@ -121,13 +133,42 @@ func (s *Server) refreshMetrics() {
 	}
 }
 
+// refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
+// for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
+// main postgresql tables.
+func (s *Server) refreshMaterializedViews() {
+	klog.Info("refreshing materialized views")
+
+	if s.db == nil {
+		klog.Info("skipping materialized view refresh as server has no db connection provided")
+		return
+	}
+
+	for _, pmv := range db.PostgresMatViews {
+		start := time.Now()
+		if res := s.db.DB.Exec(
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
+			klog.Errorf("error refreshing materialized view %s: %v", pmv.Name, res.Error)
+		} else {
+			elapsed := time.Since(start)
+			klog.Infof("Refreshed materialized view %s in %s", pmv.Name, elapsed)
+			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
+		}
+	}
+}
+
 func (s *Server) RefreshData() {
 	klog.Infof("Refreshing data")
-	s.bugCache.Clear()
 
-	for _, dashboard := range s.dashboardCoordinates {
-		s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
-			dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+	if !s.dbOnlyMode {
+		s.bugCache.Clear()
+
+		for _, dashboard := range s.dashboardCoordinates {
+			s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
+				dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
+		}
+	} else {
+		s.refreshMaterializedViews()
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -389,6 +430,24 @@ func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request
 	}
 }
 
+func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.Request) {
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		err := api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
+		if err != nil {
+			klog.Errorf("error querying test analysis from db: %v", err)
+		}
+	}
+}
+
 func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -400,12 +459,28 @@ func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintTestsJSONFromDB(release, w, req, s.db)
+	}
+}
+
 func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		currTests := s.currTestReports[release].CurrentPeriodReport
 		prevTests := s.currTestReports[release].PreviousWeekReport
 		api.PrintTestsDetailsJSON(w, req, currTests, prevTests)
+	}
+}
+
+func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	// Filter to test names containing this query param:
+	testSubstring := req.URL.Query()["test"]
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
 }
 
@@ -426,6 +501,40 @@ func (s *Server) jsonReleasesReport(w http.ResponseWriter, req *http.Request) {
 	for _, release := range s.dashboardCoordinates {
 		response.Releases = append(response.Releases, release.ReportName)
 	}
+
+	api.RespondWithJSON(http.StatusOK, w, response)
+}
+
+func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+	type jsonResponse struct {
+		Releases    []string  `json:"releases"`
+		LastUpdated time.Time `json:"last_updated"`
+	}
+	type Release struct {
+		Release string
+	}
+
+	response := jsonResponse{}
+
+	var releases []Release
+	res := s.db.DB.Raw("SELECT DISTINCT(release) FROM prow_jobs").Scan(&releases)
+	if res.Error != nil {
+		klog.Errorf("error querying releases from db: %v", res.Error)
+	}
+	for _, release := range releases {
+		response.Releases = append(response.Releases, release.Release)
+	}
+
+	type LastUpdated struct {
+		Max time.Time
+	}
+	var lastUpdated LastUpdated
+	// Assume our last update is the last time we inserted a prow job run.
+	res = s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+	if res.Error != nil {
+		klog.Errorf("error querying last updated from db: %v", res.Error)
+	}
+	response.LastUpdated = lastUpdated.Max
 
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
@@ -503,12 +612,14 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) stri
 		return release
 	}
 
-	if _, ok := reports[release]; !ok {
-		api.RespondWithJSON(http.StatusNotFound, w, map[string]interface{}{
-			"code":    "404",
-			"message": fmt.Sprintf("release %q not found", release),
-		})
-		return ""
+	if !s.dbOnlyMode {
+		if _, ok := reports[release]; !ok {
+			api.RespondWithJSON(http.StatusNotFound, w, map[string]interface{}{
+				"code":    "404",
+				"message": fmt.Sprintf("release %q not found", release),
+			})
+			return ""
+		}
 	}
 
 	return release
@@ -520,6 +631,17 @@ func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request)
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobDetailsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
+	}
+}
+
+func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	jobName := req.URL.Query().Get("job")
+	if release != "" && jobName != "" {
+		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
+		if err != nil {
+			klog.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
+		}
 	}
 }
 
@@ -540,10 +662,10 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) jsonExperimentalJobsReport(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintDBJobsReport(w, req, s.db, release)
+		api.PrintJobsReportFromDB(w, req, s.db, release)
 	}
 }
 
@@ -587,46 +709,55 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", 301)
 	})
 
-	// Preserve old sippy at /legacy for now
-	serveMux.HandleFunc("/legacy", s.printHTMLReport)
-	serveMux.HandleFunc("/install", s.printInstallHTMLReport)
-	serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+	// Fork the endpoints if we're using postgresql db only mode vs the old in-memory.
+	// Temporary until we drop the old legacy mode.
+	if s.dbOnlyMode {
+		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
+		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+		serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
+		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
+		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
+		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+	} else {
+		// Preserve old sippy at /legacy for now
+		serveMux.HandleFunc("/legacy", s.printHTMLReport)
+		serveMux.HandleFunc("/install", s.printInstallHTMLReport)
+		serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
+		serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
+		serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
+		serveMux.HandleFunc("/detailed", s.detailed)
+		serveMux.HandleFunc("/refresh", s.refresh)
+		serveMux.HandleFunc("/canary", s.printCanaryReport)
+		serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+		// Old API
+		serveMux.HandleFunc("/json", s.printJSONReport)
 
-	serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
-	serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
-	serveMux.HandleFunc("/detailed", s.detailed)
-	serveMux.HandleFunc("/refresh", s.refresh)
-	serveMux.HandleFunc("/canary", s.printCanaryReport)
-	serveMux.HandleFunc("/variants", s.htmlVariantsReport)
+		// New API's
+		serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
+		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
+		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport) // TODO: port to db
+		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)         // TODO: port to db
 
-	// Old API
-	serveMux.HandleFunc("/json", s.printJSONReport)
+		serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
+		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
+		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 
-	// New API's
-	serveMux.HandleFunc("/api/health", s.jsonHealthReport)
-	serveMux.HandleFunc("/api/install", s.jsonInstallReport)
-	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
-	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
-	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
-	serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
-	// Temporary endpoint while we work out the use of the db, will move to above endpoint once ready.
-	serveMux.HandleFunc("/api-ex/jobs", s.jsonExperimentalJobsReport)
+		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport) // TODO: port to db
+		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
+
+		serveMux.HandleFunc("/api/health", s.jsonHealthReport) // TODO: port to db
+		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
+		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
+	}
+
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
-
+	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
 	}
-
-	serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
-	serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
-	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
-
-	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{

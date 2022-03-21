@@ -33,6 +33,7 @@ type ProcessingOptions struct {
 
 // ProcessTestGridDataIntoRawJobResults returns the raw data and a list of warnings encountered processing the data.
 func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
+
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
 	for _, jobDetails := range testGridJobInfo {
@@ -50,9 +51,6 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
-		for _, prefix := range testSuitePrefixes {
-			test.Name = strings.TrimPrefix(test.Name, prefix)
-		}
 		job.Tests[i] = test
 		processTest(rawJobResults, job, test, startCol, endCol)
 	}
@@ -86,17 +84,7 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	return start, len(timestamps)
 }
 
-// testSuitePrefixes is a list of suite prefixes to remove from test names
-var testSuitePrefixes = []string{
-	"openshift-tests.",
-	"Cluster upgrade.",
-	"Symptom detection.",
-	"Operator results.",
-	"OSD e2e suite.",
-	"Log Metrics.",
-}
-
-// ignoreTestRegex is used to strip o ut tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
+// ignoreTestRegex is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 var ignoreTestRegex = regexp.MustCompile(`Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 
 // isOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
@@ -105,7 +93,7 @@ func isOverallTest(testName string) bool {
 	return testName == overall || strings.HasSuffix(testName, ".Overall")
 }
 
-// processTestToJobRunResults adds the tests to the provided jobresult to the provided JobResult and returns the passed, failed, flaked for the test
+// processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
@@ -147,6 +135,12 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 						Timestamp: job.Timestamps[i],
 					}
 				}
+
+				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+					Name:   test.Name,
+					Status: result.Value,
+				})
+
 				switch {
 				case isOverallTest(test.Name):
 					jrr.Succeeded = true
@@ -193,6 +187,8 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
+
+				// TODO: should we also add failures to jrr.TestResults so everything is in one place? Kill off FailedTestNames
 
 				switch {
 				case isOverallTest(test.Name):

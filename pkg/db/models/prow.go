@@ -35,7 +35,7 @@ type ProwJobRun struct {
 
 	URL          string
 	TestFailures int
-	FailedTests  []Test `gorm:"many2many:prow_job_run_failed_tests;"`
+	Tests        []ProwJobRunTest
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
@@ -48,6 +48,61 @@ type ProwJobRun struct {
 
 type Test struct {
 	gorm.Model
+	Name string `gorm:"uniqueIndex"`
+}
 
-	Name string `gorm:"unique"`
+// ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
+// that execution.
+type ProwJobRunTest struct {
+	gorm.Model
+	ProwJobRunID uint
+	TestID       uint
+	Test         Test
+	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
+	SuiteID   *uint
+	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
+	CreatedAt time.Time
+	DeletedAt gorm.DeletedAt
+}
+
+// Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.
+type Suite struct {
+	gorm.Model
+	Name string `gorm:"uniqueIndex"`
+}
+
+// TestAnalysisRow models our materialize view for test results by date, and job+variant.
+// The only one of the Variant/JobName fields will be used depending on which view
+// we're querying.
+type TestAnalysisRow struct {
+	Date     time.Time
+	TestID   uint
+	TestName string
+	Variant  string // may not be used depending on calling query
+	JobName  string // may not be used depending on calling query
+	Release  string
+	Runs     int
+	Passes   int
+	Flakes   int
+	Failures int
+}
+
+// NOTE: Unfortunate duplication of bugzilla types here, comments in the api/bugs/v1 package indicate we don't own
+// the definitijon of a bugzilla bug and need to match their API. When syncing to DB we'll convert to these customized
+// db types.
+
+// Bug represents a Bugzilla bug.
+type Bug struct {
+	gorm.Model
+	Status         string
+	LastChangeTime time.Time
+	Summary        string
+	TargetRelease  string
+	Version        string
+	Component      string
+	URL            string
+	FailureCount   int
+	FlakeCount     int
+	Tests          []Test    `gorm:"many2many:bug_tests;"`
+	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
 }

@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -15,7 +16,7 @@ func NewOpenshiftSyntheticTestManager() SyntheticTestManager {
 	return openshiftSyntheticManager{}
 }
 
-// createSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
+// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
 // and potentially producing synthetic test results and aggregations to better inform sippy.
 // This needs to be called after all the JobDetails have been processed.
 // returns warnings found in the data. Not failures to process it.
@@ -39,7 +40,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 			syntheticTests := map[string]*syntheticTestResult{
 				testgridanalysisapi.InstallTestName:             &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
-				testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
+				testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTimeoutTestName},
 				testgridanalysisapi.InfrastructureTestName:      &syntheticTestResult{name: testgridanalysisapi.InfrastructureTestName},
 				testgridanalysisapi.FinalOperatorHealthTestName: &syntheticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
 				testgridanalysisapi.OpenShiftTestsName:          &syntheticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
@@ -75,7 +76,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 				syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
 				// if the test succeeded, then the operator install tests should all be passes
 				for _, operatorState := range jrr.FinalOperatorStates {
-					testName := testgridanalysisapi.OperatorInstallPrefix + operatorState.Name
+					testName := "sippy." + testgridanalysisapi.OperatorInstallPrefix + operatorState.Name
 					syntheticTests[testName] = &syntheticTestResult{
 						name: testName,
 						pass: 1,
@@ -91,7 +92,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 
 				// if the test failed, then the operator install tests should match the operator state
 				for _, operatorState := range jrr.FinalOperatorStates {
-					testName := testgridanalysisapi.OperatorInstallPrefix + operatorState.Name
+					testName := "sippy." + testgridanalysisapi.OperatorInstallPrefix + operatorState.Name
 					syntheticTests[testName] = &syntheticTestResult{
 						name: testName,
 					}
@@ -145,7 +146,6 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 							pass: 1,
 						}
 					}
-
 				} else {
 					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
 					// if the test failed, then the operator upgrade tests should match the operator state
@@ -171,9 +171,16 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 			}
 
 			for testName, result := range syntheticTests {
+				// convert the result.pass or .fail to the status value we use for test results:
 				if result.fail > 0 {
 					jrr.TestFailures += result.fail
 					jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
+				} else {
+					// Add successful test results as well.
+					jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+						Name:   testName,
+						Status: v1.TestStatusSuccess,
+					})
 				}
 				addTestResult(jobResults.TestResults, nil, testName, result.pass, result.fail, 0)
 			}

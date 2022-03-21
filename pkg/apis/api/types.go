@@ -4,6 +4,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/lib/pq"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -29,10 +30,10 @@ const (
 // TODO: with move to database, IDs will no longer be synthetic, although they will change in the event
 // the database is rebuilt from testgrid data.
 type Job struct {
-	ID        int      `json:"id"`
-	Name      string   `json:"name"`
-	BriefName string   `json:"brief_name"`
-	Variants  []string `json:"variants"`
+	ID        int            `json:"id"`
+	Name      string         `json:"name"`
+	BriefName string         `json:"brief_name"`
+	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
 
 	CurrentPassPercentage          float64 `json:"current_pass_percentage"`
 	CurrentProjectedPassPercentage float64 `json:"current_projected_pass_percentage"`
@@ -196,8 +197,9 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // Test contains the full accounting of a test's history, with a synthetic ID. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id,omitempty"`
+	Name    string `json:"name"`
+	Variant string `json:"variant,omitempty"`
 
 	CurrentSuccesses      int     `json:"current_successes"`
 	CurrentFailures       int     `json:"current_failures"`

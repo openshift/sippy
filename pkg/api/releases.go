@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"k8s.io/klog"
 
@@ -20,7 +18,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := filterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -39,7 +37,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := filterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -63,7 +61,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := filterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient))
+	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -139,33 +137,6 @@ func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient
 	}
 
 	RespondWithJSON(http.StatusOK, w, apiResults)
-}
-
-func filterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB) (*gorm.DB, error) {
-	filter := &Filter{}
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
-			return nil, fmt.Errorf("could not marshal filter: %w", err)
-		}
-	}
-	q := filter.ToSQL(dbClient)
-	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 {
-		q = q.Limit(limit)
-	}
-
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
-	if sortField == "" {
-		sortField = defaultSortField
-	}
-	if sort == "" {
-		sort = defaultSort
-	}
-	q.Order(fmt.Sprintf("%q %s", sortField, sort))
-
-	return q, nil
 }
 
 func releaseFilter(req *http.Request, dbClient *db.DB) *gorm.DB {

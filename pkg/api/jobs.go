@@ -2,12 +2,16 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	gosort "sort"
 	"strconv"
 	"strings"
 	"time"
+
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -141,8 +145,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 		limit(req))
 }
 
-// PrintDBJobsReport renders a filtered summary of matching jobs.
-func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
+// PrintJobsReportFromDB renders a filtered summary of matching jobs.
+func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, release string) {
 
 	var filter *Filter
@@ -156,135 +160,101 @@ func PrintDBJobsReport(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	period := req.URL.Query().Get("period")
-	jobsResult, err := BuildJobResults(dbc, period, release)
+	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
+	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
+	var start time.Time
+	var boundary time.Time
+	var end time.Time
+	var err error
+
+	startParam := req.URL.Query().Get("start")
+	if startParam != "" {
+		start, err = time.Parse("2006-01-02", startParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
+			return
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
+		start = time.Now().Add(-9 * 24 * time.Hour)
+	} else {
+		// Default start to 14 days ago
+		start = time.Now().Add(-14 * 24 * time.Hour)
+	}
+
+	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
+	// for callers to know to specify one day beyond.
+	boundaryParam := req.URL.Query().Get("boundary")
+	if boundaryParam != "" {
+		boundary, err = time.Parse("2006-01-02", boundaryParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
+			return
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
+	} else {
+		// Default boundary to 7 days ago
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+
+	}
+
+	endParam := req.URL.Query().Get("end")
+	if endParam != "" {
+		end, err = time.Parse("2006-01-02", endParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
+			return
+		}
+	} else {
+		// Default end to now
+		end = time.Now()
+	}
+
+	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", dbc.DB, apitype.Job{})
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+	jobsResult, err := BuildJobResults(q, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	RespondWithJSON(http.StatusOK, w, jobsResult.
-		sort(req).
-		limit(req))
+	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
 
-func BuildJobResults(dbc *db.DB, period, release string) (jobsAPIResult, error) {
+func BuildJobResults(q *gorm.DB, release string, start, boundary, end time.Time) (jobsAPIResult, error) {
 	now := time.Now()
 
-	// TODO: use actual start/num days settings from CLI once we understand what should
-	// be happening here, previous seems to include current. See PrepareStandardTestReports.
-	// Note that the CLI/most of the code says "start date" for what is actually the
-	// end of the date range, and does a walk back.
-	currDays := 7
-	prevDays := 14
-	if period == periodTwoDay {
-		currDays = 2
-		prevDays = 9 // 7 + 2
-	}
-	startDate := time.Now().Add(time.Duration(-1*prevDays*24) * time.Hour)
-	boundaryDate := time.Now().Add(time.Duration(-1*currDays*24) * time.Hour)
-	klog.Infof("BuildJobResult from %s -> %s -> %s", startDate, boundaryDate, time.Now())
-
-	// Load all ProwJobs and create a map of db ID to ProwJob:
-	var allJobs []models.ProwJob
-	dbr := dbc.DB.Find(&allJobs).Where("release = ?", release)
-	if dbr.Error != nil {
-		klog.Error(dbr)
-		return []apitype.Job{}, dbr.Error
-	}
-	allJobsByID := mapProwJobsByID(allJobs)
-	klog.V(3).Infof("Found %d jobs", len(allJobs))
-
-	// Load all ProwJobRuns in our period timestamp range:
-	var jobRunsInPeriod []models.ProwJobRun
-	dbr = dbc.DB.
-		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
-		Where("timestamp BETWEEN ? AND ?", startDate, now).
-		Where("prow_jobs.release = ?", release).Find(&jobRunsInPeriod)
-	if dbr.Error != nil {
-		klog.Error(dbr)
-		return []apitype.Job{}, dbr.Error
-	}
-	klog.V(3).Infof("Found %d job runs in period between %s and %s",
-		len(jobRunsInPeriod),
-		startDate.Format(time.RFC3339),
-		now.Format(time.RFC3339))
-
-	// Build a map of job ID to the API job result we'll return.
-	// Iterate all job results, incrementing counters on the job result we'll return.
-	apiJobResults := map[uint]*apitype.Job{}
-	for _, jobRun := range jobRunsInPeriod {
-		job := allJobsByID[jobRun.ProwJobID]
-		if _, ok := apiJobResults[job.ID]; !ok {
-
-			apiJobResults[job.ID] = &apitype.Job{
-				ID:          int(job.ID),
-				Name:        job.Name,
-				BriefName:   briefName(job.Name),
-				Variants:    job.Variants,
-				TestGridURL: job.TestGridURL,
-			}
-		}
-
-		jobAcc := apiJobResults[job.ID]
-
-		if jobRun.Timestamp.After(boundaryDate) {
-			jobAcc.CurrentRuns++
-		} else {
-			jobAcc.PreviousRuns++
-		}
-
-		if jobRun.Succeeded {
-			if jobRun.Timestamp.After(boundaryDate) {
-				jobAcc.CurrentPasses++
-			} else {
-				jobAcc.PreviousPasses++
-			}
-		}
-
-		if jobRun.Failed {
-			if jobRun.Timestamp.After(boundaryDate) {
-				jobAcc.CurrentFails++
-				if jobRun.InfrastructureFailure {
-					jobAcc.CurrentInfraFails++
-				}
-			} else {
-				jobAcc.PreviousFails++
-				if jobRun.InfrastructureFailure {
-					jobAcc.PreviousInfraFails++
-				}
-			}
-		}
-
+	jobReports := make([]apitype.Job, 0)
+	r := q.Table("job_results(?, ?, ?, ?)",
+		release, start, boundary, end)
+	if r.Error != nil {
+		klog.Error(r.Error)
+		return []apitype.Job{}, r.Error
 	}
 
-	// Now that we've processed all job results, calculate percentages on the results we'll return:
-	finalAPIJobResult := make([]apitype.Job, 0, len(apiJobResults))
-	for _, v := range apiJobResults {
-		if v.CurrentRuns > 0 {
-			v.CurrentPassPercentage = float64(v.CurrentPasses) / float64(v.CurrentRuns) * 100
-			v.CurrentProjectedPassPercentage = float64(v.CurrentPasses+v.CurrentInfraFails) / float64(v.CurrentRuns) * 100
-		}
-		if v.PreviousRuns > 0 {
-			v.PreviousPassPercentage = float64(v.PreviousPasses) / float64(v.PreviousRuns) * 100
-			v.PreviousProjectedPassPercentage = float64(v.PreviousPasses+v.PreviousInfraFails) / float64(v.PreviousRuns) * 100
-		}
-		v.NetImprovement = v.CurrentPassPercentage - v.PreviousPassPercentage
-		finalAPIJobResult = append(finalAPIJobResult, *v)
-	}
-
+	r.Scan(&jobReports)
 	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results", elapsed, len(finalAPIJobResult))
+	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
 
-	return finalAPIJobResult, nil
-}
+	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
+	// instead of empty array. Quick hack to make this work.
+	for i, j := range jobReports {
+		if len(j.Bugs) == 0 {
+			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
+		}
 
-func mapProwJobsByID(allProwJobs []models.ProwJob) map[uint]models.ProwJob {
-	result := map[uint]models.ProwJob{}
-	for _, pj := range allProwJobs {
-		result[pj.ID] = pj
+		if len(j.AssociatedBugs) == 0 {
+			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
+		}
 	}
-	return result
+
+	return jobReports, nil
 }
 
 type jobDetail struct {
@@ -344,6 +314,71 @@ func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, pr
 		Start: min,
 		End:   max,
 	}.limit(req))
+}
+
+// PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
+func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string) error {
+	var min, max int
+
+	// List all ProwJobRuns for the given release in the last two weeks.
+	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
+	since := time.Now().Add(-14 * 24 * time.Hour)
+
+	prowJobRuns := []*models.ProwJobRun{}
+	res := dbc.DB.Joins("ProwJob").
+		Where("name LIKE ?", "%"+jobSearchStr+"%").
+		Where("timestamp > ?", since).
+		Where("release = ?", release).
+		Preload("Tests", "status = ?", 12). // Only pre-load test results with failure status.
+		Preload("Tests.Test").
+		Find(&prowJobRuns)
+	if res.Error != nil {
+		klog.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
+		return res.Error
+	}
+	klog.Infof("loaded %d ProwJobRuns from db since %s", len(prowJobRuns), since.Format(time.RFC3339))
+
+	jobDetails := map[string]*jobDetail{}
+	for _, pjr := range prowJobRuns {
+		jobName := pjr.ProwJob.Name
+		if _, ok := jobDetails[jobName]; !ok {
+			jobDetails[jobName] = &jobDetail{Name: jobName, Results: []v1sippyprocessing.JobRunResult{}}
+		}
+
+		// Build string array of failed test names for compat with the existing API response:
+		failedTestNames := make([]string, 0, len(pjr.Tests))
+		for _, t := range pjr.Tests {
+			failedTestNames = append(failedTestNames, t.Test.Name)
+		}
+
+		newRun := v1sippyprocessing.JobRunResult{
+			ProwID:                pjr.ID,
+			Job:                   jobName,
+			URL:                   pjr.URL,
+			TestFailures:          pjr.TestFailures,
+			FailedTestNames:       failedTestNames,
+			Failed:                pjr.Failed,
+			InfrastructureFailure: pjr.InfrastructureFailure,
+			KnownFailure:          pjr.KnownFailure,
+			Succeeded:             pjr.Succeeded,
+			Timestamp:             int(pjr.Timestamp.Unix() * 1000),
+			OverallResult:         pjr.OverallResult,
+		}
+		jobDetails[jobName].Results = append(jobDetails[jobName].Results, newRun)
+	}
+
+	// Convert our map to a list for return:
+	jobs := make([]jobDetail, 0, len(jobDetails))
+	for _, jobDetail := range jobDetails {
+		jobs = append(jobs, *jobDetail)
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobDetailAPIResult{
+		Jobs:  jobs,
+		Start: min,
+		End:   max,
+	}.limit(req))
+	return nil
 }
 
 // PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.

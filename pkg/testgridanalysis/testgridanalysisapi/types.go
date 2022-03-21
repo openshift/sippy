@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 // 1. TestGrid contains jobs
@@ -28,11 +29,13 @@ type RawJobResult struct {
 	JobRunResults map[string]RawJobRunResult
 
 	// TestResults is a map from test.Name to the aggregated results for each run of that test inside the job
+	// TODO: rename to indicate this is aggregated across all job runs. The name currently is identical to a field
+	// on each JobRunResult.
 	TestResults map[string]RawTestResult
 }
 
 // RawTestResult is an intermediate datatype that may not have complete or consistent data when interrogated.
-// It holds data about an individual test that may have happened in may different jobs and job runs.
+// It holds data about an individual test that may have happened in many different jobs and job runs.
 // It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete
 type RawTestResult struct {
 	Name       string
@@ -42,13 +45,20 @@ type RawTestResult struct {
 	Flakes     int
 }
 
+// RawJobRunTestResult represents an execution of a test in a job run, and whether it was success, failure, or a flake.
+type RawJobRunTestResult struct {
+	Name   string
+	Status testgridv1.TestStatus
+}
+
 // RawJobRunResult is an intermediate datatype that may not have complete or consistent data when interrogated.
 // It holds data for an individual run of a given job.
 type RawJobRunResult struct {
 	Job             string
 	JobRunURL       string
 	TestFailures    int
-	FailedTestNames []string
+	FailedTestNames []string // TODO: drop this and favor TestResults going forward, it has caused bugs.
+	TestResults     []RawJobRunTestResult
 	Failed          bool
 	Succeeded       bool
 
@@ -81,15 +91,15 @@ type OperatorState struct {
 }
 
 const (
-	OperatorUpgradePrefix       = "Operator upgrade "
-	OperatorFinalHealthPrefix   = "operator conditions "
-	FinalOperatorHealthTestName = `[sig-sippy] tests should finish with healthy operators`
+	OperatorUpgradePrefix       = "sippy.[sig-sippy] operator upgrade "
+	OperatorFinalHealthPrefix   = "sippy.[sig-sippy] operator conditions "
+	FinalOperatorHealthTestName = "sippy.[sig-sippy] tests should finish with healthy operators"
 
-	InfrastructureTestName = `[sig-sippy] infrastructure should work`
-	InstallTestName        = `[sig-sippy] install should work`
-	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
-	UpgradeTestName        = `[sig-sippy] upgrade should work`
-	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
+	InfrastructureTestName = `sippy.[sig-sippy] infrastructure should work`
+	InstallTestName        = `sippy.[sig-sippy] install should work`
+	InstallTimeoutTestName = `sippy.[sig-sippy] install should not timeout`
+	UpgradeTestName        = `sippy.[sig-sippy] upgrade should work`
+	OpenShiftTestsName     = `sippy.[sig-sippy] openshift-tests should work`
 
 	Success = "Success"
 	Failure = "Failure"
@@ -97,6 +107,7 @@ const (
 )
 
 var (
+	// TODO: add [sig-sippy] here as well so we can more clearly identify and substring search
 	OperatorInstallPrefix          = "operator install "
-	OperatorConditionsTestCaseName = regexp.MustCompile("operator install (?P<operator>.*)")
+	OperatorConditionsTestCaseName = regexp.MustCompile("^operator install (?P<operator>.*)")
 )

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
@@ -52,9 +53,11 @@ type Options struct {
 	FailureClusterThreshold int
 	FetchData               string
 	FetchPerfScaleData      bool
+	InitDatabase            bool
 	LoadDatabase            bool
 	ListenAddr              string
 	Server                  bool
+	DBOnlyMode              bool
 	SkipBugLookup           bool
 	DSN                     string
 }
@@ -102,12 +105,14 @@ func main() {
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
 	flags.BoolVar(&opt.LoadDatabase, "load-database", opt.LoadDatabase, "Process testgrid data in --local-data and store in database")
+	flags.BoolVar(&opt.InitDatabase, "init-database", opt.InitDatabase, "Initialize postgresql database tables and materialized views")
 	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
+	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 
 	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
@@ -209,6 +214,10 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --database-dsn with --load-database")
 	}
 
+	if o.DBOnlyMode && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --db-only-mode")
+	}
+
 	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
 		return fmt.Errorf("must specify --database-dsn with for cli reports")
 	}
@@ -266,6 +275,11 @@ func (o *Options) Run() error {
 		return nil
 	}
 
+	if o.InitDatabase {
+		_, err := db.New(o.DSN)
+		return err
+	}
+
 	if o.LoadDatabase {
 		dbc, err := db.New(o.DSN)
 		if err != nil {
@@ -279,12 +293,26 @@ func (o *Options) Run() error {
 			DisplayDataConfig:           o.toDisplayDataConfig(),
 		}
 
+		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			err := trgc.PrepareDatabase(dbc, dashboard,
-				o.getVariantManager(),
-				o.getSyntheticTestManager(), o.getBugCache())
+			err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
+			if err != nil {
+				klog.Error(err)
+				return err
+			}
+		}
+
+		if loadBugs {
+			testCache, err := sippyserver.LoadTestCache(dbc)
 			if err != nil {
 				return err
+			}
+			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
+			if err != nil {
+				return err
+			}
+			if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
+				return errors.Wrapf(err, "error syncing bugzilla bugs to db")
 			}
 		}
 
@@ -340,9 +368,17 @@ func (o *Options) runServerMode() error {
 		webRoot,
 		&static,
 		dbc,
+		o.DBOnlyMode,
 	)
 
-	server.RefreshData() // force a data refresh once before serving.
+	if !o.DBOnlyMode {
+		// force a data refresh in the background, materialized views will not be populated if this is the first start against
+		// this database.
+		server.RefreshData()
+	}
+	// The above should not be required for db mode, we create the matviews if missing during db init, and that
+	// will do an implicit refresh
+
 	server.Serve()
 	return nil
 }
