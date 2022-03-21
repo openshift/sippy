@@ -19,7 +19,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	}
 
 	q := releaseFilter(req, dbClient)
-	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.pull_request_id = pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
+	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
 	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -29,7 +29,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		return
 	}
 
-	prs := make([]models.PullRequest, 0)
+	prs := make([]models.ReleasePullRequest, 0)
 	q.Find(&prs)
 	RespondWithJSON(http.StatusOK, w, prs)
 }
@@ -40,7 +40,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 	}
 
 	q := releaseFilter(req, dbClient)
-	q = q.Joins(`JOIN release_tags on release_tags.id = job_runs."releaseTagID"`)
+	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs."releaseTagID"`)
 	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -50,7 +50,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		return
 	}
 
-	jobRuns := make([]models.JobRun, 0)
+	jobRuns := make([]models.ReleaseJobRun, 0)
 	q.Find(&jobRuns)
 	RespondWithJSON(http.StatusOK, w, jobRuns)
 }
@@ -79,20 +79,20 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 	// This join looks up the names of failed jobs, if any, and returns them as
 	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
 	q.Table("release_tags").
-		Select(`release_tags.*, job_runs."failedJobNames"`).
+		Select(`release_tags.*, release_job_runs."failedJobNames"`).
 		Joins(`LEFT OUTER JOIN 
    			(
 				SELECT
-					release_tags."releaseTag", array_agg(job_runs."jobName" ORDER BY job_runs."jobName" asc) AS "failedJobNames"
+					release_tags."releaseTag", array_agg(release_job_runs."jobName" ORDER BY release_job_runs."jobName" asc) AS "failedJobNames"
 				FROM
-					job_runs
+					release_job_runs
    				JOIN
-					release_tags ON release_tags."id" = job_runs."releaseTagID"
+					release_tags ON release_tags."id" = release_job_runs."releaseTagID"
    				WHERE
-					job_runs.state = 'Failed'
+					release_job_runs.state = 'Failed'
 	   			GROUP BY
 					release_tags."releaseTag"
-			) job_runs using ("releaseTag")`).
+			) release_job_runs using ("releaseTag")`).
 		Scan(&releases)
 
 	RespondWithJSON(http.StatusOK, w, releases)

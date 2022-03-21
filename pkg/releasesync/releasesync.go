@@ -57,8 +57,8 @@ func (r *releaseSyncOptions) Run() error {
 
 				// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
 				for i, pr := range releaseTag.PullRequests {
-					existingPR := models.PullRequest{}
-					result := r.db.DB.Table("pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
+					existingPR := models.ReleasePullRequest{}
+					result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
 					if result.Error == nil {
 						releaseTag.PullRequests[i] = existingPR
 					}
@@ -170,14 +170,14 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 	return &release
 }
 
-func releaseJobRunsToDB(details ReleaseDetails) []models.JobRun {
-	rows := make([]models.JobRun, 0)
-	results := make(map[string]models.JobRun)
+func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
+	rows := make([]models.ReleaseJobRun, 0)
+	results := make(map[string]models.ReleaseJobRun)
 
 	if jobs, ok := details.Results["blockingJobs"]; ok {
 		for platform, jobResult := range jobs {
 			id := idFromURL(jobResult.URL)
-			results[id] = models.JobRun{
+			results[id] = models.ReleaseJobRun{
 				Name:           id,
 				JobName:        platform,
 				Kind:           "Blocking",
@@ -192,7 +192,7 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.JobRun {
 	if jobs, ok := details.Results["informingJobs"]; ok {
 		for platform, jobResult := range jobs {
 			id := idFromURL(jobResult.URL)
-			results[id] = models.JobRun{
+			results[id] = models.ReleaseJobRun{
 				Name:           id,
 				JobName:        platform,
 				Kind:           "Informing",

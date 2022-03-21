@@ -9,107 +9,118 @@ import (
 type ReleaseTag struct {
 	gorm.Model
 
-	ID int `bigquery:"id" json:"id" gorm:"primaryKey,column:id"`
+	ID int `json:"id" gorm:"primaryKey,column:id"`
 
 	// ReleaseTag contains the release version, e.g. 4.8.0-0.nightly-2021-10-28-013428.
-	ReleaseTag string `bigquery:"releaseTag" json:"releaseTag" gorm:"column:releaseTag"`
+	ReleaseTag string `json:"releaseTag" gorm:"column:releaseTag"`
 
 	// Release contains the release X.Y version, e.g. 4.8
-	Release string `bigquery:"release" json:"release" gorm:"column:release"`
+	Release string `json:"release" gorm:"column:release"`
 
 	// Stream contains the payload stream, e.g. nightly or ci.
-	Stream string `bigquery:"stream" json:"stream" gorm:"column:stream"`
+	Stream string `json:"stream" gorm:"column:stream"`
 
 	// Architecture contains the arch for a release, e.g. amd64
-	Architecture string `bigquery:"architecture" json:"architecture" gorm:"column:architecture"`
+	Architecture string `json:"architecture" gorm:"column:architecture"`
 
 	// Phase contains the overall status of a payload: e.g. Ready, Accepted,
 	// Rejected. We do not store Ready payloads in bigquery, as we only want
 	// the release after it's "fully baked."
-	Phase string `bigquery:"phase" json:"phase" gorm:"column:phase"`
+	Phase string `json:"phase" gorm:"column:phase"`
 
 	// ReleaseTime contains the timestamp of the release (the suffix of the tag, -YYYY-MM-DD-HHMMSS).
-	ReleaseTime time.Time `bigquery:"releaseTime" gorm:"column:releaseTime" json:"releaseTime"`
+	ReleaseTime time.Time `json:"releaseTime" gorm:"column:releaseTime"`
 
 	// PreviousReleaseTag contains the previously accepted build, on which any
 	// changelog is based from.
-	PreviousReleaseTag string `bigquery:"previousReleaseTag" json:"previousReleaseTag" gorm:"column:previousReleaseTag"`
+	PreviousReleaseTag string `json:"previousReleaseTag" gorm:"column:previousReleaseTag"`
 
 	// KubernetesVersion contains the kube version for this payload.
-	KubernetesVersion string `bigquery:"kubernetesVersion" json:"kubernetesVersion" gorm:"column:kubernetesVersion"`
+	KubernetesVersion string `json:"kubernetesVersion" gorm:"column:kubernetesVersion"`
 
 	// CurrentOSVersion contains the current machine OS version.
-	CurrentOSVersion string `bigquery:"currentOSVersion" json:"currentOSVersion" gorm:"currentOSVersion"`
+	CurrentOSVersion string `json:"currentOSVersion" gorm:"currentOSVersion"`
 
 	// PreviousOSVersion, if any, indicates this release included a machine OS
 	// upgrade and this field contains the prior version.
-	PreviousOSVersion string `bigquery:"previousOSVersion" json:"previousOSVersion" gorm:"previousOSVersion"`
+	PreviousOSVersion string `json:"previousOSVersion" gorm:"previousOSVersion"`
 
 	// CurrentOSURL is a link to the release page for this machine OS version.
-	CurrentOSURL string `bigquery:"currentOSURL" json:"currentOSURL" gorm:"currentOSURL"`
+	CurrentOSURL string `json:"currentOSURL" gorm:"currentOSURL"`
 
 	// PreviousOSURL is a link to the release page for the previous machine OS version.
-	PreviousOSURL string `bigquery:"previousOSURL" json:"previousOSURL" gorm:"previousOSURL"`
+	PreviousOSURL string `json:"previousOSURL" gorm:"previousOSURL"`
 
 	// OSDiffURL is a link to the release page diffing the two OS versions.
-	OSDiffURL string `bigquery:"osDiffURL" json:"osDiffURL" gorm:"osDiffURL"`
+	OSDiffURL string `json:"osDiffURL" gorm:"osDiffURL"`
 
-	// PullRequest contains a list of all the PR's in a release.
-	PullRequests []PullRequest `gorm:"many2many:release_tag_pull_requests;"`
+	// ReleasePullRequest contains a list of all the PR's in a release.
+	PullRequests []ReleasePullRequest `gorm:"many2many:release_tag_pull_requests;"`
 
-	Repositories []Repository `gorm:"foreignKey:releaseTagID"`
+	Repositories []ReleaseRepository `gorm:"foreignKey:releaseTagID"`
 
-	JobRuns []JobRun `gorm:"foreignKey:releaseTagID"`
+	JobRuns []ReleaseJobRun `gorm:"foreignKey:releaseTagID"`
 }
 
-// PullRequest represents a pull request that was included for the first time
+// ReleasePullRequest represents a pull request that was included for the first time
 // in a release payload.
-type PullRequest struct {
+type ReleasePullRequest struct {
 	gorm.Model
 
-	ID int `bigquery:"id" json:"id" gorm:"primaryKey,column:id"`
+	ID int `json:"id" gorm:"primaryKey,column:id"`
 
 	// URL is a link to the pull request.
-	URL string `bigquery:"url" json:"url" gorm:"index:pr_url_name,unique;column:url"`
+	URL string `json:"url" gorm:"index:pr_url_name,unique;column:url"`
 
 	// PullRequestID contains the ID of the GitHub pull request.
-	PullRequestID string `bigquery:"pullRequestID" json:"pullRequestID" gorm:"column:pullRequestID"`
+	PullRequestID string `json:"pullRequestID" gorm:"column:pullRequestID"`
 
 	// Name contains the names as the repository is known in the release payload.
-	Name string `bigquery:"name" json:"name" gorm:"index:pr_url_name,unique;column:name"`
+	Name string `json:"name" gorm:"index:pr_url_name,unique;column:name"`
 
 	// Description is the PR description.
-	Description string `bigquery:"description" json:"description" gorm:"column:description"`
+	Description string `json:"description" gorm:"column:description"`
 
 	// BugURL links to the bug, if any.
-	BugURL string `bigquery:"bugURL" json:"bugURL" gorm:"column:bugURL"`
+	BugURL string `json:"bugURL" gorm:"column:bugURL"`
 }
 
-type Repository struct {
+type ReleaseRepository struct {
 	gorm.Model
 
-	ID           int        `json:"id" gorm:"primaryKey,column:id"`
-	Name         string     `json:"name" gorm:"column:name"`
-	ReleaseTag   ReleaseTag `gorm:"foreignKey:releaseTagID"`
-	ReleaseTagID string     `json:"releaseTag" gorm:"column:releaseTagID"`
-	Head         string     `json:"repositoryHead" gorm:"column:repositoryHead"`
-	DiffURL      string     `json:"url" gorm:"column:diffURL"`
+	ID int `json:"id" gorm:"primaryKey,column:id"`
+
+	// Name of the repository, as known by the release payload.
+	Name string `json:"name" gorm:"column:name"`
+
+	// ReleaseTag this specific repository ref references.
+	ReleaseTag ReleaseTag `gorm:"foreignKey:releaseTagID"`
+
+	// ReleaseTagID foreign key.
+	ReleaseTagID string `json:"releaseTag" gorm:"column:releaseTagID"`
+
+	// Head is the SHA of the git repo.
+	Head string `json:"repositoryHead" gorm:"column:repositoryHead"`
+
+	// DiffURL is a link to the git diff.
+	DiffURL string `json:"url" gorm:"column:diffURL"`
 }
 
-type JobRun struct {
-	ID             int        `bigquery:"id" json:"id" gorm:"primaryKey,column:id"`
+type ReleaseJobRun struct {
+	gorm.Model
+	ID             int        `json:"id" gorm:"primaryKey,column:id"`
 	ReleaseTag     ReleaseTag `json:"releaseTag" gorm:"foreignKey:releaseTagID"`
 	ReleaseTagID   string     `gorm:"column:releaseTagID"`
-	Name           string     `bigquery:"name" json:"name" gorm:"column:name"`
-	JobName        string     `bigquery:"jobName" json:"jobName" gorm:"column:jobName"`
-	Kind           string     `bigquery:"kind" json:"kind" gorm:"column:kind"`
-	State          string     `bigquery:"state" json:"state" gorm:"column:state"`
-	TransitionTime time.Time  `bigquery:"transitionTime" gorm:"column:transitionTime" json:"transitionTime"`
-	Retries        int        `bigquery:"retries" gorm:"column:retries" json:"retries"`
-	URL            string     `bigquery:"url" json:"url" gorm:"column:url"`
-	UpgradesFrom   string     `bigquery:"upgradesFrom" json:"upgradesFrom" gorm:"column:upgradesFrom"`
-	UpgradesTo     string     `bigquery:"upgradesTo" json:"upgradesTo" gorm:"column:upgradesTo"`
-	Upgrade        bool       `bigquery:"upgrade" json:"upgrade" gorm:"column:upgrade"`
+	Name           string     `json:"name" gorm:"column:name"`
+	JobName        string     `json:"jobName" gorm:"column:jobName"`
+	Kind           string     `json:"kind" gorm:"column:kind"`
+	State          string     `json:"state" gorm:"column:state"`
+	TransitionTime time.Time  `json:"transitionTime"`
+	Retries        int        `json:"retries"`
+	URL            string     `json:"url" gorm:"column:url"`
+	UpgradesFrom   string     `json:"upgradesFrom" gorm:"column:upgradesFrom"`
+	UpgradesTo     string     `json:"upgradesTo" gorm:"column:upgradesTo"`
+	Upgrade        bool       `json:"upgrade" gorm:"column:upgrade"`
 }
 
 // GetLastAcceptedByArchitectureAndStream returns the last accepted payload for each architecture/stream combo.

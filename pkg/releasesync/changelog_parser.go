@@ -68,19 +68,19 @@ func (c *Changelog) KubernetesVersion() string {
 	return ""
 }
 
-func (c *Changelog) Repositories() []models.Repository {
+func (c *Changelog) Repositories() []models.ReleaseRepository {
 	sections := c.root.FindAll("h3")
 	if len(sections) == 0 {
 		return nil
 	}
 
-	rows := make([]models.Repository, 0)
+	rows := make([]models.ReleaseRepository, 0)
 	for _, section := range sections {
 		head, imageName, err := extractAnchor(section.Find("a"))
 		if err != nil {
 			continue
 		}
-		row := models.Repository{
+		row := models.ReleaseRepository{
 			Name: imageName,
 			Head: head,
 		}
@@ -108,13 +108,13 @@ func (c *Changelog) Repositories() []models.Repository {
 	return rows
 }
 
-func (c *Changelog) PullRequests() []models.PullRequest {
+func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 	sections := c.root.FindAll("h3")
 	if len(sections) == 0 {
 		return nil
 	}
 
-	rows := make([]models.PullRequest, 0)
+	rows := make([]models.ReleasePullRequest, 0)
 	for _, section := range sections {
 		_, imageName, err := extractAnchor(section.Find("a"))
 		if err != nil {
@@ -132,7 +132,7 @@ func (c *Changelog) PullRequests() []models.PullRequest {
 			if item.Text() == "" {
 				continue
 			}
-			row := models.PullRequest{
+			row := models.ReleasePullRequest{
 				Name: imageName,
 			}
 			row.Description = strings.Trim(strings.TrimPrefix(item.Text(), ": "), " ")

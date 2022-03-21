@@ -203,12 +203,12 @@ func TestChangelog_PullRequests(t *testing.T) {
 	tests := []struct {
 		name string
 		root soup.Root
-		want []models.PullRequest
+		want []models.ReleasePullRequest
 	}{
 		{
 			name: "Extracts pull requests",
 			root: soup.HTMLParse(simpleChangelog),
-			want: []models.PullRequest{
+			want: []models.ReleasePullRequest{
 				{
 					PullRequestID: "583",
 					Name:          "kuryr-cni, kuryr-controller",
@@ -245,12 +245,12 @@ func TestChangelog_Repositories(t *testing.T) {
 	tests := []struct {
 		name string
 		root soup.Root
-		want []models.Repository
+		want []models.ReleaseRepository
 	}{
 		{
 			name: "Can list repositories",
 			root: soup.HTMLParse(simpleChangelog),
-			want: []models.Repository{
+			want: []models.ReleaseRepository{
 				{
 					Name:    "kuryr-cni, kuryr-controller",
 					Head:    "https://github.com/openshift/kuryr-kubernetes/tree/ae2b8f2f5ae3e4cce74055b44821b502dccf4e27",

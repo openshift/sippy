@@ -33,15 +33,15 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.PullRequest{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.Repository{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleaseRepository{}); err != nil {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.JobRun{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
 		return nil, err
 	}
 
