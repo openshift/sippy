@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -15,15 +14,16 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/bigqueryexporter"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
+	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
@@ -38,9 +38,10 @@ var sippyNG embed.FS
 var static embed.FS
 
 type Options struct {
-	LocalData         string
-	OpenshiftReleases []string
-	Dashboards        []string
+	LocalData              string
+	OpenshiftReleases      []string
+	OpenshiftArchitectures []string
+	Dashboards             []string
 	// TODO perhaps this could drive the synthetic tests too
 	Variants                []string
 	StartDay                int
@@ -95,6 +96,7 @@ func main() {
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringVar(&opt.DSN, "database-dsn", os.Getenv("SIPPY_DATABASE_DSN"), "Database DSN for storage of some types of data")
 	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
+	flags.StringArrayVar(&opt.OpenshiftArchitectures, "architecture", opt.OpenshiftArchitectures, "Which architectures to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
 	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "{ocp,kube,none}")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
@@ -240,22 +242,6 @@ func (o *Options) Run() error {
 		}
 		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
 
-		if o.DSN != "" && os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
-			bge, err := bigqueryexporter.New(context.Background())
-			if err != nil {
-				return err
-			}
-
-			dbc, err := db.New(o.DSN)
-			if err != nil {
-				return err
-			}
-
-			if err := bge.ExportData(context.Background(), dbc); err != nil {
-				return err
-			}
-		}
-
 		// Fetch OpenShift PerfScale Data from ElasticSearch:
 		if o.FetchPerfScaleData {
 			scaleJobsDir := path.Join(o.FetchData, perfscaleanalysis.ScaleJobsSubDir)
@@ -313,6 +299,20 @@ func (o *Options) Run() error {
 			}
 			if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
 				return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+			}
+		}
+
+		loadReleases := len(o.OpenshiftReleases) > 0
+		if loadReleases {
+			releaseStreams := make([]string, 0)
+			for _, release := range o.OpenshiftReleases {
+				for _, stream := range []string{"nightly", "ci"} {
+					releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
+				}
+			}
+
+			if err := releasesync.Import(dbc, releaseStreams, o.OpenshiftArchitectures); err != nil {
+				panic(err)
 			}
 		}
 

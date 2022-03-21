@@ -18,7 +18,9 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q := releaseFilter(req, dbClient)
+	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.pull_request_id = pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
+	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -37,7 +39,9 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q := releaseFilter(req, dbClient)
+	q = q.Joins(`JOIN release_tags on release_tags.id = job_runs."releaseTagID"`)
+	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -83,7 +87,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 				FROM
 					job_runs
    				JOIN
-					release_tags ON release_tags."releaseTag" = job_runs."releaseTag"
+					release_tags ON release_tags."id" = job_runs."releaseTagID"
    				WHERE
 					job_runs.state = 'Failed'
 	   			GROUP BY
