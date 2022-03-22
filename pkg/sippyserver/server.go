@@ -735,7 +735,6 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
 		serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
 		serveMux.HandleFunc("/detailed", s.detailed)
-		serveMux.HandleFunc("/refresh", s.refresh)
 		serveMux.HandleFunc("/canary", s.printCanaryReport)
 		serveMux.HandleFunc("/variants", s.htmlVariantsReport)
 		// Old API
@@ -759,6 +758,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
 	}
 
+	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
