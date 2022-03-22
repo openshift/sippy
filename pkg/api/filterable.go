@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"gorm.io/gorm/clause"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"gorm.io/gorm"
 	"k8s.io/klog"
@@ -255,7 +257,7 @@ func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort 
 	if sort == "" {
 		sort = defaultSort
 	}
-	q.Order(fmt.Sprintf("%q %s", sortField, sort))
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
 
 	return q, nil
 }
