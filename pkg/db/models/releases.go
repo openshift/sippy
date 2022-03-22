@@ -7,12 +7,10 @@ import (
 )
 
 type ReleaseTag struct {
-	gorm.Model
-
-	ID int `json:"id" gorm:"primaryKey,column:id"`
+	Model
 
 	// ReleaseTag contains the release version, e.g. 4.8.0-0.nightly-2021-10-28-013428.
-	ReleaseTag string `json:"releaseTag" gorm:"column:releaseTag"`
+	ReleaseTag string `json:"release_tag" gorm:"column:release_tag"`
 
 	// Release contains the release X.Y version, e.g. 4.8
 	Release string `json:"release" gorm:"column:release"`
@@ -29,51 +27,49 @@ type ReleaseTag struct {
 	Phase string `json:"phase" gorm:"column:phase"`
 
 	// ReleaseTime contains the timestamp of the release (the suffix of the tag, -YYYY-MM-DD-HHMMSS).
-	ReleaseTime time.Time `json:"releaseTime" gorm:"column:releaseTime"`
+	ReleaseTime time.Time `json:"release_time" gorm:"column:release_time"`
 
 	// PreviousReleaseTag contains the previously accepted build, on which any
 	// changelog is based from.
-	PreviousReleaseTag string `json:"previousReleaseTag" gorm:"column:previousReleaseTag"`
+	PreviousReleaseTag string `json:"previous_release_tag" gorm:"column:previous_release_tag"`
 
 	// KubernetesVersion contains the kube version for this payload.
-	KubernetesVersion string `json:"kubernetesVersion" gorm:"column:kubernetesVersion"`
+	KubernetesVersion string `json:"kubernetes_version" gorm:"column:kubernetes_version"`
 
 	// CurrentOSVersion contains the current machine OS version.
-	CurrentOSVersion string `json:"currentOSVersion" gorm:"currentOSVersion"`
+	CurrentOSVersion string `json:"current_os_version" gorm:"current_os_version"`
 
 	// PreviousOSVersion, if any, indicates this release included a machine OS
 	// upgrade and this field contains the prior version.
-	PreviousOSVersion string `json:"previousOSVersion" gorm:"previousOSVersion"`
+	PreviousOSVersion string `json:"previous_os_version" gorm:"previous_os_version"`
 
 	// CurrentOSURL is a link to the release page for this machine OS version.
-	CurrentOSURL string `json:"currentOSURL" gorm:"currentOSURL"`
+	CurrentOSURL string `json:"current_os_url" gorm:"current_os_url"`
 
 	// PreviousOSURL is a link to the release page for the previous machine OS version.
-	PreviousOSURL string `json:"previousOSURL" gorm:"previousOSURL"`
+	PreviousOSURL string `json:"previous_os_url" gorm:"previous_os_url"`
 
 	// OSDiffURL is a link to the release page diffing the two OS versions.
-	OSDiffURL string `json:"osDiffURL" gorm:"osDiffURL"`
+	OSDiffURL string `json:"os_diff_url" gorm:"os_diff_url"`
 
 	// ReleasePullRequest contains a list of all the PR's in a release.
-	PullRequests []ReleasePullRequest `gorm:"many2many:release_tag_pull_requests;"`
+	PullRequests []ReleasePullRequest `json:"-" gorm:"many2many:release_tag_pull_requests;"`
 
-	Repositories []ReleaseRepository `gorm:"foreignKey:releaseTagID"`
+	Repositories []ReleaseRepository `json:"-" gorm:"foreignKey:release_tag_id"`
 
-	JobRuns []ReleaseJobRun `gorm:"foreignKey:releaseTagID"`
+	JobRuns []ReleaseJobRun `json:"-" gorm:"foreignKey:release_tag_id"`
 }
 
 // ReleasePullRequest represents a pull request that was included for the first time
 // in a release payload.
 type ReleasePullRequest struct {
-	gorm.Model
-
-	ID int `json:"id" gorm:"primaryKey,column:id"`
+	Model
 
 	// URL is a link to the pull request.
 	URL string `json:"url" gorm:"index:pr_url_name,unique;column:url"`
 
 	// PullRequestID contains the ID of the GitHub pull request.
-	PullRequestID string `json:"pullRequestID" gorm:"column:pullRequestID"`
+	PullRequestID string `json:"pull_request_id" gorm:"column:pull_request_id"`
 
 	// Name contains the names as the repository is known in the release payload.
 	Name string `json:"name" gorm:"index:pr_url_name,unique;column:name"`
@@ -82,44 +78,42 @@ type ReleasePullRequest struct {
 	Description string `json:"description" gorm:"column:description"`
 
 	// BugURL links to the bug, if any.
-	BugURL string `json:"bugURL" gorm:"column:bugURL"`
+	BugURL string `json:"bug_url" gorm:"column:bug_url"`
 }
 
 type ReleaseRepository struct {
-	gorm.Model
-
-	ID int `json:"id" gorm:"primaryKey,column:id"`
+	Model
 
 	// Name of the repository, as known by the release payload.
 	Name string `json:"name" gorm:"column:name"`
 
 	// ReleaseTag this specific repository ref references.
-	ReleaseTag ReleaseTag `gorm:"foreignKey:releaseTagID"`
+	ReleaseTag ReleaseTag `gorm:"foreignKey:release_tag_id"`
 
 	// ReleaseTagID foreign key.
-	ReleaseTagID string `json:"releaseTag" gorm:"column:releaseTagID"`
+	ReleaseTagID string `json:"release_tag" gorm:"column:release_tag_id"`
 
 	// Head is the SHA of the git repo.
-	Head string `json:"repositoryHead" gorm:"column:repositoryHead"`
+	Head string `json:"repository_head" gorm:"column:repository_head"`
 
 	// DiffURL is a link to the git diff.
-	DiffURL string `json:"url" gorm:"column:diffURL"`
+	DiffURL string `json:"url" gorm:"column:diff_url"`
 }
 
 type ReleaseJobRun struct {
-	gorm.Model
-	ID             int        `json:"id" gorm:"primaryKey,column:id"`
-	ReleaseTag     ReleaseTag `json:"releaseTag" gorm:"foreignKey:releaseTagID"`
-	ReleaseTagID   string     `gorm:"column:releaseTagID"`
+	Model
+
+	ReleaseTag     ReleaseTag `json:"release_tag" gorm:"foreignKey:release_tag_id"`
+	ReleaseTagID   string     `gorm:"column:release_tag_id"`
 	Name           string     `json:"name" gorm:"column:name"`
-	JobName        string     `json:"jobName" gorm:"column:jobName"`
+	JobName        string     `json:"job_name" gorm:"column:job_name"`
 	Kind           string     `json:"kind" gorm:"column:kind"`
 	State          string     `json:"state" gorm:"column:state"`
-	TransitionTime time.Time  `json:"transitionTime"`
+	TransitionTime time.Time  `json:"transition_time"`
 	Retries        int        `json:"retries"`
 	URL            string     `json:"url" gorm:"column:url"`
-	UpgradesFrom   string     `json:"upgradesFrom" gorm:"column:upgradesFrom"`
-	UpgradesTo     string     `json:"upgradesTo" gorm:"column:upgradesTo"`
+	UpgradesFrom   string     `json:"upgrades_from" gorm:"column:upgrades_from"`
+	UpgradesTo     string     `json:"upgrades_to" gorm:"column:upgrades_to"`
 	Upgrade        bool       `json:"upgrade" gorm:"column:upgrade"`
 }
 
@@ -138,7 +132,7 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string) ([]Rele
 						AND
 							phase = 'Accepted'
 						ORDER BY
-							architecture, stream, "releaseTime" desc`, release).Scan(&results)
+							architecture, stream, release_time desc`, release).Scan(&results)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -160,7 +154,7 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (st
 		WITH releases AS
 			(
 				SELECT
-					ROW_NUMBER() OVER(ORDER BY "releaseTime" desc) AS id,
+					ROW_NUMBER() OVER(ORDER BY release_time desc) AS id,
 					phase
 				FROM
 					release_tags

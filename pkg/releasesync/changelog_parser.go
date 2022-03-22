@@ -1,7 +1,6 @@
 package releasesync
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/anaskhan96/soup"
@@ -104,7 +103,6 @@ func (c *Changelog) Repositories() []models.ReleaseRepository {
 		rows = append(rows, row)
 	}
 
-	fmt.Println(rows)
 	return rows
 }
 

@@ -29,23 +29,23 @@ function ReleasePayloadJobRuns(props) {
 
   const columns = [
     {
-      field: 'releaseTag',
+      field: 'release_tag',
       headerName: 'Tag',
       hide: true,
     },
     {
-      field: 'jobName',
+      field: 'job_name',
       headerName: 'Job name',
       flex: 3,
     },
 
     {
-      field: 'upgradesFrom',
+      field: 'upgrades_from',
       headerName: 'Upgrades from',
       flex: 3,
     },
     {
-      field: 'upgradesTo',
+      field: 'upgrades_to',
       headerName: 'Upgrades to',
       flex: 3,
     },
@@ -99,7 +99,7 @@ function ReleasePayloadJobRuns(props) {
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'releaseTag'
+      (f) => f.columnField !== 'release_tag'
     )
     currentFilters.items.push({
       id: 99,
@@ -158,7 +158,7 @@ function ReleasePayloadJobRuns(props) {
 
     fetch(
       process.env.REACT_APP_API_URL +
-        '/api/releases/jobRuns?' +
+        '/api/releases/job_runs?' +
         queryString.substring(1)
     )
       .then((response) => {

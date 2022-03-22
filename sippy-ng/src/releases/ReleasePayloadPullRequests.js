@@ -28,13 +28,13 @@ function ReleasePayloadPullRequests(props) {
 
   const columns = [
     {
-      field: 'releaseTag',
+      field: 'release_tag',
       headerName: 'Tag',
       hide: true,
       flex: 1,
     },
     {
-      field: 'pullRequestID',
+      field: 'pull_request_id',
       headerName: 'PR',
       flex: 0.5,
       renderCell: (params) => {
@@ -77,11 +77,11 @@ function ReleasePayloadPullRequests(props) {
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'releaseTag'
+      (f) => f.columnField !== 'release_tag'
     )
     currentFilters.items.push({
       id: 99,
-      columnField: 'releaseTag',
+      columnField: 'release_tag',
       operatorValue: 'contains',
       value: searchValue,
     })
@@ -136,7 +136,7 @@ function ReleasePayloadPullRequests(props) {
 
     fetch(
       process.env.REACT_APP_API_URL +
-        '/api/releases/pullRequests?' +
+        '/api/releases/pull_requests?' +
         queryString.substring(1)
     )
       .then((response) => {
@@ -209,7 +209,7 @@ ReleasePayloadPullRequests.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'pullRequestID',
+  sortField: 'pull_request_id',
   sort: 'asc',
 }
 

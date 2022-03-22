@@ -40,7 +40,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 	}
 
 	q := releaseFilter(req, dbClient)
-	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs."releaseTagID"`)
+	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
 	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -58,14 +58,14 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiReleaseTag struct {
 		models.ReleaseTag
-		FailedJobNames pq.StringArray `gorm:"type:text[];column:failedJobNames" json:"failedJobNames,omitempty"`
+		FailedJobNames pq.StringArray `gorm:"type:text[];column:failed_job_names" json:"failed_job_names,omitempty"`
 	}
 
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q, err := FilterableDBResult(req, "release_tag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -79,20 +79,20 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 	// This join looks up the names of failed jobs, if any, and returns them as
 	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
 	q.Table("release_tags").
-		Select(`release_tags.*, release_job_runs."failedJobNames"`).
+		Select(`release_tags.*, release_job_runs.failed_job_names`).
 		Joins(`LEFT OUTER JOIN 
    			(
 				SELECT
-					release_tags."releaseTag", array_agg(release_job_runs."jobName" ORDER BY release_job_runs."jobName" asc) AS "failedJobNames"
+					release_tags.release_tag, array_agg(release_job_runs.job_name ORDER BY release_job_runs.job_name asc) AS failed_job_names
 				FROM
 					release_job_runs
    				JOIN
-					release_tags ON release_tags."id" = release_job_runs."releaseTagID"
+					release_tags ON release_tags.id = release_job_runs.release_tag_id
    				WHERE
 					release_job_runs.state = 'Failed'
 	   			GROUP BY
-					release_tags."releaseTag"
-			) release_job_runs using ("releaseTag")`).
+					release_tags.release_tag
+			) release_job_runs using (release_tag)`).
 		Scan(&releases)
 
 	RespondWithJSON(http.StatusOK, w, releases)
@@ -101,7 +101,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiResult struct {
 		models.ReleaseTag
-		LastPhase string `json:"lastPhase"`
+		LastPhase string `json:"last_phase"`
 		Count     int    `json:"count"`
 	}
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -36,18 +35,19 @@ func Import(dbc *db.DB, releases, architectures []string) error {
 
 func (r *releaseSyncOptions) Run() error {
 	for _, release := range r.releases {
-		fmt.Fprintf(os.Stderr, "Fetching release %s from release controller...\n", release)
+
+		klog.V(2).Infof("Fetching release %s from release controller...\n", release)
 		allTags := r.fetchReleaseTags(release)
 
 		for _, tags := range allTags {
 			for _, tag := range tags.Tags {
 				c := int64(0)
-				r.db.DB.Table("release_tags").Where("\"releaseTag\" = ?", tag.Name).Count(&c)
+				r.db.DB.Table("release_tags").Where(`"release_tag" = ?`, tag.Name).Count(&c)
 				if c > 0 {
 					continue
 				}
 
-				fmt.Fprintf(os.Stderr, "Fetching tag %s from release controller...\n", tag.Name)
+				klog.V(2).Infof("Fetching tag %s from release controller...\n", tag.Name)
 				releaseDetails := r.fetchReleaseDetails(tags.Architecture, release, tag)
 				releaseTag := releaseDetailsToDB(tags.Architecture, tag, releaseDetails)
 				// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
