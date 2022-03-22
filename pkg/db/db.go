@@ -165,7 +165,37 @@ var PostgresMatViews = []PostgresMaterializedView{
 			"|||END|||":      "NOW()",
 		},
 	},
+	{
+		Name:       "prow_job_runs_report_matview",
+		Definition: jobRunsReportMatView,
+	},
 }
+
+const jobRunsReportMatView = `
+SELECT prow_job_runs.id                                                                      AS id,
+       prow_jobs.release                                                                     AS release,
+       prow_jobs.name                                                                        AS name,
+       prow_jobs.name                                                                        AS job,
+       prow_jobs.variants                                                                    AS variants,
+       REGEXP_REPLACE(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-',
+                      '')                                                                    AS brief_name,
+       prow_job_runs.overall_result                                                          AS overall_result,
+       prow_job_runs.url                                                                     AS test_grid_url,
+       prow_job_runs.url                                                                     AS url,
+       prow_job_runs.succeeded                                                               AS succeeded,
+       prow_job_runs.infrastructure_failure                                                  AS infrastructure_failure,
+       prow_job_runs.known_failure                                                           AS known_failure,
+       cast(extract(epoch from prow_job_runs.timestamp at time zone 'utc') * 1000 as bigint) AS timestamp,
+       prow_job_runs.id                                                                      AS prow_id,
+       ARRAY_AGG(tests.name)                                                                    failed_test_names,
+       COUNT(tests.name)                                                                        test_failures
+FROM prow_job_runs
+         INNER JOIN prow_job_run_tests on prow_job_run_tests.prow_job_run_id = prow_job_runs.id
+         INNER JOIN tests on tests.id = prow_job_run_tests.test_id
+         INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
+WHERE prow_job_run_tests.status = 13
+GROUP BY prow_job_runs.id, prow_jobs.name, prow_jobs.variants, prow_jobs.release;
+`
 
 const testReportMatView = `
 SELECT 

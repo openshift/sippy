@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/util"
-
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
@@ -18,7 +18,7 @@ func (runs apiRunResults) sort(req *http.Request) apiRunResults {
 	sort := apitype.Sort(req.URL.Query().Get("sort"))
 
 	if sortField == "" {
-		sortField = "testFailures"
+		sortField = "test_failures"
 	}
 
 	if sort == "" {
@@ -48,11 +48,20 @@ type apiRunResults []apitype.JobRun
 
 func jobRunToAPIJobRun(id int, job v1sippyprocessing.JobResult, result v1sippyprocessing.JobRunResult) apitype.JobRun {
 	return apitype.JobRun{
-		ID:           id,
-		BriefName:    briefName(job.Name),
-		Variants:     job.Variants,
-		TestGridURL:  job.TestGridURL,
-		JobRunResult: result,
+		ID:                    id,
+		BriefName:             briefName(job.Name),
+		Variants:              job.Variants,
+		TestGridURL:           job.TestGridURL,
+		ProwID:                result.ProwID,
+		Job:                   result.Job,
+		URL:                   result.URL,
+		TestFailures:          result.TestFailures,
+		Failed:                result.Failed,
+		InfrastructureFailure: result.InfrastructureFailure,
+		KnownFailure:          result.KnownFailure,
+		Succeeded:             result.Succeeded,
+		Timestamp:             result.Timestamp,
+		OverallResult:         result.OverallResult,
 	}
 }
 
@@ -109,4 +118,35 @@ func PrintJobRunsReport(w http.ResponseWriter, req *http.Request, currReport, pr
 			sort(req).
 			limit(req),
 	)
+}
+
+// PrintJobsRunsReportFromDB renders a filtered summary of matching jobs.
+func PrintJobsRunsReportFromDB(w http.ResponseWriter, req *http.Request,
+	dbc *db.DB, release string) {
+
+	var filter *Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		filter = &Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+			return
+		}
+	}
+
+	q, err := FilterableDBResult(req, "timestamp", "desc", releaseFilter(req, dbc), apitype.JobRun{})
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
+		return
+	}
+
+	jobsResult := make([]apitype.JobRun, 0)
+	q.Table("prow_job_runs_report_matview").Scan(&jobsResult)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+
+	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
