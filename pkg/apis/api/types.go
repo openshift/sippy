@@ -50,8 +50,8 @@ type Job struct {
 	NetImprovement                  float64 `json:"net_improvement"`
 
 	TestGridURL    string       `json:"test_grid_url"`
-	Bugs           []bugsv1.Bug `json:"bugs"`
-	AssociatedBugs []bugsv1.Bug `json:"associated_bugs"`
+	Bugs           []bugsv1.Bug `json:"bugs" gorm:"-"`
+	AssociatedBugs []bugsv1.Bug `json:"associated_bugs" gorm:"-"`
 }
 
 func (job Job) GetFieldType(param string) ColumnType {

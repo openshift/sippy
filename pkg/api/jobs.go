@@ -213,7 +213,15 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", dbc.DB, apitype.Job{})
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
+	if table.Error != nil {
+		if err != nil {
+			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+			return
+		}
+	}
+
+	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", table, apitype.Job{})
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -229,16 +237,8 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 func BuildJobResults(q *gorm.DB, release string, start, boundary, end time.Time) (jobsAPIResult, error) {
 	now := time.Now()
-
 	jobReports := make([]apitype.Job, 0)
-	r := q.Table("job_results(?, ?, ?, ?)",
-		release, start, boundary, end)
-	if r.Error != nil {
-		klog.Error(r.Error)
-		return []apitype.Job{}, r.Error
-	}
-
-	r.Scan(&jobReports)
+	q.Scan(&jobReports)
 	elapsed := time.Since(now)
 	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
 
