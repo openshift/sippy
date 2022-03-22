@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
 type ColumnType int
@@ -68,6 +67,7 @@ func (job Job) GetFieldType(param string) ColumnType {
 	//nolint:goconst
 	case "tags":
 		return ColumnTypeArray
+	//nolint:goconst
 	case "test_grid_url":
 		return ColumnTypeString
 	default:
@@ -126,12 +126,22 @@ func (job Job) GetArrayValue(param string) ([]string, error) {
 
 // JobRun contains a full accounting of a job run's history, with a synthetic ID.
 type JobRun struct {
-	ID          int      `json:"id"`
-	BriefName   string   `json:"brief_name"`
-	Variants    []string `json:"variants"`
-	Tags        []string `json:"tags"`
-	TestGridURL string   `json:"testGridURL"`
-	v1.JobRunResult
+	ID                    int                 `json:"id"`
+	BriefName             string              `json:"brief_name"`
+	Variants              pq.StringArray      `json:"variants" gorm:"type:text[]"`
+	Tags                  pq.StringArray      `json:"tags" gorm:"type:text[]"`
+	TestGridURL           string              `json:"test_grid_url"`
+	ProwID                uint                `json:"prow_id"`
+	Job                   string              `json:"job"`
+	URL                   string              `json:"url"`
+	TestFailures          int                 `json:"test_failures"`
+	FailedTestNames       pq.StringArray      `json:"failed_test_names" gorm:"type:text[]"`
+	Failed                bool                `json:"failed"`
+	InfrastructureFailure bool                `json:"infrastructure_failure"`
+	KnownFailure          bool                `json:"known_failure"`
+	Succeeded             bool                `json:"succeeded"`
+	Timestamp             int                 `json:"timestamp"`
+	OverallResult         v1.JobOverallResult `json:"result"`
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
@@ -144,11 +154,11 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "result":
 		return ColumnTypeString
-	case "failedTestNames":
+	case "failed_test_names":
 		return ColumnTypeArray
 	case "variants":
 		return ColumnTypeArray
-	case "testGridURL":
+	case "test_grid_url":
 		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
@@ -161,7 +171,7 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 		return run.Job, nil
 	case "result":
 		return string(run.OverallResult), nil
-	case "testGridURL":
+	case "test_grid_url":
 		return run.TestGridURL, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
@@ -172,7 +182,7 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 	switch param {
 	case "id":
 		return float64(run.ID), nil
-	case "testFailures":
+	case "test_failures":
 		return float64(run.TestFailures), nil
 	case "timestamp":
 		return float64(run.Timestamp), nil
@@ -183,7 +193,7 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 
 func (run JobRun) GetArrayValue(param string) ([]string, error) {
 	switch param {
-	case "failedTestNames":
+	case "failed_test_names":
 		return run.FailedTestNames, nil
 	case "tags":
 		return run.Tags, nil

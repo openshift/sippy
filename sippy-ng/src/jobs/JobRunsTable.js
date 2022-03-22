@@ -94,7 +94,7 @@ export default function JobRunsTable(props) {
       },
     },
     {
-      field: 'testFailures',
+      field: 'test_failures',
       headerName: 'Test Failures',
       type: 'number',
       flex: 0.5,
@@ -140,7 +140,7 @@ export default function JobRunsTable(props) {
       hide: true,
     },
     {
-      field: 'failedTestNames',
+      field: 'failed_test_names',
       headerName: 'Failed tests',
       hide: true,
     },
@@ -407,7 +407,7 @@ JobRunsTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'testFailures',
+  sortField: 'timestamp',
   sort: 'desc',
 }
 
