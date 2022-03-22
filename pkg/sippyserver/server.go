@@ -763,8 +763,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
-		serveMux.HandleFunc("/api/releases/pullRequests", s.jsonReleasePullRequestsReport)
-		serveMux.HandleFunc("/api/releases/jobRuns", s.jsonReleaseJobRunsReport)
+		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
+		serveMux.HandleFunc("/api/releases/job_runs", s.jsonReleaseJobRunsReport)
 	}
 
 	// Store a pointer to the HTTP server for later retrieval.

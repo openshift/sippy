@@ -33,15 +33,15 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.PullRequest{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.Repository{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleaseRepository{}); err != nil {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&models.JobRun{}); err != nil {
+	if err := db.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
 		return nil, err
 	}
 
@@ -89,19 +89,6 @@ func New(dsn string) (*DB, error) {
 		DB:        db,
 		BatchSize: 1024,
 	}, nil
-}
-
-// LastID returns the last ID (highest) from a table.
-func (db *DB) LastID(table string) int {
-	var lastID int
-	if res := db.DB.Table(table).Order("id desc").Limit(1).Select("id").Scan(&lastID); res.Error != nil {
-		klog.V(1).Infof("error retrieving last id from %q: %s", table, res.Error)
-		lastID = 0
-	} else {
-		klog.V(1).Infof("retrieved last id of %d from %q", lastID, table)
-	}
-
-	return lastID
 }
 
 func createPostgresMaterializedViews(db *gorm.DB) error {

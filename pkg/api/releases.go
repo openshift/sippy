@@ -18,7 +18,9 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q := releaseFilter(req, dbClient)
+	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
+	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -27,7 +29,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		return
 	}
 
-	prs := make([]models.PullRequest, 0)
+	prs := make([]models.ReleasePullRequest, 0)
 	q.Find(&prs)
 	RespondWithJSON(http.StatusOK, w, prs)
 }
@@ -37,7 +39,9 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q := releaseFilter(req, dbClient)
+	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
+	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -46,7 +50,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		return
 	}
 
-	jobRuns := make([]models.JobRun, 0)
+	jobRuns := make([]models.ReleaseJobRun, 0)
 	q.Find(&jobRuns)
 	RespondWithJSON(http.StatusOK, w, jobRuns)
 }
@@ -54,14 +58,14 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiReleaseTag struct {
 		models.ReleaseTag
-		FailedJobNames pq.StringArray `gorm:"type:text[];column:failedJobNames" json:"failedJobNames,omitempty"`
+		FailedJobNames pq.StringArray `gorm:"type:text[];column:failed_job_names" json:"failed_job_names,omitempty"`
 	}
 
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "releaseTag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	q, err := FilterableDBResult(req, "release_tag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -75,20 +79,20 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 	// This join looks up the names of failed jobs, if any, and returns them as
 	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
 	q.Table("release_tags").
-		Select(`release_tags.*, job_runs."failedJobNames"`).
+		Select(`release_tags.*, release_job_runs.failed_job_names`).
 		Joins(`LEFT OUTER JOIN 
    			(
 				SELECT
-					release_tags."releaseTag", array_agg(job_runs."jobName" ORDER BY job_runs."jobName" asc) AS "failedJobNames"
+					release_tags.release_tag, array_agg(release_job_runs.job_name ORDER BY release_job_runs.job_name asc) AS failed_job_names
 				FROM
-					job_runs
+					release_job_runs
    				JOIN
-					release_tags ON release_tags."releaseTag" = job_runs."releaseTag"
+					release_tags ON release_tags.id = release_job_runs.release_tag_id
    				WHERE
-					job_runs.state = 'Failed'
+					release_job_runs.state = 'Failed'
 	   			GROUP BY
-					release_tags."releaseTag"
-			) job_runs using ("releaseTag")`).
+					release_tags.release_tag
+			) release_job_runs using (release_tag)`).
 		Scan(&releases)
 
 	RespondWithJSON(http.StatusOK, w, releases)
@@ -97,7 +101,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiResult struct {
 		models.ReleaseTag
-		LastPhase string `json:"lastPhase"`
+		LastPhase string `json:"last_phase"`
 		Count     int    `json:"count"`
 	}
 

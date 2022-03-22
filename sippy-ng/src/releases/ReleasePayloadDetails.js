@@ -52,14 +52,14 @@ export default function ReleasePayloadDetails(props) {
   const [tag, setTag] = React.useState({})
 
   const [releaseTag = props.releaseTag, setReleaseTag] = useQueryParam(
-    'releaseTag',
+    'release_tag',
     StringParam
   )
 
   const fetchData = () => {
     const filter = encodeURIComponent(
       JSON.stringify({
-        items: [filterFor('releaseTag', 'equals', releaseTag)],
+        items: [filterFor('release_tag', 'equals', releaseTag)],
       })
     )
 
@@ -156,14 +156,14 @@ export default function ReleasePayloadDetails(props) {
               />
               <Tab
                 label="Pull requests"
-                value="pullRequests"
+                value="pull_requests"
                 component={Link}
-                to={url + '/pullRequests'}
+                to={url + '/pull_requests'}
               />
               <Tab
                 label="Release controller"
                 value="releaseController"
-                href={`https://${tag.architecture}.ocp.releases.ci.openshift.org/releasestream/${tag.release}.0-0.${tag.stream}${streamSuffix}/release/${tag.releaseTag}`}
+                href={`https://${tag.architecture}.ocp.releases.ci.openshift.org/releasestream/${tag.release}.0-0.${tag.stream}${streamSuffix}/release/${tag.release_tag}`}
               />
               <Tooltip title="Note: This payload may already be garbage collected on the release controller.">
                 <WarningOutlined style={{ marginTop: 8, marginRight: 8 }} />
@@ -175,14 +175,14 @@ export default function ReleasePayloadDetails(props) {
           {statusAlert}
         </Card>
         <Switch>
-          <Route path={path + '/pullRequests'}>
+          <Route path={path + '/pull_requests'}>
             <Card
               elevation={5}
               style={{ margin: 20, padding: 20, height: '100%' }}
             >
               <ReleasePayloadPullRequests
                 filterModel={{
-                  items: [filterFor('releaseTag', 'equals', releaseTag)],
+                  items: [filterFor('release_tag', 'equals', releaseTag)],
                 }}
               />
             </Card>
@@ -195,7 +195,7 @@ export default function ReleasePayloadDetails(props) {
             >
               <ReleasePayloadJobRuns
                 filterModel={{
-                  items: [filterFor('releaseTag', 'equals', releaseTag)],
+                  items: [filterFor('release_tag', 'equals', releaseTag)],
                 }}
               />
             </Card>

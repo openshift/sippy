@@ -60,13 +60,13 @@ function ReleasePayloadTable(props) {
     },
 
     {
-      field: 'releaseTag',
+      field: 'release_tag',
       headerName: 'Tag',
       flex: 4,
       renderCell: (params) => {
         return (
           <Link
-            to={`/release/${params.row.release}/tags/${params.row.releaseTag}`}
+            to={`/release/${params.row.release}/tags/${params.row.release_tag}`}
           >
             {params.value}
           </Link>
@@ -86,7 +86,7 @@ function ReleasePayloadTable(props) {
       hide: props.briefTable,
     },
     {
-      field: 'releaseTime',
+      field: 'release_time',
       headerName: 'Time',
       flex: 2,
       type: 'date',
@@ -106,13 +106,13 @@ function ReleasePayloadTable(props) {
       },
     },
     {
-      field: 'kubernetesVersion',
+      field: 'kubernetes_version',
       headerName: 'Kubernetes version',
       flex: 1.5,
       hide: props.briefTable,
     },
     {
-      field: 'currentOSVersion',
+      field: 'current_os_version',
       headerName: 'Current OS Version',
       flex: 3,
       renderCell: (params) => {
@@ -121,7 +121,7 @@ function ReleasePayloadTable(props) {
       hide: props.briefTable,
     },
     {
-      field: 'osDiffURL',
+      field: 'os_diff_url',
       headerName: 'Diff',
       flex: 1.25,
       align: 'center',
@@ -142,7 +142,7 @@ function ReleasePayloadTable(props) {
       hide: props.briefTable,
     },
     {
-      field: 'previousOSVersion',
+      field: 'previous_os_version',
       headerName: 'Previous OS Version',
       flex: 3,
       renderCell: (params) => {
@@ -153,7 +153,7 @@ function ReleasePayloadTable(props) {
       hide: props.briefTable,
     },
     {
-      field: 'failedJobNames',
+      field: 'failed_job_names',
       headerName: 'Failed jobs',
       sortable: false,
       filterable: false,
@@ -168,7 +168,7 @@ function ReleasePayloadTable(props) {
             >
               <Box
                 component={Link}
-                to={`/release/${props.release}/tags/${params.row.releaseTag}`}
+                to={`/release/${props.release}/tags/${params.row.release_tag}`}
                 className="clamped"
               >
                 {params.value.join(', ')}
@@ -199,11 +199,11 @@ function ReleasePayloadTable(props) {
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'releaseTag'
+      (f) => f.columnField !== 'release_tag'
     )
     currentFilters.items.push({
       id: 99,
-      columnField: 'releaseTag',
+      columnField: 'release_tag',
       operatorValue: 'contains',
       value: searchValue,
     })
@@ -332,7 +332,7 @@ ReleasePayloadTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'releaseTime',
+  sortField: 'release_time',
   sort: 'desc',
 }
 

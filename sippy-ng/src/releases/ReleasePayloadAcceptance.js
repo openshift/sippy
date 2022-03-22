@@ -74,16 +74,16 @@ function ReleasePayloadAcceptance(props) {
     let icon = <Help />
     let text = 'Unknown'
     let tooltip = 'No information is available.'
-    if (row.releaseTime && row.releaseTime != '') {
-      tooltip = `The last ${row.count} releases were ${row.lastPhase}`
-      text = relativeTime(new Date(row.releaseTime))
-      const when = new Date().getTime() - new Date(row.releaseTime).getTime()
+    if (row.release_time && row.release_time != '') {
+      tooltip = `The last ${row.count} releases were ${row.last_phase}`
+      text = relativeTime(new Date(row.release_time))
+      const when = new Date().getTime() - new Date(row.release_time).getTime()
 
-      if (row.lastPhase === 'Accepted' && when <= 24 * 60 * 60 * 1000) {
+      if (row.last_phase === 'Accepted' && when <= 24 * 60 * 60 * 1000) {
         // If we had an accepted release in the last 24 hours, we're green
         bgColor = theme.palette.success.light
         icon = <CheckCircle style={{ fill: 'green' }} />
-      } else if (row.lastPhase === 'Rejected') {
+      } else if (row.last_phase === 'Rejected') {
         // If the last payload was rejected, we are red.
         bgColor = theme.palette.error.light
         icon = <Error style={{ fill: 'maroon' }} />
