@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -64,7 +65,7 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 		"install should work",                     // TODO: would prefer exact matching on the full InstallTestName const
 	}
 
-	testReports, err := queryTestReports(dbc, release, testSubstrings)
+	testReports, err := query.TestReportsByVariant(dbc, release, testSubstrings)
 	if err != nil {
 		return "", err
 	}

@@ -66,8 +66,8 @@ func filterPertinentInfrequentJobResults(
 	return filtered
 }
 
-func isNeverStableOrTechPreview(result sippyprocessingv1.JobResult) bool {
-	for _, variant := range result.Variants {
+func IsNeverStableOrTechPreview(variants []string) bool {
+	for _, variant := range variants {
 		if variant == "never-stable" || variant == "techpreview" {
 			return true
 		}
@@ -76,9 +76,8 @@ func isNeverStableOrTechPreview(result sippyprocessingv1.JobResult) bool {
 	return false
 }
 
-// The zero-value of a float64 in go is NaN, however you cannot marshal that
-// value to JSON. This converts a NaN to zero.
-func convertNaNToZero(f float64) float64 {
+// ConvertNaNToZero prevents attempts to marshal the NaN zero-value of a float64 in go by converting to 0.
+func ConvertNaNToZero(f float64) float64 {
 	if math.IsNaN(f) {
 		return 0.0
 	}
@@ -96,7 +95,7 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 	})
 
 	for _, result := range results {
-		if isNeverStableOrTechPreview(result) {
+		if IsNeverStableOrTechPreview(result.Variants) {
 			continue
 		}
 		index := int(math.Floor(result.PassPercentage / 10))
@@ -117,9 +116,9 @@ func calculateJobResultStatistics(results []sippyprocessingv1.JobResult) sippypr
 	jobStatistics.Mean = mean
 	jobStatistics.StandardDeviation = sd
 	jobStatistics.Quartiles = []float64{
-		convertNaNToZero(quartiles.Q1),
-		convertNaNToZero(quartiles.Q2),
-		convertNaNToZero(quartiles.Q3),
+		ConvertNaNToZero(quartiles.Q1),
+		ConvertNaNToZero(quartiles.Q2),
+		ConvertNaNToZero(quartiles.Q3),
 	}
 	jobStatistics.P95 = p95
 

@@ -95,6 +95,7 @@ const (
 	OperatorFinalHealthPrefix   = "sippy.[sig-sippy] operator conditions "
 	FinalOperatorHealthTestName = "sippy.[sig-sippy] tests should finish with healthy operators"
 
+	SippySuiteName         = "sippy"
 	InfrastructureTestName = `sippy.[sig-sippy] infrastructure should work`
 	InstallTestName        = `sippy.[sig-sippy] install should work`
 	InstallTimeoutTestName = `sippy.[sig-sippy] install should not timeout`

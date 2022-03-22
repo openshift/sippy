@@ -1,4 +1,4 @@
-package api
+package filter
 
 import (
 	"encoding/json"
@@ -235,18 +235,33 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
-func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
-	filter := &Filter{}
+type FilterOptions struct {
+	Filter    *Filter
+	SortField string
+	Sort      apitype.Sort
+	Limit     int
+}
+
+func FilterOptionsFromRequest(req *http.Request, defaultSortField string, defaultSort apitype.Sort) (filterOpts *FilterOptions, err error) {
+	filterOpts = &FilterOptions{}
 	queryFilter := req.URL.Query().Get("filter")
+	filter := &Filter{}
 	if queryFilter != "" {
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
-			return nil, fmt.Errorf("could not marshal filter: %w", err)
+			return filterOpts, fmt.Errorf("could not marshal filter: %w", err)
 		}
 	}
-	q := filter.ToSQL(dbClient, filterable)
-	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 {
-		q = q.Limit(limit)
+	filterOpts.Filter = filter
+
+	limitParam := req.URL.Query().Get("limit")
+	if limitParam == "" {
+		filterOpts.Limit = 0
+	} else {
+		limit, err := strconv.Atoi(limitParam)
+		if err != nil {
+			return filterOpts, fmt.Errorf("error parsing limit param: %s", err)
+		}
+		filterOpts.Limit = limit
 	}
 
 	sortField := req.URL.Query().Get("sortField")
@@ -257,7 +272,18 @@ func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort 
 	if sort == "" {
 		sort = defaultSort
 	}
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
+	filterOpts.Sort = sort
+	filterOpts.SortField = sortField
+	return filterOpts, nil
+}
+
+func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
+	q := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if filterOpts.Limit > 0 {
+		q = q.Limit(filterOpts.Limit)
+	}
+
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == "desc"})
 
 	return q, nil
 }
@@ -426,7 +452,7 @@ func filterArray(filter FilterItem, item Filterable) (bool, error) {
 	return false, nil
 }
 
-func compare(a, b Filterable, sortField string) bool {
+func Compare(a, b Filterable, sortField string) bool {
 	kind := a.GetFieldType(sortField)
 
 	if kind == apitype.ColumnTypeNumerical {

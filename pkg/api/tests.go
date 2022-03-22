@@ -10,6 +10,7 @@ import (
 	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	filter2 "github.com/openshift/sippy/pkg/filter"
 	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -54,9 +55,9 @@ func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
 
 	gosort.Slice(tests, func(i, j int) bool {
 		if sort == "asc" {
-			return compare(tests[i], tests[j], sortField)
+			return filter2.Compare(tests[i], tests[j], sortField)
 		}
-		return compare(tests[j], tests[i], sortField)
+		return filter2.Compare(tests[j], tests[i], sortField)
 	})
 
 	return tests
@@ -74,11 +75,11 @@ func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
 // PrintTestsJSON renders the list of matching tests.
 func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.FailingTestResult) {
 	tests := testsAPIResult{}
-	var filter *Filter
+	var filter *filter2.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
@@ -161,11 +162,11 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 }
 
 func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-	var filter *Filter
+	var filter *filter2.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
@@ -191,7 +192,7 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 		limit(req))
 }
 
-func BuildTestsResults(dbc *db.DB, release, period string, filter *Filter) (testsAPIResult, error) {
+func BuildTestsResults(dbc *db.DB, release, period string, filter *filter2.Filter) (testsAPIResult, error) {
 	now := time.Now()
 
 	var testReports []apitype.Test

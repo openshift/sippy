@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"gorm.io/gorm"
-
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
+	filter2 "github.com/openshift/sippy/pkg/filter"
 	"k8s.io/klog"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -41,9 +40,9 @@ func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 
 	gosort.Slice(jobs, func(i, j int) bool {
 		if sort == apitype.SortAscending {
-			return compare(jobs[i], jobs[j], sortField)
+			return filter2.Compare(jobs[i], jobs[j], sortField)
 		}
-		return compare(jobs[j], jobs[i], sortField)
+		return filter2.Compare(jobs[j], jobs[i], sortField)
 	})
 
 	return jobs
@@ -91,14 +90,14 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 // PrintJobsReport renders a filtered summary of matching jobs.
 func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
 
-	var filter *Filter
+	var filter *filter2.Filter
 	currentPeriod := currReport.ByJob
 	twoDayPeriod := twoDayReport.ByJob
 	previousPeriod := prevReport.ByJob
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
@@ -149,11 +148,11 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, release string) {
 
-	var filter *Filter
+	var filter *filter2.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
@@ -213,48 +212,18 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
-	if table.Error != nil {
-		if err != nil {
-			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
-			return
-		}
-	}
-
-	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", table, apitype.Job{})
+	filterOpts, err := filter2.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
-	jobsResult, err := BuildJobResults(q, release, start, boundary, end)
+	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
 	RespondWithJSON(http.StatusOK, w, jobsResult)
-}
-
-func BuildJobResults(q *gorm.DB, release string, start, boundary, end time.Time) (jobsAPIResult, error) {
-	now := time.Now()
-	jobReports := make([]apitype.Job, 0)
-	q.Scan(&jobReports)
-	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
-
-	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
-	// instead of empty array. Quick hack to make this work.
-	for i, j := range jobReports {
-		if len(j.Bugs) == 0 {
-			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
-		}
-
-		if len(j.AssociatedBugs) == 0 {
-			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
-		}
-	}
-
-	return jobReports, nil
 }
 
 type jobDetail struct {
@@ -384,10 +353,10 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 // PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.
 func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Request, release string, currScaleJobReports []workloadmetricsv1.WorkloadMetricsRow) {
 
-	var filter *Filter
+	var filter *filter2.Filter
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return

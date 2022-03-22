@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	filter2 "github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -20,11 +21,11 @@ type apiJobAnalysisResult struct {
 }
 
 func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v1sippyprocessing.TestReport) {
-	var filter *Filter
+	var filter *filter2.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
+		filter = &filter2.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
@@ -41,12 +42,12 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 	}
 
 	allJobs := append(curr.ByJob, prev.ByJob...)
-	var timestampFilter *Filter
+	var timestampFilter *filter2.Filter
 	for index, job := range allJobs {
 		prevJob := util.FindJobResultForJobName(job.Name, prev.ByJob)
 		if filter != nil {
-			newItems := make([]FilterItem, 0)
-			timestampItems := make([]FilterItem, 0)
+			newItems := make([]filter2.FilterItem, 0)
+			timestampItems := make([]filter2.FilterItem, 0)
 			for _, item := range filter.Items {
 				if item.Field != "timestamp" {
 					newItems = append(newItems, item)
@@ -56,7 +57,7 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 				filter.Items = newItems
 
 				if len(timestampItems) > 0 {
-					timestampFilter = &Filter{
+					timestampFilter = &filter2.Filter{
 						Items:        timestampItems,
 						LinkOperator: filter.LinkOperator,
 					}
