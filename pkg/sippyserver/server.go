@@ -13,20 +13,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"k8s.io/klog"
 
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"k8s.io/klog"
 )
 
 func NewServer(
@@ -750,7 +750,6 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
 		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
 
-		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport) // TODO: port to db
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 
 		serveMux.HandleFunc("/api/health", s.jsonHealthReport) // TODO: port to db
@@ -762,6 +761,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
+		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonReleaseJobRunsReport)
