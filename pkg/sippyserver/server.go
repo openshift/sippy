@@ -517,7 +517,11 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	response := jsonResponse{}
 
 	var releases []Release
-	res := s.db.DB.Raw("SELECT DISTINCT(release) FROM prow_jobs").Scan(&releases)
+	// The string_to_array trick ensures releases are sorted in version order, descending
+	res := s.db.DB.Raw(`
+		SELECT DISTINCT(release), string_to_array(release, '.')::int[]
+		FROM prow_jobs
+		ORDER BY string_to_array(release, '.')::int[] desc`).Scan(&releases)
 	if res.Error != nil {
 		klog.Errorf("error querying releases from db: %v", res.Error)
 	}
