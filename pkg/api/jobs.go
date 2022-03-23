@@ -148,63 +148,9 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 }
 
 // PrintJobsReportFromDB renders a filtered summary of matching jobs.
-func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
-	dbc *db.DB, release string) {
-	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
-	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
-	var start time.Time
-	var boundary time.Time
-	var end time.Time
-	var err error
-
-	startParam := req.URL.Query().Get("start")
-	if startParam != "" {
-		start, err = time.Parse("2006-01-02", startParam)
-		if err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
-			return
-		}
-	} else if req.URL.Query().Get("period") == periodTwoDay {
-		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
-		start = time.Now().Add(-9 * 24 * time.Hour)
-	} else {
-		// Default start to 14 days ago
-		start = time.Now().Add(-14 * 24 * time.Hour)
-	}
-
-	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
-	// for callers to know to specify one day beyond.
-	boundaryParam := req.URL.Query().Get("boundary")
-	if boundaryParam != "" {
-		boundary, err = time.Parse("2006-01-02", boundaryParam)
-		if err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
-			return
-		}
-	} else if req.URL.Query().Get("period") == periodTwoDay {
-		boundary = time.Now().Add(-2 * 24 * time.Hour)
-	} else {
-		// Default boundary to 7 days ago
-		boundary = time.Now().Add(-7 * 24 * time.Hour)
-
-	}
-
-	endParam := req.URL.Query().Get("end")
-	if endParam != "" {
-		end, err = time.Parse("2006-01-02", endParam)
-		if err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
-			return
-		}
-	} else {
-		// Default end to now
-		end = time.Now()
-	}
-
-	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
-
-	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
-	if table.Error != nil {
+func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
+	table, err := jobResultsFromDB(req, dbc.DB, release)
+	if err != nil {
 		if err != nil {
 			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 			return
@@ -223,7 +169,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	jobsResult, err := BuildJobResults(q, release, start, boundary, end)
+	jobsResult, err := BuildJobResults(q)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -232,7 +178,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
 
-func BuildJobResults(q *gorm.DB, release string, start, boundary, end time.Time) (jobsAPIResult, error) {
+func BuildJobResults(q *gorm.DB) (jobsAPIResult, error) {
 	now := time.Now()
 	jobReports := make([]apitype.Job, 0)
 	q.Scan(&jobReports)
@@ -414,4 +360,58 @@ func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Reques
 
 	RespondWithJSON(http.StatusOK, w, filteredScaleJobs)
 
+}
+
+func jobResultsFromDB(req *http.Request, dbc *gorm.DB, release string) (*gorm.DB, error) {
+	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
+	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
+	var start time.Time
+	var boundary time.Time
+	var end time.Time
+	var err error
+
+	startParam := req.URL.Query().Get("start")
+	if startParam != "" {
+		start, err = time.Parse("2006-01-02", startParam)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding start param: %s", err.Error())
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
+		start = time.Now().Add(-9 * 24 * time.Hour)
+	} else {
+		// Default start to 14 days ago
+		start = time.Now().Add(-14 * 24 * time.Hour)
+	}
+
+	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
+	// for callers to know to specify one day beyond.
+	boundaryParam := req.URL.Query().Get("boundary")
+	if boundaryParam != "" {
+		boundary, err = time.Parse("2006-01-02", boundaryParam)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding boundary param: %s", err.Error())
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
+	} else {
+		// Default boundary to 7 days ago
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+
+	}
+
+	endParam := req.URL.Query().Get("end")
+	if endParam != "" {
+		end, err = time.Parse("2006-01-02", endParam)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding end param: %s", err.Error())
+		}
+	} else {
+		// Default end to now
+		end = time.Now()
+	}
+
+	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	return dbc.Table("job_results(?, ?, ?, ?)", release, start, boundary, end), nil
 }

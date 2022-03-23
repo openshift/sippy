@@ -311,7 +311,7 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 				klog.V(4).Infof("Could not filter string type: %s", err)
 				return false, err
 			}
-		case apitype.ColumnTypeNumerical, apitype.ColumnTypeTimestamp:
+		case apitype.ColumnTypeNumerical:
 			klog.V(4).Infof("Column %s is of numerical type", filter.Field)
 			result, err = filterNumerical(filter, item)
 			if err != nil {

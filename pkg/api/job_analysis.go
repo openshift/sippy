@@ -176,8 +176,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		period = PeriodDay
 	}
 
-	table := releaseFilter(req, dbc).Table("prow_jobs")
-	if table.Error != nil {
+	table, err := jobResultsFromDB(req, dbc.DB, release)
+	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job analysis report:" + table.Error.Error()})
 		return
 	}

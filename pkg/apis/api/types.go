@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -15,7 +16,6 @@ const (
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
-	ColumnTypeTimestamp
 )
 
 type Sort string
@@ -162,7 +162,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "test_grid_url":
 		return ColumnTypeString
 	case "timestamp":
-		return ColumnTypeTimestamp
+		return ColumnTypeNumerical
 	default:
 		return ColumnTypeNumerical
 	}
