@@ -148,18 +148,6 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 // PrintJobsReportFromDB renders a filtered summary of matching jobs.
 func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, release string) {
-
-	var filter *Filter
-
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		filter = &Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
-		}
-	}
-
 	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
 	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
 	var start time.Time
@@ -221,11 +209,18 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	q, err := FilterableDBResult(req, "current_pass_percentage", "desc", table, apitype.Job{})
+	filter, err := extractFilters(req)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
+
+	q, err := filterableDBResult(req, filter, "current_pass_percentage", "desc", table, apitype.Job{})
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		return
+	}
+
 	jobsResult, err := BuildJobResults(q, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})

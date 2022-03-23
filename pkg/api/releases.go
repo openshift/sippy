@@ -20,7 +20,17 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 
 	q := releaseFilter(req, dbClient)
 	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
-	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
+
+	filter, err := extractFilters(req)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	q, err = filterableDBResult(req, filter, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -41,7 +51,16 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 
 	q := releaseFilter(req, dbClient)
 	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
-	q, err := FilterableDBResult(req, "id", apitype.SortDescending, q, nil)
+	filter, err := extractFilters(req)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	q, err = filterableDBResult(req, filter, "id", apitype.SortDescending, q, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -65,7 +84,16 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q, err := FilterableDBResult(req, "release_tag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
+	filter, err := extractFilters(req)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	q, err := filterableDBResult(req, filter, "release_tag", apitype.SortDescending, releaseFilter(req, dbClient), nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,

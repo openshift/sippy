@@ -3,11 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"gorm.io/gorm/clause"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"gorm.io/gorm"
@@ -235,7 +234,7 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
-func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+func extractFilters(req *http.Request) (*Filter, error) {
 	filter := &Filter{}
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
@@ -243,6 +242,11 @@ func FilterableDBResult(req *http.Request, defaultSortField string, defaultSort 
 			return nil, fmt.Errorf("could not marshal filter: %w", err)
 		}
 	}
+
+	return filter, nil
+}
+
+func filterableDBResult(req *http.Request, filter *Filter, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	q := filter.ToSQL(dbClient, filterable)
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit > 0 {
@@ -296,7 +300,7 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 				klog.V(4).Infof("Could not filter string type: %s", err)
 				return false, err
 			}
-		case apitype.ColumnTypeNumerical:
+		case apitype.ColumnTypeNumerical, apitype.ColumnTypeTimestamp:
 			klog.V(4).Infof("Column %s is of numerical type", filter.Field)
 			result, err = filterNumerical(filter, item)
 			if err != nil {

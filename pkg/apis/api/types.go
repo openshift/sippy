@@ -15,6 +15,7 @@ const (
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
+	ColumnTypeTimestamp
 )
 
 type Sort string
@@ -160,6 +161,8 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "test_grid_url":
 		return ColumnTypeString
+	case "timestamp":
+		return ColumnTypeTimestamp
 	default:
 		return ColumnTypeNumerical
 	}

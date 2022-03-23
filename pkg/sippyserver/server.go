@@ -676,6 +676,13 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	}
 }
 
+func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
+	}
+}
+
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.perfscaleMetricsJobReports
 
@@ -721,6 +728,7 @@ func (s *Server) Serve() {
 	if s.dbOnlyMode {
 		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
+		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 		serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
