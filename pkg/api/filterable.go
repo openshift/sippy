@@ -3,14 +3,16 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"gorm.io/gorm/clause"
 	"net/http"
 	"strconv"
 	"strings"
 
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"gorm.io/gorm/clause"
+
 	"gorm.io/gorm"
 	"k8s.io/klog"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
 
 // LinkOperator determines how to chain multiple filters together, 'AND' and 'OR'
@@ -234,6 +236,15 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
+func extractAndApplyFilters(req *http.Request, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+	filter, err := extractFilters(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return applyFilters(req, filter, defaultSortField, dbClient, filterable)
+}
+
 func extractFilters(req *http.Request) (*Filter, error) {
 	filter := &Filter{}
 	queryFilter := req.URL.Query().Get("filter")
@@ -246,7 +257,7 @@ func extractFilters(req *http.Request) (*Filter, error) {
 	return filter, nil
 }
 
-func filterableDBResult(req *http.Request, filter *Filter, defaultSortField string, defaultSort apitype.Sort, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+func applyFilters(req *http.Request, filter *Filter, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	q := filter.ToSQL(dbClient, filterable)
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit > 0 {
@@ -259,7 +270,7 @@ func filterableDBResult(req *http.Request, filter *Filter, defaultSortField stri
 		sortField = defaultSortField
 	}
 	if sort == "" {
-		sort = defaultSort
+		sort = "desc"
 	}
 	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
 

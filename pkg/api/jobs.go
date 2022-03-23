@@ -10,13 +10,15 @@ import (
 	"strings"
 	"time"
 
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"gorm.io/gorm"
+
+	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+
+	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"k8s.io/klog"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
@@ -215,7 +217,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	q, err := filterableDBResult(req, filter, "current_pass_percentage", "desc", table, apitype.Job{})
+	q, err := applyFilters(req, filter, "current_pass_percentage", table, apitype.Job{})
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return

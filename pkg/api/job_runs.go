@@ -140,7 +140,7 @@ func PrintJobsRunsReportFromDB(w http.ResponseWriter, req *http.Request,
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return
 	}
-	q, err := filterableDBResult(req, filter, "timestamp", "desc", releaseFilter(req, dbc), apitype.JobRun{})
+	q, err := applyFilters(req, filter, "timestamp", releaseFilter(req, dbc), apitype.JobRun{})
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return

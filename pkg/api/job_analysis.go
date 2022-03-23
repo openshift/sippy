@@ -3,15 +3,19 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/db"
 	"net/http"
 	"strconv"
 	"time"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db"
+
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
+
+const PeriodDay = "day"
+const PeriodHour = "hour"
 
 type analysisResult struct {
 	TotalRuns        int                                        `json:"total_runs"`
@@ -37,8 +41,8 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 
 	period := req.URL.Query().Get("period")
 	if period == "" {
-		period = "day"
-	} else if period != "day" && period != "hour" {
+		period = PeriodDay
+	} else if period != PeriodDay && period != PeriodHour {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Period must be one of: day, hour"})
 		return
 	}
@@ -95,7 +99,7 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 			}
 
 			var date string
-			if period == "day" {
+			if period == PeriodDay {
 				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02")
 			} else {
 				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02 15:00")
@@ -154,8 +158,12 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 
 	for _, f := range filter.Items {
 		if f.Field == "timestamp" {
-			fmt.Println("here")
-			ms, _ := strconv.ParseInt(f.Value, 0, 64)
+			ms, err := strconv.ParseInt(f.Value, 0, 64)
+			if err != nil {
+				RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+				return
+			}
+
 			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
 		} else {
@@ -165,7 +173,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 
 	period := req.URL.Query().Get("period")
 	if period == "" {
-		period = "day"
+		period = PeriodDay
 	}
 
 	table := releaseFilter(req, dbc).Table("prow_jobs")
@@ -174,7 +182,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		return
 	}
 
-	q, err := filterableDBResult(req, jobFilter, "name", "desc", table, apitype.Job{})
+	q, err := applyFilters(req, jobFilter, "name", table, apitype.Job{})
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return
@@ -219,7 +227,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		ByPeriod: make(map[string]analysisResult),
 	}
 	var formatter string
-	if period == "day" {
+	if period == PeriodDay {
 		formatter = "2006-01-02"
 	} else {
 		formatter = "2006-01-02 15:00"
