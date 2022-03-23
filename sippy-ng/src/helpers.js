@@ -74,14 +74,14 @@ export function pathForExactJobRuns(release, job) {
 
 export function pathForVariantsWithTestFailure(release, variant, test) {
   return `/jobs/${release}/runs?${multiple(
-    filterFor('failedTestNames', 'contains', test),
+    filterFor('failed_test_names', 'contains', test),
     filterFor('variants', 'contains', variant)
   )}`
 }
 
 export function pathForJobRunsWithTestFailure(release, test) {
   return `/jobs/${release}/runs?${single(
-    filterFor('failedTestNames', 'contains', test)
+    filterFor('failed_test_names', 'contains', test)
   )}`
 }
 

@@ -479,7 +479,7 @@ export function TestAnalysis(props) {
                   items: [
                     {
                       id: 99,
-                      columnField: 'failedTestNames',
+                      columnField: 'failed_test_names',
                       operatorValue: 'contains',
                       value: testName,
                     },
