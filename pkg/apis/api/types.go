@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -160,6 +161,8 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "test_grid_url":
 		return ColumnTypeString
+	case "timestamp":
+		return ColumnTypeNumerical
 	default:
 		return ColumnTypeNumerical
 	}

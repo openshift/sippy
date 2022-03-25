@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"net/http"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
 	"k8s.io/klog"
 
 	"github.com/lib/pq"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"gorm.io/gorm"
+
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"gorm.io/gorm"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {

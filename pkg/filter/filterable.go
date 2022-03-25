@@ -9,9 +9,10 @@ import (
 
 	"gorm.io/gorm/clause"
 
-	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"gorm.io/gorm"
 	"k8s.io/klog"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
 
 // LinkOperator determines how to chain multiple filters together, 'AND' and 'OR'
@@ -275,6 +276,39 @@ func FilterOptionsFromRequest(req *http.Request, defaultSortField string, defaul
 	filterOpts.Sort = sort
 	filterOpts.SortField = sortField
 	return filterOpts, nil
+}
+
+// TODO: merge with FilterOptionsFromRequest
+func ExtractFilters(req *http.Request) (*Filter, error) {
+	filter := &Filter{}
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			return nil, fmt.Errorf("could not marshal filter: %w", err)
+		}
+	}
+
+	return filter, nil
+}
+
+func ApplyFilters(req *http.Request, filter *Filter, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+	q := filter.ToSQL(dbClient, filterable)
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	if sortField == "" {
+		sortField = defaultSortField
+	}
+	if sort == "" {
+		sort = "desc"
+	}
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
+
+	return q, nil
 }
 
 func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
