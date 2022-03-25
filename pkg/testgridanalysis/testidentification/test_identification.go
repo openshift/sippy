@@ -117,9 +117,14 @@ var curatedTestSubstrings = map[string][]string{
 
 var (
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
+	CVOAcknowledgesUpgradeTest  = "[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
+	OperatorsUpgradedTest       = "[sig-cluster-lifecycle] Cluster completes upgrade"
 	machineConfigsUpgradedRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-mco\] Machine config pools complete upgrade$`)
+	MachineConfigsUpgradedRegex = "[sig-mco] Machine config pools complete upgrade"
 	openshiftTestsRegex         = regexp.MustCompile(`(?:^openshift-tests\.|\[Suite:openshift|\[k8s\.io\]|\[sig-|\[bz-)`)
+	UpgradeFastTest             = "[sig-cluster-lifecycle] cluster upgrade should be fast"
+	APIsRemainAvailTest         = "APIs remain available"
 )
 
 func IsCuratedTest(bugzillaRelease, testName string) bool {
@@ -213,7 +218,7 @@ func IsUpgradeRelatedTest(testName string) bool {
 		// indicates every cluster operator upgraded successfully.  This does not include machine config pools
 		return true
 	}
-	if strings.Contains(testName, `[sig-cluster-lifecycle] cluster upgrade should be fast`) {
+	if strings.Contains(testName, UpgradeFastTest) {
 		// indicates that every cluster operator upgraded within X minutes (currently 75 as of today)
 		return true
 	}
@@ -221,7 +226,7 @@ func IsUpgradeRelatedTest(testName string) bool {
 		// indicates that all the machines restarted with new rhcos
 		return true
 	}
-	if strings.Contains(testName, `APIs remain available`) {
+	if strings.Contains(testName, APIsRemainAvailTest) {
 		return true
 	}
 

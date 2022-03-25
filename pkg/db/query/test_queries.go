@@ -20,6 +20,8 @@ func TestReportsByVariant(
 	now := time.Now()
 
 	testSubstringFilter := strings.Join(testSubStrings, "|")
+	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "[", "\\[")
+	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "]", "\\]")
 
 	// Query and group by variant:
 	var testReports []api.Test
@@ -68,7 +70,7 @@ func TestReportExcludeVariants(
 	release string,
 	testName string,
 	excludeVariants []string,
-) ([]api.Test, error) {
+) (api.Test, error) {
 	now := time.Now()
 
 	excludeVariantsQuery := ""
@@ -77,7 +79,7 @@ func TestReportExcludeVariants(
 	}
 
 	// Query and group by variant:
-	var testReports []api.Test
+	var testReport api.Test
 	q := `
 WITH results AS (
     SELECT name,
@@ -105,13 +107,13 @@ FROM results;
 	q = fmt.Sprintf(q, excludeVariantsQuery)
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release),
-		sql.Named("testname", testName)).Scan(&testReports)
+		sql.Named("testname", testName)).First(&testReport)
 	if r.Error != nil {
 		klog.Error(r.Error)
-		return testReports, r.Error
+		return testReport, r.Error
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("TestReportExcludeVariants completed in %s with %d results from db", elapsed, len(testReports))
-	return testReports, nil
+	klog.Infof("TestReportExcludeVariants completed in %s", elapsed)
+	return testReport, nil
 }

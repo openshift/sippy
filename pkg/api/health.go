@@ -243,18 +243,13 @@ func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error
 		return indicator{}, err
 	}
 
-	// Can happen if the materialized views have not been refreshed yet.
-	if len(testReport) == 0 {
-		return indicator{}, nil
-	}
-
 	currentPassRate := sippyv1.PassRate{
-		Percentage: testReport[0].CurrentPassPercentage,
-		Runs:       testReport[0].CurrentRuns,
+		Percentage: testReport.CurrentPassPercentage,
+		Runs:       testReport.CurrentRuns,
 	}
 	previousPassRate := sippyv1.PassRate{
-		Percentage: testReport[0].PreviousPassPercentage,
-		Runs:       testReport[0].PreviousRuns,
+		Percentage: testReport.PreviousPassPercentage,
+		Runs:       testReport.PreviousRuns,
 	}
 	return indicator{
 		Current:  currentPassRate,
