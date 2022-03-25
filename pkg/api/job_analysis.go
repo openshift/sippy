@@ -2,12 +2,20 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
+
+const PeriodDay = "day"
+const PeriodHour = "hour"
 
 type analysisResult struct {
 	TotalRuns        int                                        `json:"total_runs"`
@@ -33,7 +41,10 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 
 	period := req.URL.Query().Get("period")
 	if period == "" {
-		period = "day"
+		period = PeriodDay
+	} else if period != PeriodDay && period != PeriodHour {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Period must be one of: day, hour"})
+		return
 	}
 
 	results := apiJobAnalysisResult{
@@ -88,7 +99,7 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 			}
 
 			var date string
-			if period == "day" {
+			if period == PeriodDay {
 				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02")
 			} else {
 				date = time.Unix(int64(run.Timestamp/1000), 0).UTC().Format("2006-01-02 15:00")
@@ -124,6 +135,139 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 
 			results.ByPeriod[date] = result
 		}
+	}
+
+	RespondWithJSON(http.StatusOK, w, results)
+}
+
+func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
+	filter, err := extractFilters(req)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	// This API is a bit special, since we are largely interested in filtering the jobs list,
+	// but there's a case for filtering by the time stamp on a job run.
+	jobRunsFilter := &Filter{
+		LinkOperator: filter.LinkOperator,
+	}
+	jobFilter := &Filter{
+		LinkOperator: filter.LinkOperator,
+	}
+
+	for _, f := range filter.Items {
+		if f.Field == "timestamp" {
+			ms, err := strconv.ParseInt(f.Value, 0, 64)
+			if err != nil {
+				RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+				return
+			}
+
+			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else {
+			jobFilter.Items = append(jobFilter.Items, f)
+		}
+	}
+
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = PeriodDay
+	}
+
+	table, err := jobResultsFromDB(req, dbc.DB, release)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job analysis report:" + table.Error.Error()})
+		return
+	}
+
+	q, err := applyFilters(req, jobFilter, "name", table, apitype.Job{})
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
+		return
+	}
+
+	jobs := make([]int, 0)
+	q.Pluck("id", &jobs)
+
+	// Next is sum up individual job results
+	type resultSum struct {
+		Period         time.Time
+		TotalRuns      int
+		Success        int `gorm:"column:S"`
+		Running        int `gorm:"column:R"`
+		FailureE2E     int `gorm:"column:F"`
+		FailureOther   int `gorm:"column:f"`
+		Upgrade        int `gorm:"column:U"`
+		Install        int `gorm:"column:I"`
+		Infrastructure int `gorm:"column:N"`
+		NoResult       int `gorm:"column:n"`
+	}
+	sums := make([]resultSum, 0)
+	sumResults := dbc.DB.Table("prow_job_runs").
+		Select(fmt.Sprintf(`date_trunc('%s', timestamp)        AS period,
+	           count(*)                                              AS total_runs,
+	           sum(case when overall_result = 'S' then 1 else 0 end) AS "S",
+	           sum(case when overall_result = 'F' then 1 else 0 end) AS "F",
+	           sum(case when overall_result = 'f' then 1 else 0 end) AS "f",
+	           sum(case when overall_result = 'U' then 1 else 0 end) AS "U",
+	           sum(case when overall_result = 'I' then 1 else 0 end) AS "I",
+	           sum(case when overall_result = 'N' then 1 else 0 end) AS "N",
+	           sum(case when overall_result = 'n' then 1 else 0 end) AS "n",
+	           sum(case when overall_result = 'R' then 1 else 0 end) AS "R"`, period)).
+		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
+		Where("prow_jobs.id IN ?", jobs).
+		Group(fmt.Sprintf(`date_trunc('%s', timestamp)`, period))
+
+	jobRunsFilter.ToSQL(sumResults, apitype.JobRun{}).Scan(&sums)
+
+	// collect the results
+	results := apiJobAnalysisResult{
+		ByPeriod: make(map[string]analysisResult),
+	}
+	var formatter string
+	if period == PeriodDay {
+		formatter = "2006-01-02"
+	} else {
+		formatter = "2006-01-02 15:00"
+	}
+
+	for _, sum := range sums {
+		results.ByPeriod[sum.Period.Format(formatter)] = analysisResult{
+			TotalRuns: sum.TotalRuns,
+			ResultCount: map[v1sippyprocessing.JobOverallResult]int{
+				v1sippyprocessing.JobSucceeded:             sum.Success,
+				v1sippyprocessing.JobRunning:               sum.Running,
+				v1sippyprocessing.JobTestFailure:           sum.FailureE2E,
+				v1sippyprocessing.JobInfrastructureFailure: sum.Infrastructure,
+				v1sippyprocessing.JobUpgradeFailure:        sum.Upgrade,
+				v1sippyprocessing.JobInstallFailure:        sum.Install,
+				v1sippyprocessing.JobNoResults:             sum.NoResult,
+				v1sippyprocessing.JobUnknown:               sum.FailureOther,
+			},
+			TestFailureCount: map[string]int{},
+		}
+	}
+	type testResult struct {
+		Period time.Time
+		Name   string
+		Count  int
+	}
+	tr := make([]testResult, 0)
+
+	jr := dbc.DB.Table("prow_job_runs").
+		Select(fmt.Sprintf(`date_trunc('%s', timestamp) as period, tests.name, COUNT(tests.name)`, period)).
+		Joins(`INNER JOIN prow_job_run_tests pjrt on prow_job_runs.id = pjrt.prow_job_run_id`).
+		Joins(`INNER JOIN tests tests on pjrt.test_id = tests.id`).
+		Where("status = ?", 12).Where("prow_job_runs.prow_job_id IN ?", jobs).
+		Group("tests.name").
+		Group(fmt.Sprintf("date_trunc('%s', timestamp)", period))
+
+	jobRunsFilter.ToSQL(jr, apitype.JobRun{}).Scan(&tr)
+
+	for _, t := range tr {
+		results.ByPeriod[t.Period.Format(formatter)].TestFailureCount[t.Name] = t.Count
 	}
 
 	RespondWithJSON(http.StatusOK, w, results)
