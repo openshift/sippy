@@ -262,12 +262,6 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 	currStats.Histogram = make([]int, 10)
 	prevStats.Histogram = make([]int, 10)
 
-	/* I don't think this is necessary...
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].CurrentPassPercentage > results[j].CurrentPassPercentage
-	})
-	*/
-
 	for _, result := range results {
 		if testreportconversion.IsNeverStableOrTechPreview(result.Variants) {
 			continue

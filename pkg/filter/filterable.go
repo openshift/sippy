@@ -304,9 +304,9 @@ func ApplyFilters(req *http.Request, filter *Filter, defaultSortField string, db
 		sortField = defaultSortField
 	}
 	if sort == "" {
-		sort = "desc"
+		sort = apitype.SortDescending
 	}
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == apitype.SortDescending})
 
 	return q, nil
 }
@@ -317,7 +317,7 @@ func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable
 		q = q.Limit(filterOpts.Limit)
 	}
 
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == "desc"})
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
 
 	return q, nil
 }

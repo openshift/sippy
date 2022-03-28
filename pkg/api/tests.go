@@ -10,7 +10,7 @@ import (
 	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	filter2 "github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/filter"
 	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -55,9 +55,9 @@ func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
 
 	gosort.Slice(tests, func(i, j int) bool {
 		if sort == "asc" {
-			return filter2.Compare(tests[i], tests[j], sortField)
+			return filter.Compare(tests[i], tests[j], sortField)
 		}
-		return filter2.Compare(tests[j], tests[i], sortField)
+		return filter.Compare(tests[j], tests[i], sortField)
 	})
 
 	return tests
@@ -75,12 +75,12 @@ func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
 // PrintTestsJSON renders the list of matching tests.
 func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.FailingTestResult) {
 	tests := testsAPIResult{}
-	var filter *filter2.Filter
+	var fil *filter.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &filter2.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -141,8 +141,8 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 			row.Tags = append(row.Tags, "upgrade")
 		}
 
-		if filter != nil {
-			include, err := filter.Filter(row)
+		if fil != nil {
+			include, err := fil.Filter(row)
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return
@@ -162,12 +162,12 @@ func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, cu
 }
 
 func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-	var filter *filter2.Filter
+	var fil *filter.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &filter2.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -181,7 +181,7 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	testsResult, err := BuildTestsResults(dbc, release, period, filter)
+	testsResult, err := BuildTestsResults(dbc, release, period, fil)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -192,7 +192,7 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 		limit(req))
 }
 
-func BuildTestsResults(dbc *db.DB, release, period string, filter *filter2.Filter) (testsAPIResult, error) {
+func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (testsAPIResult, error) {
 	now := time.Now()
 
 	var testReports []apitype.Test
@@ -235,8 +235,8 @@ FROM results;
 	filteredReports := make([]apitype.Test, 0, len(testReports))
 	fakeIDCtr := 1
 	for _, testReport := range testReports {
-		if filter != nil {
-			include, err := filter.Filter(testReport)
+		if fil != nil {
+			include, err := fil.Filter(testReport)
 			if err != nil {
 				return []apitype.Test{}, err
 			}

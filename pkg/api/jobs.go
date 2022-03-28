@@ -18,7 +18,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	filter2 "github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/filter"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
@@ -43,9 +43,9 @@ func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 
 	gosort.Slice(jobs, func(i, j int) bool {
 		if sort == apitype.SortAscending {
-			return filter2.Compare(jobs[i], jobs[j], sortField)
+			return filter.Compare(jobs[i], jobs[j], sortField)
 		}
-		return filter2.Compare(jobs[j], jobs[i], sortField)
+		return filter.Compare(jobs[j], jobs[i], sortField)
 	})
 
 	return jobs
@@ -93,15 +93,15 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 // PrintJobsReport renders a filtered summary of matching jobs.
 func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
 
-	var filter *filter2.Filter
+	var fil *filter.Filter
 	currentPeriod := currReport.ByJob
 	twoDayPeriod := twoDayReport.ByJob
 	previousPeriod := prevReport.ByJob
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &filter2.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -127,8 +127,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
 		job := jobResultToAPI(idx, &current[idx], prevResult)
 
-		if filter != nil {
-			include, err := filter.Filter(job)
+		if fil != nil {
+			include, err := fil.Filter(job)
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return
@@ -151,12 +151,12 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, release string) {
 
-	var filter *filter2.Filter
+	var fil *filter.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &filter2.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -215,7 +215,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	filterOpts, err := filter2.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -357,11 +357,11 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 // PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.
 func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Request, release string, currScaleJobReports []workloadmetricsv1.WorkloadMetricsRow) {
 
-	var filter *filter2.Filter
+	var fil *filter.Filter
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &filter2.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -373,8 +373,8 @@ func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Reques
 			continue
 		}
 
-		if filter != nil {
-			include, err := filter.Filter(&currScaleJobReports[idx])
+		if fil != nil {
+			include, err := fil.Filter(&currScaleJobReports[idx])
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return
