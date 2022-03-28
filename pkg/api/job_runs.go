@@ -56,6 +56,7 @@ func jobRunToAPIJobRun(id int, job v1sippyprocessing.JobResult, result v1sippypr
 		Job:                   result.Job,
 		URL:                   result.URL,
 		TestFailures:          result.TestFailures,
+		FailedTestNames:       result.FailedTestNames,
 		Failed:                result.Failed,
 		InfrastructureFailure: result.InfrastructureFailure,
 		KnownFailure:          result.KnownFailure,
