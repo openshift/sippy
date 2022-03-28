@@ -242,6 +242,12 @@ func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error
 		klog.Errorf("error querying test report: %s", err)
 		return indicator{}, err
 	}
+
+	// Can happen if the materialized views have not been refreshed yet.
+	if len(testReport) == 0 {
+		return indicator{}, nil
+	}
+
 	currentPassRate := sippyv1.PassRate{
 		Percentage: testReport[0].CurrentPassPercentage,
 		Runs:       testReport[0].CurrentRuns,
