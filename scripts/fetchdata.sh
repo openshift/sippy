@@ -9,7 +9,13 @@ while [ true ]; do
   rm -rf /data/*
   /bin/sippy -v 4 --fetch-data /data --fetch-openshift-perfscale-data --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11
   echo "Loading database"
-  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 3.11
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.6
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.7
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.8
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.9
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.10
+  /bin/sippy -v 4 --load-database --local-data /data --arch amd64 --arch arm64 --arch s390x --arch ppc64le --release 4.11
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
