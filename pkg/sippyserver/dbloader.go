@@ -117,6 +117,12 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		jobResultCtr++
 		jr := rawJobResults.JobResults[i]
 		jobStatus := fmt.Sprintf("%d/%d", jobResultCtr, len(rawJobResults.JobResults))
+
+		if strings.Contains(jr.JobName, "assisted") {
+			klog.Warningf("Skipping assisted job due to known issue with test names containing random strings: %s", jr.JobName)
+			continue
+		}
+
 		err := LoadJob(dbc, prowJobCache, prowJobCacheLock, suiteCache, testCache, testCacheLock, jr, jobStatus)
 		if err != nil {
 			return err
