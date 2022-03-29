@@ -140,7 +140,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
 					// if the test succeeded, then the operator install tests should all be passes
 					for _, operatorState := range jrr.FinalOperatorStates {
-						testName := testgridanalysisapi.OperatorUpgradePrefix + operatorState.Name
+						testName := testgridanalysisapi.SippyOperatorUpgradePrefix + operatorState.Name
 						syntheticTests[testName] = &syntheticTestResult{
 							name: testName,
 							pass: 1,
@@ -150,7 +150,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(rawJobResults testgridanal
 					syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
 					// if the test failed, then the operator upgrade tests should match the operator state
 					for _, operatorState := range jrr.FinalOperatorStates {
-						testName := testgridanalysisapi.OperatorUpgradePrefix + operatorState.Name
+						testName := testgridanalysisapi.SippyOperatorUpgradePrefix + operatorState.Name
 						syntheticTests[testName] = &syntheticTestResult{
 							name: testName,
 						}

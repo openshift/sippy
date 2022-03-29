@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 	"k8s.io/klog"
 
 	"github.com/lib/pq"
@@ -20,7 +22,12 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 
 	q := releaseFilter(req, dbClient)
 	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
-	q, err := extractAndApplyFilters(req, "id", q, nil)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
+	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -41,7 +48,13 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 
 	q := releaseFilter(req, dbClient)
 	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
-	q, err := extractAndApplyFilters(req, "id", q, nil)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "Error building job run report:" + err.Error()})
+		return
+	}
+	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -65,16 +78,12 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	filter, err := extractFilters(req)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "release_tag", apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return
 	}
-
-	q, err := applyFilters(req, filter, "release_tag", releaseFilter(req, dbClient), nil)
+	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient), filterOpts, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,

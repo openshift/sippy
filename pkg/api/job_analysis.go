@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -28,12 +29,12 @@ type apiJobAnalysisResult struct {
 }
 
 func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v1sippyprocessing.TestReport) {
-	var filter *Filter
+	var fil *filter.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -52,29 +53,29 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 	}
 
 	allJobs := append(curr.ByJob, prev.ByJob...)
-	var timestampFilter *Filter
+	var timestampFilter *filter.Filter
 	for index, job := range allJobs {
 		prevJob := util.FindJobResultForJobName(job.Name, prev.ByJob)
-		if filter != nil {
-			newItems := make([]FilterItem, 0)
-			timestampItems := make([]FilterItem, 0)
-			for _, item := range filter.Items {
+		if fil != nil {
+			newItems := make([]filter.FilterItem, 0)
+			timestampItems := make([]filter.FilterItem, 0)
+			for _, item := range fil.Items {
 				if item.Field != "timestamp" {
 					newItems = append(newItems, item)
 				} else {
 					timestampItems = append(timestampItems, item)
 				}
-				filter.Items = newItems
+				fil.Items = newItems
 
 				if len(timestampItems) > 0 {
-					timestampFilter = &Filter{
+					timestampFilter = &filter.Filter{
 						Items:        timestampItems,
-						LinkOperator: filter.LinkOperator,
+						LinkOperator: fil.LinkOperator,
 					}
 				}
 			}
 
-			include, err := filter.Filter(jobResultToAPI(index, &allJobs[index], prevJob))
+			include, err := fil.Filter(jobResultToAPI(index, &allJobs[index], prevJob))
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return
@@ -141,7 +142,7 @@ func PrintJobAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev v
 }
 
 func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
-	filter, err := extractFilters(req)
+	fil, err := filter.ExtractFilters(req)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 		return
@@ -149,14 +150,14 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 
 	// This API is a bit special, since we are largely interested in filtering the jobs list,
 	// but there's a case for filtering by the time stamp on a job run.
-	jobRunsFilter := &Filter{
-		LinkOperator: filter.LinkOperator,
+	jobRunsFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
 	}
-	jobFilter := &Filter{
-		LinkOperator: filter.LinkOperator,
+	jobFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
 	}
 
-	for _, f := range filter.Items {
+	for _, f := range fil.Items {
 		if f.Field == "timestamp" {
 			ms, err := strconv.ParseInt(f.Value, 0, 64)
 			if err != nil {
@@ -182,7 +183,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		return
 	}
 
-	q, err := applyFilters(req, jobFilter, "name", table, apitype.Job{})
+	q, err := filter.ApplyFilters(req, jobFilter, "name", table, apitype.Job{})
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return

@@ -91,10 +91,21 @@ type OperatorState struct {
 }
 
 const (
-	OperatorUpgradePrefix       = "sippy.[sig-sippy] operator upgrade "
-	OperatorFinalHealthPrefix   = "sippy.[sig-sippy] operator conditions "
+	// OperatorUpgradePrefix is used to detect tests in the junit which signal an operator's upgrade status.
+	// TODO: what writes these initially?
+	OperatorUpgradePrefix = "Cluster upgrade.Operator upgrade "
+
+	// SippyOperatorUpgradePrefix is the test name sippy prefix adds to signal operator upgrade success. It added based on
+	// the above OperatorUpgradePrefix.
+	// TODO: why do we add a test when there already is one? It looks like it may have been to converge a legacy test name under the same name as a new test name.
+	SippyOperatorUpgradePrefix = "sippy.[sig-sippy] operator upgrade "
+
+	// OperatorFinalHealthPrefix is used to detect tests in the junit which signal an operator's install status.
+	OperatorFinalHealthPrefix = "Operator results.operator conditions "
+
 	FinalOperatorHealthTestName = "sippy.[sig-sippy] tests should finish with healthy operators"
 
+	SippySuiteName         = "sippy"
 	InfrastructureTestName = `sippy.[sig-sippy] infrastructure should work`
 	InstallTestName        = `sippy.[sig-sippy] install should work`
 	InstallTimeoutTestName = `sippy.[sig-sippy] install should not timeout`
@@ -108,6 +119,9 @@ const (
 
 var (
 	// TODO: add [sig-sippy] here as well so we can more clearly identify and substring search
-	OperatorInstallPrefix          = "operator install "
-	OperatorConditionsTestCaseName = regexp.MustCompile("^operator install (?P<operator>.*)")
+	// OperatorInstallPrefix is used when sippy adds synthetic tests to report if each operator installed correct.
+	OperatorInstallPrefix = "operator install "
+
+	// TODO: is this even used anymore?
+	OperatorConditionsTestCaseName = regexp.MustCompile(`Operator results.*operator install (?P<operator>.*)`)
 )

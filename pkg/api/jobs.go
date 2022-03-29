@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/query"
 	"gorm.io/gorm"
-
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 
 	"k8s.io/klog"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/filter"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
@@ -43,9 +43,9 @@ func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 
 	gosort.Slice(jobs, func(i, j int) bool {
 		if sort == apitype.SortAscending {
-			return compare(jobs[i], jobs[j], sortField)
+			return filter.Compare(jobs[i], jobs[j], sortField)
 		}
-		return compare(jobs[j], jobs[i], sortField)
+		return filter.Compare(jobs[j], jobs[i], sortField)
 	})
 
 	return jobs
@@ -93,15 +93,15 @@ func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apit
 // PrintJobsReport renders a filtered summary of matching jobs.
 func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
 
-	var filter *Filter
+	var fil *filter.Filter
 	currentPeriod := currReport.ByJob
 	twoDayPeriod := twoDayReport.ByJob
 	previousPeriod := prevReport.ByJob
 
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -127,8 +127,8 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
 		job := jobResultToAPI(idx, &current[idx], prevResult)
 
-		if filter != nil {
-			include, err := filter.Filter(job)
+		if fil != nil {
+			include, err := fil.Filter(job)
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return
@@ -148,56 +148,86 @@ func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDa
 }
 
 // PrintJobsReportFromDB renders a filtered summary of matching jobs.
-func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
-	table, err := jobResultsFromDB(req, dbc.DB, release)
-	if err != nil {
-		if err != nil {
-			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
+	dbc *db.DB, release string) {
+
+	var fil *filter.Filter
+
+	queryFilter := req.URL.Query().Get("filter")
+	if queryFilter != "" {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
 	}
 
-	filter, err := extractFilters(req)
+	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
+	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
+	var start time.Time
+	var boundary time.Time
+	var end time.Time
+	var err error
+
+	startParam := req.URL.Query().Get("start")
+	if startParam != "" {
+		start, err = time.Parse("2006-01-02", startParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
+			return
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
+		start = time.Now().Add(-9 * 24 * time.Hour)
+	} else {
+		// Default start to 14 days ago
+		start = time.Now().Add(-14 * 24 * time.Hour)
+	}
+
+	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
+	// for callers to know to specify one day beyond.
+	boundaryParam := req.URL.Query().Get("boundary")
+	if boundaryParam != "" {
+		boundary, err = time.Parse("2006-01-02", boundaryParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
+			return
+		}
+	} else if req.URL.Query().Get("period") == periodTwoDay {
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
+	} else {
+		// Default boundary to 7 days ago
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+
+	}
+
+	endParam := req.URL.Query().Get("end")
+	if endParam != "" {
+		end, err = time.Parse("2006-01-02", endParam)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
+			return
+		}
+	} else {
+		// Default end to now
+		end = time.Now()
+	}
+
+	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	q, err := applyFilters(req, filter, "current_pass_percentage", table, apitype.Job{})
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
-		return
-	}
-
-	jobsResult, err := BuildJobResults(q)
+	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
 	RespondWithJSON(http.StatusOK, w, jobsResult)
-}
-
-func BuildJobResults(q *gorm.DB) (jobsAPIResult, error) {
-	now := time.Now()
-	jobReports := make([]apitype.Job, 0)
-	q.Scan(&jobReports)
-	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
-
-	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
-	// instead of empty array. Quick hack to make this work.
-	for i, j := range jobReports {
-		if len(j.Bugs) == 0 {
-			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
-		}
-
-		if len(j.AssociatedBugs) == 0 {
-			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
-		}
-	}
-
-	return jobReports, nil
 }
 
 type jobDetail struct {
@@ -327,11 +357,11 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 // PrintPerfscaleWorkloadMetricsReport renders a filtered summary of matching scale jobs.
 func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Request, release string, currScaleJobReports []workloadmetricsv1.WorkloadMetricsRow) {
 
-	var filter *Filter
+	var fil *filter.Filter
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
-		filter = &Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+		fil = &filter.Filter{}
+		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 			return
 		}
@@ -343,8 +373,8 @@ func PrintPerfscaleWorkloadMetricsReport(w http.ResponseWriter, req *http.Reques
 			continue
 		}
 
-		if filter != nil {
-			include, err := filter.Filter(&currScaleJobReports[idx])
+		if fil != nil {
+			include, err := fil.Filter(&currScaleJobReports[idx])
 			if err != nil {
 				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
 				return

@@ -1,4 +1,4 @@
-package api
+package filter
 
 import (
 	"encoding/json"
@@ -236,16 +236,50 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
-func extractAndApplyFilters(req *http.Request, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
-	filter, err := extractFilters(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return applyFilters(req, filter, defaultSortField, dbClient, filterable)
+type FilterOptions struct {
+	Filter    *Filter
+	SortField string
+	Sort      apitype.Sort
+	Limit     int
 }
 
-func extractFilters(req *http.Request) (*Filter, error) {
+func FilterOptionsFromRequest(req *http.Request, defaultSortField string, defaultSort apitype.Sort) (filterOpts *FilterOptions, err error) {
+	filterOpts = &FilterOptions{}
+	queryFilter := req.URL.Query().Get("filter")
+	filter := &Filter{}
+	if queryFilter != "" {
+		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
+			return filterOpts, fmt.Errorf("could not marshal filter: %w", err)
+		}
+	}
+	filterOpts.Filter = filter
+
+	limitParam := req.URL.Query().Get("limit")
+	if limitParam == "" {
+		filterOpts.Limit = 0
+	} else {
+		limit, err := strconv.Atoi(limitParam)
+		if err != nil {
+			return filterOpts, fmt.Errorf("error parsing limit param: %s", err)
+		}
+		filterOpts.Limit = limit
+	}
+
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	if sortField == "" {
+		sortField = defaultSortField
+	}
+	if sort == "" {
+		sort = defaultSort
+	}
+	filterOpts.Sort = sort
+	filterOpts.SortField = sortField
+	return filterOpts, nil
+}
+
+// TODO: merge with FilterOptionsFromRequest
+func ExtractFilters(req *http.Request) (*Filter, error) {
 	filter := &Filter{}
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
@@ -257,7 +291,7 @@ func extractFilters(req *http.Request) (*Filter, error) {
 	return filter, nil
 }
 
-func applyFilters(req *http.Request, filter *Filter, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+func ApplyFilters(req *http.Request, filter *Filter, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	q := filter.ToSQL(dbClient, filterable)
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit > 0 {
@@ -270,9 +304,20 @@ func applyFilters(req *http.Request, filter *Filter, defaultSortField string, db
 		sortField = defaultSortField
 	}
 	if sort == "" {
-		sort = "desc"
+		sort = apitype.SortDescending
 	}
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == "desc"})
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == apitype.SortDescending})
+
+	return q, nil
+}
+
+func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
+	q := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if filterOpts.Limit > 0 {
+		q = q.Limit(filterOpts.Limit)
+	}
+
+	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
 
 	return q, nil
 }
@@ -441,7 +486,7 @@ func filterArray(filter FilterItem, item Filterable) (bool, error) {
 	return false, nil
 }
 
-func compare(a, b Filterable, sortField string) bool {
+func Compare(a, b Filterable, sortField string) bool {
 	kind := a.GetFieldType(sortField)
 
 	if kind == apitype.ColumnTypeNumerical {

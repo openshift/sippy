@@ -553,6 +553,13 @@ func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintOverallReleaseHealthFromDB(w, s.db, release)
+	}
+}
+
 func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) (*sippyprocessingv1.VariantResults, *sippyprocessingv1.VariantResults) {
 	release := req.URL.Query().Get("release")
 	variant := req.URL.Query().Get("variant")
@@ -739,6 +746,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
 		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+		serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 	} else {
 		// Preserve old sippy at /legacy for now
 		serveMux.HandleFunc("/legacy", s.printHTMLReport)
@@ -764,7 +772,7 @@ func (s *Server) Serve() {
 
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
 
-		serveMux.HandleFunc("/api/health", s.jsonHealthReport) // TODO: port to db
+		serveMux.HandleFunc("/api/health", s.jsonHealthReport)
 		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
 		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
 	}
