@@ -9,6 +9,7 @@ import (
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
+	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
@@ -16,7 +17,6 @@ import (
 	"gorm.io/gorm/clause"
 	"k8s.io/klog"
 
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
@@ -36,16 +36,6 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		StartDay: 0,
 		NumDays:  14,
 	}
-	rawJobResults, _ := rawJobResultOptions.ProcessTestGridDataIntoRawJobResults(testGridJobDetails)
-
-	// TODO: this can probably be removed, just for development purposes to see how many tests we're dealing with
-	testCtr := 0
-	for _, rjr := range rawJobResults.JobResults {
-		for _, rjrr := range rjr.JobRunResults {
-			testCtr += len(rjrr.TestResults)
-		}
-	}
-	klog.V(4).Infof("total test results from testgrid data: %d", testCtr)
 
 	// Load all job and test results into database:
 	klog.V(4).Info("loading ProwJobs into db")
@@ -56,35 +46,6 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		return err
 	}
 	prowJobCacheLock := &sync.RWMutex{}
-
-	// First pass we just create/update all ProwJobs. This will allow us to run the second pass
-	// inserts in parallel without conflicts. (we do not presently do this, but may be a good future optimization)
-	for i := range rawJobResults.JobResults {
-		klog.V(4).Infof("Loading prow job %s of %d", i, len(rawJobResults.JobResults))
-		jr := rawJobResults.JobResults[i]
-		// Create ProwJob if we don't have one already:
-		// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
-		// would not make it to the db.
-		if _, ok := prowJobCache[jr.JobName]; !ok {
-			dbProwJob := &models.ProwJob{
-				Name:        jr.JobName,
-				Release:     dashboard.ReportName,
-				Variants:    variantManager.IdentifyVariants(jr.JobName),
-				TestGridURL: jr.TestGridJobURL,
-			}
-			err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
-			if err != nil {
-				return errors.Wrapf(err, "error loading prow job into db: %s", jr.JobName)
-			}
-			prowJobCache[jr.JobName] = dbProwJob
-		} else {
-			// Ensure the job is up to date, especially for variants.
-			dbProwJob := prowJobCache[jr.JobName]
-			dbProwJob.Variants = variantManager.IdentifyVariants(jr.JobName)
-			dbProwJob.TestGridURL = jr.TestGridJobURL
-			dbc.DB.Save(&dbProwJob)
-		}
-	}
 
 	// Load cache of all known tests from db:
 	testCache, err := LoadTestCache(dbc)
@@ -107,23 +68,29 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	}
 	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
 
-	// Second pass we create all ProwJobRuns we do not already have.
-	// ProwJobRuns are created individually in a transaction to ensure we get the job run, and all it's test results
-	// committed at the same time.
-	//
-	// TODO: parallelize with goroutines for faster entry
-	jobResultCtr := 0
-	for i := range rawJobResults.JobResults {
-		jobResultCtr++
-		jr := rawJobResults.JobResults[i]
-		jobStatus := fmt.Sprintf("%d/%d", jobResultCtr, len(rawJobResults.JobResults))
+	for i, jobDetails := range testGridJobDetails {
+		jobResult, warnings := rawJobResultOptions.ProcessJobDetailsIntoRawJobResult(jobDetails)
+		for _, warning := range warnings {
+			klog.Warningf("warning from testgrid processing: " + warning)
+		}
 
-		if strings.Contains(jr.JobName, "assisted") {
-			klog.Warningf("Skipping assisted job due to known issue with test names containing random strings: %s", jr.JobName)
+		if strings.Contains(jobDetails.Name, "assisted") {
+			klog.Warningf("Skipping assisted job due to known issue with test names containing random strings: %s", jobDetails.Name)
 			continue
 		}
 
-		err := LoadJob(dbc, prowJobCache, prowJobCacheLock, suiteCache, testCache, testCacheLock, jr, jobStatus)
+		klog.V(4).Infof("Loading prow job %d of %d", i, len(testGridJobDetails))
+		err := createOrUpdateJob(dbc, dashboard.ReportName, variantManager, prowJobCache, jobResult)
+		if err != nil {
+			return err
+		}
+
+		jobStatus := fmt.Sprintf("%d/%d", i, len(testGridJobDetails))
+
+		// ProwJobRuns for a ProwJob are created in a batch transaction to ensure we get the job run and all it's test results
+		// committed at the same time.
+		err = loadJob(dbc, prowJobCache, prowJobCacheLock, suiteCache, testCache,
+			testCacheLock, jobResult, jobStatus)
 		if err != nil {
 			return err
 		}
@@ -131,6 +98,34 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 	klog.Info("done loading ProwJobRuns")
 
+	return nil
+}
+
+func createOrUpdateJob(dbc *db.DB, reportName string,
+	variantManager testidentification.VariantManager, prowJobCache map[string]*models.ProwJob,
+	jr *testgridanalysisapi.RawJobResult) error {
+	// Create ProwJob if we don't have one already:
+	// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
+	// would not make it to the db.
+	if _, ok := prowJobCache[jr.JobName]; !ok {
+		dbProwJob := &models.ProwJob{
+			Name:        jr.JobName,
+			Release:     reportName,
+			Variants:    variantManager.IdentifyVariants(jr.JobName),
+			TestGridURL: jr.TestGridJobURL,
+		}
+		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
+		if err != nil {
+			return errors.Wrapf(err, "error loading prow job into db: %s", jr.JobName)
+		}
+		prowJobCache[jr.JobName] = dbProwJob
+	} else {
+		// Ensure the job is up to date, especially for variants.
+		dbProwJob := prowJobCache[jr.JobName]
+		dbProwJob.Variants = variantManager.IdentifyVariants(jr.JobName)
+		dbProwJob.TestGridURL = jr.TestGridJobURL
+		dbc.DB.Save(&dbProwJob)
+	}
 	return nil
 }
 
@@ -167,14 +162,14 @@ func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	return prowJobCache, nil
 }
 
-func LoadJob(
+func loadJob(
 	dbc *db.DB,
 	prowJobCache map[string]*models.ProwJob,
 	prowJobCacheLock *sync.RWMutex,
 	suiteCache map[string]uint,
 	testCache map[string]*models.Test,
 	testCacheLock *sync.RWMutex,
-	jr testgridanalysisapi.RawJobResult,
+	jr *testgridanalysisapi.RawJobResult,
 	jobStatus string) error {
 
 	// Cache the IDs of all known ProwJobRuns for this job. Will be used to skip job run and test results we've already processed.

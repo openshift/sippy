@@ -23,6 +23,7 @@ type SyntheticTestManager interface {
 	// This method mutates the rawJobResults
 	// returns warnings found in the data. Not failures to process it.
 	CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string
+	CreateSyntheticTestsForJob(jobResults testgridanalysisapi.RawJobResult) []string
 }
 
 type ProcessingOptions struct {
@@ -31,7 +32,9 @@ type ProcessingOptions struct {
 	NumDays              int
 }
 
-// ProcessTestGridDataIntoRawJobResults returns the raw data and a list of warnings encountered processing the data.
+// ProcessTestGridDataIntoRawJobResults returns the raw data and a list of warnings encountered processing the data
+// for all jobs.
+// TODO: deprecated, use the single job func below to avoid loading all into memory
 func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
 
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
@@ -39,7 +42,9 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	for _, jobDetails := range testGridJobInfo {
 		klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
 		startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
-		processJobDetails(rawJobResults, jobDetails, startCol, endCol)
+		jobResult := processJobDetails(jobDetails, startCol, endCol)
+		// we have mutated, so assign back to our intermediate value
+		rawJobResults.JobResults[jobDetails.Name] = *jobResult
 	}
 
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
@@ -48,12 +53,30 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	return rawJobResults, warnings
 }
 
-func processJobDetails(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, startCol, endCol int) {
+// ProcessJobDetailsIntoRawJobResult returns the raw data and a list of warnings encountered processing the data
+// for a specific job.
+func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails) (*testgridanalysisapi.RawJobResult, []string) {
+	klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
+	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
+	jobResult := processJobDetails(jobDetails, startCol, endCol)
+	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
+	warnings := o.SyntheticTestManager.CreateSyntheticTestsForJob(*jobResult)
+	return jobResult, warnings
+}
+
+func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgridanalysisapi.RawJobResult {
+	jobResult := &testgridanalysisapi.RawJobResult{
+		JobName:        job.Name,
+		TestGridJobURL: job.TestGridURL,
+		JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
+		TestResults:    map[string]testgridanalysisapi.RawTestResult{},
+	}
 	for i, test := range job.Tests {
 		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 		job.Tests[i] = test
-		processTest(rawJobResults, job, test, startCol, endCol)
+		processTest(jobResult, job, test, startCol, endCol)
 	}
+	return jobResult
 }
 
 func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
@@ -95,7 +118,7 @@ func isOverallTest(testName string) bool {
 
 // processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
-func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
+func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
 	for _, result := range test.Statuses {
 		if col > endCol {
@@ -235,7 +258,7 @@ func processTestToJobRunResults(jobResult testgridanalysisapi.RawJobResult, job 
 	return
 }
 
-func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
+func processTest(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
 	// strip out tests that don't have predictive or diagnostic value
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about install equivalent tests to be able to set infra failures
@@ -244,20 +267,7 @@ func processTest(rawJobResults testgridanalysisapi.RawData, job testgridv1.JobDe
 		return
 	}
 
-	jobResult, ok := rawJobResults.JobResults[job.Name]
-	if !ok {
-		jobResult = testgridanalysisapi.RawJobResult{
-			JobName:        job.Name,
-			TestGridJobURL: job.TestGridURL,
-			JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
-			TestResults:    map[string]testgridanalysisapi.RawTestResult{},
-		}
-	}
-
 	processTestToJobRunResults(jobResult, job, test, startCol, endCol)
-
-	// we have mutated, so assign back to our intermediate value
-	rawJobResults.JobResults[job.Name] = jobResult
 }
 
 func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, job *testgridv1.JobDetails, testName string, passed, failed, flaked int) {
