@@ -11,20 +11,24 @@ func NewEmptySyntheticTestManager() SyntheticTestManager {
 	return kubeSyntheticManager{}
 }
 
-func (kubeSyntheticManager) CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
+func (k kubeSyntheticManager) CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string {
 	warnings := []string{}
 
-	// Kube does not use any synthetic tests, but we do need to populate the job OverallResult for important functionality.
 	for jobName, jobResults := range rawJobResults.JobResults {
-		for jrrKey, jrr := range jobResults.JobRunResults {
-
-			jrr.OverallResult = kubeJobRunStatus(jrr)
-			jobResults.JobRunResults[jrrKey] = jrr
-		}
-
+		newWarnings := k.CreateSyntheticTestsForJob(jobResults)
+		warnings = append(warnings, newWarnings...)
 		rawJobResults.JobResults[jobName] = jobResults
 	}
 	return warnings
+}
+
+func (k kubeSyntheticManager) CreateSyntheticTestsForJob(jobResults testgridanalysisapi.RawJobResult) []string {
+	// Kube does not use any synthetic tests, but we do need to populate the job OverallResult for important functionality.
+	for jrrKey, jrr := range jobResults.JobRunResults {
+		jrr.OverallResult = kubeJobRunStatus(jrr)
+		jobResults.JobRunResults[jrrKey] = jrr
+	}
+	return []string{}
 }
 
 func kubeJobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
