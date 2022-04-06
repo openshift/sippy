@@ -116,20 +116,20 @@ func isOverallTest(testName string) bool {
 	return testName == overall || strings.HasSuffix(testName, ".Overall")
 }
 
-//Specific set of test names that include random characters in them
-//if they match the known start then look to replace the random chars with 'random'
+// specific set of test names that include random characters in them
+// if they match the known start then look to replace the random chars with 'random'
 var matchRandomStart = regexp.MustCompile("^\"Installing \"Red Hat Integration")
 var matchRandom = regexp.MustCompile("operator in test-[a-z]+")
 var matchRandomReplace = "operator in test-random"
 
 func removeRandomOperatorTestNames(testName string) string {
-	//not necessary but narrowing the scope we apply the replace all to
-	//by verifyting the name starts with our known case
+	// not necessary but narrowing the scope we apply the replace all to
+	// by verifyting the name starts with our known case
 	match := matchRandomStart.MatchString(testName)
 	if match {
 		return matchRandom.ReplaceAllString(testName, matchRandomReplace)
 	}
-	//essentially an else
+	// essentially an else
 	return testName
 }
 
@@ -146,20 +146,20 @@ func fixOldStyleTestNames(testName string) string {
 	return testName
 }
 
-//function to group together calls for cleansing the test names as needed
+// cleanTestName groups together calls for cleansing the test names as needed
 func cleanTestName(testName string) string {
-	//initialize and then pass through each cleaner function
+	// initialize and then pass through each cleaner function
 	cleanedName := testName
 
-	//is this an old test name?
-	//we may not need this check any longer based on the comments around the check / fix
+	// is this an old test name?
+	// we may not need this check any longer based on the comments around the check / fix
 	cleanedName = fixOldStyleTestNames(cleanedName)
 
-	//look for the specific case related to red hat integration operator in test random names
+	// look for the specific case related to red hat integration operator in test random names
 	cleanedName = removeRandomOperatorTestNames(cleanedName)
 
-	//if there are more conditions to check for we can add them as we find them
-	//...
+	// if there are more conditions to check for we can add them as we find them
+	// ...
 
 	return cleanedName
 }
@@ -291,7 +291,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 		return
 	}
 
-	//pass the name through the cleaner
+	// pass the name through the cleaner
 	addTestResult(jobResult.TestResults, &job, cleanTestName(test.Name), passed, failed, flaked)
 
 	return

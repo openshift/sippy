@@ -10,8 +10,8 @@ import (
 )
 
 func TestProcessJobDetails(t *testing.T) {
-	//need to generate JobDetails with a mix of expected random and non random test names
-	//validate the RawJobResult has the corrected names
+	// need to generate JobDetails with a mix of expected random and non random test names
+	// validate the RawJobResult has the corrected names
 
 	testNames := []string{
 		"Operator results test operator install install_operatorname",
@@ -31,7 +31,7 @@ func TestProcessJobDetails(t *testing.T) {
 
 	assert.NotNil(t, result, "Nil response from processJobDetails")
 
-	//check the keys of the map and validate they match our expectations
+	// check the keys of the map and validate they match our expectations
 	assert.Equal(t, len(result.TestResults), len(testNames), "Unexpected test resulsts size %d", len(result.TestResults))
 
 	for _, s := range validationStrings {
@@ -42,7 +42,7 @@ func TestProcessJobDetails(t *testing.T) {
 
 func TestRegexExplicit(t *testing.T) {
 
-	//explicit test cases and verifications
+	// explicit test cases and verifications
 	testName1 := "\"Installing \"Red Hat Integration - 3scale\" operator in test-ieesa.Installing \"Red Hat Integration - 3scale\" operator in test-ieesa Installs Red Hat Integration - 3scale operator in test-ieesa and creates 3scale Backend Schema operand instance\""
 	testName1Clean := "\"Installing \"Red Hat Integration - 3scale\" operator in test-random.Installing \"Red Hat Integration - 3scale\" operator in test-random Installs Red Hat Integration - 3scale operator in test-random and creates 3scale Backend Schema operand instance\""
 
@@ -58,23 +58,23 @@ func TestRegexExplicit(t *testing.T) {
 
 func TestRegexGeneric(t *testing.T) {
 
-	//if we change the input data we might have to reconsider the hardcoded fixCount validation
-	//for the example data we are working with when there is a random entry to be replaced
-	//it shows up in 3 locations, this is verifying all 3 are getting updated
+	// if we change the input data we might have to reconsider the hardcoded fixCount validation
+	// for the example data we are working with when there is a random entry to be replaced
+	// it shows up in 3 locations, this is verifying all 3 are getting updated
 	expectedRandomReplacements := 3
 
-	//get our list of tests
+	// get our list of tests
 	testStrings := buildTestNameSamples()
 
-	//get the count for the names we expect will get changes
+	// get the count for the names we expect will get changes
 	validateCount := len(testStrings)
 
-	//add in the ones we don't expect to get changed after we have the count of original ones
-	//intentional non matching replace with no trailing a-z after test-
+	// add in the ones we don't expect to get changed after we have the count of original ones
+	// intentional non matching replace with no trailing a-z after test-
 	nonMatchString := "\"Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\""
 	testStrings = append(testStrings, nonMatchString)
 
-	//will not trigger the first match for the starts with
+	// will not trigger the first match for the starts with
 	skipString := "\"Doesn'tStartWith Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\""
 	testStrings = append(testStrings, skipString)
 
@@ -114,7 +114,7 @@ func buildFakeJobDetails(testNames []string) testgridv1.JobDetails {
 
 		test := testgridv1.Test{
 			Name:     s,
-			Statuses: statuses[:],
+			Statuses: statuses,
 		}
 
 		tests = append(tests, test)
