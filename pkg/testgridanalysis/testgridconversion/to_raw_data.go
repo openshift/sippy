@@ -120,7 +120,7 @@ func isOverallTest(testName string) bool {
 // if they match the known start then look to replace the random chars with 'random'
 var matchRandomStart = regexp.MustCompile("^\"Installing \"Red Hat Integration")
 var matchRandom = regexp.MustCompile("operator in test-[a-z]+")
-var matchRandomReplace = "operator in test-random"
+var matchRandomReplace = "operator in test namespace"
 
 func removeRandomOperatorTestNames(testName string) string {
 	// not necessary but narrowing the scope we apply the replace all to
