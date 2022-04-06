@@ -134,7 +134,7 @@ func buildFakeJobDetails(testNames []string) testgridv1.JobDetails {
 
 func buildTestNameSamples() []string {
 
-	//pulled from sippydb
+	// pulled from sippydb
 	testStrings := []string{
 		"\"Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx.Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx Installs Red Hat Integration - 3scale operator in test-nbqyx and creates 3scale Backend Schema operand instance\"",
 		"\"Installing \"Red Hat Integration - 3scale\" operator in test-xthdq.Installing \"Red Hat Integration - 3scale\" operator in test-xthdq Installs Red Hat Integration - 3scale operator in test-xthdq and creates 3scale Backend Schema operand instance\"",
