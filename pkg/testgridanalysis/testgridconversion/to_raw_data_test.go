@@ -1,7 +1,6 @@
 package testgridconversion
 
 import (
-	"strings"
 	"testing"
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
@@ -42,60 +41,55 @@ func TestProcessJobDetails(t *testing.T) {
 
 func TestCleanTestName(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		vercount int
-		output   string
+		name   string
+		input  string
+		output string
 	}{
 		{
-			name:     "generic 1",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx.Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx Installs Red Hat Integration - 3scale operator in test-nbqyx and creates 3scale Backend Schema operand instance\"",
-			vercount: 3,
+			name:   "match 1",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx.Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx Installs Red Hat Integration - 3scale operator in test-nbqyx and creates 3scale Backend Schema operand instance\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "generic 2",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-nsyin.Installing \"Red Hat Integration - 3scale\" operator in test-nsyin Installs Red Hat Integration - 3scale operator in test-nsyin and creates 3scale Backend Schema operand instance\"",
-			vercount: 3,
+			name:   "match 2",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-nsyin.Installing \"Red Hat Integration - 3scale\" operator in test-nsyin Installs Red Hat Integration - 3scale operator in test-nsyin and creates 3scale Backend Schema operand instance\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "generic 3",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-piiov.Installing \"Red Hat Integration - 3scale\" operator in test-piiov \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test-piiov and creates 3scale Backend Schema operand i (...)\"",
-			vercount: 3,
+			name:   "match 3",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-piiov.Installing \"Red Hat Integration - 3scale\" operator in test-piiov \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test-piiov and creates 3scale Backend Schema operand i (...)\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand i (...)\"",
 		},
 		{
-			name:     "generic 4",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-piiov.Installing \"Red Hat Integration - 3scale\" operator in test-piiov Installs Red Hat Integration - 3scale operator in test-piiov and creates 3scale Backend Schema operand instance\"",
-			vercount: 3,
+			name:   "match 4",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-piiov.Installing \"Red Hat Integration - 3scale\" operator in test-piiov Installs Red Hat Integration - 3scale operator in test-piiov and creates 3scale Backend Schema operand instance\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "skip 1",
-			input:    "\"Doesn'tStartWith Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
-			vercount: 0,
+			name:   "skip 1",
+			input:  "\"Doesn'tStartWith Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
+			output: "\"Doesn'tStartWith Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "non match 1",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
-			vercount: 0,
+			name:   "non match 1",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test-.Installing \"Red Hat Integration - 3scale\" operator in test- Installs Red Hat Integration - 3scale operator in test- and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "verify output 1",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-ieesa.Installing \"Red Hat Integration - 3scale\" operator in test-ieesa Installs Red Hat Integration - 3scale operator in test-ieesa and creates 3scale Backend Schema operand instance\"",
-			output:   "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand instance\"",
-			vercount: 3,
+			name:   "match 5",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-ieesa.Installing \"Red Hat Integration - 3scale\" operator in test-ieesa Installs Red Hat Integration - 3scale operator in test-ieesa and creates 3scale Backend Schema operand instance\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand instance\"",
 		},
 		{
-			name:     "verify output 2",
-			input:    "\"Installing \"Red Hat Integration - 3scale\" operator in test-jopkv.Installing \"Red Hat Integration - 3scale\" operator in test-jopkv \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test-jopkv and creates 3scale Backend Schema operand i (...)\"",
-			output:   "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand i (...)\"",
-			vercount: 3,
+			name:   "match 6",
+			input:  "\"Installing \"Red Hat Integration - 3scale\" operator in test-jopkv.Installing \"Red Hat Integration - 3scale\" operator in test-jopkv \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test-jopkv and creates 3scale Backend Schema operand i (...)\"",
+			output: "\"Installing \"Red Hat Integration - 3scale\" operator in test namespace.Installing \"Red Hat Integration - 3scale\" operator in test namespace \"after all\" hook for \"Installs Red Hat Integration - 3scale operator in test namespace and creates 3scale Backend Schema operand i (...)\"",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			sCleaned := cleanTestName(test.input)
-			fixCount := strings.Count(sCleaned, matchRandomReplace)
-			assert.Equal(t, fixCount, test.vercount, "Invalid verification count %d for test %s", fixCount, test.name)
 
 			if test.output != "" {
 				assert.Equal(t, test.output, sCleaned, "Cleaned output did not match expected %s", sCleaned)
