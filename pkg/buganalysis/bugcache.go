@@ -287,6 +287,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		v.Add("search", testName)
 	}
 
+	bzQueryStart := time.Now()
 	searchURL := "https://search.ci.openshift.org/v2/search"
 	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
@@ -334,5 +335,6 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	}
 
 	klog.V(2).Infof("Found bugs: %v", searchResults)
+	klog.V(2).Infof("bugzilla query took: %s", time.Since(bzQueryStart))
 	return searchResults, nil
 }
