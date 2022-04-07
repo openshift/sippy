@@ -116,6 +116,54 @@ func isOverallTest(testName string) bool {
 	return testName == overall || strings.HasSuffix(testName, ".Overall")
 }
 
+// specific set of test names that include random characters in them
+// if they match the known start then look to replace the random chars with 'namespace'
+var matchRandomStart = regexp.MustCompile("^\"Installing \"Red Hat Integration")
+var matchRandom = regexp.MustCompile("operator in test-[a-z]+")
+var matchRandomReplace = "operator in test namespace"
+
+func removeRandomOperatorTestNames(testName string) string {
+	// not necessary but narrowing the scope we apply the replace all to
+	// by verifying the name starts with our known case
+	match := matchRandomStart.MatchString(testName)
+	if match {
+		return matchRandom.ReplaceAllString(testName, matchRandomReplace)
+	}
+	// essentially an else
+	return testName
+}
+
+func fixOldStyleTestNames(testName string) string {
+	// we override some test names based on their type.  Historically we misnamed the install and upgrade tests
+	// what we really want is to call these the final state
+	// This prevents any real results with this junit from counting.  This should only be needed during our transition  and
+	// we have to keep it to interpret historical results from 4.6.
+	if testidentification.IsOldInstallOperatorTest(testName) || testidentification.IsOldUpgradeOperatorTest(testName) {
+		operatorName := testidentification.GetOperatorNameFromTest(testName)
+		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
+	}
+
+	return testName
+}
+
+// cleanTestName groups together calls for cleansing the test names as needed
+func cleanTestName(testName string) string {
+	// initialize and then pass through each cleaner function
+	cleanedName := testName
+
+	// is this an old test name?
+	// we may not need this check any longer based on the comments around the check / fix
+	cleanedName = fixOldStyleTestNames(cleanedName)
+
+	// look for the specific case related to red hat integration operator in test random names
+	cleanedName = removeRandomOperatorTestNames(cleanedName)
+
+	// if there are more conditions to check for we can add them as we find them
+	// ...
+
+	return cleanedName
+}
+
 // processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
@@ -243,17 +291,8 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 		return
 	}
 
-	// we override some test names based on their type.  Historically we misnamed the install and upgrade tests
-	// what we really want is to call these the final state
-	// This prevents any real results with this junit from counting.  This should only be needed during our transition  and
-	// we have to keep it to interpret historical results from 4.6.
-	testName := test.Name
-	if testidentification.IsOldInstallOperatorTest(test.Name) || testidentification.IsOldUpgradeOperatorTest(test.Name) {
-		operatorName := testidentification.GetOperatorNameFromTest(test.Name)
-		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
-	}
-
-	addTestResult(jobResult.TestResults, &job, testName, passed, failed, flaked)
+	// pass the name through the cleaner
+	addTestResult(jobResult.TestResults, &job, cleanTestName(test.Name), passed, failed, flaked)
 
 	return
 }
