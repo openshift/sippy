@@ -57,12 +57,14 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 }
 
 func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
+	installTestName := strings.TrimPrefix(testgridanalysisapi.InstallTestName,
+		testgridanalysisapi.SippySuiteName+".")
 	// Using substring search here is a little funky, we'd prefer prefix matching for the operator tests.
 	// For the overall test, the exact match on the InstallTestName const which includes [sig-sippy] isn't working,
 	// so we have to use a simpler substring.
 	testSubstrings := []string{
 		testgridanalysisapi.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
-		"install should work",                     // TODO: would prefer exact matching on the full InstallTestName const
+		installTestName, // TODO: would prefer exact matching on the full InstallTestName const
 	}
 
 	testReports, err := query.TestReportsByVariant(dbc, release, testSubstrings)
@@ -73,36 +75,31 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	variantColumns := sets.NewString()
 	// Map operatorName -> variant -> Test report
 	tests := make(map[string]map[string]api.Test)
-	// Map variant -> Test report for the "Overall" install success
-	overallResults := make(map[string]api.Test)
 
 	for _, tr := range testReports {
-		variantColumns.Insert(tr.Variant)
 
 		switch {
-		case tr.Name == testgridanalysisapi.InstallTestName:
-			klog.Infof("Found overall install test %s for variant %s", tr.Name, tr.Variant)
-			// Build out the "Overall" entry in the "tests" section. Sippy adds a synthetic overall test for
-			// "install should work", which we use to determine the overall install success rate across all operators.
-			overallResults[tr.Variant] = tr
-		case strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
-			// Add an entry to the "tests" section for each operator by using the "operator install" tests and extracting
-			// the name of the operator from the test name.
-			operatorName := tr.Name
-			if ret := testidentification.GetOperatorNameFromTest(tr.Name); len(ret) > 0 {
-				operatorName = ret
+		case tr.Name == installTestName || strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
+			klog.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
+			variantColumns.Insert(tr.Variant)
+			if _, ok := tests[tr.Name]; !ok {
+				tests[tr.Name] = map[string]api.Test{}
 			}
-			if _, ok := tests[operatorName]; !ok {
-				tests[operatorName] = map[string]api.Test{}
-			}
-			klog.Infof("Found operator install test %s for variant %s", operatorName, tr.Variant)
-			tests[operatorName][tr.Variant] = tr
+			tests[tr.Name][tr.Variant] = tr
 		default:
 			// Our substring searching can pickup a couple other tests incorrectly right now.
 			klog.Infof("Ignoring test %s for variant %s", tr.Name, tr.Variant)
 		}
 	}
-	tests["Overall"] = overallResults
+
+	// Add in the All column for each test:
+	for testName := range tests {
+		allReport, err := query.TestReportExcludeVariants(dbc, release, testName, []string{})
+		if err != nil {
+			return "", err
+		}
+		tests[testName]["All"] = allReport
+	}
 
 	// Build up a set of column names, every variant we encounter as well as an "All":
 	columnNames := append([]string{"All"}, variantColumns.List()...)
