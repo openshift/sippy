@@ -24,7 +24,7 @@ func UpgradeOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 		curr, prev,
 		isUpgradeRelatedTest,
 		func(testResult sippyprocessingv1.TestResult) bool {
-			return testResult.Name == testgridanalysisapi.UpgradeTestName
+			return testResult.Name == testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName
 		},
 	)
 	// compute variant columns before we add the special "All" column
@@ -37,11 +37,11 @@ func UpgradeOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 
 	// fill in the data for the first row's "All" column
 	var prevTestResult *sippyprocessingv1.TestResult
-	if prevInstallTest := util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, prev.ByTest); prevInstallTest != nil {
+	if prevInstallTest := util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName, prev.ByTest); prevInstallTest != nil {
 		prevTestResult = &prevInstallTest.TestResultAcrossAllJobs
 	}
 	var currTestResult sippyprocessingv1.TestResult
-	if currInstallTest := util.FindFailedTestResult(testgridanalysisapi.UpgradeTestName, curr.ByTest); currInstallTest != nil {
+	if currInstallTest := util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName, curr.ByTest); currInstallTest != nil {
 		currTestResult = currInstallTest.TestResultAcrossAllJobs
 	}
 
@@ -61,11 +61,9 @@ func UpgradeOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 
 // UpgradeOperatorTestsFromDB returns json for the table of all upgrade related tests and their pass rates overall and per variant.
 func UpgradeOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
-	upgradeTestName := strings.TrimPrefix(testgridanalysisapi.UpgradeTestName,
-		testgridanalysisapi.SippySuiteName+".")
 	testSubstrings := []string{
 		testgridanalysisapi.OperatorUpgradePrefix, // "old" upgrade test, TODO: would prefer prefix matching for this
-		upgradeTestName, // TODO: would prefer exact matching on the full InstallTestName const
+		testgridanalysisapi.UpgradeTestName,       // TODO: would prefer exact matching
 		testidentification.CVOAcknowledgesUpgradeTest,
 		testidentification.OperatorsUpgradedTest,
 		testidentification.MachineConfigsUpgradedRegex,

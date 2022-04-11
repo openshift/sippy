@@ -29,11 +29,11 @@ func operatorHealthTests(curr, prev sippyprocessingv1.TestReport) string {
 
 	// fill in the data for the first row's "All" column
 	var prevTestResult *sippyprocessingv1.TestResult
-	if installTest := util.FindFailedTestResult(testgridanalysisapi.FinalOperatorHealthTestName, prev.ByTest); installTest != nil {
+	if installTest := util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.FinalOperatorHealthTestName, prev.ByTest); installTest != nil {
 		prevTestResult = &installTest.TestResultAcrossAllJobs
 	}
 	dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
-		curr: util.FindFailedTestResult(testgridanalysisapi.FinalOperatorHealthTestName, curr.ByTest).TestResultAcrossAllJobs,
+		curr: util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.FinalOperatorHealthTestName, curr.ByTest).TestResultAcrossAllJobs,
 		prev: prevTestResult,
 	}
 

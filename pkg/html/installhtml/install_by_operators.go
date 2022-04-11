@@ -25,7 +25,7 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix)
 		},
 		func(testResult sippyprocessingv1.TestResult) bool {
-			return testResult.Name == testgridanalysisapi.InstallTestName
+			return testResult.Name == testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName
 		},
 	)
 
@@ -39,11 +39,11 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 
 	// fill in the data for the first row's "All" column
 	var prevTestResult *sippyprocessingv1.TestResult
-	if installTest := util.FindFailedTestResult(testgridanalysisapi.InstallTestName, prev.ByTest); installTest != nil {
+	if installTest := util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName, prev.ByTest); installTest != nil {
 		prevTestResult = &installTest.TestResultAcrossAllJobs
 	}
 	dataForTestsByVariant.aggregationToOverallTestResult["All"] = &currPrevTestResult{
-		curr: util.FindFailedTestResult(testgridanalysisapi.InstallTestName, curr.ByTest).TestResultAcrossAllJobs,
+		curr: util.FindFailedTestResult(testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName, curr.ByTest).TestResultAcrossAllJobs,
 		prev: prevTestResult,
 	}
 
@@ -57,14 +57,12 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 }
 
 func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
-	installTestName := strings.TrimPrefix(testgridanalysisapi.InstallTestName,
-		testgridanalysisapi.SippySuiteName+".")
 	// Using substring search here is a little funky, we'd prefer prefix matching for the operator tests.
 	// For the overall test, the exact match on the InstallTestName const which includes [sig-sippy] isn't working,
 	// so we have to use a simpler substring.
 	testSubstrings := []string{
 		testgridanalysisapi.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
-		installTestName, // TODO: would prefer exact matching on the full InstallTestName const
+		testgridanalysisapi.InstallTestName,       // TODO: would prefer exact matching on the full InstallTestName const
 	}
 
 	testReports, err := query.TestReportsByVariant(dbc, release, testSubstrings)
@@ -79,7 +77,7 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	for _, tr := range testReports {
 
 		switch {
-		case tr.Name == installTestName || strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
+		case tr.Name == testgridanalysisapi.InstallTestName || strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
 			klog.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
 			variantColumns.Insert(tr.Variant)
 			if _, ok := tests[tr.Name]; !ok {
