@@ -59,36 +59,16 @@ export default function Jobs(props) {
                     to={url}
                   />
                   <Tab
-                    label="Jobs by variant"
-                    value="variant"
-                    component={Link}
-                    to={url + '/variant'}
-                  />
-                  <Tab
                     label="All job runs"
                     value="runs"
                     component={Link}
                     to={url + '/runs'}
-                  />
-                  <Tab
-                    label="Job run summary"
-                    value="detail"
-                    component={Link}
-                    to={url + '/detail'}
                   />
                 </Tabs>
               </Paper>
             </Grid>
             <Container size="xl">
               <Switch>
-                <Route path={path + '/variant'}>
-                  <Variants release={props.release} />
-                </Route>
-
-                <Route path={path + '/detail'}>
-                  <JobsDetail release={props.release} />
-                </Route>
-
                 <Route path={path + '/runs'}>
                   <JobRunsTable release={props.release} />
                 </Route>

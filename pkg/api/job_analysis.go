@@ -257,6 +257,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	}
 	tr := make([]testResult, 0)
 
+	// Currently 50 million rows in prow_job_run_tests, this query is taking 25s.
+	// Returning 330 rows or so.
 	jr := dbc.DB.Table("prow_job_runs").
 		Select(fmt.Sprintf(`date_trunc('%s', timestamp) as period, tests.name, COUNT(tests.name)`, period)).
 		Joins(`INNER JOIN prow_job_run_tests pjrt on prow_job_runs.id = pjrt.prow_job_run_id`).

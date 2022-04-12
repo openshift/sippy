@@ -70,7 +70,6 @@ export default function Tests(props) {
               <Route path={path + '/details'}>
                 <TestDetails release={props.release} />
               </Route>
-
               <Route exact path={path}>
                 <Container size="xl">
                   <TestTable release={props.release} />
