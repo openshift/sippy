@@ -163,6 +163,10 @@ var PostgresMatViews = []PostgresMaterializedView{
 		Name:       "prow_job_runs_report_matview",
 		Definition: jobRunsReportMatView,
 	},
+	{
+		Name:       "prow_job_failed_tests_by_day_matview",
+		Definition: prowJobFailedTestsByDayMatView,
+	},
 }
 
 var PostgresMatViewIndicies = []string{
@@ -250,6 +254,15 @@ FROM prow_job_run_tests
          JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY tests.name, tests.id, date, release, job_name
+`
+
+const prowJobFailedTestsByDayMatView = `
+SELECT date_trunc('day', timestamp) as period, prow_job_runs.prow_job_id, tests.name as test_name, COUNT(tests.name) as count
+FROM "prow_job_runs"
+    INNER JOIN prow_job_run_tests pjrt ON prow_job_runs.id = pjrt.prow_job_run_id
+    INNER JOIN tests tests ON pjrt.test_id = tests.id
+WHERE status = 12
+GROUP BY "tests"."name", date_trunc('day', timestamp), prow_job_runs.prow_job_id
 `
 
 func createPostgresFunctions(db *gorm.DB) error {
