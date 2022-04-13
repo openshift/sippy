@@ -113,6 +113,13 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 			}
 		}
 	}
+
+	for _, pmi := range PostgresMatViewIndicies {
+		if res := db.Exec(pmi); res.Error != nil {
+			klog.Errorf("error creating materialized view index %s: %v", pmi, res.Error)
+			return res.Error
+		}
+	}
 	return nil
 }
 
@@ -156,6 +163,11 @@ var PostgresMatViews = []PostgresMaterializedView{
 		Name:       "prow_job_runs_report_matview",
 		Definition: jobRunsReportMatView,
 	},
+}
+
+var PostgresMatViewIndicies = []string{
+	"CREATE INDEX IF NOT EXISTS test_release_by_job ON prow_test_analysis_by_job_14d_matview (test_name, release)",
+	"CREATE INDEX IF NOT EXISTS test_release_by_variant on prow_test_analysis_by_variant_14d_matview(test_name, release)",
 }
 
 const jobRunsReportMatView = `
