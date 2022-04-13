@@ -88,18 +88,6 @@ export default function Upgrades(props) {
                     component={Link}
                     to={url + '/operators'}
                   />
-                  <Tab
-                    label="Upgrade related tests"
-                    value="tests"
-                    component={Link}
-                    to={url + '/tests'}
-                  />
-                  <Tab
-                    label="Upgrade jobs"
-                    value="jobs"
-                    component={Link}
-                    to={url + '/jobs'}
-                  />
                 </Tabs>
               </Paper>
             </Grid>
@@ -110,24 +98,6 @@ export default function Upgrades(props) {
                   colorScale={[90, 100]}
                   data={data}
                 />
-              </Route>
-              <Route path={path + '/tests'}>
-                <TestTable
-                  release={props.release}
-                  filterModel={{
-                    items: [BOOKMARKS.UPGRADE],
-                  }}
-                />
-              </Route>
-              <Route path={path + '/jobs'}>
-                <Container size="xl">
-                  <JobTable
-                    release={props.release}
-                    filterModel={{
-                      items: [BOOKMARKS.UPGRADE],
-                    }}
-                  />
-                </Container>
               </Route>
               <Redirect from="/" to={url + '/operators'} />
             </Switch>

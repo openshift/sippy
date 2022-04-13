@@ -47,32 +47,6 @@ exports[`upgrades should render correctly 1`] = `
             <span class="MuiTouchRipple-root">
             </span>
           </a>
-          <a class="MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary"
-             tabindex="-1"
-             role="tab"
-             aria-disabled="false"
-             aria-selected="false"
-             href="//tests"
-          >
-            <span class="MuiTab-wrapper">
-              Upgrade related tests
-            </span>
-            <span class="MuiTouchRipple-root">
-            </span>
-          </a>
-          <a class="MuiButtonBase-root MuiTab-root MuiTab-textColorPrimary"
-             tabindex="-1"
-             role="tab"
-             aria-disabled="false"
-             aria-selected="false"
-             href="//jobs"
-          >
-            <span class="MuiTab-wrapper">
-              Upgrade jobs
-            </span>
-            <span class="MuiTouchRipple-root">
-            </span>
-          </a>
         </div>
         <span class="PrivateTabIndicator-root-1 PrivateTabIndicator-colorPrimary-2 MuiTabs-indicator"
               style="left: 0px; width: 0px;"

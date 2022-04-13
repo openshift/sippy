@@ -75,12 +75,6 @@ export default function Install(props) {
                     component={Link}
                     to={url + '/operators'}
                   />
-                  <Tab
-                    label="Install related tests"
-                    value="tests"
-                    component={Link}
-                    to={url + '/tests'}
-                  />
                 </Tabs>
               </Paper>
             </Grid>
@@ -90,14 +84,6 @@ export default function Install(props) {
                   release={props.release}
                   colorScale={[90, 100]}
                   data={data}
-                />
-              </Route>
-              <Route path={path + '/tests'}>
-                <TestTable
-                  release={props.release}
-                  filterModel={{
-                    items: [BOOKMARKS.INSTALL],
-                  }}
                 />
               </Route>
               <Redirect from="/" to={url + '/operators'} />
