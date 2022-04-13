@@ -103,14 +103,14 @@ const (
 	// OperatorFinalHealthPrefix is used to detect tests in the junit which signal an operator's install status.
 	OperatorFinalHealthPrefix = "Operator results.operator conditions "
 
-	FinalOperatorHealthTestName = "sippy.[sig-sippy] tests should finish with healthy operators"
+	FinalOperatorHealthTestName = "[sig-sippy] tests should finish with healthy operators"
 
 	SippySuiteName         = "sippy"
-	InfrastructureTestName = `sippy.[sig-sippy] infrastructure should work`
-	InstallTestName        = `sippy.[sig-sippy] install should work`
-	InstallTimeoutTestName = `sippy.[sig-sippy] install should not timeout`
-	UpgradeTestName        = `sippy.[sig-sippy] upgrade should work`
-	OpenShiftTestsName     = `sippy.[sig-sippy] openshift-tests should work`
+	InfrastructureTestName = `[sig-sippy] infrastructure should work`
+	InstallTestName        = `[sig-sippy] install should work`
+	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
+	UpgradeTestName        = `[sig-sippy] upgrade should work`
+	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
 
 	Success = "Success"
 	Failure = "Failure"

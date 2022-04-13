@@ -745,6 +745,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
 		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
+		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
 		serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 	} else {
@@ -763,8 +764,8 @@ func (s *Server) Serve() {
 		// New API's
 		serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
 		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
-		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport) // TODO: port to db
-		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)         // TODO: port to db
+		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
+		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
 
 		serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
 		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
@@ -774,7 +775,7 @@ func (s *Server) Serve() {
 
 		serveMux.HandleFunc("/api/health", s.jsonHealthReport)
 		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
-		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport) // TODO: port to db
+		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
 	}
 
 	serveMux.HandleFunc("/refresh", s.refresh)

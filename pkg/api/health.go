@@ -3,7 +3,6 @@ package api
 import (
 	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -150,9 +149,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators := make(map[string]indicator)
 
 	// Infrastructure
-	infraTestName := strings.TrimPrefix(testgridanalysisapi.InfrastructureTestName,
-		testgridanalysisapi.SippySuiteName+".")
-	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName)
+	infraIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InfrastructureTestName)
 	if err != nil {
 		klog.Errorf("error querying test report: %s", err)
 		return
@@ -160,9 +157,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["infrastructure"] = infraIndicator
 
 	// Install
-	installTestName := strings.TrimPrefix(testgridanalysisapi.InstallTestName,
-		testgridanalysisapi.SippySuiteName+".")
-	installIndicator, err := getIndicatorForTest(dbc, release, installTestName)
+	installIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallTestName)
 	if err != nil {
 		klog.Errorf("error querying test report: %s", err)
 		return
@@ -170,9 +165,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["install"] = installIndicator
 
 	// Upgrade
-	upgradeTestName := strings.TrimPrefix(testgridanalysisapi.UpgradeTestName,
-		testgridanalysisapi.SippySuiteName+".")
-	upgradeIndicator, err := getIndicatorForTest(dbc, release, upgradeTestName)
+	upgradeIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.UpgradeTestName)
 	if err != nil {
 		klog.Errorf("error querying test report: %s", err)
 		return
@@ -182,9 +175,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Tests
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	testsTestName := strings.TrimPrefix(testgridanalysisapi.OpenShiftTestsName,
-		testgridanalysisapi.SippySuiteName+".")
-	testsIndicator, err := getIndicatorForTest(dbc, release, testsTestName)
+	testsIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.OpenShiftTestsName)
 	if err != nil {
 		klog.Errorf("error querying test report: %s", err)
 		return
@@ -243,18 +234,13 @@ func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error
 		return indicator{}, err
 	}
 
-	// Can happen if the materialized views have not been refreshed yet.
-	if len(testReport) == 0 {
-		return indicator{}, nil
-	}
-
 	currentPassRate := sippyv1.PassRate{
-		Percentage: testReport[0].CurrentPassPercentage,
-		Runs:       testReport[0].CurrentRuns,
+		Percentage: testReport.CurrentPassPercentage,
+		Runs:       testReport.CurrentRuns,
 	}
 	previousPassRate := sippyv1.PassRate{
-		Percentage: testReport[0].PreviousPassPercentage,
-		Runs:       testReport[0].PreviousRuns,
+		Percentage: testReport.PreviousPassPercentage,
+		Runs:       testReport.PreviousRuns,
 	}
 	return indicator{
 		Current:  currentPassRate,

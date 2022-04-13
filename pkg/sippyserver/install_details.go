@@ -51,6 +51,12 @@ func (s *Server) jsonUpgradeReport(w http.ResponseWriter, req *http.Request) {
 	)
 }
 
+func (s *Server) jsonUpgradeReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+
+	api.PrintUpgradeJSONReportFromDB(w, req, s.db, release)
+}
+
 func (s *Server) jsonInstallReport(w http.ResponseWriter, req *http.Request) {
 	reportName := req.URL.Query().Get("release")
 	if _, ok := s.currTestReports[reportName]; !ok {

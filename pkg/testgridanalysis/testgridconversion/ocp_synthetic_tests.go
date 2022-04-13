@@ -52,15 +52,15 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 		}
 
 		syntheticTests := map[string]*syntheticTestResult{
-			testgridanalysisapi.InstallTestName:             &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
-			testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTimeoutTestName},
-			testgridanalysisapi.InfrastructureTestName:      &syntheticTestResult{name: testgridanalysisapi.InfrastructureTestName},
-			testgridanalysisapi.FinalOperatorHealthTestName: &syntheticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
-			testgridanalysisapi.OpenShiftTestsName:          &syntheticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
+			testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName:             &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
+			testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTimeoutTestName:      &syntheticTestResult{name: testgridanalysisapi.InstallTimeoutTestName},
+			testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InfrastructureTestName:      &syntheticTestResult{name: testgridanalysisapi.InfrastructureTestName},
+			testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.FinalOperatorHealthTestName: &syntheticTestResult{name: testgridanalysisapi.FinalOperatorHealthTestName},
+			testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.OpenShiftTestsName:          &syntheticTestResult{name: testgridanalysisapi.OpenShiftTestsName},
 		}
 		// upgrades should only be indicated on jobs that run upgrades
 		if jrr.UpgradeStarted {
-			syntheticTests[testgridanalysisapi.UpgradeTestName] = &syntheticTestResult{name: testgridanalysisapi.UpgradeTestName}
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName] = &syntheticTestResult{name: testgridanalysisapi.UpgradeTestName}
 		}
 
 		hasFinalOperatorResults := len(jrr.FinalOperatorStates) > 0
@@ -78,15 +78,15 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 		case !hasFinalOperatorResults:
 		// without results, there is no run for the tests
 		case allOperatorsSuccessfulAtEndOfRun:
-			syntheticTests[testgridanalysisapi.FinalOperatorHealthTestName].pass = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.FinalOperatorHealthTestName].pass = 1
 		default:
-			syntheticTests[testgridanalysisapi.FinalOperatorHealthTestName].fail = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.FinalOperatorHealthTestName].fail = 1
 		}
 
 		// set overall installed status
 		switch {
 		case installSucceeded:
-			syntheticTests[testgridanalysisapi.InstallTestName].pass = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName].pass = 1
 			// if the test succeeded, then the operator install tests should all be passes
 			for _, operatorState := range jrr.FinalOperatorStates {
 				testName := "sippy." + testgridanalysisapi.OperatorInstallPrefix + operatorState.Name
@@ -101,7 +101,7 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 
 		default:
 			// the installation failed and we have some operator results, which means the install started. This is a failure
-			syntheticTests[testgridanalysisapi.InstallTestName].fail = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName].fail = 1
 
 			// if the test failed, then the operator install tests should match the operator state
 			for _, operatorState := range jrr.FinalOperatorStates {
@@ -121,10 +121,10 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 		switch {
 		case !installSucceeded && hasFinalOperatorResults && allOperatorsSuccessfulAtEndOfRun:
 			// the install failed and yet all operators were successful in the end.  This means we had a weird problem.  Probably a timeout failure.
-			syntheticTests[testgridanalysisapi.InstallTimeoutTestName].fail = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTimeoutTestName].fail = 1
 
 		default:
-			syntheticTests[testgridanalysisapi.InstallTimeoutTestName].pass = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTimeoutTestName].pass = 1
 
 		}
 
@@ -135,10 +135,10 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 
 		case installFailed && !hasFinalOperatorResults:
 			// we only count failures as infra if we have no operator results.  If we got any operator working, then CI infra was working.
-			syntheticTests[testgridanalysisapi.InfrastructureTestName].fail = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InfrastructureTestName].fail = 1
 
 		default:
-			syntheticTests[testgridanalysisapi.InfrastructureTestName].pass = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InfrastructureTestName].pass = 1
 		}
 
 		// set the update status
@@ -150,7 +150,7 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 
 		default:
 			if jrr.UpgradeForOperatorsStatus == testgridanalysisapi.Success && jrr.UpgradeForMachineConfigPoolsStatus == testgridanalysisapi.Success {
-				syntheticTests[testgridanalysisapi.UpgradeTestName].pass = 1
+				syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName].pass = 1
 				// if the test succeeded, then the operator install tests should all be passes
 				for _, operatorState := range jrr.FinalOperatorStates {
 					testName := testgridanalysisapi.SippyOperatorUpgradePrefix + operatorState.Name
@@ -160,7 +160,7 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 					}
 				}
 			} else {
-				syntheticTests[testgridanalysisapi.UpgradeTestName].fail = 1
+				syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.UpgradeTestName].fail = 1
 				// if the test failed, then the operator upgrade tests should match the operator state
 				for _, operatorState := range jrr.FinalOperatorStates {
 					testName := testgridanalysisapi.SippyOperatorUpgradePrefix + operatorState.Name
@@ -178,9 +178,9 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 
 		switch {
 		case jrr.Failed && jrr.OpenShiftTestsStatus == testgridanalysisapi.Failure:
-			syntheticTests[testgridanalysisapi.OpenShiftTestsName].fail = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.OpenShiftTestsName].fail = 1
 		case jrr.OpenShiftTestsStatus == testgridanalysisapi.Success:
-			syntheticTests[testgridanalysisapi.OpenShiftTestsName].pass = 1
+			syntheticTests[testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.OpenShiftTestsName].pass = 1
 		}
 
 		for testName, result := range syntheticTests {

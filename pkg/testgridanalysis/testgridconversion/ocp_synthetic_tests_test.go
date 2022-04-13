@@ -36,8 +36,8 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]testgridanalysisapi.RawTestResult{},
 			},
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{Name: testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusSuccess},
-				{Name: testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
 				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 		},
@@ -55,11 +55,11 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]testgridanalysisapi.RawTestResult{},
 			},
 			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{Name: testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
 				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 			expectedFailedTestNames: []string{
-				testgridanalysisapi.InstallTestName,
+				testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName,
 			},
 		},
 	}
