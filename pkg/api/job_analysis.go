@@ -251,26 +251,20 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		}
 	}
 	type testResult struct {
-		Period time.Time
-		Name   string
-		Count  int
+		Period   time.Time
+		TestName string
+		Count    int
 	}
 	tr := make([]testResult, 0)
 
-	// Currently 50 million rows in prow_job_run_tests, this query is taking 25s.
-	// Returning 330 rows or so.
-	jr := dbc.DB.Table("prow_job_runs").
-		Select(fmt.Sprintf(`date_trunc('%s', timestamp) as period, tests.name, COUNT(tests.name)`, period)).
-		Joins(`INNER JOIN prow_job_run_tests pjrt on prow_job_runs.id = pjrt.prow_job_run_id`).
-		Joins(`INNER JOIN tests tests on pjrt.test_id = tests.id`).
-		Where("status = ?", 12).Where("prow_job_runs.prow_job_id IN ?", jobs).
-		Group("tests.name").
-		Group(fmt.Sprintf("date_trunc('%s', timestamp)", period))
+	jr := dbc.DB.Table("prow_job_failed_tests_by_day_matview").
+		Select("period, test_name, count").
+		Where("prow_job_id IN ?", jobs)
 
 	jobRunsFilter.ToSQL(jr, apitype.JobRun{}).Scan(&tr)
 
 	for _, t := range tr {
-		results.ByPeriod[t.Period.Format(formatter)].TestFailureCount[t.Name] = t.Count
+		results.ByPeriod[t.Period.Format(formatter)].TestFailureCount[t.TestName] = t.Count
 	}
 
 	RespondWithJSON(http.StatusOK, w, results)
