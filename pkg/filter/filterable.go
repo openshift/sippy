@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gorm.io/gorm/clause"
-
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	"k8s.io/klog"
+	"gorm.io/gorm/clause"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
@@ -346,32 +345,32 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 		var result bool
 		var err error
 
-		klog.V(4).Infof("Applying filter: %s %s %s", filter.Field, filter.Operator, filter.Value)
+		log.Debugf("Applying filter: %s %s %s", filter.Field, filter.Operator, filter.Value)
 		filterType := item.GetFieldType(filter.Field)
 		switch filterType {
 		case apitype.ColumnTypeString:
-			klog.V(4).Infof("Column %s is of string type", filter.Field)
+			log.Debugf("Column %s is of string type", filter.Field)
 			result, err = filterString(filter, item)
 			if err != nil {
-				klog.V(4).Infof("Could not filter string type: %s", err)
+				log.Debugf("Could not filter string type: %s", err)
 				return false, err
 			}
 		case apitype.ColumnTypeNumerical:
-			klog.V(4).Infof("Column %s is of numerical type", filter.Field)
+			log.Debugf("Column %s is of numerical type", filter.Field)
 			result, err = filterNumerical(filter, item)
 			if err != nil {
-				klog.V(4).Infof("Could not filter numerical type: %s", err)
+				log.Debugf("Could not filter numerical type: %s", err)
 				return false, err
 			}
 		case apitype.ColumnTypeArray:
-			klog.V(4).Infof("Column %s is of array type", filter.Field)
+			log.Debugf("Column %s is of array type", filter.Field)
 			result, err = filterArray(filter, item)
 			if err != nil {
-				klog.V(4).Infof("Could not filter array type: %s", err)
+				log.Debugf("Could not filter array type: %s", err)
 				return false, err
 			}
 		default:
-			klog.V(4).Infof("Unknown type of field %s", filter.Field)
+			log.Debugf("Unknown type of field %s", filter.Field)
 			return false, fmt.Errorf("%s: unknown field or field type", filter.Field)
 		}
 
@@ -385,24 +384,24 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 	if filters.LinkOperator == LinkOperatorOr {
 		for _, value := range matches {
 			if value {
-				klog.V(4).Infof("Filter matched")
+				log.Debugf("Filter matched")
 				return true, nil
 			}
 		}
 
-		klog.V(4).Infof("Filter did not match")
+		log.Debugf("Filter did not match")
 		return false, nil
 	}
 
 	// LinkOperator as "and" is the default:
 	for _, value := range matches {
 		if !value {
-			klog.V(4).Infof("Filter did not match")
+			log.Debugf("Filter did not match")
 			return false, nil
 		}
 	}
 
-	klog.V(4).Infof("Filter did match")
+	log.Debugf("Filter did match")
 	return true, nil
 }
 
@@ -411,7 +410,7 @@ func filterString(filter FilterItem, item Filterable) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	klog.V(4).Infof("Got value for %s=%s", filter.Field, value)
+	log.Debugf("Got value for %s=%s", filter.Field, value)
 
 	comparison := filter.Value
 
@@ -492,12 +491,12 @@ func Compare(a, b Filterable, sortField string) bool {
 	if kind == apitype.ColumnTypeNumerical {
 		val1, err := a.GetNumericalValue(sortField)
 		if err != nil {
-			klog.Error(err)
+			log.Error(err)
 		}
 
 		val2, err := b.GetNumericalValue(sortField)
 		if err != nil {
-			klog.Error(err)
+			log.Error(err)
 		}
 
 		return val1 < val2
@@ -506,12 +505,12 @@ func Compare(a, b Filterable, sortField string) bool {
 	if kind == apitype.ColumnTypeString {
 		val1, err := a.GetStringValue(sortField)
 		if err != nil {
-			klog.Error(err)
+			log.Error(err)
 		}
 
 		val2, err := b.GetStringValue(sortField)
 		if err != nil {
-			klog.Error(err)
+			log.Error(err)
 		}
 
 		return val1 < val2

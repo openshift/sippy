@@ -8,7 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 // TestReportsByVariant returns a test report for every test in the db matching the given substrings, separated by variant.
@@ -54,12 +54,12 @@ FROM results;
 		sql.Named("release", release),
 		sql.Named("testsubstrings", testSubstringFilter)).Scan(&testReports)
 	if r.Error != nil {
-		klog.Error(r.Error)
+		log.Error(r.Error)
 		return testReports, r.Error
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("TestReportsByVariant completed in %s with %d results from db", elapsed, len(testReports))
+	log.Infof("TestReportsByVariant completed in %s with %d results from db", elapsed, len(testReports))
 	return testReports, nil
 }
 
@@ -109,11 +109,11 @@ FROM results;
 		sql.Named("release", release),
 		sql.Named("testname", testName)).First(&testReport)
 	if r.Error != nil {
-		klog.Error(r.Error)
+		log.Error(r.Error)
 		return testReport, r.Error
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("TestReportExcludeVariants completed in %s", elapsed)
+	log.Infof("TestReportExcludeVariants completed in %s", elapsed)
 	return testReport, nil
 }

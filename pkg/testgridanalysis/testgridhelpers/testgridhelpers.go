@@ -15,7 +15,7 @@ import (
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/util"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 func DownloadData(dashboards []string, filter, storagePath string) {
@@ -27,21 +27,21 @@ func DownloadData(dashboards []string, filter, storagePath string) {
 	for _, dashboard := range dashboards {
 		err := downloadJobSummaries(dashboard, storagePath)
 		if err != nil {
-			klog.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
+			log.Errorf("Error fetching dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
 		jobs, _, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
-			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
+			log.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
 			continue
 		}
 
 		for jobName, job := range jobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
-				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				log.Debugf("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				err := downloadJobDetails(dashboard, jobName, storagePath)
 				if err != nil {
-					klog.Errorf("Error fetching job details for %s: %v\n", jobName, err)
+					log.WithError(err).Errorf("Error fetching job details for %s", jobName)
 				}
 			}
 		}
@@ -58,7 +58,7 @@ func LoadTestGridDataFromDisk(storagePath string, dashboards []string, jobFilter
 	for _, dashboard := range dashboards {
 		jobs, ts, err := loadJobSummaries(dashboard, storagePath)
 		if err != nil {
-			klog.Errorf("Error loading dashboard page %s: %v\n", dashboard, err)
+			log.WithError(err).Errorf("Error loading dashboard page %s", dashboard)
 			continue
 		}
 		if ts.After(lastUpdateTime) {
@@ -67,10 +67,10 @@ func LoadTestGridDataFromDisk(storagePath string, dashboards []string, jobFilter
 
 		for jobName, job := range jobs {
 			if util.RelevantJob(jobName, job.OverallStatus, jobFilter) {
-				klog.V(4).Infof("Job %s has bad status %s\n", jobName, job.OverallStatus)
+				log.Debugf("Job %s has bad status %s\n", jobName, job.OverallStatus)
 				details, err := loadJobDetails(dashboard, jobName, storagePath)
 				if err != nil {
-					klog.Errorf("Error loading job details for %s: %v\n", jobName, err)
+					log.WithError(err).Errorf("Error loading job details for %s", jobName)
 				} else {
 					testGridJobDetails = append(testGridJobDetails, details)
 				}

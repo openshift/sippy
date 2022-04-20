@@ -9,12 +9,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/openshift/sippy/pkg/html/generichtml"
-
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/util"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -413,7 +412,7 @@ func PrintHTMLReport(w http.ResponseWriter, req *http.Request, report, twoDayRep
 		Release:      report.Release,
 		ReportNames:  allReportNames,
 	}); err != nil {
-		klog.Errorf("Unable to render page: %v", err)
+		log.Errorf("Unable to render page: %v", err)
 	}
 
 	fmt.Fprintf(w, generichtml.HTMLPageEnd, report.Timestamp.Format("Jan 2 15:04 2006 MST"))

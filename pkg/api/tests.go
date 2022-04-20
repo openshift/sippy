@@ -9,16 +9,15 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/filter"
-	"k8s.io/klog"
-
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -227,7 +226,7 @@ FROM results;
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release)).Scan(&testReports)
 	if r.Error != nil {
-		klog.Error(r.Error)
+		log.WithError(r.Error).Error("error querying test reports")
 		return []apitype.Test{}, r.Error
 	}
 
@@ -258,7 +257,11 @@ FROM results;
 	}
 
 	elapsed := time.Since(now)
-	klog.Infof("BuildTestsResult completed in %s with %d results from db, filtered down to %d", elapsed, len(testReports), len(filteredReports))
+	log.WithFields(log.Fields{
+		"elapsed":         elapsed,
+		"reports":         len(testReports),
+		"filteredReports": len(filteredReports),
+	}).Info("BuildTestsResults completed")
 
 	return filteredReports, nil
 }

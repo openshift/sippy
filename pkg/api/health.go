@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -14,7 +16,6 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
-	"k8s.io/klog"
 )
 
 type indicator struct {
@@ -151,7 +152,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Infrastructure
 	infraIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InfrastructureTestName)
 	if err != nil {
-		klog.Errorf("error querying test report: %s", err)
+		log.WithError(err).Error("error querying test report")
 		return
 	}
 	indicators["infrastructure"] = infraIndicator
@@ -159,7 +160,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Install
 	installIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallTestName)
 	if err != nil {
-		klog.Errorf("error querying test report: %s", err)
+		log.WithError(err).Error("error querying test report")
 		return
 	}
 	indicators["install"] = installIndicator
@@ -167,7 +168,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Upgrade
 	upgradeIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.UpgradeTestName)
 	if err != nil {
-		klog.Errorf("error querying test report: %s", err)
+		log.WithError(err).Error("error querying test report")
 		return
 	}
 	indicators["upgrade"] = upgradeIndicator
@@ -177,7 +178,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// the percentage of time that all tests passed. We should probably fix that.
 	testsIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.OpenShiftTestsName)
 	if err != nil {
-		klog.Errorf("error querying test report: %s", err)
+		log.WithError(err).Error("error querying test report")
 		return
 	}
 	indicators["tests"] = testsIndicator
@@ -185,10 +186,10 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	var lastUpdated time.Time
 	r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if r.Error != nil {
-		klog.Errorf("error querying last update time: %s", r.Error)
+		log.WithError(err).Error("error querying last update time")
 		return
 	}
-	klog.Infof("ran the last update query: %s", lastUpdated)
+	log.WithField("lastUpdated", lastUpdated).Info("ran the last update query")
 
 	// Load all the job reports for this release to calculate statistics:
 	filterOpts := &filter.FilterOptions{
@@ -202,7 +203,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	end := time.Now()
 	jobReports, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
-		klog.Errorf("error querying job reports: %s", err)
+		log.WithError(err).Error("error querying job reports")
 		return
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
@@ -230,7 +231,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error) {
 	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, []string{"never-stable", "techpreview"})
 	if err != nil {
-		klog.Errorf("error querying test report: %s", err)
+		log.WithError(err).Error("error querying test report")
 		return indicator{}, err
 	}
 

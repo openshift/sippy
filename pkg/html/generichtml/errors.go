@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"net/http"
 
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 var messageTemplate = template.Must(template.New("jobs").Parse(`<!DOCTYPE html>
@@ -32,6 +32,6 @@ func PrintStatusMessage(w http.ResponseWriter, code int, message string) {
 		"UserMessage":   message,
 	})
 	if err != nil {
-		klog.Error(err)
+		log.Error(err)
 	}
 }

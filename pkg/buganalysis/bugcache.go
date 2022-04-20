@@ -14,7 +14,7 @@ import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/buganalysis/internal"
 	"github.com/openshift/sippy/pkg/util"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 // BugCache is a thread-safe way to query about bug status.
@@ -167,7 +167,7 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 		}
 		batchTestNames = []string{}
 	}
-	klog.V(4).Infof("findBugsForFailedTests made %d bugzilla requests", queryCtr)
+	log.Debugf("findBugsForFailedTests made %d bugzilla requests", queryCtr)
 
 	return ret, lastUpdateError
 }
@@ -283,7 +283,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	v.Set("context", "-1")
 	for _, testName := range testNames {
 		testName = regexp.QuoteMeta(testName)
-		klog.V(4).Infof("Searching bugs for test name: %s\n", testName)
+		log.Debugf("Searching bugs for test name: %s\n", testName)
 		v.Add("search", testName)
 	}
 
@@ -292,12 +292,12 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
-		klog.Errorf(e.Error())
+		log.WithError(err).Errorf("error during bug search against %s", searchURL)
 		return searchResults, e
 	}
 	if resp.StatusCode != 200 {
 		e := fmt.Errorf("Non-200 response code during bug search against %s: %s", searchURL, resp.Status)
-		klog.Errorf(e.Error())
+		log.WithError(e).Error("error")
 		return searchResults, e
 	}
 
@@ -305,7 +305,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 
 	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
 		e := fmt.Errorf("could not decode bug search results: %w", err)
-		klog.Errorf(e.Error())
+		log.WithError(err).Errorf("error decoding bug search results")
 		return searchResults, e
 	}
 
@@ -334,7 +334,7 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		}
 	}
 
-	klog.V(2).Infof("Found bugs: %v", searchResults)
-	klog.V(2).Infof("bugzilla query took: %s", time.Since(bzQueryStart))
+	log.Infof("Found bugs: %v", searchResults)
+	log.Infof("bugzilla query took: %s", time.Since(bzQueryStart))
 	return searchResults, nil
 }

@@ -10,11 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/openshift/sippy/pkg/db/query"
-
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -202,7 +200,7 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 		end = time.Now()
 	}
 
-	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
 	variantsResult, err := query.VariantReports(dbc, release, start, boundary, end)
 	if err != nil {
@@ -279,7 +277,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		end = time.Now()
 	}
 
-	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
 	if err != nil {
@@ -372,10 +370,10 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 		Preload("Tests.Test").
 		Find(&prowJobRuns)
 	if res.Error != nil {
-		klog.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
+		log.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
 		return res.Error
 	}
-	klog.Infof("loaded %d ProwJobRuns from db since %s", len(prowJobRuns), since.Format(time.RFC3339))
+	log.WithFields(log.Fields{"prowJobRuns": len(prowJobRuns), "since": since}).Info("loaded ProwJobRuns from db")
 
 	jobDetails := map[string]*jobDetail{}
 	for _, pjr := range prowJobRuns {
@@ -507,7 +505,7 @@ func jobResultsFromDB(req *http.Request, dbc *gorm.DB, release string) (*gorm.DB
 		end = time.Now()
 	}
 
-	klog.V(4).Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
+	log.Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
 	return dbc.Table("job_results(?, ?, ?, ?)", release, start, boundary, end), nil
 }

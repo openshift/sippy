@@ -5,7 +5,7 @@ import (
 	"regexp"
 
 	"github.com/openshift/sippy/pkg/util/sets"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -349,7 +349,7 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	}
 
 	if len(variants) == 0 {
-		klog.V(2).Infof("unknown variant for job: %s\n", jobName)
+		log.Infof("unknown variant for job: %s\n", jobName)
 		return []string{"unknown variant"}
 	}
 

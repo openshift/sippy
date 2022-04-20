@@ -9,7 +9,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/util"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 var variantStart = template.Must(template.New("variants").Parse(`
@@ -49,7 +49,7 @@ func PrintVariantsReport(w http.ResponseWriter, release, variant string, current
 		"Variant": variant,
 		"Release": release,
 	}); err != nil {
-		klog.Error(err)
+		log.Error(err)
 	}
 
 	fmt.Fprint(w, s+"</table>")

@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
-	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
-
 	es7 "github.com/elastic/go-elasticsearch/v7"
+	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"k8s.io/klog"
 )
 
 const (
@@ -28,13 +27,13 @@ const (
 )
 
 func DownloadPerfScaleData(storagePath string) error {
-	klog.V(4).Infof("Downloading perfscale data from %s index %s", esURL, esIndex)
+	log.Debugf("Downloading perfscale data from %s index %s", esURL, esIndex)
 	cfg := es7.Config{
 		Addresses: []string{esURL},
 	}
 	es, err := es7.NewClient(cfg)
 	if err != nil {
-		klog.Errorf("Error creating ElasticSearch client: %v\n", err)
+		log.Debugf("Error creating ElasticSearch client: %v\n", err)
 		return err
 	}
 
@@ -45,8 +44,8 @@ func DownloadPerfScaleData(storagePath string) error {
 	prevPeriod := 30 * 24 * time.Hour // last month
 	currStart := now.Add(-currPeriod)
 	prevStart := now.Add(-currPeriod).Add(-prevPeriod)
-	klog.V(4).Infof("Current period start: %s", currStart.Format(time.RFC3339))
-	klog.V(4).Infof("Previous period start: %s", prevStart.Format(time.RFC3339))
+	log.Debugf("Current period start: %s", currStart.Format(time.RFC3339))
+	log.Debugf("Previous period start: %s", prevStart.Format(time.RFC3339))
 
 	q := fmt.Sprintf(`
 {
@@ -72,7 +71,7 @@ func DownloadPerfScaleData(storagePath string) error {
 }
 `, prevStart.Format(time.RFC3339), esQuerySize)
 	// TODO: paginate all results
-	klog.V(4).Infof("Elasticsearch query: %s", q)
+	log.Debugf("Elasticsearch query: %s", q)
 
 	var b bytes.Buffer
 	b.WriteString(q)
@@ -85,7 +84,7 @@ func DownloadPerfScaleData(storagePath string) error {
 	)
 	defer res.Body.Close()
 	if err != nil {
-		klog.Errorf("Error getting response: %s", err)
+		log.Errorf("Error getting response: %s", err)
 		return err
 	}
 
@@ -96,7 +95,7 @@ func DownloadPerfScaleData(storagePath string) error {
 	j := string(bb)
 
 	totalHits := gjson.Get(j, "hits.total.value").Int()
-	klog.V(4).Infof(
+	log.Debugf(
 		"\n[%s] %d hits; took: %dms\n\n",
 		res.Status(),
 		totalHits,
@@ -124,7 +123,7 @@ func DownloadPerfScaleData(storagePath string) error {
 	if err != nil {
 		return errors.Wrap(err, "error writing scalejobs.json")
 	}
-	klog.V(4).Info("finished downloading scale job data")
+	log.Debug("finished downloading scale job data")
 
 	return nil
 }
@@ -138,7 +137,7 @@ func processPerfscaleJobRuns(now, currStart, prevStart time.Time, j string) ([]*
 		hitMap := hit.Get("_source").Map()
 		hitMetadata := hitMap["metadata"].Map()
 
-		klog.V(5).Infof("Processing result: %s %s %s %s", hitMetadata["uuid"].String(), hitMetadata["release_stream"].String(), hitMetadata["platform"].String(), hitMetadata["network_type"].String())
+		log.Debugf("Processing result: %s %s %s %s", hitMetadata["uuid"].String(), hitMetadata["release_stream"].String(), hitMetadata["platform"].String(), hitMetadata["network_type"].String())
 
 		// We track the count of machines as some metrics are aggregated across all instances of pods, which
 		// run as DaemonSets as nodes. This makes the node count an important metric when examining CPU/Memory use.
@@ -150,7 +149,7 @@ func processPerfscaleJobRuns(now, currStart, prevStart time.Time, j string) ([]*
 			workloadMetrics, ok := hitMap["metrics"].Map()["podMemory"].Map()[workload]
 			if !ok {
 				// Can the inverse happen as well?
-				klog.V(4).Infof("Warning: workload %s has podCPU metrics but no podMemory in result %s", workload, hitMetadata["uuid"])
+				log.Debugf("Warning: workload %s has podCPU metrics but no podMemory in result %s", workload, hitMetadata["uuid"])
 			}
 
 			var sj *workloadmetricsv1.WorkloadMetricsRow

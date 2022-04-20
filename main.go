@@ -14,10 +14,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/klog"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -75,20 +74,23 @@ func main() {
 		ListenAddr:              ":8080",
 	}
 
-	klog.InitFlags(nil)
-	if err := flag.CommandLine.Set("skip_headers", "true"); err != nil {
-		klog.Exitf("could not set commandline flag: %s", err)
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.DebugLevel)
+	formatter := &log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
 	}
+	log.SetFormatter(formatter)
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
 			opt.Complete()
 
 			if err := opt.Validate(); err != nil {
-				klog.Exitf("error: %v", err)
+				log.WithError(err).Fatalf("error validation options")
 			}
 			if err := opt.Run(); err != nil {
-				klog.Exitf("error: %v", err)
+				log.WithError(err).Fatalf("error running command")
 			}
 		},
 	}
@@ -117,11 +119,8 @@ func main() {
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 
-	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
-	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
-
 	if err := cmd.Execute(); err != nil {
-		klog.Exitf("error: %v", err)
+		log.Fatalf("error: %v", err)
 	}
 }
 
@@ -256,7 +255,7 @@ func (o *Options) Run() error {
 		}
 
 		elapsed := time.Since(start)
-		klog.Infof("Testgrid data fetched in: %s", elapsed)
+		log.Infof("Testgrid data fetched in: %s", elapsed)
 
 		return nil
 	}
@@ -283,7 +282,7 @@ func (o *Options) Run() error {
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 			err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
 			if err != nil {
-				klog.Error(err)
+				log.WithError(err).Error("error loading database")
 				return err
 			}
 		}
@@ -317,7 +316,7 @@ func (o *Options) Run() error {
 		}
 
 		elapsed := time.Since(start)
-		klog.Infof("Database loaded in: %s", elapsed)
+		log.Infof("Database loaded in: %s", elapsed)
 
 		return err
 	}
