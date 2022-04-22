@@ -188,7 +188,7 @@ func (openshiftSyntheticManager) CreateSyntheticTestsForJob(jobResults testgrida
 			if result.fail > 0 {
 				jrr.TestFailures += result.fail
 				jrr.FailedTestNames = append(jrr.FailedTestNames, testName)
-			} else {
+			} else if result.pass > 0 {
 				// Add successful test results as well.
 				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
 					Name:   testName,
