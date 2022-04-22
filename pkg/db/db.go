@@ -175,6 +175,11 @@ var PostgresMatViewIndicies = []string{
 }
 
 const jobRunsReportMatView = `
+WITH failed_test_results AS (SELECT prow_job_run_tests.prow_job_run_id, tests.id, tests.name, prow_job_run_tests.status
+                             FROM prow_job_run_tests
+                                      INNER JOIN tests ON
+                                 tests.id = prow_job_run_tests.test_id
+                             WHERE prow_job_run_tests.status = 12)
 SELECT prow_job_runs.id                                                                      AS id,
        prow_jobs.release                                                                     AS release,
        prow_jobs.name                                                                        AS name,
@@ -190,13 +195,11 @@ SELECT prow_job_runs.id                                                         
        prow_job_runs.known_failure                                                           AS known_failure,
        cast(extract(epoch from prow_job_runs.timestamp at time zone 'utc') * 1000 as bigint) AS timestamp,
        prow_job_runs.id                                                                      AS prow_id,
-       ARRAY_AGG(tests.name)                                                                    failed_test_names,
-       COUNT(tests.name)                                                                        test_failures
+       ARRAY_REMOVE(ARRAY_AGG(failed_test_results.name), NULL)                                  failed_test_names,
+       COUNT(failed_test_results.name)                                                          test_failures
 FROM prow_job_runs
-         INNER JOIN prow_job_run_tests on prow_job_run_tests.prow_job_run_id = prow_job_runs.id
-         INNER JOIN tests on tests.id = prow_job_run_tests.test_id
+         LEFT JOIN failed_test_results on failed_test_results.prow_job_run_id = prow_job_runs.id
          INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-WHERE prow_job_run_tests.status = 13
 GROUP BY prow_job_runs.id, prow_jobs.name, prow_jobs.variants, prow_jobs.release;
 `
 
