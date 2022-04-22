@@ -8,6 +8,7 @@ import (
 	"time"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
@@ -193,6 +194,11 @@ func loadJob(
 
 		if _, ok := prowJobRunCache[uint(prowID)]; ok {
 			// skip job runs we already have:
+			continue
+		}
+
+		if jobRun.OverallResult == processingv1.JobRunning {
+			// skip jobs that are still running, we'll record them next time when they're complete
 			continue
 		}
 
