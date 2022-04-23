@@ -25,6 +25,23 @@ const (
 	SortDescending Sort = "desc"
 )
 
+type Variant struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+
+	CurrentPassPercentage float64 `json:"current_pass_percentage"`
+	CurrentRuns           int     `json:"current_runs"`
+	CurrentPasses         int     `json:"current_passes,omitempty"`
+	CurrentFails          int     `json:"current_fails,omitempty"`
+
+	PreviousPassPercentage float64 `json:"previous_pass_percentage"`
+	PreviousRuns           int     `json:"previous_runs"`
+	PreviousPasses         int     `json:"previous_passes,omitempty"`
+	PreviousFails          int     `json:"previous_fails,omitempty"`
+
+	NetImprovement float64 `json:"net_improvement"`
+}
+
 // Job contains the full accounting of a job's history, with a synthetic ID. The format of
 // this struct is suitable for use in a data table.
 // TODO: with move to database, IDs will no longer be synthetic, although they will change in the event

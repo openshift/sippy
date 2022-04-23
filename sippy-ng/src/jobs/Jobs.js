@@ -15,7 +15,6 @@ import JobRunsTable from './JobRunsTable'
 import JobsDetail from './JobsDetail'
 import JobTable from './JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-import Variants from './Variants'
 
 /**
  * Jobs is the landing page for jobs with tabs for all jobs, variants,
