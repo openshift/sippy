@@ -1,0 +1,2731 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`JobTable should render correctly 1`] = `
+"
+<div class=\\"MuiContainer-root MuiContainer-maxWidthLg\\">
+  <div class=\\"MuiDataGrid-root MuiDataGrid-root MuiDataGrid-autoHeight\\"
+       role=\\"grid\\"
+       aria-colcount=\\"8\\"
+       aria-rowcount=\\"108\\"
+       aria-multiselectable=\\"false\\"
+  >
+    <div>
+      <div>
+        <div class=\\"haspopup=\\"
+             true\\"
+             title=\\"The period to report on. When selecting two days, the
+    previous two days are compared with the previous 7 days. A default report typically
+    compares the previous 7 days to the prior 7 day period.\\"
+        >
+          <span class=\\"MuiButton-label\\">
+            <span class=\\"MuiButton-startIcon MuiButton-iconSizeMedium\\">
+              <svg class=\\"MuiSvgIcon-root\\"
+                   focusable=\\"false\\"
+                   viewbox=\\"0 0 24 24\\"
+                   aria-hidden=\\"true\\"
+              >
+                <path d=\\"M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5zm18-4H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 16H7V3h14v14zm-8-2l4-8V5h-6v2h4l-4 8h2z\\">
+                </path>
+              </svg>
+            </span>
+            Period
+          </span>
+          <span class=\\"MuiTouchRipple-root\\">
+          </span>
+          <button class=\\"MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-textPrimary MuiButton-textSizeSmall MuiButton-sizeSmall\\"
+                  tabindex=\\"0\\"
+                  type=\\"button\\"
+                  aria-label=\\"Density\\"
+                  aria-haspopup=\\"menu\\"
+          >
+            <span class=\\"MuiButton-label\\">
+              <span class=\\"MuiButton-startIcon MuiButton-iconSizeSmall\\">
+                <svg class=\\"MuiSvgIcon-root\\"
+                     focusable=\\"false\\"
+                     viewbox=\\"0 0 24 24\\"
+                     aria-hidden=\\"true\\"
+                >
+                  <path d=\\"M21,8H3V4h18V8z M21,10H3v4h18V10z M21,16H3v4h18V16z\\">
+                  </path>
+                </svg>
+              </span>
+              Density
+            </span>
+            <span class=\\"MuiTouchRipple-root\\">
+            </span>
+          </button>
+        </div>
+        <div>
+          <div class=\\"MuiFormControl-root MuiTextField-root\\">
+            <div class=\\"MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-formControl MuiInput-formControl MuiInputBase-adornedEnd\\">
+              <input aria-invalid=\\"false\\"
+                     placeholder=\\"Search…\\"
+                     type=\\"text\\"
+                     class=\\"MuiInputBase-input MuiInput-input MuiInputBase-inputAdornedEnd\\"
+                     value
+              >
+              <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall\\"
+                      tabindex=\\"0\\"
+                      type=\\"button\\"
+                      title=\\"Search\\"
+                      aria-label=\\"Search\\"
+              >
+                <span class=\\"MuiIconButton-label\\">
+                  <svg class=\\"MuiSvgIcon-root MuiSvgIcon-fontSizeSmall\\"
+                       focusable=\\"false\\"
+                       viewbox=\\"0 0 24 24\\"
+                       aria-hidden=\\"true\\"
+                  >
+                    <path d=\\"M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z\\">
+                    </path>
+                  </svg>
+                </span>
+                <span class=\\"MuiTouchRipple-root\\">
+                </span>
+              </button>
+              <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall\\"
+                      tabindex=\\"0\\"
+                      type=\\"button\\"
+                      title=\\"Clear\\"
+                      aria-label=\\"Clear\\"
+              >
+                <span class=\\"MuiIconButton-label\\">
+                  <svg class=\\"MuiSvgIcon-root MuiSvgIcon-fontSizeSmall\\"
+                       focusable=\\"false\\"
+                       viewbox=\\"0 0 24 24\\"
+                       aria-hidden=\\"true\\"
+                  >
+                    <path d=\\"M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z\\">
+                    </path>
+                  </svg>
+                </span>
+                <span class=\\"MuiTouchRipple-root\\">
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"MuiDataGrid-main\\">
+    <div class=\\"MuiDataGrid-columnsContainer\\"
+         style=\\"min-height: 56px; max-height: 56px; line-height: 56px;\\"
+    >
+      <div class=\\"MuiDataGrid-columnHeaderWrapper scroll\\"
+           aria-rowindex=\\"1\\"
+           role=\\"row\\"
+           style=\\"transform: translate3d(-0px, 0, 0); min-width: 400px;\\"
+      >
+        <div class=\\"MuiDataGrid-columnHeader--alignCenter MuiDataGrid-columnHeader MuiDataGrid-columnHeaderCheckbox\\"
+             data-field=\\"__check__\\"
+             style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
+             role=\\"columnheader\\"
+             tabindex=\\"0\\"
+             aria-colindex=\\"1\\"
+        >
+          <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
+               draggable=\\"false\\"
+          >
+            <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
+              <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                    aria-disabled=\\"false\\"
+              >
+                <span class=\\"MuiIconButton-label\\">
+                  <input class=\\"PrivateSwitchBase-input-114\\"
+                         tabindex=\\"-1\\"
+                         type=\\"checkbox\\"
+                         data-indeterminate=\\"false\\"
+                         aria-label=\\"Select All Rows checkbox\\"
+                         value
+                  >
+                  <svg class=\\"MuiSvgIcon-root\\"
+                       focusable=\\"false\\"
+                       viewbox=\\"0 0 24 24\\"
+                       aria-hidden=\\"true\\"
+                  >
+                    <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                    </path>
+                  </svg>
+                </span>
+                <span class=\\"MuiTouchRipple-root\\">
+                </span>
+              </span>
+            </div>
+          </div>
+          <div class=\\"MuiDataGrid-columnSeparator\\"
+               style=\\"min-height: 56px; opacity: 1;\\"
+          >
+            <svg class=\\"MuiSvgIcon-root MuiDataGrid-iconSeparator\\"
+                 focusable=\\"false\\"
+                 viewbox=\\"0 0 24 24\\"
+                 aria-hidden=\\"true\\"
+            >
+              <path d=\\"M11 19V5h2v14z\\">
+              </path>
+            </svg>
+          </div>
+        </div>
+        <div class=\\"MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader\\"
+             data-field=\\"name\\"
+             style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
+             role=\\"columnheader\\"
+             tabindex=\\"-1\\"
+             aria-colindex=\\"2\\"
+        >
+          <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
+               draggable=\\"false\\"
+          >
+            <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
+              <div class=\\"MuiDataGrid-columnHeaderTitle\\"
+                   title
+              >
+                Name
+              </div>
+              <div class=\\"MuiDataGrid-iconButtonContainer\\">
+                <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall\\"
+                        tabindex=\\"-1\\"
+                        type=\\"button\\"
+                        aria-label=\\"Sort\\"
+                        title=\\"Sort\\"
+                >
+                  <span class=\\"MuiIconButton-label\\">
+                    <svg class=\\"MuiSvgIcon-root MuiDataGrid-sortIcon MuiSvgIcon-fontSizeSmall\\"
+                         focusable=\\"false\\"
+                         viewbox=\\"0 0 24 24\\"
+                         aria-hidden=\\"true\\"
+                    >
+                      <path d=\\"M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z\\">
+                      </path>
+                    </svg>
+                  </span>
+                  <span class=\\"MuiTouchRipple-root\\">
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class=\\"MuiDataGrid-columnSeparator\\"
+               style=\\"min-height: 56px; opacity: 1;\\"
+          >
+            <svg class=\\"MuiSvgIcon-root MuiDataGrid-iconSeparator\\"
+                 focusable=\\"false\\"
+                 viewbox=\\"0 0 24 24\\"
+                 aria-hidden=\\"true\\"
+            >
+              <path d=\\"M11 19V5h2v14z\\">
+              </path>
+            </svg>
+          </div>
+        </div>
+        <div class=\\"MuiDataGrid-columnHeader--alignRight MuiDataGrid-columnHeader--sortable MuiDataGrid-columnHeader--sorted MuiDataGrid-columnHeader--numeric MuiDataGrid-columnHeader\\"
+             data-field=\\"current_pass_percentage\\"
+             style=\\"width: 50px; min-width: 50px; max-width: 50px;\\"
+             role=\\"columnheader\\"
+             tabindex=\\"-1\\"
+             aria-colindex=\\"3\\"
+             aria-sort=\\"ascending\\"
+        >
+          <div class=\\"MuiDataGrid-columnHeaderDraggableContainer\\"
+               draggable=\\"false\\"
+          >
+            <div class=\\"MuiDataGrid-columnHeaderTitleContainer\\">
+              <div class=\\"MuiDataGrid-columnHeaderTitle\\"
+                   title
+              >
+                Current pass percentage
+              </div>
+              <div class=\\"MuiDataGrid-iconButtonContainer\\">
+                <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeSmall\\"
+                        tabindex=\\"-1\\"
+                        type=\\"button\\"
+                        aria-label=\\"Sort\\"
+                        title=\\"Sort\\"
+                >
+                  <span class=\\"MuiIconButton-label\\">
+                    <svg class=\\"MuiSvgIcon-root MuiDataGrid-sortIcon MuiSvgIcon-fontSizeSmall\\"
+                         focusable=\\"false\\"
+                         viewbox=\\"0 0 24 24\\"
+                         aria-hidden=\\"true\\"
+                    >
+                      <path d=\\"M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z\\">
+                      </path>
+                    </svg>
+                  </span>
+                  <span class=\\"MuiTouchRipple-root\\">
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class=\\"MuiDataGrid-columnSeparator\\"
+               style=\\"min-height: 56px; opacity: 1;\\"
+          >
+            <svg class=\\"MuiSvgIcon-root MuiDataGrid-iconSeparator\\"
+                 focusable=\\"false\\"
+                 viewbox=\\"0 0 24 24\\"
+                 aria-hidden=\\"true\\"
+            >
+              <path d=\\"M11 19V5h2v14z\\">
+              </path>
+            </svg>
+          </div>
+        </div>
+        <div style=\\"min-width: 250px; max-width: 250px; line-height: 55px; min-height: 56px; max-height: 56px;\\"
+             class=\\"MuiDataGrid-cell\\"
+        >
+        </div>
+      </div>
+    </div>
+    <div style=\\"overflow: visible; width: 0px;\\">
+      <div class=\\"MuiDataGrid-windowContainer\\"
+           style=\\"width: 0px; height: 1806px;\\"
+      >
+        <div class=\\"MuiDataGrid-window\\"
+             style=\\"top: 56px; overflow-y: hidden;\\"
+        >
+          <div class=\\"MuiDataGrid-dataContainer\\"
+               style=\\"min-width: 400px; min-height: 1750px;\\"
+          >
+            <div class=\\"MuiDataGrid-viewport\\"
+                 style=\\"min-width: 0; max-width: 0; max-height: 1750px;\\"
+            >
+              <div class=\\"MuiDataGrid-renderingZone\\"
+                   style=\\"max-height: 1750px; width: 400px; transform: translate3d(-0px, -0px, 0);\\"
+              >
+                <div data-id=\\"88\\"
+                     data-rowindex=\\"0\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"2\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"0\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"0\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-ocp-installer-upgrade-remote-libvirt-s390x-4.7-to-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"0\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (13 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"106\\"
+                     data-rowindex=\\"1\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"3\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"1\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"1\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"1\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"105\\"
+                     data-rowindex=\\"2\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"4\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"2\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"2\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade-rollback
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"2\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"104\\"
+                     data-rowindex=\\"3\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"5\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"3\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"3\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-ovirt-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"3\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"103\\"
+                     data-rowindex=\\"4\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"6\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"4\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"4\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci%22%7D%5D%7D\\"
+                      >
+                        release-openshift-origin-installer-e2e-aws-upgrade-4.5-to-4.6-to-4.7-to-4.8-ci
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"4\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"102\\"
+                     data-rowindex=\\"5\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"7\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"5\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"5\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-openstack-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"5\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"101\\"
+                     data-rowindex=\\"6\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"8\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"6\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"6\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-ocp-installer-elasticsearch-operator-e2e-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"6\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"100\\"
+                     data-rowindex=\\"7\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"9\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"7\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"7\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-ocp-installer-cluster-logging-operator-e2e-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"7\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"99\\"
+                     data-rowindex=\\"8\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"10\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"8\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"8\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"8\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"98\\"
+                     data-rowindex=\\"9\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"11\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"9\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"9\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-gcp-ovn-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"9\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"97\\"
+                     data-rowindex=\\"10\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"12\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"10\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"10\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-azure-ovn-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"10\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"96\\"
+                     data-rowindex=\\"11\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"13\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"11\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"11\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-nightly-4.8-openshift-ipi-azure-arcconformance
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"11\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (40 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"95\\"
+                     data-rowindex=\\"12\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"14\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"12\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"12\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-from-stable-4.7-from-stable-4.6-e2e-aws-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"12\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"94\\"
+                     data-rowindex=\\"13\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"15\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"13\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"13\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-aws-compact-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"13\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"93\\"
+                     data-rowindex=\\"14\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"16\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"14\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"14\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-ovn-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"14\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"92\\"
+                     data-rowindex=\\"15\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"17\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"15\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"15\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-upgrade-from-stable-4.7-e2e-aws-upgrade-rollback
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"15\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"91\\"
+                     data-rowindex=\\"16\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"18\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"16\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"16\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-origin-installer-e2e-aws-disruptive-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-e2e-aws-disruptive-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-origin-installer-e2e-aws-disruptive-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"16\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"90\\"
+                     data-rowindex=\\"17\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"19\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"17\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"17\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-origin-installer-old-rhcos-e2e-aws-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-origin-installer-old-rhcos-e2e-aws-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-origin-installer-old-rhcos-e2e-aws-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"17\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"89\\"
+                     data-rowindex=\\"18\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"20\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"18\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"18\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-aws-hypershift
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"18\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"107\\"
+                     data-rowindex=\\"19\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-0-1 MuiDataGrid-row\\"
+                     aria-rowindex=\\"21\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"19\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"19\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"0\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"19\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      0.0%
+                      <br>
+                      <small>
+                        (3 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"87\\"
+                     data-rowindex=\\"20\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-15-16 MuiDataGrid-row\\"
+                     aria-rowindex=\\"22\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"20\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"20\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8%22%7D%5D%7D\\"
+                      >
+                        release-openshift-ocp-installer-upgrade-remote-libvirt-ppc64le-4.7-to-4.8
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"15.384615384615385\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"20\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      15.4%
+                      <br>
+                      <small>
+                        (13 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"86\\"
+                     data-rowindex=\\"21\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-17-18 MuiDataGrid-row\\"
+                     aria-rowindex=\\"23\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"21\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"21\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-nightly-4.8-e2e-vsphere-ovn
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"16.666666666666664\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"21\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      16.7%
+                      <br>
+                      <small>
+                        (6 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"85\\"
+                     data-rowindex=\\"22\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-23-24 MuiDataGrid-row\\"
+                     aria-rowindex=\\"24\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"22\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"22\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-nightly-4.8-upgrade-from-stable-4.7-e2e-metal-ipi-upgrade
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"23.076923076923077\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"22\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      23.1%
+                      <br>
+                      <small>
+                        (13 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"84\\"
+                     data-rowindex=\\"23\\"
+                     role=\\"row\\"
+                     class=\\"Mui-odd JobTable-row-percent-25-26 MuiDataGrid-row\\"
+                     aria-rowindex=\\"25\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"23\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"23\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact-serial
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"25\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"23\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      25.0%
+                      <br>
+                      <small>
+                        (4 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+                <div data-id=\\"83\\"
+                     data-rowindex=\\"24\\"
+                     role=\\"row\\"
+                     class=\\"Mui-even JobTable-row-percent-25-26 MuiDataGrid-row\\"
+                     aria-rowindex=\\"26\\"
+                     aria-selected=\\"false\\"
+                     style=\\"max-height: 70px; min-height: 70px;\\"
+                >
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cellCheckbox MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textCenter\\"
+                       role=\\"cell\\"
+                       data-value=\\"false\\"
+                       data-field=\\"__check__\\"
+                       data-rowindex=\\"24\\"
+                       data-colindex=\\"0\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"1\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <span class=\\"MuiButtonBase-root MuiIconButton-root PrivateSwitchBase-root-111 MuiCheckbox-root MuiCheckbox-colorPrimary MuiDataGrid-checkboxInput MuiIconButton-colorPrimary\\"
+                          aria-disabled=\\"false\\"
+                    >
+                      <span class=\\"MuiIconButton-label\\">
+                        <input class=\\"PrivateSwitchBase-input-114\\"
+                               tabindex=\\"-1\\"
+                               type=\\"checkbox\\"
+                               data-indeterminate=\\"false\\"
+                               aria-label=\\"Select Row checkbox\\"
+                               value
+                        >
+                        <svg class=\\"MuiSvgIcon-root\\"
+                             focusable=\\"false\\"
+                             viewbox=\\"0 0 24 24\\"
+                             aria-hidden=\\"true\\"
+                        >
+                          <path d=\\"M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z\\">
+                          </path>
+                        </svg>
+                      </span>
+                      <span class=\\"MuiTouchRipple-root\\">
+                      </span>
+                    </span>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textLeft\\"
+                       role=\\"cell\\"
+                       data-value=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                       data-field=\\"name\\"
+                       data-rowindex=\\"24\\"
+                       data-colindex=\\"1\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"2\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"job-name\\">
+                      <a title=\\"periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact\\"
+                         class
+                         href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact%22%7D%5D%7D\\"
+                      >
+                        periodic-ci-openshift-release-master-ci-4.8-e2e-azure-compact
+                      </a>
+                    </div>
+                  </div>
+                  <div class=\\"MuiDataGrid-cell MuiDataGrid-cell--withRenderer MuiDataGrid-cell--textRight\\"
+                       role=\\"cell\\"
+                       data-value=\\"25\\"
+                       data-field=\\"current_pass_percentage\\"
+                       data-rowindex=\\"24\\"
+                       data-colindex=\\"2\\"
+                       data-rowselected=\\"false\\"
+                       data-editable=\\"false\\"
+                       data-mode=\\"view\\"
+                       aria-colindex=\\"3\\"
+                       style=\\"min-width: 50px; max-width: 50px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       tabindex=\\"-1\\"
+                  >
+                    <div class=\\"percentage-cell\\">
+                      25.0%
+                      <br>
+                      <small>
+                        (4 runs)
+                      </small>
+                    </div>
+                  </div>
+                  <div style=\\"min-width: 250px; max-width: 250px; line-height: 69px; min-height: 70px; max-height: 70px;\\"
+                       class=\\"MuiDataGrid-cell\\"
+                  >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class=\\"Mui-resizeTriggers\\">
+      <div class=\\"expand-trigger\\">
+        <div style=\\"width: 1px; height: 1px;\\">
+        </div>
+      </div>
+      <div class=\\"contract-trigger\\">
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class=\\"MuiDataGrid-footerContainer\\">
+      <div>
+      </div>
+      <div class=\\"MuiTablePagination-root\\">
+        <div class=\\"MuiToolbar-root MuiToolbar-regular MuiTablePagination-toolbar MuiToolbar-gutters\\">
+          <div class=\\"MuiTablePagination-spacer\\">
+          </div>
+          <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-109 MuiTypography-body2 MuiTypography-colorInherit\\">
+            Rows per page:
+          </p>
+          <div class=\\"MuiInputBase-root MuiTablePagination-input makeStyles-input-110 MuiTablePagination-selectRoot\\">
+            <div class=\\"MuiSelect-root MuiSelect-select MuiTablePagination-select MuiSelect-selectMenu MuiInputBase-input\\"
+                 tabindex=\\"0\\"
+                 role=\\"button\\"
+                 aria-haspopup=\\"listbox\\"
+            >
+              25
+            </div>
+            <input aria-hidden=\\"true\\"
+                   tabindex=\\"-1\\"
+                   class=\\"MuiSelect-nativeInput\\"
+                   value=\\"25\\"
+            >
+            <svg class=\\"MuiSvgIcon-root MuiSelect-icon MuiTablePagination-selectIcon\\"
+                 focusable=\\"false\\"
+                 viewbox=\\"0 0 24 24\\"
+                 aria-hidden=\\"true\\"
+            >
+              <path d=\\"M7 10l5 5 5-5z\\">
+              </path>
+            </svg>
+          </div>
+          <p class=\\"MuiTypography-root MuiTablePagination-caption makeStyles-caption-109 MuiTypography-body2 MuiTypography-colorInherit\\">
+            1-25 of 108
+          </p>
+          <div class=\\"MuiTablePagination-actions\\">
+            <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit Mui-disabled Mui-disabled\\"
+                    tabindex=\\"-1\\"
+                    type=\\"button\\"
+                    disabled
+                    title=\\"Previous page\\"
+                    aria-label=\\"Previous page\\"
+            >
+              <span class=\\"MuiIconButton-label\\">
+                <svg class=\\"MuiSvgIcon-root\\"
+                     focusable=\\"false\\"
+                     viewbox=\\"0 0 24 24\\"
+                     aria-hidden=\\"true\\"
+                >
+                  <path d=\\"M15.41 16.09l-4.58-4.59 4.58-4.59L14 5.5l-6 6 6 6z\\">
+                  </path>
+                </svg>
+              </span>
+            </button>
+            <button class=\\"MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit\\"
+                    tabindex=\\"0\\"
+                    type=\\"button\\"
+                    title=\\"Next page\\"
+                    aria-label=\\"Next page\\"
+            >
+              <span class=\\"MuiIconButton-label\\">
+                <svg class=\\"MuiSvgIcon-root\\"
+                     focusable=\\"false\\"
+                     viewbox=\\"0 0 24 24\\"
+                     aria-hidden=\\"true\\"
+                >
+                  <path d=\\"M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z\\">
+                  </path>
+                </svg>
+              </span>
+              <span class=\\"MuiTouchRipple-root\\">
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<a class=\\"MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary\\"
+   tabindex=\\"0\\"
+   role=\\"button\\"
+   aria-disabled=\\"false\\"
+   style=\\"margin: 10px;\\"
+   href=\\"/jobs/4.8/analysis?filters=%7B%22items%22%3A%5B%5D%7D\\"
+>
+  <span class=\\"MuiButton-label\\">
+    Analyze
+  </span>
+  <span class=\\"MuiTouchRipple-root\\">
+  </span>
+</a>
+)
+"
+`;
