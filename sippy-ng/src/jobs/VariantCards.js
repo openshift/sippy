@@ -16,12 +16,14 @@ import MiniCard from '../components/MiniCard'
 import React, { Fragment, useEffect } from 'react'
 
 export default function VariantCards(props) {
-  const [jobs, setJobs] = React.useState([])
+  const [variants, setVariants] = React.useState([])
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
 
   const fetchData = () => {
-    fetch(process.env.REACT_APP_API_URL + '/json?release=' + props.release)
+    fetch(
+      process.env.REACT_APP_API_URL + '/api/variants?release=' + props.release
+    )
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
@@ -29,7 +31,7 @@ export default function VariantCards(props) {
         return response.json()
       })
       .then((json) => {
-        setJobs(json[props.release].jobPassRateByVariant)
+        setVariants(json)
         setLoaded(true)
       })
       .catch((error) => {
@@ -51,22 +53,22 @@ export default function VariantCards(props) {
     return <p>Loading...</p>
   }
 
-  const minicard = (job, index) => {
+  const minicard = (variant, index) => {
     return (
       <Grid item key={index} md={2} sm={4}>
         <MiniCard
-          link={pathForVariantAnalysis(props.release, job.platform)}
+          link={pathForVariantAnalysis(props.release, variant.name)}
           threshold={VARIANT_THRESHOLDS}
-          name={job.platform}
-          current={job.passRates.latest.percentage}
-          currentRuns={job.passRates.latest.runs}
-          previous={job.passRates.prev.percentage}
-          previousRuns={job.passRates.prev.runs}
+          name={variant.name}
+          current={variant.current_pass_percentage}
+          currentRuns={variant.current_runs}
+          previous={variant.previous_pass_percentage}
+          previousRuns={variant.previous_runs}
           tooltip={
             'Current runs: ' +
-            job.passRates.latest.runs +
+            variant.current_runs +
             ', previous runs: ' +
-            job.passRates.prev.runs
+            variant.previous_runs
           }
         />
       </Grid>
@@ -75,11 +77,11 @@ export default function VariantCards(props) {
 
   const cards = []
   const noData = [] // Put these at the end
-  jobs.forEach((job, index) => {
-    if (job.passRates.latest.runs === 0) {
-      noData.push(minicard(job, index))
+  variants.forEach((variant, index) => {
+    if (variant.current_runs === 0) {
+      noData.push(minicard(variant, index))
     } else {
-      cards.push(minicard(job, index))
+      cards.push(minicard(variant, index))
     }
   })
 
