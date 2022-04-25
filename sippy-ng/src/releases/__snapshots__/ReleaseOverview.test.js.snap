@@ -1,0 +1,23 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`release-overview should render correctly 1`] = `
+<nav class="MuiTypography-root MuiBreadcrumbs-root MuiTypography-body1 MuiTypography-colorTextSecondary"
+     aria-label="breadcrumb"
+>
+  <ol class="MuiBreadcrumbs-ol">
+    <li class="MuiBreadcrumbs-li">
+      <a href="/release/4.8">
+        Overview
+      </a>
+    </li>
+  </ol>
+</nav>
+<div class="{classes.root}"
+     style="padding: 20px;"
+>
+  <div class="MuiContainer-root MuiContainer-maxWidthLg">
+    <h4 class="MuiTypography-root  6z">
+    </h4>
+  </div>
+</div>
+`;

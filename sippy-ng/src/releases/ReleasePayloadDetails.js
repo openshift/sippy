@@ -30,6 +30,7 @@ import React, { useEffect } from 'react'
 import ReleasePayloadJobRuns from './ReleasePayloadJobRuns'
 import ReleasePayloadPullRequests from './ReleasePayloadPullRequests'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import Variants from '../jobs/Variants'
 
 const useStyles = makeStyles((theme) => ({
   title: {
