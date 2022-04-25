@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
+	"k8s.io/klog"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -14,7 +16,6 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
-	"k8s.io/klog"
 )
 
 type indicator struct {
@@ -145,7 +146,7 @@ func PrintOverallReleaseHealth(w http.ResponseWriter, curr, twoDay, prev sippypr
 
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
-func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
+func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
 	indicators := make(map[string]indicator)
 
 	// Infrastructure
@@ -197,9 +198,12 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		Sort:      apitype.SortDescending,
 		Limit:     0,
 	}
-	start := time.Now().Add(-14 * 24 * time.Hour)
-	boundary := time.Now().Add(-7 * 24 * time.Hour)
-	end := time.Now()
+	start, boundary, end, err := getTimeParams(w, req)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+
 	jobReports, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
 		klog.Errorf("error querying job reports: %s", err)

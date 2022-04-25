@@ -556,7 +556,7 @@ func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release)
+		api.PrintOverallReleaseHealthFromDB(w, req, s.db, release)
 	}
 }
 
