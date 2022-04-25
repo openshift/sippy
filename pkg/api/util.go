@@ -31,12 +31,13 @@ func getTimeParams(w http.ResponseWriter, req *http.Request) (start, boundary, e
 			err = fmt.Errorf("error decoding boundary param: %s", err.Error())
 			return
 		}
+		// We want the boundary to include the entire day specified
+		boundary = boundary.Add(24 * time.Hour)
 	} else if req.URL.Query().Get("period") == periodTwoDay {
 		boundary = time.Now().Add(-2 * 24 * time.Hour)
 	} else {
 		// Default boundary to 7 days ago
 		boundary = time.Now().Add(-7 * 24 * time.Hour)
-
 	}
 
 	endParam := req.URL.Query().Get("end")
@@ -46,6 +47,8 @@ func getTimeParams(w http.ResponseWriter, req *http.Request) (start, boundary, e
 			err = fmt.Errorf("error decoding end param: %s", err.Error())
 			return
 		}
+		// We want the end date to include the entire day specified
+		end = end.Add(24 * time.Hour)
 	} else {
 		end = time.Now()
 	}
