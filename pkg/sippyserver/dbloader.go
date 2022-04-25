@@ -75,11 +75,6 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 			klog.Warningf("warning from testgrid processing: " + warning)
 		}
 
-		if strings.Contains(jobDetails.Name, "assisted") {
-			klog.Warningf("Skipping assisted job due to known issue with test names containing random strings: %s", jobDetails.Name)
-			continue
-		}
-
 		klog.V(4).Infof("Loading prow job %d of %d", i, len(testGridJobDetails))
 		err := createOrUpdateJob(dbc, dashboard.ReportName, variantManager, prowJobCache, jobResult)
 		if err != nil {
