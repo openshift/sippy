@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/montanaflynn/stats"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -198,7 +198,7 @@ func convertRawJobResultToProcessedJobResult(
 	// we should make it clear this is an invalid value.
 	// TODO wire a warning. This is strictly better than nothing at the moment though.
 	if job.InfrastructureFailures > job.Failures {
-		klog.V(1).Infof("WARNING: detected more infra failures (%d) than failures (%d) which should not be possible, for job: %s",
+		log.Infof("WARNING: detected more infra failures (%d) than failures (%d) which should not be possible, for job: %s",
 			job.InfrastructureFailures, job.Failures, job.Name)
 		job.PassPercentageWithoutInfrastructureFailures = -1
 	}

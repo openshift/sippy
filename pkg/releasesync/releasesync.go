@@ -12,7 +12,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 type releaseSyncOptions struct {
@@ -36,7 +36,7 @@ func Import(dbc *db.DB, releases, architectures []string) error {
 func (r *releaseSyncOptions) Run() error {
 	for _, release := range r.releases {
 
-		klog.V(2).Infof("Fetching release %s from release controller...\n", release)
+		log.Infof("Fetching release %s from release controller...\n", release)
 		allTags := r.fetchReleaseTags(release)
 
 		for _, tags := range allTags {
@@ -47,7 +47,7 @@ func (r *releaseSyncOptions) Run() error {
 					continue
 				}
 
-				klog.V(2).Infof("Fetching tag %s from release controller...\n", tag.Name)
+				log.Infof("Fetching tag %s from release controller...\n", tag.Name)
 				releaseDetails := r.fetchReleaseDetails(tags.Architecture, release, tag)
 				releaseTag := releaseDetailsToDB(tags.Architecture, tag, releaseDetails)
 				// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
@@ -111,12 +111,12 @@ func (r *releaseSyncOptions) fetchReleaseTags(release string) []ReleaseTags {
 			panic(err)
 		}
 		if resp.StatusCode != http.StatusOK {
-			klog.Errorf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
+			log.Errorf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
 			continue
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
-			klog.Errorf("couldn't decode json: %v", err)
+			log.Errorf("couldn't decode json: %v", err)
 			resp.Body.Close()
 			continue
 		}

@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"k8s.io/klog"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	log "github.com/sirupsen/logrus"
 )
 
 const overall string = "Overall"
@@ -40,7 +39,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
 	for _, jobDetails := range testGridJobInfo {
-		klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
+		log.Infof("processing test details for job %s\n", jobDetails.Name)
 		startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 		jobResult := processJobDetails(jobDetails, startCol, endCol)
 		// we have mutated, so assign back to our intermediate value
@@ -56,7 +55,7 @@ func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo 
 // ProcessJobDetailsIntoRawJobResult returns the raw data and a list of warnings encountered processing the data
 // for a specific job.
 func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails) (*testgridanalysisapi.RawJobResult, []string) {
-	klog.V(2).Infof("processing test details for job %s\n", jobDetails.Name)
+	log.Infof("processing test details for job %s\n", jobDetails.Name)
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
 	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
@@ -72,7 +71,7 @@ func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgri
 		TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 	}
 	for i, test := range job.Tests {
-		klog.V(4).Infof("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+		log.Debugf("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 		job.Tests[i] = test
 		processTest(jobResult, job, test, startCol, endCol)
 	}
@@ -94,7 +93,10 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 		stopTs = startTs - int64(numDays*24*int(time.Hour.Seconds())*1000)
 	}
 
-	klog.V(2).Infof("starttime: %d\nendtime: %d\n", startTs, stopTs)
+	log.WithFields(log.Fields{
+		"start": startTs,
+		"end":   stopTs,
+	}).Debug("calculated lookback")
 	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
 	for i, t := range timestamps {
 		if int64(t) < startTs && i < start {

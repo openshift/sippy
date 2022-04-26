@@ -4,12 +4,11 @@ import (
 	"database/sql"
 	"time"
 
-	"k8s.io/klog"
-
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
+	log "github.com/sirupsen/logrus"
 )
 
 func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, start, boundary, end time.Time) ([]apitype.Job, error) {
@@ -28,7 +27,7 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 
 	q.Scan(&jobReports)
 	elapsed := time.Since(now)
-	klog.Infof("BuildJobResult completed in %s with %d results from db", elapsed, len(jobReports))
+	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
 
 	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
 	// instead of empty array. Quick hack to make this work.

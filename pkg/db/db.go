@@ -6,11 +6,11 @@ import (
 
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
-	"k8s.io/klog"
 )
 
 type DB struct {
@@ -99,7 +99,7 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 			return res.Error
 		}
 		if count == 0 {
-			klog.Infof("creating missing materialized view: %s", pmv.Name)
+			log.WithField("matView", pmv.Name).Info("creating missing materialized view")
 
 			vd := pmv.Definition
 			for k, v := range pmv.ReplaceStrings {
@@ -108,7 +108,7 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 
 			if res := db.Exec(
 				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.Name, vd)); res.Error != nil {
-				klog.Errorf("error creating materialized view %s: %v", pmv.Name, res.Error)
+				log.WithField("matView", pmv.Name).WithError(res.Error).Error("error creating materialized view")
 				return res.Error
 			}
 		}
@@ -116,7 +116,7 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 
 	for _, pmi := range PostgresMatViewIndicies {
 		if res := db.Exec(pmi); res.Error != nil {
-			klog.Errorf("error creating materialized view index %s: %v", pmi, res.Error)
+			log.WithField("index", pmi).WithError(res.Error).Error("error creating materialized view index")
 			return res.Error
 		}
 	}
@@ -270,7 +270,7 @@ GROUP BY "tests"."name", date_trunc('day', timestamp), prow_job_runs.prow_job_id
 
 func createPostgresFunctions(db *gorm.DB) error {
 	if res := db.Exec(jobResultFunction); res.Error != nil {
-		klog.Errorf("error creating postgres function: %v", res.Error)
+		log.WithError(res.Error).Error("error creating postgres function")
 		return res.Error
 	}
 	return nil
@@ -365,7 +365,7 @@ func populateTestSuitesInDB(db *gorm.DB) error {
 			if err != nil {
 				return errors.Wrapf(err, "error loading suite into db: %s", suiteName)
 			}
-			klog.V(1).Infof("Created new test suite: %s", suiteName)
+			log.WithField("suite", suiteName).Info("created new test suite")
 		}
 	}
 	return nil

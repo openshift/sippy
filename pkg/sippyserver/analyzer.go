@@ -14,7 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 // Allows one to pass in an alternative testgrid loader func for testing.
@@ -157,11 +157,11 @@ func updateBugCacheForJobResults(bugCache buganalysis.BugCache, rawJobResults te
 	// now that we have all the test failures (remember we added sythentics), use that to update the bugzilla cache
 	failedTestNamesAcrossAllJobRuns := getFailedTestNamesFromJobResults(rawJobResults.JobResults)
 	if err := bugCache.UpdateForFailedTests(failedTestNamesAcrossAllJobRuns.List()...); err != nil {
-		klog.Error(err)
+		log.Error(err)
 		warnings = append(warnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
 	if err := bugCache.UpdateJobBlockers(sets.StringKeySet(rawJobResults.JobResults).List()...); err != nil {
-		klog.Error(err)
+		log.Error(err)
 		warnings = append(warnings, fmt.Sprintf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error()))
 	}
 

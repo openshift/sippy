@@ -8,12 +8,11 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"k8s.io/klog"
-
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	log "github.com/sirupsen/logrus"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -78,7 +77,7 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 
 		switch {
 		case tr.Name == testgridanalysisapi.InstallTestName || strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
-			klog.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
+			log.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
 			variantColumns.Insert(tr.Variant)
 			if _, ok := tests[tr.Name]; !ok {
 				tests[tr.Name] = map[string]api.Test{}
@@ -86,7 +85,7 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 			tests[tr.Name][tr.Variant] = tr
 		default:
 			// Our substring searching can pickup a couple other tests incorrectly right now.
-			klog.Infof("Ignoring test %s for variant %s", tr.Name, tr.Variant)
+			log.Infof("Ignoring test %s for variant %s", tr.Name, tr.Variant)
 		}
 	}
 

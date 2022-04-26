@@ -6,9 +6,8 @@ import (
 	"regexp"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"k8s.io/klog"
-
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestResultHasResults(in sippyprocessingv1.TestResult) bool {
@@ -178,7 +177,7 @@ func (b *testResultRenderBuilder) ToHTML() string {
 	encodedTestName := url.QueryEscape(regexp.QuoteMeta(b.currTestResult.displayName))
 	testLink := fmt.Sprintf("<a target=\"_blank\" href=\"https://search.ci.openshift.org/?maxAge=168h&context=1&type=bug%%2Bjunit&name=%s&maxMatches=5&maxBytes=20971520&groupBy=job&search=%s\">%s</a>", b.release, encodedTestName, b.currTestResult.displayName)
 
-	klog.V(2).Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
+	log.Infof("processing top failing tests %s, bugs: %v", b.currTestResult.displayName, b.currTestResult.bugList)
 	bugHTML := bugHTMLForTest(b.currTestResult.bugList, b.currTestResult.associatedBugList, b.release, b.currTestResult.displayName)
 	if b.prevTestResult != nil {
 		arrow := GetArrow(b.currTestResult.totalRuns, b.currTestResult.displayPercent, b.prevTestResult.displayPercent)

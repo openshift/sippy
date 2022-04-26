@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-	"k8s.io/klog"
-
-	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db"
@@ -149,7 +148,7 @@ func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient
 	for _, archStream := range results {
 		phase, count, err := models.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release)
 		if err != nil {
-			klog.V(1).Infof("got error when trying to find last payload status: %s", err.Error())
+			log.WithError(err).Info("error when trying to find last payload status")
 		}
 		apiResults = append(apiResults, apiResult{
 			ReleaseTag: archStream,

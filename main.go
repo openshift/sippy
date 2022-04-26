@@ -14,10 +14,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/klog"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -36,6 +35,10 @@ var sippyNG embed.FS
 
 //go:embed static
 var static embed.FS
+
+const (
+	defaultLogLevel = "info"
+)
 
 type Options struct {
 	LocalData              string
@@ -61,6 +64,7 @@ type Options struct {
 	DBOnlyMode              bool
 	SkipBugLookup           bool
 	DSN                     string
+	LogLevel                string
 }
 
 func main() {
@@ -75,20 +79,15 @@ func main() {
 		ListenAddr:              ":8080",
 	}
 
-	klog.InitFlags(nil)
-	if err := flag.CommandLine.Set("skip_headers", "true"); err != nil {
-		klog.Exitf("could not set commandline flag: %s", err)
-	}
-
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
 			opt.Complete()
 
 			if err := opt.Validate(); err != nil {
-				klog.Exitf("error: %v", err)
+				log.WithError(err).Fatalf("error validation options")
 			}
 			if err := opt.Run(); err != nil {
-				klog.Exitf("error: %v", err)
+				log.WithError(err).Fatalf("error running command")
 			}
 		},
 	}
@@ -116,12 +115,10 @@ func main() {
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
-
-	flags.AddGoFlag(flag.CommandLine.Lookup("v"))
-	flags.AddGoFlag(flag.CommandLine.Lookup("skip_headers"))
+	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 
 	if err := cmd.Execute(); err != nil {
-		klog.Exitf("error: %v", err)
+		log.Fatalf("error: %v", err)
 	}
 }
 
@@ -228,6 +225,21 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error {
+	// Set log level
+	level, err := log.ParseLevel(o.LogLevel)
+	if err != nil {
+		log.WithError(err).Fatal("Cannot parse log level")
+	}
+	log.SetLevel(level)
+
+	// Add some millisecond precision to log timestamps, useful for debugging performance.
+	formatter := new(log.TextFormatter)
+	formatter.TimestampFormat = "2006-01-02T15:04:05.999Z07:00"
+	formatter.FullTimestamp = true
+	formatter.DisableColors = false
+	log.SetFormatter(formatter)
+
+	log.Debug("debug logging enabled")
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
@@ -256,7 +268,7 @@ func (o *Options) Run() error {
 		}
 
 		elapsed := time.Since(start)
-		klog.Infof("Testgrid data fetched in: %s", elapsed)
+		log.Infof("Testgrid data fetched in: %s", elapsed)
 
 		return nil
 	}
@@ -283,7 +295,7 @@ func (o *Options) Run() error {
 		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 			err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
 			if err != nil {
-				klog.Error(err)
+				log.WithError(err).Error("error loading database")
 				return err
 			}
 		}
@@ -317,7 +329,7 @@ func (o *Options) Run() error {
 		}
 
 		elapsed := time.Since(start)
-		klog.Infof("Database loaded in: %s", elapsed)
+		log.Infof("Database loaded in: %s", elapsed)
 
 		return err
 	}

@@ -11,17 +11,16 @@ import (
 	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/pkg/errors"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-	"k8s.io/klog"
-
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/util/sets"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func (a TestReportGeneratorConfig) LoadDatabase(
@@ -39,7 +38,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	}
 
 	// Load all job and test results into database:
-	klog.V(4).Info("loading ProwJobs into db")
+	log.Info("loading ProwJobs into db")
 
 	// Load cache of all known prow jobs from DB:
 	prowJobCache, err := LoadProwJobCache(dbc)
@@ -67,15 +66,15 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 			suiteCache[idn.Name] = idn.ID
 		}
 	}
-	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
+	log.Infof("test cache created with %d entries from database", len(testCache))
 
 	for i, jobDetails := range testGridJobDetails {
 		jobResult, warnings := rawJobResultOptions.ProcessJobDetailsIntoRawJobResult(jobDetails)
 		for _, warning := range warnings {
-			klog.Warningf("warning from testgrid processing: " + warning)
+			log.Warningf("warning from testgrid processing: " + warning)
 		}
 
-		klog.V(4).Infof("Loading prow job %d of %d", i, len(testGridJobDetails))
+		log.Infof("Loading prow job %d of %d", i, len(testGridJobDetails))
 		err := createOrUpdateJob(dbc, dashboard.ReportName, variantManager, prowJobCache, jobResult)
 		if err != nil {
 			return err
@@ -92,7 +91,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 		}
 	}
 
-	klog.Info("done loading ProwJobRuns")
+	log.Info("done loading ProwJobRuns")
 
 	return nil
 }
@@ -138,7 +137,7 @@ func LoadTestCache(dbc *db.DB) (map[string]*models.Test, error) {
 			testCache[idn.Name] = idn
 		}
 	}
-	klog.V(4).Infof("test cache created with %d entries from database", len(testCache))
+	log.Infof("test cache created with %d entries from database", len(testCache))
 	return testCache, nil
 }
 
@@ -154,7 +153,7 @@ func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 			prowJobCache[j.Name] = j
 		}
 	}
-	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
+	log.Infof("job cache created with %d entries from database", len(prowJobCache))
 	return prowJobCache, nil
 }
 
@@ -175,7 +174,7 @@ func loadJob(
 	prowJob := prowJobCache[jr.JobName]
 	prowJobCacheLock.RUnlock()
 	dbc.DB.Select("id").Where("prow_job_id = ?", prowJob.ID).Find(&knownJobRuns)
-	klog.Infof("Found %d known job runs for %s", len(knownJobRuns), jr.JobName)
+	log.Infof("Found %d known job runs for %s", len(knownJobRuns), jr.JobName)
 	for _, kjr := range knownJobRuns {
 		prowJobRunCache[kjr.ID] = true
 	}
@@ -269,7 +268,7 @@ func loadJob(
 		if err != nil {
 			return errors.Wrap(err, "error loading prow job runs into db")
 		}
-		klog.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
+		log.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
 	}
 	return nil
 }
@@ -294,7 +293,7 @@ func getOrCreateTestID(
 
 	testCacheLock.RLock()
 	if _, ok := testCache[testName]; !ok {
-		klog.Infof("Creating new test row: %s", testName)
+		log.Infof("Creating new test row: %s", testName)
 		t := &models.Test{
 			Name: testName,
 		}
@@ -312,17 +311,17 @@ func getOrCreateTestID(
 
 // LoadBugs does a bulk query of all our test names, 50 at a time, to bugzilla and then syncs the associations to the db.
 func LoadBugs(dbc *db.DB, bugCache buganalysis.BugCache, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
-	klog.Info("querying bugzilla for test/job associations")
+	log.Info("querying bugzilla for test/job associations")
 	bugCache.Clear()
 
 	if err := bugCache.UpdateForFailedTests(sets.StringKeySet(testCache).List()...); err != nil {
-		klog.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+		log.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}
 	if err := bugCache.UpdateJobBlockers(sets.StringKeySet(jobCache).List()...); err != nil {
-		klog.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+		log.Warningf("Bugzilla Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}
 
-	klog.Info("syncing bugzilla test/job associations to db")
+	log.Info("syncing bugzilla test/job associations to db")
 
 	// Merge the test/job bugs into one list, associated with each failing test or job, mapped to our db model for the bug.
 	dbExpectedBugs := map[int64]*models.Bug{}
@@ -360,13 +359,13 @@ func LoadBugs(dbc *db.DB, bugCache buganalysis.BugCache, testCache map[string]*m
 			UpdateAll: true,
 		}).Create(bug)
 		if res.Error != nil {
-			klog.Errorf("error creating bug: %s %v", res.Error, bug)
+			log.Errorf("error creating bug: %s %v", res.Error, bug)
 			return errors.Wrap(res.Error, "error creating bug")
 		}
 		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
 		err := dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
 		if err != nil {
-			klog.Errorf("error updating bug test associations: %s %v", err, bug)
+			log.Errorf("error updating bug test associations: %s %v", err, bug)
 			return errors.Wrap(res.Error, "error updating bug test assocations")
 		}
 	}

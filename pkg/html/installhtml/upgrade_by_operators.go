@@ -9,7 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/html/generichtml"
 
@@ -82,7 +82,7 @@ func UpgradeOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	tests := make(map[string]map[string]api.Test)
 
 	for _, tr := range testReports {
-		klog.Infof("Found test %s for variant %s", tr.Name, tr.Variant)
+		log.Infof("Found test %s for variant %s", tr.Name, tr.Variant)
 		variantColumns.Insert(tr.Variant)
 
 		if _, ok := tests[tr.Name]; !ok {

@@ -15,7 +15,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -137,10 +137,10 @@ func (s *Server) refreshMetrics() {
 // for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
 // main postgresql tables.
 func (s *Server) refreshMaterializedViews() {
-	klog.Info("refreshing materialized views")
+	log.Info("refreshing materialized views")
 
 	if s.db == nil {
-		klog.Info("skipping materialized view refresh as server has no db connection provided")
+		log.Info("skipping materialized view refresh as server has no db connection provided")
 		return
 	}
 
@@ -148,17 +148,17 @@ func (s *Server) refreshMaterializedViews() {
 		start := time.Now()
 		if res := s.db.DB.Exec(
 			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
-			klog.Errorf("error refreshing materialized view %s: %v", pmv.Name, res.Error)
+			log.Errorf("error refreshing materialized view %s: %v", pmv.Name, res.Error)
 		} else {
 			elapsed := time.Since(start)
-			klog.Infof("Refreshed materialized view %s in %s", pmv.Name, elapsed)
+			log.Infof("Refreshed materialized view %s in %s", pmv.Name, elapsed)
 			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 }
 
 func (s *Server) RefreshData() {
-	klog.Infof("Refreshing data")
+	log.Infof("Refreshing data")
 
 	if !s.dbOnlyMode {
 		s.bugCache.Clear()
@@ -176,24 +176,24 @@ func (s *Server) RefreshData() {
 	scaleJobsFilePath := filepath.Join(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
 		perfscaleanalysis.ScaleJobsSubDir, perfscaleanalysis.ScaleJobsFilename)
 	if _, err := os.Stat(scaleJobsFilePath); err == nil {
-		klog.V(4).Infof("loading scale job data from: %s", scaleJobsFilePath)
+		log.Debugf("loading scale job data from: %s", scaleJobsFilePath)
 		jsonFile, err := os.Open(scaleJobsFilePath)
 		if err != nil {
-			klog.Errorf("error opening %s: %v", scaleJobsFilePath, err)
+			log.Errorf("error opening %s: %v", scaleJobsFilePath, err)
 		}
 		defer jsonFile.Close()
 		scaleJobsBytes, err := ioutil.ReadAll(jsonFile)
 		if err != nil {
-			klog.Errorf("error reading %s: %v", scaleJobsFilePath, err)
+			log.Errorf("error reading %s: %v", scaleJobsFilePath, err)
 		}
 		err = json.Unmarshal(scaleJobsBytes, &s.perfscaleMetricsJobReports)
 		if err != nil {
-			klog.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
+			log.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
 	s.refreshMetrics()
 
-	klog.Infof("Refresh complete")
+	log.Infof("Refresh complete")
 }
 
 func (s *Server) printHTMLReport(w http.ResponseWriter, req *http.Request) {
@@ -269,7 +269,7 @@ func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
 			if _, ok := s.currTestReports[reportName]; ok {
 				releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
 			} else {
-				klog.Errorf("unable to load test report for reportName version %s", reportName)
+				log.Errorf("unable to load test report for reportName version %s", reportName)
 				continue
 			}
 		}
@@ -443,7 +443,7 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	if release != "" {
 		err := api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
 		if err != nil {
-			klog.Errorf("error querying test analysis from db: %v", err)
+			log.Errorf("error querying test analysis from db: %v", err)
 		}
 	}
 }
@@ -523,7 +523,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
                 FROM prow_jobs
                 ORDER BY sortable_release desc`).Scan(&releases)
 	if res.Error != nil {
-		klog.Errorf("error querying releases from db: %v", res.Error)
+		log.Errorf("error querying releases from db: %v", res.Error)
 	}
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
@@ -536,7 +536,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	// Assume our last update is the last time we inserted a prow job run.
 	res = s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if res.Error != nil {
-		klog.Errorf("error querying last updated from db: %v", res.Error)
+		log.Errorf("error querying last updated from db: %v", res.Error)
 	}
 	response.LastUpdated = lastUpdated.Max
 
@@ -651,7 +651,7 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	if release != "" && jobName != "" {
 		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
 		if err != nil {
-			klog.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
+			log.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
 		}
 	}
 }
@@ -796,17 +796,35 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonReleaseJobRunsReport)
 	}
 
+	var handler http.Handler = serveMux
+	// wrap mux with our logger. this will
+	handler = logRequestHandler(handler)
+	// ... potentially add more middleware handlers
+
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
 		Addr:    s.listenAddr,
-		Handler: serveMux,
+		Handler: handler,
 	}
 
-	klog.Infof("Serving reports on %s ", s.listenAddr)
+	log.Infof("Serving reports on %s ", s.listenAddr)
 
 	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-		klog.Exitf("Server exited: %v", err)
+		log.WithError(err).Error("Server exited")
 	}
+}
+
+func logRequestHandler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		h.ServeHTTP(w, r)
+		log.WithFields(log.Fields{
+			"uri":     r.URL.String(),
+			"method":  r.Method,
+			"elapsed": time.Since(start),
+		}).Info("responded to request")
+	}
+	return http.HandlerFunc(fn)
 }
 
 func (s *Server) GetHTTPServer() *http.Server {

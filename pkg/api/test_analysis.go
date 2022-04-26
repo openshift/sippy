@@ -9,7 +9,7 @@ import (
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"k8s.io/klog"
+	log "github.com/sirupsen/logrus"
 )
 
 type counts struct {
@@ -130,7 +130,7 @@ GROUP BY test_id, test_name, date, release, variant, runs, passes, flakes, failu
 		sql.Named("release", release),
 		sql.Named("testname", testName)).Scan(&byVariantAnalysisRows)
 	if r.Error != nil {
-		klog.Error(r.Error)
+		log.WithError(r.Error).Error("error querying test analysis by variant")
 		return r.Error
 	}
 
@@ -154,7 +154,7 @@ GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, fail
 		sql.Named("release", release),
 		sql.Named("testname", testName)).Scan(&byJobAnalysisRows)
 	if r.Error != nil {
-		klog.Error(r.Error)
+		log.WithError(r.Error).Error("error querying test analysis by job")
 		return r.Error
 	}
 
