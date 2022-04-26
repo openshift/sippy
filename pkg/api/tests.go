@@ -193,6 +193,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 	now := time.Now()
 	var testQueryFilter, resultFilter *filter.Filter
 
+	// Split filters into two: one we can apply via SQL, one that has to be applied in go
 	if fil != nil {
 		// Allow name, variant filtering at SQL level
 		testQueryFields := []string{"name", "variants"}
@@ -200,6 +201,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 			Items:        []filter.FilterItem{},
 			LinkOperator: fil.LinkOperator,
 		}
+		// The rest go here (FIXME)
 		resultFilter = &filter.Filter{
 			Items:        []filter.FilterItem{},
 			LinkOperator: fil.LinkOperator,
@@ -243,11 +245,11 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 	var testReports []apitype.Test
 	r := dbc.DB.Table("(?) as results", testQuery).Select(
 		`*,
-		current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`).
+				current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+				current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
+				previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
+				previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+				(current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`).
 		Scan(&testReports)
 
 	if r.Error != nil {
