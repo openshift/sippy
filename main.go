@@ -36,6 +36,10 @@ var sippyNG embed.FS
 //go:embed static
 var static embed.FS
 
+const (
+	defaultLogLevel = "info"
+)
+
 type Options struct {
 	LocalData              string
 	OpenshiftReleases      []string
@@ -60,6 +64,7 @@ type Options struct {
 	DBOnlyMode              bool
 	SkipBugLookup           bool
 	DSN                     string
+	LogLevel                string
 }
 
 func main() {
@@ -73,14 +78,6 @@ func main() {
 		StartDay:                0,
 		ListenAddr:              ":8080",
 	}
-
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
-	formatter := &log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006-01-02 15:04:05",
-	}
-	log.SetFormatter(formatter)
 
 	cmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, arguments []string) {
@@ -118,6 +115,7 @@ func main() {
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
+	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
@@ -227,6 +225,21 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error {
+	// Set log level
+	level, err := log.ParseLevel(o.LogLevel)
+	if err != nil {
+		log.WithError(err).Fatal("Cannot parse log level")
+	}
+	log.SetLevel(level)
+
+	// Add some millisecond precision to log timestamps, useful for debugging performance.
+	formatter := new(log.TextFormatter)
+	formatter.TimestampFormat = "2006-01-02T15:04:05.999Z07:00"
+	formatter.FullTimestamp = true
+	formatter.DisableColors = false
+	log.SetFormatter(formatter)
+
+	log.Debug("debug logging enabled")
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
