@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -15,7 +17,6 @@ import (
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -250,7 +251,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 
 	finalResults = finalResults.Scan(&testReports)
 	if finalResults.Error != nil {
-		log.WithError(r.Error).Error("error querying test reports")
+		log.WithError(finalResults.Error).Error("error querying test reports")
 		return []apitype.Test{}, finalResults.Error
 	}
 
