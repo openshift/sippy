@@ -61,7 +61,7 @@ function TestTable(props) {
     {
       field: 'name',
       headerName: 'Name',
-      flex: 4,
+      flex: 3.5,
       renderCell: (params) => (
         <div className="test-name">
           <Tooltip title={params.value}>
@@ -80,7 +80,7 @@ function TestTable(props) {
       field: 'current_pass_percentage',
       headerName: 'Current pass percentage',
       type: 'number',
-      flex: 0.5,
+      flex: 0.75,
       renderCell: (params) => (
         <div className="percentage-cell">
           {Number(params.value).toFixed(1).toLocaleString()}%<br />
@@ -100,7 +100,7 @@ function TestTable(props) {
     {
       field: 'previous_pass_percentage',
       headerName: 'Previous pass percentage',
-      flex: 0.5,
+      flex: 0.75,
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
