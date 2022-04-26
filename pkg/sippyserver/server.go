@@ -796,10 +796,15 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonReleaseJobRunsReport)
 	}
 
+	var handler http.Handler = serveMux
+	// wrap mux with our logger. this will
+	handler = logRequestHandler(handler)
+	// ... potentially add more middleware handlers
+
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
 		Addr:    s.listenAddr,
-		Handler: serveMux,
+		Handler: handler,
 	}
 
 	log.Infof("Serving reports on %s ", s.listenAddr)
@@ -807,6 +812,19 @@ func (s *Server) Serve() {
 	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.WithError(err).Error("Server exited")
 	}
+}
+
+func logRequestHandler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		h.ServeHTTP(w, r)
+		log.WithFields(log.Fields{
+			"uri":     r.URL.String(),
+			"method":  r.Method,
+			"elapsed": time.Since(start),
+		}).Info("responded to request")
+	}
+	return http.HandlerFunc(fn)
 }
 
 func (s *Server) GetHTTPServer() *http.Server {
