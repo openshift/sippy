@@ -1,12 +1,10 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	gosort "sort"
 	"strconv"
-	"strings"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -193,12 +191,41 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 
 func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (testsAPIResult, error) {
 	now := time.Now()
+	var testQueryFilter, resultFilter *filter.Filter
 
-	var testReports []apitype.Test
-	// This query takes the variants out of the picture and adds in percentages
-	q := `
-WITH results AS (
-    SELECT name,
+	if fil != nil {
+		// Allow name, variant filtering at SQL level
+		testQueryFields := []string{"name", "variants"}
+		testQueryFilter = &filter.Filter{
+			Items:        []filter.FilterItem{},
+			LinkOperator: fil.LinkOperator,
+		}
+		resultFilter = &filter.Filter{
+			Items:        []filter.FilterItem{},
+			LinkOperator: fil.LinkOperator,
+		}
+
+	filterOuterLoop:
+		for _, item := range fil.Items {
+			for _, tqf := range testQueryFields {
+				if item.Field == tqf {
+					testQueryFilter.Items = append(testQueryFilter.Items, item)
+					continue filterOuterLoop
+				}
+			}
+			resultFilter.Items = append(resultFilter.Items, item)
+		}
+	}
+
+	table := testReport7dMatView
+	if period == "twoDay" {
+		table = testReport2dMatView
+	}
+
+	testQuery := dbc.DB.
+		Table(table).
+		Where("release = ?", release).
+		Select(`name,
            sum(current_runs)       AS current_runs,
            sum(current_successes)  AS current_successes,
            sum(current_failures)   AS current_failures,
@@ -206,25 +233,23 @@ WITH results AS (
            sum(previous_runs)      AS previous_runs,
            sum(previous_successes) AS previous_successes,
            sum(previous_failures)  AS previous_failures,
-           sum(previous_flakes)    AS previous_flakes
-    FROM prow_test_report_7d_matview
-	WHERE release = @release
-    GROUP BY name
-)
-SELECT *,
-       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
+           sum(previous_flakes)    AS previous_flakes`).
+		Group("name")
+
+	if testQueryFilter != nil {
+		testQuery = testQueryFilter.ToSQL(testQuery, apitype.Test{})
+	}
+
+	var testReports []apitype.Test
+	r := dbc.DB.Table("(?) as results", testQuery).Select(
+		`*,
+		current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
        previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results;
-`
-	if period == "twoDay" {
-		q = strings.ReplaceAll(q, testReport7dMatView, testReport2dMatView)
-	}
+       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`).
+		Scan(&testReports)
 
-	r := dbc.DB.Raw(q,
-		sql.Named("release", release)).Scan(&testReports)
 	if r.Error != nil {
 		log.WithError(r.Error).Error("error querying test reports")
 		return []apitype.Test{}, r.Error
@@ -234,8 +259,8 @@ FROM results;
 	filteredReports := make([]apitype.Test, 0, len(testReports))
 	fakeIDCtr := 1
 	for _, testReport := range testReports {
-		if fil != nil {
-			include, err := fil.Filter(testReport)
+		if resultFilter != nil {
+			include, err := resultFilter.Filter(testReport)
 			if err != nil {
 				return []apitype.Test{}, err
 			}

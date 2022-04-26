@@ -178,6 +178,12 @@ function TestTable(props) {
     },
     // These are here just to allow filtering
     {
+      field: 'variants',
+      headerName: 'Variants',
+      hide: true,
+      type: 'array',
+    },
+    {
       field: 'current_runs',
       headerName: 'Current runs',
       hide: true,
