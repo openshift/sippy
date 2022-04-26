@@ -1,13 +1,16 @@
 import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
-import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
-import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
+import { BugReport, DirectionsRun, GridOn, Search } from '@material-ui/icons'
 import { Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
+import {
+  escapeRegex,
+  pathForExactJobAnalysis,
+  pathForExactJobRuns,
+} from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
-import { pathForExactJobAnalysis, pathForExactJobRuns } from '../helpers'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -20,10 +23,6 @@ const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
   { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
   { name: 'Upgrade related', model: [BOOKMARKS.UPGRADE] },
-  { name: 'Has a linked bug', model: [BOOKMARKS.LINKED_BUG] },
-  { name: 'Has no linked bug', model: [BOOKMARKS.NO_LINKED_BUG] },
-  { name: 'Has an associated bug', model: [BOOKMARKS.ASSOCIATED_BUG] },
-  { name: 'Has no associated bug', model: [BOOKMARKS.NO_ASSOCIATED_BUG] },
 ]
 
 export const getColumns = (config, openBugzillaDialog) => {
@@ -116,38 +115,28 @@ export const getColumns = (config, openBugzillaDialog) => {
       hide: config.briefTable,
     },
     {
-      field: 'bugs',
-      headerName: 'Bug count',
+      field: 'link',
+      sortable: false,
+      headerName: ' ',
       flex: 0.4,
-      type: 'number',
-      filterable: true,
+
+      filterable: false,
+      hide: config.briefTable,
       renderCell: (params) => {
         return (
-          <Tooltip
-            title={
-              params.value.length +
-              ' linked bugs,' +
-              params.row.associated_bugs.length +
-              ' associated bugs'
-            }
-          >
+          <Tooltip title="Find Bugs">
             <Button
-              style={{ justifyContent: 'center', color: bugColor(params.row) }}
+              target="_blank"
               startIcon={<BugReport />}
-              onClick={() => openBugzillaDialog(params.row)}
+              href={
+                'https://search.ci.openshift.org/?search=' +
+                encodeURIComponent(escapeRegex(params.row.name)) +
+                '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
+              }
             />
           </Tooltip>
         )
       },
-      // Weight linked bugs more than associated bugs, but associated bugs are ranked more than not having one at all.
-      sortComparator: (v1, v2, param1, param2) =>
-        weightedBugComparator(
-          param1.api.getCellValue(param1.id, 'bugs'),
-          param1.api.getCellValue(param1.id, 'associated_bugs'),
-          param2.api.getCellValue(param2.id, 'bugs'),
-          param2.api.getCellValue(param2.id, 'associated_bugs')
-        ),
-      hide: config.briefTable,
     },
     // These are here just to allow filtering
     {
@@ -167,12 +156,6 @@ export const getColumns = (config, openBugzillaDialog) => {
       headerName: 'Previous runs',
       hide: true,
       type: 'number',
-    },
-    {
-      field: 'associated_bugs',
-      headerName: 'Associated bugs',
-      type: 'number',
-      hide: true,
     },
   ]
 }
