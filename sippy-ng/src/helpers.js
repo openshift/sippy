@@ -80,8 +80,9 @@ export function pathForVariantsWithTestFailure(release, variant, test) {
 }
 
 export function pathForJobRunsWithTestFailure(release, test) {
-  return `/jobs/${release}/runs?${single(
-    filterFor('failed_test_names', 'contains', test)
+  return `/jobs/${release}/runs?${multiple_or(
+    filterFor('failed_test_names', 'contains', test),
+    filterFor('flaked_test_names', 'contains', test)
   )}`
 }
 
@@ -133,6 +134,12 @@ export function withoutUnstable() {
 export function multiple(...filters) {
   return `filters=${encodeURIComponent(
     JSON.stringify({ items: filters, linkOperator: 'and' })
+  )}`
+}
+
+export function multiple_or(...filters) {
+  return `filters=${encodeURIComponent(
+    JSON.stringify({ items: filters, linkOperator: 'or' })
   )}`
 }
 
