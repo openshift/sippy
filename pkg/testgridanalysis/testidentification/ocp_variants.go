@@ -121,6 +121,19 @@ var (
 		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-baremetal-ipi",
 		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-baremetal-ipi",
 		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-azure-ipi",
+		// And their 4.11 equivalents, tracked with new jira: https://issues.redhat.com/browse/OCPQE-9898
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-azure-ipi-proxy",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi-private",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-azure-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-upi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-gcp-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-gcp-upi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi-proxy",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-ipi-proxy",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-upgrade-from-stable-4.10-aws-ipi",
+		"periodic-ci-openshift-verification-tests-master-nightly-4.11-upgrade-from-stable-4.10-azure-ipi",
 
 		// Reported on slack to SD-CICD
 		"release-openshift-ocp-osd-aws-nightly-4.10",
