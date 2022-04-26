@@ -95,15 +95,15 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'test_failures',
-      headerName: 'Test Failures',
+      headerName: 'Failures',
       type: 'number',
-      flex: 0.5,
+      flex: 0.6,
     },
     {
       field: 'test_flakes',
-      headerName: 'Test Flakes',
+      headerName: 'Flakes',
       type: 'number',
-      flex: 0.5,
+      flex: 0.6,
     },
     {
       field: 'result',

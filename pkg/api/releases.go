@@ -5,9 +5,10 @@ import (
 	"net/http"
 
 	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-	log "github.com/sirupsen/logrus"
 
 	"gorm.io/gorm"
 
@@ -161,11 +162,11 @@ func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient
 	RespondWithJSON(http.StatusOK, w, apiResults)
 }
 
-func releaseFilter(req *http.Request, db *gorm.DB) *gorm.DB {
+func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 	releaseFilter := req.URL.Query().Get("release")
 	if releaseFilter != "" {
-		return db.Where("release = ?", releaseFilter)
+		return dbc.Where("release = ?", releaseFilter)
 	}
 
-	return db
+	return dbc
 }
