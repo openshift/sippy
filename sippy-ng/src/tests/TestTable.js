@@ -153,40 +153,29 @@ function TestTable(props) {
       hide: props.briefTable,
     },
     {
-      field: 'bugs',
-      headerName: 'Bugs',
+      field: 'bug_link',
+      sortable: false,
+      headerName: ' ',
       flex: 0.4,
-      type: 'number',
-      filterable: true,
+
+      filterable: false,
+      hide: props.briefTable,
       renderCell: (params) => {
         return (
-          <Tooltip
-            title={
-              params.value.length +
-              ' linked bugs,' +
-              params.row.associated_bugs.length +
-              ' associated bugs'
-            }
-          >
+          <Tooltip title="Find Bugs">
             <Button
-              style={{ justifyContent: 'center', color: bugColor(params.row) }}
+              target="_blank"
               startIcon={<BugReport />}
-              onClick={() => openBugzillaDialog(params.row)}
+              href={
+                'https://search.ci.openshift.org/?search=' +
+                encodeURIComponent(escapeRegex(params.row.name)) +
+                '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
+              }
             />
           </Tooltip>
         )
       },
-      // Weight linked bugs more than associated bugs, but associated bugs are ranked more than not having one at all.
-      sortComparator: (v1, v2, param1, param2) =>
-        weightedBugComparator(
-          param1.api.getCellValue(param1.id, 'bugs'),
-          param1.api.getCellValue(param1.id, 'associated_bugs'),
-          param2.api.getCellValue(param2.id, 'bugs'),
-          param2.api.getCellValue(param2.id, 'associated_bugs')
-        ),
-      hide: props.briefTable,
     },
-
     // These are here just to allow filtering
     {
       field: 'current_runs',
