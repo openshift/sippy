@@ -322,7 +322,7 @@ func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable
 }
 
 // Split extracts certain filter items into their own filter. Can be used
-// for rare occurences when filters need to be applied separately, i.e.
+// for rare occurrences  when filters need to be applied separately, i.e.
 // as part of pre and post-processing.
 func (filters Filter) Split(fields []string) (new, old *Filter) {
 	new = &Filter{
