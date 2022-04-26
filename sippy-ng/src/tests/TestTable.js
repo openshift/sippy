@@ -1,8 +1,7 @@
 import './TestTable.css'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
+import { Box, Button, Container, Tooltip } from '@material-ui/core'
 import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
-import { Button, Container, Tooltip } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
@@ -83,9 +82,10 @@ function TestTable(props) {
       type: 'number',
       flex: 0.5,
       renderCell: (params) => (
-        <Tooltip title={params.row.current_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.current_runs} runs)</small>
+        </div>
       ),
     },
     {
@@ -103,9 +103,10 @@ function TestTable(props) {
       flex: 0.5,
       type: 'number',
       renderCell: (params) => (
-        <Tooltip title={params.row.previous_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.previous_runs} runs)</small>
+        </div>
       ),
     },
     {
