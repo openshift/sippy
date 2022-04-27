@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 type DB struct {
@@ -179,7 +180,12 @@ WITH failed_test_results AS (SELECT prow_job_run_tests.prow_job_run_id, tests.id
                              FROM prow_job_run_tests
                                       INNER JOIN tests ON
                                  tests.id = prow_job_run_tests.test_id
-                             WHERE prow_job_run_tests.status = 12)
+                             WHERE prow_job_run_tests.status = 12),
+     flaked_test_results AS (SELECT prow_job_run_tests.prow_job_run_id, tests.id, tests.name, prow_job_run_tests.status
+                             FROM prow_job_run_tests
+                                      INNER JOIN tests ON
+                                 tests.id = prow_job_run_tests.test_id
+                             WHERE prow_job_run_tests.status = 13)
 SELECT prow_job_runs.id                                                                      AS id,
        prow_jobs.release                                                                     AS release,
        prow_jobs.name                                                                        AS name,
@@ -195,10 +201,13 @@ SELECT prow_job_runs.id                                                         
        prow_job_runs.known_failure                                                           AS known_failure,
        cast(extract(epoch from prow_job_runs.timestamp at time zone 'utc') * 1000 as bigint) AS timestamp,
        prow_job_runs.id                                                                      AS prow_id,
+       ARRAY_REMOVE(ARRAY_AGG(flaked_test_results.name), NULL)                                  flaked_test_names,
+       COUNT(flaked_test_results.name)                                                          test_flakes,
        ARRAY_REMOVE(ARRAY_AGG(failed_test_results.name), NULL)                                  failed_test_names,
        COUNT(failed_test_results.name)                                                          test_failures
 FROM prow_job_runs
          LEFT JOIN failed_test_results on failed_test_results.prow_job_run_id = prow_job_runs.id
+         LEFT JOIN flaked_test_results on flaked_test_results.prow_job_run_id = prow_job_runs.id
          INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 GROUP BY prow_job_runs.id, prow_jobs.name, prow_jobs.variants, prow_jobs.release;
 `

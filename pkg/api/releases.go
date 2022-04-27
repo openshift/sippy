@@ -5,9 +5,11 @@ import (
 	"net/http"
 
 	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-	log "github.com/sirupsen/logrus"
+
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db"
@@ -19,7 +21,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q := releaseFilter(req, dbClient)
+	q := releaseFilter(req, dbClient.DB)
 	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
@@ -45,7 +47,7 @@ func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClien
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
 	}
 
-	q := releaseFilter(req, dbClient)
+	q := releaseFilter(req, dbClient.DB)
 	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
@@ -82,7 +84,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return
 	}
-	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient), filterOpts, nil)
+	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient.DB), filterOpts, nil)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -160,11 +162,11 @@ func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient
 	RespondWithJSON(http.StatusOK, w, apiResults)
 }
 
-func releaseFilter(req *http.Request, dbClient *db.DB) *gorm.DB {
+func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 	releaseFilter := req.URL.Query().Get("release")
 	if releaseFilter != "" {
-		return dbClient.DB.Where("release = ?", releaseFilter)
+		return dbc.Where("release = ?", releaseFilter)
 	}
 
-	return dbClient.DB
+	return dbc
 }

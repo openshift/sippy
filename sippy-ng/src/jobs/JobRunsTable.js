@@ -95,9 +95,15 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'test_failures',
-      headerName: 'Test Failures',
+      headerName: 'Failures',
       type: 'number',
-      flex: 0.5,
+      flex: 0.6,
+    },
+    {
+      field: 'test_flakes',
+      headerName: 'Flakes',
+      type: 'number',
+      flex: 0.6,
     },
     {
       field: 'result',
@@ -144,7 +150,11 @@ export default function JobRunsTable(props) {
       headerName: 'Failed tests',
       hide: true,
     },
-
+    {
+      field: 'flaked_test_names',
+      headerName: 'Flaked tests',
+      hide: true,
+    },
     // These are fields on the job, not the run - but we can
     // filter by them.
     {
