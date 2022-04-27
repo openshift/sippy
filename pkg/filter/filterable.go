@@ -321,6 +321,33 @@ func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable
 	return q, nil
 }
 
+// Split extracts certain filter items into their own filter. Can be used
+// for rare occurrences  when filters need to be applied separately, i.e.
+// as part of pre and post-processing.
+func (filters Filter) Split(fields []string) (new, old *Filter) {
+	new = &Filter{
+		Items:        []FilterItem{},
+		LinkOperator: filters.LinkOperator,
+	}
+	old = &Filter{
+		Items:        []FilterItem{},
+		LinkOperator: filters.LinkOperator,
+	}
+
+filterOuterLoop:
+	for _, item := range filters.Items {
+		for _, field := range fields {
+			if item.Field == field {
+				new.Items = append(new.Items, item)
+				continue filterOuterLoop
+			}
+		}
+		old.Items = append(old.Items, item)
+	}
+
+	return new, old
+}
+
 func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	for _, f := range filters.Items {
 		if filters.LinkOperator == LinkOperatorAnd || filters.LinkOperator == "" {

@@ -1,8 +1,7 @@
 import './TestTable.css'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { bugColor, weightedBugComparator } from '../bugzilla/BugzillaUtils'
+import { Box, Button, Container, Tooltip } from '@material-ui/core'
 import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
-import { Button, Container, Tooltip } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
@@ -62,7 +61,7 @@ function TestTable(props) {
     {
       field: 'name',
       headerName: 'Name',
-      flex: 4,
+      flex: 3.5,
       renderCell: (params) => (
         <div className="test-name">
           <Tooltip title={params.value}>
@@ -81,11 +80,12 @@ function TestTable(props) {
       field: 'current_pass_percentage',
       headerName: 'Current pass percentage',
       type: 'number',
-      flex: 0.5,
+      flex: 0.75,
       renderCell: (params) => (
-        <Tooltip title={params.row.current_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.current_runs} runs)</small>
+        </div>
       ),
     },
     {
@@ -100,12 +100,13 @@ function TestTable(props) {
     {
       field: 'previous_pass_percentage',
       headerName: 'Previous pass percentage',
-      flex: 0.5,
+      flex: 0.75,
       type: 'number',
       renderCell: (params) => (
-        <Tooltip title={params.row.previous_runs + ' runs'}>
-          <p>{Number(params.value).toFixed(1).toLocaleString()}%</p>
-        </Tooltip>
+        <div className="percentage-cell">
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.previous_runs} runs)</small>
+        </div>
       ),
     },
     {
@@ -177,6 +178,12 @@ function TestTable(props) {
       },
     },
     // These are here just to allow filtering
+    {
+      field: 'variants',
+      headerName: 'Variants',
+      hide: true,
+      type: 'array',
+    },
     {
       field: 'current_runs',
       headerName: 'Current runs',

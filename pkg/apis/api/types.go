@@ -227,9 +227,10 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // Test contains the full accounting of a test's history, with a synthetic ID. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID      int    `json:"id,omitempty"`
-	Name    string `json:"name"`
-	Variant string `json:"variant,omitempty"`
+	ID       int            `json:"id,omitempty"`
+	Name     string         `json:"name"`
+	Variant  string         `json:"variant,omitempty"`
+	Variants pq.StringArray `json:"variants" gorm:"type:text[]"`
 
 	CurrentSuccesses      int     `json:"current_successes"`
 	CurrentFailures       int     `json:"current_failures"`
@@ -255,6 +256,10 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "tags":
 		return ColumnTypeArray
+	case "variant":
+		return ColumnTypeString
+	case "variants":
+		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
 	}
@@ -264,6 +269,8 @@ func (test Test) GetStringValue(param string) (string, error) {
 	switch param {
 	case "name":
 		return test.Name, nil
+	case "variant":
+		return test.Variant, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
@@ -308,6 +315,8 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
 		return test.Tags, nil
+	case "variants":
+		return test.Variants, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}

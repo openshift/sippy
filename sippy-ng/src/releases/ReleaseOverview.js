@@ -355,6 +355,8 @@ export default function ReleaseOverview(props) {
                   component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
                     BOOKMARKS.RUN_10,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}&sortField=net_improvement&sort=asc`}
@@ -376,6 +378,8 @@ export default function ReleaseOverview(props) {
                   filterModel={{
                     items: [
                       BOOKMARKS.RUN_10,
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
                       BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                       BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
                     ],
@@ -394,6 +398,8 @@ export default function ReleaseOverview(props) {
                     props.release
                   }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_1,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
                   )}`}
@@ -415,6 +421,8 @@ export default function ReleaseOverview(props) {
                   filterModel={{
                     items: [
                       BOOKMARKS.RUN_1,
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
                       BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                       BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
                     ],
