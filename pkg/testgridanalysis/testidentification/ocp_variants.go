@@ -38,8 +38,7 @@ var (
 	serialRegex       = regexp.MustCompile(`(?i)-serial`)
 	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
 	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
-	upgradeMicroRegex = regexp.MustCompile(`(?i)-upgrade-.*-minor`)
-	upgradeMinorRegex = regexp.MustCompile(`(?i)-upgrade-.*-micro`)
+	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
@@ -333,13 +332,13 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 
 	if upgradeRegex.MatchString(jobName) {
 		variants = append(variants, "upgrade")
+		if upgradeMinorRegex.MatchString(jobName) {
+			variants = append(variants, "upgrade-minor")
+		} else {
+			variants = append(variants, "upgrade-micro")
+		}
 	}
-	if upgradeMinorRegex.MatchString(jobName) {
-		variants = append(variants, "upgrade-minor")
-	}
-	if upgradeMicroRegex.MatchString(jobName) {
-		variants = append(variants, "upgrade-micro")
-	}
+
 	if serialRegex.MatchString(jobName) {
 		variants = append(variants, "serial")
 	}
