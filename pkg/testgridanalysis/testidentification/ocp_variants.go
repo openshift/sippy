@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 var (
 	// variant regexes
+	alibabaRegex  = regexp.MustCompile(`(?i)-alibaba`)
 	arm64Regex    = regexp.MustCompile(`(?i)-arm64`)
 	assistedRegex = regexp.MustCompile(`(?i)-assisted`)
 	awsRegex      = regexp.MustCompile(`(?i)-aws`)
@@ -28,20 +30,22 @@ var (
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
 	// proxy jobs do not have a trailing -version segment
-	proxyRegex   = regexp.MustCompile(`(?i)-proxy`)
-	promoteRegex = regexp.MustCompile(`(?i)^promote-`)
-	ppc64leRegex = regexp.MustCompile(`(?i)-ppc64le`)
-	rtRegex      = regexp.MustCompile(`(?i)-rt`)
-	s390xRegex   = regexp.MustCompile(`(?i)-s390x`)
-	serialRegex  = regexp.MustCompile(`(?i)-serial`)
-	techpreview  = regexp.MustCompile(`(?i)-techpreview`)
-	upgradeRegex = regexp.MustCompile(`(?i)-upgrade`)
+	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
+	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
+	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
+	rtRegex           = regexp.MustCompile(`(?i)-rt`)
+	s390xRegex        = regexp.MustCompile(`(?i)-s390x`)
+	serialRegex       = regexp.MustCompile(`(?i)-serial`)
+	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
+	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
+	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
+	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
 	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
-	singleNodeRegex = regexp.MustCompile(`(?i)-single-node`)
 
 	allOpenshiftVariants = sets.NewString(
+		"alibaba",
 		"arm64",
 		"assisted",
 		"aws",
@@ -50,8 +54,8 @@ var (
 		"fips",
 		"gcp",
 		"metal-assisted",
-		"metal-upi",
 		"metal-ipi",
+		"metal-upi",
 		"never-stable",
 		"openstack",
 		"osd",
@@ -63,11 +67,13 @@ var (
 		"realtime",
 		"s390x",
 		"serial",
+		"single-node",
 		"techpreview",
 		"upgrade",
+		"upgrade-micro",
+		"upgrade-minor",
 		"vsphere-ipi",
 		"vsphere-upi",
-		"single-node",
 	)
 
 	// openshiftJobsNeverStableForVariants is a list of unproven new jobs or
@@ -243,7 +249,7 @@ func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
 }
 
-func (v openshiftVariants) IdentifyVariants(jobName string) []string {
+func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 	variants := []string{}
 
 	defer func() {
@@ -268,6 +274,10 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")
 		return variants
+	}
+
+	if alibabaRegex.MatchString(jobName) {
+		variants = append(variants, "alibaba")
 	}
 
 	if arm64Regex.MatchString(jobName) {
@@ -322,7 +332,13 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string {
 
 	if upgradeRegex.MatchString(jobName) {
 		variants = append(variants, "upgrade")
+		if upgradeMinorRegex.MatchString(jobName) {
+			variants = append(variants, "upgrade-minor")
+		} else {
+			variants = append(variants, "upgrade-micro")
+		}
 	}
+
 	if serialRegex.MatchString(jobName) {
 		variants = append(variants, "serial")
 	}
