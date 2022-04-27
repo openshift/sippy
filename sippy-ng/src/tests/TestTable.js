@@ -1,11 +1,18 @@
 import './TestTable.css'
+import {
+  AcUnit,
+  BugReport,
+  DirectionsRun,
+  Error,
+  Search,
+} from '@material-ui/icons'
+import { Badge, Box, Button, Container, Grid, Tooltip } from '@material-ui/core'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { Box, Button, Container, Tooltip } from '@material-ui/core'
-import { BugReport, DirectionsRun, Search } from '@material-ui/icons'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
   pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTestFlake,
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
@@ -15,6 +22,7 @@ import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
 import GridToolbar from '../datagrid/GridToolbar'
+import IconButton from '@material-ui/core/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -83,8 +91,34 @@ function TestTable(props) {
       flex: 0.75,
       renderCell: (params) => (
         <div className="percentage-cell">
-          {Number(params.value).toFixed(1).toLocaleString()}%<br />
-          <small>({params.row.current_runs} runs)</small>
+          <Tooltip
+            title={
+              <div>
+                <b>Pass: </b>
+                {Number(params.row.current_pass_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+                <br />
+                <b>Flake: </b>
+                {Number(params.row.current_flake_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+                <br />
+                <b>Fail: </b>
+                {Number(params.row.current_failure_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+              </div>
+            }
+          >
+            <Box>
+              {Number(params.value).toFixed(1).toLocaleString()}%<br />
+              <small>({params.row.current_runs} runs)</small>
+            </Box>
+          </Tooltip>
         </div>
       ),
     },
@@ -104,76 +138,117 @@ function TestTable(props) {
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
-          {Number(params.value).toFixed(1).toLocaleString()}%<br />
-          <small>({params.row.previous_runs} runs)</small>
+          <Tooltip
+            title={
+              <div>
+                <b>Pass: </b>
+                {Number(params.row.previous_pass_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+                <br />
+                <b>Flake: </b>
+                {Number(params.row.previous_flake_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+                <br />
+                <b>Fail: </b>
+                {Number(params.row.previous_failure_percentage)
+                  .toFixed(1)
+                  .toLocaleString()}
+                %
+              </div>
+            }
+          >
+            <Box>
+              {Number(params.value).toFixed(1).toLocaleString()}%<br />
+              <small>({params.row.previous_runs} runs)</small>
+            </Box>
+          </Tooltip>
         </div>
       ),
     },
     {
       field: 'link',
       headerName: ' ',
-      flex: 0.4,
+      flex: 1.5,
+      hide: props.briefTable,
       filterable: false,
       renderCell: (params) => {
         return (
-          <Tooltip title="Search CI Logs">
-            <Button
-              target="_blank"
-              startIcon={<Search />}
-              href={
-                'https://search.ci.openshift.org/?search=' +
-                encodeURIComponent(escapeRegex(params.row.name)) +
-                '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
-              }
-            />
-          </Tooltip>
-        )
-      },
-      hide: props.briefTable,
-    },
-    {
-      field: 'jobs',
-      headerName: ' ',
-      flex: 0.4,
-      filterable: false,
-      renderCell: (params) => {
-        return (
-          <Tooltip title="See job runs that failed this test">
-            <Button
-              startIcon={<DirectionsRun />}
-              component={Link}
-              to={withSort(
-                pathForJobRunsWithTestFailure(props.release, params.row.name),
-                'timestamp',
-                'desc'
-              )}
-            />
-          </Tooltip>
-        )
-      },
-      hide: props.briefTable,
-    },
-    {
-      field: 'bug_link',
-      sortable: false,
-      headerName: ' ',
-      flex: 0.4,
-
-      filterable: false,
-      hide: props.briefTable,
-      renderCell: (params) => {
-        return (
-          <Tooltip title="Find Bugs">
-            <Button
-              target="_blank"
-              startIcon={<BugReport />}
-              href={
-                'https://search.ci.openshift.org/?search=' +
-                encodeURIComponent(escapeRegex(params.row.name)) +
-                '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
-              }
-            />
-          </Tooltip>
+          <Grid container justifyContent="space-between">
+            <Tooltip title="Search CI Logs">
+              <IconButton
+                target="_blank"
+                href={
+                  'https://search.ci.openshift.org/?search=' +
+                  encodeURIComponent(escapeRegex(params.row.name)) +
+                  '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
+                }
+              >
+                <Search />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="See job runs that failed this test">
+              <IconButton
+                component={Link}
+                to={withSort(
+                  pathForJobRunsWithTestFailure(
+                    props.release,
+                    params.row.name,
+                    filterModel
+                  ),
+                  'timestamp',
+                  'desc'
+                )}
+              >
+                <Badge
+                  badgeContent={
+                    params.row.current_failures + params.row.previous_failures
+                  }
+                  color="error"
+                >
+                  <Error />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="See job runs that flaked on this test">
+              <IconButton
+                component={Link}
+                to={withSort(
+                  pathForJobRunsWithTestFlake(
+                    props.release,
+                    params.row.name,
+                    filterModel
+                  ),
+                  'timestamp',
+                  'desc'
+                )}
+              >
+                <Badge
+                  badgeContent={
+                    params.row.current_flakes + params.row.previous_flakes
+                  }
+                  color="error"
+                >
+                  <AcUnit />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Find Bugs">
+              <IconButton
+                target="_blank"
+                href={
+                  'https://search.ci.openshift.org/?search=' +
+                  encodeURIComponent(escapeRegex(params.row.name)) +
+                  '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
+                }
+              >
+                <BugReport />
+              </IconButton>
+            </Tooltip>
+          </Grid>
         )
       },
     },
