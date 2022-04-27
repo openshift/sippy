@@ -238,18 +238,22 @@ type Test struct {
 	Variant  string         `json:"variant,omitempty"`
 	Variants pq.StringArray `json:"variants" gorm:"type:text[]"`
 
-	CurrentSuccesses      int     `json:"current_successes"`
-	CurrentFailures       int     `json:"current_failures"`
-	CurrentFlakes         int     `json:"current_flakes"`
-	CurrentPassPercentage float64 `json:"current_pass_percentage"`
-	CurrentRuns           int     `json:"current_runs"`
+	CurrentSuccesses         int     `json:"current_successes"`
+	CurrentFailures          int     `json:"current_failures"`
+	CurrentFlakes            int     `json:"current_flakes"`
+	CurrentPassPercentage    float64 `json:"current_pass_percentage"`
+	CurrentFailurePercentage float64 `json:"current_failure_percentage"`
+	CurrentFlakePercentage   float64 `json:"current_flake_percentage"`
+	CurrentRuns              int     `json:"current_runs"`
 
-	PreviousSuccesses      int     `json:"previous_successes"`
-	PreviousFailures       int     `json:"previous_failures"`
-	PreviousFlakes         int     `json:"previous_flakes"`
-	PreviousPassPercentage float64 `json:"previous_pass_percentage"`
-	PreviousRuns           int     `json:"previous_runs"`
-	NetImprovement         float64 `json:"net_improvement"`
+	PreviousSuccesses         int     `json:"previous_successes"`
+	PreviousFailures          int     `json:"previous_failures"`
+	PreviousFlakes            int     `json:"previous_flakes"`
+	PreviousPassPercentage    float64 `json:"previous_pass_percentage"`
+	PreviousFailurePercentage float64 `json:"previous_failure_percentage"`
+	PreviousFlakePercentage   float64 `json:"previous_flake_percentage"`
+	PreviousRuns              int     `json:"previous_runs"`
+	NetImprovement            float64 `json:"net_improvement"`
 
 	Tags           []string     `json:"tags"`
 	Bugs           []bugsv1.Bug `json:"bugs"`
