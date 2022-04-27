@@ -249,7 +249,7 @@ func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
 }
 
-func (v openshiftVariants) IdentifyVariants(jobName string) []string {
+func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 	variants := []string{}
 
 	defer func() {
