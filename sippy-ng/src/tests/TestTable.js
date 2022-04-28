@@ -19,6 +19,7 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@material-ui/core/styles'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -33,38 +34,26 @@ const bookmarks = [
     name: 'Runs > 10',
     model: [BOOKMARKS.RUN_10],
   },
-  {
-    name: 'Upgrade related',
-    model: [BOOKMARKS.UPGRADE],
-  },
-  {
-    name: 'Install related',
-    model: [BOOKMARKS.INSTALL],
-  },
-  {
-    name: 'Has a linked bug',
-    model: [BOOKMARKS.LINKED_BUG],
-  },
-  {
-    name: 'Has no linked bug',
-    model: [BOOKMARKS.NO_LINKED_BUG],
-  },
-  {
-    name: 'Has an associated bug',
-    model: [BOOKMARKS.ASSOCIATED_BUG],
-  },
-  {
-    name: 'Has no associated bug',
-    model: [BOOKMARKS.NO_ASSOCIATED_BUG],
-  },
-  {
-    name: 'Curated by TRT',
-    model: [BOOKMARKS.TRT],
-  },
 ]
+
+const useStyles = makeStyles({
+  root: {
+    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
+      textOverflow: 'ellipsis',
+      display: '-webkit-box',
+      '-webkit-line-clamp': 2,
+      '-webkit-box-orient': 'vertical',
+      overflow: 'hidden',
+      overflowWrap: 'break-word',
+      lineHeight: '20px',
+      whiteSpace: 'normal',
+    },
+  },
+})
 
 function TestTable(props) {
   const { classes } = props
+  const gridClasses = useStyles()
 
   const columns = [
     {
@@ -86,8 +75,9 @@ function TestTable(props) {
       ),
     },
     {
-      field: 'current_pass_percentage',
-      headerName: 'Current pass percentage',
+      field: 'current_working_percentage',
+      headerName: 'Current working percentage',
+      headerClassName: props.briefTable ? '' : 'wrapHeader',
       type: 'number',
       flex: 0.75,
       renderCell: (params) => (
@@ -124,7 +114,7 @@ function TestTable(props) {
       ),
     },
     {
-      field: 'net_improvement',
+      field: 'net_working_improvement',
       headerName: 'Improvement',
       type: 'number',
       flex: 0.5,
@@ -133,8 +123,9 @@ function TestTable(props) {
       },
     },
     {
-      field: 'previous_pass_percentage',
-      headerName: 'Previous pass percentage',
+      field: 'previous_working_percentage',
+      headerName: 'Previous working percentage',
+      headerClassName: props.briefTable ? '' : 'wrapHeader',
       flex: 0.75,
       type: 'number',
       renderCell: (params) => (
@@ -267,8 +258,68 @@ function TestTable(props) {
       type: 'number',
     },
     {
+      field: 'current_failures',
+      headerName: 'Current failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_flakes',
+      headerName: 'Current failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_pass_percentage',
+      headerName: 'Current pass percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_flake_percentage',
+      headerName: 'Current flake percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_failure_percentage',
+      headerName: 'Current failure percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
       field: 'previous_runs',
       headerName: 'Previous runs',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_failures',
+      headerName: 'Previous failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_flakes',
+      headerName: 'Previous failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_pass_percentage',
+      headerName: 'Previous pass percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_flake_percentage',
+      headerName: 'Previous flake percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_failure_percentage',
+      headerName: 'Previous failure percentage',
       hide: true,
       type: 'number',
     },
@@ -436,6 +487,7 @@ function TestTable(props) {
     /* eslint-disable react/prop-types */
     <Container size="xl">
       <DataGrid
+        className={gridClasses.root}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={columns}
@@ -459,7 +511,7 @@ function TestTable(props) {
         onSelectionModelChange={(rows) => setSelectedTests(rows)}
         getRowClassName={(params) =>
           classes[
-            'row-percent-' + Math.round(params.row.current_pass_percentage)
+            'row-percent-' + Math.round(params.row.current_working_percentage)
           ]
         }
         componentsProps={{
@@ -499,7 +551,7 @@ TestTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'current_pass_percentage',
+  sortField: 'current_working_percentage',
   sort: 'asc',
 }
 
