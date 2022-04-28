@@ -39,6 +39,11 @@ const bookmarks = [
 const useStyles = makeStyles({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
+      textOverflow: 'ellipsis',
+      display: '-webkit-box',
+      '-webkit-line-clamp': 2,
+      '-webkit-box-orient': 'vertical',
+      overflow: 'hidden',
       overflowWrap: 'break-word',
       lineHeight: '20px',
       whiteSpace: 'normal',
@@ -71,7 +76,7 @@ function TestTable(props) {
     },
     {
       field: 'current_working_percentage',
-      headerName: 'Current working',
+      headerName: 'Current working percentage',
       headerClassName: props.briefTable ? '' : 'wrapHeader',
       type: 'number',
       flex: 0.75,
@@ -119,7 +124,7 @@ function TestTable(props) {
     },
     {
       field: 'previous_working_percentage',
-      headerName: 'Previous working',
+      headerName: 'Previous working percentage',
       headerClassName: props.briefTable ? '' : 'wrapHeader',
       flex: 0.75,
       type: 'number',
@@ -253,8 +258,68 @@ function TestTable(props) {
       type: 'number',
     },
     {
+      field: 'current_failures',
+      headerName: 'Current failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_flakes',
+      headerName: 'Current failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_pass_percentage',
+      headerName: 'Current pass percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_flake_percentage',
+      headerName: 'Current flake percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'current_failure_percentage',
+      headerName: 'Current failure percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
       field: 'previous_runs',
       headerName: 'Previous runs',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_failures',
+      headerName: 'Previous failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_flakes',
+      headerName: 'Previous failures',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_pass_percentage',
+      headerName: 'Previous pass percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_flake_percentage',
+      headerName: 'Previous flake percentage',
+      hide: true,
+      type: 'number',
+    },
+    {
+      field: 'previous_failure_percentage',
+      headerName: 'Previous failure percentage',
       hide: true,
       type: 'number',
     },

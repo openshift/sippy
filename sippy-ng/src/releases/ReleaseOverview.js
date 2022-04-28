@@ -435,6 +435,7 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
+
             <Grid item md={6} sm={12}>
               <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
