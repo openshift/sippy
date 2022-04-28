@@ -1,6 +1,7 @@
 import { Alert } from '@material-ui/lab'
 import { ArrayParam, useQueryParam } from 'use-query-params'
 import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
+import { safeEncodeURIComponent } from '../helpers'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
