@@ -239,9 +239,16 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 				current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
 				current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
 				current_flakes * 100.0 / NULLIF(current_runs, 0) AS current_flake_percentage,
+				(current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0) AS current_working_percentage,
+
 				previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
 				previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
 				previous_flakes * 100.0 / NULLIF(previous_runs, 0) AS previous_flake_percentage,
+				(previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0) AS previous_working_percentage,
+
+			    (previous_failures * 100.0 / NULLIF(previous_runs, 0)) - (current_failures * 100.0 / NULLIF(current_runs, 0)) AS net_failure_improvement,
+				(previous_flakes * 100.0 / NULLIF(previous_runs, 0)) - (current_flakes * 100.0 / NULLIF(current_runs, 0)) AS net_flake_improvement,
+				((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)) - ((previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0)) AS net_working_improvement,
 				(current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`)
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)

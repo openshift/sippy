@@ -63,11 +63,11 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'techpreview',
   },
-  NO_MULTISTAGE_OR_TEMPLATE: {
+  NO_STEP_GRAPH: {
     columnField: 'name',
     not: true,
     operatorValue: 'contains',
-    value: 'operator.Run ',
+    value: 'step graph.',
   },
   WITHOUT_OVERALL_JOB_RESULT: {
     columnField: 'name',

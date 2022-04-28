@@ -28,12 +28,10 @@ import VariantCards from '../jobs/VariantCards'
 
 export const REGRESSED_TOOLTIP =
   'Shows the most regressed items this week vs. last week, for those with more than 10 runs, excluding never-stable and techpreview.'
-export const NOBUG_TOOLTIP =
-  'Shows the list of tests ordered by least successful and without a bug, for those with more than 10 runs'
-export const TRT_TOOLTIP =
-  'Shows a curated list of tests selected by the TRT team'
 export const TWODAY_WARNING =
   'Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable and techpreview.'
+export const TOP_FAILERS_TOOLTIP =
+  'Shows the list of tests ordered by their failure percentage.'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -284,7 +282,7 @@ export default function ReleaseOverview(props) {
                     props.release
                   }?sortField=net_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_10,
-                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                    BOOKMARKS.NO_STEP_GRAPH,
                     ...withoutUnstable()
                   )}`}
                   style={{ textAlign: 'center' }}
@@ -307,7 +305,7 @@ export default function ReleaseOverview(props) {
                       BOOKMARKS.RUN_10,
                       BOOKMARKS.NO_NEVER_STABLE,
                       BOOKMARKS.NO_TECHPREVIEW,
-                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                      BOOKMARKS.NO_STEP_GRAPH,
                     ],
                   }}
                   pageSize={5}
@@ -350,6 +348,7 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
+
             <Grid item md={6} sm={12}>
               <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
@@ -359,8 +358,8 @@ export default function ReleaseOverview(props) {
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
-                  )}&sortField=net_improvement&sort=asc`}
+                    BOOKMARKS.NO_STEP_GRAPH
+                  )}&sortField=net_working_improvement&sort=asc`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
                 >
@@ -372,7 +371,7 @@ export default function ReleaseOverview(props) {
 
                 <TestTable
                   hideControls={true}
-                  sortField="net_improvement"
+                  sortField="net_working_improvement"
                   sort="asc"
                   limit={10}
                   rowsPerPageOptions={[5]}
@@ -382,7 +381,7 @@ export default function ReleaseOverview(props) {
                       BOOKMARKS.NO_NEVER_STABLE,
                       BOOKMARKS.NO_TECHPREVIEW,
                       BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                      BOOKMARKS.NO_STEP_GRAPH,
                     ],
                   }}
                   pageSize={5}
@@ -391,18 +390,19 @@ export default function ReleaseOverview(props) {
                 />
               </Card>
             </Grid>
+
             <Grid item md={6} sm={12}>
               <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
                   to={`/tests/${
                     props.release
-                  }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
+                  }?period=twoDay&sortField=net_working_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_1,
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE
+                    BOOKMARKS.NO_STEP_GRAPH
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -415,7 +415,7 @@ export default function ReleaseOverview(props) {
 
                 <TestTable
                   hideControls={true}
-                  sortField="net_improvement"
+                  sortField="net_working_improvement"
                   sort="asc"
                   limit={10}
                   rowsPerPageOptions={[5]}
@@ -425,13 +425,54 @@ export default function ReleaseOverview(props) {
                       BOOKMARKS.NO_NEVER_STABLE,
                       BOOKMARKS.NO_TECHPREVIEW,
                       BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                      BOOKMARKS.NO_MULTISTAGE_OR_TEMPLATE,
+                      BOOKMARKS.NO_STEP_GRAPH,
                     ],
                   }}
                   pageSize={5}
                   period="twoDay"
                   release={props.release}
                   briefTable={true}
+                />
+              </Card>
+            </Grid>
+            <Grid item md={6} sm={12}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
+                <Typography
+                  component={Link}
+                  to={`/tests/${props.release}?${queryForBookmark(
+                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_TECHPREVIEW,
+                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                    BOOKMARKS.NO_STEP_GRAPH
+                  )}&sortField=current_working_percentage&sort=asc`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5"
+                >
+                  Top failing tests
+                  <Tooltip title={TOP_FAILERS_TOOLTIP}>
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+
+                <TestTable
+                  hideControls={true}
+                  sortField="current_working_percentage"
+                  sort="asc"
+                  limit={10}
+                  rowsPerPageOptions={[5]}
+                  filterModel={{
+                    items: [
+                      BOOKMARKS.RUN_10,
+                      BOOKMARKS.NO_NEVER_STABLE,
+                      BOOKMARKS.NO_TECHPREVIEW,
+                      BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                      BOOKMARKS.NO_STEP_GRAPH,
+                    ],
+                  }}
+                  pageSize={5}
+                  briefTable={true}
+                  release={props.release}
                 />
               </Card>
             </Grid>

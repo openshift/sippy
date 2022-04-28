@@ -244,6 +244,7 @@ type Test struct {
 	CurrentPassPercentage    float64 `json:"current_pass_percentage"`
 	CurrentFailurePercentage float64 `json:"current_failure_percentage"`
 	CurrentFlakePercentage   float64 `json:"current_flake_percentage"`
+	CurrentWorkingPercentage float64 `json:"current_working_percentage"`
 	CurrentRuns              int     `json:"current_runs"`
 
 	PreviousSuccesses         int     `json:"previous_successes"`
@@ -252,8 +253,13 @@ type Test struct {
 	PreviousPassPercentage    float64 `json:"previous_pass_percentage"`
 	PreviousFailurePercentage float64 `json:"previous_failure_percentage"`
 	PreviousFlakePercentage   float64 `json:"previous_flake_percentage"`
+	PreviousWorkingPercentage float64 `json:"previous_working_percentage"`
 	PreviousRuns              int     `json:"previous_runs"`
-	NetImprovement            float64 `json:"net_improvement"`
+
+	NetFailureImprovement float64 `json:"net_failure_improvement"`
+	NetFlakeImprovement   float64 `json:"net_flake_improvement"`
+	NetWorkingImprovement float64 `json:"net_working_improvement"`
+	NetImprovement        float64 `json:"net_improvement"`
 
 	Tags           []string     `json:"tags"`
 	Bugs           []bugsv1.Bug `json:"bugs"`
@@ -298,6 +304,12 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 		return float64(test.CurrentFlakes), nil
 	case "current_pass_percentage":
 		return test.CurrentPassPercentage, nil
+	case "current_flake_percentage":
+		return test.CurrentFlakePercentage, nil
+	case "current_failure_percentage":
+		return test.CurrentFailurePercentage, nil
+	case "current_working_percentage":
+		return test.CurrentWorkingPercentage, nil
 	case "current_runs":
 		return float64(test.CurrentRuns), nil
 	case "previous_successes":
@@ -308,10 +320,22 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 		return float64(test.PreviousFlakes), nil
 	case "previous_pass_percentage":
 		return test.PreviousPassPercentage, nil
+	case "previous_flake_percentage":
+		return test.PreviousFlakePercentage, nil
+	case "previous_failure_percentage":
+		return test.PreviousFailurePercentage, nil
+	case "previous_working_percentage":
+		return test.PreviousWorkingPercentage, nil
 	case "previous_runs":
 		return float64(test.PreviousRuns), nil
+	case "net_failure_improvement":
+		return test.NetFailureImprovement, nil
+	case "net_flake_improvement":
+		return test.NetFlakeImprovement, nil
 	case "net_improvement":
 		return test.NetImprovement, nil
+	case "net_working_improvement":
+		return test.NetWorkingImprovement, nil
 	case "bugs":
 		return float64(len(test.Bugs)), nil
 	case "associated_bugs":
