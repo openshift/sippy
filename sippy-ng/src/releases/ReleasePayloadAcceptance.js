@@ -8,7 +8,7 @@ import {
 } from '@material-ui/core'
 import { CheckCircle, Error, Help, Warning } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { filterFor, relativeTime } from '../helpers'
+import { filterFor, relativeTime, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
@@ -39,7 +39,7 @@ function ReleasePayloadAcceptance(props) {
     fetch(
       process.env.REACT_APP_API_URL +
         '/api/releases/health?release=' +
-        encodeURIComponent(props.release)
+        safeEncodeURIComponent(props.release)
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -105,7 +105,7 @@ function ReleasePayloadAcceptance(props) {
     cards.push(
       <Box
         component={Link}
-        to={`/release/${props.release}/tags?filters=${encodeURIComponent(
+        to={`/release/${props.release}/tags?filters=${safeEncodeURIComponent(
           JSON.stringify(filter)
         )}`}
       >

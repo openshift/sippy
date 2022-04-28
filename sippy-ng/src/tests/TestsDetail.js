@@ -24,7 +24,9 @@ export default function TestsDetails(props) {
   const [data, setData] = React.useState({})
 
   const nameParams = () => {
-    return names.map((param) => '&test=' + encodeURIComponent(param)).join('')
+    return names
+      .map((param) => '&test=' + safeEncodeURIComponent(param))
+      .join('')
   }
 
   const fetchData = () => {

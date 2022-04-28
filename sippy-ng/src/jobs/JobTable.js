@@ -7,6 +7,7 @@ import {
   escapeRegex,
   pathForExactJobAnalysis,
   pathForExactJobRuns,
+  safeEncodeURIComponent,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
@@ -130,7 +131,7 @@ export const getColumns = (config, openBugzillaDialog) => {
               startIcon={<BugReport />}
               href={
                 'https://search.ci.openshift.org/?search=' +
-                encodeURIComponent(escapeRegex(params.row.name)) +
+                safeEncodeURIComponent(escapeRegex(params.row.name)) +
                 '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
               }
             />
@@ -205,19 +206,19 @@ function JobTable(props) {
     let queryString = ''
     if (filterModel && filterModel.items.length > 0) {
       queryString +=
-        '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
+        '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.limit > 0) {
-      queryString += '&limit=' + encodeURIComponent(props.limit)
+      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
     }
 
     if (period) {
-      queryString += '&period=' + encodeURIComponent(period)
+      queryString += '&period=' + safeEncodeURIComponent(period)
     }
 
-    queryString += '&sortField=' + encodeURIComponent(sortField)
-    queryString += '&sort=' + encodeURIComponent(sort)
+    queryString += '&sortField=' + safeEncodeURIComponent(sortField)
+    queryString += '&sort=' + safeEncodeURIComponent(sort)
 
     fetch(
       process.env.REACT_APP_API_URL +
@@ -306,7 +307,7 @@ function JobTable(props) {
 
   const createFilter = () => {
     if (selectedJobs.length === rows.length || selectedJobs.length === 0) {
-      return encodeURIComponent(JSON.stringify(filterModel))
+      return safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
     const selectedIDs = new Set(selectedJobs)
@@ -320,7 +321,7 @@ function JobTable(props) {
       }
     })
     console.log(jobs)
-    return encodeURIComponent(
+    return safeEncodeURIComponent(
       JSON.stringify({ items: jobs, linkOperator: 'or' })
     )
   }

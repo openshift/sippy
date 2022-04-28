@@ -14,6 +14,7 @@ import {
 import {
   filterFor,
   pathForJobsWithFilter,
+  safeEncodeURIComponent,
   withoutUnstable,
   withSort,
 } from '../helpers'
@@ -56,7 +57,7 @@ export default function ReleasePayloadDetails(props) {
   )
 
   const fetchData = () => {
-    const filter = encodeURIComponent(
+    const filter = safeEncodeURIComponent(
       JSON.stringify({
         items: [filterFor('release_tag', 'equals', releaseTag)],
       })

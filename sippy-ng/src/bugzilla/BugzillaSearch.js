@@ -1,3 +1,4 @@
+import { safeEncodeURIComponent } from '../helpers'
 import Button from '@material-ui/core/Button'
 import Dialog from '@material-ui/core/Dialog'
 import DialogActions from '@material-ui/core/DialogActions'
@@ -22,7 +23,7 @@ export default function BugzillaSearch(props) {
   const handleBugzillaQuery = (f) => {
     window.open(
       'https://bugzilla.redhat.com/buglist.cgi?query_format=specific&order=Importance&no_redirect=1&bug_status=__open__&product=OpenShift+Container+Platform&content=' +
-        encodeURIComponent(query)
+        safeEncodeURIComponent(query)
     )
     props.close()
   }

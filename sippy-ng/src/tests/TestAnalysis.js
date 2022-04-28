@@ -12,6 +12,7 @@ import {
 import {
   filterFor,
   pathForJobRunsWithTestFailure,
+  safeEncodeURIComponent,
   searchCI,
   withSort,
 } from '../helpers'
@@ -47,7 +48,7 @@ export function TestAnalysis(props) {
       return
     }
 
-    const filter = encodeURIComponent(
+    const filter = safeEncodeURIComponent(
       JSON.stringify({
         items: [filterFor('name', 'equals', testName)],
       })

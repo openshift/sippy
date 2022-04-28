@@ -3,6 +3,7 @@ import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
+import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -142,19 +143,19 @@ function ReleasePayloadJobRuns(props) {
     let queryString = ''
     if (filterModel && filterModel.items.length > 0) {
       queryString +=
-        '&filter=' + encodeURIComponent(JSON.stringify(filterModel))
+        '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
     if (props.release && props.release !== '') {
-      queryString += '&release=' + encodeURIComponent(props.release)
+      queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
     if (props.limit > 0) {
-      queryString += '&limit=' + encodeURIComponent(props.limit)
+      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
     }
 
-    queryString += '&sortField=' + encodeURIComponent(sortField)
-    queryString += '&sort=' + encodeURIComponent(sort)
+    queryString += '&sortField=' + safeEncodeURIComponent(sortField)
+    queryString += '&sort=' + safeEncodeURIComponent(sort)
 
     fetch(
       process.env.REACT_APP_API_URL +
