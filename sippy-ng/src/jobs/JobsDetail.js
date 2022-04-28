@@ -1,6 +1,7 @@
 import { Alert } from '@material-ui/lab'
 import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
 import { PropTypes } from 'prop-types'
+import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import JobDetailTable from './JobDetailTable'
@@ -36,7 +37,7 @@ export default function JobsDetail(props) {
       let urlQuery = ''
       if (filter.length > 0) {
         setQuery(filter)
-        urlQuery = '&job=' + encodeURIComponent(filter)
+        urlQuery = '&job=' + safeEncodeURIComponent(filter)
       }
 
       fetch(

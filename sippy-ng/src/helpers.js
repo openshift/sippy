@@ -2,6 +2,13 @@
 // and not supported in all browsers, and it's not in node yet.
 import React from 'react'
 
+// safeEncodeURIComponent wraps the library function, and additionally encodes
+// square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
+// others mishandle them.
+export function safeEncodeURIComponent(value) {
+  return encodeURIComponent(value).replace('[', '%5B').replace(']', '%5D')
+}
+
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".
 // This is because the ES6 Intl.RelativeTime isn't available in all environments yet,
 // e.g. Safari and NodeJS.
@@ -32,7 +39,7 @@ export function escapeRegex(str) {
 }
 
 export function searchCI(query) {
-  query = encodeURIComponent(escapeRegex(query))
+  query = safeEncodeURIComponent(escapeRegex(query))
   return `https://search.ci.openshift.org/?search=${query}&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job`
 }
 
@@ -112,7 +119,7 @@ export function pathForJobRunsWithFilter(release, filter) {
     return `/jobs/${release}/runs`
   }
 
-  return `/jobs/${release}/runs?filters=${encodeURIComponent(
+  return `/jobs/${release}/runs?filters=${safeEncodeURIComponent(
     JSON.stringify(filter)
   )}`
 }
@@ -122,7 +129,7 @@ export function pathForJobsWithFilter(release, filter) {
     return `/jobs/${release}`
   }
 
-  return `/jobs/${release}?filters=${encodeURIComponent(
+  return `/jobs/${release}?filters=${safeEncodeURIComponent(
     JSON.stringify(filter)
   )}`
 }
@@ -153,19 +160,21 @@ export function withoutUnstable() {
 }
 
 export function multiple(...filters) {
-  return `filters=${encodeURIComponent(
+  return `filters=${safeEncodeURIComponent(
     JSON.stringify({ items: filters, linkOperator: 'and' })
   )}`
 }
 
 export function multiple_or(...filters) {
-  return `filters=${encodeURIComponent(
+  return `filters=${safeEncodeURIComponent(
     JSON.stringify({ items: filters, linkOperator: 'or' })
   )}`
 }
 
 export function single(filter) {
-  return `filters=${encodeURIComponent(JSON.stringify({ items: [filter] }))}`
+  return `filters=${safeEncodeURIComponent(
+    JSON.stringify({ items: [filter] })
+  )}`
 }
 
 export function not(filter) {

@@ -1,17 +1,19 @@
 /**
  * bugzillaURL generates a link to a prefilled out bug.
  */
+import { safeEncodeURIComponent } from '../helpers'
+
 export default function bugzillaURL(release, item) {
   const title = item.name
-  const titleEncoded = encodeURIComponent(title)
-  let url = `https://sippy.ci.openshift.org/sippy-ng/tests/${release}/analysis?test=${encodeURIComponent(
+  const titleEncoded = safeEncodeURIComponent(title)
+  let url = `https://sippy.ci.openshift.org/sippy-ng/tests/${release}/analysis?test=${safeEncodeURIComponent(
     item.name
   )}`
   if (item.test_grid_url) {
     url = item.test_grid_url
   }
 
-  const bugText = encodeURIComponent(`
+  const bugText = safeEncodeURIComponent(`
 ${title}
 
 is failing frequently in CI, see:

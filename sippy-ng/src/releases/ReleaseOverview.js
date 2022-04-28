@@ -9,6 +9,7 @@ import { NumberParam, useQueryParam } from 'use-query-params'
 import {
   pathForJobsWithFilter,
   queryForBookmark,
+  safeEncodeURIComponent,
   withoutUnstable,
   withSort,
 } from '../helpers'
@@ -184,7 +185,7 @@ export default function ReleaseOverview(props) {
                   <Link
                     to={`/jobs/${
                       props.release
-                    }/analysis?filters=${encodeURIComponent(
+                    }/analysis?filters=${safeEncodeURIComponent(
                       JSON.stringify({
                         items: [...withoutUnstable(), ...hourFilter(dayOffset)],
                         linkOperator: 'and',

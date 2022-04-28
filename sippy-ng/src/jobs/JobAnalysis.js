@@ -28,6 +28,7 @@ import { Link } from 'react-router-dom'
 import {
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
+  safeEncodeURIComponent,
   withSort,
 } from '../helpers'
 import { scale } from 'chroma-js'
@@ -69,7 +70,7 @@ export function JobAnalysis(props) {
 
     let queryParams = `release=${props.release}`
     if (filterModel) {
-      queryParams += `&filter=${encodeURIComponent(
+      queryParams += `&filter=${safeEncodeURIComponent(
         JSON.stringify(filterModel)
       )}`
     }

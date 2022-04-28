@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
 import './JobAnalysis.css'
-import { pathForJobsInPercentile } from '../helpers'
+import { pathForJobsInPercentile, safeEncodeURIComponent } from '../helpers'
 import { useHistory } from 'react-router-dom'
 
 export const hourFilter = (dayOffset) => {
@@ -32,7 +32,7 @@ export function JobStackedChart(props) {
   const fetchData = () => {
     let queryParams = `release=${props.release}`
     if (props.filter) {
-      queryParams += `&filter=${encodeURIComponent(
+      queryParams += `&filter=${safeEncodeURIComponent(
         JSON.stringify(props.filter)
       )}`
     }
@@ -119,7 +119,9 @@ export function JobStackedChart(props) {
 
   const handleClick = (e) => {
     history.push(
-      `/jobs/${props.release}/analysis?period=hour&filters=${encodeURIComponent(
+      `/jobs/${
+        props.release
+      }/analysis?period=hour&filters=${safeEncodeURIComponent(
         JSON.stringify(props.filter)
       )}`
     )
