@@ -2,7 +2,8 @@
 import '../jobs/JobTable.css'
 import { DataGrid } from '@material-ui/data-grid'
 import { Grid } from '@material-ui/core'
-import { JsonParam, useQueryParam } from 'use-query-params'
+import { SafeJSONParam } from '../helpers'
+import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -158,7 +159,7 @@ function WorkloadMetricsTable(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   useEffect(() => {

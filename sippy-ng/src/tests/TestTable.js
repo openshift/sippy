@@ -14,12 +14,13 @@ import {
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
+  SafeJSONParam,
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -360,7 +361,7 @@ function TestTable(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

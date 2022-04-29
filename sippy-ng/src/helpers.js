@@ -2,6 +2,19 @@
 // and not supported in all browsers, and it's not in node yet.
 import React from 'react'
 
+export const SafeJSONParam = {
+  encode: (j) => {
+    return safeEncodeURIComponent(JSON.stringify(j))
+  },
+  decode: (j) => {
+    try {
+      return JSON.parse(decodeURIComponent(j))
+    } catch (e) {
+      // return undefined
+    }
+  },
+}
+
 // safeEncodeURIComponent wraps the library function, and additionally encodes
 // square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
 // others mishandle them.

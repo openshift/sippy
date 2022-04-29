@@ -3,9 +3,9 @@ import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { CheckCircle, CompareArrows, Error, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -187,7 +187,7 @@ function ReleasePayloadTable(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

@@ -8,10 +8,11 @@ import {
   pathForExactJobAnalysis,
   pathForExactJobRuns,
   safeEncodeURIComponent,
+  SafeJSONParam,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -181,7 +182,7 @@ function JobTable(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
