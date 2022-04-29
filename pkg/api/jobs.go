@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+
+	"github.com/openshift/sippy/pkg/db/query"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -361,7 +362,7 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
 	since := time.Now().Add(-14 * 24 * time.Hour)
 
-	prowJobRuns := []*models.ProwJobRun{}
+	prowJobRuns := make([]*models.ProwJobRun, 0)
 	res := dbc.DB.Joins("ProwJob").
 		Where("name LIKE ?", "%"+jobSearchStr+"%").
 		Where("timestamp > ?", since).
