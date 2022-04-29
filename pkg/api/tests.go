@@ -224,7 +224,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (
 		rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 	}
 
-	var testReports []apitype.Test
+	testReports := make([]apitype.Test, 0)
 	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).Select(
 		`ROW_NUMBER() OVER() as id,

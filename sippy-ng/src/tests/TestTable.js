@@ -400,7 +400,11 @@ function TestTable(props) {
         return response.json()
       })
       .then((json) => {
-        setRows(json)
+        if (json != null) {
+          setRows(json)
+        } else {
+          setRows([])
+        }
         setLoaded(true)
       })
       .catch((error) => {
