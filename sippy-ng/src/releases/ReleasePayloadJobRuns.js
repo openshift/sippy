@@ -2,8 +2,8 @@ import { Button, Tooltip } from '@material-ui/core'
 import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent } from '../helpers'
+import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -88,7 +88,7 @@ function ReleasePayloadJobRuns(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

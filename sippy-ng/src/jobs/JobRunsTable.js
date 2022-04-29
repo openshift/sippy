@@ -8,13 +8,14 @@ import {
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat } from '@material-ui/icons'
-import { JsonParam, StringParam, useQueryParam } from 'use-query-params'
 import { Link } from 'react-router-dom'
 import {
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
+  SafeJSONParam,
 } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -30,7 +31,7 @@ export default function JobRunsTable(props) {
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
-    JsonParam
+    SafeJSONParam
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

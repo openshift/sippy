@@ -1,7 +1,6 @@
 import './JobAnalysis.css'
 import {
   ArrayParam,
-  JsonParam,
   NumberParam,
   StringParam,
   useQueryParam,
@@ -29,6 +28,7 @@ import {
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
   safeEncodeURIComponent,
+  SafeJSONParam,
   withSort,
 } from '../helpers'
 import { scale } from 'chroma-js'
@@ -46,7 +46,7 @@ export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
 
-  const [filterModel, setFilterModel] = useQueryParam('filters', JsonParam)
+  const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
   const [period, setPeriod] = useQueryParam('period', StringParam)
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
 
@@ -60,7 +60,7 @@ export function JobAnalysis(props) {
   )
   const [testFilter, setTestFilter] = useQueryParam(
     'testFilters',
-    withDefault(JsonParam, { items: [] })
+    withDefault(SafeJSONParam, { items: [] })
   )
 
   const [testSelectionDialog, setTestSelectionDialog] = React.useState(false)
