@@ -149,7 +149,8 @@ func PrintJobsRunsReportFromDB(w http.ResponseWriter, req *http.Request,
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
 		return
 	}
-	q = rf.Where(q)
+
+	q = q.Where(rf)
 
 	jobsResult := make([]apitype.JobRun, 0)
 	q.Table("prow_job_runs_report_matview").Scan(&jobsResult)
