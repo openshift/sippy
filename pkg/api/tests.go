@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	gosort "sort"
 	"strconv"
@@ -188,6 +189,29 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 	RespondWithJSON(http.StatusOK, w, testsResult.
 		sort(req).
 		limit(req))
+}
+
+func PrintCanaryTestsFromDB(release string, w http.ResponseWriter, dbc *db.DB) {
+	f := filter.Filter{
+		Items: []filter.FilterItem{
+			{
+				Field:    "current_pass_percentage",
+				Operator: ">=",
+				Value:    "99",
+			},
+		},
+	}
+
+	results, err := BuildTestsResults(dbc, release, "default", &f)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building test report:" + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
+	for _, result := range results {
+		fmt.Fprintf(w, "%q:struct{}{},\n", result.Name)
+	}
 }
 
 func BuildTestsResults(dbc *db.DB, release, period string, fil *filter.Filter) (testsAPIResult, error) {

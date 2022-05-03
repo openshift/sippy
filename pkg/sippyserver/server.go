@@ -673,6 +673,13 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintCanaryTestsFromDB(release, w, s.db)
+	}
+}
+
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -756,6 +763,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
 		serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 		serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
+		serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	} else {
 		// Preserve old sippy at /legacy for now
 		serveMux.HandleFunc("/legacy", s.printHTMLReport)
