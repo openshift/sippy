@@ -61,7 +61,7 @@ export default function GridToolbarFilterMenu(props) {
   }, [props, models])
 
   // Ensure columns are ordered alphabetically
-  const orderedColumns = props.columns
+  const orderedColumns = [...props.columns]
   orderedColumns.sort((a, b) => {
     if (a.field > b.field) {
       return 1
