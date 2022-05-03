@@ -46,12 +46,14 @@ var (
 
 	allOpenshiftVariants = sets.NewString(
 		"alibaba",
+		"amd64",
 		"arm64",
 		"assisted",
 		"aws",
 		"azure",
 		"compact",
 		"fips",
+		"ha",
 		"gcp",
 		"metal-assisted",
 		"metal-ipi",
@@ -66,6 +68,7 @@ var (
 		"proxy",
 		"realtime",
 		"s390x",
+		"sdn",
 		"serial",
 		"single-node",
 		"techpreview",
@@ -260,43 +263,27 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 		}
 	}()
 
-	// If a job is in never-stable, it is excluded from other possible variant aggregations
+	// Terminal variants -- these are excluded from other possible variant aggregations
 	if v.IsJobNeverStable(jobName) {
 		return []string{"never-stable"}
 	}
-
-	// Tech preview jobs are excluded from other possible variant aggregations
 	if techpreview.MatchString(jobName) {
 		return []string{"techpreview"}
 	}
-
-	// if it's a promotion job, it can't be a part of any other variant aggregation
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")
 		return variants
 	}
 
+	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		variants = append(variants, "alibaba")
 	}
-
-	if arm64Regex.MatchString(jobName) {
-		variants = append(variants, "arm64")
-	}
-
-	if assistedRegex.MatchString(jobName) {
-		variants = append(variants, "assisted")
-	}
-
 	if awsRegex.MatchString(jobName) {
 		variants = append(variants, "aws")
 	}
 	if azureRegex.MatchString(jobName) {
 		variants = append(variants, "azure")
-	}
-
-	if compactRegex.MatchString(jobName) {
-		variants = append(variants, "compact")
 	}
 	if gcpRegex.MatchString(jobName) {
 		variants = append(variants, "gcp")
@@ -304,11 +291,6 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	if openstackRegex.MatchString(jobName) {
 		variants = append(variants, "openstack")
 	}
-
-	if osdRegex.MatchString(jobName) {
-		variants = append(variants, "osd")
-	}
-
 	// Without support for negative lookbacks in the native
 	// regexp library, it's easiest to differentiate these
 	// three by seeing if it's metal-assisted or metal-ipi, and then fall through
@@ -320,7 +302,6 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	} else if metalRegex.MatchString(jobName) {
 		variants = append(variants, "metal-upi")
 	}
-
 	if ovirtRegex.MatchString(jobName) {
 		variants = append(variants, "ovirt")
 	}
@@ -330,6 +311,18 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 		variants = append(variants, "vsphere-ipi")
 	}
 
+	// Architectures
+	if arm64Regex.MatchString(jobName) {
+		variants = append(variants, "arm64")
+	} else if ppc64leRegex.MatchString(jobName) {
+		variants = append(variants, "ppc64le")
+	} else if s390xRegex.MatchString(jobName) {
+		variants = append(variants, "s390x")
+	} else {
+		variants = append(variants, "amd64")
+	}
+
+	// Upgrade
 	if upgradeRegex.MatchString(jobName) {
 		variants = append(variants, "upgrade")
 		if upgradeMinorRegex.MatchString(jobName) {
@@ -339,29 +332,41 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 		}
 	}
 
+	// SDN
+	if ovnRegex.MatchString(jobName) {
+		variants = append(variants, "ovn")
+	} else {
+		variants = append(variants, "sdn")
+	}
+
+	// Topology
+	if singleNodeRegex.MatchString(jobName) {
+		variants = append(variants, "single-node")
+	} else {
+		variants = append(variants, "ha")
+	}
+
+	// Other
 	if serialRegex.MatchString(jobName) {
 		variants = append(variants, "serial")
 	}
-	if ovnRegex.MatchString(jobName) {
-		variants = append(variants, "ovn")
+	if assistedRegex.MatchString(jobName) {
+		variants = append(variants, "assisted")
+	}
+	if compactRegex.MatchString(jobName) {
+		variants = append(variants, "compact")
+	}
+	if osdRegex.MatchString(jobName) {
+		variants = append(variants, "osd")
 	}
 	if fipsRegex.MatchString(jobName) {
 		variants = append(variants, "fips")
-	}
-	if ppc64leRegex.MatchString(jobName) {
-		variants = append(variants, "ppc64le")
-	}
-	if s390xRegex.MatchString(jobName) {
-		variants = append(variants, "s390x")
 	}
 	if rtRegex.MatchString(jobName) {
 		variants = append(variants, "realtime")
 	}
 	if proxyRegex.MatchString(jobName) {
 		variants = append(variants, "proxy")
-	}
-	if singleNodeRegex.MatchString(jobName) {
-		variants = append(variants, "single-node")
 	}
 
 	if len(variants) == 0 {
