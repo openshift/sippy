@@ -325,12 +325,6 @@ function TestTable(props) {
       type: 'number',
     },
     {
-      field: 'associated_bugs',
-      headerName: 'Associated bugs',
-      type: 'number',
-      hide: true,
-    },
-    {
       field: 'tags',
       headerName: 'Tags',
       hide: true,
