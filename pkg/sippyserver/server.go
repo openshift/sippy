@@ -395,6 +395,10 @@ func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) 
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
 }
 
+func (s *Server) jsonAutocompleteFromDB(w http.ResponseWriter, req *http.Request) {
+	api.PrintAutocompleteFromDB(w, req, s.db)
+}
+
 func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
 	api.PrintReleasesReport(w, req, s.db)
 }
@@ -744,6 +748,7 @@ func (s *Server) Serve() {
 	// Fork the endpoints if we're using postgresql db only mode vs the old in-memory.
 	// Temporary until we drop the old legacy mode.
 	if s.dbOnlyMode {
+		serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
 		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)

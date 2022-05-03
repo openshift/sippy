@@ -13,6 +13,7 @@ import { Close } from '@material-ui/icons'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
 import { makeStyles } from '@material-ui/core/styles'
+import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -45,9 +46,13 @@ export default function GridToolbarFilterItem(props) {
   const classes = useStyles()
 
   let columnType = 'string'
+  let autocomplete = ''
+  let release = ''
   props.columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
+      autocomplete = col.autocomplete || ''
+      release = col.release || ''
     }
   })
 
@@ -66,6 +71,88 @@ export default function GridToolbarFilterItem(props) {
     props.filterModel.errors.includes('operatorValue')
   const valueError =
     props.filterModel.errors && props.filterModel.errors.includes('value')
+
+  const inputField = () => {
+    switch (columnType) {
+      case 'date':
+        return (
+          <Fragment>
+            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
+              <DateTimePicker
+                showTodayButton
+                disableFuture
+                label="Value"
+                format="yyyy-MM-dd HH:mm 'UTC'"
+                ampm={false}
+                value={
+                  props.filterModel.value === ''
+                    ? null
+                    : new Date(parseInt(props.filterModel.value))
+                }
+                onChange={(e) => {
+                  props.setFilterModel({
+                    columnField: props.filterModel.columnField,
+                    operatorValue: props.filterModel.operatorValue,
+                    value: e.getTime().toString(),
+                  })
+                }}
+              />
+            </MuiPickersUtilsProvider>
+            <FormHelperText error={operatorValueError}>Required</FormHelperText>
+          </Fragment>
+        )
+      default:
+        if (autocomplete !== '') {
+          return (
+            <Fragment>
+              <GridToolbarAutocomplete
+                error={valueError}
+                field={autocomplete}
+                id="value"
+                release={release}
+                label="Value"
+                value={props.filterModel.value}
+                onChange={(value) => {
+                  if (value !== '')
+                    props.setFilterModel({
+                      columnField: props.filterModel.columnField,
+                      not: props.filterModel.not,
+                      operatorValue: props.filterModel.operatorValue,
+                      value: value,
+                    })
+                }}
+              />
+              <FormHelperText error={valueError}>Required</FormHelperText>
+            </Fragment>
+          )
+        } else {
+          return (
+            <Fragment>
+              <TextField
+                inputProps={{ 'data-testid': `value-${props.id}` }}
+                error={valueError}
+                id="value"
+                label="Value"
+                onChange={(e) =>
+                  props.setFilterModel({
+                    columnField: props.filterModel.columnField,
+                    not: props.filterModel.not,
+                    operatorValue: props.filterModel.operatorValue,
+                    value: e.target.value,
+                  })
+                }
+                value={props.filterModel.value}
+              />
+              <FormHelperText error={valueError} style={{ marginTop: 12 }}>
+                {columnType === 'number'
+                  ? 'Numerical value required'
+                  : 'Required'}
+              </FormHelperText>
+            </Fragment>
+          )
+        }
+    }
+  }
 
   return (
     <Grid container>
@@ -141,56 +228,7 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>
-        {columnType === 'date' ? (
-          <Fragment>
-            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-              <DateTimePicker
-                showTodayButton
-                disableFuture
-                label="Value"
-                format="yyyy-MM-dd HH:mm 'UTC'"
-                ampm={false}
-                value={
-                  props.filterModel.value === ''
-                    ? null
-                    : new Date(parseInt(props.filterModel.value))
-                }
-                onChange={(e) => {
-                  props.setFilterModel({
-                    columnField: props.filterModel.columnField,
-                    operatorValue: props.filterModel.operatorValue,
-                    value: e.getTime().toString(),
-                  })
-                }}
-              />
-            </MuiPickersUtilsProvider>
-          </Fragment>
-        ) : (
-          <Fragment>
-            <TextField
-              inputProps={{ 'data-testid': `value-${props.id}` }}
-              error={operatorValueError}
-              id="value"
-              label="Value"
-              onChange={(e) =>
-                props.setFilterModel({
-                  columnField: props.filterModel.columnField,
-                  not: props.filterModel.not,
-                  operatorValue: props.filterModel.operatorValue,
-                  value: e.target.value,
-                })
-              }
-              value={props.filterModel.value}
-            />
-            <FormHelperText error={valueError} style={{ marginTop: 12 }}>
-              {columnType === 'number'
-                ? 'Numerical value required'
-                : 'Required'}
-            </FormHelperText>
-          </Fragment>
-        )}
-      </FormControl>
+      <FormControl>{inputField()}</FormControl>
     </Grid>
   )
 }
@@ -211,6 +249,8 @@ GridToolbarFilterItem.propTypes = {
       field: PropTypes.string.isRequired,
       headerName: PropTypes.string,
       type: PropTypes.string,
+      autocomplete: PropTypes.string,
+      release: PropTypes.string,
     }).isRequired
   ),
 }
