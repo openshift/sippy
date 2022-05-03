@@ -151,7 +151,7 @@ func (s *Server) refreshMaterializedViews() {
 			log.Errorf("error refreshing materialized view %s: %v", pmv, res.Error)
 		} else {
 			elapsed := time.Since(start)
-			log.Infof("Refreshed materialized view %s in %s", pmv, elapsed)
+			log.WithFields(log.Fields{"elapsed": elapsed, "matview": pmv}).Info("refreshed materialized view")
 			matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
 		}
 	}

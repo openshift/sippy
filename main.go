@@ -383,11 +383,9 @@ func (o *Options) runServerMode() error {
 		o.DBOnlyMode,
 	)
 
-	if !o.DBOnlyMode {
-		// force a data refresh in the background, materialized views will not be populated if this is the first start against
-		// this database.
-		server.RefreshData()
-	}
+	// force a data refresh in the background
+	go server.RefreshData()
+
 	// The above should not be required for db mode, we create the matviews if missing during db init, and that
 	// will do an implicit refresh
 
