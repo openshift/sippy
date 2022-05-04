@@ -28,13 +28,14 @@ import (
 type jobsAPIResult []apitype.Job
 
 const periodTwoDay = "twoDay"
+const currentPassPercentage = "current_pass_percentage"
 
 func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
 	sortField := req.URL.Query().Get("sortField")
 	sort := apitype.Sort(req.URL.Query().Get("sort"))
 
 	if sortField == "" {
-		sortField = "current_pass_percentage"
+		sortField = currentPassPercentage
 	}
 
 	if sort == "" {
@@ -280,7 +281,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	filterOpts, err := filter.FilterOptionsFromRequest(req, "current_pass_percentage", apitype.SortDescending)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, currentPassPercentage, apitype.SortDescending)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -293,6 +294,41 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	}
 
 	RespondWithJSON(http.StatusOK, w, jobsResult)
+}
+
+func JobReportsFromDB(dbc *db.DB, release, period string) ([]apitype.Job, error) {
+
+	var start time.Time
+	var boundary time.Time
+	var end time.Time
+
+	var filterOpts = filter.FilterOptions{}
+	filterD := filter.Filter{}
+	filterOpts.Filter = &filterD
+	filterOpts.SortField = currentPassPercentage
+	filterOpts.Sort = apitype.SortDescending
+
+	// could refactor to helper methods
+	if period == periodTwoDay {
+		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
+		start = time.Now().Add(-9 * 24 * time.Hour)
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
+	} else {
+		start = time.Now().Add(-14 * 24 * time.Hour)
+		// Default boundary to 7 days ago
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+
+	}
+
+	end = time.Now()
+
+	jobsResult, err := query.JobReports(dbc, &filterOpts, release, start, boundary, end)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jobsResult, nil
 }
 
 type jobDetail struct {
