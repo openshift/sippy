@@ -22,6 +22,7 @@ import (
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -123,11 +124,54 @@ var (
 
 func (s *Server) refreshMetrics() {
 
-	// Report metrics for all jobs:
-	for r, stdReport := range s.currTestReports {
-		for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
-			for _, jobResult := range testReport.ByJob {
-				jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
+	if s.dbOnlyMode {
+		s.refreshMetricsDB()
+	} else {
+
+		// Report metrics for all jobs:
+		for r, stdReport := range s.currTestReports {
+			for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
+				for _, jobResult := range testReport.ByJob {
+					jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
+				}
+			}
+		}
+	}
+}
+
+type promReportType struct {
+	release string
+	period  string
+}
+
+func (s *Server) buildPromReportTypes() []promReportType {
+	releases := query.ReleasesFromDB(s.db)
+	var promReportTypes []promReportType
+
+	for _, release := range releases {
+		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})
+		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.CurrentReport)})
+	}
+
+	return promReportTypes
+}
+
+func (s *Server) refreshMetricsDB() {
+
+	promReportTypes := s.buildPromReportTypes()
+
+	for _, pType := range promReportTypes {
+
+		// start, boundary and end will just be defaults
+		// the api will decide based on the period
+		// and current day / time
+		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{})
+
+		if err != nil {
+			log.Errorf("error refreshing prom report type %s - %s: %v", pType.period, pType.release, err)
+		} else {
+			for _, jobResult := range jobsResult {
+				jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
 			}
 		}
 	}
@@ -514,21 +558,10 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 		Releases    []string  `json:"releases"`
 		LastUpdated time.Time `json:"last_updated"`
 	}
-	type Release struct {
-		Release string
-	}
 
 	response := jsonResponse{}
+	releases := query.ReleasesFromDB(s.db)
 
-	var releases []Release
-	// The string_to_array trick ensures releases are sorted in version order, descending
-	res := s.db.DB.Raw(`
-		SELECT DISTINCT(release), case when position('.' in release) != 0 then string_to_array(release, '.')::int[] end as sortable_release
-                FROM prow_jobs
-                ORDER BY sortable_release desc`).Scan(&releases)
-	if res.Error != nil {
-		log.Errorf("error querying releases from db: %v", res.Error)
-	}
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
 	}
@@ -538,7 +571,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	}
 	var lastUpdated LastUpdated
 	// Assume our last update is the last time we inserted a prow job run.
-	res = s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if res.Error != nil {
 		log.Errorf("error querying last updated from db: %v", res.Error)
 	}
