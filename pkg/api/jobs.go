@@ -242,12 +242,6 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
 			return
 		}
-	} else if req.URL.Query().Get("period") == periodTwoDay {
-		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
-		start = time.Now().Add(-9 * 24 * time.Hour)
-	} else {
-		// Default start to 14 days ago
-		start = time.Now().Add(-14 * 24 * time.Hour)
 	}
 
 	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
@@ -259,12 +253,6 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
 			return
 		}
-	} else if req.URL.Query().Get("period") == periodTwoDay {
-		boundary = time.Now().Add(-2 * 24 * time.Hour)
-	} else {
-		// Default boundary to 7 days ago
-		boundary = time.Now().Add(-7 * 24 * time.Hour)
-
 	}
 
 	endParam := req.URL.Query().Get("end")
@@ -274,9 +262,6 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
 			return
 		}
-	} else {
-		// Default end to now
-		end = time.Now()
 	}
 
 	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
@@ -287,7 +272,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
+	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -296,33 +281,39 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
 
-func JobReportsFromDB(dbc *db.DB, release, period string) ([]apitype.Job, error) {
+func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.FilterOptions, start, boundary, end time.Time) ([]apitype.Job, error) {
 
-	var start time.Time
-	var boundary time.Time
-	var end time.Time
-
-	var filterOpts = filter.FilterOptions{}
-	filterD := filter.Filter{}
-	filterOpts.Filter = &filterD
-	filterOpts.SortField = currentPassPercentage
-	filterOpts.Sort = apitype.SortDescending
+	// set a default filter if none provided
+	if filterOpts == nil {
+		filterOpts = &filter.FilterOptions{}
+		filterOpts.Filter = &filter.Filter{}
+	}
 
 	// could refactor to helper methods
 	if period == periodTwoDay {
 		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
-		start = time.Now().Add(-9 * 24 * time.Hour)
-		boundary = time.Now().Add(-2 * 24 * time.Hour)
+		if start.IsZero() {
+			start = time.Now().Add(-9 * 24 * time.Hour)
+		}
+		if boundary.IsZero() {
+			boundary = time.Now().Add(-2 * 24 * time.Hour)
+		}
 	} else {
-		start = time.Now().Add(-14 * 24 * time.Hour)
-		// Default boundary to 7 days ago
-		boundary = time.Now().Add(-7 * 24 * time.Hour)
+		if start.IsZero() {
+			start = time.Now().Add(-14 * 24 * time.Hour)
+		}
+		if boundary.IsZero() {
+			// Default boundary to 7 days ago
+			boundary = time.Now().Add(-7 * 24 * time.Hour)
+		}
 
 	}
 
-	end = time.Now()
+	if end.IsZero() {
+		end = time.Now()
+	}
 
-	jobsResult, err := query.JobReports(dbc, &filterOpts, release, start, boundary, end)
+	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 
 	if err != nil {
 		return nil, err

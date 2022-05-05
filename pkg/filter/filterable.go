@@ -313,7 +313,9 @@ func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable
 		q = q.Limit(filterOpts.Limit)
 	}
 
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
+	if len(filterOpts.SortField) > 0 {
+		q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
+	}
 
 	return q, nil
 }

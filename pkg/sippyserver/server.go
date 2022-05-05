@@ -22,6 +22,7 @@ import (
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -144,7 +145,7 @@ type promReportType struct {
 }
 
 func (s *Server) buildPromReportTypes() []promReportType {
-	releases := s.releasesFromDB()
+	releases := query.ReleasesFromDB(s.db)
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
@@ -157,11 +158,14 @@ func (s *Server) buildPromReportTypes() []promReportType {
 
 func (s *Server) refreshMetricsDB() {
 
-	var promReportTypes = s.buildPromReportTypes()
+	promReportTypes := s.buildPromReportTypes()
 
 	for _, pType := range promReportTypes {
 
-		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period)
+		// start, boundary and end will just be defaults
+		// the api will decide based on the period
+		// and current day / time
+		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{})
 
 		if err != nil {
 			log.Errorf("error refreshing prom report type %s - %s: %v", pType.period, pType.release, err)
@@ -545,24 +549,6 @@ func (s *Server) jsonReleasesReport(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
-type Release struct {
-	Release string
-}
-
-func (s *Server) releasesFromDB() []Release {
-	var releases []Release
-	// The string_to_array trick ensures releases are sorted in version order, descending
-	res := s.db.DB.Raw(`
-		SELECT DISTINCT(release), case when position('.' in release) != 0 then string_to_array(release, '.')::int[] end as sortable_release
-                FROM prow_jobs
-                ORDER BY sortable_release desc`).Scan(&releases)
-	if res.Error != nil {
-		log.Errorf("error querying releases from db: %v", res.Error)
-		return nil
-	}
-	return releases
-}
-
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
 	type jsonResponse struct {
 		Releases    []string  `json:"releases"`
@@ -570,7 +556,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	}
 
 	response := jsonResponse{}
-	releases := s.releasesFromDB()
+	releases := query.ReleasesFromDB(s.db)
 
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
