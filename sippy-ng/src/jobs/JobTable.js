@@ -31,6 +31,8 @@ export const getColumns = (config, openBugzillaDialog) => {
   return [
     {
       field: 'name',
+      autocomplete: 'jobs',
+      release: config.release,
       headerName: 'Name',
       flex: 3.5,
       renderCell: (params) => {
@@ -143,6 +145,7 @@ export const getColumns = (config, openBugzillaDialog) => {
     // These are here just to allow filtering
     {
       field: 'variants',
+      autocomplete: 'variants',
       type: 'array',
       headerName: 'Variants',
       hide: true,
