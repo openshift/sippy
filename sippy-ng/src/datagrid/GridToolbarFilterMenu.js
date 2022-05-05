@@ -60,6 +60,18 @@ export default function GridToolbarFilterMenu(props) {
     }
   }, [props, models])
 
+  // Ensure columns are ordered alphabetically
+  const orderedColumns = [...props.columns]
+  orderedColumns.sort((a, b) => {
+    if (a.field > b.field) {
+      return 1
+    } else if (b.field > a.field) {
+      return -1
+    } else {
+      return 0
+    }
+  })
+
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget)
   }
@@ -205,7 +217,7 @@ export default function GridToolbarFilterMenu(props) {
               <div key={`filter-item-${index}`} style={{ paddingTop: 20 }}>
                 <GridToolbarFilterItem
                   id={index}
-                  columns={props.columns}
+                  columns={orderedColumns}
                   destroy={() => removeFilter(index)}
                   filterModel={models[index]}
                   setFilterModel={(v) => updateModel(index, v)}
