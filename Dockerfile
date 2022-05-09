@@ -13,5 +13,6 @@ COPY --from=builder /go/src/sippy/scripts/fetchdata.sh /bin/fetchdata.sh
 COPY --from=builder /go/src/sippy/scripts/fetchdata-kube.sh /bin/fetchdata-kube.sh
 COPY --from=builder /go/src/sippy/historical-data /historical-data/
 COPY --from=builder /go/bin/goose /bin/goose
+COPY ./dbmigration /usr/share/sippydbmigrations
 ENTRYPOINT ["/bin/sippy"]
 EXPOSE 8080
