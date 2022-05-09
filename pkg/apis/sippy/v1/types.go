@@ -11,13 +11,6 @@ type PassRate struct {
 	Runs                int     `json:"runs"`
 }
 
-// SummaryAcrossAllJobs describes the category summaryacrossalljobs
-// valid keys are latest and prev
-type SummaryAcrossAllJobs struct {
-	TestExecutions     map[string]int     `json:"testExecutions"`
-	TestPassPercentage map[string]float64 `json:"testPassPercentage"`
-}
-
 // FailureGroups describes the category failuregroups
 // valid keys are latest and prev
 type FailureGroups struct {

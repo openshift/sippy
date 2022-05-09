@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
-
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/pkg/errors"
 
 	"gorm.io/gorm"
 
@@ -117,49 +117,33 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 	RespondWithJSON(http.StatusOK, w, releases)
 }
 
-func PrintReleaseHealthReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
-	type apiResult struct {
-		models.ReleaseTag
-		LastPhase string `json:"last_phase"`
-		Count     int    `json:"count"`
-	}
-
+// ReleaseHealthReports returns a report on the most recent payload status for each arch/stream in
+// the given release.
+func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHealthReport, error) {
+	apiResults := make([]apitype.ReleaseHealthReport, 0)
 	if dbClient == nil || dbClient.DB == nil {
-		RespondWithJSON(http.StatusOK, w, []struct{}{})
+		return apiResults, fmt.Errorf("no db client configured")
 	}
 
-	release := req.URL.Query().Get("release")
-	if release == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"release" is required`),
-		})
-		return
-	}
-
-	results, err := models.GetLastAcceptedByArchitectureAndStream(dbClient.DB, release)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbClient.DB, release)
 	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
-		return
+		return apiResults, err
 	}
 
-	apiResults := make([]apiResult, 0)
 	for _, archStream := range results {
-		phase, count, err := models.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release)
+		phase, count, err := query.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release)
 		if err != nil {
-			log.WithError(err).Info("error when trying to find last payload status")
+			return apiResults, errors.Wrapf(err, "error finding last %s payload status for %s %s",
+				release, archStream.Architecture, archStream.Stream)
 		}
-		apiResults = append(apiResults, apiResult{
+		apiResults = append(apiResults, apitype.ReleaseHealthReport{
 			ReleaseTag: archStream,
 			LastPhase:  phase,
 			Count:      count,
 		})
 	}
 
-	RespondWithJSON(http.StatusOK, w, apiResults)
+	return apiResults, nil
 }
 
 func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {

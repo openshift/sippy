@@ -455,7 +455,26 @@ func (s *Server) jsonReleaseJobRunsReport(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
-	api.PrintReleaseHealthReport(w, req, s.db)
+	release := req.URL.Query().Get("release")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"release" is required`),
+		})
+		return
+	}
+
+	results, err := api.ReleaseHealthReports(s.db, release)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, err)
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
