@@ -48,3 +48,17 @@ go build -mod=vendor . && ./sippy --server --local-data /opt/sippy-testdata --re
 ```bash
 cd sippy-ng && npm start
 ```
+
+## Modifying Database Schema
+
+```bash
+goose -dir dbmigration create test
+```
+
+Edit the resulting file and add your schema to migrate "up" to, and "down" from.
+
+In the case of materialized views I believe you will need to drop the old view, recreate with the entire 
+new schema, and issue a refresh command. We should maintain the old schema in the "down" section of the migration to 
+be able to roll back if ever needed. This will be verbose, but I believe correct.
+
+
