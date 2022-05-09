@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/lib/pq"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -144,6 +145,40 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 	}
 
 	return apiResults, nil
+}
+
+// ScanReleaseHealth looks for problems in current release health and returns them to the user.
+func ScanReleaseHealth(dbClient *db.DB, release string) ([]string, error) {
+	payloadHealth, err := ReleaseHealthReports(dbClient, release)
+	if err != nil {
+		return []string{}, err
+	}
+	// May add more release health checks in future
+	return ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth), nil
+}
+
+func ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth []apitype.ReleaseHealthReport) []string {
+
+	warnings := make([]string, 0)
+	for _, streamHealth := range payloadHealth {
+		// Remove the dots in release version to compare against os version.
+		// i.e. compare 4.11 to 411.85.202203171100-0
+		release := strings.ReplaceAll(streamHealth.Release, ".", "")
+		osVerTokens := strings.Split(streamHealth.CurrentOSVersion, ".")
+		if len(osVerTokens) <= 2 {
+			warnings = append(warnings, fmt.Sprintf("unable to parse OpenShift version from OS version %s",
+				streamHealth.CurrentOSVersion))
+			continue
+		}
+		osVer := osVerTokens[0]
+		if release != osVer {
+			warnings = append(warnings, fmt.Sprintf("OS version %s does not match OpenShift release %s",
+				streamHealth.CurrentOSVersion, streamHealth.Release))
+			continue
+		}
+
+	}
+	return warnings
 }
 
 func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
