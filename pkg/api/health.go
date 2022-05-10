@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 	"time"
@@ -209,13 +208,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
-	warnings := make([]string, 0)
-	releaseWarnings, err := ScanReleaseHealth(dbc, release)
-	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("error checking release health, see logs: %v", err))
-	} else {
-		warnings = append(warnings, releaseWarnings...)
-	}
+	warnings := ScanForReleaseWarnings(dbc, release)
 
 	RespondWithJSON(http.StatusOK, w, health{
 		Indicators:  indicators,

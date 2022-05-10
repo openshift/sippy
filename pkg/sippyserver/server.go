@@ -124,7 +124,7 @@ var (
 
 	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_release_warnings",
-		Help: "Number of current warnings for a release",
+		Help: "Number of current warnings for a release, see overview page in UI for details",
 	}, []string{"release"})
 )
 
@@ -192,10 +192,7 @@ func (s *Server) refreshMetricsDB() error {
 	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
 	// tell you x warnings are present and link you to the overview in the alert.
 	for _, release := range releases {
-		releaseWarnings, err := api.ScanReleaseHealth(s.db, release.Release)
-		if err != nil {
-			return err
-		}
+		releaseWarnings := api.ScanForReleaseWarnings(s.db, release.Release)
 		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
 	}
 

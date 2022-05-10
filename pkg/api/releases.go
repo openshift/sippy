@@ -147,14 +147,15 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 	return apiResults, nil
 }
 
-// ScanReleaseHealth looks for problems in current release health and returns them to the user.
-func ScanReleaseHealth(dbClient *db.DB, release string) ([]string, error) {
+// ScanForReleaseWarnings looks for problems in current release health and returns them to the user.
+func ScanForReleaseWarnings(dbClient *db.DB, release string) []string {
 	payloadHealth, err := ReleaseHealthReports(dbClient, release)
 	if err != nil {
-		return []string{}, err
+		// treat the error as a warning itself
+		return []string{fmt.Sprintf("error checking release health, see logs: %v", err)}
 	}
 	// May add more release health checks in future
-	return ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth), nil
+	return ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth)
 }
 
 func ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth []apitype.ReleaseHealthReport) []string {
