@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
@@ -120,12 +121,20 @@ var (
 		Help:    "Milliseconds to refresh our postgresql materialized views",
 		Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
 	}, []string{"view"})
+
+	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_release_warnings",
+		Help: "Number of current warnings for a release, see overview page in UI for details",
+	}, []string{"release"})
 )
 
 func (s *Server) refreshMetrics() {
 
 	if s.dbOnlyMode {
-		s.refreshMetricsDB()
+		err := s.refreshMetricsDB()
+		if err != nil {
+			log.WithError(err).Error("error refreshing metrics")
+		}
 	} else {
 
 		// Report metrics for all jobs:
@@ -144,8 +153,7 @@ type promReportType struct {
 	period  string
 }
 
-func (s *Server) buildPromReportTypes() []promReportType {
-	releases := query.ReleasesFromDB(s.db)
+func (s *Server) buildPromReportTypes(releases []query.Release) []promReportType {
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
@@ -156,25 +164,39 @@ func (s *Server) buildPromReportTypes() []promReportType {
 	return promReportTypes
 }
 
-func (s *Server) refreshMetricsDB() {
+func (s *Server) refreshMetricsDB() error {
+	releases, err := query.ReleasesFromDB(s.db)
+	if err != nil {
+		return err
+	}
 
-	promReportTypes := s.buildPromReportTypes()
+	promReportTypes := s.buildPromReportTypes(releases)
+	if err != nil {
+		return err
+	}
 
 	for _, pType := range promReportTypes {
-
 		// start, boundary and end will just be defaults
 		// the api will decide based on the period
 		// and current day / time
 		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{})
 
 		if err != nil {
-			log.Errorf("error refreshing prom report type %s - %s: %v", pType.period, pType.release, err)
-		} else {
-			for _, jobResult := range jobsResult {
-				jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
-			}
+			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
+		}
+		for _, jobResult := range jobsResult {
+			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
 		}
 	}
+
+	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
+	// tell you x warnings are present and link you to the overview in the alert.
+	for _, release := range releases {
+		releaseWarnings := api.ScanForReleaseWarnings(s.db, release.Release)
+		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
+	}
+
+	return nil
 }
 
 // refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
@@ -455,7 +477,26 @@ func (s *Server) jsonReleaseJobRunsReport(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
-	api.PrintReleaseHealthReport(w, req, s.db)
+	release := req.URL.Query().Get("release")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"release" is required`),
+		})
+		return
+	}
+
+	results, err := api.ReleaseHealthReports(s.db, release)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, err)
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
@@ -560,7 +601,15 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	}
 
 	response := jsonResponse{}
-	releases := query.ReleasesFromDB(s.db)
+	releases, err := query.ReleasesFromDB(s.db)
+	if err != nil {
+		log.WithError(err).Error("error querying releases from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying releases from db",
+		})
+		return
+	}
 
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
@@ -573,10 +622,15 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	// Assume our last update is the last time we inserted a prow job run.
 	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if res.Error != nil {
-		log.Errorf("error querying last updated from db: %v", res.Error)
+		log.WithError(res.Error).Error("error querying last updated from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying last updated from db",
+		})
+		return
 	}
-	response.LastUpdated = lastUpdated.Max
 
+	response.LastUpdated = lastUpdated.Max
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 

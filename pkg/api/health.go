@@ -208,23 +208,14 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
+	warnings := ScanForReleaseWarnings(dbc, release)
+
 	RespondWithJSON(http.StatusOK, w, health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
-		/*
-				// NOTE: looks unused in ReleaseOverview and of questionable use in general. This field would show
-				// the number of variants whose jobs fully pass over 80% of the time, 60% of the time, or less than that.
-				// skipping for now.
-					Variants: variants{
-						Current:  curr.TopLevelIndicators.Variant,
-						Previous: prev.TopLevelIndicators.Variant,
-					},
-
-			    // TODO: do we have need of these anymore with the new installer tests coming from junit?
-					Warnings: append(curr.AnalysisWarnings, prev.AnalysisWarnings...),
-		*/
+		Warnings:    warnings,
 	})
 }
 

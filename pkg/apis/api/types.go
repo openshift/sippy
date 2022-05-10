@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
+	"github.com/openshift/sippy/pkg/db/models"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -354,4 +355,11 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
+}
+
+// ReleaseHealthReport contains information about the latest health of release payloads for a specific tag.
+type ReleaseHealthReport struct {
+	models.ReleaseTag
+	LastPhase string `json:"last_phase"`
+	Count     int    `json:"count"`
 }
