@@ -31,8 +31,6 @@ export const getColumns = (config, openBugzillaDialog) => {
   return [
     {
       field: 'name',
-      autocomplete: 'jobs',
-      release: config.release,
       headerName: 'Name',
       flex: 3.5,
       renderCell: (params) => {
