@@ -183,26 +183,20 @@ func (s *Server) refreshMetricsDB() error {
 
 		if err != nil {
 			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
-		} else {
-			for _, jobResult := range jobsResult {
-				jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
-			}
+		}
+		for _, jobResult := range jobsResult {
+			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
 		}
 	}
 
 	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
 	// tell you x warnings are present and link you to the overview in the alert.
 	for _, release := range releases {
-		warnings := make([]string, 0)
 		releaseWarnings, err := api.ScanReleaseHealth(s.db, release.Release)
 		if err != nil {
 			return err
-		} else {
-			for _, rw := range releaseWarnings {
-				warnings = append(warnings, rw)
-			}
 		}
-		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(warnings)))
+		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
 	}
 
 	return nil

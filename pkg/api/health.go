@@ -214,9 +214,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	if err != nil {
 		warnings = append(warnings, fmt.Sprintf("error checking release health, see logs: %v", err))
 	} else {
-		for _, rw := range releaseWarnings {
-			warnings = append(warnings, rw)
-		}
+		warnings = append(warnings, releaseWarnings...)
 	}
 
 	RespondWithJSON(http.StatusOK, w, health{
