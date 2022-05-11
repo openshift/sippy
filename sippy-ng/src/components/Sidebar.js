@@ -34,7 +34,7 @@ export default function Sidebar(props) {
   const classes = useTheme()
 
   const [bugzillaOpen, setBugzillaOpen] = React.useState(false)
-  const [open, setOpen] = React.useState({})
+  const [open, setOpen] = React.useState({ 0: true })
 
   const handleBugzillaOpen = () => {
     setBugzillaOpen(true)
