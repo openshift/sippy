@@ -74,7 +74,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 			log.Warningf("warning from testgrid processing: " + warning)
 		}
 
-		log.Infof("Loading prow job %d of %d", i, len(testGridJobDetails))
+		log.Infof("Loading prow job %d of %d", i+1, len(testGridJobDetails))
 		err := createOrUpdateJob(dbc, dashboard.ReportName, variantManager, prowJobCache, jobResult)
 		if err != nil {
 			return err
@@ -174,7 +174,8 @@ func loadJob(
 	prowJob := prowJobCache[jr.JobName]
 	prowJobCacheLock.RUnlock()
 	dbc.DB.Select("id").Where("prow_job_id = ?", prowJob.ID).Find(&knownJobRuns)
-	log.Infof("Found %d known job runs for %s", len(knownJobRuns), jr.JobName)
+	log.Infof("Found %d known job runs in db for %s", len(knownJobRuns), jr.JobName)
+	log.Infof("Loaded %d testgrid job runs for %s", len(jr.JobRunResults), jr.JobName)
 	for _, kjr := range knownJobRuns {
 		prowJobRunCache[kjr.ID] = true
 	}
@@ -182,6 +183,11 @@ func loadJob(
 	// CreateJobRuns if we don't have them already:
 	jobRunResultCtr := 0
 	for _, jobRun := range jr.JobRunResults {
+		log.WithFields(log.Fields{
+			"job":   jr.JobName,
+			"run":   jobRun.Job,
+			"tests": len(jobRun.TestResults),
+		}).Debug("loading job run")
 		jobRunResultCtr++
 		tokens := strings.Split(jobRun.JobRunURL, "/")
 		prowID, _ := strconv.ParseUint(tokens[len(tokens)-1], 10, 64)
@@ -262,13 +268,29 @@ func loadJob(
 			testRuns = append(testRuns, pjrt)
 		}
 
-		pjr.Tests = testRuns
+		// Some upstream kube jobs have ~40k tests in each run, which can hit limits in postgres doing
+		// a single insert.
+		// To work around this we have to create the tests in batches, separately from the job run.
+		// We still want to commit all of this as a single transaction however, as this allows us to
+		// retry loading the db and not miss job runs. (we check existence of job run IDs and only
+		// load those we don't have)
+		err := dbc.DB.Transaction(func(tx *gorm.DB) error {
+			err := dbc.DB.Create(&pjr).Error
+			if err != nil {
+				return err
+			}
 
-		err := dbc.DB.Create(&pjr).Error
-		if err != nil {
-			return errors.Wrap(err, "error loading prow job runs into db")
-		}
-		log.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
+			err = dbc.DB.CreateInBatches(testRuns, 1000).Error
+			if err != nil {
+				return err
+			}
+
+			log.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
+			return nil
+		})
+		return errors.Wrapf(err, "error loading prow job %s run %d into db",
+			pjr.ProwJob.Name, pjr.ID)
+
 	}
 	return nil
 }
