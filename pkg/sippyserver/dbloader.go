@@ -288,9 +288,10 @@ func loadJob(
 			log.Infof("Created prow job run %d/%d of job %s", jobRunResultCtr, len(jr.JobRunResults), jobStatus)
 			return nil
 		})
-		return errors.Wrapf(err, "error loading prow job %s run %d into db",
-			pjr.ProwJob.Name, pjr.ID)
-
+		if err != nil {
+			return errors.Wrapf(err, "error loading prow job %s run %d into db",
+				pjr.ProwJob.Name, pjr.ID)
+		}
 	}
 	return nil
 }
