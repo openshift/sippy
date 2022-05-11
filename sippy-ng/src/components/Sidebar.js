@@ -1,3 +1,4 @@
+import { BOOKMARKS } from '../constants'
 import {
   BugReport,
   ExpandLess,
@@ -9,6 +10,12 @@ import {
 import { CapabilitiesContext } from '../App'
 import { Link } from 'react-router-dom'
 import { ListSubheader, useTheme } from '@material-ui/core'
+import {
+  pathForJobsWithFilter,
+  pathForTestsWithFilter,
+  withoutUnstable,
+  withSort,
+} from '../helpers'
 import ApartmentIcon from '@material-ui/icons/Apartment'
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward'
 import AssessmentIcon from '@material-ui/icons/Assessment'
@@ -113,7 +120,13 @@ export default function Sidebar(props) {
                 <ListItem
                   key={'release-jobs-' + index}
                   component={Link}
-                  to={'/jobs/' + release}
+                  to={withSort(
+                    pathForJobsWithFilter(release, {
+                      items: withoutUnstable(),
+                    }),
+                    'net_improvement',
+                    'asc'
+                  )}
                   button
                   className={classes.nested}
                 >
@@ -125,7 +138,20 @@ export default function Sidebar(props) {
                 <ListItem
                   key={'release-tests-' + index}
                   component={Link}
-                  to={'/tests/' + release}
+                  to={withSort(
+                    pathForTestsWithFilter(release, {
+                      items: [
+                        BOOKMARKS.RUN_1,
+                        BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_TECHPREVIEW,
+                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                        BOOKMARKS.NO_STEP_GRAPH,
+                      ],
+                      linkOperator: 'and',
+                    }),
+                    'current_working_percentage',
+                    'asc'
+                  )}
                   button
                   className={classes.nested}
                 >
@@ -174,19 +200,6 @@ export default function Sidebar(props) {
                     <ApartmentIcon />
                   </ListItemIcon>
                   <ListItemText primary="Infrastructure" />
-                </ListItem>
-
-                <ListItem
-                  key={'workload-metrics-' + index}
-                  component={Link}
-                  to={'/workloadmetrics/' + release}
-                  button
-                  className={classes.nested}
-                >
-                  <ListItemIcon>
-                    <TableChartIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Workload Metrics" />
                 </ListItem>
               </List>
             </Collapse>
@@ -249,12 +262,6 @@ export default function Sidebar(props) {
             <GitHub />
           </ListItemIcon>
           <ListItemText primary="GitHub Repo" />
-        </ListItem>
-        <ListItem button component="a" href="/legacy" key="Legacy">
-          <ListItemIcon>
-            <Restore />
-          </ListItemIcon>
-          <ListItemText primary="Legacy Interface" />
         </ListItem>
         <Divider />
         <div align="center">
