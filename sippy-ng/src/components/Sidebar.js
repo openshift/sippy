@@ -240,18 +240,41 @@ export default function Sidebar(props) {
           </ListSubheader>
         }
       >
-        <ListItem
-          button
-          component="a"
-          href="https://testgrid.k8s.io/redhat"
-          target="_blank"
-          key="TestGrid"
-        >
-          <ListItemIcon>
-            <AssessmentIcon />
-          </ListItemIcon>
-          <ListItemText primary="TestGrid" />
-        </ListItem>
+        <CapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <ListItem
+                  button
+                  component="a"
+                  href="https://testgrid.k8s.io/redhat"
+                  target="_blank"
+                  key="TestGrid"
+                >
+                  <ListItemIcon>
+                    <AssessmentIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="TestGrid" />
+                </ListItem>
+              )
+            } else {
+              return (
+                <ListItem
+                  button
+                  component="a"
+                  href="https://testgrid.k8s.io/sig-release"
+                  target="_blank"
+                  key="TestGrid"
+                >
+                  <ListItemIcon>
+                    <AssessmentIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="TestGrid" />
+                </ListItem>
+              )
+            }
+          }}
+        </CapabilitiesContext.Consumer>
 
         <CapabilitiesContext.Consumer>
           {(value) => {
