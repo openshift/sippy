@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -222,6 +224,13 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error) {
 	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, []string{"never-stable", "techpreview"})
 	if err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// This would likely mean we're in upstream kube mode. Returning an empty
+			// indicator will cause the UI to hide these panels.
+			return indicator{}, nil
+		}
+
 		log.WithError(err).Error("error querying test report")
 		return indicator{}, err
 	}
