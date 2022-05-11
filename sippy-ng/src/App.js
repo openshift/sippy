@@ -110,7 +110,7 @@ export default function App(props) {
   const theme = useTheme()
 
   const [lastUpdated, setLastUpdated] = React.useState(null)
-  const [drawerOpen, setDrawerOpen] = React.useState(false)
+  const [drawerOpen, setDrawerOpen] = React.useState(true)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])
   const [capabilities, setCapabilities] = React.useState([])
