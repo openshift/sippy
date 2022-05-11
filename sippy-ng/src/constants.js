@@ -4,6 +4,24 @@ export const INFRASTRUCTURE_THRESHOLDS = {
   error: 0,
 }
 
+export const INSTALL_CONFIG_THRESHOLDS = {
+  success: 99,
+  warning: 98,
+  error: 0,
+}
+
+export const BOOTSTRAP_THRESHOLDS = {
+  success: 90,
+  warning: 85,
+  error: 0,
+}
+
+export const INSTALL_OTHER_THRESHOLDS = {
+  success: 90,
+  warning: 85,
+  error: 0,
+}
+
 export const INSTALL_THRESHOLDS = {
   success: 90,
   warning: 85,

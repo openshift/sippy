@@ -213,7 +213,7 @@ export default function Sidebar(props) {
                           to={
                             '/tests/' +
                             release +
-                            '/details?test=[sig-sippy] infrastructure should work'
+                            '/details?test=cluster install.install should succeed: infrastructure'
                           }
                           button
                           className={classes.nested}
