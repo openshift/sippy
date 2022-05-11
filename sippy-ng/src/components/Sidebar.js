@@ -160,47 +160,73 @@ export default function Sidebar(props) {
                   </ListItemIcon>
                   <ListItemText primary="Tests" />
                 </ListItem>
-                <ListItem
-                  key={'release-upgrade-' + index}
-                  component={Link}
-                  to={'/upgrade/' + release}
-                  button
-                  className={classes.nested}
-                >
-                  <ListItemIcon>
-                    <ArrowUpwardIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Upgrade" />
-                </ListItem>
-                <ListItem
-                  key={'release-install-' + index}
-                  component={Link}
-                  to={'/install/' + release}
-                  button
-                  className={classes.nested}
-                >
-                  <ListItemIcon>
-                    <ExitToAppIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Install" />
-                </ListItem>
 
-                <ListItem
-                  key={'release-infrastructure-' + index}
-                  component={Link}
-                  to={
-                    '/tests/' +
-                    release +
-                    '/details?test=[sig-sippy] infrastructure should work'
-                  }
-                  button
-                  className={classes.nested}
-                >
-                  <ListItemIcon>
-                    <ApartmentIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Infrastructure" />
-                </ListItem>
+                <CapabilitiesContext.Consumer>
+                  {(value) => {
+                    if (value.includes('openshift_releases')) {
+                      return (
+                        <ListItem
+                          key={'release-upgrade-' + index}
+                          component={Link}
+                          to={'/upgrade/' + release}
+                          button
+                          className={classes.nested}
+                        >
+                          <ListItemIcon>
+                            <ArrowUpwardIcon />
+                          </ListItemIcon>
+                          <ListItemText primary="Upgrade" />
+                        </ListItem>
+                      )
+                    }
+                  }}
+                </CapabilitiesContext.Consumer>
+
+                <CapabilitiesContext.Consumer>
+                  {(value) => {
+                    if (value.includes('openshift_releases')) {
+                      return (
+                        <ListItem
+                          key={'release-install-' + index}
+                          component={Link}
+                          to={'/install/' + release}
+                          button
+                          className={classes.nested}
+                        >
+                          <ListItemIcon>
+                            <ExitToAppIcon />
+                          </ListItemIcon>
+                          <ListItemText primary="Install" />
+                        </ListItem>
+                      )
+                    }
+                  }}
+                </CapabilitiesContext.Consumer>
+
+                <CapabilitiesContext.Consumer>
+                  {(value) => {
+                    if (value.includes('openshift_releases')) {
+                      return (
+                        <ListItem
+                          key={'release-infrastructure-' + index}
+                          component={Link}
+                          to={
+                            '/tests/' +
+                            release +
+                            '/details?test=[sig-sippy] infrastructure should work'
+                          }
+                          button
+                          className={classes.nested}
+                        >
+                          <ListItemIcon>
+                            <ApartmentIcon />
+                          </ListItemIcon>
+                          <ListItemText primary="Infrastructure" />
+                        </ListItem>
+                      )
+                    }
+                  }}
+                </CapabilitiesContext.Consumer>
               </List>
             </Collapse>
           </Fragment>
@@ -227,30 +253,60 @@ export default function Sidebar(props) {
           <ListItemText primary="TestGrid" />
         </ListItem>
 
-        <ListItem
-          button
-          component="a"
-          href="https://amd64.ocp.releases.ci.openshift.org/"
-          target="_blank"
-          key="ReleaseController"
-        >
-          <ListItemIcon>
-            <NewReleasesIcon />
-          </ListItemIcon>
-          <ListItemText primary="Release Controller" />
-        </ListItem>
+        <CapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <ListItem
+                  button
+                  component="a"
+                  href="https://amd64.ocp.releases.ci.openshift.org/"
+                  target="_blank"
+                  key="ReleaseController"
+                >
+                  <ListItemIcon>
+                    <NewReleasesIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Release Controller" />
+                </ListItem>
+              )
+            }
+          }}
+        </CapabilitiesContext.Consumer>
 
-        <ListItem button onClick={handleBugzillaOpen} key="SearchBugzilla">
-          <ListItemIcon>
-            <BugReport />
-          </ListItemIcon>
-          <ListItemText primary="Search Bugzilla" />
-        </ListItem>
-        <BugzillaSearch
-          open={handleBugzillaOpen}
-          close={handleBugzillaClose}
-          isOpen={bugzillaOpen}
-        />
+        <CapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <ListItem
+                  button
+                  onClick={handleBugzillaOpen}
+                  key="SearchBugzilla"
+                >
+                  <ListItemIcon>
+                    <BugReport />
+                  </ListItemIcon>
+                  <ListItemText primary="Search Bugzilla" />
+                </ListItem>
+              )
+            }
+          }}
+        </CapabilitiesContext.Consumer>
+
+        <CapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <BugzillaSearch
+                  open={handleBugzillaOpen}
+                  close={handleBugzillaClose}
+                  isOpen={bugzillaOpen}
+                />
+              )
+            }
+          }}
+        </CapabilitiesContext.Consumer>
+
         <ListItem
           button
           component="a"
