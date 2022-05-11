@@ -31,7 +31,16 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
+// Mode defines the server mode of operation, OpenShift or upstream Kubernetes.
+type Mode string
+
+const (
+	ModeOpenShift  Mode = "openshift"
+	ModeKubernetes Mode = "kube"
+)
+
 func NewServer(
+	mode Mode,
 	testGridLoadingConfig TestGridLoadingConfig,
 	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
 	displayDataOptions DisplayDataConfig,
@@ -69,6 +78,7 @@ func NewServer(
 }
 
 type Server struct {
+	mode                 Mode
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
@@ -455,7 +465,7 @@ func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
 	capabilities := make([]string, 0)
-	if s.db != nil {
+	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, "openshift_releases")
 	}
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
