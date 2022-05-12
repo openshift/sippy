@@ -387,6 +387,13 @@ func (o *Options) runServerMode() error {
 		// force a data refresh in the background, materialized views will not be populated if this is the first start against
 		// this database.
 		server.RefreshData()
+	} else {
+		// refresh the metrics that are currently in the materialized view.  If this is the first start against this
+		// db then presume db init has been run before serving
+		err := server.RefreshMetricsDB()
+		if err != nil {
+			log.WithError(err).Error("error refreshing metrics")
+		}
 	}
 	// The above should not be required for db mode, we create the matviews if missing during db init, and that
 	// will do an implicit refresh
