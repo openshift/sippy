@@ -131,7 +131,7 @@ var (
 func (s *Server) refreshMetrics() {
 
 	if s.dbOnlyMode {
-		err := s.refreshMetricsDB()
+		err := s.RefreshMetricsDB()
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -164,7 +164,7 @@ func (s *Server) buildPromReportTypes(releases []query.Release) []promReportType
 	return promReportTypes
 }
 
-func (s *Server) refreshMetricsDB() error {
+func (s *Server) RefreshMetricsDB() error {
 	releases, err := query.ReleasesFromDB(s.db)
 	if err != nil {
 		return err
