@@ -372,11 +372,11 @@ export function TestAnalysis(props) {
               caption={
                 <Fragment>
                   <Tooltip title={`${test.current_runs} runs`}>
-                    <span>{test.current_pass_percentage.toFixed(2)}%</span>
+                    <span>{test.current_working_percentage.toFixed(2)}%</span>
                   </Tooltip>
                   <PassRateIcon improvement={test.net_improvement} />
                   <Tooltip title={`${test.previous_runs} runs`}>
-                    <span>{test.previous_pass_percentage.toFixed(2)}%</span>
+                    <span>{test.previous_working_percentage.toFixed(2)}%</span>
                   </Tooltip>
                 </Fragment>
               }
