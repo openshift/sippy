@@ -244,16 +244,6 @@ export default function App(props) {
                 </Route>
 
                 <Route
-                  path="/workloadmetrics/:release"
-                  render={(props) => (
-                    <WorkloadMetricsOverview
-                      key={'workload-metrics-' + props.match.params.release}
-                      release={props.match.params.release}
-                    />
-                  )}
-                />
-
-                <Route
                   path="/release/:release/tags/:tag"
                   render={(props) => (
                     <ReleasePayloadDetails
