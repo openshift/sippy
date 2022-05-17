@@ -213,12 +213,12 @@ func (s *Server) refreshMaterializedViews() {
 	for _, pmv := range db.PostgresMatViews {
 		start := time.Now()
 		if res := s.db.DB.Exec(
-			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
-			log.Errorf("error refreshing materialized view %s: %v", pmv.Name, res.Error)
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv)); res.Error != nil {
+			log.Errorf("error refreshing materialized view %s: %v", pmv, res.Error)
 		} else {
 			elapsed := time.Since(start)
-			log.Infof("Refreshed materialized view %s in %s", pmv.Name, elapsed)
-			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
+			log.WithFields(log.Fields{"elapsed": elapsed, "matview": pmv}).Info("refreshed materialized view")
+			matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 }
