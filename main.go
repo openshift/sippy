@@ -383,11 +383,9 @@ func (o *Options) runServerMode() error {
 		o.DBOnlyMode,
 	)
 
-	// force a data refresh in the background
+	// force a data refresh in the background. This is important to initially populate the db's materialized views
+	// if this is the first time starting sippy.
 	go server.RefreshData()
-
-	// The above should not be required for db mode, we create the matviews if missing during db init, and that
-	// will do an implicit refresh
 
 	server.Serve()
 	return nil

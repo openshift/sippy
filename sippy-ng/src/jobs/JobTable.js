@@ -143,6 +143,7 @@ export const getColumns = (config, openBugzillaDialog) => {
     // These are here just to allow filtering
     {
       field: 'variants',
+      autocomplete: 'variants',
       type: 'array',
       headerName: 'Variants',
       hide: true,

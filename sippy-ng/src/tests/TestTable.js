@@ -59,6 +59,7 @@ function TestTable(props) {
   const columns = [
     {
       field: 'name',
+      autocomplete: 'tests',
       headerName: 'Name',
       flex: 3.5,
       renderCell: (params) => (
@@ -248,6 +249,7 @@ function TestTable(props) {
     // These are here just to allow filtering
     {
       field: 'variants',
+      autocomplete: 'variants',
       headerName: 'Variants',
       hide: true,
       type: 'array',
@@ -323,12 +325,6 @@ function TestTable(props) {
       headerName: 'Previous failure percentage',
       hide: true,
       type: 'number',
-    },
-    {
-      field: 'associated_bugs',
-      headerName: 'Associated bugs',
-      type: 'number',
-      hide: true,
     },
     {
       field: 'tags',

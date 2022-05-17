@@ -77,6 +77,8 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'job',
+      autocomplete: 'jobs',
+      release: props.release,
       headerName: 'Job name',
       flex: props.briefTable ? 1 : 3,
       renderCell: (params) => {
@@ -147,16 +149,19 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'variants',
+      autocomplete: 'variants',
       headerName: 'Variants',
       hide: true,
     },
     {
       field: 'failed_test_names',
+      autocomplete: 'tests',
       headerName: 'Failed tests',
       hide: true,
     },
     {
       field: 'flaked_test_names',
+      autocomplete: 'tests',
       headerName: 'Flaked tests',
       hide: true,
     },
@@ -164,6 +169,8 @@ export default function JobRunsTable(props) {
     // filter by them.
     {
       field: 'name',
+      autocomplete: 'jobs',
+      release: props.release,
       headerName: 'Name',
       type: 'string',
       hide: 'true',

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
@@ -22,6 +23,7 @@ import (
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/html/generichtml"
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -119,18 +121,82 @@ var (
 		Help:    "Milliseconds to refresh our postgresql materialized views",
 		Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
 	}, []string{"view"})
+
+	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_release_warnings",
+		Help: "Number of current warnings for a release, see overview page in UI for details",
+	}, []string{"release"})
 )
 
 func (s *Server) refreshMetrics() {
 
-	// Report metrics for all jobs:
-	for r, stdReport := range s.currTestReports {
-		for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
-			for _, jobResult := range testReport.ByJob {
-				jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
+	if s.dbOnlyMode {
+		err := s.RefreshMetricsDB()
+		if err != nil {
+			log.WithError(err).Error("error refreshing metrics")
+		}
+	} else {
+
+		// Report metrics for all jobs:
+		for r, stdReport := range s.currTestReports {
+			for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
+				for _, jobResult := range testReport.ByJob {
+					jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
+				}
 			}
 		}
 	}
+}
+
+type promReportType struct {
+	release string
+	period  string
+}
+
+func (s *Server) buildPromReportTypes(releases []query.Release) []promReportType {
+	var promReportTypes []promReportType
+
+	for _, release := range releases {
+		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})
+		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.CurrentReport)})
+	}
+
+	return promReportTypes
+}
+
+func (s *Server) RefreshMetricsDB() error {
+	releases, err := query.ReleasesFromDB(s.db)
+	if err != nil {
+		return err
+	}
+
+	promReportTypes := s.buildPromReportTypes(releases)
+	if err != nil {
+		return err
+	}
+
+	for _, pType := range promReportTypes {
+		// start, boundary and end will just be defaults
+		// the api will decide based on the period
+		// and current day / time
+		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{})
+
+		if err != nil {
+			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
+		}
+		for _, jobResult := range jobsResult {
+			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
+		}
+	}
+
+	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
+	// tell you x warnings are present and link you to the overview in the alert.
+	for _, release := range releases {
+		releaseWarnings := api.ScanForReleaseWarnings(s.db, release.Release)
+		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
+	}
+
+	return nil
 }
 
 // refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
@@ -395,6 +461,10 @@ func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) 
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
 }
 
+func (s *Server) jsonAutocompleteFromDB(w http.ResponseWriter, req *http.Request) {
+	api.PrintAutocompleteFromDB(w, req, s.db)
+}
+
 func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
 	api.PrintReleasesReport(w, req, s.db)
 }
@@ -407,7 +477,26 @@ func (s *Server) jsonReleaseJobRunsReport(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
-	api.PrintReleaseHealthReport(w, req, s.db)
+	release := req.URL.Query().Get("release")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"release" is required`),
+		})
+		return
+	}
+
+	results, err := api.ReleaseHealthReports(s.db, release)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, err)
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
@@ -510,21 +599,18 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 		Releases    []string  `json:"releases"`
 		LastUpdated time.Time `json:"last_updated"`
 	}
-	type Release struct {
-		Release string
-	}
 
 	response := jsonResponse{}
-
-	var releases []Release
-	// The string_to_array trick ensures releases are sorted in version order, descending
-	res := s.db.DB.Raw(`
-		SELECT DISTINCT(release), case when position('.' in release) != 0 then string_to_array(release, '.')::int[] end as sortable_release
-                FROM prow_jobs
-                ORDER BY sortable_release desc`).Scan(&releases)
-	if res.Error != nil {
-		log.Errorf("error querying releases from db: %v", res.Error)
+	releases, err := query.ReleasesFromDB(s.db)
+	if err != nil {
+		log.WithError(err).Error("error querying releases from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying releases from db",
+		})
+		return
 	}
+
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
 	}
@@ -534,12 +620,17 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	}
 	var lastUpdated LastUpdated
 	// Assume our last update is the last time we inserted a prow job run.
-	res = s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if res.Error != nil {
-		log.Errorf("error querying last updated from db: %v", res.Error)
+		log.WithError(res.Error).Error("error querying last updated from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying last updated from db",
+		})
+		return
 	}
-	response.LastUpdated = lastUpdated.Max
 
+	response.LastUpdated = lastUpdated.Max
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
@@ -673,6 +764,13 @@ func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		api.PrintCanaryTestsFromDB(release, w, s.db)
+	}
+}
+
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -744,6 +842,7 @@ func (s *Server) Serve() {
 	// Fork the endpoints if we're using postgresql db only mode vs the old in-memory.
 	// Temporary until we drop the old legacy mode.
 	if s.dbOnlyMode {
+		serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
 		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
@@ -756,6 +855,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
 		serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 		serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
+		serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	} else {
 		// Preserve old sippy at /legacy for now
 		serveMux.HandleFunc("/legacy", s.printHTMLReport)

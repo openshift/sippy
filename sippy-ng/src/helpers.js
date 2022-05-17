@@ -137,6 +137,16 @@ export function pathForJobRunsWithFilter(release, filter) {
   )}`
 }
 
+export function pathForTestsWithFilter(release, filter) {
+  if (!filter || filter.items === []) {
+    return `/tests/${release}`
+  }
+
+  return `/tests/${release}?filters=${safeEncodeURIComponent(
+    JSON.stringify(filter)
+  )}`
+}
+
 export function pathForJobsWithFilter(release, filter) {
   if (!filter || filter.items === []) {
     return `/jobs/${release}`

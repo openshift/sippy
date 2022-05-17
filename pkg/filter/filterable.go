@@ -65,21 +65,19 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	case OperatorContains:
 		// "contains" is an overloaded operator: 1) see if an array field contains an item,
 		// 2) string contains a substring, so we need to know the field type.
-		switch filterable.GetFieldType(f.Field) {
-		case apitype.ColumnTypeArray:
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
 				db = db.Or(fmt.Sprintf("? != ALL(%s)", f.Field), f.Value)
 			} else {
 				db = db.Or(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
 			}
-		default:
+		} else {
 			if f.Not {
 				db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
 			} else {
 				db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
 			}
 		}
-
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
 			db = db.Or(fmt.Sprintf("%q != ?", f.Field), f.Value)
@@ -147,14 +145,13 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
 	switch f.Operator {
 	case OperatorContains:
-		switch filterable.GetFieldType(f.Field) {
-		case apitype.ColumnTypeArray:
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
 				db = db.Not(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
 			} else {
 				db = db.Where(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
 			}
-		default:
+		} else {
 			if f.Not {
 				db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
 			} else {
@@ -316,7 +313,9 @@ func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable
 		q = q.Limit(filterOpts.Limit)
 	}
 
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
+	if len(filterOpts.SortField) > 0 {
+		q.Order(clause.OrderByColumn{Column: clause.Column{Name: filterOpts.SortField}, Desc: filterOpts.Sort == apitype.SortDescending})
+	}
 
 	return q, nil
 }

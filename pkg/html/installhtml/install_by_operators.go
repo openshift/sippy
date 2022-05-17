@@ -21,7 +21,7 @@ func InstallOperatorTests(format ResponseFormat, curr, prev sippyprocessingv1.Te
 	dataForTestsByVariant := getDataForTestsByVariant(
 		curr, prev,
 		func(testResult sippyprocessingv1.TestResult) bool {
-			return strings.HasPrefix(testResult.Name, testgridanalysisapi.OperatorInstallPrefix)
+			return testidentification.IsInstallRelatedTest(testResult.Name)
 		},
 		func(testResult sippyprocessingv1.TestResult) bool {
 			return testResult.Name == testgridanalysisapi.SippySuiteName+"."+testgridanalysisapi.InstallTestName
@@ -62,6 +62,7 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	testSubstrings := []string{
 		testgridanalysisapi.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
 		testgridanalysisapi.InstallTestName,       // TODO: would prefer exact matching on the full InstallTestName const
+		testgridanalysisapi.InstallTestNamePrefix, // TODO: would prefer prefix matching for this
 	}
 
 	testReports, err := query.TestReportsByVariant(dbc, release, testSubstrings)
@@ -76,7 +77,9 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	for _, tr := range testReports {
 
 		switch {
-		case tr.Name == testgridanalysisapi.InstallTestName || strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix):
+		case tr.Name == testgridanalysisapi.InstallTestName ||
+			strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix) ||
+			strings.HasPrefix(tr.Name, testgridanalysisapi.InstallTestNamePrefix):
 			log.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
 			variantColumns.Insert(tr.Variant)
 			if _, ok := tests[tr.Name]; !ok {

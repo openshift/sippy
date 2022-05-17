@@ -245,6 +245,13 @@ func IsInstallRelatedTest(testName string) bool {
 	if strings.Contains(testName, testgridanalysisapi.InstallTimeoutTestName) {
 		return true
 	}
+	// this shows the stages of install like infrastructure, configuration, bootstrap
+	if strings.Contains(testName, testgridanalysisapi.InstallTestNamePrefix) {
+		return true
+	}
+	if strings.HasPrefix(testName, testgridanalysisapi.OperatorInstallPrefix) {
+		return true
+	}
 
 	return false
 }
