@@ -9,7 +9,7 @@ $ go install github.com/pressly/goose/v3/cmd/goose@latest
 
 ## Create and Populate PostgreSQL Database
 
-Launch postgresql: 
+Launch postgresql:
 
 ```bash
 podman run --name sippy-postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d quay.io/enterprisedb/postgresql
@@ -57,8 +57,11 @@ goose -dir dbmigration create test
 
 Edit the resulting file and add your schema to migrate "up" to, and "down" from.
 
-In the case of materialized views I believe you will need to drop the old view, recreate with the entire 
-new schema, and issue a refresh command. We should maintain the old schema in the "down" section of the migration to 
+In the case of materialized views I believe you will need to drop the old view, recreate with the entire
+new schema. We should maintain the old schema in the "down" section of the migration to
 be able to roll back if ever needed. This will be verbose, but I believe correct.
+
+We do not issue a refresh after matview changes as this would run on every change, and they can be very slow.
+Normally this is handled in the background refresh run when we start the API.
 
 
