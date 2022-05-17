@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	api "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/testidentification"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/html/generichtml"

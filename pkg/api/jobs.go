@@ -500,10 +500,10 @@ func jobResultsFromDB(req *http.Request, dbc *gorm.DB, release string) (*gorm.DB
 		}
 	} else if req.URL.Query().Get("period") == periodTwoDay {
 		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
-		start = time.Now().Add(-9 * 24 * time.Hour)
+		start = time.Now().UTC().Add(-9 * 24 * time.Hour)
 	} else {
 		// Default start to 14 days ago
-		start = time.Now().Add(-14 * 24 * time.Hour)
+		start = time.Now().UTC().Add(-14 * 24 * time.Hour)
 	}
 
 	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
@@ -515,10 +515,10 @@ func jobResultsFromDB(req *http.Request, dbc *gorm.DB, release string) (*gorm.DB
 			return nil, fmt.Errorf("error decoding boundary param: %s", err.Error())
 		}
 	} else if req.URL.Query().Get("period") == periodTwoDay {
-		boundary = time.Now().Add(-2 * 24 * time.Hour)
+		boundary = time.Now().UTC().Add(-2 * 24 * time.Hour)
 	} else {
 		// Default boundary to 7 days ago
-		boundary = time.Now().Add(-7 * 24 * time.Hour)
+		boundary = time.Now().UTC().Add(-7 * 24 * time.Hour)
 
 	}
 
@@ -530,7 +530,7 @@ func jobResultsFromDB(req *http.Request, dbc *gorm.DB, release string) (*gorm.DB
 		}
 	} else {
 		// Default end to now
-		end = time.Now()
+		end = time.Now().UTC()
 	}
 
 	log.Infof("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))

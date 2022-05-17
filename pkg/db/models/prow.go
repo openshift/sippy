@@ -4,14 +4,21 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"gorm.io/gorm"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
+
+type ProwKind string
+
+const ProwPeriodic ProwKind = "periodic"
+const ProwPresubmit ProwKind = "presubmit"
 
 // ProwJob represents a prow job with various fields inferred from it's name. (release, variants, etc)
 type ProwJob struct {
 	gorm.Model
 
+	Kind        ProwKind
 	Name        string         `gorm:"unique"`
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[]"`
