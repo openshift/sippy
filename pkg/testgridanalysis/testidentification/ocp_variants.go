@@ -103,18 +103,14 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-telco5g",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-telco5g",
 
-		// Single-node openshift jobs are currently failing conformance
-		// tests fairly often, and the team is currently working on bringing
-		// the pass percentage up.
+		// 5-10-2022 https://bugzilla.redhat.com/show_bug.cgi?id=2083614
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-arm64-single-node",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-arm64-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-upgrade-single-node",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node-serial",
-		"periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-single-node",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-single-node-serial",
 
 		// QE jobs, formerly named with "cucushift", tracked here: https://issues.redhat.com/browse/OCPQE-8577
@@ -163,12 +159,10 @@ var (
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-ovn-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-serial-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-upgrade-from-nightly-4.9-ocp-e2e-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-ovn-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-serial-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-upgrade-from-nightly-4.10-ocp-e2e-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-s390x",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-ppc64le",
@@ -218,7 +212,7 @@ var (
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-calico",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-calico",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2007580
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2083616
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-cilium",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-cilium",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-cilium",
