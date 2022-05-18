@@ -353,7 +353,13 @@ func (o *Options) Run() error {
 			}
 
 			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager())
-			err = prowLoader.LoadProwJobsToDB()
+
+			// For now let's just get master/main presubmits in the openshift org
+			allowedJobRegex := []*regexp.Regexp{
+				regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`),
+			}
+
+			err = prowLoader.LoadProwJobsToDB(allowedJobRegex)
 			if err != nil {
 				return err
 			}

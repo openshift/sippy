@@ -82,11 +82,7 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	return prowJobRunCache
 }
 
-func (pl *ProwLoader) LoadProwJobsToDB() error {
-	allowedJobRegex := []*regexp.Regexp{
-		regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`), // For now let's just get master/main presubmits in the openshift org
-	}
-
+func (pl *ProwLoader) LoadProwJobsToDB(filters []*regexp.Regexp) error {
 	jobsJSON, err := fetchJobsJSON()
 	if err != nil {
 		return err
@@ -97,7 +93,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 	}
 
 	for _, pj := range prowJobs {
-		for _, re := range allowedJobRegex {
+		for _, re := range filters {
 			if re.MatchString(pj.Spec.Job) {
 				err := pl.prowJobToJobRun(pj)
 				if err != nil {
