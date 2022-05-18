@@ -319,6 +319,3 @@ gorm.io/gorm/logger
 gorm.io/gorm/migrator
 gorm.io/gorm/schema
 gorm.io/gorm/utils
-# k8s.io/klog v1.0.0
-## explicit
-k8s.io/klog

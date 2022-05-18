@@ -25,5 +25,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/postgres v1.2.1
 	gorm.io/gorm v1.22.2
-	k8s.io/klog v1.0.0
 )

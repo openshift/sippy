@@ -14,8 +14,8 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm/clause"
-	"k8s.io/klog"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
+// FIXME(stbenjam): Make this configurable so we can use kube or openshift prow
 const prowURL = "https://prow.ci.openshift.org/prowjobs.js?var=allBuilds&omit=annotations,labels,decoration_config,pod_spec"
 
 type ProwLoader struct {
@@ -63,7 +64,7 @@ func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
 			prowJobCache[j.Name] = j
 		}
 	}
-	klog.V(4).Infof("job cache created with %d entries from database", len(prowJobCache))
+	log.Infof("job cache created with %d entries from database", len(prowJobCache))
 	return prowJobCache
 }
 
@@ -86,7 +87,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 		regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`), // For now let's just get master/main presubmits in the openshift org
 	}
 
-	jobsJSON, err := fetchJobsJSON(prowURL)
+	jobsJSON, err := fetchJobsJSON()
 	if err != nil {
 		return err
 	}
@@ -110,8 +111,8 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 	return nil
 }
 
-func fetchJobsJSON(uri string) ([]byte, error) {
-	resp, err := http.Get(uri)
+func fetchJobsJSON() ([]byte, error) {
+	resp, err := http.Get(prowURL)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
 		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) {
 			dbProwJob.Variants = newVariants
-			//pl.dbc.DB.Save(&dbProwJob)
+			pl.dbc.DB.Save(&dbProwJob)
 		}
 	}
 
@@ -245,7 +246,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTe
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
 	if err != nil {
-		klog.Warningf("failed to get junit test suites: %s", err.Error())
+		log.Warningf("failed to get junit test suites: %s", err.Error())
 		return []models.ProwJobRunTest{}, 0, nil
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
