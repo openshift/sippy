@@ -86,11 +86,11 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 		regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`), // For now let's just get master/main presubmits in the openshift org
 	}
 
-	jobJSON, err := fetchJobJSON(prowURL)
+	jobsJSON, err := fetchJobsJSON(prowURL)
 	if err != nil {
 		return err
 	}
-	prowJobs, err := jobJSONToProwJob(jobJSON)
+	prowJobs, err := jobsJSONToProwJobs(jobsJSON)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 	return nil
 }
 
-func fetchJobJSON(uri string) ([]byte, error) {
+func fetchJobsJSON(uri string) ([]byte, error) {
 	resp, err := http.Get(uri)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func fetchJobJSON(uri string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func jobJSONToProwJob(jobJSON []byte) ([]prow.ProwJob, error) {
+func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 	results := make(map[string][]prow.ProwJob)
 	// The first 16 bytes are `var allBuilds =`, and then the rest is parseable JSON except for the final character (;).
 	if err := json.Unmarshal(jobJSON[16:len(jobJSON)-1], &results); err != nil {
@@ -135,6 +135,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		release = matches[1]
 	}
 
+	// FIXME(stbenjam): calculate job synthetic tests
 	var result sippyprocessingv1.JobOverallResult
 	switch pj.Status.State {
 	case prow.PendingState:
@@ -145,7 +146,6 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 	case prow.AbortedState:
 		result = sippyprocessingv1.JobNoResults
 	default:
-
 		result = sippyprocessingv1.JobTestFailure
 	}
 
