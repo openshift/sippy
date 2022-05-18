@@ -274,9 +274,10 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		key := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		if existing, ok := testCases[key]; !ok {
 			testCases[key] = &models.ProwJobRunTest{
-				TestID:  pl.findOrAddTest(tc.Name),
-				SuiteID: pl.findOrAddSuite(suite.Name),
-				Status:  status,
+				TestID:   pl.findOrAddTest(tc.Name),
+				SuiteID:  pl.findOrAddSuite(suite.Name),
+				Status:   status,
+				Duration: tc.Duration,
 			}
 		} else {
 			existing.Status += status
