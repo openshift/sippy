@@ -68,7 +68,7 @@ func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
 	return prowJobCache
 }
 
-// Cache the IDs of all known ProwJobRuns for this job. Will be used to skip job run and test
+// Cache the IDs of all known ProwJobRuns. Will be used to skip job run and test
 // results we've already processed.
 func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
