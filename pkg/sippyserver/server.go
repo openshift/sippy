@@ -56,6 +56,7 @@ func NewServer(
 ) *Server {
 
 	server := &Server{
+		mode:                 mode,
 		listenAddr:           listenAddr,
 		dashboardCoordinates: dashboardCoordinates,
 
