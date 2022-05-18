@@ -369,6 +369,7 @@ func (o *Options) runServerMode() error {
 	}
 
 	server := sippyserver.NewServer(
+		o.getServerMode(),
 		o.toTestGridLoadingConfig(),
 		o.toRawJobResultsAnalysisConfig(),
 		o.toDisplayDataConfig(),
@@ -404,15 +405,15 @@ func (o *Options) runCLIReportMode() error {
 	return enc.Encode(testReport.ByTest)
 }
 
-func (o *Options) hasOCPDashboard() bool {
+func (o *Options) getServerMode() sippyserver.Mode {
 	for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
 		for _, dashboardName := range dashboardCoordinate.TestGridDashboardNames {
 			if strings.Contains(dashboardName, "redhat-openshift-ocp-release-") {
-				return true
+				return sippyserver.ModeOpenShift
 			}
 		}
 	}
-	return false
+	return sippyserver.ModeKubernetes
 }
 
 func (o *Options) getBugCache() buganalysis.BugCache {
@@ -425,7 +426,7 @@ func (o *Options) getBugCache() buganalysis.BugCache {
 
 func (o *Options) getVariantManager() testidentification.VariantManager {
 	if len(o.Variants) == 0 {
-		if o.hasOCPDashboard() {
+		if o.getServerMode() == sippyserver.ModeOpenShift {
 			return testidentification.NewOpenshiftVariantManager()
 		}
 		return testidentification.NewEmptyVariantManager()
@@ -445,7 +446,7 @@ func (o *Options) getVariantManager() testidentification.VariantManager {
 }
 
 func (o *Options) getSyntheticTestManager() testgridconversion.SyntheticTestManager {
-	if o.hasOCPDashboard() {
+	if o.getServerMode() == sippyserver.ModeOpenShift {
 		return testgridconversion.NewOpenshiftSyntheticTestManager()
 	}
 

@@ -1,16 +1,16 @@
 .percentage-cell {
-    line-height: 1.2em;
-    text-align: center;
+  line-height: 1.2em;
+  text-align: center;
 }
 
 .job-name {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 
-    line-height: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: break-spaces;
-    word-wrap: break-word;
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: break-spaces;
+  word-wrap: break-word;
 }

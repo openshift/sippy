@@ -35,7 +35,6 @@ type ProcessingOptions struct {
 // for all jobs.
 // TODO: deprecated, use the single job func below to avoid loading all into memory
 func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
-
 	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
 
 	for _, jobDetails := range testGridJobInfo {
@@ -71,7 +70,7 @@ func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgri
 		TestResults:    map[string]testgridanalysisapi.RawTestResult{},
 	}
 	for i, test := range job.Tests {
-		log.Debugf("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
+		log.Tracef("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
 		job.Tests[i] = test
 		processTest(jobResult, job, test, startCol, endCol)
 	}
@@ -96,7 +95,7 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	log.WithFields(log.Fields{
 		"start": startTs,
 		"end":   stopTs,
-	}).Debug("calculated lookback")
+	}).Debugf("calculated lookback")
 	start := math.MaxInt32 // start is an int64 so leave overhead for wrapping to negative in case this gets incremented(it does).
 	for i, t := range timestamps {
 		if int64(t) < startTs && i < start {

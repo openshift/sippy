@@ -443,6 +443,7 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 
 	// Configure the Sippy server.
 	sippyServer := sippyserver.NewServer(
+		sippyserver.ModeOpenShift,
 		loadingConfig,
 		analysisConfig,
 		displayConfig,
