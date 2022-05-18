@@ -119,7 +119,7 @@ func fetchJobJSON(uri string) ([]byte, error) {
 }
 
 func jobJSONToProwJob(jobJSON []byte) ([]prow.ProwJob, error) {
-	results := make(map[string][]prow.ProwJob, 0)
+	results := make(map[string][]prow.ProwJob)
 	// The first 16 bytes are `var allBuilds =`, and then the rest is parseable JSON except for the final character (;).
 	if err := json.Unmarshal(jobJSON[16:len(jobJSON)-1], &results); err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func jobJSONToProwJob(jobJSON []byte) ([]prow.ProwJob, error) {
 func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 	releaseRegex := regexp.MustCompile("pull-ci-.*([0-9]+.[0-9]+)-.*")
 	matches := releaseRegex.FindStringSubmatch(pj.Spec.Job)
-	release := "master"
+	release := "main"
 	if len(matches) > 0 {
 		release = matches[1]
 	}
