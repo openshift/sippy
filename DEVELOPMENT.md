@@ -52,7 +52,7 @@ cd sippy-ng && npm start
 ## Modifying Database Schema
 
 ```bash
-goose -dir dbmigration create test
+goose -dir dbmigration create add_duration_to_test sql
 ```
 
 Edit the resulting file and add your schema to migrate "up" to, and "down" from.
