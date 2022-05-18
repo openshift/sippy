@@ -206,18 +206,18 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 }
 
 func (pl *ProwLoader) findOrAddTest(name string) uint {
-	if id, ok := pl.prowJobRunTestCache[name]; !ok {
-		test := &models.Test{}
-		pl.dbc.DB.Where("name = ?", name).Find(&test)
-		if test.ID == 0 {
-			test.Name = name
-			pl.dbc.DB.Save(test)
-		}
-		pl.prowJobRunTestCache[name] = test.ID
-		return test.ID
-	} else {
+	if id, ok := pl.prowJobRunTestCache[name]; ok {
 		return id
 	}
+
+	test := &models.Test{}
+	pl.dbc.DB.Where("name = ?", name).Find(&test)
+	if test.ID == 0 {
+		test.Name = name
+		pl.dbc.DB.Save(test)
+	}
+	pl.prowJobRunTestCache[name] = test.ID
+	return test.ID
 }
 
 func (pl *ProwLoader) findOrAddSuite(name string) *uint {
@@ -225,19 +225,19 @@ func (pl *ProwLoader) findOrAddSuite(name string) *uint {
 		return nil
 	}
 
-	if id, ok := pl.suiteCache[name]; !ok {
-		suite := &models.Suite{}
-		pl.dbc.DB.Where("name = ?", name).Find(&suite)
-		if suite.ID == 0 {
-			suite.Name = name
-			pl.dbc.DB.Save(suite)
-		}
-		id = suite.ID
-		pl.suiteCache[name] = id
-		return &id
-	} else {
+	if id, ok := pl.suiteCache[name]; ok {
 		return &id
 	}
+
+	suite := &models.Suite{}
+	pl.dbc.DB.Where("name = ?", name).Find(&suite)
+	if suite.ID == 0 {
+		suite.Name = name
+		pl.dbc.DB.Save(suite)
+	}
+	id := suite.ID
+	pl.suiteCache[name] = id
+	return &id
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTest, int, error) {
@@ -247,7 +247,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTe
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return []models.ProwJobRunTest{}, 0, nil
+		return []models.ProwJobRunTest{}, 0, err
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
