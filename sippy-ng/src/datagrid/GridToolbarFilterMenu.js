@@ -242,7 +242,9 @@ export default function GridToolbarFilterMenu(props) {
           >
             <Add />
           </Fab>
-          {models.length > 1 ? linkOperatorForm : ''}
+          {models.length > 1 && !props.linkOperatorDisabled
+            ? linkOperatorForm
+            : ''}
           <Button variant="contained" color="primary" onClick={handleClose}>
             Filter
           </Button>
@@ -254,9 +256,11 @@ export default function GridToolbarFilterMenu(props) {
 
 GridToolbarFilterItem.defaultProps = {
   standalone: false,
+  linkOperatorDisabled: false,
 }
 
 GridToolbarFilterMenu.propTypes = {
+  linkOperatorDisabled: PropTypes.bool,
   standalone: PropTypes.bool,
   setFilterModel: PropTypes.func.isRequired,
   filterModel: PropTypes.shape({

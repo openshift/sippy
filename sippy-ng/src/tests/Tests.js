@@ -10,7 +10,13 @@ import { TabContext } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
+import {
+  Link,
+  Route,
+  Switch,
+  useLocation,
+  useRouteMatch,
+} from 'react-router-dom'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestDetails from './TestsDetail'
 import TestTable from './TestTable'
@@ -21,6 +27,7 @@ import TestTable from './TestTable'
  */
 export default function Tests(props) {
   const { path, url } = useRouteMatch()
+  const search = useLocation().search
 
   useEffect(() => {
     document.title = `Sippy > ${props.release} > Tests`
@@ -55,25 +62,23 @@ export default function Tests(props) {
                     label="All tests"
                     value={props.release}
                     component={Link}
-                    to={url}
+                    to={url + search}
                   />
                   <Tab
                     label="Tests by variant"
                     value="details"
                     component={Link}
-                    to={url + '/details'}
+                    to={url + '/details' + search}
                   />
                 </Tabs>
               </Paper>
             </Grid>
             <Switch>
               <Route path={path + '/details'}>
-                <TestDetails release={props.release} />
+                <TestTable release={props.release} collapse={false} />
               </Route>
               <Route exact path={path}>
-                <Container size="xl">
-                  <TestTable release={props.release} />
-                </Container>
+                <TestTable release={props.release} />
               </Route>
             </Switch>
           </TabContext>

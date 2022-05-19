@@ -369,25 +369,27 @@ export default function ReleaseOverview(props) {
                   </Tooltip>
                 </Typography>
 
-                <TestTable
-                  hideControls={true}
-                  sortField="net_working_improvement"
-                  sort="asc"
-                  limit={10}
-                  rowsPerPageOptions={[5]}
-                  filterModel={{
-                    items: [
-                      BOOKMARKS.RUN_10,
-                      BOOKMARKS.NO_NEVER_STABLE,
-                      BOOKMARKS.NO_TECHPREVIEW,
-                      BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                      BOOKMARKS.NO_STEP_GRAPH,
-                    ],
-                  }}
-                  pageSize={5}
-                  briefTable={true}
-                  release={props.release}
-                />
+                <Container size="xl">
+                  <TestTable
+                    hideControls={true}
+                    sortField="net_working_improvement"
+                    sort="asc"
+                    limit={10}
+                    rowsPerPageOptions={[5]}
+                    filterModel={{
+                      items: [
+                        BOOKMARKS.RUN_10,
+                        BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_TECHPREVIEW,
+                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                        BOOKMARKS.NO_STEP_GRAPH,
+                      ],
+                    }}
+                    pageSize={5}
+                    briefTable={true}
+                    release={props.release}
+                  />
+                </Container>
               </Card>
             </Grid>
 
@@ -412,27 +414,28 @@ export default function ReleaseOverview(props) {
                     <InfoIcon />
                   </Tooltip>
                 </Typography>
-
-                <TestTable
-                  hideControls={true}
-                  sortField="net_working_improvement"
-                  sort="asc"
-                  limit={10}
-                  rowsPerPageOptions={[5]}
-                  filterModel={{
-                    items: [
-                      BOOKMARKS.RUN_1,
-                      BOOKMARKS.NO_NEVER_STABLE,
-                      BOOKMARKS.NO_TECHPREVIEW,
-                      BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                      BOOKMARKS.NO_STEP_GRAPH,
-                    ],
-                  }}
-                  pageSize={5}
-                  period="twoDay"
-                  release={props.release}
-                  briefTable={true}
-                />
+                <Container size="xl">
+                  <TestTable
+                    hideControls={true}
+                    sortField="net_working_improvement"
+                    sort="asc"
+                    limit={10}
+                    rowsPerPageOptions={[5]}
+                    filterModel={{
+                      items: [
+                        BOOKMARKS.RUN_1,
+                        BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_TECHPREVIEW,
+                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                        BOOKMARKS.NO_STEP_GRAPH,
+                      ],
+                    }}
+                    pageSize={5}
+                    period="twoDay"
+                    release={props.release}
+                    briefTable={true}
+                  />
+                </Container>
               </Card>
             </Grid>
 
@@ -456,25 +459,27 @@ export default function ReleaseOverview(props) {
                   </Tooltip>
                 </Typography>
 
-                <TestTable
-                  hideControls={true}
-                  sortField="current_working_percentage"
-                  sort="asc"
-                  limit={10}
-                  rowsPerPageOptions={[5]}
-                  filterModel={{
-                    items: [
-                      BOOKMARKS.RUN_10,
-                      BOOKMARKS.NO_NEVER_STABLE,
-                      BOOKMARKS.NO_TECHPREVIEW,
-                      BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                      BOOKMARKS.NO_STEP_GRAPH,
-                    ],
-                  }}
-                  pageSize={5}
-                  briefTable={true}
-                  release={props.release}
-                />
+                <Container size="xl">
+                  <TestTable
+                    hideControls={true}
+                    sortField="current_working_percentage"
+                    sort="asc"
+                    limit={10}
+                    rowsPerPageOptions={[5]}
+                    filterModel={{
+                      items: [
+                        BOOKMARKS.RUN_10,
+                        BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_TECHPREVIEW,
+                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                        BOOKMARKS.NO_STEP_GRAPH,
+                      ],
+                    }}
+                    pageSize={5}
+                    briefTable={true}
+                    release={props.release}
+                  />
+                </Container>
               </Card>
             </Grid>
           </Grid>
