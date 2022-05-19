@@ -386,7 +386,7 @@ func (o *Options) runServerMode() error {
 
 	// force a data refresh in the background. This is important to initially populate the db's materialized views
 	// if this is the first time starting sippy.
-	go server.RefreshData()
+	go server.RefreshData(true)
 
 	server.Serve()
 	return nil
