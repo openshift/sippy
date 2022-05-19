@@ -1,7 +1,7 @@
 import './TestAnalysis.css'
 import './TestTable.css'
-import { ASSOCIATED_BUGS, LINKED_BUGS } from '../bugzilla/BugzillaDialog'
 import {
+  Box,
   Button,
   Card,
   Container,
@@ -9,10 +9,13 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
+import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
   filterFor,
+  not,
   pathForJobRunsWithTestFailure,
   safeEncodeURIComponent,
+  SafeJSONParam,
   searchCI,
   withSort,
 } from '../helpers'
@@ -22,9 +25,9 @@ import { scale } from 'chroma-js'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import Alert from '@material-ui/lab/Alert'
-import BugTable from '../bugzilla/BugTable'
 import bugzillaURL from '../bugzilla/BugzillaUtils'
 import Divider from '@material-ui/core/Divider'
+import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
 import JobRunsTable from '../jobs/JobRunsTable'
 import PassRateIcon from '../components/PassRateIcon'
@@ -32,14 +35,30 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
+import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_day: {} })
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
-
   const [testName = props.test] = useQueryParam('test', StringParam)
+
+  const [
+    filterModel = {
+      items: [
+        filterFor('name', 'equals', testName),
+        not(filterFor('variants', 'contains', 'never-stable')),
+        not(filterFor('variants', 'contains', 'techpreview')),
+      ],
+    },
+    setFilterModel,
+  ] = useQueryParam('filters', SafeJSONParam)
+
+  const setFilterModelSafe = (m) => {
+    setFilterModel(m)
+    fetchData()
+  }
 
   const fetchData = () => {
     document.title = `Sippy > ${props.release} > Tests > ${testName}`
@@ -48,15 +67,11 @@ export function TestAnalysis(props) {
       return
     }
 
-    const filter = safeEncodeURIComponent(
-      JSON.stringify({
-        items: [filterFor('name', 'equals', testName)],
-      })
-    )
+    const filter = safeEncodeURIComponent(JSON.stringify(filterModel))
 
     Promise.all([
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests/analysis?release=${props.release}&test=${testName}`
+        `${process.env.REACT_APP_API_URL}/api/tests/analysis?release=${props.release}&test=${testName}&filter=${filter}`
       ),
       fetch(
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
@@ -355,14 +370,14 @@ export function TestAnalysis(props) {
         currentPage="Test Analysis"
       />
 
-      <Container size="xl">
+      <Container maxWidth="xl">
         <Typography variant="h3" style={{ textAlign: 'center' }}>
           Test Analysis
         </Typography>
         <Divider style={{ margin: 20 }} />
 
         <Grid container spacing={3} alignItems="stretch">
-          <Grid item md={4}>
+          <Grid item md={3}>
             <SummaryCard
               key="test-summary"
               threshold={TEST_THRESHOLDS}
@@ -383,49 +398,121 @@ export function TestAnalysis(props) {
               fail={test.current_failures}
             />
           </Grid>
-
-          <Grid item md={8}>
+          <Grid item md={3}>
             <Card
               className="test-failure-card"
               elevation={5}
               style={{ height: '100%' }}
             >
-              <Typography variant="h5">{testName}</Typography>
-              <Divider className="test-divider" />
-              <div align="center">
+              <Typography variant="h5">Failure count by variant</Typography>
+              <PolarArea data={variantPolar} />
+            </Card>
+          </Grid>
+          <Grid item md={6}>
+            <Card
+              className="test-failure-card"
+              elevation={5}
+              style={{ height: '100%' }}
+            >
+              <Typography variant="h5" style={{ paddingBottom: 20 }}>
+                {testName}
+              </Typography>
+
+              <Grid container justifyContent="space-between">
+                <GridToolbarFilterMenu
+                  linkOperatorDisabled={true}
+                  standalone={true}
+                  filterModel={filterModel || { items: [] }}
+                  setFilterModel={setFilterModelSafe}
+                  columns={[
+                    {
+                      field: 'name',
+                      headerName: 'Name',
+                      filterable: true,
+                      disabled: true,
+                      type: 'string',
+                    },
+                    {
+                      field: 'variants',
+                      headerName: 'Variants',
+                      filterable: true,
+                      autocomplete: 'variants',
+                      type: 'array',
+                    },
+                  ]}
+                />
+
                 <Button
                   className="test-button"
                   target="_blank"
+                  startIcon={<BugReport />}
                   variant="contained"
                   color="primary"
                   href={bugzillaURL(props.release, test)}
                 >
-                  Open a new bug
+                  Open bug
                 </Button>
 
                 <Button
                   className="test-button"
                   target="_blank"
+                  startIcon={<InfoIcon />}
                   variant="contained"
                   color="secondary"
                   href={searchCI(testName)}
                 >
-                  Search CI Logs
+                  Search Logs
                 </Button>
 
                 <Button
                   className="test-button"
                   variant="contained"
+                  startIcon={<DirectionsRun />}
                   component={Link}
                   to={withSort(
-                    pathForJobRunsWithTestFailure(props.release, testName),
+                    pathForJobRunsWithTestFailure(props.release, testName, {
+                      items: [
+                        ...filterModel.items.filter(
+                          (f) => f.columnField === 'variants'
+                        ),
+                      ],
+                    }),
                     'timestamp',
                     'desc'
                   )}
                 >
-                  See all job runs
+                  See job runs
                 </Button>
-              </div>
+              </Grid>
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Pass Rate By NURP+ Combination
+                <Tooltip
+                  title={
+                    <p>
+                      NURP+ is the combination of a job&apos;s <b>N</b>etwork
+                      (e.g. sdn, ovn), <b>U</b>pgrade, from <b>R</b>elease (e.g.
+                      upgrading from a minor or micro),
+                      <b>P</b>latform (aws, azure, etc) and extras (realtime,
+                      serial, etc). It shows the current 7 day period compared
+                      to the last 7 day period by default.
+                    </p>
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestTable
+                pageSize={5}
+                hideControls={true}
+                collapse={false}
+                release={props.release}
+                filterModel={filterModel}
+              />
             </Card>
           </Grid>
 
@@ -454,89 +541,6 @@ export function TestAnalysis(props) {
                 options={byVariantChartOptions}
                 height={80}
               />
-            </Card>
-          </Grid>
-
-          <Grid item md={4}>
-            <Card
-              className="test-failure-card"
-              elevation={5}
-              style={{ height: '100%' }}
-            >
-              <Typography variant="h5">Failure count by variant</Typography>
-              <PolarArea data={variantPolar} />
-            </Card>
-          </Grid>
-
-          <Grid item md={8}>
-            <Card
-              className="test-failure-card"
-              elevation={5}
-              style={{ height: '100%' }}
-            >
-              <Typography
-                component={Link}
-                to={withSort(
-                  pathForJobRunsWithTestFailure(props.release, testName),
-                  'timestamp',
-                  'desc'
-                )}
-                variant="h5"
-                style={{ marginBottom: 20 }}
-              >
-                Job runs with test failure
-              </Typography>
-
-              <JobRunsTable
-                hideControls={true}
-                release={props.release}
-                briefTable={true}
-                pageSize={5}
-                sortField="timestamp"
-                sort="desc"
-                filterModel={{
-                  items: [
-                    {
-                      id: 99,
-                      columnField: 'failed_test_names',
-                      operatorValue: 'contains',
-                      value: testName,
-                    },
-                  ],
-                }}
-              />
-            </Card>
-          </Grid>
-
-          <Grid item md={12}>
-            <Card
-              className="test-failure-card"
-              elevation={5}
-              style={{ height: '100%' }}
-            >
-              <Typography>
-                Linked bugs{' '}
-                <Tooltip title={LINKED_BUGS}>
-                  <InfoIcon />
-                </Tooltip>
-              </Typography>
-              <BugTable bugs={test.bugs} />
-            </Card>
-          </Grid>
-
-          <Grid item md={12}>
-            <Card
-              className="test-failure-card"
-              elevation={5}
-              style={{ height: '100%' }}
-            >
-              <Typography>
-                Associated bugs{' '}
-                <Tooltip title={ASSOCIATED_BUGS}>
-                  <InfoIcon />
-                </Tooltip>
-              </Typography>
-              <BugTable bugs={test.associated_bugs} />
             </Card>
           </Grid>
         </Grid>

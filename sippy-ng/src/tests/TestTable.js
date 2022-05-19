@@ -1,16 +1,21 @@
 import './TestTable.css'
+import { AcUnit, BugReport, Check, Error, Search } from '@material-ui/icons'
 import {
-  AcUnit,
-  BugReport,
-  DirectionsRun,
-  Error,
-  Search,
-} from '@material-ui/icons'
-import { Badge, Box, Button, Container, Grid, Tooltip } from '@material-ui/core'
+  Backdrop,
+  Badge,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  Grid,
+  Tooltip,
+} from '@material-ui/core'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
+  filterFor,
+  not,
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
@@ -18,7 +23,7 @@ import {
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
@@ -28,7 +33,9 @@ import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@material-ui/core/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { Fragment, useEffect, useRef } from 'react'
+
+const overallTestName = 'Overall'
 
 const bookmarks = [
   {
@@ -37,7 +44,7 @@ const bookmarks = [
   },
 ]
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme) => ({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
@@ -49,12 +56,17 @@ const useStyles = makeStyles({
       lineHeight: '20px',
       whiteSpace: 'normal',
     },
+    backdrop: {
+      zIndex: 999999,
+      color: '#fff',
+    },
   },
-})
+}))
 
 function TestTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
+  const location = useLocation().pathname
 
   const columns = [
     {
@@ -62,17 +74,38 @@ function TestTable(props) {
       autocomplete: 'tests',
       headerName: 'Name',
       flex: 3.5,
+      renderCell: (params) => {
+        if (params.value === overallTestName) {
+          return params.value
+        }
+        return (
+          <div className="test-name">
+            <Tooltip title={params.value}>
+              <Link
+                to={
+                  '/tests/' +
+                  props.release +
+                  '/analysis?test=' +
+                  params.row.name
+                }
+              >
+                {params.value}
+              </Link>
+            </Tooltip>
+          </div>
+        )
+      },
+    },
+    {
+      field: 'variants',
+      headerName: 'Variants',
+      flex: 1.5,
+      hide: props.collapse,
+      autocomplete: 'variants',
+      type: 'array',
       renderCell: (params) => (
         <div className="test-name">
-          <Tooltip title={params.value}>
-            <Link
-              to={
-                '/tests/' + props.release + '/analysis?test=' + params.row.name
-              }
-            >
-              {params.value}
-            </Link>
-          </Tooltip>
+          {params.value ? params.value.join(', ') : ''}
         </div>
       ),
     },
@@ -109,7 +142,7 @@ function TestTable(props) {
           >
             <Box>
               {Number(params.value).toFixed(1).toLocaleString()}%<br />
-              <small>({params.row.current_runs} runs)</small>
+              <small>({params.row.current_runs.toLocaleString()} runs)</small>
             </Box>
           </Tooltip>
         </div>
@@ -157,7 +190,7 @@ function TestTable(props) {
           >
             <Box>
               {Number(params.value).toFixed(1).toLocaleString()}%<br />
-              <small>({params.row.previous_runs} runs)</small>
+              <small>({params.row.previous_runs.toLocaleString()} runs)</small>
             </Box>
           </Tooltip>
         </div>
@@ -169,7 +202,23 @@ function TestTable(props) {
       flex: 1.5,
       hide: props.briefTable,
       filterable: false,
+      sortable: false,
       renderCell: (params) => {
+        if (params.row.name === overallTestName) {
+          return ''
+        }
+
+        let jobRunsFilter = {
+          items: [...filterModel.items],
+        }
+        if (params.row.variants && params.row.variants.length > 0) {
+          params.row.variants.forEach((f) => {
+            if (!jobRunsFilter.items.find((i) => i.value === f)) {
+              jobRunsFilter.items.push(filterFor('variants', 'contains', f))
+            }
+          })
+        }
+
         return (
           <Grid container justifyContent="space-between">
             <Tooltip title="Search CI Logs">
@@ -191,7 +240,7 @@ function TestTable(props) {
                   pathForJobRunsWithTestFailure(
                     props.release,
                     params.row.name,
-                    filterModel
+                    jobRunsFilter
                   ),
                   'timestamp',
                   'desc'
@@ -247,13 +296,6 @@ function TestTable(props) {
       },
     },
     // These are here just to allow filtering
-    {
-      field: 'variants',
-      autocomplete: 'variants',
-      headerName: 'Variants',
-      hide: true,
-      type: 'array',
-    },
     {
       field: 'current_runs',
       headerName: 'Current runs',
@@ -384,6 +426,8 @@ function TestTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
+    queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
+
     fetch(
       process.env.REACT_APP_API_URL +
         '/api/tests?release=' +
@@ -411,9 +455,16 @@ function TestTable(props) {
       })
   }
 
+  const prevLocation = useRef()
+
   useEffect(() => {
+    if (prevLocation.current !== location) {
+      setRows([])
+      setLoaded(false)
+    }
     fetchData()
-  }, [period, filterModel, sort, sortField])
+    prevLocation.current = location
+  }, [period, filterModel, sort, sortField, props.collapse])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -434,7 +485,15 @@ function TestTable(props) {
   }
 
   if (isLoaded === false) {
-    return <p>Loading...</p>
+    if (props.briefTable) {
+      return <p>Loading...</p>
+    } else {
+      return (
+        <Backdrop className={gridClasses.backdrop} open={true}>
+          <CircularProgress color="inherit" />
+        </Backdrop>
+      )
+    }
   }
 
   const createTestNameQuery = () => {
@@ -443,18 +502,6 @@ function TestTable(props) {
     tests = tests.map((test) => 'test=' + safeEncodeURIComponent(test.name))
     return tests.join('&')
   }
-
-  const detailsButton = (
-    <Button
-      component={Link}
-      to={'/tests/' + props.release + '/details?' + createTestNameQuery()}
-      variant="contained"
-      color="primary"
-      style={{ margin: 10 }}
-    >
-      Get Details
-    </Button>
-  )
 
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => item.value !== '')
@@ -486,7 +533,7 @@ function TestTable(props) {
 
   return (
     /* eslint-disable react/prop-types */
-    <Container size="xl">
+    <Fragment>
       <DataGrid
         className={gridClasses.root}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
@@ -498,7 +545,7 @@ function TestTable(props) {
         disableColumnMenu={true}
         pageSize={props.pageSize}
         rowsPerPageOptions={props.rowsPerPageOptions}
-        checkboxSelection={!props.hideControls}
+        checkboxSelection={false}
         filterMode="server"
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
@@ -510,11 +557,20 @@ function TestTable(props) {
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
         onSelectionModelChange={(rows) => setSelectedTests(rows)}
-        getRowClassName={(params) =>
-          classes[
-            'row-percent-' + Math.round(params.row.current_working_percentage)
-          ]
-        }
+        getRowClassName={(params) => {
+          let rowClass = []
+          if (params.row.name === overallTestName) {
+            rowClass.push(classes['overall'])
+          }
+
+          rowClass.push(
+            classes[
+              'row-percent-' + Math.round(params.row.current_working_percentage)
+            ]
+          )
+
+          return rowClass.join(' ')
+        }}
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
@@ -529,20 +585,18 @@ function TestTable(props) {
           },
         }}
       />
-
-      {props.hideControls ? '' : detailsButton}
-
       <BugzillaDialog
         release={props.release}
         item={testDetails}
         isOpen={isBugzillaDialogOpen}
         close={closeBugzillaDialog}
       />
-    </Container>
+    </Fragment>
   )
 }
 
 TestTable.defaultProps = {
+  collapse: true,
   limit: 0,
   hideControls: false,
   pageSize: 25,
@@ -558,6 +612,7 @@ TestTable.defaultProps = {
 
 TestTable.propTypes = {
   briefTable: PropTypes.bool,
+  collapse: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
   pageSize: PropTypes.number,

@@ -1,15 +1,16 @@
 package api
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/openshift/sippy/pkg/filter"
 )
 
 type counts struct {
@@ -103,32 +104,56 @@ func PrintTestAnalysisJSON(w http.ResponseWriter, req *http.Request, curr, prev 
 	RespondWithJSON(http.StatusOK, w, results)
 }
 
-func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, release, testName string) error {
+func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Request, release, testName string) error {
 	results := apiTestByDayresults{
 		ByDay: make(map[string]testResultDay),
 	}
 
+	filters, err := filter.ExtractFilters(req)
+	if err != nil {
+		return err
+	}
+
 	// We're using two views, one for by variant and one for by job, thus we will do
 	// two queries and combine the results into the struct we need.
-
 	var byVariantAnalysisRows []models.TestAnalysisRow
-	q1 := `
-SELECT test_id, 
-       test_name,
-       date,
-       release, 
-       variant, 
-       runs,
-       passes,
-       flakes,
-       failures
-FROM prow_test_analysis_by_variant_14d_matview
-WHERE release = @release AND test_name = @testname
-GROUP BY test_id, test_name, date, release, variant, runs, passes, flakes, failures
-`
-	r := dbc.DB.Raw(q1,
-		sql.Named("release", release),
-		sql.Named("testname", testName)).Scan(&byVariantAnalysisRows)
+	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
+		Where("release = ?", release).
+		Where("test_name = ?", testName).
+		Select(`test_id, 
+	       test_name,
+    	   date,
+	       release, 
+	       variant, 
+	       runs,
+	       passes,
+	       flakes,
+    	   failures`).
+		Group("test_id, test_name, date, release, variant, runs, passes, flakes, failures")
+
+	var allowedVariants, blockedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					blockedVariants = append(blockedVariants, f.Value)
+				} else {
+					allowedVariants = append(allowedVariants, f.Value)
+				}
+			}
+		}
+
+		if len(blockedVariants) > 0 {
+			vq = vq.Where("variant NOT IN ?", blockedVariants)
+		}
+
+		if len(allowedVariants) > 0 {
+			vq = vq.Where("variant IN ?", allowedVariants)
+		}
+
+	}
+
+	r := vq.Scan(&byVariantAnalysisRows)
 	if r.Error != nil {
 		log.WithError(r.Error).Error("error querying test analysis by variant")
 		return r.Error
@@ -136,23 +161,31 @@ GROUP BY test_id, test_name, date, release, variant, runs, passes, flakes, failu
 
 	// Reset analysis rows and now we query from the by job view
 	byJobAnalysisRows := []models.TestAnalysisRow{}
-	q2 := `
-SELECT test_id, 
-       test_name,
-       date,
-       release, 
-       job_name, 
-       runs,
-       passes,
-       flakes,
-       failures
-FROM prow_test_analysis_by_job_14d_matview
-WHERE release = @release AND test_name = @testname
-GROUP BY test_id, test_name, date, release, job_name, runs, passes, flakes, failures
-`
-	r = dbc.DB.Raw(q2,
-		sql.Named("release", release),
-		sql.Named("testname", testName)).Scan(&byJobAnalysisRows)
+	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
+		Select(`test_id, 
+			test_name,
+			date,
+			prow_jobs.release,
+			job_name,
+			runs,
+			passes,
+			flakes,
+			failures,
+			ARRAY_AGG(variants) as variants`).
+		Joins("INNER JOIN prow_jobs on prow_jobs.name = job_name").
+		Where("prow_jobs.release = ?", release).
+		Where("test_name = ?", testName).
+		Group("test_id, test_name, date, prow_jobs.release, job_name, runs, passes, flakes, failures")
+
+	for _, bv := range blockedVariants {
+		jq = jq.Where("? != ANY(variants)", bv)
+	}
+
+	for _, av := range allowedVariants {
+		jq = jq.Where("? = ANY(variants)", av)
+	}
+
+	r = jq.Scan(&byJobAnalysisRows)
 	if r.Error != nil {
 		log.WithError(r.Error).Error("error querying test analysis by job")
 		return r.Error

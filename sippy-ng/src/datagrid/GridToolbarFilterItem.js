@@ -48,11 +48,13 @@ export default function GridToolbarFilterItem(props) {
   let columnType = 'string'
   let autocomplete = ''
   let release = ''
+  let disabled = false
   props.columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
       autocomplete = col.autocomplete || ''
       release = col.release || ''
+      disabled = col.disabled || false
     }
   })
 
@@ -79,6 +81,7 @@ export default function GridToolbarFilterItem(props) {
           <Fragment>
             <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
               <DateTimePicker
+                disabled={disabled}
                 showTodayButton
                 disableFuture
                 label="Value"
@@ -104,34 +107,31 @@ export default function GridToolbarFilterItem(props) {
       default:
         if (autocomplete !== '') {
           return (
-            <Fragment>
-              <GridToolbarAutocomplete
-                error={valueError}
-                field={autocomplete}
-                id="value"
-                release={release}
-                label="Value"
-                value={props.filterModel.value}
-                onChange={(value) => {
-                  if (value !== '')
-                    props.setFilterModel({
-                      columnField: props.filterModel.columnField,
-                      not: props.filterModel.not,
-                      operatorValue: props.filterModel.operatorValue,
-                      value: value,
-                    })
-                }}
-              />
-              <FormHelperText error={valueError}>Required</FormHelperText>
-            </Fragment>
+            <GridToolbarAutocomplete
+              error={valueError}
+              disabled={disabled}
+              field={autocomplete}
+              id={`value-${props.id}`}
+              label="Value"
+              value={props.filterModel.value}
+              onChange={(value) =>
+                props.setFilterModel({
+                  columnField: props.filterModel.columnField,
+                  not: props.filterModel.not,
+                  operatorValue: props.filterModel.operatorValue,
+                  value: value,
+                })
+              }
+            />
           )
         } else {
           return (
             <Fragment>
               <TextField
+                disabled={disabled}
                 inputProps={{ 'data-testid': `value-${props.id}` }}
-                error={valueError}
-                id="value"
+                error={operatorValueError}
+                id={`value-${props.id}`}
                 label="Value"
                 onChange={(e) =>
                   props.setFilterModel({
@@ -156,10 +156,15 @@ export default function GridToolbarFilterItem(props) {
 
   return (
     <Grid container>
-      <Button startIcon={<Close />} onClick={props.destroy} />
+      {disabled ? (
+        <Button disabled />
+      ) : (
+        <Button startIcon={<Close />} onClick={props.destroy} />
+      )}
       <FormControl>
         <InputLabel id={`columnFieldLabel-${props.id}`}>Field</InputLabel>
         <Select
+          disabled={disabled}
           inputProps={{ 'data-testid': `columnField-${props.id}` }}
           error={columnFieldError}
           value={props.filterModel.columnField}
@@ -173,11 +178,14 @@ export default function GridToolbarFilterItem(props) {
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
             )
-            .map((col) => (
-              <MenuItem key={col.field} value={col.field}>
-                {col.headerName ? col.headerName : col.field}
-              </MenuItem>
-            ))}
+            .map((col) =>
+              col.disabled &&
+              props.filterModel.columnField !== col.field ? undefined : (
+                <MenuItem key={col.field} value={col.field}>
+                  {col.headerName ? col.headerName : col.field}
+                </MenuItem>
+              )
+            )}
         </Select>
         <FormHelperText error={columnFieldError}>Required</FormHelperText>
       </FormControl>
@@ -186,6 +194,7 @@ export default function GridToolbarFilterItem(props) {
           Not
         </InputLabel>
         <Checkbox
+          disabled={disabled}
           inputProps={{ 'data-testid': `not-${props.id}` }}
           style={{ marginTop: 10 }}
           color={'primary'}
@@ -204,6 +213,7 @@ export default function GridToolbarFilterItem(props) {
       <FormControl>
         <InputLabel id={`operatorValueLabel-${props.id}`}>Operator</InputLabel>
         <Select
+          disabled={disabled}
           inputProps={{ 'data-testid': `operatorValue-${props.id}` }}
           error={operatorValueError}
           onChange={(e) =>
@@ -251,6 +261,7 @@ GridToolbarFilterItem.propTypes = {
       type: PropTypes.string,
       autocomplete: PropTypes.string,
       release: PropTypes.string,
+      disabled: PropTypes.bool,
     }).isRequired
   ),
 }

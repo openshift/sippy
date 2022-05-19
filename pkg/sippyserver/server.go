@@ -541,7 +541,7 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		err := api.PrintTestAnalysisJSONFromDB(s.db, w, release, testName)
+		err := api.PrintTestAnalysisJSONFromDB(s.db, w, req, release, testName)
 		if err != nil {
 			log.Errorf("error querying test analysis from db: %v", err)
 		}

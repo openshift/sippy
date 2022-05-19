@@ -111,7 +111,6 @@ linters-settings:
       - name: error-return
       - name: error-strings
       - name: errorf
-      - name: flag-parameter
       - name: get-return
       - name: identical-branches
       - name: if-return
