@@ -15,6 +15,19 @@ export const SafeJSONParam = {
   },
 }
 
+export const SafeStringParam = {
+  encode: (s) => {
+    return safeEncodeURIComponent(s)
+  },
+  decode: (s) => {
+    try {
+      return decodeURIComponent(s)
+    } catch (e) {
+      // return undefined
+    }
+  },
+}
+
 // safeEncodeURIComponent wraps the library function, and additionally encodes
 // square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
 // others mishandle them.

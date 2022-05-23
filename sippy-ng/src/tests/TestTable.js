@@ -86,7 +86,7 @@ function TestTable(props) {
                   '/tests/' +
                   props.release +
                   '/analysis?test=' +
-                  params.row.name
+                  safeEncodeURIComponent(params.row.name)
                 }
               >
                 {params.value}

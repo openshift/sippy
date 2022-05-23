@@ -1,7 +1,7 @@
 import './TestAnalysis.css'
 import './TestTable.css'
+import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
-  Box,
   Button,
   Card,
   Container,
@@ -9,27 +9,26 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
   filterFor,
   not,
   pathForJobRunsWithTestFailure,
   safeEncodeURIComponent,
   SafeJSONParam,
+  SafeStringParam,
   searchCI,
   withSort,
 } from '../helpers'
 import { Line, PolarArea } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
+import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import bugzillaURL from '../bugzilla/BugzillaUtils'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
-import JobRunsTable from '../jobs/JobRunsTable'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -42,7 +41,7 @@ export function TestAnalysis(props) {
   const [analysis, setAnalysis] = React.useState({ by_day: {} })
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
-  const [testName = props.test] = useQueryParam('test', StringParam)
+  const [testName = props.test] = useQueryParam('test', SafeStringParam)
 
   const [
     filterModel = {
