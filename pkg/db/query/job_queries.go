@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
-	log "github.com/sirupsen/logrus"
 )
 
 func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, start, boundary, end time.Time) ([]apitype.Job, error) {
@@ -45,7 +46,7 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 }
 
 func VariantReports(dbc *db.DB, release string, start, boundary, end time.Time) ([]apitype.Variant, error) {
-	var variantResults []apitype.Variant
+	variantResults := make([]apitype.Variant, 0)
 	q := dbc.DB.Raw(`
 WITH results AS (
         select unnest(prow_jobs.variants) as variant,
