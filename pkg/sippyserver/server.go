@@ -230,11 +230,11 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
-			var count *int
+			var count int
 			if res := s.db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", pmv)).Scan(&count); res.Error != nil {
 				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else {
-				if *count > 0 {
+				if count > 0 {
 					tmpLog.Info("skipping matview refresh as it appears to be populated")
 					continue
 				}
