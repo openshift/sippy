@@ -235,7 +235,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	}
 
 	for _, sum := range sums {
-		results.ByPeriod[sum.Period.Format(formatter)] = analysisResult{
+		results.ByPeriod[sum.Period.UTC().Format(formatter)] = analysisResult{
 			TotalRuns: sum.TotalRuns,
 			ResultCount: map[v1sippyprocessing.JobOverallResult]int{
 				v1sippyprocessing.JobSucceeded:             sum.Success,
