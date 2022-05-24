@@ -459,7 +459,7 @@ func configureSippyServer(jobDetails []testgridv1.JobDetails, timestamp time.Tim
 	)
 
 	// Refresh data and generate reports.
-	sippyServer.RefreshData()
+	sippyServer.RefreshData(true)
 
 	return sippyServer
 }
