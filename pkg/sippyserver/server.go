@@ -269,9 +269,6 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
 
-	// refresh metrics once before we update matviews, we'll do it again after as well
-	s.refreshMetrics()
-
 	if !s.dbOnlyMode {
 		s.bugCache.Clear()
 
