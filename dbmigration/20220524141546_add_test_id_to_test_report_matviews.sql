@@ -55,6 +55,7 @@ FROM (((public.prow_job_run_tests
     JOIN public.tests ON ((tests.id = prow_job_run_tests.test_id)))
     JOIN public.prow_job_runs ON ((prow_job_runs.id = prow_job_run_tests.prow_job_run_id)))
          JOIN public.prow_jobs ON ((prow_job_runs.prow_job_id = prow_jobs.id)))
+WHERE NOT 'aggregated' = ANY(prow_jobs.variants)
 GROUP BY tests.id, tests.name, prow_jobs.variants, prow_jobs.release
 WITH NO DATA;
 
@@ -107,6 +108,7 @@ FROM (((public.prow_job_run_tests
     JOIN public.tests ON ((tests.id = prow_job_run_tests.test_id)))
     JOIN public.prow_job_runs ON ((prow_job_runs.id = prow_job_run_tests.prow_job_run_id)))
          JOIN public.prow_jobs ON ((prow_job_runs.prow_job_id = prow_jobs.id)))
+WHERE NOT 'aggregated' = ANY(prow_jobs.variants)
 GROUP BY tests.id, tests.name, prow_jobs.variants, prow_jobs.release
 WITH NO DATA;
 
@@ -165,6 +167,7 @@ FROM (((public.prow_job_run_tests
     JOIN public.tests ON ((tests.id = prow_job_run_tests.test_id)))
     JOIN public.prow_job_runs ON ((prow_job_runs.id = prow_job_run_tests.prow_job_run_id)))
          JOIN public.prow_jobs ON ((prow_job_runs.prow_job_id = prow_jobs.id)))
+WHERE NOT 'aggregated' = ANY(prow_jobs.variants)
 GROUP BY tests.name, prow_jobs.variants, prow_jobs.release
 WITH NO DATA;
 
@@ -216,6 +219,7 @@ FROM (((public.prow_job_run_tests
     JOIN public.tests ON ((tests.id = prow_job_run_tests.test_id)))
     JOIN public.prow_job_runs ON ((prow_job_runs.id = prow_job_run_tests.prow_job_run_id)))
          JOIN public.prow_jobs ON ((prow_job_runs.prow_job_id = prow_jobs.id)))
+WHERE NOT 'aggregated' = ANY(prow_jobs.variants)
 GROUP BY tests.name, prow_jobs.variants, prow_jobs.release
 WITH NO DATA;
 
