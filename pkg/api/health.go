@@ -45,16 +45,46 @@ type health struct {
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
 	indicators := make(map[string]indicator)
 
+	infraTestName := testgridanalysisapi.InfrastructureTestName
+	installTestName := testgridanalysisapi.InstallTestName
+	if testreportconversion.UseNewInstallTest(release) {
+		infraTestName = testgridanalysisapi.NewInfrastructureTestName
+		installTestName = testgridanalysisapi.NewInstallTestName
+	}
 	// Infrastructure
-	infraIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InfrastructureTestName)
+	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
 	}
 	indicators["infrastructure"] = infraIndicator
 
+	// Install Configuration
+	installConfigIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallConfigTestName)
+	if err != nil {
+		log.WithError(err).Error("error querying test report")
+		return
+	}
+	indicators["installConfig"] = installConfigIndicator
+
+	// Bootstrap
+	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallBootstrapTestName)
+	if err != nil {
+		log.WithError(err).Error("error querying test report")
+		return
+	}
+	indicators["bootstrap"] = bootstrapIndicator
+
+	// Install Other
+	installOtherIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallOtherTestName)
+	if err != nil {
+		log.WithError(err).Error("error querying test report")
+		return
+	}
+	indicators["installOther"] = installOtherIndicator
+
 	// Install
-	installIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallTestName)
+	installIndicator, err := getIndicatorForTest(dbc, release, installTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
