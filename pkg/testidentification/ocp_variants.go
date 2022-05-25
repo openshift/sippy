@@ -11,14 +11,15 @@ import (
 
 var (
 	// variant regexes
-	alibabaRegex  = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex    = regexp.MustCompile(`(?i)-arm64`)
-	assistedRegex = regexp.MustCompile(`(?i)-assisted`)
-	awsRegex      = regexp.MustCompile(`(?i)-aws`)
-	azureRegex    = regexp.MustCompile(`(?i)-azure`)
-	compactRegex  = regexp.MustCompile(`(?i)-compact`)
-	fipsRegex     = regexp.MustCompile(`(?i)-fips`)
-	metalRegex    = regexp.MustCompile(`(?i)-metal`)
+	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
+	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
+	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
+	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
+	awsRegex        = regexp.MustCompile(`(?i)-aws`)
+	azureRegex      = regexp.MustCompile(`(?i)-azure`)
+	compactRegex    = regexp.MustCompile(`(?i)-compact`)
+	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
+	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
@@ -267,6 +268,13 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")
 		return variants
+	}
+	// If a job is an aggregation, it should only be bucketed in
+	// `aggregated`. Pushing it into other variants causes unwanted
+	// hysteresis for test and job pass rates. The jobs that compose
+	// an aggregated job are already in Sippy.
+	if aggregatedRegex.MatchString(jobName) {
+		return []string{"aggregated"}
 	}
 
 	// Platforms
