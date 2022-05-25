@@ -384,9 +384,17 @@ func (o *Options) runServerMode() error {
 		o.DBOnlyMode,
 	)
 
+	// Initial metrics refresh to get the endpoint scrapable ASAP and prevent prom gaps, before
+	// we start the lengthy mat view refreshes.
+	if o.DBOnlyMode {
+		if err := server.RefreshMetricsDB(); err != nil {
+			log.WithError(err).Error("error refreshing metrics")
+		}
+	}
+
 	// force a data refresh in the background. This is important to initially populate the db's materialized views
 	// if this is the first time starting sippy.
-	go server.RefreshData()
+	go server.RefreshData(true)
 
 	server.Serve()
 	return nil

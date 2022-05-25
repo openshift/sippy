@@ -115,7 +115,7 @@ type StandardReport struct {
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
-	s.RefreshData()
+	s.RefreshData(false)
 
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
@@ -213,7 +213,10 @@ func (s *Server) RefreshMetricsDB() error {
 // refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
 // for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
 // main postgresql tables.
-func (s *Server) refreshMaterializedViews() {
+//
+// refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
+// the views appear to be empty.
+func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	log.Info("refreshing materialized views")
 
 	if s.db == nil {
@@ -223,18 +226,45 @@ func (s *Server) refreshMaterializedViews() {
 
 	for _, pmv := range db.PostgresMatViews {
 		start := time.Now()
+		tmpLog := log.WithField("matview", pmv)
+
+		// If requested, we only refresh the materialized view if it has no rows
+		if refreshMatviewOnlyIfEmpty {
+			var count int
+			if res := s.db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", pmv)).Scan(&count); res.Error != nil {
+				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
+			} else if count > 0 {
+				tmpLog.Info("skipping matview refresh as it appears to be populated")
+				continue
+			}
+		}
+
+		// Try to refresh concurrently, if we get an error that likely means the view has never been
+		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
+		// refresh which locks reads.
+		tmpLog.Info("refreshing materialized view")
 		if res := s.db.DB.Exec(
-			fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv)); res.Error != nil {
-			log.Errorf("error refreshing materialized view %s: %v", pmv, res.Error)
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", pmv)); res.Error != nil {
+			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
+
+			if res := s.db.DB.Exec(
+				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv)); res.Error != nil {
+				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
+			} else {
+				elapsed := time.Since(start)
+				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
+				matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
+			}
+
 		} else {
 			elapsed := time.Since(start)
-			log.WithFields(log.Fields{"elapsed": elapsed, "matview": pmv}).Info("refreshed materialized view")
+			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
 			matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 }
 
-func (s *Server) RefreshData() {
+func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
 
 	if !s.dbOnlyMode {
@@ -245,7 +275,7 @@ func (s *Server) RefreshData() {
 				dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
 		}
 	} else {
-		s.refreshMaterializedViews()
+		s.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
 	}
 
 	// TODO: skip if not enabled or data does not exist.
@@ -268,6 +298,7 @@ func (s *Server) RefreshData() {
 			log.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
 		}
 	}
+
 	s.refreshMetrics()
 
 	log.Infof("Refresh complete")
