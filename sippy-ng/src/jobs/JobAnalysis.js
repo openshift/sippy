@@ -94,13 +94,26 @@ export function JobAnalysis(props) {
       .then(([analysis]) => {
         setAnalysis(analysis)
 
+        // allTests maps each test name to a struct containing the test name again, and the total number of
+        // failures in the past 7 days. This value is used to sort on and determine the most relevant tests
+        // to preselect in the graph.
         let allTests = new Map()
+        let twoWeeksAgo = new Date(+new Date() - 1000 * 60 * 60 * 24 * 7)
         Object.keys(analysis.by_period).map((key) =>
           Object.keys(analysis.by_period[key].test_count).forEach((test) => {
             const count = allTests.get(test) || { name: test, value: 0 }
+
+            // We are most interested in the test failures for the last 7 days. We'll graph the whole timeframe we
+            // have, but here we skip counts of failures before 7 days ago.
+            let keyDate = new Date(Date.parse(key))
+            let countChange = 0
+            if (keyDate >= twoWeeksAgo) {
+              countChange = analysis.by_period[key].test_count[test]
+            }
+
             allTests.set(test, {
               name: test,
-              value: count.value + analysis.by_period[key].test_count[test],
+              value: count.value + countChange,
             })
           })
         )
@@ -242,7 +255,7 @@ export function JobAnalysis(props) {
     {
       field: 'value',
       type: 'number',
-      headerName: 'Failure count',
+      headerName: 'Failure count (7 day)',
       flex: 1,
     },
   ]
@@ -435,8 +448,8 @@ export function JobAnalysis(props) {
                 <Tooltip
                   title={
                     'By default, this plots the top 5 tests with the most failures in ' +
-                    'the set of jobs selected. Click the button below to change the list of tests to plot. Only ' +
-                    'tests with at least one failure during the reporting period are available.'
+                    'the set of jobs selected over the past 7 days. Click the button below to change the list of ' +
+                    'tests to plot. Only tests with at least one failure during the reporting period are available.'
                   }
                 >
                   <InfoIcon />
