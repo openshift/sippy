@@ -28,7 +28,7 @@ import (
 	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 // Mode defines the server mode of operation, OpenShift or upstream Kubernetes.
