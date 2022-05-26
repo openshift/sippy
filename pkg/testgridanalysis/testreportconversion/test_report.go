@@ -10,7 +10,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 )
 
 func PrepareTestReport(

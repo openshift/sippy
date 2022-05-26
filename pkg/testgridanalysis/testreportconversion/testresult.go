@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/testidentification"
+
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"

@@ -4,7 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+
 	"github.com/openshift/sippy/pkg/util/sets"
 
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
