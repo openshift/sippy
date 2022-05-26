@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
-	log "github.com/sirupsen/logrus"
+	"github.com/openshift/sippy/pkg/testidentification"
 
 	"github.com/openshift/sippy/pkg/html/generichtml"
 

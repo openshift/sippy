@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -22,11 +23,13 @@ import (
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
+	"github.com/openshift/sippy/pkg/prowloader"
+	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
+	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -46,25 +49,29 @@ type Options struct {
 	OpenshiftArchitectures []string
 	Dashboards             []string
 	// TODO perhaps this could drive the synthetic tests too
-	Variants                []string
-	StartDay                int
-	endDay                  int
-	NumDays                 int
-	TestSuccessThreshold    float64
-	JobFilter               string
-	MinTestRuns             int
-	Output                  string
-	FailureClusterThreshold int
-	FetchData               string
-	FetchPerfScaleData      bool
-	InitDatabase            bool
-	LoadDatabase            bool
-	ListenAddr              string
-	Server                  bool
-	DBOnlyMode              bool
-	SkipBugLookup           bool
-	DSN                     string
-	LogLevel                string
+	Variants                           []string
+	StartDay                           int
+	endDay                             int
+	NumDays                            int
+	TestSuccessThreshold               float64
+	JobFilter                          string
+	MinTestRuns                        int
+	Output                             string
+	FailureClusterThreshold            int
+	FetchData                          string
+	FetchPerfScaleData                 bool
+	InitDatabase                       bool
+	LoadDatabase                       bool
+	ListenAddr                         string
+	Server                             bool
+	DBOnlyMode                         bool
+	SkipBugLookup                      bool
+	DSN                                string
+	LogLevel                           string
+	LoadTestgrid                       bool
+	LoadProw                           bool
+	GoogleServiceAccountCredentialFile string
+	GoogleOAuthClientCredentialFile    string
 }
 
 func main() {
@@ -116,6 +123,12 @@ func main() {
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
+	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
+	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
+
+	// google cloud creds
+	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", opt.GoogleServiceAccountCredentialFile, "location of a credential file described by https://cloud.google.com/docs/authentication/production")
+	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
@@ -291,26 +304,28 @@ func (o *Options) Run() error {
 			DisplayDataConfig:           o.toDisplayDataConfig(),
 		}
 
-		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
-		for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-			err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
-			if err != nil {
-				log.WithError(err).Error("error loading database")
-				return err
+		if o.LoadTestgrid {
+			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
+			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
+				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
+				if err != nil {
+					log.WithError(err).Error("error loading database")
+					return err
+				}
 			}
-		}
 
-		if loadBugs {
-			testCache, err := sippyserver.LoadTestCache(dbc)
-			if err != nil {
-				return err
-			}
-			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
-			if err != nil {
-				return err
-			}
-			if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
-				return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+			if loadBugs {
+				testCache, err := sippyserver.LoadTestCache(dbc)
+				if err != nil {
+					return err
+				}
+				prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
+				if err != nil {
+					return err
+				}
+				if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
+					return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+				}
 			}
 		}
 
@@ -325,6 +340,28 @@ func (o *Options) Run() error {
 
 			if err := releasesync.Import(dbc, releaseStreams, o.OpenshiftArchitectures); err != nil {
 				panic(err)
+			}
+		}
+
+		if o.LoadProw {
+			gcsClient, err := gcs.NewGCSClient(context.TODO(),
+				o.GoogleServiceAccountCredentialFile,
+				o.GoogleOAuthClientCredentialFile,
+			)
+			if err != nil {
+				return err
+			}
+
+			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager())
+
+			// For now let's just get master/main presubmits in the openshift org
+			allowedJobRegex := []*regexp.Regexp{
+				regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`),
+			}
+
+			err = prowLoader.LoadProwJobsToDB(allowedJobRegex)
+			if err != nil {
+				return err
 			}
 		}
 
