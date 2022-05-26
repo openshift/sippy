@@ -17,7 +17,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
-	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 )
 
