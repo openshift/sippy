@@ -8,9 +8,8 @@ import (
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/db"
-
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -264,7 +263,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	jobRunsFilter.ToSQL(jr, apitype.JobRun{}).Scan(&tr)
 
 	for _, t := range tr {
-		results.ByPeriod[t.Period.Format(formatter)].TestFailureCount[t.TestName] = t.Count
+		dateKey := t.Period.UTC().Format(formatter)
+		results.ByPeriod[dateKey].TestFailureCount[t.TestName] = t.Count
 	}
 
 	RespondWithJSON(http.StatusOK, w, results)
