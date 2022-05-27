@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -852,7 +853,7 @@ func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Req
 
 func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
-	serveMux := http.NewServeMux()
+	serveMux := mux.NewRouter()
 
 	// Handle serving React version of frontend with support for browser router, i.e. anything not found
 	// goes to index.html
