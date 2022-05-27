@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -515,8 +517,29 @@ func (s *Server) jsonReleasePullRequestsReport(w http.ResponseWriter, req *http.
 	api.PrintPullRequestsReport(w, req, s.db)
 }
 
-func (s *Server) jsonReleaseJobRunsReport(w http.ResponseWriter, req *http.Request) {
-	api.PrintReleaseJobRunsReport(w, req, s.db)
+func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request) {
+	// Release appears optional here, perhaps when listing all job runs for all payloads
+	// in the release, but this may not make sense. Likely this API call should be
+	// moved away from filters and possible support for multiple payloads at once to
+	// URL encoded single payload.
+	release := req.URL.Query().Get("release")
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	if err != nil {
+		log.WithError(err).Error("error")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "Error building job run report:" + err.Error()})
+		return
+	}
+
+	payloadJobRuns, err := api.ListPayloadJobRuns(s.db, filterOpts, release)
+	if err != nil {
+		log.WithError(err).Error("error listing payload job runs")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+	}
+	api.RespondWithJSON(http.StatusOK, w, payloadJobRuns)
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
@@ -936,7 +959,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
-		serveMux.HandleFunc("/api/releases/job_runs", s.jsonReleaseJobRunsReport)
+		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
 	}
 
 	var handler http.Handler = serveMux

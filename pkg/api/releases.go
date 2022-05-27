@@ -43,31 +43,21 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	RespondWithJSON(http.StatusOK, w, prs)
 }
 
-func PrintReleaseJobRunsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
-	if dbClient == nil || dbClient.DB == nil {
-		RespondWithJSON(http.StatusOK, w, []struct{}{})
+func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, release string) ([]models.ReleaseJobRun, error) {
+	jobRuns := make([]models.ReleaseJobRun, 0)
+	var err error
+	q := dbClient.DB
+	if release != "" {
+		q = q.Where("release = ?", release)
 	}
-
-	q := releaseFilter(req, dbClient.DB)
 	q = q.Joins(`JOIN release_tags on release_tags.id = release_job_runs.release_tag_id`)
-	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "Error building job run report:" + err.Error()})
-		return
-	}
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
-		return
+		return jobRuns, err
 	}
 
-	jobRuns := make([]models.ReleaseJobRun, 0)
-	q.Find(&jobRuns)
-	RespondWithJSON(http.StatusOK, w, jobRuns)
+	res := q.Find(&jobRuns)
+	return jobRuns, res.Error
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
