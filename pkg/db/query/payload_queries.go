@@ -30,6 +30,29 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string) ([]mode
 	return results, nil
 }
 
+// GetLastPayloadTags returns the most recent payload tags, sorted by date in descending order.
+func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, limit int) ([]models.ReleaseTag, error) {
+	results := []models.ReleaseTag{}
+
+	result := db.Where("release = ?", release).
+		Where("stream = ?", stream).
+		Where("architecture = ?", arch).
+		Limit(limit).Order("release_time DESC").Find(&results)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return results, nil
+}
+
+func ListPayloadBlockingFailedJobRuns(db *gorm.DB, payloadTagIDs []uint) ([]models.ReleaseJobRun, error) {
+	jobRuns := []models.ReleaseJobRun{}
+	q := db.Preload("ReleaseTag").Where("release_tag_id in ?", payloadTagIDs).
+		Where("kind = 'Blocking'").Where("state = 'Failed'")
+	res := q.Find(&jobRuns)
+	return jobRuns, res.Error
+}
+
 // GetLastPayloadStatus returns the most recent payload status for an architecture/stream combination,
 // as well as the count of how many of the last payloads had that status (e.g., when this returns
 // Rejected, 5 -- it means the last 5 payloads were rejected.

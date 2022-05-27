@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +53,7 @@ func (r *releaseSyncOptions) Run() error {
 				releaseDetails := r.fetchReleaseDetails(tags.Architecture, release, tag)
 				releaseTag := releaseDetailsToDB(tags.Architecture, tag, releaseDetails)
 				// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
-				if releaseTag == nil || (releaseTag.Phase != "Accepted" && releaseTag.Phase != "Rejected") {
+				if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
 					continue
 				}
 

@@ -542,6 +542,45 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, payloadJobRuns)
 }
 
+// TODO: may want to merge with jsonReleaseHealthReport, but this is a fair bit slower, and release health is run
+// on startup many times over when we calculate the metrics.
+// if we could boil the go logic for building this down into a query, it could become another matview and then
+// could be run quickly, assembling into the health api much more easily
+func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request) {
+
+	urlParams := mux.Vars(req)
+	release := urlParams["release"]
+	stream := urlParams["stream"]
+	arch := urlParams["arch"]
+	log.WithFields(log.Fields{
+		"release": release,
+		"stream":  stream,
+		"arch":    arch,
+	}).Info("analyzing payload stream")
+
+	// Is the most recent payload a success, if so no analysis needed.
+
+	/*
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+		if err != nil {
+			log.WithError(err).Error("error")
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "Error building payload analysis report: " + err.Error()})
+			return
+		}
+	*/
+
+	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch)
+	if err != nil {
+		log.WithError(err).Error("error")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "Error analyzing payload: " + err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	if release == "" {
@@ -554,7 +593,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 
 	results, err := api.ReleaseHealthReports(s.db, release)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, err)
+		log.WithError(err).Error("error generating release health report")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
 			"message": err.Error(),
@@ -960,6 +999,9 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
+
+		serveMux.HandleFunc("/api/releases/{release}/{stream}/{arch}/analysis",
+			s.jsonGetPayloadAnalysis)
 	}
 
 	var handler http.Handler = serveMux

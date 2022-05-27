@@ -357,9 +357,45 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
+const (
+	PayloadAccepted = "Accepted"
+	PayloadRejected = "Rejected"
+)
+
 // ReleaseHealthReport contains information about the latest health of release payloads for a specific tag.
 type ReleaseHealthReport struct {
 	models.ReleaseTag
 	LastPhase string `json:"last_phase"`
 	Count     int    `json:"count"`
+}
+
+// PayloadStreamAnalysis contains a report on the health of a given payload stream.
+type PayloadStreamAnalysis struct {
+	TestFailures     []*TestFailureAnalysis `json:"test_failures"`
+	PayloadsAnalyzed int                    `json:"payloads_analyzed"`
+	LastPhase        string                 `json:"last_phase"`
+	// LastPhaseCount is the number of payloads in LastPhase. (i.e. there have been X concurrent Accepted/Rejected payloads)
+	LastPhaseCount int `json:"last_phase_count"`
+	// ConsecutiveFailedPayloads contains the list of most recent consecutive failed payloads, assuming LastPhase
+	// is Rejected. If it is Accepted, this slice will be empty.
+	ConsecutiveFailedPayloads []string `json:"consecutive_failed_payloads"`
+}
+
+// TestFailureAnalysis represents a test and the number of times it failed over some number of jobs.
+type TestFailureAnalysis struct {
+	Name string `json:"name"`
+	ID   uint   `json:"id"`
+	// FailureCount is the total number of times this test failed in the payloads queried.
+	FailureCount int `json:"failure_count"`
+	// FailedJobRuns is the total list of job runs the test failed in of the payloads analyzed.
+	FailedJobRuns []string `json:"failed_job_runs"`
+	// FailedPayloads is the total list of payload tags the test failed in of those analyzed.
+	FailedPayloads []string `json:"failed_payloads"`
+	// ConsecutiveFailedPayloadsCount is the number of Rejected payloads in a row this test has failed in. If latest
+	// payload in the stream is Accepted, this will be 0.
+	ConsecutiveFailedPayloadsCount int `json:"consecutive_failed_payloads_count"`
+
+	// PossibleBlocker is true if sippy thinks this test may be blocking a payload stream. (i.e. latest several payloads
+	// were Rejected, and this test failed in a substantial number of them)
+	PossibleBlocker bool `json:"possible_blocker"`
 }
