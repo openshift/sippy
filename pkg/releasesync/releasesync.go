@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -172,7 +173,7 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 
 func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	rows := make([]models.ReleaseJobRun, 0)
-	results := make(map[string]models.ReleaseJobRun)
+	results := make(map[uint]models.ReleaseJobRun)
 
 	if jobs, ok := details.Results["blockingJobs"]; ok {
 		for platform, jobResult := range jobs {
@@ -222,11 +223,16 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	return rows
 }
 
-func idFromURL(prowURL string) string {
+func idFromURL(prowURL string) uint {
 	parsed, err := url.Parse(prowURL)
 	if err != nil {
-		return ""
+		return 0
 	}
 
-	return path.Base(parsed.Path)
+	base := path.Base(parsed.Path)
+	prowID, err := strconv.ParseUint(base, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uint(prowID)
 }

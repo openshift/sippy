@@ -103,7 +103,7 @@ type ReleaseJobRun struct {
 
 	ReleaseTag     ReleaseTag `json:"release_tag" gorm:"foreignKey:release_tag_id"`
 	ReleaseTagID   string     `gorm:"column:release_tag_id"`
-	Name           string     `json:"name" gorm:"column:name"`
+	Name           uint       `json:"name" gorm:"column:name"`
 	JobName        string     `json:"job_name" gorm:"column:job_name"`
 	Kind           string     `json:"kind" gorm:"column:kind"`
 	State          string     `json:"state" gorm:"column:state"`
