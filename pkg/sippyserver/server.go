@@ -38,8 +38,9 @@ import (
 type Mode string
 
 const (
-	ModeOpenShift  Mode = "openshift"
-	ModeKubernetes Mode = "kube"
+	ModeOpenShift                Mode = "openshift"
+	ModeKubernetes               Mode = "kube"
+	defaultLastPayloadsToAnalyze      = 10
 )
 
 func NewServer(
@@ -558,7 +559,22 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch)
+	numPayloads := defaultLastPayloadsToAnalyze
+	numPayloadsQuery := req.URL.Query().Get("numPayloads")
+	if numPayloadsQuery != "" {
+		var err error
+		numPayloads, err = strconv.Atoi(numPayloadsQuery)
+		if err != nil {
+			log.WithError(err).Error("error")
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "unable to parse numPayloads query param",
+			})
+			return
+		}
+	}
+
+	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch, numPayloads)
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,

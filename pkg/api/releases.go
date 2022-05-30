@@ -21,10 +21,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-const (
-	analyzeLastPayloads = 10
-)
-
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	if dbClient == nil || dbClient.DB == nil {
 		RespondWithJSON(http.StatusOK, w, []struct{}{})
@@ -70,7 +66,7 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 
 // GetPayloadAnalysis loads the most recent payloads  for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string) (*apitype.PayloadStreamAnalysis, error) {
+func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int) (*apitype.PayloadStreamAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -84,7 +80,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string) (*apitype.Payl
 
 	// Get latest payload tags for analysis:
 	lastPayloads, err := query.GetLastPayloadTags(dbc.DB, release,
-		stream, arch, analyzeLastPayloads)
+		stream, arch, numPayloadsToAnalyze)
 	if err != nil {
 		return nil, err
 	}
