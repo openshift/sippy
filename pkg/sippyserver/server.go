@@ -558,18 +558,6 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	// Is the most recent payload a success, if so no analysis needed.
-
-	/*
-		filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
-		if err != nil {
-			log.WithError(err).Error("error")
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "Error building payload analysis report: " + err.Error()})
-			return
-		}
-	*/
-
 	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch)
 	if err != nil {
 		log.WithError(err).Error("error")
