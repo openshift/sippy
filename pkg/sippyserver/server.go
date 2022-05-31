@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/pkg/errors"
@@ -919,7 +918,7 @@ func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Req
 
 func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
-	serveMux := mux.NewRouter()
+	serveMux := http.NewServeMux()
 
 	// Handle serving React version of frontend with support for browser router, i.e. anything not found
 	// goes to index.html

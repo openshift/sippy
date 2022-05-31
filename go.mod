@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/anaskhan96/soup v1.2.5
 	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20210823155509-845c8efe54a7
-	github.com/gorilla/mux v1.8.0
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.2
 	github.com/montanaflynn/stats v0.6.6
@@ -26,5 +25,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/postgres v1.2.1
 	gorm.io/gorm v1.22.2
-	k8s.io/klog v1.0.0
 )
