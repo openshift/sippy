@@ -127,7 +127,7 @@ func main() {
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
 
 	// google cloud creds
-	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", opt.GoogleServiceAccountCredentialFile, "location of a credential file described by https://cloud.google.com/docs/authentication/production")
+	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
 
 	if err := cmd.Execute(); err != nil {
@@ -218,8 +218,8 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("cannot specify --load-database with --fetch-data")
 	}
 
-	if o.LoadDatabase && o.LocalData == "" {
-		return fmt.Errorf("must specify --local-data with --load-database")
+	if o.LoadDatabase && o.LocalData == "" && o.LoadTestgrid {
+		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
 	if o.LoadDatabase && o.DSN == "" {
@@ -298,13 +298,14 @@ func (o *Options) Run() error {
 		}
 
 		start := time.Now()
-		trgc := sippyserver.TestReportGeneratorConfig{
-			TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-			RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-			DisplayDataConfig:           o.toDisplayDataConfig(),
-		}
-
 		if o.LoadTestgrid {
+
+			trgc := sippyserver.TestReportGeneratorConfig{
+				TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
+				RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
+				DisplayDataConfig:           o.toDisplayDataConfig(),
+			}
+
 			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
