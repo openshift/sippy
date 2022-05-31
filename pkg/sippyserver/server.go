@@ -547,11 +547,31 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 // if we could boil the go logic for building this down into a query, it could become another matview and then
 // could be run quickly, assembling into the health api much more easily
 func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request) {
+	release := req.URL.Query().Get("release")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"release" is required`),
+		})
+		return
+	}
+	stream := req.URL.Query().Get("stream")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"stream" is required`),
+		})
+		return
+	}
+	arch := req.URL.Query().Get("arch")
+	if release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"arch" is required`),
+		})
+		return
+	}
 
-	urlParams := mux.Vars(req)
-	release := urlParams["release"]
-	stream := urlParams["stream"]
-	arch := urlParams["arch"]
 	log.WithFields(log.Fields{
 		"release": release,
 		"stream":  stream,
@@ -1003,7 +1023,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
 
-		serveMux.HandleFunc("/api/releases/{release}/{stream}/{arch}/analysis",
+		serveMux.HandleFunc("/api/releases/stream_analysis",
 			s.jsonGetPayloadAnalysis)
 	}
 
