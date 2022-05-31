@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
@@ -75,7 +76,8 @@ func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.Test
 
 		currTestSuite := &junit.TestSuite{}
 		if testSuiteErr := xml.Unmarshal(junitContent, currTestSuite); testSuiteErr != nil {
-			return nil, fmt.Errorf("error parsing content for jobrun %w in file %s path %s", testSuitesErr, junitFile, j.gcsProwJobPath)
+			log.WithError(testSuiteErr).Warningf("error parsing content for jobrun in file %s path %s", junitFile, j.gcsProwJobPath)
+			continue
 		}
 		testSuites.Suites = append(testSuites.Suites, currTestSuite)
 	}
