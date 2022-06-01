@@ -125,6 +125,7 @@ var (
 	openshiftTestsRegex         = regexp.MustCompile(`(?:^openshift-tests\.|\[Suite:openshift|\[k8s\.io\]|\[sig-|\[bz-)`)
 	UpgradeFastTest             = "[sig-cluster-lifecycle] cluster upgrade should be fast"
 	APIsRemainAvailTest         = "APIs remain available"
+	ignoreTestRegex             = regexp.MustCompile(`^$|Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 )
 
 func IsCuratedTest(bugzillaRelease, testName string) bool {
@@ -254,4 +255,9 @@ func IsInstallRelatedTest(testName string) bool {
 	}
 
 	return false
+}
+
+// IsIgnoredTest is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
+func IsIgnoredTest(testName string) bool {
+	return ignoreTestRegex.MatchString(testName)
 }

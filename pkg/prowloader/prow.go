@@ -263,6 +263,11 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTe
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	for _, tc := range suite.TestCases {
+		// Skip ignored tests
+		if testidentification.IsIgnoredTest(tc.Name) {
+			continue
+		}
+
 		status := 12
 		if tc.FailureOutput == nil {
 			status = 1
