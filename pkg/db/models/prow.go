@@ -96,7 +96,7 @@ type TestAnalysisRow struct {
 }
 
 // NOTE: Unfortunate duplication of bugzilla types here, comments in the api/bugs/v1 package indicate we don't own
-// the definitijon of a bugzilla bug and need to match their API. When syncing to DB we'll convert to these customized
+// the definition of a bugzilla bug and need to match their API. When syncing to DB we'll convert to these customized
 // db types.
 
 // Bug represents a Bugzilla bug.

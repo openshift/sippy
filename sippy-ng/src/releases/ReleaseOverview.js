@@ -3,7 +3,7 @@ import { BOOKMARKS } from '../constants'
 import { Button, Card, Container, Tooltip, Typography } from '@material-ui/core'
 import { CapabilitiesContext } from '../App'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { hourFilter, JobStackedChart } from '../jobs/JobStackedChart'
+import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import { Link } from 'react-router-dom'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import {
@@ -185,20 +185,16 @@ export default function ReleaseOverview(props) {
                       props.release
                     }/analysis?filters=${safeEncodeURIComponent(
                       JSON.stringify({
-                        items: [...withoutUnstable(), ...hourFilter(dayOffset)],
+                        items: [...withoutUnstable(), ...dayFilter(14)],
                         linkOperator: 'and',
                       })
-                    )}&period=hour}`}
+                    )}&period=day}`}
                   >
-                    {dayOffset === 1
-                      ? 'Last 24 hours'
-                      : `${dayOffset * 24} hours ago`}
+                    Last 14 days
                   </Link>
                   <Tooltip
                     title={
-                      'This chart shows a 24 hour period of  job runs, excluding never-stable and tech preview. ' +
-                      'The most recent hour will generally look more successful until all jobs finish running because it will be heavily biased towards the shortest jobs(more likely to have already completed) which also tend to be the most reliable. ' +
-                      'Use the arrow buttons below to move back and forward a day. All times are UTC.'
+                      'This chart shows a 14 day period of job runs, excluding never-stable and tech preview. '
                     }
                   >
                     <InfoIcon />
@@ -206,23 +202,12 @@ export default function ReleaseOverview(props) {
                 </Typography>
                 <JobStackedChart
                   release={props.release}
-                  period="hour"
+                  period="day"
                   filter={{
-                    items: [...withoutUnstable(), ...hourFilter(dayOffset)],
+                    items: [...withoutUnstable(), ...dayFilter(14)],
                     linkOperator: 'and',
                   }}
                 />
-                <div align="center">
-                  <Button
-                    onClick={() => setDayOffset(dayOffset + 1)}
-                    startIcon={<ArrowBack />}
-                  />
-                  <Button
-                    style={dayOffset > 1 ? {} : { display: 'none' }}
-                    onClick={() => dayOffset > 1 && setDayOffset(dayOffset - 1)}
-                    startIcon={<ArrowForward />}
-                  />
-                </div>
               </Card>
             </Grid>
 

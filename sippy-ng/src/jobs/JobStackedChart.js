@@ -7,6 +7,16 @@ import './JobAnalysis.css'
 import { pathForJobsInPercentile, safeEncodeURIComponent } from '../helpers'
 import { useHistory } from 'react-router-dom'
 
+export const dayFilter = (days) => {
+  return [
+    {
+      columnField: 'timestamp',
+      operatorValue: '>',
+      value: `${Date.now() - 1000 * 60 * 60 * 24 * days}`,
+    },
+  ]
+}
+
 export const hourFilter = (dayOffset) => {
   return [
     {
@@ -121,7 +131,7 @@ export function JobStackedChart(props) {
     history.push(
       `/jobs/${
         props.release
-      }/analysis?period=hour&filters=${safeEncodeURIComponent(
+      }/analysis?period=day&filters=${safeEncodeURIComponent(
         JSON.stringify(props.filter)
       )}`
     )
