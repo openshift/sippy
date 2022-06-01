@@ -104,7 +104,7 @@ func main() {
 	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.OpenshiftArchitectures, "arch", opt.OpenshiftArchitectures, "Which architectures to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
-	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "{ocp,kube,none}")
+	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "Variant manager to use: {ocp,kube,none}. Only useful when using --load-database.")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
 	// TODO convert this to be an offset so that we can go backwards from "data we have"
 	flags.IntVar(&opt.endDay, "end-day", opt.endDay, "Look at job runs going back to this day")

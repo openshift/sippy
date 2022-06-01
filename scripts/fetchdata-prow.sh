@@ -5,7 +5,7 @@ echo "Doing initial sleep before fetching prow data"
 while [ true ]; do
   echo "Fetching new prow data"
   echo "Loading database"
-  /bin/sippy --load-database --load-prow=true --load-testgrid=false --skip-bug-lookup
+  /bin/sippy --load-database --load-prow=true --load-testgrid=false --skip-bug-lookup --variant=ocp
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
