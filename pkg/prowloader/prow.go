@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
@@ -268,9 +269,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			continue
 		}
 
-		status := 12
+		status := v1.TestStatusFailure
 		if tc.FailureOutput == nil {
-			status = 1
+			status = v1.TestStatusSuccess
 		}
 
 		key := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
@@ -278,11 +279,13 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			testCases[key] = &models.ProwJobRunTest{
 				TestID:   pl.findOrAddTest(tc.Name),
 				SuiteID:  pl.findOrAddSuite(suite.Name),
-				Status:   status,
+				Status:   int(status),
 				Duration: tc.Duration,
 			}
-		} else {
-			existing.Status += status
+		} else if (existing.Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
+			(existing.Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
+			// One pass among failures makes this a flake
+			existing.Status = int(v1.TestStatusFlake)
 		}
 	}
 
