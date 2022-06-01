@@ -136,12 +136,6 @@ func acceptAllTests(testResult sippyprocessingv1.TestResult) bool {
 	return true
 }
 
-func FilterSuccessfulTestResults(successThreshold float64 /*indicates an upper bound on how successful a test can be before it is excluded*/) TestResultFilterFunc {
-	return func(testResult sippyprocessingv1.TestResult) bool {
-		return testResult.PassPercentage <= successThreshold
-	}
-}
-
 func FilterLowValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 	if testResult.Name == "Overall" || testResult.Name == "Pod" || testidentification.IsInstallStepEquivalent(testResult.Name) {
 		return false
@@ -165,17 +159,6 @@ func IsHighValueTestsByName(testResult sippyprocessingv1.TestResult) bool {
 func FilterTooFewTestRuns(minRuns int /*indicates how many runs are required for a test is included in overall percentages*/) TestResultFilterFunc {
 	return func(testResult sippyprocessingv1.TestResult) bool {
 		return testResult.Successes+testResult.Failures >= minRuns
-	}
-}
-
-func FilterTestResultsByFilters(fns ...TestResultFilterFunc) TestResultFilterFunc {
-	return func(testResult sippyprocessingv1.TestResult) bool {
-		for _, fn := range fns {
-			if !fn(testResult) {
-				return false
-			}
-		}
-		return true
 	}
 }
 

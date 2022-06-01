@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -26,8 +25,6 @@ import (
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/html/generichtml"
-	"github.com/openshift/sippy/pkg/html/releasehtml"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -55,7 +52,6 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
-	dbOnlyMOde bool,
 ) *Server {
 
 	server := &Server{
@@ -71,11 +67,9 @@ func NewServer(
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
 			DisplayDataConfig:           displayDataOptions,
 		},
-		currTestReports: map[string]StandardReport{},
-		sippyNG:         sippyNG,
-		static:          static,
-		db:              dbClient,
-		dbOnlyMode:      dbOnlyMOde,
+		sippyNG: sippyNG,
+		static:  static,
+		db:      dbClient,
 	}
 
 	return server
@@ -90,16 +84,11 @@ type Server struct {
 	variantManager             testidentification.VariantManager
 	bugCache                   buganalysis.BugCache
 	testReportGeneratorConfig  TestReportGeneratorConfig
-	currTestReports            map[string]StandardReport
 	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
 	sippyNG                    fs.FS
 	static                     fs.FS
 	httpServer                 *http.Server
 	db                         *db.DB
-	// dbOnlyMode disabled all use of the in-memory analysis from testgrid files on disk, instead relying on
-	// the postgresql database. Swaps each API endpoint for an equivalent.
-	// This flag is temporary and will eventually become the default.
-	dbOnlyMode bool
 }
 
 type TestGridDashboardCoordinates struct {
@@ -143,22 +132,9 @@ var (
 )
 
 func (s *Server) refreshMetrics() {
-
-	if s.dbOnlyMode {
-		err := s.RefreshMetricsDB()
-		if err != nil {
-			log.WithError(err).Error("error refreshing metrics")
-		}
-	} else {
-
-		// Report metrics for all jobs:
-		for r, stdReport := range s.currTestReports {
-			for _, testReport := range []sippyprocessingv1.TestReport{stdReport.CurrentTwoDayReport, stdReport.CurrentPeriodReport, stdReport.PreviousWeekReport} {
-				for _, jobResult := range testReport.ByJob {
-					jobPassRatioMetric.WithLabelValues(r, string(testReport.ReportType), jobResult.Name).Set(jobResult.PassPercentage / 100)
-				}
-			}
-		}
+	err := s.RefreshMetricsDB()
+	if err != nil {
+		log.WithError(err).Error("error refreshing metrics")
 	}
 }
 
@@ -270,16 +246,7 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
 
-	if !s.dbOnlyMode {
-		s.bugCache.Clear()
-
-		for _, dashboard := range s.dashboardCoordinates {
-			s.currTestReports[dashboard.ReportName] = s.testReportGeneratorConfig.PrepareStandardTestReports(
-				dashboard, s.syntheticTestManager, s.variantManager, s.bugCache)
-		}
-	} else {
-		s.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
-	}
+	s.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
 
 	// TODO: skip if not enabled or data does not exist.
 	// Load the scale job reports from disk:
@@ -307,51 +274,6 @@ func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refresh complete")
 }
 
-func (s *Server) printHTMLReport(w http.ResponseWriter, req *http.Request) {
-	reportName := req.URL.Query().Get("release")
-	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
-	if !found {
-		releasehtml.WriteLandingPage(w, s.reportNames())
-		return
-	}
-	if _, hasReport := s.currTestReports[dashboard.ReportName]; !hasReport {
-		releasehtml.WriteLandingPage(w, s.reportNames())
-		return
-	}
-
-	releasehtml.PrintHTMLReport(w, req,
-		s.currTestReports[dashboard.ReportName].CurrentPeriodReport,
-		s.currTestReports[dashboard.ReportName].CurrentTwoDayReport,
-		s.currTestReports[dashboard.ReportName].PreviousWeekReport,
-		s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays,
-		15,
-		s.reportNames())
-}
-
-func (s *Server) printCanaryReport(w http.ResponseWriter, req *http.Request) {
-	reportName := req.URL.Query().Get("release")
-	dashboard, found := s.reportNameToDashboardCoordinates(reportName)
-	if !found {
-		releasehtml.WriteLandingPage(w, s.reportNames())
-		return
-	}
-	if _, hasReport := s.currTestReports[dashboard.ReportName]; !hasReport {
-		releasehtml.WriteLandingPage(w, s.reportNames())
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
-	testReport := s.currTestReports[dashboard.ReportName].CurrentPeriodReport
-	for i := len(testReport.ByTest) - 1; i >= 0; i-- {
-		t := testReport.ByTest[i]
-		if t.TestResultAcrossAllJobs.PassPercentage > 99 {
-			fmt.Fprintf(w, "%q:struct{}{},\n", t.TestName)
-		} else {
-			break
-		}
-	}
-}
-
 func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
 	for _, dashboard := range s.dashboardCoordinates {
 		if dashboard.ReportName == reportName {
@@ -367,135 +289,6 @@ func (s *Server) reportNames() []string {
 		ret = append(ret, dashboard.ReportName)
 	}
 	return ret
-}
-
-func (s *Server) printJSONReport(w http.ResponseWriter, req *http.Request) {
-	reportName := req.URL.Query().Get("release")
-
-	releaseReports := make(map[string][]sippyprocessingv1.TestReport)
-	if reportName == "all" {
-		// return all available json reports
-		// store [currentReport, prevReport] in a slice
-		for _, reportName := range s.reportNames() {
-			if _, ok := s.currTestReports[reportName]; ok {
-				releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
-			} else {
-				log.Errorf("unable to load test report for reportName version %s", reportName)
-				continue
-			}
-		}
-		api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
-		return
-	} else if _, ok := s.currTestReports[reportName]; !ok {
-		api.RespondWithJSON(404, w, map[string]interface{}{
-			"code":   "404",
-			"detail": fmt.Sprintf("No valid reportName specified, valid reportNames are: %v", s.reportNames()),
-		})
-
-		return
-	}
-	releaseReports[reportName] = []sippyprocessingv1.TestReport{s.currTestReports[reportName].CurrentPeriodReport, s.currTestReports[reportName].PreviousWeekReport}
-	api.PrintJSONReport(w, req, releaseReports, s.testReportGeneratorConfig.RawJobResultsAnalysisConfig.NumDays, 15)
-}
-
-func (s *Server) detailed(w http.ResponseWriter, req *http.Request) {
-	reportName := "4.8"
-
-	// Default to the first release given on the command-line
-	reportNames := s.reportNames()
-	if len(reportNames) > 0 {
-		reportName = reportNames[0]
-	}
-
-	t := req.URL.Query().Get("release")
-	if t != "" {
-		reportName = t
-	}
-
-	startDay := 0
-	t = req.URL.Query().Get("startDay")
-	if t != "" {
-		startDay, _ = strconv.Atoi(t)
-	}
-
-	numDays := 7
-	t = req.URL.Query().Get("endDay")
-	if t != "" {
-		endDay, _ := strconv.Atoi(t)
-		numDays = endDay - startDay
-	}
-
-	testSuccessThreshold := 98.0
-	t = req.URL.Query().Get("testSuccessThreshold")
-	if t != "" {
-		testSuccessThreshold, _ = strconv.ParseFloat(t, 64)
-	}
-
-	jobFilterString := ""
-	t = req.URL.Query().Get("jobFilter")
-	if t != "" {
-		jobFilterString = t
-	}
-
-	minTestRuns := 10
-	t = req.URL.Query().Get("minTestRuns")
-	if t != "" {
-		minTestRuns, _ = strconv.Atoi(t)
-	}
-
-	failureClusterThreshold := 10
-	t = req.URL.Query().Get("failureClusterThreshold")
-	if t != "" {
-		failureClusterThreshold, _ = strconv.Atoi(t)
-	}
-
-	jobTestCount := 10
-	t = req.URL.Query().Get("jobTestCount")
-	if t != "" {
-		jobTestCount, _ = strconv.Atoi(t)
-	}
-
-	var jobFilter *regexp.Regexp
-	if len(jobFilterString) > 0 {
-		var err error
-		jobFilter, err = regexp.Compile(jobFilterString)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid jobFilter: %s", err), http.StatusBadRequest)
-			return
-		}
-	}
-
-	testReportConfig := TestReportGeneratorConfig{
-		TestGridLoadingConfig: TestGridLoadingConfig{
-			LocalData: s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
-			Loader:    s.testReportGeneratorConfig.TestGridLoadingConfig.Loader,
-			JobFilter: jobFilter,
-		},
-		RawJobResultsAnalysisConfig: RawJobResultsAnalysisConfig{
-			StartDay: startDay,
-			NumDays:  numDays,
-		},
-		DisplayDataConfig: DisplayDataConfig{
-			MinTestRuns:             minTestRuns,
-			TestSuccessThreshold:    testSuccessThreshold,
-			FailureClusterThreshold: failureClusterThreshold,
-		},
-	}
-
-	dashboardCoordinates, found := s.reportNameToDashboardCoordinates(reportName)
-	if !found {
-		releasehtml.WriteLandingPage(w, reportNames)
-		return
-	}
-	// TODO: db connection handed off as nil here
-	testReports := testReportConfig.PrepareStandardTestReports(dashboardCoordinates, s.syntheticTestManager, s.variantManager, s.bugCache)
-
-	releasehtml.PrintHTMLReport(w, req,
-		testReports.CurrentPeriodReport,
-		testReports.CurrentTwoDayReport,
-		testReports.PreviousWeekReport,
-		numDays, jobTestCount, reportNames)
-
 }
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
@@ -627,26 +420,6 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-func (s *Server) jsonJobAnalysisReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		curr := s.currTestReports[release].CurrentPeriodReport
-		prev := s.currTestReports[release].PreviousWeekReport
-
-		api.PrintJobAnalysisJSON(w, req, curr, prev)
-	}
-}
-
-func (s *Server) jsonTestAnalysisReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		curr := s.currTestReports[release].CurrentPeriodReport
-		prev := s.currTestReports[release].PreviousWeekReport
-
-		api.PrintTestAnalysisJSON(w, req, curr, prev)
-	}
-}
-
 func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.Request) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
@@ -665,30 +438,10 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
-func (s *Server) jsonTestsReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		currTests := s.currTestReports[release].CurrentPeriodReport.ByTest
-		twoDay := s.currTestReports[release].CurrentTwoDayReport.ByTest
-		prevTests := s.currTestReports[release].PreviousWeekReport.ByTest
-
-		api.PrintTestsJSON(release, w, req, currTests, twoDay, prevTests)
-	}
-}
-
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintTestsJSONFromDB(release, w, req, s.db)
-	}
-}
-
-func (s *Server) jsonTestDetailsReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		currTests := s.currTestReports[release].CurrentPeriodReport
-		prevTests := s.currTestReports[release].PreviousWeekReport
-		api.PrintTestsDetailsJSON(w, req, currTests, prevTests)
 	}
 }
 
@@ -699,27 +452,6 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	if release != "" {
 		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
-}
-
-func (s *Server) jsonReleasesReport(w http.ResponseWriter, req *http.Request) {
-	type jsonResponse struct {
-		Releases    []string  `json:"releases"`
-		LastUpdated time.Time `json:"last_updated"`
-	}
-
-	response := jsonResponse{}
-	if len(s.dashboardCoordinates) > 0 {
-		firstReport := s.dashboardCoordinates[0].ReportName
-		if report, ok := s.currTestReports[firstReport]; ok {
-			response.LastUpdated = report.CurrentPeriodReport.Timestamp
-		}
-	}
-
-	for _, release := range s.dashboardCoordinates {
-		response.Releases = append(response.Releases, release.ReportName)
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
@@ -762,16 +494,6 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
-func (s *Server) jsonHealthReport(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		curr := s.currTestReports[release].CurrentPeriodReport
-		twoDay := s.currTestReports[release].CurrentTwoDayReport
-		prev := s.currTestReports[release].PreviousWeekReport
-		api.PrintOverallReleaseHealth(w, curr, twoDay, prev)
-	}
-}
-
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -779,60 +501,8 @@ func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request
 	}
 }
 
-func (s *Server) variantsReport(w http.ResponseWriter, req *http.Request) (*sippyprocessingv1.VariantResults, *sippyprocessingv1.VariantResults) {
-	release := req.URL.Query().Get("release")
-	variant := req.URL.Query().Get("variant")
-	reports := s.currTestReports
-
-	if variant == "" || release == "" {
-		generichtml.PrintStatusMessage(w, http.StatusBadRequest, "Please specify a variant and release.")
-		return nil, nil
-	}
-
-	if _, ok := reports[release]; !ok {
-		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Release %q not found.", release))
-		return nil, nil
-	}
-
-	var currentWeek *sippyprocessingv1.VariantResults
-	for i, report := range reports[release].CurrentPeriodReport.ByVariant {
-		if report.VariantName == variant {
-			currentWeek = &reports[release].CurrentPeriodReport.ByVariant[i]
-			break
-		}
-	}
-
-	var previousWeek *sippyprocessingv1.VariantResults
-	for i, report := range reports[release].PreviousWeekReport.ByVariant {
-		if report.VariantName == variant {
-			previousWeek = &reports[release].PreviousWeekReport.ByVariant[i]
-			break
-		}
-	}
-
-	if currentWeek == nil {
-		generichtml.PrintStatusMessage(w, http.StatusNotFound, fmt.Sprintf("Variant %q not found.", variant))
-		return nil, nil
-	}
-
-	return currentWeek, previousWeek
-}
-
-func (s *Server) htmlVariantsReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
-	variant := req.URL.Query().Get("variant")
-
-	current, previous := s.variantsReport(w, req)
-	if current == nil {
-		return
-	}
-	timestamp := s.currTestReports[release].CurrentPeriodReport.Timestamp
-	releasehtml.PrintVariantsReport(w, release, variant, current, previous, timestamp)
-}
-
 func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) string {
 	release := req.URL.Query().Get("release")
-	reports := s.currTestReports
 
 	if release == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -842,26 +512,7 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) stri
 		return release
 	}
 
-	if !s.dbOnlyMode {
-		if _, ok := reports[release]; !ok {
-			api.RespondWithJSON(http.StatusNotFound, w, map[string]interface{}{
-				"code":    "404",
-				"message": fmt.Sprintf("release %q not found", release),
-			})
-			return ""
-		}
-	}
-
 	return release
-}
-
-func (s *Server) jsonJobsDetailsReport(w http.ResponseWriter, req *http.Request) {
-	reports := s.currTestReports
-
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintJobDetailsReport(w, req, reports[release].CurrentPeriodReport.ByJob, reports[release].PreviousWeekReport.ByJob)
-	}
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -872,23 +523,6 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 		if err != nil {
 			log.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
 		}
-	}
-}
-
-func (s *Server) jsonJobRunsReport(w http.ResponseWriter, req *http.Request) {
-	reports := s.currTestReports
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintJobRunsReport(w, req, reports[release].CurrentPeriodReport, reports[release].PreviousWeekReport)
-	}
-}
-
-func (s *Server) jsonJobsReport(w http.ResponseWriter, req *http.Request) {
-	reports := s.currTestReports
-
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintJobsReport(w, req, reports[release].CurrentPeriodReport, reports[release].CurrentTwoDayReport, reports[release].PreviousWeekReport)
 	}
 }
 
@@ -916,7 +550,7 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsRunsReportFromDB(w, req, s.db, release)
+		api.PrintJobsRunsReportFromDB(w, req, s.db)
 	}
 }
 
@@ -967,52 +601,20 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", 301)
 	})
 
-	// Fork the endpoints if we're using postgresql db only mode vs the old in-memory.
-	// Temporary until we drop the old legacy mode.
-	if s.dbOnlyMode {
-		serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
-		serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
-		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
-		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
-		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
-		serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
-		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
-		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
-		serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
-		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
-		serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
-		serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
-		serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
-		serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
-	} else {
-		// Preserve old sippy at /legacy for now
-		serveMux.HandleFunc("/legacy", s.printHTMLReport)
-		serveMux.HandleFunc("/install", s.printInstallHTMLReport)
-		serveMux.HandleFunc("/upgrade", s.printUpgradeHTMLReport)
-		serveMux.HandleFunc("/operator-health", s.printOperatorHealthHTMLReport)
-		serveMux.HandleFunc("/testdetails", s.printTestDetailHTMLReport)
-		serveMux.HandleFunc("/detailed", s.detailed)
-		serveMux.HandleFunc("/canary", s.printCanaryReport)
-		serveMux.HandleFunc("/variants", s.htmlVariantsReport)
-		// Old API
-		serveMux.HandleFunc("/json", s.printJSONReport)
-
-		// New API's
-		serveMux.HandleFunc("/api/jobs", s.jsonJobsReport)
-		serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReport)
-		serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobAnalysisReport)
-		serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReport)
-
-		serveMux.HandleFunc("/api/tests", s.jsonTestsReport)
-		serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReport)
-		serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReport)
-
-		serveMux.HandleFunc("/api/releases", s.jsonReleasesReport)
-
-		serveMux.HandleFunc("/api/health", s.jsonHealthReport)
-		serveMux.HandleFunc("/api/install", s.jsonInstallReport)
-		serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReport)
-	}
+	serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
+	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
+	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
+	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
+	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
+	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
+	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
+	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
+	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 
 	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)

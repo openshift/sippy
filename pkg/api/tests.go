@@ -12,13 +12,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	v1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
-	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util"
 )
 
 const (
@@ -59,12 +56,8 @@ const (
 		(current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`
 )
 
-func PrintTestsDetailsJSON(w http.ResponseWriter, req *http.Request, current, previous v1sippyprocessing.TestReport) {
-	RespondWithJSON(http.StatusOK, w, installhtml.TestDetailTests(installhtml.JSON, current, previous, req.URL.Query()["test"]))
-}
-
 func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
-	responseStr, err := installhtml.TestDetailTestsFromDB(dbc, installhtml.JSON, release, testSubstrings)
+	responseStr, err := installhtml.TestDetailTestsFromDB(dbc, release, testSubstrings)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
 		return
@@ -103,95 +96,6 @@ func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
 	}
 
 	return tests[:limit]
-}
-
-// PrintTestsJSON renders the list of matching tests.
-func PrintTestsJSON(release string, w http.ResponseWriter, req *http.Request, currentPeriod, twoDayPeriod, previousPeriod []v1sippyprocessing.FailingTestResult) {
-	tests := testsAPIResult{}
-	var fil *filter.Filter
-
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		fil = &filter.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
-		}
-	}
-
-	// If requesting a two day report, we make the comparison between the last
-	// period (typically 7 days) and the last two days.
-	var current, previous []v1sippyprocessing.FailingTestResult
-	switch req.URL.Query().Get("period") {
-	case periodTwoDay:
-		current = twoDayPeriod
-		previous = currentPeriod
-	default:
-		current = currentPeriod
-		previous = previousPeriod
-	}
-
-	for idx, test := range current {
-		testPrev := util.FindFailedTestResult(test.TestName, previous)
-
-		row := apitype.Test{
-			ID:                    idx + 1,
-			Name:                  test.TestName,
-			CurrentSuccesses:      test.TestResultAcrossAllJobs.Successes,
-			CurrentFailures:       test.TestResultAcrossAllJobs.Failures,
-			CurrentFlakes:         test.TestResultAcrossAllJobs.Flakes,
-			CurrentPassPercentage: test.TestResultAcrossAllJobs.PassPercentage,
-			CurrentRuns:           test.TestResultAcrossAllJobs.Successes + test.TestResultAcrossAllJobs.Failures + test.TestResultAcrossAllJobs.Flakes,
-			Bugs:                  []v1.Bug{},
-			AssociatedBugs:        []v1.Bug{},
-		}
-
-		if testPrev != nil {
-			row.PreviousSuccesses = testPrev.TestResultAcrossAllJobs.Successes
-			row.PreviousFlakes = testPrev.TestResultAcrossAllJobs.Flakes
-			row.PreviousFailures = testPrev.TestResultAcrossAllJobs.Failures
-			row.PreviousPassPercentage = testPrev.TestResultAcrossAllJobs.PassPercentage
-			row.PreviousRuns = testPrev.TestResultAcrossAllJobs.Successes + testPrev.TestResultAcrossAllJobs.Failures + testPrev.TestResultAcrossAllJobs.Flakes
-			row.NetImprovement = row.CurrentPassPercentage - row.PreviousPassPercentage
-		}
-
-		if test.TestResultAcrossAllJobs.BugList != nil {
-			row.Bugs = test.TestResultAcrossAllJobs.BugList
-		}
-		if test.TestResultAcrossAllJobs.AssociatedBugList != nil {
-			row.AssociatedBugs = test.TestResultAcrossAllJobs.AssociatedBugList
-		}
-
-		if testidentification.IsCuratedTest(release, row.Name) {
-			row.Tags = append(row.Tags, "trt")
-		}
-
-		if testidentification.IsInstallRelatedTest(row.Name) {
-			row.Tags = append(row.Tags, "install")
-		}
-
-		if testidentification.IsUpgradeRelatedTest(row.Name) {
-			row.Tags = append(row.Tags, "upgrade")
-		}
-
-		if fil != nil {
-			include, err := fil.Filter(row)
-			if err != nil {
-				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
-				return
-			}
-
-			if !include {
-				continue
-			}
-		}
-
-		tests = append(tests, row)
-	}
-
-	RespondWithJSON(http.StatusOK, w, tests.
-		sort(req).
-		limit(req))
 }
 
 func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {

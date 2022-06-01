@@ -7,7 +7,6 @@ import (
 	"regexp"
 	gosort "sort"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -22,7 +21,6 @@ import (
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
-	"github.com/openshift/sippy/pkg/util"
 )
 
 type jobsAPIResult []apitype.Job
@@ -64,88 +62,6 @@ func (jobs jobsAPIResult) limit(req *http.Request) jobsAPIResult {
 func briefName(job string) string {
 	briefName := regexp.MustCompile("periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-")
 	return briefName.ReplaceAllString(job, "")
-}
-
-func jobResultToAPI(id int, current, previous *v1sippyprocessing.JobResult) apitype.Job {
-	job := apitype.Job{
-		ID:                             id,
-		Name:                           current.Name,
-		Variants:                       current.Variants,
-		BriefName:                      briefName(current.Name),
-		CurrentPassPercentage:          current.PassPercentage,
-		CurrentProjectedPassPercentage: current.PassPercentageWithoutInfrastructureFailures,
-		CurrentRuns:                    current.Failures + current.Successes,
-	}
-
-	if previous != nil {
-		job.PreviousPassPercentage = previous.PassPercentage
-		job.PreviousProjectedPassPercentage = previous.PassPercentageWithoutInfrastructureFailures
-		job.PreviousRuns = previous.Failures + previous.Successes
-		job.NetImprovement = current.PassPercentage - previous.PassPercentage
-	}
-
-	job.Bugs = current.BugList
-	job.AssociatedBugs = current.AssociatedBugList
-	job.TestGridURL = current.TestGridURL
-
-	return job
-}
-
-// PrintJobsReport renders a filtered summary of matching jobs.
-func PrintJobsReport(w http.ResponseWriter, req *http.Request, currReport, twoDayReport, prevReport v1sippyprocessing.TestReport) {
-
-	var fil *filter.Filter
-	currentPeriod := currReport.ByJob
-	twoDayPeriod := twoDayReport.ByJob
-	previousPeriod := prevReport.ByJob
-
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		fil = &filter.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
-		}
-	}
-
-	jobs := jobsAPIResult{}
-
-	// If requesting a two day report, we make the comparison between the last
-	// period (typically 7 days) and the last two days.
-	// Otherwise the default of last 7 days vs last 14 days.
-	var current, previous []v1sippyprocessing.JobResult
-	period := req.URL.Query().Get("period")
-	switch period {
-	case periodTwoDay:
-		current = twoDayPeriod
-		previous = currentPeriod
-	default:
-		current = currentPeriod
-		previous = previousPeriod
-	}
-
-	for idx, jobResult := range current {
-		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
-		job := jobResultToAPI(idx, &current[idx], prevResult)
-
-		if fil != nil {
-			include, err := fil.Filter(job)
-			if err != nil {
-				RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Filter error:" + err.Error()})
-				return
-			}
-
-			if !include {
-				continue
-			}
-		}
-
-		jobs = append(jobs, job)
-	}
-
-	RespondWithJSON(http.StatusOK, w, jobs.
-		sort(req).
-		limit(req))
 }
 
 // PrintVariantReportFromDB
@@ -340,45 +256,6 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 	}
 
 	return jobs
-}
-
-// PrintJobDetailsReport renders the detailed list of runs for matching jobs.
-func PrintJobDetailsReport(w http.ResponseWriter, req *http.Request, current, previous []v1sippyprocessing.JobResult) {
-	var min, max int
-	jobs := make([]jobDetail, 0)
-	jobName := req.URL.Query().Get("job")
-
-	for _, jobResult := range current {
-		if jobName != "" && !strings.Contains(jobResult.Name, jobName) {
-			continue
-		}
-
-		prevResult := util.FindJobResultForJobName(jobResult.Name, previous)
-		jobRuns := append(jobResult.AllRuns, prevResult.AllRuns...)
-
-		for _, result := range jobRuns {
-			if result.Timestamp < min || min == 0 {
-				min = result.Timestamp
-			}
-
-			if result.Timestamp > max || max == 0 {
-				max = result.Timestamp
-			}
-		}
-
-		jobDetail := jobDetail{
-			Name:    jobResult.Name,
-			Results: jobRuns,
-		}
-
-		jobs = append(jobs, jobDetail)
-	}
-
-	RespondWithJSON(http.StatusOK, w, jobDetailAPIResult{
-		Jobs:  jobs,
-		Start: min,
-		End:   max,
-	}.limit(req))
 }
 
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
