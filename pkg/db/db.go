@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 
-	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 type SchemaHashType string
@@ -72,6 +73,10 @@ func New(dsn string) (*DB, error) {
 	}
 
 	if err := db.AutoMigrate(&models.Bug{}); err != nil {
+		return nil, err
+	}
+
+	if err := db.AutoMigrate(&models.ProwPullRequest{}); err != nil {
 		return nil, err
 	}
 

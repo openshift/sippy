@@ -120,7 +120,10 @@ type Bug struct {
 	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
 }
 
-// ProwPullRequest represents a GitHub pull request.
+// ProwPullRequest represents a GitHub pull request, there can be multiple entries
+// for a pull request, if it was tested with different HEADs (SHA). This lets us
+// track jobs at a more granular level, allowing us differentiate between code pushes
+// and retests.
 type ProwPullRequest struct {
 	Model
 
@@ -131,9 +134,10 @@ type ProwPullRequest struct {
 
 	Number int    `json:"number"`
 	Author string `json:"author"`
-	SHA    string `json:"sha"`
 	Title  string `json:"title,omitempty"`
 
+	// SHA is the specific commit at HEAD.
+	SHA string `json:"sha" gorm:"index:pr_link_sha,unique"`
 	// Link links to the pull request itself.
-	Link string `json:"link,omitempty" gorm:"unique"`
+	Link string `json:"link,omitempty" gorm:"index:pr_link_sha,unique"`
 }

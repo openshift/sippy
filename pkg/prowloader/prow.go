@@ -199,7 +199,6 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 				URL:           pj.Status.URL,
 				Timestamp:     pj.Status.StartTime,
 				OverallResult: overallResult,
-				Tests:         tests,
 				PullRequests:  pulls,
 				TestFailures:  failures,
 				Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
@@ -230,23 +229,26 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 		}
 
 		pull := models.ProwPullRequest{}
-		pl.dbc.DB.Where("link = ?", pr.Link).Find(&pull)
-		if pull.ID == 0 {
+		log.Infof("%+v", pr)
+		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			pull.Org = refs.Org
 			pull.Repo = refs.Repo
-
 			pull.Link = pr.Link
 			pull.SHA = pr.SHA
 			pull.Author = pr.Author
 			pull.Title = pr.Title
 			pull.Number = pr.Number
-
 			res := pl.dbc.DB.Save(&pull)
 			if res.Error != nil {
-				log.WithError(res.Error).Warningf("could not save pull request %s", pr.Link)
+				log.WithError(res.Error).Warningf("could not save pull request %s (%s)", pr.Link, pr.SHA)
 				continue
 			}
+		} else if res.Error != nil {
+			log.WithError(res.Error).Errorf("unexpected error looking for pull request %s (%s)", pr.Link, pr.SHA)
+			continue
 		}
+
 		pulls = append(pulls, pull)
 	}
 
