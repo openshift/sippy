@@ -7,9 +7,11 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
@@ -51,7 +53,7 @@ func (r *releaseSyncOptions) Run() error {
 				releaseDetails := r.fetchReleaseDetails(tags.Architecture, release, tag)
 				releaseTag := releaseDetailsToDB(tags.Architecture, tag, releaseDetails)
 				// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
-				if releaseTag == nil || (releaseTag.Phase != "Accepted" && releaseTag.Phase != "Rejected") {
+				if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
 					continue
 				}
 
@@ -172,7 +174,7 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 
 func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	rows := make([]models.ReleaseJobRun, 0)
-	results := make(map[string]models.ReleaseJobRun)
+	results := make(map[uint]models.ReleaseJobRun)
 
 	if jobs, ok := details.Results["blockingJobs"]; ok {
 		for platform, jobResult := range jobs {
@@ -222,11 +224,16 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	return rows
 }
 
-func idFromURL(prowURL string) string {
+func idFromURL(prowURL string) uint {
 	parsed, err := url.Parse(prowURL)
 	if err != nil {
-		return ""
+		return 0
 	}
 
-	return path.Base(parsed.Path)
+	base := path.Base(parsed.Path)
+	prowID, err := strconv.ParseUint(base, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uint(prowID)
 }

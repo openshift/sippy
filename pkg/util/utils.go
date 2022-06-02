@@ -105,3 +105,12 @@ func IsActiveBug(bug bugsv1.Bug) bool {
 		return true
 	}
 }
+
+func StrSliceContains(strSlice []string, elem string) bool {
+	for _, s := range strSlice {
+		if s == elem {
+			return true
+		}
+	}
+	return false
+}
