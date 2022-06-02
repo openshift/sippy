@@ -120,7 +120,7 @@ func main() {
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
-	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "OBSOLETE, this is now the default. Will soon be removed.")
+	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
@@ -222,8 +222,12 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
-	if o.LoadDatabase && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with --load-database")
+	if (o.LoadDatabase || o.Server) && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
+	}
+
+	if !o.DBOnlyMode {
+		return fmt.Errorf("--db-only-mode cannot be set to false (deprecated flag soon to be removed, feature now mandatory)")
 	}
 
 	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
