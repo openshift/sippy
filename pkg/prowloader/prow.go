@@ -181,6 +181,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 			if err != nil {
 				return err
 			}
+			pulls := pl.findOrAddPullRequests(pj.Spec.Refs)
 
 			var duration time.Duration
 			if pj.Status.CompletionTime != nil {
@@ -198,6 +199,8 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 				URL:           pj.Status.URL,
 				Timestamp:     pj.Status.StartTime,
 				OverallResult: overallResult,
+				Tests:         tests,
+				PullRequests:  pulls,
 				TestFailures:  failures,
 				Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
 			}).Error
@@ -213,6 +216,41 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 	}
 
 	return nil
+}
+
+func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRequest {
+	if refs == nil {
+		return nil
+	}
+	pulls := make([]models.ProwPullRequest, 0)
+
+	for _, pr := range refs.Pulls {
+		if pr.Link == "" {
+			continue
+		}
+
+		pull := models.ProwPullRequest{}
+		pl.dbc.DB.Where("link = ?", pr.Link).Find(&pull)
+		if pull.ID == 0 {
+			pull.Org = refs.Org
+			pull.Repo = refs.Repo
+
+			pull.Link = pr.Link
+			pull.SHA = pr.SHA
+			pull.Author = pr.Author
+			pull.Title = pr.Title
+			pull.Number = pr.Number
+
+			res := pl.dbc.DB.Save(&pull)
+			if res.Error != nil {
+				log.WithError(res.Error).Warningf("could not save pull request %s", pr.Link)
+				continue
+			}
+		}
+		pulls = append(pulls, pull)
+	}
+
+	return pulls
 }
 
 func (pl *ProwLoader) findOrAddTest(name string) uint {
