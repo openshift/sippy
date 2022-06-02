@@ -3,7 +3,7 @@ WORKDIR /go/src/sippy
 COPY . .
 ENV PATH="/go/bin:${PATH}"
 ENV GOPATH="/go"
-RUN dnf install -y go make npm && make build
+RUN dnf module enable nodejs:16 -y && dnf install -y go make npm && make build
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 FROM registry.access.redhat.com/ubi8/ubi:latest AS base
