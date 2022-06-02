@@ -35,4 +35,5 @@ var PostgresMatViews = []string{
 	"prow_test_report_2d_matview",
 	"prow_job_runs_report_matview",
 	"prow_job_failed_tests_by_day_matview",
+	"prow_job_failed_tests_by_hour_matview",
 }

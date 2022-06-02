@@ -205,7 +205,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		NoResult       int `gorm:"column:n"`
 	}
 	sums := make([]resultSum, 0)
-	sumResults := dbc.DB.Table("prow_job_runs").
+	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.Table("prow_job_runs"), apitype.JobRun{})
+	sumResults := dbc.DB.Table("(?) as prow_job_runs", prowJobRunsFiltered).
 		Select(fmt.Sprintf(`date_trunc('%s', timestamp)        AS period,
 	           count(*)                                              AS total_runs,
 	           sum(case when overall_result = 'S' then 1 else 0 end) AS "S",
@@ -220,7 +221,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		Where("prow_jobs.id IN ?", jobs).
 		Group(fmt.Sprintf(`date_trunc('%s', timestamp)`, period))
 
-	jobRunsFilter.ToSQL(sumResults, apitype.JobRun{}).Scan(&sums)
+	sumResults.Scan(&sums)
 
 	// collect the results
 	results := apiJobAnalysisResult{
@@ -256,15 +257,19 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	}
 	tr := make([]testResult, 0)
 
-	jr := dbc.DB.Table("prow_job_failed_tests_by_day_matview").
-		Select("period, test_name, count").
-		Where("prow_job_id IN ?", jobs)
+	jr := dbc.DB.Table("prow_job_failed_tests_by_day_matview")
+	if period == PeriodHour {
+		jr = dbc.DB.Table("prow_job_failed_tests_by_hour_matview")
+	}
 
-	jobRunsFilter.ToSQL(jr, apitype.JobRun{}).Scan(&tr)
+	jr.Select("period, test_name, count").
+		Where("prow_job_id IN ?", jobs).Scan(&tr)
 
 	for _, t := range tr {
 		dateKey := t.Period.UTC().Format(formatter)
-		results.ByPeriod[dateKey].TestFailureCount[t.TestName] = t.Count
+		if _, ok := results.ByPeriod[dateKey]; ok {
+			results.ByPeriod[dateKey].TestFailureCount[t.TestName] = t.Count
+		}
 	}
 
 	RespondWithJSON(http.StatusOK, w, results)
