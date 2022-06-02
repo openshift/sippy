@@ -100,12 +100,6 @@ type TestGridDashboardCoordinates struct {
 	BugzillaRelease string
 }
 
-type StandardReport struct {
-	CurrentPeriodReport sippyprocessingv1.TestReport
-	CurrentTwoDayReport sippyprocessingv1.TestReport
-	PreviousWeekReport  sippyprocessingv1.TestReport
-}
-
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	s.RefreshData(false)
 
