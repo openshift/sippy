@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -19,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -230,10 +228,6 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("--db-only-mode cannot be set to false (deprecated flag soon to be removed, feature now mandatory)")
 	}
 
-	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with for cli reports")
-	}
-
 	return nil
 }
 
@@ -372,10 +366,6 @@ func (o *Options) Run() error {
 		return err
 	}
 
-	if !o.Server {
-		return o.runCLIReportMode()
-	}
-
 	if o.Server {
 		return o.runServerMode()
 	}
@@ -433,19 +423,6 @@ func (o *Options) runServerMode() error {
 
 	server.Serve()
 	return nil
-}
-
-func (o *Options) runCLIReportMode() error {
-	analyzer := sippyserver.TestReportGeneratorConfig{
-		TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-		DisplayDataConfig:           o.toDisplayDataConfig(),
-	}
-
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
-
-	enc := json.NewEncoder(os.Stdout)
-	return enc.Encode(testReport.ByTest)
 }
 
 func (o *Options) getServerMode() sippyserver.Mode {
