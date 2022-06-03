@@ -70,6 +70,9 @@ var customJobInstallNames = sets.NewString(
 // Install steps have different names in different jobs. This is heavily dependent on the actual UPI jobs, but they turn out to be different.
 // When this needs updating,  it shows up as installs timing out in weird numbers
 func IsInstallStepEquivalent(testName string) bool {
+	if strings.Contains(testName, testgridanalysisapi.NewInstallTestName) {
+		return true
+	}
 	for installName := range customJobInstallNames {
 		if strings.Contains(testName, installName) {
 			return true

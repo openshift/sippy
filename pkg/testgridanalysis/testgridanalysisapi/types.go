@@ -105,13 +105,19 @@ const (
 
 	FinalOperatorHealthTestName = "[sig-sippy] tests should finish with healthy operators"
 
-	SippySuiteName         = "sippy"
-	InfrastructureTestName = `[sig-sippy] infrastructure should work`
-	InstallTestName        = `[sig-sippy] install should work`
-	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
-	InstallTestNamePrefix  = `cluster install.install should succeed: `
-	UpgradeTestName        = `[sig-sippy] upgrade should work`
-	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
+	SippySuiteName           = "sippy"
+	InfrastructureTestName   = `[sig-sippy] infrastructure should work`
+	InstallConfigTestName    = `cluster install.install should succeed: configuration`
+	InstallBootstrapTestName = `cluster install.install should succeed: cluster bootstrap`
+	InstallOtherTestName     = `cluster install.install should succeed: other`
+	InstallTestName          = `[sig-sippy] install should work`
+	InstallTimeoutTestName   = `[sig-sippy] install should not timeout`
+	InstallTestNamePrefix    = `cluster install.install should succeed: `
+	UpgradeTestName          = `[sig-sippy] upgrade should work`
+	OpenShiftTestsName       = `[sig-sippy] openshift-tests should work`
+
+	NewInfrastructureTestName = `cluster install.install should succeed: infrastructure`
+	NewInstallTestName        = `cluster install.install should succeed: overall`
 
 	Success = "Success"
 	Failure = "Failure"

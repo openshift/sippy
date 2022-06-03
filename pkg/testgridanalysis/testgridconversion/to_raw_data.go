@@ -252,8 +252,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if !isOverallTest(test.Name) &&
-					!testidentification.IsInstallStepEquivalent(test.Name) {
+				if !isOverallTest(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}

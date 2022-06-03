@@ -5,7 +5,7 @@ import {
   TEST_THRESHOLDS,
   UPGRADE_THRESHOLDS,
 } from '../constants'
-import { TOOLTIP } from './ReleaseOverview'
+import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import Grid from '@material-ui/core/Grid'
 import InfoIcon from '@material-ui/icons/Info'
 import PassRateIcon from '../components/PassRateIcon'
@@ -47,6 +47,7 @@ export default function TopLevelIndicators(props) {
   if (noData) {
     return <></>
   }
+  let newInstall = useNewInstallTests(props.release)
 
   return (
     <Fragment>
@@ -59,22 +60,39 @@ export default function TopLevelIndicators(props) {
         </Typography>
       </Grid>
 
-      <Grid item md={3} sm={6}>
-        <SummaryCard
-          key="infrastructure-summary"
-          threshold={INFRASTRUCTURE_THRESHOLDS}
-          name="Infrastructure"
-          link={
-            '/tests/' +
-            props.release +
-            '/details?test=[sig-sippy] infrastructure should work'
-          }
-          success={props.indicators.infrastructure.current.percentage}
-          fail={100 - props.indicators.infrastructure.current.percentage}
-          caption={indicatorCaption(props.indicators.infrastructure)}
-          tooltip="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
-        />
-      </Grid>
+      {newInstall ? (
+        <Grid item md={3} sm={6}>
+          <SummaryCard
+            key="infrastructure-summary"
+            threshold={INFRASTRUCTURE_THRESHOLDS}
+            name="Infrastructure"
+            link={pathForTestByVariant(
+              props.release,
+              'cluster install.install should succeed: infrastructure'
+            )}
+            success={props.indicators.infrastructure.current.percentage}
+            fail={100 - props.indicators.infrastructure.current.percentage}
+            caption={indicatorCaption(props.indicators.infrastructure)}
+            tooltip="How often install fails due to infrastructure failures."
+          />
+        </Grid>
+      ) : (
+        <Grid item md={3} sm={6}>
+          <SummaryCard
+            key="infrastructure-summary"
+            threshold={INFRASTRUCTURE_THRESHOLDS}
+            name="Infrastructure"
+            link={pathForTestByVariant(
+              props.release,
+              '[sig-sippy] infrastructure should work'
+            )}
+            success={props.indicators.infrastructure.current.percentage}
+            fail={100 - props.indicators.infrastructure.current.percentage}
+            caption={indicatorCaption(props.indicators.infrastructure)}
+            tooltip="How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
+          />
+        </Grid>
+      )}
 
       <Grid item md={3} sm={6}>
         <SummaryCard
@@ -88,6 +106,7 @@ export default function TopLevelIndicators(props) {
           tooltip="How often the install completes successfully."
         />
       </Grid>
+
       <Grid item md={3} sm={6}>
         <SummaryCard
           key="upgrade-summary"
@@ -105,11 +124,10 @@ export default function TopLevelIndicators(props) {
         <SummaryCard
           key="test-summary"
           threshold={TEST_THRESHOLDS}
-          link={
-            '/tests/' +
-            props.release +
-            '/details?test=[sig-sippy] openshift-tests should work'
-          }
+          link={pathForTestByVariant(
+            props.release,
+            '[sig-sippy] openshift-tests should work'
+          )}
           name="Tests"
           success={props.indicators.tests.current.percentage}
           fail={100 - props.indicators.tests.current.percentage}
