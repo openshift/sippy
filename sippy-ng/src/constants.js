@@ -64,6 +64,16 @@ export const BOOKMARKS = {
     operatorValue: '>=',
     value: '1',
   },
+  RUN_2: {
+    columnField: 'current_runs',
+    operatorValue: '>=',
+    value: '2',
+  },
+  RUN_7: {
+    columnField: 'current_runs',
+    operatorValue: '>=',
+    value: '7',
+  },
   RUN_10: {
     columnField: 'current_runs',
     operatorValue: '>=',
@@ -86,6 +96,12 @@ export const BOOKMARKS = {
     not: true,
     operatorValue: 'contains',
     value: 'step graph.',
+  },
+  NO_OPENSHIFT_TESTS_SHOULD_WORK: {
+    columnField: 'name',
+    not: true,
+    operatorValue: 'contains',
+    value: 'openshift-tests should work',
   },
   WITHOUT_OVERALL_JOB_RESULT: {
     columnField: 'name',
