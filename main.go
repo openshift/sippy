@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -19,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -120,7 +118,7 @@ func main() {
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
-	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", opt.DBOnlyMode, "Run web server off data in postgresql instead of in-memory")
+	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
@@ -222,16 +220,12 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
-	if o.LoadDatabase && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with --load-database")
+	if (o.LoadDatabase || o.Server) && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
 	}
 
-	if o.DBOnlyMode && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with --db-only-mode")
-	}
-
-	if !o.Server && !o.LoadDatabase && o.FetchData == "" && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with for cli reports")
+	if !o.DBOnlyMode {
+		return fmt.Errorf("--db-only-mode cannot be set to false (deprecated flag soon to be removed, feature now mandatory)")
 	}
 
 	return nil
@@ -372,10 +366,6 @@ func (o *Options) Run() error {
 		return err
 	}
 
-	if !o.Server {
-		return o.runCLIReportMode()
-	}
-
 	if o.Server {
 		return o.runServerMode()
 	}
@@ -419,15 +409,12 @@ func (o *Options) runServerMode() error {
 		webRoot,
 		&static,
 		dbc,
-		o.DBOnlyMode,
 	)
 
 	// Initial metrics refresh to get the endpoint scrapable ASAP and prevent prom gaps, before
 	// we start the lengthy mat view refreshes.
-	if o.DBOnlyMode {
-		if err := server.RefreshMetricsDB(); err != nil {
-			log.WithError(err).Error("error refreshing metrics")
-		}
+	if err := server.RefreshMetricsDB(); err != nil {
+		log.WithError(err).Error("error refreshing metrics")
 	}
 
 	// force a data refresh in the background. This is important to initially populate the db's materialized views
@@ -436,19 +423,6 @@ func (o *Options) runServerMode() error {
 
 	server.Serve()
 	return nil
-}
-
-func (o *Options) runCLIReportMode() error {
-	analyzer := sippyserver.TestReportGeneratorConfig{
-		TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-		RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-		DisplayDataConfig:           o.toDisplayDataConfig(),
-	}
-
-	testReport := analyzer.PrepareTestReport(o.ToTestGridDashboardCoordinates()[0], v1.CurrentReport, o.getSyntheticTestManager(), o.getVariantManager(), o.getBugCache())
-
-	enc := json.NewEncoder(os.Stdout)
-	return enc.Encode(testReport.ByTest)
 }
 
 func (o *Options) getServerMode() sippyserver.Mode {

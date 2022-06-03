@@ -235,28 +235,6 @@ func IsUpgradeRelatedTest(testName string) bool {
 
 }
 
-// IsInstallRelatedTest is a filter function for identifying tests that are valuable to track for upgrade diagnosis.
-func IsInstallRelatedTest(testName string) bool {
-	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName) {
-		return true
-	}
-	if strings.Contains(testName, testgridanalysisapi.InstallTestName) {
-		return true
-	}
-	if strings.Contains(testName, testgridanalysisapi.InstallTimeoutTestName) {
-		return true
-	}
-	// this shows the stages of install like infrastructure, configuration, bootstrap
-	if strings.Contains(testName, testgridanalysisapi.InstallTestNamePrefix) {
-		return true
-	}
-	if strings.HasPrefix(testName, testgridanalysisapi.OperatorInstallPrefix) {
-		return true
-	}
-
-	return false
-}
-
 // IsIgnoredTest is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 func IsIgnoredTest(testName string) bool {
 	return ignoreTestRegex.MatchString(testName)
