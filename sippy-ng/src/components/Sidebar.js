@@ -146,6 +146,7 @@ export default function Sidebar(props) {
                         BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
+                        BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
                       ],
                       linkOperator: 'and',
                     }),

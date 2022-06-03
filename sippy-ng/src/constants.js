@@ -79,6 +79,12 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'step graph.',
   },
+  NO_OPENSHIFT_TESTS_SHOULD_WORK: {
+    columnField: 'name',
+    not: true,
+    operatorValue: 'contains',
+    value: 'openshift-tests should work',
+  },
   WITHOUT_OVERALL_JOB_RESULT: {
     columnField: 'name',
     not: true,
