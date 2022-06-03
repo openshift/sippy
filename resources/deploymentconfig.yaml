@@ -59,8 +59,6 @@ spec:
         - "4.6"
         - --release
         - "3.11"
-        - --end-day
-        - "7"
         - --server
         env:
           - name: SIPPY_DATABASE_DSN

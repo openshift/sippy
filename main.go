@@ -49,7 +49,6 @@ type Options struct {
 	// TODO perhaps this could drive the synthetic tests too
 	Variants                           []string
 	StartDay                           int
-	endDay                             int
 	NumDays                            int
 	TestSuccessThreshold               float64
 	JobFilter                          string
@@ -74,8 +73,7 @@ type Options struct {
 
 func main() {
 	opt := &Options{
-		endDay:                  0,
-		NumDays:                 7,
+		NumDays:                 14,
 		TestSuccessThreshold:    99.99,
 		MinTestRuns:             10,
 		Output:                  "json",
@@ -103,10 +101,10 @@ func main() {
 	flags.StringArrayVar(&opt.OpenshiftArchitectures, "arch", opt.OpenshiftArchitectures, "Which architectures to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
 	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "Variant manager to use: {ocp,kube,none}. Only useful when using --load-database.")
-	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay, "Analyze data starting from this day")
-	// TODO convert this to be an offset so that we can go backwards from "data we have"
-	flags.IntVar(&opt.endDay, "end-day", opt.endDay, "Look at job runs going back to this day")
-	flags.IntVar(&opt.NumDays, "num-days", opt.NumDays, "Look at job runs going back to this many days from the start day")
+	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay,
+		"Most recent day to start processing testgrid results for (moving backward in time). (0 will start from now (default), -1 will start from whatever the most recent test results are) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
+	flags.IntVar(&opt.NumDays, "num-days", opt.NumDays,
+		"Number of days prior to --start-day to analyze testgrid results back to. (default 14 days) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
 	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
@@ -134,11 +132,6 @@ func main() {
 }
 
 func (o *Options) Complete() {
-	// if the end day was explicitly specified, honor that
-	if o.endDay != 0 {
-		o.NumDays = o.endDay - o.StartDay
-	}
-
 	for _, openshiftRelease := range o.OpenshiftReleases {
 		o.Dashboards = append(o.Dashboards, dashboardArgFromOpenshiftRelease(openshiftRelease))
 	}
@@ -302,7 +295,8 @@ func (o *Options) Run() error {
 
 			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager())
+				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
+					o.StartDay, o.NumDays)
 				if err != nil {
 					log.WithError(err).Error("error loading database")
 					return err

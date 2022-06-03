@@ -27,14 +27,14 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
-	syntheticTestManager testgridconversion.SyntheticTestManager) error {
+	syntheticTestManager testgridconversion.SyntheticTestManager,
+	startDay, numDays int) error {
 
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
 		SyntheticTestManager: syntheticTestManager,
-		// Load the last 14 days of data.
-		StartDay: 0,
-		NumDays:  14,
+		StartDay:             startDay,
+		NumDays:              numDays,
 	}
 
 	// Load all job and test results into database:

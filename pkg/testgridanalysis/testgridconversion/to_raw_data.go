@@ -79,6 +79,8 @@ func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgri
 }
 
 func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
+	// WARNING: this is modelled as it is in testgrid where we read newest results to oldest left to right.
+	// Thus startTs is the newest timestamp, stopTs is the oldest.
 	stopTs := time.Now().Add(time.Duration(-1*(startDay+numDays)*24)*time.Hour).Unix() * 1000
 	startTs := time.Now().Add(time.Duration(-1*startDay*24)*time.Hour).Unix() * 1000
 	if startDay <= -1 { // find the most recent startTime
