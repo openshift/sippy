@@ -8,6 +8,7 @@ import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 import TestTable from '../tests/TestTable'
+import TopLevelIndicators from './InstallTopLevelIndicators'
 
 export default function Install(props) {
   const { path, url } = useRouteMatch()
@@ -15,24 +16,38 @@ export default function Install(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [health, setHealth] = React.useState({})
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL + '/api/install?release=' + props.release
-    )
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error('server returned ' + response.status)
+    Promise.all([
+      fetch(
+        process.env.REACT_APP_API_URL + '/api/install?release=' + props.release
+      ),
+      fetch(
+        process.env.REACT_APP_API_URL + '/api/health?release=' + props.release
+      ),
+    ])
+      .then(([install, health]) => {
+        if (install.status !== 200) {
+          throw new Error('server returned ' + install.status)
         }
-        return response.json()
+
+        if (health.status !== 200) {
+          throw new Error('server returned ' + health.status)
+        }
+        return Promise.all([install.json(), health.json()])
       })
-      .then((json) => {
-        setData(json)
+      .then(([install, health]) => {
+        setData(install)
+        setHealth(health)
         setLoaded(true)
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve release ' + props.release + ', ' + error
+          'Could not retrieve install for release ' +
+            props.release +
+            ', ' +
+            error
         )
       })
   }
@@ -60,34 +75,45 @@ export default function Install(props) {
             <Typography align="center" variant="h4">
               Install health for {props.release}
             </Typography>
-            <Grid container justifyContent="center" size="xl" className="view">
-              <Paper>
-                <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
-                  )}
-                  indicatorColor="primary"
-                  textColor="primary"
-                >
-                  <Tab
-                    label="Install rates by operator"
-                    value="operators"
-                    component={Link}
-                    to={url + '/operators'}
+            <Grid container spacing={2} alignItems="stretch">
+              <TopLevelIndicators
+                release={props.release}
+                indicators={health.indicators}
+              />
+              <Grid
+                container
+                justifyContent="center"
+                size="xl"
+                className="view"
+              >
+                <Paper>
+                  <Tabs
+                    value={location.pathname.substring(
+                      location.pathname.lastIndexOf('/') + 1
+                    )}
+                    indicatorColor="primary"
+                    textColor="primary"
+                  >
+                    <Tab
+                      label="Install rates by operators"
+                      value="operators"
+                      component={Link}
+                      to={url + '/operators'}
+                    />
+                  </Tabs>
+                </Paper>
+              </Grid>
+              <Switch>
+                <Route path={path + '/operators'}>
+                  <TestByVariantTable
+                    release={props.release}
+                    colorScale={[90, 100]}
+                    data={data}
                   />
-                </Tabs>
-              </Paper>
+                </Route>
+                <Redirect from="/" to={url + '/operators'} />
+              </Switch>
             </Grid>
-            <Switch>
-              <Route path={path + '/operators'}>
-                <TestByVariantTable
-                  release={props.release}
-                  colorScale={[90, 100]}
-                  data={data}
-                />
-              </Route>
-              <Redirect from="/" to={url + '/operators'} />
-            </Switch>
           </TabContext>
         )}
       />

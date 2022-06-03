@@ -16,6 +16,7 @@ import {
   withoutUnstable,
   withSort,
 } from '../helpers'
+import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import ApartmentIcon from '@material-ui/icons/Apartment'
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward'
 import AssessmentIcon from '@material-ui/icons/Assessment'
@@ -206,15 +207,25 @@ export default function Sidebar(props) {
                 <CapabilitiesContext.Consumer>
                   {(value) => {
                     if (value.includes('openshift_releases')) {
+                      let newInstall = useNewInstallTests(release)
+                      let link
+                      if (newInstall) {
+                        link = pathForTestByVariant(
+                          release,
+                          'cluster install.install should succeed: infrastructure'
+                        )
+                      } else {
+                        link = pathForTestByVariant(
+                          release,
+                          '[sig-sippy] infrastructure should work'
+                        )
+                      }
+
                       return (
                         <ListItem
                           key={'release-infrastructure-' + index}
                           component={Link}
-                          to={
-                            '/tests/' +
-                            release +
-                            '/details?test=cluster install.install should succeed: infrastructure'
-                          }
+                          to={link}
                           button
                           className={classes.nested}
                         >

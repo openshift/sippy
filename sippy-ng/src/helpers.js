@@ -137,6 +137,12 @@ export function pathForJobRunsWithFilter(release, filter) {
   )}`
 }
 
+export function pathForTestByVariant(release, test) {
+  return (
+    `/tests/${release}/details?` + single(filterFor('name', 'equals', test))
+  )
+}
+
 export function pathForTestsWithFilter(release, filter) {
   if (!filter || filter.items === []) {
     return `/tests/${release}`
@@ -203,4 +209,22 @@ export function single(filter) {
 export function not(filter) {
   filter.not = true
   return filter
+}
+
+export function useNewInstallTests(release) {
+  let digits = release.split('.', 2)
+  if (digits.length < 2) {
+    return false
+  }
+  const major = parseInt(digits[0])
+  const minor = parseInt(digits[1])
+  if (isNaN(major) || isNaN(minor)) {
+    return false
+  }
+  if (major < 4) {
+    return false
+  } else if (major == 4 && minor < 11) {
+    return false
+  }
+  return true
 }
