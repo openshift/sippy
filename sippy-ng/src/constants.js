@@ -46,6 +46,16 @@ export const BOOKMARKS = {
     operatorValue: '>=',
     value: '1',
   },
+  RUN_2: {
+    columnField: 'current_runs',
+    operatorValue: '>=',
+    value: '2',
+  },
+  RUN_7: {
+    columnField: 'current_runs',
+    operatorValue: '>=',
+    value: '7',
+  },
   RUN_10: {
     columnField: 'current_runs',
     operatorValue: '>=',

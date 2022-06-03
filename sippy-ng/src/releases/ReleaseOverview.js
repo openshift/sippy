@@ -266,7 +266,7 @@ export default function ReleaseOverview(props) {
                   to={`/jobs/${
                     props.release
                   }?sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_STEP_GRAPH,
                     ...withoutUnstable()
                   )}`}
@@ -287,7 +287,7 @@ export default function ReleaseOverview(props) {
                   rowsPerPageOptions={[5]}
                   filterModel={{
                     items: [
-                      BOOKMARKS.RUN_10,
+                      BOOKMARKS.RUN_7,
                       BOOKMARKS.NO_NEVER_STABLE,
                       BOOKMARKS.NO_TECHPREVIEW,
                       BOOKMARKS.NO_STEP_GRAPH,
@@ -306,7 +306,7 @@ export default function ReleaseOverview(props) {
                   to={`/jobs/${
                     props.release
                   }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_1,
+                    BOOKMARKS.RUN_2,
                     ...withoutUnstable()
                   )}`}
                   variant="h5"
@@ -324,7 +324,7 @@ export default function ReleaseOverview(props) {
                   limit={10}
                   rowsPerPageOptions={[5]}
                   filterModel={{
-                    items: [BOOKMARKS.RUN_1, ...withoutUnstable()],
+                    items: [BOOKMARKS.RUN_2, ...withoutUnstable()],
                   }}
                   pageSize={5}
                   period="twoDay"
@@ -339,7 +339,7 @@ export default function ReleaseOverview(props) {
                 <Typography
                   component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
-                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
@@ -363,7 +363,7 @@ export default function ReleaseOverview(props) {
                     rowsPerPageOptions={[5]}
                     filterModel={{
                       items: [
-                        BOOKMARKS.RUN_10,
+                        BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
                         BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
@@ -385,7 +385,7 @@ export default function ReleaseOverview(props) {
                   to={`/tests/${
                     props.release
                   }?period=twoDay&sortField=net_working_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_1,
+                    BOOKMARKS.RUN_2,
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
@@ -408,7 +408,7 @@ export default function ReleaseOverview(props) {
                     rowsPerPageOptions={[5]}
                     filterModel={{
                       items: [
-                        BOOKMARKS.RUN_1,
+                        BOOKMARKS.RUN_2,
                         BOOKMARKS.NO_NEVER_STABLE,
                         BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
@@ -429,7 +429,7 @@ export default function ReleaseOverview(props) {
                 <Typography
                   component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
-                    BOOKMARKS.RUN_10,
+                    BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_TECHPREVIEW,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
@@ -453,7 +453,7 @@ export default function ReleaseOverview(props) {
                     rowsPerPageOptions={[5]}
                     filterModel={{
                       items: [
-                        BOOKMARKS.RUN_10,
+                        BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
                         BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,

@@ -141,7 +141,7 @@ export default function Sidebar(props) {
                   to={withSort(
                     pathForTestsWithFilter(release, {
                       items: [
-                        BOOKMARKS.RUN_1,
+                        BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
                         BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
