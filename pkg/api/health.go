@@ -3,6 +3,8 @@ package api
 import (
 	"math"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -40,6 +42,29 @@ type health struct {
 	Previous    sippyprocessingv1.Statistics `json:"previous_statistics"`
 }
 
+// useNewInstallTest decides which install test name to use based on releases. For
+// release 4.11 and above, it uses the new install test names
+func useNewInstallTest(release string) bool {
+	digits := strings.Split(release, ".")
+	if len(digits) < 2 {
+		return false
+	}
+	major, err := strconv.Atoi(digits[0])
+	if err != nil {
+		return false
+	}
+	minor, err := strconv.Atoi(digits[1])
+	if err != nil {
+		return false
+	}
+	if major < 4 {
+		return false
+	} else if major == 4 && minor < 11 {
+		return false
+	}
+	return true
+}
+
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
@@ -47,7 +72,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 
 	infraTestName := testgridanalysisapi.InfrastructureTestName
 	installTestName := testgridanalysisapi.InstallTestName
-	if testreportconversion.UseNewInstallTest(release) {
+	if useNewInstallTest(release) {
 		infraTestName = testgridanalysisapi.NewInfrastructureTestName
 		installTestName = testgridanalysisapi.NewInstallTestName
 	}
