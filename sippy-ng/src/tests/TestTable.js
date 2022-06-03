@@ -71,7 +71,6 @@ function TestTable(props) {
   const columns = [
     {
       field: 'name',
-      autocomplete: 'tests',
       headerName: 'Name',
       flex: 3.5,
       renderCell: (params) => {
