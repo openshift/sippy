@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -14,8 +13,6 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
-
-const overall string = "Overall"
 
 type ProcessingOptions struct {
 	SyntheticTestManager synthetictests.SyntheticTestManager
@@ -30,8 +27,8 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
 	for _, jrr := range jobResult.JobRunResults {
-		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(jrr)
-		for _, test := range syntheticTests {
+		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(&jrr)
+		for _, test := range syntheticTests.TestCases {
 			passed := 1
 			failed := 0
 			if test.FailureOutput != nil {
@@ -90,12 +87,6 @@ func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 		}
 	}
 	return start, len(timestamps)
-}
-
-// isOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
-// the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
-func isOverallTest(testName string) bool {
-	return testName == overall || strings.HasSuffix(testName, ".Overall")
 }
 
 // specific set of test names that include random characters in them
@@ -195,7 +186,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				})
 
 				switch {
-				case isOverallTest(test.Name):
+				case testidentification.IsOverallTest(test.Name):
 					jrr.Succeeded = true
 					// if the overall job succeeded, install is always considered successful, even for jobs
 					// that don't have an explicitly defined install test.
@@ -235,7 +226,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				}
 				// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 				// which we use to set various JobRunResult markers
-				if !isOverallTest(test.Name) {
+				if !testidentification.IsOverallTest(test.Name) {
 					jrr.FailedTestNames = append(jrr.FailedTestNames, test.Name)
 					jrr.TestFailures++
 				}
@@ -243,7 +234,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				// TODO: should we also add failures to jrr.TestResults so everything is in one place? Kill off FailedTestNames
 
 				switch {
-				case isOverallTest(test.Name):
+				case testidentification.IsOverallTest(test.Name):
 					jrr.Failed = true
 				case testidentification.IsOperatorHealthTest(test.Name):
 					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
@@ -283,7 +274,7 @@ func processTest(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.Job
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about install equivalent tests to be able to set infra failures
 	// TODO stop doing this so we can avoid any filtering. We can filter when preparing to create the data for display
-	if !isOverallTest(test.Name) && !testidentification.IsInstallStepEquivalent(test.Name) && testidentification.IsIgnoredTest(test.Name) {
+	if !testidentification.IsOverallTest(test.Name) && !testidentification.IsInstallStepEquivalent(test.Name) && testidentification.IsIgnoredTest(test.Name) {
 		return
 	}
 

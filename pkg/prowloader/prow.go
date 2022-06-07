@@ -24,6 +24,8 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/prowloader/testconversion"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -31,28 +33,30 @@ import (
 const prowURL = "https://prow.ci.openshift.org/prowjobs.js?var=allBuilds&omit=annotations,labels,decoration_config,pod_spec"
 
 type ProwLoader struct {
-	dbc                 *db.DB
-	bkt                 *storage.BucketHandle
-	bktName             string
-	prowJobCache        map[string]*models.ProwJob
-	prowJobRunCache     map[uint]bool
-	prowJobRunTestCache map[string]uint
-	variantManager      testidentification.VariantManager
-	suiteCache          map[string]uint
+	dbc                  *db.DB
+	bkt                  *storage.BucketHandle
+	bktName              string
+	prowJobCache         map[string]*models.ProwJob
+	prowJobRunCache      map[uint]bool
+	prowJobRunTestCache  map[string]*models.Test
+	variantManager       testidentification.VariantManager
+	suiteCache           map[string]uint
+	syntheticTestManager synthetictests.SyntheticTestManager
 }
 
-func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager testidentification.VariantManager) *ProwLoader {
+func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager testidentification.VariantManager, syntheticTestManager synthetictests.SyntheticTestManager) *ProwLoader {
 	bkt := gcsClient.Bucket(gcsBucket)
 
 	return &ProwLoader{
-		dbc:                 dbc,
-		bkt:                 bkt,
-		bktName:             gcsBucket,
-		prowJobRunCache:     loadProwJobRunCache(dbc),
-		prowJobCache:        loadProwJobCache(dbc),
-		prowJobRunTestCache: make(map[string]uint),
-		suiteCache:          make(map[string]uint),
-		variantManager:      variantManager,
+		dbc:                  dbc,
+		bkt:                  bkt,
+		bktName:              gcsBucket,
+		prowJobRunCache:      loadProwJobRunCache(dbc),
+		prowJobCache:         loadProwJobCache(dbc),
+		prowJobRunTestCache:  make(map[string]*models.Test),
+		suiteCache:           make(map[string]uint),
+		syntheticTestManager: syntheticTestManager,
+		variantManager:       variantManager,
 	}
 }
 
@@ -133,18 +137,10 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		release = matches[1]
 	}
 
-	// FIXME(stbenjam): calculate job synthetic tests
-	var result sippyprocessingv1.JobOverallResult
 	switch pj.Status.State {
 	case prow.PendingState:
 		// Skip for now, only store runs in a terminal state
 		return nil
-	case prow.SuccessState:
-		result = sippyprocessingv1.JobSucceeded
-	case prow.AbortedState:
-		result = sippyprocessingv1.JobNoResults
-	default:
-		result = sippyprocessingv1.JobTestFailure
 	}
 
 	id, err := strconv.ParseInt(pj.Status.BuildID, 0, 64)
@@ -181,7 +177,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 
 		parts := strings.Split(pjURL.Path, pl.bktName)
 		if len(parts) == 2 {
-			tests, failures, err := pl.prowJobRunTestsFromGCS(parts[1][1:])
+			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, parts[1][1:])
 			if err != nil {
 				return err
 			}
@@ -191,10 +187,10 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 				ProwJobID:     uint(id),
 				URL:           pj.Status.URL,
 				Timestamp:     pj.Status.StartTime,
-				OverallResult: result,
+				OverallResult: overallResult,
 				Tests:         tests,
 				TestFailures:  failures,
-				Succeeded:     result == sippyprocessingv1.JobSucceeded,
+				Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
 			})
 		}
 	}
@@ -202,9 +198,9 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 	return nil
 }
 
-func (pl *ProwLoader) findOrAddTest(name string) uint {
-	if id, ok := pl.prowJobRunTestCache[name]; ok {
-		return id
+func (pl *ProwLoader) findOrAddTest(name string) *models.Test {
+	if test, ok := pl.prowJobRunTestCache[name]; ok {
+		return test
 	}
 
 	test := &models.Test{}
@@ -213,8 +209,8 @@ func (pl *ProwLoader) findOrAddTest(name string) uint {
 		test.Name = name
 		pl.dbc.DB.Save(test)
 	}
-	pl.prowJobRunTestCache[name] = test.ID
-	return test.ID
+	pl.prowJobRunTestCache[name] = test
+	return test
 }
 
 func (pl *ProwLoader) findOrAddSuite(name string) *uint {
@@ -237,14 +233,14 @@ func (pl *ProwLoader) findOrAddSuite(name string) *uint {
 	return &id
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTest, int, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, path string) ([]models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return []models.ProwJobRunTest{}, 0, err
+		return []models.ProwJobRunTest{}, 0, "", err
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
@@ -259,15 +255,42 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(path string) ([]models.ProwJobRunTe
 		}
 	}
 
-	return results, failures, nil
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, results, pl.syntheticTestManager)
+	syntheticTests := make(map[string]*models.ProwJobRunTest)
+	pl.extractTestCases(syntheticSuite, syntheticTests)
+	for _, v := range syntheticTests {
+		results = append(results, *v)
+		if v.Status == 12 {
+			failures++
+		}
+	}
+
+	// Filter out ignored tests
+	filteredResults := make([]models.ProwJobRunTest, 0)
+	for _, result := range results {
+		if testidentification.IsIgnoredTest(result.Test.Name) {
+			if result.Status == int(v1.TestStatusFailure) {
+				failures--
+			}
+			continue
+		}
+
+		// Clear the model details, we don't need to send this to psql, just the ID,
+		// but we need the name and such to correctly create synthetic tests.
+		result.Test = models.Test{}
+
+		filteredResults = append(filteredResults, result)
+	}
+
+	return results, failures, jobResult, nil
 }
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	for _, tc := range suite.TestCases {
 		// Skip ignored tests
-		if testidentification.IsIgnoredTest(tc.Name) {
+		/*if testidentification.IsIgnoredTest(tc.Name) {
 			continue
-		}
+		}*/
 
 		status := v1.TestStatusFailure
 		if tc.FailureOutput == nil {
@@ -276,8 +299,11 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 
 		key := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		if existing, ok := testCases[key]; !ok {
+			test := pl.findOrAddTest(tc.Name)
+
 			testCases[key] = &models.ProwJobRunTest{
-				TestID:   pl.findOrAddTest(tc.Name),
+				TestID:   test.ID,
+				Test:     *test,
 				SuiteID:  pl.findOrAddSuite(suite.Name),
 				Status:   int(status),
 				Duration: tc.Duration,

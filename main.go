@@ -341,7 +341,7 @@ func (o *Options) Run() error {
 				return err
 			}
 
-			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager())
+			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager(), o.getSyntheticTestManager())
 
 			// For now let's just get master/main presubmits in the openshift org
 			allowedJobRegex := []*regexp.Regexp{

@@ -6,5 +6,5 @@ import (
 )
 
 type SyntheticTestManager interface {
-	CreateSyntheticTests(jobResults testgridanalysisapi.RawJobRunResult) []junit.TestCase
+	CreateSyntheticTests(jrr *testgridanalysisapi.RawJobRunResult) *junit.TestSuite
 }

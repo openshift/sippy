@@ -242,3 +242,9 @@ func IsUpgradeRelatedTest(testName string) bool {
 func IsIgnoredTest(testName string) bool {
 	return ignoreTestRegex.MatchString(testName)
 }
+
+// IsOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
+// the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
+func IsOverallTest(testName string) bool {
+	return testName == "Overall" || strings.HasSuffix(testName, ".Overall")
+}

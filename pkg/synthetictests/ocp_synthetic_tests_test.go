@@ -68,7 +68,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rjr := tc.rawJobResults
 			for _, jrr := range rjr.JobRunResults {
-				testMgr.CreateSyntheticTests(jrr)
+				testMgr.CreateSyntheticTests(&jrr)
 			}
 			assertJobRunTestResult(t, rjr, tc.expectedTestResults)
 			assertFailedTestNames(t, rjr, tc.expectedFailedTestNames)

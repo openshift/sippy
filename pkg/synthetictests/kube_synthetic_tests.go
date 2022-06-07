@@ -12,12 +12,14 @@ func NewEmptySyntheticTestManager() SyntheticTestManager {
 	return kubeSyntheticManager{}
 }
 
-func (k kubeSyntheticManager) CreateSyntheticTests(jrr testgridanalysisapi.RawJobRunResult) []junit.TestCase {
+func (k kubeSyntheticManager) CreateSyntheticTests(jrr *testgridanalysisapi.RawJobRunResult) *junit.TestSuite {
 	jrr.OverallResult = kubeJobRunStatus(jrr)
-	return []junit.TestCase{}
+	return &junit.TestSuite{
+		Name: testgridanalysisapi.SippySuiteName,
+	}
 }
 
-func kubeJobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
+func kubeJobRunStatus(result *testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
 	if result.Succeeded {
 		return sippyprocessingv1.JobSucceeded
 	}

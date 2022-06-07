@@ -2,13 +2,11 @@ package synthetictests
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type openshiftSyntheticManager struct{}
@@ -24,8 +22,8 @@ type syntheticTestResult struct {
 	fail int
 }
 
-func (openshiftSyntheticManager) CreateSyntheticTests(jrr testgridanalysisapi.RawJobRunResult) []junit.TestCase {
-	results := make([]junit.TestCase, 0)
+func (openshiftSyntheticManager) CreateSyntheticTests(jrr *testgridanalysisapi.RawJobRunResult) *junit.TestSuite {
+	results := make([]*junit.TestCase, 0)
 
 	syntheticTests := map[string]*syntheticTestResult{
 		testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName:             &syntheticTestResult{name: testgridanalysisapi.InstallTestName},
@@ -171,11 +169,11 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr testgridanalysisapi.Ra
 
 		// Create junits
 		if result.pass > 0 {
-			results = append(results, junit.TestCase{
+			results = append(results, &junit.TestCase{
 				Name: testName,
 			})
 		} else if result.fail > 0 {
-			results = append(results, junit.TestCase{
+			results = append(results, &junit.TestCase{
 				Name: testName,
 				FailureOutput: &junit.FailureOutput{
 					Output: fmt.Sprintf("Synthetic test %q failed", testName),
@@ -189,12 +187,18 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr testgridanalysisapi.Ra
 	}
 
 	jrr.OverallResult = jobRunStatus(jrr)
-	return results
+
+	return &junit.TestSuite{
+		Name:      testgridanalysisapi.SippySuiteName,
+		NumTests:  uint(len(results)),
+		NumFailed: uint(jrr.TestFailures),
+		TestCases: results,
+	}
 }
 
 const failure string = "Failure"
 
-func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
+func jobRunStatus(result *testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
 	if result.Succeeded {
 		return sippyprocessingv1.JobSucceeded
 	}
@@ -219,14 +223,4 @@ func jobRunStatus(result testgridanalysisapi.RawJobRunResult) sippyprocessingv1.
 		return sippyprocessingv1.JobNoResults
 	}
 	return sippyprocessingv1.JobUnknown
-}
-
-func matchJobRegexList(jobName string, regexList sets.String) bool {
-	for expression := range regexList {
-		result, _ := regexp.MatchString(expression, jobName)
-		if result {
-			return true
-		}
-	}
-	return false
 }
