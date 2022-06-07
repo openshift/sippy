@@ -11,7 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
-func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests []models.ProwJobRunTest, manager synthetictests.SyntheticTestManager) (*junit.TestSuite, v1.JobOverallResult) {
+func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models.ProwJobRunTest, manager synthetictests.SyntheticTestManager) (*junit.TestSuite, v1.JobOverallResult) {
 	jrr := testgridanalysisapi.RawJobRunResult{
 		Job:       pj.Spec.Job,
 		Failed:    pj.Status.State != prow.SuccessState,
@@ -22,30 +22,30 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests []models.ProwJobRu
 	return syntheticTests, jrr.OverallResult
 }
 
-func testsToRawJobRunResult(jrr *testgridanalysisapi.RawJobRunResult, tests []models.ProwJobRunTest) {
-	for _, test := range tests {
+func testsToRawJobRunResult(jrr *testgridanalysisapi.RawJobRunResult, tests map[string]*models.ProwJobRunTest) {
+	for name, test := range tests {
 		switch testgridv1.TestStatus(test.Status) {
 		case testgridv1.TestStatusSuccess, testgridv1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
 			switch {
-			case testidentification.IsOverallTest(test.Test.Name):
+			case testidentification.IsOverallTest(name):
 				jrr.Succeeded = true
 				// if the overall job succeeded, install is always considered successful, even for jobs
 				// that don't have an explicitly defined install test.
 				jrr.InstallStatus = testgridanalysisapi.Success
-			case testidentification.IsOperatorHealthTest(test.Test.Name):
+			case testidentification.IsOperatorHealthTest(name):
 				jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
-					Name:  testidentification.GetOperatorNameFromTest(test.Test.Name),
+					Name:  testidentification.GetOperatorNameFromTest(name),
 					State: testgridanalysisapi.Success,
 				})
-			case testidentification.IsInstallStepEquivalent(test.Test.Name):
+			case testidentification.IsInstallStepEquivalent(name):
 				jrr.InstallStatus = testgridanalysisapi.Success
-			case testidentification.IsUpgradeStartedTest(test.Test.Name):
+			case testidentification.IsUpgradeStartedTest(name):
 				jrr.UpgradeStarted = true
-			case testidentification.IsOperatorsUpgradedTest(test.Test.Name):
+			case testidentification.IsOperatorsUpgradedTest(name):
 				jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Success
-			case testidentification.IsMachineConfigPoolsUpgradedTest(test.Test.Name):
+			case testidentification.IsMachineConfigPoolsUpgradedTest(name):
 				jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Success
-			case testidentification.IsOpenShiftTest(test.Test.Name):
+			case testidentification.IsOpenShiftTest(name):
 				// If there is a failed test, the aggregated value should stay "Failure"
 				if jrr.OpenShiftTestsStatus == "" {
 					jrr.OpenShiftTestsStatus = testgridanalysisapi.Success
@@ -54,30 +54,30 @@ func testsToRawJobRunResult(jrr *testgridanalysisapi.RawJobRunResult, tests []mo
 		case testgridv1.TestStatusFailure:
 			// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 			// which we use to set various JobRunResult markers
-			if !testidentification.IsOverallTest(test.Test.Name) {
-				jrr.FailedTestNames = append(jrr.FailedTestNames, test.Test.Name)
+			if !testidentification.IsOverallTest(name) {
+				jrr.FailedTestNames = append(jrr.FailedTestNames, name)
 				jrr.TestFailures++
 			}
 
 			// TODO: should we also add failures to jrr.TestResults so everything is in one place? Kill off FailedTestNames
 
 			switch {
-			case testidentification.IsOverallTest(test.Test.Name):
+			case testidentification.IsOverallTest(name):
 				jrr.Failed = true
-			case testidentification.IsOperatorHealthTest(test.Test.Name):
+			case testidentification.IsOperatorHealthTest(name):
 				jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
-					Name:  testidentification.GetOperatorNameFromTest(test.Test.Name),
+					Name:  testidentification.GetOperatorNameFromTest(name),
 					State: testgridanalysisapi.Failure,
 				})
-			case testidentification.IsInstallStepEquivalent(test.Test.Name):
+			case testidentification.IsInstallStepEquivalent(name):
 				jrr.InstallStatus = testgridanalysisapi.Failure
-			case testidentification.IsUpgradeStartedTest(test.Test.Name):
+			case testidentification.IsUpgradeStartedTest(name):
 				jrr.UpgradeStarted = true // this is still true because we definitely started
-			case testidentification.IsOperatorsUpgradedTest(test.Test.Name):
+			case testidentification.IsOperatorsUpgradedTest(name):
 				jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Failure
-			case testidentification.IsMachineConfigPoolsUpgradedTest(test.Test.Name):
+			case testidentification.IsMachineConfigPoolsUpgradedTest(name):
 				jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Failure
-			case testidentification.IsOpenShiftTest(test.Test.Name):
+			case testidentification.IsOpenShiftTest(name):
 				jrr.OpenShiftTestsStatus = testgridanalysisapi.Failure
 			}
 		}

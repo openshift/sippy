@@ -38,7 +38,7 @@ type ProwLoader struct {
 	bktName              string
 	prowJobCache         map[string]*models.ProwJob
 	prowJobRunCache      map[uint]bool
-	prowJobRunTestCache  map[string]*models.Test
+	prowJobRunTestCache  map[string]uint
 	variantManager       testidentification.VariantManager
 	suiteCache           map[string]uint
 	syntheticTestManager synthetictests.SyntheticTestManager
@@ -53,7 +53,7 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager
 		bktName:              gcsBucket,
 		prowJobRunCache:      loadProwJobRunCache(dbc),
 		prowJobCache:         loadProwJobCache(dbc),
-		prowJobRunTestCache:  make(map[string]*models.Test),
+		prowJobRunTestCache:  make(map[string]uint),
 		suiteCache:           make(map[string]uint),
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
@@ -197,9 +197,9 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 	return nil
 }
 
-func (pl *ProwLoader) findOrAddTest(name string) *models.Test {
-	if test, ok := pl.prowJobRunTestCache[name]; ok {
-		return test
+func (pl *ProwLoader) findOrAddTest(name string) uint {
+	if id, ok := pl.prowJobRunTestCache[name]; ok {
+		return id
 	}
 
 	test := &models.Test{}
@@ -208,8 +208,8 @@ func (pl *ProwLoader) findOrAddTest(name string) *models.Test {
 		test.Name = name
 		pl.dbc.DB.Save(test)
 	}
-	pl.prowJobRunTestCache[name] = test
-	return test
+	pl.prowJobRunTestCache[name] = test.ID
+	return test.ID
 }
 
 func (pl *ProwLoader) findOrAddSuite(name string) *uint {
@@ -246,42 +246,22 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, path string) ([]mo
 		pl.extractTestCases(suite, testCases)
 	}
 
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, testCases, pl.syntheticTestManager)
+	pl.extractTestCases(syntheticSuite, testCases)
+
 	results := make([]models.ProwJobRunTest, 0)
-	for _, v := range testCases {
-		results = append(results, *v)
-		if v.Status == 12 {
-			failures++
-		}
-	}
-
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, results, pl.syntheticTestManager)
-	syntheticTests := make(map[string]*models.ProwJobRunTest)
-	pl.extractTestCases(syntheticSuite, syntheticTests)
-	for _, v := range syntheticTests {
-		results = append(results, *v)
-		if v.Status == 12 {
-			failures++
-		}
-	}
-
-	// Filter out ignored tests
-	filteredResults := make([]models.ProwJobRunTest, 0)
-	for _, result := range results {
-		if testidentification.IsIgnoredTest(result.Test.Name) {
-			if result.Status == int(v1.TestStatusFailure) {
-				failures--
-			}
+	for k, v := range testCases {
+		if testidentification.IsIgnoredTest(k) {
 			continue
 		}
 
-		// Clear the model details, we don't need to send this to psql, just the ID,
-		// but we need the name and such to correctly create synthetic tests.
-		result.Test = models.Test{}
-
-		filteredResults = append(filteredResults, result)
+		results = append(results, *v)
+		if v.Status == 12 {
+			failures++
+		}
 	}
 
-	return filteredResults, failures, jobResult, nil
+	return results, failures, jobResult, nil
 }
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
@@ -293,11 +273,8 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 
 		key := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		if existing, ok := testCases[key]; !ok {
-			test := pl.findOrAddTest(tc.Name)
-
 			testCases[key] = &models.ProwJobRunTest{
-				TestID:   test.ID,
-				Test:     *test,
+				TestID:   pl.findOrAddTest(tc.Name),
 				SuiteID:  pl.findOrAddSuite(suite.Name),
 				Status:   int(status),
 				Duration: tc.Duration,
