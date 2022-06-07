@@ -203,6 +203,10 @@ func jobRunStatus(result *testgridanalysisapi.RawJobRunResult) sippyprocessingv1
 		return sippyprocessingv1.JobSucceeded
 	}
 
+	if result.Aborted {
+		return sippyprocessingv1.JobAborted
+	}
+
 	if !result.Failed {
 		return sippyprocessingv1.JobRunning
 	}

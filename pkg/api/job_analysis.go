@@ -80,6 +80,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	type resultSum struct {
 		Period         time.Time
 		TotalRuns      int
+		Aborted        int `gorm:"column:A"`
 		Success        int `gorm:"column:S"`
 		Running        int `gorm:"column:R"`
 		FailureE2E     int `gorm:"column:F"`
@@ -101,7 +102,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	           sum(case when overall_result = 'I' then 1 else 0 end) AS "I",
 	           sum(case when overall_result = 'N' then 1 else 0 end) AS "N",
 	           sum(case when overall_result = 'n' then 1 else 0 end) AS "n",
-	           sum(case when overall_result = 'R' then 1 else 0 end) AS "R"`, period)).
+	           sum(case when overall_result = 'R' then 1 else 0 end) AS "R",
+	           sum(case when overall_result = 'A' then 1 else 0 end) AS "A"`, period)).
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.id IN ?", jobs).
 		Group(fmt.Sprintf(`date_trunc('%s', timestamp)`, period))
@@ -131,6 +133,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 				v1sippyprocessing.JobInstallFailure:        sum.Install,
 				v1sippyprocessing.JobNoResults:             sum.NoResult,
 				v1sippyprocessing.JobUnknown:               sum.FailureOther,
+				v1sippyprocessing.JobAborted:               sum.Aborted,
 			},
 			TestFailureCount: map[string]int{},
 		}

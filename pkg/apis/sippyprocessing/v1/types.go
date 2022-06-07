@@ -76,6 +76,7 @@ const (
 	JobUpgradeFailure        JobOverallResult = "U"
 	JobTestFailure           JobOverallResult = "F"
 	JobNoResults             JobOverallResult = "n"
+	JobAborted               JobOverallResult = "A"
 	JobUnknown               JobOverallResult = "f"
 )
 

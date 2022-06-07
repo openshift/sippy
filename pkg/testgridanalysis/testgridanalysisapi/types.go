@@ -61,6 +61,7 @@ type RawJobRunResult struct {
 	TestResults     []RawJobRunTestResult
 	Failed          bool
 	Succeeded       bool
+	Aborted         bool
 
 	// InstallStatus can be "", "Success", "Failure"
 	// Used to create synthetic tests.

@@ -16,6 +16,7 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models
 		Job:       pj.Spec.Job,
 		Failed:    pj.Status.State != prow.SuccessState,
 		Succeeded: pj.Status.State == prow.SuccessState,
+		Aborted:   pj.Status.State == prow.AbortedState,
 	}
 	testsToRawJobRunResult(&jrr, tests)
 	syntheticTests := manager.CreateSyntheticTests(&jrr)

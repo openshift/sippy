@@ -185,11 +185,11 @@ func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error
 	}
 
 	currentPassRate := sippyv1.PassRate{
-		Percentage: testReport.CurrentPassPercentage,
+		Percentage: testreportconversion.ConvertNaNToZero(testReport.CurrentPassPercentage),
 		Runs:       testReport.CurrentRuns,
 	}
 	previousPassRate := sippyv1.PassRate{
-		Percentage: testReport.PreviousPassPercentage,
+		Percentage: testreportconversion.ConvertNaNToZero(testReport.PreviousPassPercentage),
 		Runs:       testReport.PreviousRuns,
 	}
 	return indicator{
