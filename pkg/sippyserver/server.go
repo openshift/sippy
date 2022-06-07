@@ -14,6 +14,8 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/synthetictests"
+
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -26,7 +28,6 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -46,7 +47,7 @@ func NewServer(
 	displayDataOptions DisplayDataConfig,
 	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
-	syntheticTestManager testgridconversion.SyntheticTestManager,
+	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	bugCache buganalysis.BugCache,
 	sippyNG fs.FS,
@@ -80,7 +81,7 @@ type Server struct {
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
 
-	syntheticTestManager       testgridconversion.SyntheticTestManager
+	syntheticTestManager       synthetictests.SyntheticTestManager
 	variantManager             testidentification.VariantManager
 	bugCache                   buganalysis.BugCache
 	testReportGeneratorConfig  TestReportGeneratorConfig

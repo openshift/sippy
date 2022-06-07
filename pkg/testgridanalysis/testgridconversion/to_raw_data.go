@@ -10,46 +10,17 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 const overall string = "Overall"
 
-type SyntheticTestManager interface {
-	// CreateSyntheticTests takes the JobRunResult information and produces some pre-analysis by interpreting different types of failures
-	// and potentially producing synthetic test results and aggregations to better inform sippy.
-	// This needs to be called after all the JobDetails have been processed.
-	// This method mutates the rawJobResults
-	// returns warnings found in the data. Not failures to process it.
-	CreateSyntheticTests(rawJobResults testgridanalysisapi.RawData) []string
-	CreateSyntheticTestsForJob(jobResults testgridanalysisapi.RawJobResult) []string
-}
-
 type ProcessingOptions struct {
-	SyntheticTestManager SyntheticTestManager
+	SyntheticTestManager synthetictests.SyntheticTestManager
 	StartDay             int
 	NumDays              int
-}
-
-// ProcessTestGridDataIntoRawJobResults returns the raw data and a list of warnings encountered processing the data
-// for all jobs.
-// TODO: deprecated, use the single job func below to avoid loading all into memory
-func (o ProcessingOptions) ProcessTestGridDataIntoRawJobResults(testGridJobInfo []testgridv1.JobDetails) (testgridanalysisapi.RawData, []string) {
-	rawJobResults := testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{}}
-
-	for _, jobDetails := range testGridJobInfo {
-		log.Infof("processing test details for job %s\n", jobDetails.Name)
-		startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
-		jobResult := processJobDetails(jobDetails, startCol, endCol)
-		// we have mutated, so assign back to our intermediate value
-		rawJobResults.JobResults[jobDetails.Name] = *jobResult
-	}
-
-	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	warnings := o.SyntheticTestManager.CreateSyntheticTests(rawJobResults)
-
-	return rawJobResults, warnings
 }
 
 // ProcessJobDetailsIntoRawJobResult returns the raw data and a list of warnings encountered processing the data
@@ -58,9 +29,19 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 	log.Infof("processing test details for job %s\n", jobDetails.Name)
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
-	// now that we have all the JobRunResults, use them to create synthetic tests for install, upgrade, and infra
-	warnings := o.SyntheticTestManager.CreateSyntheticTestsForJob(*jobResult)
-	return jobResult, warnings
+	for _, jrr := range jobResult.JobRunResults {
+		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(jrr)
+		for _, test := range syntheticTests {
+			passed := 1
+			failed := 0
+			if test.FailureOutput != nil {
+				failed = 1
+				passed = 0
+			}
+			addTestResult(jobResult.TestResults, &jobDetails, test.Name, passed, failed, 0)
+		}
+	}
+	return jobResult, []string{}
 }
 
 func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgridanalysisapi.RawJobResult {

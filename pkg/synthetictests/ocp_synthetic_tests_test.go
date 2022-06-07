@@ -1,4 +1,4 @@
-package testgridconversion
+package synthetictests
 
 import (
 	"testing"
@@ -67,7 +67,9 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 		testMgr := NewOpenshiftSyntheticTestManager()
 		t.Run(tc.name, func(t *testing.T) {
 			rjr := tc.rawJobResults
-			testMgr.CreateSyntheticTests(testgridanalysisapi.RawData{JobResults: map[string]testgridanalysisapi.RawJobResult{job1Name: rjr}})
+			for _, jrr := range rjr.JobRunResults {
+				testMgr.CreateSyntheticTests(jrr)
+			}
 			assertJobRunTestResult(t, rjr, tc.expectedTestResults)
 			assertFailedTestNames(t, rjr, tc.expectedFailedTestNames)
 

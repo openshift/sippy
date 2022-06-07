@@ -7,27 +7,29 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
-	syntheticTestManager testgridconversion.SyntheticTestManager,
+	syntheticTestManager synthetictests.SyntheticTestManager,
 	startDay, numDays int) error {
 
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
