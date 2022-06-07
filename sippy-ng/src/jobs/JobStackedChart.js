@@ -142,6 +142,20 @@ export function JobStackedChart(props) {
     colorByName[resultTypes[key].name] = resultTypes[key].color
   })
 
+  resultChart.datasets.push({
+    label: 'Run count',
+    tension: 0.5,
+    radius: 2,
+    yAxisID: 'y1',
+    xAxisID: 'x',
+    order: 1,
+    borderColor: '#000000',
+    backgroundColor: '#000000',
+    data: Object.keys(analysis.by_period).map(
+      (key) => analysis.by_period[key].total_runs
+    ),
+  })
+
   Object.keys(resultTypes).forEach((result) => {
     resultChart.datasets.push({
       type: 'line',
@@ -151,6 +165,7 @@ export function JobStackedChart(props) {
       tension: 0.3,
       yAxisID: 'y',
       xAxisID: 'x',
+      order: 2,
       borderColor: resultTypes[result].color,
       backgroundColor: resultTypes[result].color,
       data: Object.keys(analysis.by_period).map(
@@ -189,6 +204,10 @@ export function JobStackedChart(props) {
       tooltip: {
         callbacks: {
           label: function (context) {
+            if (context.dataset.label === 'Run count') {
+              return `${context.formattedValue} total runs`
+            }
+
             return `${context.formattedValue}% (${
               analysis.by_period[context.label].total_runs
             } total runs)`
@@ -213,6 +232,11 @@ export function JobStackedChart(props) {
             return `${value}%`
           },
         },
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
       },
     },
   }
