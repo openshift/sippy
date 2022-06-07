@@ -137,8 +137,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		release = matches[1]
 	}
 
-	switch pj.Status.State {
-	case prow.PendingState:
+	if pj.Status.State == prow.PendingState {
 		// Skip for now, only store runs in a terminal state
 		return nil
 	}
@@ -282,16 +281,11 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, path string) ([]mo
 		filteredResults = append(filteredResults, result)
 	}
 
-	return results, failures, jobResult, nil
+	return filteredResults, failures, jobResult, nil
 }
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	for _, tc := range suite.TestCases {
-		// Skip ignored tests
-		/*if testidentification.IsIgnoredTest(tc.Name) {
-			continue
-		}*/
-
 		status := v1.TestStatusFailure
 		if tc.FailureOutput == nil {
 			status = v1.TestStatusSuccess

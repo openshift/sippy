@@ -26,8 +26,9 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 	log.Infof("processing test details for job %s\n", jobDetails.Name)
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
-	for _, jrr := range jobResult.JobRunResults {
+	for k, jrr := range jobResult.JobRunResults {
 		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(&jrr)
+		jobResult.JobRunResults[k] = jrr
 		for _, test := range syntheticTests.TestCases {
 			passed := 1
 			failed := 0
