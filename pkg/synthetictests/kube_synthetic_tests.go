@@ -3,7 +3,7 @@ package synthetictests
 import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 type kubeSyntheticManager struct{}
@@ -12,14 +12,14 @@ func NewEmptySyntheticTestManager() SyntheticTestManager {
 	return kubeSyntheticManager{}
 }
 
-func (k kubeSyntheticManager) CreateSyntheticTests(jrr *testgridanalysisapi.RawJobRunResult) *junit.TestSuite {
+func (k kubeSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.RawJobRunResult) *junit.TestSuite {
 	jrr.OverallResult = kubeJobRunStatus(jrr)
 	return &junit.TestSuite{
-		Name: testgridanalysisapi.SippySuiteName,
+		Name: testidentification.SippySuiteName,
 	}
 }
 
-func kubeJobRunStatus(result *testgridanalysisapi.RawJobRunResult) sippyprocessingv1.JobOverallResult {
+func kubeJobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.JobOverallResult {
 	if result.Succeeded {
 		return sippyprocessingv1.JobSucceeded
 	}

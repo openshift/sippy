@@ -8,9 +8,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -22,7 +22,7 @@ type ProcessingOptions struct {
 
 // ProcessJobDetailsIntoRawJobResult returns the raw data and a list of warnings encountered processing the data
 // for a specific job.
-func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails) (*testgridanalysisapi.RawJobResult, []string) {
+func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails) (*v1.RawJobResult, []string) {
 	log.Infof("processing test details for job %s\n", jobDetails.Name)
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
@@ -42,12 +42,12 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 	return jobResult, []string{}
 }
 
-func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *testgridanalysisapi.RawJobResult {
-	jobResult := &testgridanalysisapi.RawJobResult{
+func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *v1.RawJobResult {
+	jobResult := &v1.RawJobResult{
 		JobName:        job.Name,
 		TestGridJobURL: job.TestGridURL,
-		JobRunResults:  map[string]testgridanalysisapi.RawJobRunResult{},
-		TestResults:    map[string]testgridanalysisapi.RawTestResult{},
+		JobRunResults:  map[string]v1.RawJobRunResult{},
+		TestResults:    map[string]v1.RawTestResult{},
 	}
 	for i, test := range job.Tests {
 		log.Tracef("Analyzing results from %d to %d from job %s for test %s\n", startCol, endCol, job.Name, test.Name)
@@ -114,7 +114,7 @@ func fixOldStyleTestNames(testName string) string {
 	// we have to keep it to interpret historical results from 4.6.
 	if testidentification.IsOldInstallOperatorTest(testName) || testidentification.IsOldUpgradeOperatorTest(testName) {
 		operatorName := testidentification.GetOperatorNameFromTest(testName)
-		testName = testgridanalysisapi.OperatorFinalHealthPrefix + " " + operatorName
+		testName = testidentification.OperatorFinalHealthPrefix + " " + operatorName
 	}
 
 	return testName
@@ -140,7 +140,7 @@ func cleanTestName(testName string) string {
 
 // processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
-func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
+func processTestToJobRunResults(jobResult *v1.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0
 	for _, result := range test.Statuses {
 		if col > endCol {
@@ -174,14 +174,14 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
-					jrr = testgridanalysisapi.RawJobRunResult{
+					jrr = v1.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
 						Timestamp: job.Timestamps[i],
 					}
 				}
 
-				jrr.TestResults = append(jrr.TestResults, testgridanalysisapi.RawJobRunTestResult{
+				jrr.TestResults = append(jrr.TestResults, v1.RawJobRunTestResult{
 					Name:   test.Name,
 					Status: result.Value,
 				})
@@ -191,24 +191,24 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 					jrr.Succeeded = true
 					// if the overall job succeeded, install is always considered successful, even for jobs
 					// that don't have an explicitly defined install test.
-					jrr.InstallStatus = testgridanalysisapi.Success
+					jrr.InstallStatus = testidentification.Success
 				case testidentification.IsOperatorHealthTest(test.Name):
-					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
+					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, v1.OperatorState{
 						Name:  testidentification.GetOperatorNameFromTest(test.Name),
-						State: testgridanalysisapi.Success,
+						State: testidentification.Success,
 					})
 				case testidentification.IsInstallStepEquivalent(test.Name):
-					jrr.InstallStatus = testgridanalysisapi.Success
+					jrr.InstallStatus = testidentification.Success
 				case testidentification.IsUpgradeStartedTest(test.Name):
 					jrr.UpgradeStarted = true
 				case testidentification.IsOperatorsUpgradedTest(test.Name):
-					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Success
+					jrr.UpgradeForOperatorsStatus = testidentification.Success
 				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
-					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Success
+					jrr.UpgradeForMachineConfigPoolsStatus = testidentification.Success
 				case testidentification.IsOpenShiftTest(test.Name):
 					// If there is a failed test, the aggregated value should stay "Failure"
 					if jrr.OpenShiftTestsStatus == "" {
-						jrr.OpenShiftTestsStatus = testgridanalysisapi.Success
+						jrr.OpenShiftTestsStatus = testidentification.Success
 					}
 				}
 				jobResult.JobRunResults[joburl] = jrr
@@ -219,7 +219,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
-					jrr = testgridanalysisapi.RawJobRunResult{
+					jrr = v1.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
 						Timestamp: job.Timestamps[i],
@@ -238,20 +238,20 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 				case testidentification.IsOverallTest(test.Name):
 					jrr.Failed = true
 				case testidentification.IsOperatorHealthTest(test.Name):
-					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, testgridanalysisapi.OperatorState{
+					jrr.FinalOperatorStates = append(jrr.FinalOperatorStates, v1.OperatorState{
 						Name:  testidentification.GetOperatorNameFromTest(test.Name),
-						State: testgridanalysisapi.Failure,
+						State: testidentification.Failure,
 					})
 				case testidentification.IsInstallStepEquivalent(test.Name):
-					jrr.InstallStatus = testgridanalysisapi.Failure
+					jrr.InstallStatus = testidentification.Failure
 				case testidentification.IsUpgradeStartedTest(test.Name):
 					jrr.UpgradeStarted = true // this is still true because we definitely started
 				case testidentification.IsOperatorsUpgradedTest(test.Name):
-					jrr.UpgradeForOperatorsStatus = testgridanalysisapi.Failure
+					jrr.UpgradeForOperatorsStatus = testidentification.Failure
 				case testidentification.IsMachineConfigPoolsUpgradedTest(test.Name):
-					jrr.UpgradeForMachineConfigPoolsStatus = testgridanalysisapi.Failure
+					jrr.UpgradeForMachineConfigPoolsStatus = testidentification.Failure
 				case testidentification.IsOpenShiftTest(test.Name):
-					jrr.OpenShiftTestsStatus = testgridanalysisapi.Failure
+					jrr.OpenShiftTestsStatus = testidentification.Failure
 				}
 				jobResult.JobRunResults[joburl] = jrr
 			}
@@ -270,7 +270,7 @@ func processTestToJobRunResults(jobResult *testgridanalysisapi.RawJobResult, job
 	return
 }
 
-func processTest(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
+func processTest(jobResult *v1.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) {
 	// strip out tests that don't have predictive or diagnostic value
 	// we have to know about overall to be able to set the global success or failure.
 	// we have to know about install equivalent tests to be able to set infra failures
@@ -282,10 +282,10 @@ func processTest(jobResult *testgridanalysisapi.RawJobResult, job testgridv1.Job
 	processTestToJobRunResults(jobResult, job, test, startCol, endCol)
 }
 
-func addTestResult(testResults map[string]testgridanalysisapi.RawTestResult, job *testgridv1.JobDetails, testName string, passed, failed, flaked int) {
+func addTestResult(testResults map[string]v1.RawTestResult, job *testgridv1.JobDetails, testName string, passed, failed, flaked int) {
 	result, ok := testResults[testName]
 	if !ok {
-		result = testgridanalysisapi.RawTestResult{}
+		result = v1.RawTestResult{}
 	}
 	result.Name = testName
 	result.Successes += passed

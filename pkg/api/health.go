@@ -18,8 +18,8 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 type indicator struct {
@@ -70,11 +70,11 @@ func useNewInstallTest(release string) bool {
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
 	indicators := make(map[string]indicator)
 
-	infraTestName := testgridanalysisapi.InfrastructureTestName
-	installTestName := testgridanalysisapi.InstallTestName
+	infraTestName := testidentification.InfrastructureTestName
+	installTestName := testidentification.InstallTestName
 	if useNewInstallTest(release) {
-		infraTestName = testgridanalysisapi.NewInfrastructureTestName
-		installTestName = testgridanalysisapi.NewInstallTestName
+		infraTestName = testidentification.NewInfrastructureTestName
+		installTestName = testidentification.NewInstallTestName
 	}
 	// Infrastructure
 	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName)
@@ -85,7 +85,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["infrastructure"] = infraIndicator
 
 	// Install Configuration
-	installConfigIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallConfigTestName)
+	installConfigIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallConfigTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -93,7 +93,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["installConfig"] = installConfigIndicator
 
 	// Bootstrap
-	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallBootstrapTestName)
+	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallBootstrapTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -101,7 +101,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["bootstrap"] = bootstrapIndicator
 
 	// Install Other
-	installOtherIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.InstallOtherTestName)
+	installOtherIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallOtherTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -117,7 +117,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["install"] = installIndicator
 
 	// Upgrade
-	upgradeIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.UpgradeTestName)
+	upgradeIndicator, err := getIndicatorForTest(dbc, release, testidentification.UpgradeTestName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -127,7 +127,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Tests
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	testsIndicator, err := getIndicatorForTest(dbc, release, testgridanalysisapi.OpenShiftTestsName)
+	testsIndicator, err := getIndicatorForTest(dbc, release, testidentification.OpenShiftTestsName)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return

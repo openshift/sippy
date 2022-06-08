@@ -9,7 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -18,9 +18,9 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	// For the overall test, the exact match on the InstallTestName const which includes [sig-sippy] isn't working,
 	// so we have to use a simpler substring.
 	testSubstrings := []string{
-		testgridanalysisapi.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
-		testgridanalysisapi.InstallTestName,       // TODO: would prefer exact matching on the full InstallTestName const
-		testgridanalysisapi.InstallTestNamePrefix, // TODO: would prefer prefix matching for this
+		testidentification.OperatorInstallPrefix, // TODO: would prefer prefix matching for this
+		testidentification.InstallTestName,       // TODO: would prefer exact matching on the full InstallTestName const
+		testidentification.InstallTestNamePrefix, // TODO: would prefer prefix matching for this
 	}
 
 	testReports, err := query.TestReportsByVariant(dbc, release, testSubstrings)
@@ -35,9 +35,9 @@ func InstallOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	for _, tr := range testReports {
 
 		switch {
-		case tr.Name == testgridanalysisapi.InstallTestName ||
-			strings.HasPrefix(tr.Name, testgridanalysisapi.OperatorInstallPrefix) ||
-			strings.HasPrefix(tr.Name, testgridanalysisapi.InstallTestNamePrefix):
+		case tr.Name == testidentification.InstallTestName ||
+			strings.HasPrefix(tr.Name, testidentification.OperatorInstallPrefix) ||
+			strings.HasPrefix(tr.Name, testidentification.InstallTestNamePrefix):
 			log.Infof("Found install test %s for variant %s", tr.Name, tr.Variant)
 			variantColumns.Insert(tr.Variant)
 			if _, ok := tests[tr.Name]; !ok {

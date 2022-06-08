@@ -3,11 +3,11 @@ package synthetictests
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	tgv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-
-	"github.com/stretchr/testify/assert"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 const (
@@ -18,48 +18,48 @@ const (
 func TestSyntheticSippyTestGeneration(t *testing.T) {
 	testCases := []struct {
 		name                    string
-		rawJobResults           testgridanalysisapi.RawJobResult
-		expectedTestResults     []testgridanalysisapi.RawJobRunTestResult
+		rawJobResults           v1.RawJobResult
+		expectedTestResults     []v1.RawJobRunTestResult
 		expectedFailedTestNames []string
 	}{
 		{
 			name: "successful install adds successful operator tests",
-			rawJobResults: testgridanalysisapi.RawJobResult{
+			rawJobResults: v1.RawJobResult{
 				JobName: job1Name,
-				JobRunResults: map[string]testgridanalysisapi.RawJobRunResult{
+				JobRunResults: map[string]v1.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(true, true, v1.JobSucceeded,
-						[]testgridanalysisapi.OperatorState{
+						[]v1.OperatorState{
 							{Name: "openshift-apiserver", State: "Success"},
 						},
 					),
 				},
-				TestResults: map[string]testgridanalysisapi.RawTestResult{},
+				TestResults: map[string]v1.RawTestResult{},
 			},
-			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName, Status: tgv1.TestStatusSuccess},
-				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+			expectedTestResults: []v1.RawJobRunTestResult{
+				{Name: testidentification.SippySuiteName + "." + testidentification.InstallTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.SippySuiteName + "." + testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
 				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 		},
 		{
 			name: "failed install adds successful operator tests",
-			rawJobResults: testgridanalysisapi.RawJobResult{
+			rawJobResults: v1.RawJobResult{
 				JobName: job1Name,
-				JobRunResults: map[string]testgridanalysisapi.RawJobRunResult{
+				JobRunResults: map[string]v1.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(false, false, v1.JobInstallFailure,
-						[]testgridanalysisapi.OperatorState{
+						[]v1.OperatorState{
 							{Name: "openshift-apiserver", State: "Success"},
 						},
 					),
 				},
-				TestResults: map[string]testgridanalysisapi.RawTestResult{},
+				TestResults: map[string]v1.RawTestResult{},
 			},
-			expectedTestResults: []testgridanalysisapi.RawJobRunTestResult{
-				{Name: testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+			expectedTestResults: []v1.RawJobRunTestResult{
+				{Name: testidentification.SippySuiteName + "." + testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
 				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 			expectedFailedTestNames: []string{
-				testgridanalysisapi.SippySuiteName + "." + testgridanalysisapi.InstallTestName,
+				testidentification.SippySuiteName + "." + testidentification.InstallTestName,
 			},
 		},
 	}
@@ -78,7 +78,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 	}
 }
 
-func assertJobRunTestResult(t *testing.T, rjr testgridanalysisapi.RawJobResult, expectedTestResults []testgridanalysisapi.RawJobRunTestResult) {
+func assertJobRunTestResult(t *testing.T, rjr v1.RawJobResult, expectedTestResults []v1.RawJobRunTestResult) {
 	for _, etr := range expectedTestResults {
 		var found bool
 		for _, tr := range rjr.JobRunResults[job1RunURL1].TestResults {
@@ -92,7 +92,7 @@ func assertJobRunTestResult(t *testing.T, rjr testgridanalysisapi.RawJobResult, 
 	}
 }
 
-func assertFailedTestNames(t *testing.T, rjr testgridanalysisapi.RawJobResult, expectedFailedTestNames []string) {
+func assertFailedTestNames(t *testing.T, rjr v1.RawJobResult, expectedFailedTestNames []string) {
 	for _, tn := range expectedFailedTestNames {
 		var found bool
 		for _, tr := range rjr.JobRunResults[job1RunURL1].FailedTestNames {
@@ -116,14 +116,14 @@ func buildFakeRawJobRunResult(
 	installSuccess bool,
 	testsSuccess bool,
 	overallJobResult v1.JobOverallResult,
-	operatorStates []testgridanalysisapi.OperatorState,
-) testgridanalysisapi.RawJobRunResult {
-	return testgridanalysisapi.RawJobRunResult{
+	operatorStates []v1.OperatorState,
+) v1.RawJobRunResult {
+	return v1.RawJobRunResult{
 		Job:             job1Name,
 		JobRunURL:       job1RunURL1,
 		TestFailures:    0,
 		FailedTestNames: []string{},
-		TestResults: []testgridanalysisapi.RawJobRunTestResult{
+		TestResults: []v1.RawJobRunTestResult{
 			{},
 		},
 		Succeeded:           testsSuccess,
