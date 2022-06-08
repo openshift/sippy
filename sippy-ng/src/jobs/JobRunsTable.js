@@ -113,7 +113,7 @@ export default function JobRunsTable(props) {
       flex: 0.6,
     },
     {
-      field: 'result',
+      field: 'overall_result',
       headerName: 'Result',
       flex: 0.5,
       renderCell: (params) => {

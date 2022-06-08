@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
+
 	"github.com/openshift/sippy/pkg/db/models"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -162,7 +163,7 @@ type JobRun struct {
 	KnownFailure          bool                `json:"known_failure"`
 	Succeeded             bool                `json:"succeeded"`
 	Timestamp             int                 `json:"timestamp"`
-	OverallResult         v1.JobOverallResult `json:"result"`
+	OverallResult         v1.JobOverallResult `json:"overall_result"`
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
@@ -173,7 +174,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "job":
 		return ColumnTypeString
-	case "result":
+	case "overall_result":
 		return ColumnTypeString
 	case "failed_test_names":
 		return ColumnTypeArray
@@ -194,7 +195,7 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 	switch param {
 	case "job", "name":
 		return run.Job, nil
-	case "result":
+	case "overall_result":
 		return string(run.OverallResult), nil
 	case "test_grid_url":
 		return run.TestGridURL, nil
