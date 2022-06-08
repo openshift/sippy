@@ -271,10 +271,12 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			status = v1.TestStatusSuccess
 		}
 
-		key := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
-		if existing, ok := testCases[key]; !ok {
-			testCases[key] = &models.ProwJobRunTest{
-				TestID:   pl.findOrAddTest(tc.Name),
+		// FIXME: Ideally we'd stop including the suite name with the test name, but it's
+		// currently too tied together with synthetic tests to separate.
+		testNameWithSuite := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		if existing, ok := testCases[testNameWithSuite]; !ok {
+			testCases[testNameWithSuite] = &models.ProwJobRunTest{
+				TestID:   pl.findOrAddTest(testNameWithSuite),
 				SuiteID:  pl.findOrAddSuite(suite.Name),
 				Status:   int(status),
 				Duration: tc.Duration,
