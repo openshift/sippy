@@ -273,7 +273,10 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 
 		// FIXME: Ideally we'd stop including the suite name with the test name, but it's
 		// currently too tied together with synthetic tests to separate.
-		testNameWithSuite := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		testNameWithSuite := tc.Name
+		if suite.Name != "" && suite.Name != "openshift-tests" {
+			testNameWithSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		}
 		if existing, ok := testCases[testNameWithSuite]; !ok {
 			testCases[testNameWithSuite] = &models.ProwJobRunTest{
 				TestID:   pl.findOrAddTest(testNameWithSuite),
