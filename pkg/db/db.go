@@ -1,9 +1,12 @@
 package db
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -52,28 +55,92 @@ type PostgresMaterializedView struct {
 	IndexColumns []string
 }
 
+const (
+	hashTypeMatView      = "matview"
+	hashTypeMatViewIndex = "matview_index"
+	hashTypeFunction     = "function"
+)
+
 func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
+		vlog := log.WithFields(log.Fields{"view": pmv.Name})
 
+		// Generate our materialized view schema and calculate hash:
+		vd := pmv.Definition
+		for k, v := range pmv.ReplaceStrings {
+			vd = strings.ReplaceAll(vd, k, v)
+		}
+		hash := sha256.Sum256([]byte(vd))
+		hashStr := base64.URLEncoding.EncodeToString(hash[:])
+		vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+
+		// If we have no recorded hash or the hash doesn't match, delete the current matview, recreate, and store new hash:
+		currSchemaHash := models.SchemaHash{}
+		res := db.Where("type = ? AND name = ?", hashTypeMatView, pmv.Name).Find(&currSchemaHash)
+		if res.Error != nil {
+			vlog.WithError(res.Error).Error("error looking up schema hash")
+		}
+		// If true we will delete the existing view if there is one, and recreate with latest schema, then store the new hash
+		var viewUpdateRequired bool
+		if currSchemaHash.ID == 0 {
+			vlog.Info("no current hash in db, view will be created")
+			viewUpdateRequired = true
+			currSchemaHash = models.SchemaHash{
+				Type: hashTypeMatView,
+				Name: pmv.Name,
+				Hash: hashStr,
+			}
+		}
+
+		// Check if the view exists at all:
 		var count int64
 		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
 			return res.Error
 		}
 		if count == 0 {
-			log.WithField("matView", pmv.Name).Info("creating missing materialized view")
+			vlog.Info("view does not exist, creating")
+			viewUpdateRequired = true
+		}
+		if currSchemaHash.Hash != hashStr {
+			vlog.WithField("oldHash", currSchemaHash.Hash).Info("view schema has has changed, recreating")
+		}
 
-			vd := pmv.Definition
-			for k, v := range pmv.ReplaceStrings {
-				vd = strings.ReplaceAll(vd, k, v)
+		if viewUpdateRequired {
+			if count > 0 {
+				vlog.Info("dropping existing view")
+				if res := db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)); res.Error != nil {
+					vlog.WithError(res.Error).Error("error dropping materialized view")
+					return res.Error
+				}
 			}
 
+			vlog.Info("creating view with latest schema")
+
+			// TODO: remove WITH NO DATA
+			// Create includes an implicit refresh, but then the view will appear populate and our initialization
+			// code will not attempt a refresh in that case.
 			if res := db.Exec(
-				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s", pmv.Name, vd)); res.Error != nil {
-				log.WithField("matView", pmv.Name).WithError(res.Error).Error("error creating materialized view")
+				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, vd)); res.Error != nil {
+				log.WithError(res.Error).Error("error creating materialized view")
 				return res.Error
 			}
+
+			if currSchemaHash.ID == 0 {
+				if res := db.Create(&currSchemaHash); res.Error != nil {
+					vlog.WithError(res.Error).Error("error creating schema hash")
+				}
+			} else {
+				if res := db.Save(&currSchemaHash); res.Error != nil {
+					vlog.WithError(res.Error).Error("error updating schema hash")
+				}
+			}
+			vlog.Info("schema hash updated")
 		}
+
 		// TODO indicies
+	}
+	if true {
+		return fmt.Errorf("oops")
 	}
 
 	return nil
@@ -174,7 +241,7 @@ SELECT prow_job_runs.id,
 FROM prow_job_runs
    LEFT JOIN failed_test_results ON failed_test_results.prow_job_run_id = prow_job_runs.id
    LEFT JOIN flaked_test_results ON flaked_test_results.prow_job_run_id = prow_job_runs.id
-   JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id;
+   JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 `
 
 const testReportMatView = `
@@ -227,7 +294,7 @@ FROM prow_job_run_tests
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE NOT ('aggregated'::text = ANY (prow_jobs.variants))
-GROUP BY tests.id, tests.name, prow_jobs.variants, prow_jobs.release;
+GROUP BY tests.id, tests.name, prow_jobs.variants, prow_jobs.release
 `
 
 const testAnalysisByVariantMatView = `
@@ -261,7 +328,7 @@ FROM prow_job_run_tests
 	JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
 	JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE prow_job_runs."timestamp" > (now() - '14 days'::interval)
-GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), (unnest(prow_jobs.variants)), prow_jobs.release;
+GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), (unnest(prow_jobs.variants)), prow_jobs.release
 `
 
 const testAnalysisByJobMatView = `
@@ -295,7 +362,7 @@ FROM prow_job_run_tests
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE prow_job_runs."timestamp" > (now() - '14 days'::interval) AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
-GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), prow_jobs.release, prow_jobs.name;
+GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), prow_jobs.release, prow_jobs.name
 `
 
 const prowJobFailedTestsMatView = `
@@ -307,7 +374,7 @@ FROM prow_job_runs
    JOIN prow_job_run_tests pjrt ON prow_job_runs.id = pjrt.prow_job_run_id
    JOIN tests tests ON pjrt.test_id = tests.id
 WHERE pjrt.status = 12
-GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id;
+GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id
 `
 
 func createPostgresFunctions(db *gorm.DB) error {
