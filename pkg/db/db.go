@@ -63,78 +63,11 @@ const (
 
 func createPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
+
 		vlog := log.WithFields(log.Fields{"view": pmv.Name})
+		if err := syncMatView(db, pmv, vlog); err != nil {
+			return err
 
-		// Generate our materialized view schema and calculate hash:
-		vd := pmv.Definition
-		for k, v := range pmv.ReplaceStrings {
-			vd = strings.ReplaceAll(vd, k, v)
-		}
-		hash := sha256.Sum256([]byte(vd))
-		hashStr := base64.URLEncoding.EncodeToString(hash[:])
-		vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
-
-		// If we have no recorded hash or the hash doesn't match, delete the current matview, recreate, and store new hash:
-		currSchemaHash := models.SchemaHash{}
-		res := db.Where("type = ? AND name = ?", hashTypeMatView, pmv.Name).Find(&currSchemaHash)
-		if res.Error != nil {
-			vlog.WithError(res.Error).Error("error looking up schema hash")
-		}
-		// If true we will delete the existing view if there is one, and recreate with latest schema, then store the new hash
-		var viewUpdateRequired bool
-		if currSchemaHash.ID == 0 {
-			vlog.Info("no current hash in db, view will be created")
-			viewUpdateRequired = true
-			currSchemaHash = models.SchemaHash{
-				Type: hashTypeMatView,
-				Name: pmv.Name,
-				Hash: hashStr,
-			}
-		}
-
-		// Check if the view exists at all:
-		var count int64
-		if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
-			return res.Error
-		}
-		if count == 0 {
-			vlog.Info("view does not exist, creating")
-			viewUpdateRequired = true
-		}
-		if currSchemaHash.Hash != hashStr {
-			vlog.WithField("oldHash", currSchemaHash.Hash).Info("view schema has has changed, recreating")
-		}
-
-		if viewUpdateRequired {
-			if count > 0 {
-				vlog.Info("dropping existing view")
-				if res := db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)); res.Error != nil {
-					vlog.WithError(res.Error).Error("error dropping materialized view")
-					return res.Error
-				}
-			}
-
-			vlog.Info("creating view with latest schema")
-
-			// TODO: remove WITH NO DATA
-			// Create includes an implicit refresh, but then the view will appear populate and our initialization
-			// code will not attempt a refresh in that case.
-			if res := db.Exec(
-				fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, vd)); res.Error != nil {
-				log.WithError(res.Error).Error("error creating materialized view")
-				return res.Error
-			}
-
-			if currSchemaHash.ID == 0 {
-				if res := db.Create(&currSchemaHash); res.Error != nil {
-					vlog.WithError(res.Error).Error("error creating schema hash")
-				}
-			} else {
-				if res := db.Save(&currSchemaHash); res.Error != nil {
-					vlog.WithError(res.Error).Error("error updating schema hash")
-				}
-			}
-			vlog.Info("schema hash updated")
 		}
 
 		// TODO indicies
@@ -143,6 +76,81 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 		return fmt.Errorf("oops")
 	}
 
+	return nil
+}
+
+func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger) error {
+	// Generate our materialized view schema and calculate hash:
+	vd := pmv.Definition
+	for k, v := range pmv.ReplaceStrings {
+		vd = strings.ReplaceAll(vd, k, v)
+	}
+	hash := sha256.Sum256([]byte(vd))
+	hashStr := base64.URLEncoding.EncodeToString(hash[:])
+	vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+
+	// If we have no recorded hash or the hash doesn't match, delete the current matview, recreate, and store new hash:
+	currSchemaHash := models.SchemaHash{}
+	res := db.Where("type = ? AND name = ?", hashTypeMatView, pmv.Name).Find(&currSchemaHash)
+	if res.Error != nil {
+		vlog.WithError(res.Error).Error("error looking up schema hash")
+	}
+	// If true we will delete the existing view if there is one, and recreate with latest schema, then store the new hash
+	var viewUpdateRequired bool
+	if currSchemaHash.ID == 0 {
+		vlog.Info("no current hash in db, view will be created")
+		viewUpdateRequired = true
+		currSchemaHash = models.SchemaHash{
+			Type: hashTypeMatView,
+			Name: pmv.Name,
+			Hash: hashStr,
+		}
+	}
+
+	// Check if the view exists at all:
+	var count int64
+	if res := db.Raw("SELECT COUNT(*) FROM pg_matviews WHERE matviewname = ?", pmv.Name).Count(&count); res.Error != nil {
+		return res.Error
+	}
+	if count == 0 {
+		vlog.Info("view does not exist, creating")
+		viewUpdateRequired = true
+	}
+	if currSchemaHash.Hash != hashStr {
+		vlog.WithField("oldHash", currSchemaHash.Hash).Info("view schema has has changed, recreating")
+	}
+
+	if viewUpdateRequired {
+		if count > 0 {
+			vlog.Info("dropping existing view")
+			if res := db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)); res.Error != nil {
+				vlog.WithError(res.Error).Error("error dropping materialized view")
+				return res.Error
+			}
+		}
+
+		vlog.Info("creating view with latest schema")
+
+		// TODO: remove WITH NO DATA
+		// Create includes an implicit refresh, but then the view will appear populate and our initialization
+		// code will not attempt a refresh in that case.
+		if res := db.Exec(
+			fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, vd)); res.Error != nil {
+			log.WithError(res.Error).Error("error creating materialized view")
+			return res.Error
+		}
+
+		if currSchemaHash.ID == 0 {
+			if res := db.Create(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error creating schema hash")
+			}
+		} else {
+			if res := db.Save(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error updating schema hash")
+			}
+		}
+		vlog.Info("schema hash updated")
+	}
 	return nil
 }
 
