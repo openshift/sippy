@@ -274,7 +274,7 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		// FIXME: Ideally we'd stop including the suite name with the test name, but it's
 		// currently too tied together with synthetic tests to separate.
 		testNameWithSuite := tc.Name
-		if suite.Name != "" && suite.Name != "openshift-tests" {
+		if suite.Name != "" && suite.Name != "openshift-tests" && suite.Name != "sippy" {
 			testNameWithSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		}
 		if existing, ok := testCases[testNameWithSuite]; !ok {
