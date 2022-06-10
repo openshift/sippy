@@ -69,6 +69,10 @@ func createPostgresMaterializedViews(db *gorm.DB) error {
 			return err
 
 		}
+		if err := syncIndicies(db, pmv, vlog); err != nil {
+			return err
+
+		}
 
 		// TODO indicies
 	}
@@ -122,7 +126,6 @@ func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger
 
 	if viewUpdateRequired {
 		if count > 0 {
-			vlog.Info("dropping existing view")
 			if res := db.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)); res.Error != nil {
 				vlog.WithError(res.Error).Error("error dropping materialized view")
 				return res.Error
@@ -150,6 +153,70 @@ func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger
 			}
 		}
 		vlog.Info("schema hash updated")
+	} else {
+		vlog.Info("no schema update required")
+	}
+	return nil
+}
+
+func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger) error {
+	// Generate our schema and calculate hash, use the full SQL index command just incase we decide to change it someday.
+	indexName := fmt.Sprintf("idx_%s", pmv.Name)
+	vlog = vlog.WithField("index", "indexName")
+	index := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, pmv.Name, strings.Join(pmv.IndexColumns, ","))
+	vlog.Infof("generated index command: %s", index)
+	hash := sha256.Sum256([]byte(index))
+	hashStr := base64.URLEncoding.EncodeToString(hash[:])
+	vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+
+	// If we have no recorded hash or the hash doesn't match, delete the current matview, recreate, and store new hash:
+	currSchemaHash := models.SchemaHash{}
+	res := db.Where("type = ? AND name = ?", hashTypeMatViewIndex, indexName).Find(&currSchemaHash)
+	if res.Error != nil {
+		vlog.WithError(res.Error).Error("error looking up schema hash")
+	}
+	var updateRequired bool
+	if currSchemaHash.ID == 0 {
+		vlog.Info("no current hash in db, index will be created")
+		updateRequired = true
+		currSchemaHash = models.SchemaHash{
+			Type: hashTypeMatViewIndex,
+			Name: indexName,
+			Hash: hashStr,
+		}
+	}
+
+	if currSchemaHash.Hash != hashStr {
+		vlog.WithField("oldHash", currSchemaHash.Hash).Info("index schema has has changed, recreating")
+	}
+
+	if updateRequired {
+		vlog.Info("index update required")
+
+		if res := db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)); res.Error != nil {
+			log.WithError(res.Error).Error("error dropping index")
+			return res.Error
+		}
+
+		// Create includes an implicit refresh, but then the view will appear populate and our initialization
+		// code will not attempt a refresh in that case.
+		if res := db.Exec(index); res.Error != nil {
+			log.WithError(res.Error).Error("error creating index")
+			return res.Error
+		}
+
+		if currSchemaHash.ID == 0 {
+			if res := db.Create(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error creating schema hash")
+			}
+		} else {
+			if res := db.Save(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error updating schema hash")
+			}
+		}
+		vlog.Info("schema hash updated")
+	} else {
+		vlog.Info("no schema update required")
 	}
 	return nil
 }
