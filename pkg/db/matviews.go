@@ -96,8 +96,6 @@ func syncPostgresMaterializedViews(db *gorm.DB) error {
 			return err
 
 		}
-
-		// TODO indicies
 	}
 
 	return nil
@@ -131,6 +129,7 @@ func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger
 		}
 	} else if currSchemaHash.Hash != hashStr {
 		vlog.WithField("oldHash", currSchemaHash.Hash).Info("view schema has has changed, recreating")
+		currSchemaHash.Hash = hashStr
 		viewUpdateRequired = true
 	}
 
@@ -179,24 +178,24 @@ func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger
 	return nil
 }
 
-func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger) error {
+func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, ilog log.FieldLogger) error {
 	// Generate our schema and calculate hash, use the full SQL index command just incase we decide to change it someday.
 	indexName := fmt.Sprintf("idx_%s", pmv.Name)
-	vlog = vlog.WithField("index", "indexName")
+	ilog = ilog.WithField("index", "indexName")
 	index := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, pmv.Name, strings.Join(pmv.IndexColumns, ","))
-	vlog.Infof("generated index command: %s", index)
+	ilog.Infof("generated index command: %s", index)
 	hash := sha256.Sum256([]byte(index))
 	hashStr := base64.URLEncoding.EncodeToString(hash[:])
-	vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+	ilog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
 
 	currSchemaHash := models.SchemaHash{}
 	res := db.Where("type = ? AND name = ?", hashTypeMatViewIndex, indexName).Find(&currSchemaHash)
 	if res.Error != nil {
-		vlog.WithError(res.Error).Error("error looking up schema hash")
+		ilog.WithError(res.Error).Error("error looking up schema hash")
 	}
 	var updateRequired bool
 	if currSchemaHash.ID == 0 {
-		vlog.Info("no current hash in db, index will be created")
+		ilog.Info("no current hash in db, index will be created")
 		currSchemaHash = models.SchemaHash{
 			Type: hashTypeMatViewIndex,
 			Name: indexName,
@@ -204,12 +203,13 @@ func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogge
 		}
 		updateRequired = true
 	} else if currSchemaHash.Hash != hashStr {
-		vlog.WithField("oldHash", currSchemaHash.Hash).Info("index schema has has changed, recreating")
+		ilog.WithField("oldHash", currSchemaHash.Hash).Info("index schema has has changed, recreating")
+		currSchemaHash.Hash = hashStr
 		updateRequired = true
 	}
 
 	if updateRequired {
-		vlog.Info("index update required")
+		ilog.Info("index update required")
 
 		if res := db.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)); res.Error != nil {
 			log.WithError(res.Error).Error("error dropping index")
@@ -223,16 +223,16 @@ func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogge
 
 		if currSchemaHash.ID == 0 {
 			if res := db.Create(&currSchemaHash); res.Error != nil {
-				vlog.WithError(res.Error).Error("error creating schema hash")
+				ilog.WithError(res.Error).Error("error creating schema hash")
 			}
 		} else {
 			if res := db.Save(&currSchemaHash); res.Error != nil {
-				vlog.WithError(res.Error).Error("error updating schema hash")
+				ilog.WithError(res.Error).Error("error updating schema hash")
 			}
 		}
-		vlog.Info("schema hash updated")
+		ilog.Info("schema hash updated")
 	} else {
-		vlog.Info("no schema update required")
+		ilog.Info("no schema update required")
 	}
 	return nil
 }
@@ -288,7 +288,7 @@ SELECT tests.id,
        CASE
            WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1
            ELSE NULL::integer
-       END), 0::bigint) AS previous_successes,
+       END), 0::bigint) AS previous_successespppp,
    COALESCE(count(
        CASE
            WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1

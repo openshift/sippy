@@ -23,57 +23,58 @@ var PostgresFunctions = []PostgresFunction{
 }
 
 func syncPostgresFunctions(db *gorm.DB) error {
-	for _, pmv := range PostgresFunctions {
-		vlog := log.WithFields(log.Fields{"function": pmv.Name})
+	for _, pgFunc := range PostgresFunctions {
+		flog := log.WithFields(log.Fields{"function": pgFunc.Name})
 		// Generate our schema and calculate hash.
-		hash := sha256.Sum256([]byte(pmv.Definition))
+		hash := sha256.Sum256([]byte(pgFunc.Definition))
 		hashStr := base64.URLEncoding.EncodeToString(hash[:])
-		vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+		flog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
 
 		currSchemaHash := models.SchemaHash{}
-		res := db.Where("type = ? AND name = ?", hashTypeFunction, pmv.Name).Find(&currSchemaHash)
+		res := db.Where("type = ? AND name = ?", hashTypeFunction, pgFunc.Name).Find(&currSchemaHash)
 		if res.Error != nil {
-			vlog.WithError(res.Error).Error("error looking up schema hash")
+			flog.WithError(res.Error).Error("error looking up schema hash")
 		}
 		var updateRequired bool
 		if currSchemaHash.ID == 0 {
-			vlog.Info("no current hash in db, function will be created/replaced")
+			flog.Info("no current hash in db, function will be created/replaced")
 			currSchemaHash = models.SchemaHash{
 				Type: hashTypeFunction,
-				Name: pmv.Name,
+				Name: pgFunc.Name,
 				Hash: hashStr,
 			}
 			updateRequired = true
 		} else if currSchemaHash.Hash != hashStr {
-			vlog.WithField("oldHash", currSchemaHash.Hash).Info("function schema has has changed, recreating")
+			flog.WithField("oldHash", currSchemaHash.Hash).Info("function schema has has changed, recreating")
+			currSchemaHash.Hash = hashStr
 			updateRequired = true
 		}
 
 		if updateRequired {
-			vlog.Info("function update required")
+			flog.Info("function update required")
 
-			if res := db.Exec(fmt.Sprintf("DROP FUNCTION IF EXISTS %s", pmv.Name)); res.Error != nil {
+			if res := db.Exec(fmt.Sprintf("DROP FUNCTION IF EXISTS %s", pgFunc.Name)); res.Error != nil {
 				log.WithError(res.Error).Error("error dropping postgres function")
 				return res.Error
 			}
 
-			if res := db.Exec(pmv.Definition); res.Error != nil {
+			if res := db.Exec(pgFunc.Definition); res.Error != nil {
 				log.WithError(res.Error).Error("error creating postgres function")
 				return res.Error
 			}
 
 			if currSchemaHash.ID == 0 {
 				if res := db.Create(&currSchemaHash); res.Error != nil {
-					vlog.WithError(res.Error).Error("error creating schema hash")
+					flog.WithError(res.Error).Error("error creating schema hash")
 				}
 			} else {
 				if res := db.Save(&currSchemaHash); res.Error != nil {
-					vlog.WithError(res.Error).Error("error updating schema hash")
+					flog.WithError(res.Error).Error("error updating schema hash")
 				}
 			}
-			vlog.Info("schema hash updated")
+			flog.Info("schema hash updated")
 		} else {
-			vlog.Info("no schema update required")
+			flog.Info("no schema update required")
 		}
 	}
 	return nil
