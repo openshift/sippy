@@ -1,11 +1,22 @@
 package db
 
 import (
-	"fmt"
+	"crypto/sha256"
+	"encoding/base64"
 
+	"github.com/openshift/sippy/pkg/db/models"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+)
+
+type SchemaHashType string
+
+const (
+	hashTypeMatView      SchemaHashType = "matview"
+	hashTypeMatViewIndex SchemaHashType = "matview_index"
+	hashTypeFunction     SchemaHashType = "function"
 )
 
 type DB struct {
@@ -32,12 +43,80 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if true {
-		return nil, fmt.Errorf("bailing out during dev")
-	}
-
 	return &DB{
 		DB:        db,
 		BatchSize: 1024,
 	}, nil
+}
+
+// syncSchema will update generic db resources if their schema has changed. (functions, materialized views, indexes)
+// This is useful for resources that cannot be updated incrementally with goose, and can cause conflict / last write
+// wins problems with concurrent development.
+//
+// desiredSchema should be the full SQL command we would issue to create the resource fresh. It will be hashed and
+//   compared to a pre-existing value in the db of the given name and type, if any exists. If none exists, or the hashes
+//   have changed, the resource will be recreated.
+// dropSql is the full SQL command we will run if we detect that the resource needs updating. It should include
+//   "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
+//
+// This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
+// not be recreated until you also delete the corresponding row from schema_hashes.
+func syncSchema(db *gorm.DB, hashType SchemaHashType, name string, desiredSchema string, dropSql string) error {
+
+	// Calculate hash of our schema to see if anything has changed.
+	hash := sha256.Sum256([]byte(desiredSchema))
+	hashStr := base64.URLEncoding.EncodeToString(hash[:])
+	vlog := log.WithFields(log.Fields{"name": name, "type": hashType})
+	vlog.WithField("hash", hashStr).Debug("generated SHA256 hash")
+
+	currSchemaHash := models.SchemaHash{}
+	res := db.Where("type = ? AND name = ?", hashType, name).Find(&currSchemaHash)
+	if res.Error != nil {
+		vlog.WithError(res.Error).Error("error looking up schema hash")
+	}
+
+	var updateRequired bool
+	if currSchemaHash.ID == 0 {
+		vlog.Debug("no current schema hash in db, creating")
+		updateRequired = true
+		currSchemaHash = models.SchemaHash{
+			Type: string(hashType),
+			Name: name,
+			Hash: hashStr,
+		}
+	} else if currSchemaHash.Hash != hashStr {
+		vlog.WithField("oldHash", currSchemaHash.Hash).Debug("schema hash has has changed, recreating")
+		currSchemaHash.Hash = hashStr
+		updateRequired = true
+	}
+
+	if updateRequired {
+		if res := db.Exec(dropSql); res.Error != nil {
+			vlog.WithError(res.Error).Error("error dropping")
+			return res.Error
+		}
+
+		vlog.Info("creating with latest schema")
+
+		if res := db.Exec(desiredSchema); res.Error != nil {
+			log.WithError(res.Error).Error("error creating")
+			return res.Error
+		}
+
+		if currSchemaHash.ID == 0 {
+			if res := db.Create(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error creating schema hash")
+				return res.Error
+			}
+		} else {
+			if res := db.Save(&currSchemaHash); res.Error != nil {
+				vlog.WithError(res.Error).Error("error updating schema hash")
+				return res.Error
+			}
+		}
+		vlog.Info("schema hash updated")
+	} else {
+		vlog.Debug("no schema update required")
+	}
+	return nil
 }

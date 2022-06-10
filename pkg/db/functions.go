@@ -1,12 +1,8 @@
 package db
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 
-	"github.com/openshift/sippy/pkg/db/models"
-	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -24,57 +20,9 @@ var PostgresFunctions = []PostgresFunction{
 
 func syncPostgresFunctions(db *gorm.DB) error {
 	for _, pgFunc := range PostgresFunctions {
-		flog := log.WithFields(log.Fields{"function": pgFunc.Name})
-		// Generate our schema and calculate hash.
-		hash := sha256.Sum256([]byte(pgFunc.Definition))
-		hashStr := base64.URLEncoding.EncodeToString(hash[:])
-		flog.WithField("hash", hashStr).Info("generated SHA256 hash")
-
-		currSchemaHash := models.SchemaHash{}
-		res := db.Where("type = ? AND name = ?", hashTypeFunction, pgFunc.Name).Find(&currSchemaHash)
-		if res.Error != nil {
-			flog.WithError(res.Error).Error("error looking up schema hash")
-		}
-		var updateRequired bool
-		if currSchemaHash.ID == 0 {
-			flog.Info("no current hash in db, function will be created/replaced")
-			currSchemaHash = models.SchemaHash{
-				Type: hashTypeFunction,
-				Name: pgFunc.Name,
-				Hash: hashStr,
-			}
-			updateRequired = true
-		} else if currSchemaHash.Hash != hashStr {
-			flog.WithField("oldHash", currSchemaHash.Hash).Info("function schema has has changed, recreating")
-			currSchemaHash.Hash = hashStr
-			updateRequired = true
-		}
-
-		if updateRequired {
-			flog.Info("function update required")
-
-			if res := db.Exec(fmt.Sprintf("DROP FUNCTION IF EXISTS %s", pgFunc.Name)); res.Error != nil {
-				log.WithError(res.Error).Error("error dropping postgres function")
-				return res.Error
-			}
-
-			if res := db.Exec(pgFunc.Definition); res.Error != nil {
-				log.WithError(res.Error).Error("error creating postgres function")
-				return res.Error
-			}
-
-			if currSchemaHash.ID == 0 {
-				if res := db.Create(&currSchemaHash); res.Error != nil {
-					flog.WithError(res.Error).Error("error creating schema hash")
-				}
-			} else {
-				if res := db.Save(&currSchemaHash); res.Error != nil {
-					flog.WithError(res.Error).Error("error updating schema hash")
-				}
-			}
-			flog.Info("schema hash updated")
-		} else {
-			flog.Info("no schema update required")
+		dropSql := fmt.Sprintf("DROP FUNCTION IF EXISTS %s", pgFunc.Name)
+		if err := syncSchema(db, hashTypeFunction, pgFunc.Name, pgFunc.Definition, dropSql); err != nil {
+			return err
 		}
 	}
 	return nil
