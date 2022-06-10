@@ -28,7 +28,7 @@ func syncPostgresFunctions(db *gorm.DB) error {
 		// Generate our schema and calculate hash.
 		hash := sha256.Sum256([]byte(pgFunc.Definition))
 		hashStr := base64.URLEncoding.EncodeToString(hash[:])
-		flog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+		flog.WithField("hash", hashStr).Info("generated SHA256 hash")
 
 		currSchemaHash := models.SchemaHash{}
 		res := db.Where("type = ? AND name = ?", hashTypeFunction, pgFunc.Name).Find(&currSchemaHash)

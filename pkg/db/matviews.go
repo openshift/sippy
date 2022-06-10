@@ -109,7 +109,7 @@ func syncMatView(db *gorm.DB, pmv PostgresMaterializedView, vlog log.FieldLogger
 	}
 	hash := sha256.Sum256([]byte(vd))
 	hashStr := base64.URLEncoding.EncodeToString(hash[:])
-	vlog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+	vlog.WithField("hash", hashStr).Info("generated SHA256 hash")
 
 	// If we have no recorded hash or the hash doesn't match, delete the current matview, recreate, and store new hash:
 	currSchemaHash := models.SchemaHash{}
@@ -186,7 +186,7 @@ func syncIndicies(db *gorm.DB, pmv PostgresMaterializedView, ilog log.FieldLogge
 	ilog.Infof("generated index command: %s", index)
 	hash := sha256.Sum256([]byte(index))
 	hashStr := base64.URLEncoding.EncodeToString(hash[:])
-	ilog.WithField("hash", string(hashStr)).Info("generated SHA256 hash")
+	ilog.WithField("hash", hashStr).Info("generated SHA256 hash")
 
 	currSchemaHash := models.SchemaHash{}
 	res := db.Where("type = ? AND name = ?", hashTypeMatViewIndex, indexName).Find(&currSchemaHash)
