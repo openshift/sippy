@@ -29,11 +29,11 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := createPostgresMaterializedViews(db); err != nil {
+	if err := syncPostgresMaterializedViews(db); err != nil {
 		return nil, err
 	}
 
-	if err := createPostgresFunctions(db); err != nil {
+	if err := syncPostgresFunctions(db); err != nil {
 		return nil, err
 	}
 	return &DB{
@@ -49,7 +49,7 @@ type PostgresMaterializedView struct {
 	Definition string
 	// ReplaceStrings is a map of strings we want to replace in the create view statement, allowing for re-use.
 	ReplaceStrings map[string]string
-	// IndexColumns are the columns to create a unique index for. Will be named idx_[matviewname] and automatically
+	// IndexColumns are the columns to create a unique index for. Will be named idx_[Name] and automatically
 	// replaced if changes are made to these values. IndexColumns are required as we need them defined to be able to
 	// refresh materialized views concurrently. (avoiding locking reads for several minutes while we update)
 	IndexColumns []string
@@ -61,7 +61,7 @@ const (
 	hashTypeFunction     = "function"
 )
 
-func createPostgresMaterializedViews(db *gorm.DB) error {
+func syncPostgresMaterializedViews(db *gorm.DB) error {
 	for _, pmv := range PostgresMatViews {
 
 		vlog := log.WithFields(log.Fields{"view": pmv.Name})
@@ -452,7 +452,7 @@ WHERE pjrt.status = 12
 GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id
 `
 
-func createPostgresFunctions(db *gorm.DB) error {
+func syncPostgresFunctions(db *gorm.DB) error {
 	if res := db.Exec(jobResultFunction); res.Error != nil {
 		log.WithError(res.Error).Error("error creating postgres function")
 		return res.Error
