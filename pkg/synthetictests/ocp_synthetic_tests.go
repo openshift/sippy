@@ -22,6 +22,7 @@ type syntheticTestResult struct {
 	fail int
 }
 
+//nolint:gocyclo
 func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.RawJobRunResult) *junit.TestSuite {
 	results := make([]*junit.TestCase, 0)
 
