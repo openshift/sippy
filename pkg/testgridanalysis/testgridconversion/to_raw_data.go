@@ -8,7 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -26,9 +26,8 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 	log.Infof("processing test details for job %s\n", jobDetails.Name)
 	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
-	for k, jrr := range jobResult.JobRunResults {
-		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(&jrr)
-		jobResult.JobRunResults[k] = jrr
+	for _, jrr := range jobResult.JobRunResults {
+		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(jrr)
 		for _, test := range syntheticTests.TestCases {
 			passed := 1
 			failed := 0
@@ -46,7 +45,7 @@ func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *v1.RawJ
 	jobResult := &v1.RawJobResult{
 		JobName:        job.Name,
 		TestGridJobURL: job.TestGridURL,
-		JobRunResults:  map[string]v1.RawJobRunResult{},
+		JobRunResults:  map[string]*v1.RawJobRunResult{},
 		TestResults:    map[string]v1.RawTestResult{},
 	}
 	for i, test := range job.Tests {
@@ -174,7 +173,7 @@ func processTestToJobRunResults(jobResult *v1.RawJobResult, job testgridv1.JobDe
 				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
-					jrr = v1.RawJobRunResult{
+					jrr = &v1.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
 						Timestamp: job.Timestamps[i],
@@ -219,7 +218,7 @@ func processTestToJobRunResults(jobResult *v1.RawJobResult, job testgridv1.JobDe
 				joburl := fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/%s/%s", job.Query, job.ChangeLists[i])
 				jrr, ok := jobResult.JobRunResults[joburl]
 				if !ok {
-					jrr = v1.RawJobRunResult{
+					jrr = &v1.RawJobRunResult{
 						Job:       job.Name,
 						JobRunURL: joburl,
 						Timestamp: job.Timestamps[i],

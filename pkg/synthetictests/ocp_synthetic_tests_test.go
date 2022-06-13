@@ -26,7 +26,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 			name: "successful install adds successful operator tests",
 			rawJobResults: v1.RawJobResult{
 				JobName: job1Name,
-				JobRunResults: map[string]v1.RawJobRunResult{
+				JobRunResults: map[string]*v1.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(true, true, v1.JobSucceeded,
 						[]v1.OperatorState{
 							{Name: "openshift-apiserver", State: "Success"},
@@ -45,7 +45,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 			name: "failed install adds successful operator tests",
 			rawJobResults: v1.RawJobResult{
 				JobName: job1Name,
-				JobRunResults: map[string]v1.RawJobRunResult{
+				JobRunResults: map[string]*v1.RawJobRunResult{
 					job1RunURL1: buildFakeRawJobRunResult(false, false, v1.JobInstallFailure,
 						[]v1.OperatorState{
 							{Name: "openshift-apiserver", State: "Success"},
@@ -67,10 +67,8 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 		testMgr := NewOpenshiftSyntheticTestManager()
 		t.Run(tc.name, func(t *testing.T) {
 			rjr := tc.rawJobResults
-			for k, jrr := range rjr.JobRunResults {
-				jobRun := jrr
-				testMgr.CreateSyntheticTests(&jobRun)
-				rjr.JobRunResults[k] = jobRun
+			for _, jrr := range rjr.JobRunResults {
+				testMgr.CreateSyntheticTests(jrr)
 			}
 			assertJobRunTestResult(t, rjr, tc.expectedTestResults)
 			assertFailedTestNames(t, rjr, tc.expectedFailedTestNames)
@@ -118,8 +116,8 @@ func buildFakeRawJobRunResult(
 	testsSuccess bool,
 	overallJobResult v1.JobOverallResult,
 	operatorStates []v1.OperatorState,
-) v1.RawJobRunResult {
-	return v1.RawJobRunResult{
+) *v1.RawJobRunResult {
+	return &v1.RawJobRunResult{
 		Job:             job1Name,
 		JobRunURL:       job1RunURL1,
 		TestFailures:    0,

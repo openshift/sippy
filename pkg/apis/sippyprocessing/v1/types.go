@@ -4,7 +4,7 @@ package v1
 
 import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/apis/testgrid/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 type ReportType string
@@ -112,7 +112,7 @@ type RawJobResult struct {
 	ChangeLists []string
 
 	// JobRunResults is a map from individual job run URL to the results of that job run
-	JobRunResults map[string]RawJobRunResult
+	JobRunResults map[string]*RawJobRunResult
 
 	// TestResults is a map from test.Name to the aggregated results for each run of that test inside the job
 	// TODO: rename to indicate this is aggregated across all job runs. The name currently is identical to a field

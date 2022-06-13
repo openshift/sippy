@@ -2,7 +2,7 @@ package synthetictests
 
 import (
 	"github.com/openshift/sippy/pkg/apis/junit"
-	"github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
 type SyntheticTestManager interface {
