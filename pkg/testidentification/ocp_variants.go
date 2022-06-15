@@ -24,6 +24,8 @@ var (
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex = regexp.MustCompile(`(?i)-metal-ipi`)
+	// Variant for Heterogeneous
+	multiRegex = regexp.MustCompile(`(?i)-multi`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
@@ -320,6 +322,8 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 		variants = append(variants, "ppc64le")
 	} else if s390xRegex.MatchString(jobName) {
 		variants = append(variants, "s390x")
+	} else if multiRegex.MatchString(jobName) {
+		variants = append(variants, "heterogeneous")
 	} else {
 		variants = append(variants, "amd64")
 	}
