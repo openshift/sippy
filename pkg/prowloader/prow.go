@@ -137,7 +137,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		release = matches[1]
 	}
 
-	if pj.Status.State == prow.PendingState {
+	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
 		return nil
 	}
