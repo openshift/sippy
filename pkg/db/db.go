@@ -56,12 +56,12 @@ func New(dsn string) (*DB, error) {
 // desiredSchema should be the full SQL command we would issue to create the resource fresh. It will be hashed and
 //   compared to a pre-existing value in the db of the given name and type, if any exists. If none exists, or the hashes
 //   have changed, the resource will be recreated.
-// dropSql is the full SQL command we will run if we detect that the resource needs updating. It should include
+// dropSQL is the full SQL command we will run if we detect that the resource needs updating. It should include
 //   "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
 //
 // This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
 // not be recreated until you also delete the corresponding row from schema_hashes.
-func syncSchema(db *gorm.DB, hashType SchemaHashType, name string, desiredSchema string, dropSql string) error {
+func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string) error {
 
 	// Calculate hash of our schema to see if anything has changed.
 	hash := sha256.Sum256([]byte(desiredSchema))
@@ -91,7 +91,7 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name string, desiredSchema
 	}
 
 	if updateRequired {
-		if res := db.Exec(dropSql); res.Error != nil {
+		if res := db.Exec(dropSQL); res.Error != nil {
 			vlog.WithError(res.Error).Error("error dropping")
 			return res.Error
 		}
