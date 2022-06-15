@@ -150,7 +150,7 @@ SELECT tests.id,
        CASE
            WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1
            ELSE NULL::integer
-       END), 0::bigint) AS previous_successespppp,
+       END), 0::bigint) AS previous_successes,
    COALESCE(count(
        CASE
            WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1
