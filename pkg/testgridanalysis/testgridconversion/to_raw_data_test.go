@@ -3,9 +3,10 @@ package testgridconversion
 import (
 	"testing"
 
-	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/stretchr/testify/assert"
+
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 func TestProcessJobDetails(t *testing.T) {
@@ -14,7 +15,7 @@ func TestProcessJobDetails(t *testing.T) {
 
 	testNames := []string{
 		"Operator results test operator install install_operatorname",
-		testgridanalysisapi.OperatorUpgradePrefix + "upgrade_operatorname",
+		testidentification.OperatorUpgradePrefix + "upgrade_operatorname",
 		"\"Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx.Installing \"Red Hat Integration - 3scale\" operator in test-nbqyx Installs Red Hat Integration - 3scale operator in test-nbqyx and creates 3scale Backend Schema operand instance\"",
 		"This test name should not be modified",
 	}

@@ -97,6 +97,10 @@ export function JobStackedChart(props) {
       color: '#1a9850',
       name: 'Success',
     },
+    A: {
+      color: '#707070',
+      name: 'Aborted',
+    },
     R: {
       color: '#aaa',
       name: 'Running',

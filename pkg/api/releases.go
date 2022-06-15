@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -152,7 +153,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	// jobs we saw it in.
 	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
 	for _, ft := range failedTests {
-		if ft.Test.Name == testgridanalysisapi.OpenShiftTestsName {
+		if ft.Test.Name == testidentification.OpenShiftTestsName {
 			// Skip the "all tests passed" test we inject, it's not relevant here.
 			continue
 		}

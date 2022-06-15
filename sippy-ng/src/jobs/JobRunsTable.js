@@ -44,6 +44,7 @@ export default function JobRunsTable(props) {
     S: 'Success',
     F: 'Failure (e2e)',
     f: 'failure (other tests)',
+    A: 'Aborted',
     U: 'upgrade failure',
     I: 'setup failure (installer)',
     N: 'setup failure (infrastructure)',

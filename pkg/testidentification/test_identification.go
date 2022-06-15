@@ -4,8 +4,50 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
+)
+
+const (
+	// OperatorUpgradePrefix is used to detect tests in the junit which signal an operator's upgrade status.
+	// TODO: what writes these initially?
+	OperatorUpgradePrefix = "Cluster upgrade.Operator upgrade "
+
+	// SippyOperatorUpgradePrefix is the test name sippy prefix adds to signal operator upgrade success. It added based on
+	// the above OperatorUpgradePrefix.
+	// TODO: why do we add a test when there already is one? It looks like it may have been to converge a legacy test name under the same name as a new test name.
+	SippyOperatorUpgradePrefix = "sippy.[sig-sippy] operator upgrade "
+
+	// OperatorFinalHealthPrefix is used to detect tests in the junit which signal an operator's install status.
+	OperatorFinalHealthPrefix = "Operator results.operator conditions "
+
+	FinalOperatorHealthTestName = "[sig-sippy] tests should finish with healthy operators"
+
+	SippySuiteName         = "sippy"
+	InfrastructureTestName = `[sig-sippy] infrastructure should work`
+	InstallTestName        = `[sig-sippy] install should work`
+	InstallTimeoutTestName = `[sig-sippy] install should not timeout`
+	UpgradeTestName        = `[sig-sippy] upgrade should work`
+	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
+
+	InstallTestNamePrefix     = `cluster install.install should succeed: `
+	InstallConfigTestName     = `cluster install.install should succeed: configuration`
+	InstallBootstrapTestName  = `cluster install.install should succeed: cluster bootstrap`
+	InstallOtherTestName      = `cluster install.install should succeed: other`
+	NewInfrastructureTestName = `cluster install.install should succeed: infrastructure`
+	NewInstallTestName        = `cluster install.install should succeed: overall`
+
+	Success = "Success"
+	Failure = "Failure"
+	Unknown = "Unknown"
+)
+
+var (
+	// TODO: add [sig-sippy] here as well so we can more clearly identify and substring search
+	// OperatorInstallPrefix is used when sippy adds synthetic tests to report if each operator installed correct.
+	OperatorInstallPrefix = "operator install "
+
+	// TODO: is this even used anymore?
+	OperatorConditionsTestCaseName = regexp.MustCompile(`Operator results.*operator install (?P<operator>.*)`)
 )
 
 var customJobInstallNames = sets.NewString(
@@ -70,7 +112,7 @@ var customJobInstallNames = sets.NewString(
 // Install steps have different names in different jobs. This is heavily dependent on the actual UPI jobs, but they turn out to be different.
 // When this needs updating,  it shows up as installs timing out in weird numbers
 func IsInstallStepEquivalent(testName string) bool {
-	if strings.Contains(testName, testgridanalysisapi.NewInstallTestName) {
+	if strings.Contains(testName, NewInstallTestName) {
 		return true
 	}
 	for installName := range customJobInstallNames {
@@ -141,30 +183,30 @@ func IsCuratedTest(bugzillaRelease, testName string) bool {
 }
 
 func IsOldInstallOperatorTest(testName string) bool {
-	return testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName)
+	return OperatorConditionsTestCaseName.MatchString(testName)
 }
 
 func GetOperatorFromInstallTest(testName string) string {
 	if !IsOldInstallOperatorTest(testName) {
 		return "NOT-AN-INSTALL-TEST-" + testName
 	}
-	matches := testgridanalysisapi.OperatorConditionsTestCaseName.FindStringSubmatch(testName)
-	operatorIndex := testgridanalysisapi.OperatorConditionsTestCaseName.SubexpIndex("operator")
+	matches := OperatorConditionsTestCaseName.FindStringSubmatch(testName)
+	operatorIndex := OperatorConditionsTestCaseName.SubexpIndex("operator")
 	return matches[operatorIndex]
 }
 
 func IsOldUpgradeOperatorTest(testName string) bool {
-	return strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix)
+	return strings.HasPrefix(testName, OperatorUpgradePrefix)
 }
 
 func IsOperatorHealthTest(testName string) bool {
-	if strings.HasPrefix(testName, testgridanalysisapi.OperatorUpgradePrefix) {
+	if strings.HasPrefix(testName, OperatorUpgradePrefix) {
 		return true
 	}
-	if testgridanalysisapi.OperatorConditionsTestCaseName.MatchString(testName) {
+	if OperatorConditionsTestCaseName.MatchString(testName) {
 		return true
 	}
-	if strings.HasPrefix(testName, testgridanalysisapi.OperatorFinalHealthPrefix) {
+	if strings.HasPrefix(testName, OperatorFinalHealthPrefix) {
 		return true
 	}
 	return false
@@ -190,7 +232,7 @@ func GetOperatorFromUpgradeTest(testName string) string {
 	if !IsOldUpgradeOperatorTest(testName) {
 		return "NOT-AN-UPGRADE-TEST-" + testName
 	}
-	return testName[len(testgridanalysisapi.OperatorUpgradePrefix):]
+	return testName[len(OperatorUpgradePrefix):]
 }
 
 func GetOperatorNameFromTest(testName string) string {
@@ -200,8 +242,8 @@ func GetOperatorNameFromTest(testName string) string {
 	if IsOldInstallOperatorTest(testName) {
 		return GetOperatorFromInstallTest(testName)
 	}
-	if strings.HasPrefix(testName, testgridanalysisapi.OperatorFinalHealthPrefix) {
-		return testName[len(testgridanalysisapi.OperatorFinalHealthPrefix):]
+	if strings.HasPrefix(testName, OperatorFinalHealthPrefix) {
+		return testName[len(OperatorFinalHealthPrefix):]
 	}
 	return ""
 }
@@ -211,7 +253,7 @@ func IsUpgradeRelatedTest(testName string) bool {
 	if IsOldUpgradeOperatorTest(testName) {
 		return true
 	}
-	if strings.Contains(testName, testgridanalysisapi.UpgradeTestName) {
+	if strings.Contains(testName, UpgradeTestName) {
 		return true
 	}
 	if IsUpgradeStartedTest(testName) {
@@ -241,4 +283,10 @@ func IsUpgradeRelatedTest(testName string) bool {
 // IsIgnoredTest is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.
 func IsIgnoredTest(testName string) bool {
 	return ignoreTestRegex.MatchString(testName)
+}
+
+// IsOverallTest returns true if the given test name qualifies as the "Overall" test. On Oct 4 2021
+// the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
+func IsOverallTest(testName string) bool {
+	return testName == "Overall" || strings.HasSuffix(testName, ".Overall")
 }

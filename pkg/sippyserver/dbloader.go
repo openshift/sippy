@@ -7,27 +7,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
-	syntheticTestManager testgridconversion.SyntheticTestManager,
+	syntheticTestManager synthetictests.SyntheticTestManager,
 	startDay, numDays int) error {
 
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
@@ -98,7 +99,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 
 func createOrUpdateJob(dbc *db.DB, reportName string,
 	variantManager testidentification.VariantManager, prowJobCache map[string]*models.ProwJob,
-	jr *testgridanalysisapi.RawJobResult) error {
+	jr *processingv1.RawJobResult) error {
 	// Create ProwJob if we don't have one already:
 	// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
 	// would not make it to the db.
@@ -164,7 +165,7 @@ func loadJob(
 	suiteCache map[string]uint,
 	testCache map[string]*models.Test,
 	testCacheLock *sync.RWMutex,
-	jr *testgridanalysisapi.RawJobResult,
+	jr *processingv1.RawJobResult,
 	jobStatus string) error {
 
 	// Cache the IDs of all known ProwJobRuns for this job. Will be used to skip job run and test results we've already processed.
@@ -210,7 +211,7 @@ func loadJob(
 		// unknown - we know this job doesn't have a setup test, and the job didn't succeed, so we don't know if it
 		//           failed due to infra issues or not.  probably not infra.
 		// emptystring - we expected to see a test result for a setup test but we didn't and the overall job failed, probably infra
-		infraFailure := jobRun.InstallStatus != testgridanalysisapi.Success && jobRun.InstallStatus != testgridanalysisapi.Unknown
+		infraFailure := jobRun.InstallStatus != testidentification.Success && jobRun.InstallStatus != testidentification.Unknown
 
 		pjr := models.ProwJobRun{
 			Model: gorm.Model{

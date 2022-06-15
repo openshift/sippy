@@ -25,7 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -341,7 +341,7 @@ func (o *Options) Run() error {
 				return err
 			}
 
-			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager())
+			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager(), o.getSyntheticTestManager())
 
 			// For now let's just get master/main presubmits in the openshift org
 			allowedJobRegex := []*regexp.Regexp{
@@ -459,12 +459,12 @@ func (o *Options) getVariantManager() testidentification.VariantManager {
 	}
 }
 
-func (o *Options) getSyntheticTestManager() testgridconversion.SyntheticTestManager {
+func (o *Options) getSyntheticTestManager() synthetictests.SyntheticTestManager {
 	if o.getServerMode() == sippyserver.ModeOpenShift {
-		return testgridconversion.NewOpenshiftSyntheticTestManager()
+		return synthetictests.NewOpenshiftSyntheticTestManager()
 	}
 
-	return testgridconversion.NewEmptySyntheticTestManager()
+	return synthetictests.NewEmptySyntheticTestManager()
 }
 
 func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {

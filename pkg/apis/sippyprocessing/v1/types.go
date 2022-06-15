@@ -4,6 +4,7 @@ package v1
 
 import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
+	v1testgrid "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 type ReportType string
@@ -76,6 +77,7 @@ const (
 	JobUpgradeFailure        JobOverallResult = "U"
 	JobTestFailure           JobOverallResult = "F"
 	JobNoResults             JobOverallResult = "n"
+	JobAborted               JobOverallResult = "A"
 	JobUnknown               JobOverallResult = "f"
 )
 
@@ -95,4 +97,82 @@ type JobRunResult struct {
 	// Timestamp is milliseconds since epoch when this job was run.
 	Timestamp     int              `json:"timestamp"`
 	OverallResult JobOverallResult `json:"result"`
+}
+
+type RawData struct {
+	// JobResults is a map keyed by job name to results for all runs of a job
+	JobResults map[string]RawJobResult
+}
+
+type RawJobResult struct {
+	JobName        string
+	TestGridJobURL string
+
+	Query       string
+	ChangeLists []string
+
+	// JobRunResults is a map from individual job run URL to the results of that job run
+	JobRunResults map[string]*RawJobRunResult
+
+	// TestResults is a map from test.Name to the aggregated results for each run of that test inside the job
+	// TODO: rename to indicate this is aggregated across all job runs. The name currently is identical to a field
+	// on each JobRunResult.
+	TestResults map[string]RawTestResult
+}
+
+// RawTestResult is an intermediate datatype that may not have complete or consistent data when interrogated.
+// It holds data about an individual test that may have happened in many different jobs and job runs.
+// It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete
+type RawTestResult struct {
+	Name       string
+	Timestamps []int
+	Successes  int
+	Failures   int
+	Flakes     int
+}
+
+// RawJobRunTestResult represents an execution of a test in a job run, and whether it was success, failure, or a flake.
+type RawJobRunTestResult struct {
+	Name   string
+	Status v1testgrid.TestStatus
+}
+
+// RawJobRunResult is an intermediate datatype that may not have complete or consistent data when interrogated.
+// It holds data for an individual run of a given job.
+type RawJobRunResult struct {
+	Job             string
+	JobRunURL       string
+	TestFailures    int
+	FailedTestNames []string // TODO: drop this and favor TestResults going forward, it has caused bugs.
+	TestResults     []RawJobRunTestResult
+	Failed          bool
+	Succeeded       bool
+	Aborted         bool
+
+	// InstallStatus can be "", "Success", "Failure"
+	// Used to create synthetic tests.
+	InstallStatus       string
+	FinalOperatorStates []OperatorState
+
+	// UpgradeStarted is true if the test attempted to start an upgrade based on the CVO succeeding (or failing) to acknowledge a request
+	UpgradeStarted bool
+	// Success, Failure, or ""
+	UpgradeForOperatorsStatus string
+	// Success, Failure, or ""
+	UpgradeForMachineConfigPoolsStatus string
+
+	// OpenShiftTestsStatus can be "", "Success", "Failure"
+	OpenShiftTestsStatus string
+
+	// Overall result
+	OverallResult JobOverallResult
+
+	// Timestamp
+	Timestamp int
+}
+
+type OperatorState struct {
+	Name string
+	// OperatorState can be "", "Success", "Failure"
+	State string
 }

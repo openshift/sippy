@@ -10,15 +10,14 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testidentification"
 
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridanalysisapi"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // UpgradeOperatorTestsFromDB returns json for the table of all upgrade related tests and their pass rates overall and per variant.
 func UpgradeOperatorTestsFromDB(dbc *db.DB, release string) (string, error) {
 	testSubstrings := []string{
-		testgridanalysisapi.OperatorUpgradePrefix, // "old" upgrade test, TODO: would prefer prefix matching for this
-		testgridanalysisapi.UpgradeTestName,       // TODO: would prefer exact matching
+		testidentification.OperatorUpgradePrefix, // "old" upgrade test, TODO: would prefer prefix matching for this
+		testidentification.UpgradeTestName,       // TODO: would prefer exact matching
 		testidentification.CVOAcknowledgesUpgradeTest,
 		testidentification.OperatorsUpgradedTest,
 		testidentification.MachineConfigsUpgradedRegex,
