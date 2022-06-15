@@ -4,14 +4,9 @@
 # [1] https://docs.ci.openshift.org/docs/architecture/ci-operator/#build-root-image
 #
 FROM registry.access.redhat.com/ubi8/ubi:latest
-ARG GOLANGCI_LINT_VERSION="1.41.1"
-RUN curl -Lso /tmp/golangci-lint.rpm \
-          "https://github.com/golangci/golangci-lint/releases/download/v1.41.1/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64.rpm" && \
-      dnf module enable nodejs:16 -y && \
+RUN dnf module enable nodejs:16 -y && \
       dnf install -y \
         git \
         go \
         make \
-        npm \
-        /tmp/golangci-lint.rpm && \
-      rm /tmp/golangci-lint.rpm
+        npm
