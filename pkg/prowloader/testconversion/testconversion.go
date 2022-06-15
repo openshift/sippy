@@ -13,7 +13,7 @@ import (
 func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models.ProwJobRunTest, manager synthetictests.SyntheticTestManager) (*junit.TestSuite, v1.JobOverallResult) {
 	jrr := v1.RawJobRunResult{
 		Job:       pj.Spec.Job,
-		Failed:    pj.Status.State != prow.SuccessState,
+		Failed:    pj.Status.State == prow.ErrorState || pj.Status.State == prow.FailureState,
 		Succeeded: pj.Status.State == prow.SuccessState,
 		Aborted:   pj.Status.State == prow.AbortedState,
 	}
