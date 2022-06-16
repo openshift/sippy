@@ -8,7 +8,7 @@ import {
   Restore,
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ListSubheader, useTheme } from '@material-ui/core'
 import {
   pathForJobsWithFilter,
@@ -33,16 +33,34 @@ import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemText from '@material-ui/core/ListItemText'
 import NewReleasesIcon from '@material-ui/icons/NewReleases'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@material-ui/icons/Search'
 import SippyLogo from './SippyLogo'
 import TableChartIcon from '@material-ui/icons/TableChart'
 
 export default function Sidebar(props) {
   const classes = useTheme()
+  const location = useLocation()
 
   const [bugzillaOpen, setBugzillaOpen] = React.useState(false)
-  const [open, setOpen] = React.useState({ 0: true })
+  const [open, setOpen] = React.useState({})
+
+  useEffect(() => {
+    return () => {
+      // infer release from current url when loading sidebar for first time
+      let parts = location.pathname.split('/')
+      let tmpOpen = open
+      if (parts.length >= 3) {
+        let index = props.releases.indexOf(parts[2])
+        if (index !== -1) {
+          tmpOpen[index] = true
+        }
+      } else {
+        tmpOpen[0] = true
+      }
+      setOpen(tmpOpen)
+    }
+  }, [props])
 
   const handleBugzillaOpen = () => {
     setBugzillaOpen(true)
