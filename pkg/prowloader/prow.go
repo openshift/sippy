@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
@@ -137,30 +138,29 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 		release = matches[1]
 	}
 
-	if pj.Status.State == prow.PendingState {
+	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
 		return nil
 	}
 
-	id, err := strconv.ParseInt(pj.Status.BuildID, 0, 64)
+	id, err := strconv.ParseUint(pj.Status.BuildID, 0, 64)
 	if err != nil {
 		return nil
 	}
 
-	if _, ok := pl.prowJobCache[pj.Spec.Job]; !ok {
-		dbProwJob := models.ProwJob{
+	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
+	if !foundProwJob {
+		dbProwJob = &models.ProwJob{
 			Name:     pj.Spec.Job,
 			Release:  release,
 			Variants: pl.variantManager.IdentifyVariants(pj.Spec.Job),
 		}
-		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&dbProwJob).Error
+		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
 			return errors.Wrapf(err, "error loading prow job into db: %s", pj.Spec.Job)
 		}
-		pl.prowJobCache[pj.Spec.Job] = &dbProwJob
+		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
-		// Ensure the job is up to date, especially for variants.
-		dbProwJob := pl.prowJobCache[pj.Spec.Job]
 		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
 		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) {
 			dbProwJob.Variants = newVariants
@@ -176,21 +176,31 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 
 		parts := strings.Split(pjURL.Path, pl.bktName)
 		if len(parts) == 2 {
-			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, parts[1][1:])
+			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), parts[1][1:])
 			if err != nil {
 				return err
 			}
 
-			pl.dbc.DB.Save(&models.ProwJobRun{
-				ProwJob:       *pl.prowJobCache[pj.Spec.Job],
-				ProwJobID:     uint(id),
+			err = pl.dbc.DB.Create(&models.ProwJobRun{
+				Model: gorm.Model{
+					ID: uint(id),
+				},
+				ProwJob:       *dbProwJob,
+				ProwJobID:     dbProwJob.ID,
 				URL:           pj.Status.URL,
 				Timestamp:     pj.Status.StartTime,
 				OverallResult: overallResult,
-				Tests:         tests,
 				TestFailures:  failures,
 				Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
-			})
+			}).Error
+			if err != nil {
+				return err
+			}
+
+			err = pl.dbc.DB.CreateInBatches(tests, 1000).Error
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -232,14 +242,14 @@ func (pl *ProwLoader) findOrAddSuite(name string) *uint {
 	return &id
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, path string) ([]models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return []models.ProwJobRunTest{}, 0, "", err
+		return []*models.ProwJobRunTest{}, 0, "", err
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
@@ -249,13 +259,14 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, path string) ([]mo
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, testCases, pl.syntheticTestManager)
 	pl.extractTestCases(syntheticSuite, testCases)
 
-	results := make([]models.ProwJobRunTest, 0)
+	results := make([]*models.ProwJobRunTest, 0)
 	for k, v := range testCases {
 		if testidentification.IsIgnoredTest(k) {
 			continue
 		}
 
-		results = append(results, *v)
+		v.ProwJobRunID = id
+		results = append(results, v)
 		if v.Status == 12 {
 			failures++
 		}

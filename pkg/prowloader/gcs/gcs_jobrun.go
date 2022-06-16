@@ -52,8 +52,6 @@ func (j *GCSJobRun) GetGCSJunitPaths() []string {
 }
 
 func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.TestSuites, error) {
-	fmt.Println("here")
-
 	testSuites := &junit.TestSuites{}
 	for _, junitFile := range j.GetGCSJunitPaths() {
 		junitContent, err := j.GetContent(ctx, junitFile)
