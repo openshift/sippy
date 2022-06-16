@@ -200,12 +200,12 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 
 	for _, pmv := range db.PostgresMatViews {
 		start := time.Now()
-		tmpLog := log.WithField("matview", pmv)
+		tmpLog := log.WithField("matview", pmv.Name)
 
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if res := s.db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", pmv)).Scan(&count); res.Error != nil {
+			if res := s.db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", pmv.Name)).Scan(&count); res.Error != nil {
 				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
@@ -218,22 +218,22 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 		// refresh which locks reads.
 		tmpLog.Info("refreshing materialized view")
 		if res := s.db.DB.Exec(
-			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", pmv)); res.Error != nil {
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", pmv.Name)); res.Error != nil {
 			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
 
 			if res := s.db.DB.Exec(
-				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv)); res.Error != nil {
+				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
 				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
 			} else {
 				elapsed := time.Since(start)
 				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
-				matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
+				matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
 			}
 
 		} else {
 			elapsed := time.Since(start)
 			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
-			matViewRefreshMetric.WithLabelValues(pmv).Observe(float64(elapsed.Milliseconds()))
+			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 }
