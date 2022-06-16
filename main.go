@@ -47,7 +47,7 @@ type Options struct {
 	OpenshiftArchitectures []string
 	Dashboards             []string
 	// TODO perhaps this could drive the synthetic tests too
-	Variants                           []string
+	Mode                               []string
 	StartDay                           int
 	NumDays                            int
 	TestSuccessThreshold               float64
@@ -100,7 +100,7 @@ func main() {
 	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.OpenshiftArchitectures, "arch", opt.OpenshiftArchitectures, "Which architectures to analyze (one per arg instance)")
 	flags.StringArrayVar(&opt.Dashboards, "dashboard", opt.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
-	flags.StringArrayVar(&opt.Variants, "variant", opt.Variants, "Variant manager to use: {ocp,kube,none}. Only useful when using --load-database.")
+	flags.StringArrayVar(&opt.Mode, "mode", opt.Mode, "Mode to use: {ocp,kube,none}. Only useful when using --load-database.")
 	flags.IntVar(&opt.StartDay, "start-day", opt.StartDay,
 		"Most recent day to start processing testgrid results for (moving backward in time). (0 will start from now (default), -1 will start from whatever the most recent test results are) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
 	flags.IntVar(&opt.NumDays, "num-days", opt.NumDays,
@@ -185,10 +185,10 @@ func (o *Options) Validate() error {
 		}
 	}
 
-	if len(o.Variants) > 1 {
-		return fmt.Errorf("only one --variant allowed for now")
-	} else if len(o.Variants) == 1 {
-		if !sets.NewString("ocp", "kube", "none").Has(o.Variants[0]) {
+	if len(o.Mode) > 1 {
+		return fmt.Errorf("only one --mode allowed")
+	} else if len(o.Mode) == 1 {
+		if !sets.NewString("ocp", "kube", "none").Has(o.Mode[0]) {
 			return fmt.Errorf("only ocp, kube, or none is allowed")
 		}
 	}
@@ -420,12 +420,8 @@ func (o *Options) runServerMode() error {
 }
 
 func (o *Options) getServerMode() sippyserver.Mode {
-	for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
-		for _, dashboardName := range dashboardCoordinate.TestGridDashboardNames {
-			if strings.Contains(dashboardName, "redhat-openshift-ocp-release-") {
-				return sippyserver.ModeOpenShift
-			}
-		}
+	if len(o.Mode) >= 1 && o.Mode[0] == "ocp" {
+		return sippyserver.ModeOpenShift
 	}
 	return sippyserver.ModeKubernetes
 }
@@ -439,7 +435,7 @@ func (o *Options) getBugCache() buganalysis.BugCache {
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {
-	if len(o.Variants) == 0 {
+	if len(o.Mode) == 0 {
 		if o.getServerMode() == sippyserver.ModeOpenShift {
 			return testidentification.NewOpenshiftVariantManager()
 		}
@@ -447,7 +443,7 @@ func (o *Options) getVariantManager() testidentification.VariantManager {
 	}
 
 	// TODO allow more than one with a union
-	switch o.Variants[0] {
+	switch o.Mode[0] {
 	case "ocp":
 		return testidentification.NewOpenshiftVariantManager()
 	case "kube":

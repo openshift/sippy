@@ -10,7 +10,7 @@ while [ true ]; do
   /bin/sippy --log-level debug --fetch-data /data --fetch-openshift-perfscale-data --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11
   echo "Loading database"
   # Bug lookup skipped, we're struggling with the number of tests, and moving to Jira soon.
-  /bin/sippy --log-level debug --load-database --local-data /data --skip-bug-lookup --arch amd64 --arch arm64 --arch multi --arch s390x --arch ppc64le --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11
+  /bin/sippy --mode=ocp --log-level debug --load-database --local-data /data --skip-bug-lookup --arch amd64 --arch arm64 --arch multi --arch s390x --arch ppc64le --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
