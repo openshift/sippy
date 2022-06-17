@@ -4,12 +4,14 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -21,6 +23,10 @@ var (
 		Name: "sippy_release_warnings",
 		Help: "Number of current warnings for a release, see overview page in UI for details",
 	}, []string{"release"})
+	payloadConsecutiveRejectionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_payloads_consecutively_rejected",
+		Help: "Number of consecutive rejected payloads in each release, stream and arch combo. Will be 0 if most recent payload accepted.",
+	}, []string{"release", "stream", "architecture"})
 )
 
 func RefreshMetricsDB(dbc *db.DB) error {
@@ -55,7 +61,34 @@ func RefreshMetricsDB(dbc *db.DB) error {
 		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
 	}
 
+	refreshPayloadMetrics(dbc)
+
 	return nil
+}
+
+func refreshPayloadMetrics(dbc *db.DB) {
+	// TODO: drop 4.11
+
+	releases, err := query.ReleasesFromDB(dbc)
+	if err != nil {
+		log.WithError(err).Error("error querying releases from db")
+		return
+	}
+	for _, r := range releases {
+		results, err := api.ReleaseHealthReports(dbc, r.Release)
+		if err != nil {
+			log.WithError(err).Error("error calling ReleaseHealthReports")
+			return
+		}
+
+		for _, rhr := range results {
+			count := 0
+			if rhr.LastPhase == apitype.PayloadRejected {
+				count = rhr.Count
+			}
+			payloadConsecutiveRejectionsMetric.WithLabelValues(rhr.Release, rhr.Stream, rhr.Architecture).Set(float64(count))
+		}
+	}
 }
 
 type promReportType struct {
