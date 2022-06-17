@@ -27,6 +27,10 @@ var (
 		Name: "sippy_payloads_consecutively_rejected",
 		Help: "Number of consecutive rejected payloads in each release, stream and arch combo. Will be 0 if most recent payload accepted.",
 	}, []string{"release", "stream", "architecture"})
+	payloadHoursSinceLastAcceptedMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_payloads_hours_since_last_accepted",
+		Help: "Number of hours since last accepted payload in each release, stream and arch combo.",
+	}, []string{"release", "stream", "architecture"})
 )
 
 func RefreshMetricsDB(dbc *db.DB) error {
@@ -67,8 +71,6 @@ func RefreshMetricsDB(dbc *db.DB) error {
 }
 
 func refreshPayloadMetrics(dbc *db.DB) {
-	// TODO: drop 4.11
-
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		log.WithError(err).Error("error querying releases from db")
@@ -86,7 +88,18 @@ func refreshPayloadMetrics(dbc *db.DB) {
 			if rhr.LastPhase == apitype.PayloadRejected {
 				count = rhr.Count
 			}
-			payloadConsecutiveRejectionsMetric.WithLabelValues(rhr.Release, rhr.Stream, rhr.Architecture).Set(float64(count))
+			payloadConsecutiveRejectionsMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture).Set(float64(count))
+		}
+
+		lastAcceptedReleaseTags, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, r.Release)
+		if err != nil {
+			log.WithError(err).Error("error querying last accepted payloads")
+			return
+		}
+
+		for _, archStream := range lastAcceptedReleaseTags {
+			sinceLastAccepted := time.Since(archStream.ReleaseTime)
+			payloadHoursSinceLastAcceptedMetric.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture).Set(sinceLastAccepted.Hours())
 		}
 	}
 }
