@@ -23,6 +23,7 @@ import {
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
+import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -68,11 +69,182 @@ function TestTable(props) {
   const gridClasses = useStyles()
   const location = useLocation().pathname
 
-  const columns = [
-    {
+  const openBugzillaDialog = (test) => {
+    setTestDetails(test)
+    setBugzillaDialogOpen(true)
+  }
+
+  const closeBugzillaDialog = (details) => {
+    setBugzillaDialogOpen(false)
+  }
+
+  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
+  const [testDetails, setTestDetails] = React.useState({ bugs: [] })
+
+  const [fetchError, setFetchError] = React.useState('')
+  const [isLoaded, setLoaded] = React.useState(false)
+  const [rows, setRows] = React.useState([])
+  const [selectedTests, setSelectedTests] = React.useState([])
+
+  const [period = props.period, setPeriod] = useQueryParam(
+    'period',
+    StringParam
+  )
+
+  const [view = props.view, setView] = useQueryParam('view', StringParam)
+
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+    'filters',
+    SafeJSONParam
+  )
+
+  const [sortField = props.sortField, setSortField] = useQueryParam(
+    'sortField',
+    StringParam
+  )
+  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const views = {
+    Working: {
+      sortField: 'current_working_percentage',
+      sort: 'asc',
+      rowColor: {
+        field: 'current_working_percentage',
+      },
+      fieldOrder: [
+        { field: 'name', flex: 3.5 },
+        { field: 'variants', flex: 1.5, hide: props.collapse },
+        {
+          field: 'current_working_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        { field: 'net_working_improvement', flex: 0.5 },
+        {
+          field: 'previous_working_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        { field: 'link', flex: 1.5, hide: props.briefTable },
+      ],
+    },
+    Passing: {
+      sortField: 'current_pass_percentage',
+      sort: 'asc',
+      rowColor: {
+        field: 'current_pass_percentage',
+      },
+      fieldOrder: [
+        { field: 'name', flex: 3.5 },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: 'wrapHeader',
+        },
+        { field: 'net_improvement', flex: 0.5 },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: 'wrapHeader',
+        },
+        { field: 'link', flex: 1.5 },
+      ],
+    },
+    Flakes: {
+      sortField: 'current_flake_percentage',
+      sort: 'desc',
+      rowColor: {
+        field: 'current_flake_percentage',
+        inverted: true,
+      },
+      fieldOrder: [
+        { field: 'name', flex: 3.5 },
+        {
+          field: 'current_flake_percentage',
+          flex: 0.75,
+          headerClassName: 'wrapHeader',
+        },
+        { field: 'net_flake_improvement', flex: 0.5 },
+        {
+          field: 'previous_flake_percentage',
+          flex: 0.75,
+          headerClassName: 'wrapHeader',
+        },
+        { field: 'link', flex: 1.5 },
+      ],
+    },
+  }
+
+  const currentPercentageRender = (params) => (
+    <div className="percentage-cell">
+      <Tooltip
+        title={
+          <div>
+            <b>Pass: </b>
+            {Number(params.row.current_pass_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+            <br />
+            <b>Flake: </b>
+            {Number(params.row.current_flake_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+            <br />
+            <b>Fail: </b>
+            {Number(params.row.current_failure_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+          </div>
+        }
+      >
+        <Box>
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.current_runs.toLocaleString()} runs)</small>
+        </Box>
+      </Tooltip>
+    </div>
+  )
+
+  const previousPercentageRender = (params) => (
+    <div className="percentage-cell">
+      <Tooltip
+        title={
+          <div>
+            <b>Pass: </b>
+            {Number(params.row.previous_pass_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+            <br />
+            <b>Flake: </b>
+            {Number(params.row.previous_flake_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+            <br />
+            <b>Fail: </b>
+            {Number(params.row.previous_failure_percentage)
+              .toFixed(1)
+              .toLocaleString()}
+            %
+          </div>
+        }
+      >
+        <Box>
+          {Number(params.value).toFixed(1).toLocaleString()}%<br />
+          <small>({params.row.previous_runs.toLocaleString()} runs)</small>
+        </Box>
+      </Tooltip>
+    </div>
+  )
+
+  const columns = {
+    name: {
       field: 'name',
       headerName: 'Name',
-      flex: 3.5,
       renderCell: (params) => {
         if (params.value === overallTestName) {
           return params.value
@@ -95,11 +267,9 @@ function TestTable(props) {
         )
       },
     },
-    {
+    variants: {
       field: 'variants',
       headerName: 'Variants',
-      flex: 1.5,
-      hide: props.collapse,
       autocomplete: 'variants',
       type: 'array',
       renderCell: (params) => (
@@ -108,98 +278,53 @@ function TestTable(props) {
         </div>
       ),
     },
-    {
+    current_working_percentage: {
       field: 'current_working_percentage',
       headerName: 'Current working percentage',
-      headerClassName: props.briefTable ? '' : 'wrapHeader',
       type: 'number',
-      flex: 0.75,
-      renderCell: (params) => (
-        <div className="percentage-cell">
-          <Tooltip
-            title={
-              <div>
-                <b>Pass: </b>
-                {Number(params.row.current_pass_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-                <br />
-                <b>Flake: </b>
-                {Number(params.row.current_flake_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-                <br />
-                <b>Fail: </b>
-                {Number(params.row.current_failure_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-              </div>
-            }
-          >
-            <Box>
-              {Number(params.value).toFixed(1).toLocaleString()}%<br />
-              <small>({params.row.current_runs.toLocaleString()} runs)</small>
-            </Box>
-          </Tooltip>
-        </div>
-      ),
+      renderCell: currentPercentageRender,
     },
-    {
-      field: 'net_working_improvement',
-      headerName: 'Improvement',
+    net_improvement: {
+      field: 'net_improvement',
+      headerName: 'Improvement (pass)',
       type: 'number',
-      flex: 0.5,
       renderCell: (params) => {
         return <PassRateIcon tooltip={true} improvement={params.value} />
       },
     },
-    {
+    net_working_improvement: {
+      field: 'net_working_improvement',
+      headerName: 'Improvement (working)',
+      type: 'number',
+      renderCell: (params) => {
+        return <PassRateIcon tooltip={true} improvement={params.value} />
+      },
+    },
+    net_flake_improvement: {
+      field: 'net_flake_improvement',
+      headerName: 'Improvement (flake)',
+      type: 'number',
+      renderCell: (params) => {
+        return <PassRateIcon tooltip={true} improvement={params.value} />
+      },
+    },
+    net_failure_improvement: {
+      field: 'net_failure_improvement',
+      headerName: 'Improvement (failure)',
+      type: 'number',
+      renderCell: (params) => {
+        return <PassRateIcon tooltip={true} improvement={params.value} />
+      },
+    },
+    previous_working_percentage: {
       field: 'previous_working_percentage',
       headerName: 'Previous working percentage',
-      headerClassName: props.briefTable ? '' : 'wrapHeader',
-      flex: 0.75,
       type: 'number',
-      renderCell: (params) => (
-        <div className="percentage-cell">
-          <Tooltip
-            title={
-              <div>
-                <b>Pass: </b>
-                {Number(params.row.previous_pass_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-                <br />
-                <b>Flake: </b>
-                {Number(params.row.previous_flake_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-                <br />
-                <b>Fail: </b>
-                {Number(params.row.previous_failure_percentage)
-                  .toFixed(1)
-                  .toLocaleString()}
-                %
-              </div>
-            }
-          >
-            <Box>
-              {Number(params.value).toFixed(1).toLocaleString()}%<br />
-              <small>({params.row.previous_runs.toLocaleString()} runs)</small>
-            </Box>
-          </Tooltip>
-        </div>
-      ),
+      renderCell: previousPercentageRender,
     },
-    {
+    link: {
       field: 'link',
       headerName: ' ',
-      flex: 1.5,
-      hide: props.briefTable,
       filterable: false,
       sortable: false,
       renderCell: (params) => {
@@ -295,117 +420,86 @@ function TestTable(props) {
       },
     },
     // These are here just to allow filtering
-    {
+    current_runs: {
       field: 'current_runs',
       headerName: 'Current runs',
-      hide: true,
       type: 'number',
     },
-    {
+    current_failures: {
       field: 'current_failures',
       headerName: 'Current failures',
-      hide: true,
       type: 'number',
     },
-    {
+    current_flakes: {
       field: 'current_flakes',
       headerName: 'Current failures',
-      hide: true,
       type: 'number',
     },
-    {
+    current_pass_percentage: {
       field: 'current_pass_percentage',
       headerName: 'Current pass percentage',
-      hide: true,
       type: 'number',
+      renderCell: currentPercentageRender,
     },
-    {
+    current_flake_percentage: {
       field: 'current_flake_percentage',
       headerName: 'Current flake percentage',
-      hide: true,
       type: 'number',
+      renderCell: currentPercentageRender,
     },
-    {
+    current_failure_percentage: {
       field: 'current_failure_percentage',
       headerName: 'Current failure percentage',
-      hide: true,
       type: 'number',
     },
-    {
+    previous_runs: {
       field: 'previous_runs',
       headerName: 'Previous runs',
-      hide: true,
       type: 'number',
     },
-    {
+    previous_failures: {
       field: 'previous_failures',
       headerName: 'Previous failures',
-      hide: true,
       type: 'number',
     },
-    {
+    previous_flakes: {
       field: 'previous_flakes',
       headerName: 'Previous failures',
-      hide: true,
       type: 'number',
     },
-    {
+    previous_pass_percentage: {
       field: 'previous_pass_percentage',
       headerName: 'Previous pass percentage',
-      hide: true,
       type: 'number',
+      renderCell: previousPercentageRender,
     },
-    {
+    previous_flake_percentage: {
       field: 'previous_flake_percentage',
       headerName: 'Previous flake percentage',
-      hide: true,
       type: 'number',
+      renderCell: previousPercentageRender,
     },
-    {
+    previous_failure_percentage: {
       field: 'previous_failure_percentage',
       headerName: 'Previous failure percentage',
-      hide: true,
       type: 'number',
+      renderCell: previousPercentageRender,
     },
-    {
+    tags: {
       field: 'tags',
       headerName: 'Tags',
-      hide: true,
     },
-  ]
-
-  const openBugzillaDialog = (test) => {
-    setTestDetails(test)
-    setBugzillaDialogOpen(true)
   }
 
-  const closeBugzillaDialog = (details) => {
-    setBugzillaDialogOpen(false)
+  const gridView = new GridView(columns, views, view)
+
+  const selectView = (v) => {
+    setLoaded(false)
+    setView(v)
+    gridView.setView(v)
+    setSort(gridView.view.sort)
+    setSortField(gridView.view.sortField)
   }
-
-  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
-  const [testDetails, setTestDetails] = React.useState({ bugs: [] })
-
-  const [fetchError, setFetchError] = React.useState('')
-  const [isLoaded, setLoaded] = React.useState(false)
-  const [rows, setRows] = React.useState([])
-  const [selectedTests, setSelectedTests] = React.useState([])
-
-  const [period = props.period, setPeriod] = useQueryParam(
-    'period',
-    StringParam
-  )
-
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
-    'filters',
-    SafeJSONParam
-  )
-
-  const [sortField = props.sortField, setSortField] = useQueryParam(
-    'sortField',
-    StringParam
-  )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const fetchData = () => {
     let queryString = ''
@@ -463,7 +557,7 @@ function TestTable(props) {
     }
     fetchData()
     prevLocation.current = location
-  }, [period, filterModel, sort, sortField, props.collapse])
+  }, [period, filterModel, sort, sortField, props.collapse, view])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -537,7 +631,7 @@ function TestTable(props) {
         className={gridClasses.root}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
         rows={rows}
-        columns={columns}
+        columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
         disableColumnFilter={props.briefTable}
@@ -562,18 +656,25 @@ function TestTable(props) {
             rowClass.push(classes['overall'])
           }
 
-          rowClass.push(
-            classes[
-              'row-percent-' + Math.round(params.row.current_working_percentage)
-            ]
-          )
+          let className =
+            'row-percent-' +
+            Math.round(params.row[gridView.view.rowColor.field])
+          if (gridView.view.rowColor.inverted) {
+            className =
+              'row-percent-' +
+              (100 - Math.round(params.row[gridView.view.rowColor.field]))
+          }
+          rowClass.push(classes[className])
 
           return rowClass.join(' ')
         }}
         componentsProps={{
           toolbar: {
             bookmarks: bookmarks,
-            columns: columns,
+            views: gridView.views,
+            view: view,
+            selectView: selectView,
+            columns: gridView.filterColumns,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
             period: period,
@@ -600,6 +701,7 @@ TestTable.defaultProps = {
   hideControls: false,
   pageSize: 25,
   period: 'default',
+  view: 'Working',
   rowsPerPageOptions: [5, 10, 25, 50, 100],
   briefTable: false,
   filterModel: {
@@ -622,6 +724,7 @@ TestTable.propTypes = {
   sort: PropTypes.string,
   sortField: PropTypes.string,
   rowsPerPageOptions: PropTypes.array,
+  view: PropTypes.string,
 }
 
 export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)
