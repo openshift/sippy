@@ -25,7 +25,7 @@ var (
 	// metal-ipi jobs do not have a trailing -version segment
 	metalIPIRegex = regexp.MustCompile(`(?i)-metal-ipi`)
 	// Variant for Heterogeneous
-	multiRegex = regexp.MustCompile(`(?i)-multi`)
+	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
