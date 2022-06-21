@@ -14,15 +14,14 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
-	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
@@ -76,6 +75,12 @@ func NewServer(
 	return server
 }
 
+var matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	Name:    "sippy_matview_refresh_millis",
+	Help:    "Milliseconds to refresh our postgresql materialized views",
+	Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
+}, []string{"view"})
+
 type Server struct {
 	mode                 Mode
 	listenAddr           string
@@ -108,80 +113,11 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-var (
-	jobPassRatioMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_job_pass_ratio",
-		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
-	}, []string{"release", "period", "name"})
-
-	matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "sippy_matview_refresh_millis",
-		Help:    "Milliseconds to refresh our postgresql materialized views",
-		Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
-	}, []string{"view"})
-
-	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_release_warnings",
-		Help: "Number of current warnings for a release, see overview page in UI for details",
-	}, []string{"release"})
-)
-
 func (s *Server) refreshMetrics() {
-	err := s.RefreshMetricsDB()
+	err := metrics.RefreshMetricsDB(s.db)
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
-}
-
-type promReportType struct {
-	release string
-	period  string
-}
-
-func (s *Server) buildPromReportTypes(releases []query.Release) []promReportType {
-	var promReportTypes []promReportType
-
-	for _, release := range releases {
-		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})
-		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.CurrentReport)})
-	}
-
-	return promReportTypes
-}
-
-func (s *Server) RefreshMetricsDB() error {
-	releases, err := query.ReleasesFromDB(s.db)
-	if err != nil {
-		return err
-	}
-
-	promReportTypes := s.buildPromReportTypes(releases)
-	if err != nil {
-		return err
-	}
-
-	for _, pType := range promReportTypes {
-		// start, boundary and end will just be defaults
-		// the api will decide based on the period
-		// and current day / time
-		jobsResult, err := api.JobReportsFromDB(s.db, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{})
-
-		if err != nil {
-			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
-		}
-		for _, jobResult := range jobsResult {
-			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
-		}
-	}
-
-	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
-	// tell you x warnings are present and link you to the overview in the alert.
-	for _, release := range releases {
-		releaseWarnings := api.ScanForReleaseWarnings(s.db, release.Release)
-		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
-	}
-
-	return nil
 }
 
 // refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler

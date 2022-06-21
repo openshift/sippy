@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -407,7 +408,7 @@ func (o *Options) runServerMode() error {
 
 	// Initial metrics refresh to get the endpoint scrapable ASAP and prevent prom gaps, before
 	// we start the lengthy mat view refreshes.
-	if err := server.RefreshMetricsDB(); err != nil {
+	if err := metrics.RefreshMetricsDB(dbc); err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
 
