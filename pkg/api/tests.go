@@ -50,8 +50,8 @@ const (
 		previous_flakes * 100.0 / NULLIF(previous_runs, 0) AS previous_flake_percentage,
 		(previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0) AS previous_working_percentage,
 
-		(previous_failures * 100.0 / NULLIF(previous_runs, 0)) - (current_failures * 100.0 / NULLIF(current_runs, 0)) AS net_failure_improvement,
-		(previous_flakes * 100.0 / NULLIF(previous_runs, 0)) - (current_flakes * 100.0 / NULLIF(current_runs, 0)) AS net_flake_improvement,
+		(current_failures * 100.0 / NULLIF(current_runs, 0) - (previous_failures * 100.0 / NULLIF(previous_runs, 0))) AS net_failure_improvement,
+		(current_flakes * 100.0 / NULLIF(current_runs, 0) - (previous_flakes * 100.0 / NULLIF(previous_runs, 0))) AS net_flake_improvement,
 		((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)) - ((previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0)) AS net_working_improvement,
 		(current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`
 )

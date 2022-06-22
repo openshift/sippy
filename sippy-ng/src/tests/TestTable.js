@@ -112,20 +112,34 @@ function TestTable(props) {
         field: 'current_working_percentage',
       },
       fieldOrder: [
-        { field: 'name', flex: 3.5 },
-        { field: 'variants', flex: 1.5, hide: props.collapse },
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'variants',
+          flex: 1.5,
+          hide: props.collapse,
+        },
         {
           field: 'current_working_percentage',
           flex: 0.75,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
-        { field: 'net_working_improvement', flex: 0.5 },
+        {
+          field: 'net_working_improvement',
+          flex: 0.5,
+        },
         {
           field: 'previous_working_percentage',
           flex: 0.75,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
-        { field: 'link', flex: 1.5, hide: props.briefTable },
+        {
+          field: 'link',
+          flex: 1.5,
+          hide: props.briefTable,
+        },
       ],
     },
     Passing: {
@@ -135,19 +149,34 @@ function TestTable(props) {
         field: 'current_pass_percentage',
       },
       fieldOrder: [
-        { field: 'name', flex: 3.5 },
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'variants',
+          flex: 1.5,
+          hide: props.collapse,
+        },
         {
           field: 'current_pass_percentage',
           flex: 0.75,
           headerClassName: 'wrapHeader',
         },
-        { field: 'net_improvement', flex: 0.5 },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
         {
           field: 'previous_pass_percentage',
           flex: 0.75,
           headerClassName: 'wrapHeader',
         },
-        { field: 'link', flex: 1.5 },
+        {
+          field: 'link',
+          flex: 1.5,
+          hide: props.briefTable,
+        },
       ],
     },
     Flakes: {
@@ -158,19 +187,34 @@ function TestTable(props) {
         inverted: true,
       },
       fieldOrder: [
-        { field: 'name', flex: 3.5 },
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'variants',
+          flex: 1.5,
+          hide: props.collapse,
+        },
         {
           field: 'current_flake_percentage',
           flex: 0.75,
           headerClassName: 'wrapHeader',
         },
-        { field: 'net_flake_improvement', flex: 0.5 },
+        {
+          field: 'net_flake_improvement',
+          flex: 0.5,
+        },
         {
           field: 'previous_flake_percentage',
           flex: 0.75,
           headerClassName: 'wrapHeader',
         },
-        { field: 'link', flex: 1.5 },
+        {
+          field: 'link',
+          flex: 1.5,
+          hide: props.briefTable,
+        },
       ],
     },
   }
@@ -305,7 +349,13 @@ function TestTable(props) {
       headerName: 'Improvement (flake)',
       type: 'number',
       renderCell: (params) => {
-        return <PassRateIcon tooltip={true} improvement={params.value} />
+        return (
+          <PassRateIcon
+            tooltip={true}
+            inverted={true}
+            improvement={params.value}
+          />
+        )
       },
     },
     net_failure_improvement: {
