@@ -68,6 +68,7 @@ type Test struct {
 type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
+	ProwJobRun   ProwJobRun
 	TestID       uint
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
