@@ -184,7 +184,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 
 			var duration time.Duration
 			if pj.Status.CompletionTime != nil {
-				duration = (*pj.Status.CompletionTime).Sub(pj.Status.StartTime)
+				duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
 			}
 
 			err = pl.dbc.DB.Create(&models.ProwJobRun{
