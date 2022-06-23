@@ -23,14 +23,22 @@ export default function PassRateIcon(props) {
     icon = (
       <ArrowUpwardRoundedIcon
         data-icon="ArrowUpwardRoundedIcon"
-        style={{ stroke: 'green', strokeWidth: 3, color: 'green' }}
+        style={{
+          stroke: props.inverted ? 'darkred' : 'green',
+          strokeWidth: 3,
+          color: props.inverted ? 'darkred' : 'green',
+        }}
       />
     )
   } else {
     icon = (
       <ArrowDownwardRoundedIcon
         data-icon="ArrowDownwardRoundedIcon"
-        style={{ stroke: 'darkred', strokeWidth: 3, color: 'darkred' }}
+        style={{
+          stroke: props.inverted ? 'green' : 'darkred',
+          strokeWidth: 3,
+          color: props.inverted ? 'green' : 'darkred',
+        }}
       />
     )
   }
@@ -43,5 +51,6 @@ export default function PassRateIcon(props) {
 }
 
 PassRateIcon.defaultProps = {
+  inverted: false,
   tooltip: false,
 }
