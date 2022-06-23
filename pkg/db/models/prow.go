@@ -40,6 +40,9 @@ type ProwJobRun struct {
 	ProwJob   ProwJob
 	ProwJobID uint
 
+	// Cluster is the cluster where the prow job was run.
+	Cluster string
+
 	URL          string
 	TestFailures int
 	Tests        []ProwJobRunTest
@@ -50,6 +53,7 @@ type ProwJobRun struct {
 	KnownFailure  bool
 	Succeeded     bool
 	Timestamp     time.Time
+	Duration      time.Duration
 	OverallResult v1.JobOverallResult
 }
 
