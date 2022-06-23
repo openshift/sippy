@@ -68,6 +68,10 @@ func useNewInstallTest(release string) bool {
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
+	excludedVariants := []string{"never-stable", "techpreview"}
+	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
+	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
+
 	indicators := make(map[string]indicator)
 
 	infraTestName := testidentification.InfrastructureTestName
@@ -77,7 +81,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		installTestName = testidentification.NewInstallTestName
 	}
 	// Infrastructure
-	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName)
+	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -85,7 +89,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["infrastructure"] = infraIndicator
 
 	// Install Configuration
-	installConfigIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallConfigTestName)
+	installConfigIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -93,7 +97,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["installConfig"] = installConfigIndicator
 
 	// Bootstrap
-	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallBootstrapTestName)
+	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -101,7 +105,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["bootstrap"] = bootstrapIndicator
 
 	// Install Other
-	installOtherIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallOtherTestName)
+	installOtherIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -109,7 +113,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["installOther"] = installOtherIndicator
 
 	// Install
-	installIndicator, err := getIndicatorForTest(dbc, release, installTestName)
+	installIndicator, err := getIndicatorForTest(dbc, release, installTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -117,7 +121,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["install"] = installIndicator
 
 	// Upgrade
-	upgradeIndicator, err := getIndicatorForTest(dbc, release, testidentification.UpgradeTestName)
+	upgradeIndicator, err := getIndicatorForTest(dbc, release, testidentification.UpgradeTestName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -127,7 +131,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Tests
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	testsIndicator, err := getIndicatorForTest(dbc, release, testidentification.OpenShiftTestsName)
+	testsIndicator, err := getIndicatorForTest(dbc, release, testidentification.OpenShiftTestsName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -170,8 +174,8 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	})
 }
 
-func getIndicatorForTest(dbc *db.DB, release, testName string) (indicator, error) {
-	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, []string{"never-stable", "techpreview"})
+func getIndicatorForTest(dbc *db.DB, release, testName string, excludedVariants []string) (indicator, error) {
+	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, excludedVariants)
 	if err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
