@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
@@ -181,10 +182,17 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
 				return err
 			}
 
+			var duration time.Duration
+			if pj.Status.CompletionTime != nil {
+				duration = (*pj.Status.CompletionTime).Sub(pj.Status.StartTime)
+			}
+
 			err = pl.dbc.DB.Create(&models.ProwJobRun{
 				Model: gorm.Model{
 					ID: uint(id),
 				},
+				Cluster:       pj.Spec.Cluster,
+				Duration:      duration,
 				ProwJob:       *dbProwJob,
 				ProwJobID:     dbProwJob.ID,
 				URL:           pj.Status.URL,
