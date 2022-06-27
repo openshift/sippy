@@ -24,6 +24,8 @@ type ReleaseTag struct {
 	// the release after it's "fully baked."
 	Phase string `json:"phase" gorm:"column:phase"`
 
+	Forced bool `json:"forced" gorm:"column:forced"`
+
 	// ReleaseTime contains the timestamp of the release (the suffix of the tag, -YYYY-MM-DD-HHMMSS).
 	ReleaseTime time.Time `json:"release_time" gorm:"column:release_time"`
 

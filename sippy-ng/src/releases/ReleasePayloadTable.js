@@ -179,6 +179,12 @@ function ReleasePayloadTable(props) {
         return ''
       },
     },
+    {
+      field: 'forced',
+      headerName: 'Forced',
+      flex: 1.5,
+      hide: props.briefTable,
+    },
   ]
 
   const [fetchError, setFetchError] = React.useState('')

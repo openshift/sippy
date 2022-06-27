@@ -17,6 +17,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	releaseTagsTable = "release_tags"
+	succeeded        = "Succeeded"
+	failed           = "Failed"
+)
+
 type releaseSyncOptions struct {
 	db            *db.DB
 	httpClient    *http.Client
@@ -43,27 +49,35 @@ func (r *releaseSyncOptions) Run() error {
 
 		for _, tags := range allTags {
 			for _, tag := range tags.Tags {
-				c := int64(0)
-				r.db.DB.Table("release_tags").Where(`"release_tag" = ?`, tag.Name).Count(&c)
-				if c > 0 {
+				mReleaseTag := models.ReleaseTag{}
+				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
+				// expect Phase to be populated if the record is present
+				if len(mReleaseTag.Phase) > 0 {
+
+					if mReleaseTag.Phase != tag.Phase {
+						log.Infof("Fetching updated tag %s from release controller...\n", tag.Name)
+						releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
+
+						if releaseTag == nil {
+							continue
+						}
+
+						// sync up the ids and created at
+						releaseTag.ID = mReleaseTag.ID
+						releaseTag.CreatedAt = mReleaseTag.CreatedAt
+
+						if err := r.db.DB.Table(releaseTagsTable).Save(releaseTag).Error; err != nil {
+							return err
+						}
+					}
 					continue
 				}
 
 				log.Infof("Fetching tag %s from release controller...\n", tag.Name)
-				releaseDetails := r.fetchReleaseDetails(tags.Architecture, release, tag)
-				releaseTag := releaseDetailsToDB(tags.Architecture, tag, releaseDetails)
-				// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
-				if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
-					continue
-				}
+				releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
 
-				// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
-				for i, pr := range releaseTag.PullRequests {
-					existingPR := models.ReleasePullRequest{}
-					result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
-					if result.Error == nil {
-						releaseTag.PullRequests[i] = existingPR
-					}
+				if releaseTag == nil {
+					continue
 				}
 
 				if err := r.db.DB.Create(&releaseTag).Error; err != nil {
@@ -74,6 +88,27 @@ func (r *releaseSyncOptions) Run() error {
 	}
 
 	return nil
+}
+
+func (r *releaseSyncOptions) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
+	releaseDetails := r.fetchReleaseDetails(architecture, release, tag)
+	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
+
+	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
+	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
+		return nil
+	}
+
+	// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
+	for i, pr := range releaseTag.PullRequests {
+		existingPR := models.ReleasePullRequest{}
+		result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
+		if result.Error == nil {
+			releaseTag.PullRequests[i] = existingPR
+		}
+	}
+
+	return releaseTag
 }
 
 func (r *releaseSyncOptions) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
@@ -168,6 +203,24 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 	release.Repositories = changelog.Repositories()
 	release.PullRequests = changelog.PullRequests()
 	release.JobRuns = releaseJobRunsToDB(details)
+
+	// set forced flag
+	failedBlocking := false
+
+	for _, jRun := range release.JobRuns {
+		if jRun.State == failed {
+			if jRun.Kind == "Blocking" {
+				failedBlocking = true
+				break
+			}
+		}
+	}
+
+	if release.Phase == "Accepted" {
+		release.Forced = failedBlocking
+	} else if release.Phase == "Rejected" {
+		release.Forced = !failedBlocking
+	}
 
 	return &release
 }
