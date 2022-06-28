@@ -229,7 +229,6 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 		}
 
 		pull := models.ProwPullRequest{}
-		log.Infof("%+v", pr)
 		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			pull.Org = refs.Org
