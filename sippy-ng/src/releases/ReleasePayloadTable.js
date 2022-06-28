@@ -46,17 +46,33 @@ function ReleasePayloadTable(props) {
       align: 'center',
       renderCell: (params) => {
         if (params.row.phase === 'Accepted') {
-          return (
-            <Tooltip title="This payload was accepted.">
-              <CheckCircle style={{ fill: 'green' }} />
-            </Tooltip>
-          )
+          if (params.row.forced === true) {
+            return (
+              <Tooltip title="This payload was manually force accepted.">
+                <CheckCircle style={{ fill: 'green' }} />
+              </Tooltip>
+            )
+          } else {
+            return (
+              <Tooltip title="This payload was accepted.">
+                <CheckCircle style={{ fill: 'green' }} />
+              </Tooltip>
+            )
+          }
         } else if (params.row.phase === 'Rejected') {
-          return (
-            <Tooltip title="This payload was rejected.">
-              <Error style={{ fill: 'maroon' }} />
-            </Tooltip>
-          )
+          if (params.row.forced === true) {
+            return (
+              <Tooltip title="This payload was manually force rejected.">
+                <Error style={{ fill: 'maroon' }} />
+              </Tooltip>
+            )
+          } else {
+            return (
+              <Tooltip title="This payload was rejected.">
+                <Error style={{ fill: 'maroon' }} />
+              </Tooltip>
+            )
+          }
         } else {
           return (
             <Fragment>
@@ -76,11 +92,25 @@ function ReleasePayloadTable(props) {
       hide: props.briefTable,
       renderCell: (params) => {
         if (params.value === true) {
-          return (
-            <Tooltip title="This payload was forced.">
-              <Warning style={{ color: theme.palette.warning.dark }} />
-            </Tooltip>
-          )
+          if (params.row.phase === 'Accepted') {
+            return (
+              <Tooltip title="This payload was manually force accepted.">
+                <Warning style={{ color: theme.palette.warning.dark }} />
+              </Tooltip>
+            )
+          } else if (params.row.phase === 'Rejected') {
+            return (
+              <Tooltip title="This payload was manually force rejected">
+                <Warning style={{ color: theme.palette.warning.dark }} />
+              </Tooltip>
+            )
+          } else {
+            return (
+              <Tooltip title="This payload was manually forced but has an unknown status.">
+                <Warning style={{ color: theme.palette.warning.dark }} />
+              </Tooltip>
+            )
+          }
         } else {
           return ' '
         }
