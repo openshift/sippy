@@ -1,6 +1,12 @@
 import './ReleasePayloadTable.css'
 import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
-import { CheckCircle, CompareArrows, Error, Help } from '@material-ui/icons'
+import {
+  CheckCircle,
+  CompareArrows,
+  Error,
+  Help,
+  Warning,
+} from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
@@ -21,12 +27,16 @@ const useStyles = makeStyles(
     rowPhaseRejected: {
       backgroundColor: theme.palette.error.light,
     },
+    rowPhaseForced: {
+      backgroundColor: theme.palette.warning.light,
+    },
   }),
   { defaultTheme }
 )
 
 function ReleasePayloadTable(props) {
   const classes = useStyles()
+  const theme = defaultTheme
 
   const columns = [
     {
@@ -58,7 +68,24 @@ function ReleasePayloadTable(props) {
         }
       },
     },
-
+    {
+      field: 'forced',
+      headerName: 'Forced',
+      align: 'center',
+      flex: 0.75,
+      hide: props.briefTable,
+      renderCell: (params) => {
+        if (params.value === true) {
+          return (
+            <Tooltip title="This payload was forced.">
+              <Warning style={{ color: theme.palette.warning.dark }} />
+            </Tooltip>
+          )
+        } else {
+          return ' '
+        }
+      },
+    },
     {
       field: 'release_tag',
       headerName: 'Tag',
@@ -178,12 +205,6 @@ function ReleasePayloadTable(props) {
         }
         return ''
       },
-    },
-    {
-      field: 'forced',
-      headerName: 'Forced',
-      flex: 1.5,
-      hide: props.briefTable,
     },
   ]
 
@@ -305,7 +326,11 @@ function ReleasePayloadTable(props) {
       disableColumnMenu={true}
       pageSize={props.pageSize}
       rowsPerPageOptions={[5, 10, 25, 50]}
-      getRowClassName={(params) => classes['rowPhase' + params.row.phase]}
+      getRowClassName={(params) =>
+        params.row.forced === true
+          ? classes.rowPhaseForced
+          : classes['rowPhase' + params.row.phase]
+      }
       filterMode="server"
       sortingMode="server"
       sortingOrder={['desc', 'asc']}
