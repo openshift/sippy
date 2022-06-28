@@ -46,6 +46,7 @@ type ProwJobRun struct {
 	URL          string
 	TestFailures int
 	Tests        []ProwJobRunTest
+	PullRequests []ProwPullRequest `gorm:"many2many:prow_job_run_prow_pull_requests;"`
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
@@ -117,4 +118,26 @@ type Bug struct {
 	FlakeCount     int
 	Tests          []Test    `gorm:"many2many:bug_tests;"`
 	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
+}
+
+// ProwPullRequest represents a GitHub pull request, there can be multiple entries
+// for a pull request, if it was tested with different HEADs (SHA). This lets us
+// track jobs at a more granular level, allowing us differentiate between code pushes
+// and retests.
+type ProwPullRequest struct {
+	Model
+
+	// Org is something like kubernetes or k8s.io
+	Org string `json:"org"`
+	// Repo is something like test-infra
+	Repo string `json:"repo"`
+
+	Number int    `json:"number"`
+	Author string `json:"author"`
+	Title  string `json:"title,omitempty"`
+
+	// SHA is the specific commit at HEAD.
+	SHA string `json:"sha" gorm:"index:pr_link_sha,unique"`
+	// Link links to the pull request itself.
+	Link string `json:"link,omitempty" gorm:"index:pr_link_sha,unique"`
 }
