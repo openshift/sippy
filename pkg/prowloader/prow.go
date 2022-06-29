@@ -137,7 +137,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 }
 
 func fetchJobsJSON(prowURL string) ([]byte, error) {
-	resp, err := http.Get(prowURL)
+	resp, err := http.Get(prowURL) // #nosec G107
 	if err != nil {
 		return nil, err
 	}
