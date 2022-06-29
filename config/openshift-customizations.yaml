@@ -1,0 +1,6 @@
+prow:
+  url: https://prow.ci.openshift.org/prowjobs.js
+releases:
+  "Presubmits":
+    regexp:
+      - "^pull-ci-openshift-.*-(master|main)-e2e-.*"

@@ -19,6 +19,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -31,9 +32,6 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
-// FIXME(stbenjam): Make this configurable so we can use kube or openshift prow
-const prowURL = "https://prow.ci.openshift.org/prowjobs.js?var=allBuilds&omit=annotations,labels,decoration_config,pod_spec"
-
 type ProwLoader struct {
 	dbc                  *db.DB
 	bkt                  *storage.BucketHandle
@@ -44,9 +42,12 @@ type ProwLoader struct {
 	variantManager       testidentification.VariantManager
 	suiteCache           map[string]uint
 	syntheticTestManager synthetictests.SyntheticTestManager
+	releases             []string
+	config               *v1config.SippyConfig
 }
 
-func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager testidentification.VariantManager, syntheticTestManager synthetictests.SyntheticTestManager) *ProwLoader {
+func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager testidentification.VariantManager,
+	syntheticTestManager synthetictests.SyntheticTestManager, releases []string, config *v1config.SippyConfig) *ProwLoader {
 	bkt := gcsClient.Bucket(gcsBucket)
 
 	return &ProwLoader{
@@ -59,6 +60,8 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager
 		suiteCache:           make(map[string]uint),
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
+		releases:             releases,
+		config:               config,
 	}
 }
 
@@ -89,8 +92,8 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	return prowJobRunCache
 }
 
-func (pl *ProwLoader) LoadProwJobsToDB(filters []*regexp.Regexp) error {
-	jobsJSON, err := fetchJobsJSON()
+func (pl *ProwLoader) LoadProwJobsToDB() error {
+	jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
 	if err != nil {
 		return err
 	}
@@ -100,13 +103,32 @@ func (pl *ProwLoader) LoadProwJobsToDB(filters []*regexp.Regexp) error {
 	}
 
 	for _, pj := range prowJobs {
-		for _, re := range filters {
-			if re.MatchString(pj.Spec.Job) {
-				err := pl.prowJobToJobRun(pj)
-				if err != nil {
+		for _, release := range pl.releases {
+			cfg, ok := pl.config.Releases[release]
+			if !ok {
+				log.Warningf("configuration not found for release %q", release)
+				continue
+			}
+
+			if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
+				if err := pl.prowJobToJobRun(pj, release); err != nil {
 					return err
 				}
 				break
+			}
+
+			for _, expr := range cfg.Regexp {
+				re, err := regexp.Compile(expr)
+				if err != nil {
+					log.WithError(err).Errorf("invalid regex in configuration")
+					return fmt.Errorf("invalid regex in configuration %w", err)
+				}
+
+				if re.MatchString(pj.Spec.Job) {
+					if err := pl.prowJobToJobRun(pj, release); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}
@@ -114,7 +136,7 @@ func (pl *ProwLoader) LoadProwJobsToDB(filters []*regexp.Regexp) error {
 	return nil
 }
 
-func fetchJobsJSON() ([]byte, error) {
+func fetchJobsJSON(prowURL string) ([]byte, error) {
 	resp, err := http.Get(prowURL)
 	if err != nil {
 		return nil, err
@@ -124,21 +146,13 @@ func fetchJobsJSON() ([]byte, error) {
 
 func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 	results := make(map[string][]prow.ProwJob)
-	// The first 16 bytes are `var allBuilds =`, and then the rest is parseable JSON except for the final character (;).
-	if err := json.Unmarshal(jobJSON[16:len(jobJSON)-1], &results); err != nil {
+	if err := json.Unmarshal(jobJSON, &results); err != nil {
 		return nil, err
 	}
 	return results["items"], nil
 }
 
-func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob) error {
-	releaseRegex := regexp.MustCompile("pull-ci-.*([0-9]+.[0-9]+)-.*")
-	matches := releaseRegex.FindStringSubmatch(pj.Spec.Job)
-	release := "main"
-	if len(matches) > 0 {
-		release = matches[1]
-	}
-
+func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
 		return nil
