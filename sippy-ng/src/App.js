@@ -20,6 +20,7 @@ import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
+import ReleaseStreams from './releases/ReleaseStreams'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -250,6 +251,16 @@ export default function App(props) {
                       key={'release-details-' + props.match.params.release}
                       release={props.match.params.release}
                       releaseTag={props.match.params.tag}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/release/:release/streams"
+                  render={(props) => (
+                    <ReleaseStreams
+                      key={'release-tags-' + props.match.params.release}
+                      release={props.match.params.release}
                     />
                   )}
                 />

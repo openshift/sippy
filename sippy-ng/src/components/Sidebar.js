@@ -136,6 +136,26 @@ export default function Sidebar(props) {
                     }
                   }}
                 </CapabilitiesContext.Consumer>
+                <CapabilitiesContext.Consumer>
+                  {(value) => {
+                    if (value.includes('openshift_releases')) {
+                      return (
+                        <ListItem
+                          key={'release-tags-' + index}
+                          component={Link}
+                          to={`/release/${release}/streams`}
+                          button
+                          className={classes.nested}
+                        >
+                          <ListItemIcon>
+                            <FileCopyOutlined />
+                          </ListItemIcon>
+                          <ListItemText primary="Payload Streams" />
+                        </ListItem>
+                      )
+                    }
+                  }}
+                </CapabilitiesContext.Consumer>
                 <ListItem
                   key={'release-jobs-' + index}
                   component={Link}
