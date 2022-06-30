@@ -6,7 +6,8 @@ type SippyConfig struct {
 }
 
 type ProwConfig struct {
-	// URL to the prowjob.js endpoint of the prow instance.
+	// URL to the prowjob.js endpoint of the prow instance. This endpoint contains
+	// a JSON file with all the ProwJob resources from the prow cluster.
 	URL string `yaml:"url"`
 }
 

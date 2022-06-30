@@ -127,7 +127,7 @@ func main() {
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
 
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
-	flags.StringVar(&opt.Config, "config", opt.Config, "Configuration for Prow Sippy")
+	flags.StringVar(&opt.Config, "config", opt.Config, "Configuration file for Sippy, required if using Prow-based Sippy")
 
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
@@ -222,6 +222,10 @@ func (o *Options) Validate() error {
 
 	if (o.LoadDatabase || o.Server) && o.DSN == "" {
 		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
+	}
+
+	if o.LoadProw && o.Config == "" {
+		return fmt.Errorf("must specify --config with --load-prow")
 	}
 
 	if !o.DBOnlyMode {
