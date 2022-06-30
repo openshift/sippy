@@ -1,4 +1,4 @@
-package buganalysis
+package loader
 
 import (
 	"encoding/json"
@@ -7,103 +7,36 @@ import (
 	"net/url"
 	"regexp"
 	"regexp/syntax"
-	"strings"
-	"sync"
 	"time"
 
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	"github.com/openshift/sippy/pkg/buganalysis/internal"
-	"github.com/openshift/sippy/pkg/util"
+	"github.com/andygrunwald/go-jira"
 	log "github.com/sirupsen/logrus"
 )
 
-// BugCache is a thread-safe way to query about bug status.
-// It is stateful though, so for a time after clearing the data will not be up to date until the Update is called
-type BugCache interface {
-	ListJobBlockingBugs(job string) []bugsv1.Bug
-	ListBugs(release, variant, testName string) []bugsv1.Bug
-	ListAllTestBugs() map[string][]bugsv1.Bug
-	ListAllJobBlockingBugs() map[string][]bugsv1.Bug
-	// ListAssociatedBugs lists bugs that match the testname or variant, but do not match the specified release
-	ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug
-	UpdateForFailedTests(failedTestNames ...string) error
-	UpdateJobBlockers(jobNames ...string) error
-	Clear()
-	// LastUpdateError returns the last update error, if one exists
-	LastUpdateError() error
-}
-
-// noOpBugCache is a no-op implementation of the bug cache/lookup interface
-// used to opt-out of bug lookups for faster test analysis/reporting.
-type noOpBugCache struct {
-}
-
-func (*noOpBugCache) ListJobBlockingBugs(job string) []bugsv1.Bug {
-	return []bugsv1.Bug{}
-}
-func (*noOpBugCache) ListBugs(release, variant, testName string) []bugsv1.Bug {
-	return []bugsv1.Bug{}
-}
-func (*noOpBugCache) ListAllTestBugs() map[string][]bugsv1.Bug {
-	return map[string][]bugsv1.Bug{}
-}
-func (*noOpBugCache) ListAllJobBlockingBugs() map[string][]bugsv1.Bug {
-	return map[string][]bugsv1.Bug{}
-}
-func (*noOpBugCache) ListAssociatedBugs(release, variant, testName string) []bugsv1.Bug {
-	return []bugsv1.Bug{}
-}
-func (*noOpBugCache) UpdateForFailedTests(failedTestNames ...string) error {
-	return nil
-}
-func (*noOpBugCache) UpdateJobBlockers(jobNames ...string) error {
-	return nil
-}
-func (*noOpBugCache) Clear() {}
-func (*noOpBugCache) LastUpdateError() error {
-	return nil
-}
-
-func NewNoOpBugCache() BugCache {
-	return &noOpBugCache{}
-}
-
-type bugCache struct {
-	lock sync.RWMutex
-	// maps test name to any bugzilla bug mentioning the test name
-	testBugsCache map[string][]bugsv1.Bug
-	// jobBlockersBugCache is indexed by getJobKey(jobName) and lists the bugs that are considered to be responsible for all failures on a job.
-	jobBlockersBugCache map[string][]bugsv1.Bug
-	lastUpdateError     error
-}
-
-func NewBugCache() BugCache {
-	return &bugCache{
-		testBugsCache:       map[string][]bugsv1.Bug{},
-		jobBlockersBugCache: map[string][]bugsv1.Bug{},
-	}
-}
-
 // UpdateForFailedTests updates a global variable with the bug mapping based on current failures.
-func (c *bugCache) UpdateForFailedTests(failedTestNames ...string) error {
-	c.lock.RLock()
-	newFailedTestNames := []string{}
-	for _, testName := range failedTestNames {
-		if _, found := c.testBugsCache[testName]; !found {
-			newFailedTestNames = append(newFailedTestNames, testName)
-		}
-	}
-	c.lock.RUnlock()
-	newBugs, lastUpdateError := findBugsForFailedTests(newFailedTestNames...)
+func UpdateForFailedTests(testNames ...string) (map[string][]jira.Issue, error) {
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	issues := map[string][]jira.Issue{}
+	/*
+		newTestNames := []string{}
+		for _, testName := range testNames {
+			if _, found := c.testBugsCache[testName]; !found {
+				newTestNames = append(newTestNames, testName)
+			}
+		}
+	*/
+
+	// TODO: Hack to override the full search for now.
+	newTestNames := []string{"Operator results.operator conditions etcd"}
+
+	// TODO: drop the whole concept of a cache and the locks, just use the db.
+
+	newBugs, lastUpdateError := findBugsForSearchStrings(newTestNames...)
 
 	for testName, bug := range newBugs {
-		c.testBugsCache[testName] = bug
+		issues[testName] = bug
 	}
-	c.lastUpdateError = lastUpdateError
-	return lastUpdateError
+	return issues, lastUpdateError
 }
 
 func GetJobKey(jobName string) string {
@@ -111,31 +44,34 @@ func GetJobKey(jobName string) string {
 }
 
 // UpdateJobBlockers updates a global variable with the bug mapping based on current failures.
-func (c *bugCache) UpdateJobBlockers(jobNames ...string) error {
-	c.lock.RLock()
-	jobSearchStrings := []string{}
-	for _, jobName := range jobNames {
-		jobKey := GetJobKey(jobName)
-		if _, found := c.jobBlockersBugCache[jobKey]; !found {
-			jobSearchStrings = append(jobSearchStrings, jobKey)
-		}
-	}
-	c.lock.RUnlock()
-	newBugs, lastUpdateError := findBugsForFailedTests(jobSearchStrings...)
+func UpdateJobBlockers(jobNames ...string) (map[string][]jira.Issue, error) {
 
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	issues := map[string][]jira.Issue{}
+	/*
+		jobSearchStrings := []string{}
+		for _, jobName := range jobNames {
+			jobKey := GetJobKey(jobName)
+			if _, found := c.jobBlockersBugCache[jobKey]; !found {
+				jobSearchStrings = append(jobSearchStrings, jobKey)
+			}
+		}
+	*/
+
+	// TODO: temporary hack for development
+	jobSearchStrings := []string{GetJobKey("periodic-ci-openshift-release-master-ci-4.12-e2e-azure-sdn-upgrade=")}
+
+	newBugs, lastUpdateError := findBugsForSearchStrings(jobSearchStrings...)
 
 	for testName, bug := range newBugs {
-		c.jobBlockersBugCache[testName] = bug
+		issues[testName] = bug
 	}
-	c.lastUpdateError = lastUpdateError
-	return lastUpdateError
+	return issues, lastUpdateError
 }
 
-// finds bugs given the test names
-func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug, error) {
-	ret := map[string][]bugsv1.Bug{}
+// findBugsForSearchStrings finds issues in batches based on the given search strings. These can be test names
+// or job names.
+func findBugsForSearchStrings(failedTestNames ...string) (map[string][]jira.Issue, error) {
+	ret := map[string][]jira.Issue{}
 
 	var lastUpdateError error
 	batchTestNames := []string{}
@@ -149,7 +85,7 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 		// if we find a bug for this test, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
-		ret[testName] = []bugsv1.Bug{}
+		ret[testName] = []jira.Issue{}
 
 		// continue building our batch until we have a largish set to check
 		onLastItem := (i + 1) == len(failedTestNames)
@@ -167,32 +103,14 @@ func findBugsForFailedTests(failedTestNames ...string) (map[string][]bugsv1.Bug,
 		}
 		batchTestNames = []string{}
 	}
-	log.Debugf("findBugsForFailedTests made %d bugzilla requests", queryCtr)
+	log.Debugf("findBugsForSearchStrings made %d bugzilla requests", queryCtr)
 
 	return ret, lastUpdateError
 }
 
-func (c *bugCache) Clear() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	c.testBugsCache = map[string][]bugsv1.Bug{}
-	c.jobBlockersBugCache = map[string][]bugsv1.Bug{}
-	c.lastUpdateError = nil
-}
-
-func (c *bugCache) LastUpdateError() error {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
-	return c.lastUpdateError
-}
-
+/*
 //nolint:revive // flag-parameter: parameter 'invertReleaseQuery' seems to be a control flag, avoid control coupling
-func (c *bugCache) listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
+func listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
 	ret := []bugsv1.Bug{}
 
 	// first check if this job is covered by a job-blocking bug.  If so, all test
@@ -253,9 +171,6 @@ func (c *bugCache) ListAssociatedBugs(release, jobName, testName string) []bugsv
 }
 
 func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-
 	return c.jobBlockersBugCache[GetJobKey(jobName)]
 }
 
@@ -275,20 +190,23 @@ func (c *bugCache) ListAllJobBlockingBugs() map[string][]bugsv1.Bug {
 	return jobNameToBugs
 }
 
-func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
-	searchResults := make(map[string][]bugsv1.Bug)
+*/
+
+func findBugs(testNames []string) (map[string][]jira.Issue, error) {
+	searchResults := make(map[string][]jira.Issue)
 
 	v := url.Values{}
-	v.Set("type", "bug")
+	v.Set("type", "issue")
 	v.Set("context", "-1")
 	for _, testName := range testNames {
 		testName = regexp.QuoteMeta(testName)
-		log.Debugf("Searching bugs for test name: %s\n", testName)
+		//log.Debugf("Searching bugs for test name: %s\n", testName)
 		v.Add("search", testName)
 	}
 
 	bzQueryStart := time.Now()
 	searchURL := "https://search.ci.openshift.org/v2/search"
+	log.Info("encoded params: " + v.Encode())
 	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
@@ -301,7 +219,8 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		return searchResults, e
 	}
 
-	search := internal.Search{}
+	log.Info(resp.Body)
+	search := Search{}
 
 	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
 		e := fmt.Errorf("could not decode bug search results: %w", err)
@@ -314,23 +233,27 @@ func findBugs(testNames []string) (map[string][]bugsv1.Bug, error) {
 		r, _ := syntax.Parse(searchString, 0)
 		searchString = string(r.Rune)
 		for _, match := range result.Matches {
-			bug := match.Bug
-			bug.URL = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
+			issue := match.Issues
+			/*
+				bug := match.Bug
+				bug.URL = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
 
-			// search.ci.openshift.org seems to occasionally return empty BZ results, filter
-			// them out.
-			if bug.ID == 0 {
-				continue
-			}
-
-			// ignore any bugs verified over a week ago, they cannot be responsible for test failures
-			// (or the bug was incorrectly verified and needs to be revisited)
-			if !util.IsActiveBug(bug) {
-				if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
+				// search.ci.openshift.org seems to occasionally return empty BZ results, filter
+				// them out.
+				if bug.ID == 0 {
 					continue
 				}
-			}
-			searchResults[searchString] = append(searchResults[searchString], bug)
+
+				// ignore any bugs verified over a week ago, they cannot be responsible for test failures
+				// (or the bug was incorrectly verified and needs to be revisited)
+				if !util.IsActiveBug(bug) {
+					if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
+						continue
+					}
+				}
+
+			*/
+			searchResults[searchString] = append(searchResults[searchString], issue)
 		}
 	}
 

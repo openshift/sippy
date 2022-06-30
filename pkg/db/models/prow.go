@@ -126,8 +126,6 @@ type Bug struct {
 	Version        string
 	Component      string
 	URL            string
-	FailureCount   int
-	FlakeCount     int
 	Tests          []Test    `gorm:"many2many:bug_tests;"`
 	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
 }

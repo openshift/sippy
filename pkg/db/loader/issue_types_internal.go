@@ -1,5 +1,5 @@
 // These types are used to decode information from ci-search, but we don't want to expose these for anyone else.
-package internal
+package loader
 
 import (
 	gojira "github.com/andygrunwald/go-jira"

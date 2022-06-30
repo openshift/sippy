@@ -22,7 +22,6 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
@@ -313,13 +312,17 @@ func (o *Options) Run() error {
 		start := time.Now()
 		if o.LoadTestgrid {
 
+			/* TODO: DISABLED FOR JIRA SUPPORT WORK
 			trgc := sippyserver.TestReportGeneratorConfig{
 				TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
 				RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
 				DisplayDataConfig:           o.toDisplayDataConfig(),
 			}
 
+			*/
+
 			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
+			/* TODO: DISABLED FOR JIRA SUPPORT WORK
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
 					o.StartDay, o.NumDays)
@@ -328,6 +331,7 @@ func (o *Options) Run() error {
 					return err
 				}
 			}
+			*/
 
 			if loadBugs {
 				testCache, err := sippyserver.LoadTestCache(dbc)
@@ -338,9 +342,10 @@ func (o *Options) Run() error {
 				if err != nil {
 					return err
 				}
-				if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
-					return errors.Wrapf(err, "error syncing bugzilla bugs to db")
+				if err := sippyserver.LoadBugs(dbc, testCache, prowJobCache); err != nil {
+					return errors.Wrapf(err, "error syncing issues to db")
 				}
+				os.Exit(0) // TODO: remove
 			}
 		}
 
@@ -418,7 +423,6 @@ func (o *Options) runServerMode() error {
 		o.ListenAddr,
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
-		o.getBugCache(),
 		webRoot,
 		&static,
 		dbc,
@@ -443,14 +447,6 @@ func (o *Options) getServerMode() sippyserver.Mode {
 		return sippyserver.ModeOpenShift
 	}
 	return sippyserver.ModeKubernetes
-}
-
-func (o *Options) getBugCache() buganalysis.BugCache {
-	if o.SkipBugLookup || len(o.OpenshiftReleases) == 0 {
-		return buganalysis.NewNoOpBugCache()
-	}
-
-	return buganalysis.NewBugCache()
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {

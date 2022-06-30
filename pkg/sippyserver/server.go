@@ -24,7 +24,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -48,7 +47,6 @@ func NewServer(
 	listenAddr string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
-	bugCache buganalysis.BugCache,
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
@@ -61,7 +59,6 @@ func NewServer(
 
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
-		bugCache:             bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingConfig,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
@@ -94,7 +91,6 @@ type Server struct {
 
 	syntheticTestManager       synthetictests.SyntheticTestManager
 	variantManager             testidentification.VariantManager
-	bugCache                   buganalysis.BugCache
 	testReportGeneratorConfig  TestReportGeneratorConfig
 	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
 	sippyNG                    fs.FS
