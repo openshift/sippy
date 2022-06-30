@@ -15,7 +15,7 @@ func ReleasesFromDB(dbClient *db.DB) ([]Release, error) {
 	res := dbClient.DB.Raw(`
 		SELECT DISTINCT(release), case when position('.' in release) != 0 then string_to_array(release, '.')::int[] end as sortable_release
                 FROM prow_jobs
-                ORDER BY sortable_release desc`).Scan(&releases)
+                ORDER BY sortable_release desc NULLS LAST`).Scan(&releases)
 	if res.Error != nil {
 		log.Errorf("error querying releases from db: %v", res.Error)
 		return releases, res.Error
