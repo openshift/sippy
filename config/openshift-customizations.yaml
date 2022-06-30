@@ -1,0 +1,7 @@
+# This file is used as an overlay to customize the generated config, so it contains the Presubmit pseudorelease.
+prow:
+  url: https://prow.ci.openshift.org/prowjobs.js
+releases:
+  "Presubmits":
+    regexp:
+      - "^pull-ci-openshift-.*-(master|main)-e2e-.*"

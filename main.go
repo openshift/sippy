@@ -13,11 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
@@ -68,6 +71,7 @@ type Options struct {
 	LogLevel                           string
 	LoadTestgrid                       bool
 	LoadProw                           bool
+	Config                             string
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
 }
@@ -121,7 +125,9 @@ func main() {
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
+
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
+	flags.StringVar(&opt.Config, "config", opt.Config, "Configuration file for Sippy, required if using Prow-based Sippy")
 
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
@@ -218,6 +224,10 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
 	}
 
+	if o.LoadProw && o.Config == "" {
+		return fmt.Errorf("must specify --config with --load-prow")
+	}
+
 	if !o.DBOnlyMode {
 		return fmt.Errorf("--db-only-mode cannot be set to false (deprecated flag soon to be removed, feature now mandatory)")
 	}
@@ -241,6 +251,21 @@ func (o *Options) Run() error {
 	log.SetFormatter(formatter)
 
 	log.Debug("debug logging enabled")
+	sippyConfig := v1.SippyConfig{}
+	if o.Config == "" {
+		sippyConfig.Prow = v1.ProwConfig{
+			URL: "https://prow.ci.openshift.org/prowjobs.js",
+		}
+	} else {
+		data, err := os.ReadFile(o.Config)
+		if err != nil {
+			log.WithError(err).Fatalf("could not load config")
+		}
+		if err := yaml.Unmarshal(data, &sippyConfig); err != nil {
+			log.WithError(err).Fatalf("could not unmarshal config")
+		}
+	}
+
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
@@ -342,15 +367,8 @@ func (o *Options) Run() error {
 				return err
 			}
 
-			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager(), o.getSyntheticTestManager())
-
-			// For now let's just get master/main presubmits in the openshift org
-			allowedJobRegex := []*regexp.Regexp{
-				regexp.MustCompile(`pull-ci-openshift-.*-(master|main)-e2e-.*`),
-			}
-
-			err = prowLoader.LoadProwJobsToDB(allowedJobRegex)
-			if err != nil {
+			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
+			if err := prowLoader.LoadProwJobsToDB(); err != nil {
 				return err
 			}
 		}
