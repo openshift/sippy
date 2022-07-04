@@ -55,13 +55,11 @@ export default function ReleaseStreamDetails(props) {
         items: [filterFor('release_tag', 'equals', releaseTag)],
       })
     )
-
      */
 
     Promise.all([
       fetch(
         `${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?release=${release}&arch=${arch}&stream=${stream}`
-        //`${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?filter=${filter}`
       ),
     ])
       .then(([analysis]) => {
@@ -79,8 +77,10 @@ export default function ReleaseStreamDetails(props) {
             </Typography>
           )
         }
+        console.log('GOT ANALYSIS')
+        console.log(analysis)
 
-        setAnlysis(analysis)
+        setAnalysis(analysis)
         setLoaded(true)
       })
       .catch((error) => {
@@ -116,7 +116,7 @@ export default function ReleaseStreamDetails(props) {
         previousPage={
           <Link to={`/release/${props.release}/streams`}>Streams</Link>
         }
-        currentPage={releaseTag}
+        //currentPage={releaseTag}
       />
       <Container xl>
         <Typography variant="h4" gutterBottom className={classes.title}>
@@ -129,36 +129,13 @@ export default function ReleaseStreamDetails(props) {
           width="60%"
           style={{ margin: 20 }}
         >
-          <Paper>
-            <Tabs
-              value={location.pathname.substring(
-                location.pathname.lastIndexOf('/') + 1
-              )}
-              indicatorColor="primary"
-              textColor="primary"
-            >
-              <Tab
-                label="Analysis"
-                value={analysis}
-                component={Link}
-                to={url}
-              />
-            </Tabs>
-          </Paper>
+          <Card
+            elevation={5}
+            style={{ margin: 20, padding: 20, height: '100%' }}
+          >
+            <ReleasePayloadAnalysis />
+          </Card>
         </Grid>
-        <Card elevation={5} style={{ margin: 20 }}>
-          {statusAlert}
-        </Card>
-        <Switch>
-          <Route path={path + '/'}>
-            <Card
-              elevation={5}
-              style={{ margin: 20, padding: 20, height: '100%' }}
-            >
-              <ReleasePayloadAnalysis />
-            </Card>
-          </Route>
-        </Switch>
       </Container>
     </Fragment>
   )
