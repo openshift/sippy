@@ -1,113 +1,84 @@
-import './ReleaseStreamTable.css'
-import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
-import {
-  CheckCircle,
-  CompareArrows,
-  Error,
-  Help,
-  Warning,
-} from '@material-ui/icons'
+import { Button, Tooltip } from '@material-ui/core'
+import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import { Link } from 'react-router-dom'
-import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
-import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import React, { useEffect } from 'react'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
   (theme) => ({
-    rowPhaseAccepted: {
+    rowPhaseSucceeded: {
       backgroundColor: theme.palette.success.light,
     },
-    rowPhaseRejected: {
+    rowPhaseFailed: {
       backgroundColor: theme.palette.error.light,
     },
-    rowPhaseForced: {
-      backgroundColor: theme.palette.warning.light,
+    title: {
+      textAlign: 'center',
     },
   }),
   { defaultTheme }
 )
 
-function ReleaseStreamTable(props) {
+function ReleasePayloadJobRuns(props) {
   const classes = useStyles()
-  const theme = defaultTheme
 
   const columns = [
     {
-      field: 'phase',
-      headerName: 'Phase',
-      flex: 0.75,
-      align: 'center',
+      field: 'release_tag',
+      headerName: 'Tag',
+      hide: true,
+    },
+    {
+      field: 'job_name',
+      headerName: 'Job name',
+      flex: 3,
+    },
+
+    {
+      field: 'upgrades_from',
+      headerName: 'Upgrades from',
+      flex: 3,
+    },
+    {
+      field: 'upgrades_to',
+      headerName: 'Upgrades to',
+      flex: 3,
+    },
+    {
+      field: 'kind',
+      headerName: 'Blocking',
+      flex: 1.25,
       renderCell: (params) => {
-        if (params.row.last_phase === 'Accepted') {
-          if (params.row.forced === true) {
-            return (
-              <Tooltip title="This payload was manually force accepted.">
-                <CheckCircle style={{ fill: 'green' }} />
-              </Tooltip>
-            )
-          } else {
-            return (
-              <Tooltip title="This payload was accepted.">
-                <CheckCircle style={{ fill: 'green' }} />
-              </Tooltip>
-            )
-          }
-        } else if (params.row.last_phase === 'Rejected') {
-          if (params.row.forced === true) {
-            return (
-              <Tooltip title="This payload was manually force rejected.">
-                <Error style={{ fill: 'maroon' }} />
-              </Tooltip>
-            )
-          } else {
-            return (
-              <Tooltip title="This payload was rejected.">
-                <Error style={{ fill: 'maroon' }} />
-              </Tooltip>
-            )
-          }
+        if (params.value === 'Blocking') {
+          return <Check />
         } else {
-          return (
-            <Fragment>
-              <Tooltip title="This payload has an unknown status">
-                <Help style={{ fill: 'gray' }} />
-              </Tooltip>
-            </Fragment>
-          )
+          return <></>
         }
       },
     },
     {
-      field: 'stream',
-      headerName: 'Stream',
-      flex: 1.5,
-      hide: props.briefTable,
+      field: 'url',
+      headerName: ' ',
+      flex: 0.75,
+      filterable: false,
       renderCell: (params) => {
         return (
-          <Link
-            to={`/release/${params.row.release}/stream/${params.row.architecture}/${params.row.stream}`}
-          >
-            {params.row.architecture} {params.value}
-          </Link>
+          <Tooltip title="View in Prow">
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<DirectionsBoat />}
+              href={params.value}
+            />
+          </Tooltip>
         )
       },
-    },
-    {
-      field: 'release_tag',
-      headerName: 'Last Accepted Tag',
-      flex: 4,
-    },
-    {
-      field: 'count',
-      headerName: 'Last Phase Count',
-      flex: 4,
     },
   ]
 
@@ -133,7 +104,7 @@ function ReleaseStreamTable(props) {
     )
     currentFilters.items.push({
       id: 99,
-      columnField: 'release_tag',
+      columnField: 'releaseTag',
       operatorValue: 'contains',
       value: searchValue,
     })
@@ -175,8 +146,12 @@ function ReleaseStreamTable(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
-    if (props.release !== '') {
+    if (props.release && props.release !== '') {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
+    }
+
+    if (props.limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -184,7 +159,7 @@ function ReleaseStreamTable(props) {
 
     fetch(
       process.env.REACT_APP_API_URL +
-        '/api/releases/health?' +
+        '/api/releases/job_runs?' +
         queryString.substring(1)
     )
       .then((response) => {
@@ -204,7 +179,7 @@ function ReleaseStreamTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField])
+  }, [])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -219,17 +194,12 @@ function ReleaseStreamTable(props) {
       components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
-      rowHeight={70}
       autoHeight={true}
+      getRowClassName={(params) => classes['rowPhase' + params.row.state]}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
       pageSize={props.pageSize}
       rowsPerPageOptions={[5, 10, 25, 50]}
-      getRowClassName={(params) =>
-        params.row.forced === true
-          ? classes.rowPhaseForced
-          : classes['rowPhase' + params.row.last_phase]
-      }
       filterMode="server"
       sortingMode="server"
       sortingOrder={['desc', 'asc']}
@@ -254,7 +224,7 @@ function ReleaseStreamTable(props) {
   )
 }
 
-ReleaseStreamTable.defaultProps = {
+ReleasePayloadJobRuns.defaultProps = {
   limit: 0,
   hideControls: false,
   pageSize: 25,
@@ -262,11 +232,11 @@ ReleaseStreamTable.defaultProps = {
   filterModel: {
     items: [],
   },
-  sortField: 'release_time',
-  sort: 'desc',
+  sortField: 'kind',
+  sort: 'asc',
 }
 
-ReleaseStreamTable.propTypes = {
+ReleasePayloadJobRuns.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
@@ -277,4 +247,4 @@ ReleaseStreamTable.propTypes = {
   sortField: PropTypes.string,
 }
 
-export default ReleaseStreamTable
+export default ReleasePayloadJobRuns

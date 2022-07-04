@@ -20,6 +20,7 @@ import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
+import ReleaseStreamDetails from './releases/ReleaseStreamDetails'
 import ReleaseStreams from './releases/ReleaseStreams'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
@@ -27,7 +28,6 @@ import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
-import WorkloadMetricsOverview from './workloadmetrics/WorkloadMetricsOverview'
 
 const drawerWidth = 240
 
@@ -259,8 +259,21 @@ export default function App(props) {
                   path="/release/:release/streams"
                   render={(props) => (
                     <ReleaseStreams
-                      key={'release-tags-' + props.match.params.release}
+                      key={'release-streams-' + props.match.params.release}
                       release={props.match.params.release}
+                    />
+                  )}
+                />
+
+                {/* TODO: dropped to singular 'stream' here so it doesn't match the above streams list */}
+                <Route
+                  exact
+                  path="/release/:release/stream/:arch/:stream"
+                  render={(props) => (
+                    <ReleaseStreamDetails
+                      release={props.match.params.release}
+                      arch={props.match.params.arch}
+                      stream={props.match.params.stream}
                     />
                   )}
                 />
