@@ -7,11 +7,13 @@ The goal is to provide us some statistics of payload rejection history.
 
 Here is the list of known categories:
 
-- "TEST_FLAKE",
-- "CLOUD_INFRA",
-- "RH_INFRA",
-- "PRODUCT_REGRESSION",
-- "TEST_REGRESSION"
+```
+* "TEST_FLAKE",            # Payload was rejected because of flake tests
+* "CLOUD_INFRA",           # Payload was rejected because of infrastructure failures from cloud providers
+* "RH_INFRA",              # Payload was rejected because of other infrastructure failures
+* "PRODUCT_REGRESSION",    # Payload was rejected because of real product regression
+* "TEST_REGRESSION"        # Payload was rejected because of a test regression (typically from origin repo)
+```
 
 ## Python Dependencies
 

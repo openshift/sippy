@@ -118,7 +118,7 @@ function ReleasePayloadTable(props) {
     },
     {
       field: 'reject_reason',
-      headerName: 'RejectReason',
+      headerName: 'Reject reason',
       flex: 1.5,
       hide: props.briefTable,
     },

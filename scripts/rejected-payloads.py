@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
+import datetime
 from sqlalchemy import create_engine
-from sqlalchemy import Column, String
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -14,13 +15,15 @@ class ReleaseTags(base):
     id = Column(String, primary_key=True)
     release_tag = Column(String)
     release = Column(String)
+    release_time = Column(DateTime)
     stream = Column(String)
     phase = Column(String)
     reject_reason = Column(String)
 
-def list(session, release, stream, showAll):
+def list(session, release, stream, showAll, days):
     selectedTags = []
-    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected").all()
+    start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).all()
     for releaseTag in releaseTags:
         if release and releaseTag.release != release:
             continue
@@ -55,10 +58,11 @@ def categorizeSingle(session, releaseTag):
         releaseTag.reject_reason = reject_reasons[index-1]
     session.commit()
 
-def categorize(session, release, stream):
+def categorize(session, release, stream, days):
     while True:
-        selectedTags = list(session, release, stream, False)
+        selectedTags = list(session, release, stream, False, days)
         if len(selectedTags) == 0:
+            print("No payloads are available to select, exiting.")
             break
         val = input("Select tag between 1 and " + str(len(selectedTags)) + " to categorize, enter q to exit: ")
         if val == "q":
@@ -71,9 +75,16 @@ def categorize(session, release, stream):
             continue
     session.commit()
 
+def verifyArgs(args):
+    if args["days"] < 1:
+        print("Please enter a positive number for days.")
+        return False
+    return True
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='View or Update payload reject reasons to DB')
-    parser.add_argument('-d', '--dsn', help='Specifies the DSN used to connect to DB', required=True)
+    parser.add_argument('-d', '--dsn', help='Specifies the DSN used to connect to DB', default="postgresql://postgres:@localhost:5432/postgres")
+    parser.add_argument("--days", type=int, help="The number of days to query for", default=14)
     subparsers = parser.add_subparsers(title='subcommands', description='valid subcommands', help='Supported operations', required=True)
     list_parser = subparsers.add_parser('list', help='list rejected payloads')
     list_parser.set_defaults(action='list')
@@ -89,7 +100,9 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
-    #dsn = "postgresql://postgres:@localhost:5432/postgres"
+    if verifyArgs(args) == False:
+        exit(1)
+
     db = create_engine(args["dsn"])
 
     Session = sessionmaker(db)
@@ -101,7 +114,7 @@ if __name__ == '__main__':
         if args["release_tag"]:
             categorizeSingle(session, args["release_tag"])
         else:
-            categorize(session, args["release"], args["stream"])
+            categorize(session, args["release"], args["stream"], args["days"])
     else:
-        list(session, args["release"], args["stream"], args["all"])
+        list(session, args["release"], args["stream"], args["all"], args["days"])
 
