@@ -21,6 +21,10 @@ Use pip to install the following dependencies:
 
 `pip install argparse sqlalchemy`
 
+Or if you are on Fedora:
+
+`sudo dnf install python3-sqlalchemy+postgresql`
+
 ## Key Functions
 
 ### List

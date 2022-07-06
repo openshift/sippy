@@ -20,7 +20,7 @@ class ReleaseTags(base):
     phase = Column(String)
     reject_reason = Column(String)
 
-def list(session, release, stream, showAll, days):
+def selectReleases(session, release, stream, showAll, days):
     selectedTags = []
     start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
     releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).all()
@@ -33,11 +33,16 @@ def list(session, release, stream, showAll, days):
             continue
         selectedTags.append(releaseTag)
 
+    return selectedTags
+
+def printReleases(selectedTags):
     print("%-10s%-50s%-20s%-20s" % ("index", "release tag", "phase", "reject reason"))
     for idx, releaseTag in enumerate(selectedTags):
         print("%-10d%-50s%-20s%-20s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason))
 
-    return selectedTags
+def list(session, release, stream, showAll, days):
+    selectedTags = selectReleases(session, release, stream, showAll, days)
+    printReleases(selectedTags)
 
 def categorizeSingle(session, releaseTag):
     reject_reasons = ["TEST_FLAKE", "CLOUD_INFRA", "RH_INFRA", "PRODUCT_REGRESSION", "TEST_REGRESSION"]
@@ -59,11 +64,13 @@ def categorizeSingle(session, releaseTag):
     session.commit()
 
 def categorize(session, release, stream, days):
+    showAll = False
+    selectedTags = selectReleases(session, release, stream, showAll, days)
     while True:
-        selectedTags = list(session, release, stream, False, days)
         if len(selectedTags) == 0:
             print("No payloads are available to select, exiting.")
             break
+        printReleases(selectedTags)
         val = input("Select tag between 1 and " + str(len(selectedTags)) + " to categorize, enter q to exit: ")
         if val == "q":
             break
