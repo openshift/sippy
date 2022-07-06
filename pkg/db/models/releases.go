@@ -58,6 +58,9 @@ type ReleaseTag struct {
 	Repositories []ReleaseRepository `json:"-" gorm:"foreignKey:release_tag_id"`
 
 	JobRuns []ReleaseJobRun `json:"-" gorm:"foreignKey:release_tag_id"`
+
+	// RejectReason is used to indicate why a payload is rejected.
+	RejectReason string `json:"reject_reason" gorm:"column:reject_reason"`
 }
 
 // ReleasePullRequest represents a pull request that was included for the first time

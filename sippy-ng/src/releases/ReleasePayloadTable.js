@@ -117,6 +117,12 @@ function ReleasePayloadTable(props) {
       },
     },
     {
+      field: 'reject_reason',
+      headerName: 'Reject reason',
+      flex: 1.5,
+      hide: props.briefTable,
+    },
+    {
       field: 'release_tag',
       headerName: 'Tag',
       flex: 4,
