@@ -30,6 +30,30 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string) ([]mode
 	return results, nil
 }
 
+// GetLastOSUpgradeByArchitectureAndStream returns the last release tag that contains an OS upgrade.
+func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]models.ReleaseTag, error) {
+	results := make([]models.ReleaseTag, 0)
+
+	result := db.Raw(`SELECT
+						DISTINCT ON
+							(architecture, stream)
+							*
+						FROM
+							release_tags
+						WHERE
+							release = ?
+						AND
+							previous_os_version != ''
+						ORDER BY
+							architecture, stream, release_time desc`, release).Scan(&results)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return results, nil
+}
+
 // GetLastPayloadTags returns the most recent payload tags, sorted by date in descending order.
 func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, limit int) ([]models.ReleaseTag, error) {
 	results := []models.ReleaseTag{}

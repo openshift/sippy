@@ -3,15 +3,16 @@ package metrics
 import (
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -30,6 +31,10 @@ var (
 	payloadHoursSinceLastAcceptedMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_payloads_hours_since_last_accepted",
 		Help: "Number of hours since last accepted payload in each release, stream and arch combo.",
+	}, []string{"release", "stream", "architecture"})
+	payloadHoursSinceLastOSUpgrade = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_payloads_hours_since_last_os_upgrade",
+		Help: "Number of hours since last OS upgrade.",
 	}, []string{"release", "stream", "architecture"})
 )
 
@@ -101,6 +106,17 @@ func refreshPayloadMetrics(dbc *db.DB) {
 			sinceLastAccepted := time.Since(archStream.ReleaseTime)
 			payloadHoursSinceLastAcceptedMetric.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture).Set(sinceLastAccepted.Hours())
 		}
+
+		lastOSUpgradeTags, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, r.Release)
+		if err != nil {
+			log.WithError(err).Error("error querying last os upgrades")
+			return
+		}
+		for _, archStream := range lastOSUpgradeTags {
+			sinceLastOS := time.Since(archStream.ReleaseTime)
+			payloadHoursSinceLastOSUpgrade.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture).Set(sinceLastOS.Hours())
+		}
+
 	}
 }
 
