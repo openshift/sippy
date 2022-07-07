@@ -63,8 +63,7 @@ def categorizeSingle(session, releaseTag):
         releaseTag.reject_reason = reject_reasons[index-1]
     session.commit()
 
-def categorize(session, release, stream, days):
-    showAll = False
+def categorize(session, release, stream, showAll, days):
     selectedTags = selectReleases(session, release, stream, showAll, days)
     while True:
         if len(selectedTags) == 0:
@@ -104,6 +103,7 @@ if __name__ == '__main__':
     categorize_parser.add_argument('-t', '--release_tag', help='Specifies a release payload tag, like 4.11.0-0.nightly-2022-06-25-081133', default=None)
     categorize_parser.add_argument('-r', '--release', help='Specifies a release, like 4.11', default=None)
     categorize_parser.add_argument('-s', '--stream', help='Specifies a stream, like nightly or ci', default=None)
+    categorize_parser.add_argument('-a', '--all', help='List all rejected payloads. If not specified , list only uncategorized ones.', action='store_true')
 
     args = vars(parser.parse_args())
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         if args["release_tag"]:
             categorizeSingle(session, args["release_tag"])
         else:
-            categorize(session, args["release"], args["stream"], args["days"])
+            categorize(session, args["release"], args["stream"], args["all"], args["days"])
     else:
         list(session, args["release"], args["stream"], args["all"], args["days"])
 
