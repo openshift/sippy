@@ -55,6 +55,7 @@ If no release_tag is specified, it will find all uncategorized release tags and 
   -t RELEASE_TAG, --release_tag RELEASE_TAG     Specifies a release payload tag, like 4.11.0-0.nightly-2022-06-25-081133
   -r RELEASE, --release RELEASE                 Specifies a release, like 4.11
   -s STREAM, --stream STREAM                    Specifies a stream, like nightly or ci
+  -a, --all                                     List all rejected payloads. If not specified , list only uncategorized ones.
 ```
 
 Here is a single update example:
