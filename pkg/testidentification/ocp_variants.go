@@ -96,6 +96,7 @@ var (
 		// Experimental jobs that are under active development
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-azurestack-csi",
+		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azurestack-csi",
 
 		// These will fail until there's a stable 4.10 build
 		"periodic-ci-openshift-release-master-ci-4.11-upgrade-from-stable-4.10-e2e-aws-upgrade-infra",
@@ -106,75 +107,58 @@ var (
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2057502
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-telco5g",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-telco5g",
+		"periodic-ci-openshift-release-master-nightly-4.12-e2e-telco5g",
 
 		// 5-10-2022 https://bugzilla.redhat.com/show_bug.cgi?id=2083614
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-arm64-single-node",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-arm64-single-node",
+		"periodic-ci-openshift-multiarch-master-nightly-4.12-ocp-e2e-aws-arm64-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-upgrade-single-node",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-upgrade-single-node",
+		"periodic-ci-openshift-release-master-ci-4.12-e2e-aws-upgrade-single-node",
+		"periodic-ci-openshift-release-master-ci-4.12-e2e-azure-upgrade-single-node",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node-serial",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-single-node-serial",
+		"periodic-ci-openshift-release-master-nightly-4.12-e2e-aws-single-node-serial",
 
-		// QE jobs, formerly named with "cucushift", tracked here: https://issues.redhat.com/browse/OCPQE-8577
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-azure-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-baremetal-ipi",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-azure-ipi",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-azure-ipi",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-baremetal-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-aws-ipi-destructive",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-openstack-ipi",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-e2e-aws-ipi-destructive",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-openstack-ipi",
-		"periodic-ci-openshift-verification-tests-master-stable-4.10-upgrade-from-stable-4.9-baremetal-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-upgrade-from-stable-4.9-baremetal-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.10-e2e-azure-ipi",
-		// And their 4.11 equivalents, tracked with new jira: https://issues.redhat.com/browse/OCPQE-9898
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-azure-ipi-proxy",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi-private",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-azure-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-upi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-gcp-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-gcp-upi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-aws-ipi-proxy",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-e2e-vsphere-ipi-proxy",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-upgrade-from-stable-4.10-aws-ipi",
-		"periodic-ci-openshift-verification-tests-master-nightly-4.11-upgrade-from-stable-4.10-azure-ipi",
+		// CNV jobs are missing images: https://bugzilla.redhat.com/show_bug.cgi?id=2103973
+		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azure-deploy-cnv",
+		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azure-upgrade-cnv",
 
 		// Reported on slack to SD-CICD
 		"release-openshift-ocp-osd-aws-nightly-4.10",
 		"release-openshift-ocp-osd-gcp-nightly-4.10",
 		"release-openshift-ocp-osd-aws-nightly-4.11",
 		"release-openshift-ocp-osd-gcp-nightly-4.11",
+		"release-openshift-ocp-osd-aws-nightly-4.12",
+		"release-openshift-ocp-osd-gcp-nightly-4.12",
 
-		// These jobs are being moved to the step registry.
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2057582
+		// All metal upi jobs are being removed, see https://github.com/openshift/release/pull/29966
+		// Remove from never-stable once history is gone.
 		"release-openshift-ocp-installer-e2e-metal-4.10",
 		"release-openshift-ocp-installer-e2e-metal-4.11",
+		"release-openshift-ocp-installer-e2e-metal-4.12",
 		"release-openshift-ocp-installer-e2e-metal-compact-4.10",
 		"release-openshift-ocp-installer-e2e-metal-compact-4.11",
+		"release-openshift-ocp-installer-e2e-metal-compact-4.12",
 		"release-openshift-ocp-installer-e2e-metal-serial-4.10",
 		"release-openshift-ocp-installer-e2e-metal-serial-4.11",
+		"release-openshift-ocp-installer-e2e-metal-serial-4.12",
 
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2058266
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-ovn-arm64",
+		// TODO: Add bug as these are investigated. These have been near 0% for more than two weeks.
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-s390x",
 		"periodic-ci-openshift-multiarch-master-nightly-4.10-upgrade-from-nightly-4.9-ocp-e2e-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-ovn-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-upgrade-from-nightly-4.10-ocp-e2e-aws-arm64",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-s390x",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-s390x",
 
-		// TODO: Add bug as these are investigated. These have been near 0% for more than two weeks.
 		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-ovn-upgrade-rollback",
 		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-upgrade-rollback",
 		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-azure-ovn-upgrade",
@@ -191,10 +175,8 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-compact",
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-proxy",
 		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.8-e2e-aws-upgrade-paused",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-fips-serial",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-upgrade-rollback-oldest-supported",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp-libvirt-cert-rotation",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-compact",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-az",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-fips",
 		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-proxy",
@@ -202,41 +184,27 @@ var (
 		"release-openshift-origin-installer-e2e-aws-disruptive-4.9",
 		"release-openshift-origin-installer-e2e-aws-disruptive-4.10",
 		"release-openshift-origin-installer-e2e-aws-disruptive-4.11",
+		"release-openshift-origin-installer-e2e-aws-disruptive-4.12",
 
 		"release-openshift-origin-installer-e2e-aws-upgrade-4.6-to-4.7-to-4.8-to-4.9-ci",
 		"release-openshift-origin-installer-e2e-aws-upgrade-4.7-to-4.8-to-4.9-to-4.10-ci",
-
-		// https://bugzilla.redhatcom/show_bug.cgi?id=1979966
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-workers-rhel7",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-workers-rhel7",
-		"periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-workers-rhel7",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=1936917
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-calico",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-calico",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-calico",
+		"release-openshift-origin-installer-e2e-aws-upgrade-4.9-to-4.10-to-4.11-to-4.12-ci",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=2083616
+		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-cilium",
+		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-cilium",
 		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-cilium",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-cilium",
 		"periodic-ci-openshift-release-master-ci-4.11-e2e-gcp-cilium",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-cilium",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium",
+		"periodic-ci-openshift-release-master-ci-4.12-e2e-azure-cilium",
+		"periodic-ci-openshift-release-master-ci-4.12-e2e-gcp-cilium",
 
 		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
 		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-s390x",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2019376
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-aws-ovn-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-ovn-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-network-stress",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-ovn-network-stress",
 	)
 )
 
