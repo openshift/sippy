@@ -732,6 +732,10 @@ function TestTable(props) {
             addFilters: addFilters,
             filterModel: filterModel,
             setFilterModel: setFilterModel,
+            downloadDataFunc: () => {
+              return rows
+            },
+            downloadFilePrefix: 'tests',
           },
         }}
       />

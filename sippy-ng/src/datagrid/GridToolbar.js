@@ -1,9 +1,9 @@
 import { createTheme } from '@material-ui/core/styles'
 import { GridToolbarDensitySelector } from '@material-ui/data-grid'
-import { GridView } from './GridView'
 import { makeStyles } from '@material-ui/styles'
 import ClearIcon from '@material-ui/icons/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
+import GridToolbarDownload from './GridToolbarDownload'
 import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
@@ -79,6 +79,14 @@ export default function GridToolbar(props) {
           ''
         )}
         <GridToolbarDensitySelector />
+        {props.downloadDataFunc ? (
+          <GridToolbarDownload
+            getData={props.downloadDataFunc}
+            filePrefix={props.downloadFilePrefix}
+          />
+        ) : (
+          ''
+        )}
       </div>
       <div>
         <TextField
@@ -133,4 +141,6 @@ GridToolbar.propTypes = {
   setFilterModel: PropTypes.func.isRequired,
   addFilters: PropTypes.func.isRequired,
   value: PropTypes.string,
+  downloadDataFunc: PropTypes.func,
+  downloadFilePrefix: PropTypes.string,
 }
