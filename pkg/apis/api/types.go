@@ -388,15 +388,23 @@ type TestFailureAnalysis struct {
 	ID   uint   `json:"id"`
 	// FailureCount is the total number of times this test failed in the payloads queried.
 	FailureCount int `json:"failure_count"`
-	// FailedJobRuns is the total list of job runs the test failed in of the payloads analyzed.
-	FailedJobRuns []string `json:"failed_job_runs"`
-	// FailedPayloads is the total list of payload tags the test failed in of those analyzed.
-	FailedPayloads []string `json:"failed_payloads"`
-	// ConsecutiveFailedPayloadsCount is the number of Rejected payloads in a row this test has failed in. If latest
-	// payload in the stream is Accepted, this will be 0.
-	ConsecutiveFailedPayloadsCount int `json:"consecutive_failed_payloads_count"`
 
-	// PossibleBlocker is true if sippy thinks this test may be blocking a payload stream. (i.e. latest several payloads
-	// were Rejected, and this test failed in a substantial number of them)
-	PossibleBlocker bool `json:"possible_blocker"`
+	// FailingSincePayload ????
+
+	// BlockerScore represents our confidence this is a blocker, ranges from 0.0 -> 1.0, with 1.0 being near
+	// certain this is a payload blocker.
+	BlockerScore float64 `json:"blocker_score"`
+
+	// BlockerScoreReasons explain to humans why the blocker_score was given.
+	BlockerScoreReasons []string `json:"blocker_score_reasons"`
+
+	// FailedPayloads contains information about where this test failed in a specific rejected payload.
+	FailedPayloads map[string]*FailedPayload `json:"failed_payloads"`
+}
+
+type FailedPayload struct {
+	// FailedJobs is a list of job names the test failed in for this payload.
+	FailedJobs []string `json:"failed_jobs"`
+	// FailedJobRuns is a list of prow job URLs the test failed in for this payload.
+	FailedJobRuns []string `json:"failed_job_runs"`
 }

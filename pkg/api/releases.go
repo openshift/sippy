@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
@@ -13,13 +12,11 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util"
-
-	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -146,11 +143,11 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	// Query all test failures for the given job run IDs:
 	// NOTE: slow query here over our biggest table.
 	failedTests := []models.ProwJobRunTest{}
-	dbc.DB.Preload("Test").Where("prow_job_run_id IN ? AND status = 12", jobRunIDs).Find(&failedTests)
+	dbc.DB.Preload("Test").Preload("ProwJobRun.ProwJob").
+		Where("prow_job_run_id IN ? AND status = 12", jobRunIDs).Find(&failedTests)
 	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
 
-	// Iterate all failed tests, aggregate each test name to the number of times we saw it, and the number of unique
-	// jobs we saw it in.
+	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
 	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
 	for _, ft := range failedTests {
 		if ft.Test.Name == testidentification.OpenShiftTestsName {
@@ -159,46 +156,79 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 		}
 		if _, ok := testNameToAnalysis[ft.Test.Name]; !ok {
 			testNameToAnalysis[ft.Test.Name] = &apitype.TestFailureAnalysis{
-				Name:           ft.Test.Name,
-				ID:             ft.TestID,
-				FailedJobRuns:  []string{},
-				FailedPayloads: []string{},
+				Name:                ft.Test.Name,
+				ID:                  ft.TestID,
+				FailedPayloads:      map[string]*apitype.FailedPayload{},
+				BlockerScoreReasons: []string{},
 			}
 		}
 		ta := testNameToAnalysis[ft.Test.Name]
 		ta.FailureCount++
-		if !util.StrSliceContains(ta.FailedJobRuns, strconv.Itoa(int(ft.ProwJobRunID))) {
-			ta.FailedJobRuns = append(ta.FailedJobRuns, strconv.Itoa(int(ft.ProwJobRunID)))
-		}
-		jrID := jobRunToPayload[ft.ProwJobRunID]
-		if !util.StrSliceContains(ta.FailedPayloads, jrID) {
-			ta.FailedPayloads = append(ta.FailedPayloads, jrID)
-		}
-	}
-	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
-	for _, v := range testNameToAnalysis {
-		testFailures = append(testFailures, v)
-
-		consecPayloadFailsCtr := 0
-		for _, payload := range result.ConsecutiveFailedPayloads {
-			if util.StrSliceContains(v.FailedPayloads, payload) {
-				consecPayloadFailsCtr++
+		pl := jobRunToPayload[ft.ProwJobRunID]
+		if _, ok := ta.FailedPayloads[pl]; !ok {
+			ta.FailedPayloads[pl] = &apitype.FailedPayload{
+				FailedJobs:    []string{},
+				FailedJobRuns: []string{},
 			}
 		}
-		v.ConsecutiveFailedPayloadsCount = consecPayloadFailsCtr
-		// If at least the last three payloads are in rejected state, and this test is broken in all of them,
-		// flag that we may have a blocker.
-		// TODO: refine these criteria? 75% of last failures?
-		if result.LastPhase == apitype.PayloadRejected && result.LastPhaseCount >= 3 &&
-			consecPayloadFailsCtr == len(result.ConsecutiveFailedPayloads) {
-			v.PossibleBlocker = true
+
+		ta.FailedPayloads[pl].FailedJobs = append(ta.FailedPayloads[pl].FailedJobs, ft.ProwJobRun.ProwJob.Name)
+		ta.FailedPayloads[pl].FailedJobRuns = append(ta.FailedPayloads[pl].FailedJobRuns, ft.ProwJobRun.URL)
+	}
+	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
+
+	for _, v := range testNameToAnalysis {
+		testFailures = append(testFailures, v)
+		calculateBlockerScore(result.ConsecutiveFailedPayloads, v)
+	}
+
+	// sort so the most likely blocker test failures are first in the slice:
+	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].BlockerScore >= testFailures[j].BlockerScore })
+	result.TestFailures = testFailures
+	return result, nil
+}
+
+// calculateBlockerScore uses the list of most recent failed payloads, and compares to the failures we found
+// for a particular test, then attempts to calculate a blocker score between 0.0 (not a blocker) and 1.0 (almost
+// certainly a blocker) based on a number of criteria.
+func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.TestFailureAnalysis) {
+	if len(consecutiveFailedPayloadTags) == 0 {
+		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
+		// we have to assume 0.
+		ta.BlockerScore = 0.0
+		return
+	}
+
+	payloadFailureStreak := []*apitype.FailedPayload{}
+	for _, payloadTag := range consecutiveFailedPayloadTags {
+		if _, ok := ta.FailedPayloads[payloadTag]; ok {
+			payloadFailureStreak = append(payloadFailureStreak, ta.FailedPayloads[payloadTag])
 		}
 	}
 
-	// sort so the most common test failures are first in the slice
-	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].FailureCount >= testFailures[j].FailureCount })
-	result.TestFailures = testFailures
-	return result, nil
+	// TODO: should we analyze if it's in the same job each time, and weight that more heavily?
+	// TODO: should we analyze if it's in some percentage of most recent failures?
+
+	switch {
+	case len(payloadFailureStreak) >= 3:
+		ta.BlockerScore = 1.0
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
+		return
+	case len(payloadFailureStreak) == 2:
+		ta.BlockerScore = 0.7
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
+		return
+	case len(payloadFailureStreak) == 1:
+		ta.BlockerScore = 0.2
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
+		return
+	default:
+		ta.BlockerScore = 0.0
+		return
+	}
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
