@@ -112,30 +112,22 @@ export default function ReleaseStreamDetails(props) {
         previousPage={
           <Link to={`/release/${props.release}/streams`}>Streams</Link>
         }
+        // TODO
         //currentPage={releaseTag}
       />
       <Container xl>
         <Typography variant="h4" gutterBottom className={classes.title}>
-          {release}{' '}
+          {release} {arch} {stream} Analysis
         </Typography>
 
-        <Grid
-          container
-          justifyContent="center"
-          width="100%"
-          style={{ margin: 20 }}
-        >
-          <Card
-            elevation={5}
-            style={{ margin: 20, padding: 20, height: '100%' }}
-          >
-            <ReleaseStreamAnalysis
-              release={props.release}
-              stream={props.stream}
-              arch={props.arch}
-            />
-          </Card>
-        </Grid>
+        <Typography variant="h5" gutterBottom className={classes.title}>
+          Potential Test Blockers
+        </Typography>
+        <ReleaseStreamAnalysis
+          release={props.release}
+          stream={props.stream}
+          arch={props.arch}
+        />
       </Container>
     </Fragment>
   )
