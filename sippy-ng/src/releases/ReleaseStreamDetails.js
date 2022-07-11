@@ -88,10 +88,10 @@ export default function ReleaseStreamDetails(props) {
                     textColor="primary"
                   >
                     <Tab
-                      label="Analysis"
-                      value="analysis"
+                      label="Test Blockers"
+                      value="blockers"
                       component={Link}
-                      to={url + '/analysis'}
+                      to={url + '/blockers'}
                     />
                     <Tab
                       label="Payloads"
@@ -103,7 +103,7 @@ export default function ReleaseStreamDetails(props) {
                 </Paper>
               </Grid>
               <Switch>
-                <Route path={path + '/analysis'}>
+                <Route path={path + '/blockers'}>
                   <ReleaseStreamAnalysis
                     release={props.release}
                     stream={props.stream}
@@ -119,7 +119,7 @@ export default function ReleaseStreamDetails(props) {
                     Another Tab for Payloads
                   </Typography>
                 </Route>
-                <Redirect from="/" to={url + '/analysis'} />
+                <Redirect from="/" to={url + '/blockers'} />
               </Switch>
             </Container>
           </TabContext>
