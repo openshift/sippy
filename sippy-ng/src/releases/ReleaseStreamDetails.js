@@ -105,6 +105,8 @@ export default function ReleaseStreamDetails(props) {
     return <p>Loading...</p>
   }
 
+  let currPage = props.arch + ' ' + props.stream
+
   return (
     <Fragment>
       <SimpleBreadcrumbs
@@ -113,7 +115,7 @@ export default function ReleaseStreamDetails(props) {
           <Link to={`/release/${props.release}/streams`}>Streams</Link>
         }
         // TODO
-        //currentPage={releaseTag}
+        currentPage={currPage}
       />
       <Container xl>
         <Typography variant="h4" gutterBottom className={classes.title}>
