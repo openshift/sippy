@@ -1,6 +1,15 @@
-import { Container, Grid, makeStyles, Typography } from '@material-ui/core'
-import { Fragment } from 'react'
-import { Link } from 'react-router-dom'
+import {
+  Card,
+  Container,
+  Grid,
+  makeStyles,
+  Tab,
+  Tabs,
+  Typography,
+} from '@material-ui/core'
+import { filterFor } from '../helpers'
+import { Fragment, useState } from 'react'
+import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -19,6 +28,13 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleaseStreamDetails(props) {
   const classes = useStyles()
+  const { path, url } = useRouteMatch()
+
+  const [currentTab, setCurrentTab] = useState('analysis')
+  const handleTabChange = (event, newValue) => {
+    console.warn(newValue)
+    setCurrentTab(newValue)
+  }
 
   const [release = props.release, setRelease] = useQueryParam(
     'release',
@@ -43,21 +59,55 @@ export default function ReleaseStreamDetails(props) {
       />
       <Container xl>
         <Typography variant="h4" gutterBottom className={classes.title}>
-          Payload Stream Analysis
+          Payload Stream
         </Typography>
 
         <Typography variant="h5" gutterBottom className={classes.title}>
           {arch} {stream}
         </Typography>
 
-        <Typography variant="h6" gutterBottom className={classes.title}>
-          Potential Test Blockers
-        </Typography>
-        <ReleaseStreamAnalysis
-          release={props.release}
-          stream={props.stream}
-          arch={props.arch}
-        />
+        <Grid
+          container
+          justifyContent="center"
+          width="60%"
+          style={{ margin: 20 }}
+        >
+          <Tabs value={currentTab} onChange={handleTabChange}>
+            <Tab label="Analysis" value="analysis" component={Link} to={url} />
+            <Tab
+              label="Payloads"
+              value="payloads"
+              component={Link}
+              to={url + '/payloads'}
+            />
+          </Tabs>
+        </Grid>
+
+        <Switch>
+          <Route path={path + '/payloads'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <Typography variant="h6" gutterBottom className={classes.title}>
+                Another Tab
+              </Typography>
+            </Card>
+          </Route>
+
+          <Route path={path + '/'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <ReleaseStreamAnalysis
+                release={props.release}
+                stream={props.stream}
+                arch={props.arch}
+              />
+            </Card>
+          </Route>
+        </Switch>
       </Container>
     </Fragment>
   )
