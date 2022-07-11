@@ -4,9 +4,6 @@ import {
   Container,
   Grid,
   makeStyles,
-  Paper,
-  Tab,
-  Tabs,
   Typography,
 } from '@material-ui/core'
 import { filterFor, safeEncodeURIComponent } from '../helpers'
@@ -15,8 +12,7 @@ import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import ReleasePayloadAnalysis from './ReleasePayloadAnalysis'
-import ReleaseStreams from './ReleaseStreams'
+import ReleaseStreamAnalysis from './ReleaseStreamAnalysis'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
 const useStyles = makeStyles((theme) => ({
@@ -126,14 +122,18 @@ export default function ReleaseStreamDetails(props) {
         <Grid
           container
           justifyContent="center"
-          width="60%"
+          width="100%"
           style={{ margin: 20 }}
         >
           <Card
             elevation={5}
             style={{ margin: 20, padding: 20, height: '100%' }}
           >
-            <ReleasePayloadAnalysis />
+            <ReleaseStreamAnalysis
+              release={props.release}
+              stream={props.stream}
+              arch={props.arch}
+            />
           </Card>
         </Grid>
       </Container>

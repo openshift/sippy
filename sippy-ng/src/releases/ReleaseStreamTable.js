@@ -1,12 +1,5 @@
-import './ReleaseStreamTable.css'
 import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
-import {
-  CheckCircle,
-  CompareArrows,
-  Error,
-  Help,
-  Warning,
-} from '@material-ui/icons'
+import { CheckCircle, Error, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
@@ -16,7 +9,6 @@ import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(

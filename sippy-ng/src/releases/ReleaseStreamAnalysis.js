@@ -1,4 +1,4 @@
-import { Button, Tooltip } from '@material-ui/core'
+import { Button, Tooltip, Typography } from '@material-ui/core'
 import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
@@ -25,31 +25,26 @@ const useStyles = makeStyles(
   { defaultTheme }
 )
 
-function ReleasePayloadJobRuns(props) {
+function ReleaseStreamAnalysis(props) {
   const classes = useStyles()
 
   const columns = [
     {
-      field: 'release_tag',
-      headerName: 'Tag',
+      field: 'id',
+      headerName: 'Test ID',
       hide: true,
     },
     {
-      field: 'job_name',
-      headerName: 'Job name',
-      flex: 3,
-    },
-
-    {
-      field: 'upgrades_from',
-      headerName: 'Upgrades from',
+      field: 'name',
+      headerName: 'Test',
       flex: 3,
     },
     {
-      field: 'upgrades_to',
-      headerName: 'Upgrades to',
+      field: 'blocker_score',
+      headerName: 'Blocker Score',
       flex: 3,
     },
+    /*
     {
       field: 'kind',
       headerName: 'Blocking',
@@ -62,25 +57,22 @@ function ReleasePayloadJobRuns(props) {
         }
       },
     },
-    {
-      field: 'url',
-      headerName: ' ',
-      flex: 0.75,
-      filterable: false,
-      renderCell: (params) => {
-        return (
-          <Tooltip title="View in Prow">
-            <Button
-              style={{ justifyContent: 'center' }}
-              target="_blank"
-              startIcon={<DirectionsBoat />}
-              href={params.value}
-            />
-          </Tooltip>
-        )
-      },
-    },
+
+       */
   ]
+
+  // analysis stores the output from the health API
+  const [analysis, setAnalysis] = React.useState({})
+
+  const [release = props.release, setRelease] = useQueryParam(
+    'release',
+    StringParam
+  )
+  const [arch = props.arch, setArch] = useQueryParam('arch', StringParam)
+  const [stream = props.stream, setStream] = useQueryParam(
+    'stream',
+    StringParam
+  )
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -140,40 +132,48 @@ function ReleasePayloadJobRuns(props) {
   }
 
   const fetchData = () => {
-    let queryString = ''
-    if (filterModel && filterModel.items.length > 0) {
-      queryString +=
-        '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
-    }
-
-    if (props.release && props.release !== '') {
-      queryString += '&release=' + safeEncodeURIComponent(props.release)
-    }
-
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
-    }
-
-    queryString += '&sortField=' + safeEncodeURIComponent(sortField)
-    queryString += '&sort=' + safeEncodeURIComponent(sort)
-
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/job_runs?' +
-        queryString.substring(1)
-    )
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error('server returned ' + response.status)
-        }
-        return response.json()
+    /*
+    const filter = safeEncodeURIComponent(
+      JSON.stringify({
+        items: [filterFor('release_tag', 'equals', releaseTag)],
       })
-      .then((json) => {
-        setRows(json)
+    )
+     */
+
+    Promise.all([
+      fetch(
+        `${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?release=${release}&arch=${arch}&stream=${stream}`
+      ),
+    ])
+      .then(([analysis]) => {
+        if (analysis.status !== 200) {
+          throw new Error('server returned ' + analysis.status)
+        }
+
+        return Promise.all([analysis.json()])
+      })
+      .then(([analysis]) => {
+        if (analysis.length === 0) {
+          return <Typography variant="h5">Analysis not found.</Typography>
+        }
+        console.log('GOT ANALYSIS 2')
+        console.log(analysis)
+
+        setAnalysis(analysis)
+        setRows(analysis['test_failures'])
         setLoaded(true)
       })
       .catch((error) => {
-        setFetchError('Could not retrieve tags ' + error)
+        setFetchError(
+          'Could not retrieve payload stream analysis for ' +
+            props.release +
+            ' ' +
+            props.arch +
+            ' ' +
+            props.stream +
+            ': ' +
+            error
+        )
       })
   }
 
@@ -182,10 +182,10 @@ function ReleasePayloadJobRuns(props) {
   }, [])
 
   if (fetchError !== '') {
-    return <Alert severity="error">{fetchError}</Alert>
+    return <Alert severity="error">Failed to load data, {fetchError}</Alert>
   }
 
-  if (isLoaded === false) {
+  if (!isLoaded) {
     return <p>Loading...</p>
   }
 
@@ -224,7 +224,7 @@ function ReleasePayloadJobRuns(props) {
   )
 }
 
-ReleasePayloadJobRuns.defaultProps = {
+ReleaseStreamAnalysis.defaultProps = {
   limit: 0,
   hideControls: false,
   pageSize: 25,
@@ -236,15 +236,18 @@ ReleasePayloadJobRuns.defaultProps = {
   sort: 'asc',
 }
 
-ReleasePayloadJobRuns.propTypes = {
+ReleaseStreamAnalysis.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   filterModel: PropTypes.object,
-  release: PropTypes.string,
   sort: PropTypes.string,
   sortField: PropTypes.string,
+
+  release: PropTypes.string,
+  arch: PropTypes.string.isRequired,
+  stream: PropTypes.string.isRequired,
 }
 
-export default ReleasePayloadJobRuns
+export default ReleaseStreamAnalysis
