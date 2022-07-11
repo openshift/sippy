@@ -1,11 +1,9 @@
-import { Alert } from '@material-ui/lab'
 import { Container, Grid, makeStyles, Typography } from '@material-ui/core'
-import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
-import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React from 'react'
 import ReleaseStreamAnalysis from './ReleaseStreamAnalysis'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
@@ -41,7 +39,6 @@ export default function ReleaseStreamDetails(props) {
         previousPage={
           <Link to={`/release/${props.release}/streams`}>Payload Streams</Link>
         }
-        // TODO
         currentPage={currPage}
       />
       <Container xl>
