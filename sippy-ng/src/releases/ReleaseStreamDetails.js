@@ -3,18 +3,21 @@ import {
   Container,
   Grid,
   makeStyles,
+  Paper,
   Tab,
   Tabs,
   Typography,
 } from '@material-ui/core'
 import { filterFor } from '../helpers'
 import { Fragment, useState } from 'react'
-import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { TabContext, TabPanel } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReleaseStreamAnalysis from './ReleaseStreamAnalysis'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import TestByVariantTable from '../tests/TestByVariantTable'
 
 const useStyles = makeStyles((theme) => ({
   title: {
@@ -30,9 +33,9 @@ export default function ReleaseStreamDetails(props) {
   const classes = useStyles()
   const { path, url } = useRouteMatch()
 
-  const [currentTab, setCurrentTab] = useState('analysis')
-  const handleTabChange = (event, newValue) => {
-    console.warn(newValue)
+  const [currentTab, setCurrentTab] = useState(0)
+  function handleTabChange(event, newValue) {
+    console.warn('Setting new value ' + newValue)
     setCurrentTab(newValue)
   }
 
@@ -57,58 +60,71 @@ export default function ReleaseStreamDetails(props) {
         }
         currentPage={currPage}
       />
-      <Container xl>
-        <Typography variant="h4" gutterBottom className={classes.title}>
-          Payload Stream
-        </Typography>
-
-        <Typography variant="h5" gutterBottom className={classes.title}>
-          {arch} {stream}
-        </Typography>
-
-        <Grid
-          container
-          justifyContent="center"
-          width="60%"
-          style={{ margin: 20 }}
-        >
-          <Tabs value={currentTab} onChange={handleTabChange}>
-            <Tab label="Analysis" value="analysis" component={Link} to={url} />
-            <Tab
-              label="Payloads"
-              value="payloads"
-              component={Link}
-              to={url + '/payloads'}
-            />
-          </Tabs>
-        </Grid>
-
-        <Switch>
-          <Route path={path + '/payloads'}>
-            <Card
-              elevation={5}
-              style={{ margin: 20, padding: 20, height: '100%' }}
-            >
-              <Typography variant="h6" gutterBottom className={classes.title}>
-                Another Tab
+      <Route
+        path="/"
+        render={({ location }) => (
+          <TabContext value={path}>
+            <Container xl>
+              <Typography variant="h4" gutterBottom className={classes.title}>
+                Payload Stream
               </Typography>
-            </Card>
-          </Route>
 
-          <Route path={path + '/'}>
-            <Card
-              elevation={5}
-              style={{ margin: 20, padding: 20, height: '100%' }}
-            >
-              <ReleaseStreamAnalysis
-                release={props.release}
-                stream={props.stream}
-                arch={props.arch}
-              />
-            </Card>
-          </Route>
-        </Switch>
-      </Container>
+              <Typography variant="h5" gutterBottom className={classes.title}>
+                {arch} {stream}
+              </Typography>
+
+              <Grid
+                container
+                justifyContent="center"
+                width="100%"
+                style={{ margin: 20 }}
+              >
+                <Paper>
+                  <Tabs
+                    value={location.pathname.substring(
+                      location.pathname.lastIndexOf('/') + 1
+                    )}
+                    indicatorColor="primary"
+                    textColor="primary"
+                  >
+                    <Tab
+                      label="Analysis"
+                      value="analysis"
+                      component={Link}
+                      to={url + '/analysis'}
+                    />
+                    <Tab
+                      label="Payloads"
+                      value="payloads"
+                      component={Link}
+                      to={url + '/payloads'}
+                    />
+                  </Tabs>
+                </Paper>
+              </Grid>
+              <Switch>
+                <Route path={path + '/analysis'}>
+                  <ReleaseStreamAnalysis
+                    release={props.release}
+                    stream={props.stream}
+                    arch={props.arch}
+                  />
+                </Route>
+                <Route path={path + '/payloads'}>
+                  <Typography
+                    variant="h4"
+                    gutterBottom
+                    className={classes.title}
+                  >
+                    Another Tab for Payloads
+                  </Typography>
+                </Route>
+                <Redirect from="/" to={url + '/analysis'} />
+              </Switch>
+            </Container>
+          </TabContext>
+        )}
+      />
     </Fragment>
   )
 }

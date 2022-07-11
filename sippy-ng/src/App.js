@@ -267,7 +267,6 @@ export default function App(props) {
 
                 {/* TODO: dropped to singular 'stream' here so it doesn't match the above streams list */}
                 <Route
-                  exact
                   path="/release/:release/stream/:arch/:stream"
                   render={(props) => (
                     <ReleaseStreamDetails
