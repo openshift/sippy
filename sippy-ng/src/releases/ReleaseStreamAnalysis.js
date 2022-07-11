@@ -42,6 +42,11 @@ function ReleaseStreamAnalysis(props) {
     {
       field: 'blocker_score',
       headerName: 'Blocker Score',
+      flex: 1,
+    },
+    {
+      field: 'blocker_score_reasons',
+      headerName: 'Reason',
       flex: 3,
     },
     /*
