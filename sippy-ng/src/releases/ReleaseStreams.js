@@ -20,7 +20,10 @@ function ReleaseStreams(props) {
 
   return (
     <Fragment>
-      <SimpleBreadcrumbs release={props.release} currentPage="Streams" />
+      <SimpleBreadcrumbs
+        release={props.release}
+        currentPage="Payload Streams"
+      />
       <Typography variant="h4" gutterBottom className={classes.title}>
         Release Streams
       </Typography>

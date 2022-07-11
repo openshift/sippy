@@ -112,17 +112,21 @@ export default function ReleaseStreamDetails(props) {
       <SimpleBreadcrumbs
         release={props.release}
         previousPage={
-          <Link to={`/release/${props.release}/streams`}>Streams</Link>
+          <Link to={`/release/${props.release}/streams`}>Payload Streams</Link>
         }
         // TODO
         currentPage={currPage}
       />
       <Container xl>
         <Typography variant="h4" gutterBottom className={classes.title}>
-          {release} {arch} {stream} Analysis
+          Payload Stream Analysis
         </Typography>
 
         <Typography variant="h5" gutterBottom className={classes.title}>
+          {arch} {stream}
+        </Typography>
+
+        <Typography variant="h6" gutterBottom className={classes.title}>
           Potential Test Blockers
         </Typography>
         <ReleaseStreamAnalysis
