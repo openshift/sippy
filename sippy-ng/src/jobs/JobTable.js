@@ -1,6 +1,6 @@
 import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
-import { BugReport, DirectionsRun, GridOn, Search } from '@material-ui/icons'
+import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
 import { Button, Container, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import {
@@ -307,6 +307,15 @@ function JobTable(props) {
     }
   }
 
+  const selectedJobNames = () => {
+    let jobs = rows
+    if (selectedJobs.length !== 0) {
+      const selectedIDs = new Set(selectedJobs)
+      jobs = rows.filter((row) => selectedIDs.has(row.id))
+    }
+    return jobs.map((job) => job.name).join('\n')
+  }
+
   const createFilter = () => {
     if (selectedJobs.length === rows.length || selectedJobs.length === 0) {
       return safeEncodeURIComponent(JSON.stringify(filterModel))
@@ -322,7 +331,6 @@ function JobTable(props) {
         value: job.name,
       }
     })
-    console.log(jobs)
     return safeEncodeURIComponent(
       JSON.stringify({ items: jobs, linkOperator: 'or' })
     )
@@ -337,6 +345,17 @@ function JobTable(props) {
       style={{ margin: 10 }}
     >
       Analyze
+    </Button>
+  )
+
+  const copyButton = (
+    <Button
+      onClick={() => navigator.clipboard.writeText(selectedJobNames())}
+      variant="contained"
+      color="secondary"
+      style={{ margin: 10 }}
+    >
+      Copy names
     </Button>
   )
 
@@ -384,10 +403,15 @@ function JobTable(props) {
             setFilterModel: setFilterModel,
             columns: columns,
             addFilters: (m) => addFilters(m),
+            downloadDataFunc: () => {
+              return rows
+            },
+            downloadFilePrefix: 'jobs',
           },
         }}
       />
       {props.briefTable ? '' : detailsButton}
+      {props.briefTable ? '' : copyButton}
       <BugzillaDialog
         release={props.release}
         item={jobDetails}
