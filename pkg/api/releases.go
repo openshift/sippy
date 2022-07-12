@@ -62,9 +62,9 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 	return jobRuns, res.Error
 }
 
-// GetPayloadAnalysis loads the most recent payloads  for a stream and attempts to search for most commonly
+// GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int, filterOpts *filter.FilterOptions) (*apitype.PayloadStreamAnalysis, error) {
+func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int, filterOpts *filter.FilterOptions) ([]*apitype.TestFailureAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -87,7 +87,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 
 	if len(lastPayloads) == 0 {
 		logger.Debug("no payload tags found")
-		return result, nil
+		return result.TestFailures, nil
 	}
 
 	result.LastPhase = lastPayloads[0].Phase
@@ -190,7 +190,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	// sort so the most likely blocker test failures are first in the slice:
 	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].BlockerScore >= testFailures[j].BlockerScore })
 	result.TestFailures = testFailures
-	return result, nil
+	return result.TestFailures, nil
 }
 
 // calculateBlockerScore uses the list of most recent failed payloads, and compares to the failures we found

@@ -323,7 +323,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch, numPayloads, filterOpts)
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, numPayloads, filterOpts)
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -562,7 +562,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
 
-		serveMux.HandleFunc("/api/releases/stream_analysis",
+		serveMux.HandleFunc("/api/releases/test_failures",
 			s.jsonGetPayloadAnalysis)
 	}
 

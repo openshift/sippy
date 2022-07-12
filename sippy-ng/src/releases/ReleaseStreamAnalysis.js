@@ -61,25 +61,7 @@ function ReleaseStreamAnalysis(props) {
         )
       },
     },
-    /*
-  {
-    field: 'kind',
-    headerName: 'Blocking',
-    flex: 1.25,
-    renderCell: (params) => {
-      if (params.value === 'Blocking') {
-        return <Check />
-      } else {
-        return <></>
-      }
-    },
-  },
-
-     */
   ]
-
-  // analysis stores the output from the health API
-  const [analysis, setAnalysis] = React.useState({})
 
   const [release = props.release, setRelease] = useQueryParam(
     'release',
@@ -157,7 +139,7 @@ function ReleaseStreamAnalysis(props) {
 
     Promise.all([
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?release=${release}&arch=${arch}&stream=${stream}` +
+        `${process.env.REACT_APP_API_URL}/api/releases/test_failures?release=${release}&arch=${arch}&stream=${stream}` +
           queryString
       ),
     ])
@@ -173,8 +155,7 @@ function ReleaseStreamAnalysis(props) {
           return <Typography variant="h5">Analysis not found.</Typography>
         }
 
-        setAnalysis(analysis)
-        setRows(analysis['test_failures'])
+        setRows(analysis)
         setLoaded(true)
       })
       .catch((error) => {
