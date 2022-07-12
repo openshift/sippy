@@ -53,7 +53,7 @@ function ReleaseStreamAnalysis(props) {
       renderCell: (params) => {
         return (
           <div>
-            {Number(params.value).toFixed(1).toLocaleString()}
+            {Number(params.value) * 100}%
             <Tooltip title={params.row.blocker_score_reasons}>
               <InfoIcon />
             </Tooltip>

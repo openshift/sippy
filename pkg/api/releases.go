@@ -215,18 +215,23 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 	// TODO: should we analyze if it's in some percentage of most recent failures?
 
 	switch {
-	case len(payloadFailureStreak) >= 3:
+	case len(payloadFailureStreak) >= 4:
 		ta.BlockerScore = 1.0
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
 		return
+	case len(payloadFailureStreak) == 3:
+		ta.BlockerScore = 0.75
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
+		return
 	case len(payloadFailureStreak) == 2:
-		ta.BlockerScore = 0.7
+		ta.BlockerScore = 0.50
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
 		return
 	case len(payloadFailureStreak) == 1:
-		ta.BlockerScore = 0.2
+		ta.BlockerScore = 0.25
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
 		return
