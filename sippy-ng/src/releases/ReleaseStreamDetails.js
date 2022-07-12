@@ -66,11 +66,7 @@ export default function ReleaseStreamDetails(props) {
           <TabContext value={path}>
             <Container xl>
               <Typography variant="h4" gutterBottom className={classes.title}>
-                Payload Stream
-              </Typography>
-
-              <Typography variant="h5" gutterBottom className={classes.title}>
-                {arch} {stream}
+                {arch} {stream} Payload Stream
               </Typography>
 
               <Grid
@@ -88,10 +84,10 @@ export default function ReleaseStreamDetails(props) {
                     textColor="primary"
                   >
                     <Tab
-                      label="Test Blockers"
-                      value="blockers"
+                      label="Test Failures"
+                      value="failures"
                       component={Link}
-                      to={url + '/blockers'}
+                      to={url + '/failures'}
                     />
                     <Tab
                       label="Payloads"
@@ -103,7 +99,7 @@ export default function ReleaseStreamDetails(props) {
                 </Paper>
               </Grid>
               <Switch>
-                <Route path={path + '/blockers'}>
+                <Route path={path + '/failures'}>
                   <ReleaseStreamAnalysis
                     release={props.release}
                     stream={props.stream}
@@ -119,7 +115,7 @@ export default function ReleaseStreamDetails(props) {
                     Another Tab for Payloads
                   </Typography>
                 </Route>
-                <Redirect from="/" to={url + '/blockers'} />
+                <Redirect from="/" to={url + '/failures'} />
               </Switch>
             </Container>
           </TabContext>

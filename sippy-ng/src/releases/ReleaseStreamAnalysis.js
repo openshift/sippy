@@ -1,4 +1,4 @@
-import { Button, Tooltip, Typography } from '@material-ui/core'
+import { Button, Card, Grid, Tooltip, Typography } from '@material-ui/core'
 import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
@@ -6,8 +6,10 @@ import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
+import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
+import TestTable from '../tests/TestTable'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(
@@ -37,33 +39,38 @@ function ReleaseStreamAnalysis(props) {
     {
       field: 'name',
       headerName: 'Test',
-      flex: 3,
+      flex: 5,
     },
     {
       field: 'blocker_score',
       headerName: 'Blocker Score',
       flex: 1,
-    },
-    {
-      field: 'blocker_score_reasons',
-      headerName: 'Reason',
-      flex: 3,
-    },
-    /*
-    {
-      field: 'kind',
-      headerName: 'Blocking',
-      flex: 1.25,
       renderCell: (params) => {
-        if (params.value === 'Blocking') {
-          return <Check />
-        } else {
-          return <></>
-        }
+        return (
+          <div>
+            {Number(params.value).toFixed(1).toLocaleString()}
+            <Tooltip title={params.row.blocker_score_reasons}>
+              <InfoIcon />
+            </Tooltip>
+          </div>
+        )
       },
     },
+    /*
+  {
+    field: 'kind',
+    headerName: 'Blocking',
+    flex: 1.25,
+    renderCell: (params) => {
+      if (params.value === 'Blocking') {
+        return <Check />
+      } else {
+        return <></>
+      }
+    },
+  },
 
-       */
+     */
   ]
 
   // analysis stores the output from the health API
@@ -160,8 +167,6 @@ function ReleaseStreamAnalysis(props) {
         if (analysis.length === 0) {
           return <Typography variant="h5">Analysis not found.</Typography>
         }
-        console.log('GOT ANALYSIS 2')
-        console.log(analysis)
 
         setAnalysis(analysis)
         setRows(analysis['test_failures'])
@@ -194,37 +199,55 @@ function ReleaseStreamAnalysis(props) {
   }
 
   return (
-    <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-      rows={rows}
-      columns={columns}
-      autoHeight={true}
-      getRowClassName={(params) => classes['rowPhase' + params.row.state]}
-      disableColumnFilter={props.briefTable}
-      disableColumnMenu={true}
-      pageSize={props.pageSize}
-      rowsPerPageOptions={[5, 10, 25, 50]}
-      filterMode="server"
-      sortingMode="server"
-      sortingOrder={['desc', 'asc']}
-      sortModel={[
-        {
-          field: sortField,
-          sort: sort,
-        },
-      ]}
-      onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
-        toolbar: {
-          columns: columns,
-          clearSearch: () => requestSearch(''),
-          doSearch: requestSearch,
-          addFilters: addFilters,
-          filterModel: filterModel,
-          setFilterModel: setFilterModel,
-        },
-      }}
-    />
+    <Grid item md={12}>
+      <Card className="test-failure-card" elevation={5}>
+        <Typography variant="h5">
+          Test Failures Over Last 10 Payloads
+          <Tooltip
+            title={
+              <p>
+                Displays all test failures in payload jobs for this stream over
+                the last 10 attempts. Blocker score indicates how likely the
+                test is to be fully blocking payloads now.
+              </p>
+            }
+          >
+            <InfoIcon />
+          </Tooltip>
+        </Typography>
+        <DataGrid
+          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+          rows={rows}
+          columns={columns}
+          autoHeight={true}
+          getRowClassName={(params) => classes['rowPhase' + params.row.state]}
+          disableColumnFilter={props.briefTable}
+          disableColumnMenu={true}
+          pageSize={props.pageSize}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          filterMode="server"
+          sortingMode="server"
+          sortingOrder={['desc', 'asc']}
+          sortModel={[
+            {
+              field: sortField,
+              sort: sort,
+            },
+          ]}
+          onSortModelChange={(m) => updateSortModel(m)}
+          componentsProps={{
+            toolbar: {
+              columns: columns,
+              clearSearch: () => requestSearch(''),
+              doSearch: requestSearch,
+              addFilters: addFilters,
+              filterModel: filterModel,
+              setFilterModel: setFilterModel,
+            },
+          }}
+        />
+      </Card>
+    </Grid>
   )
 }
 
