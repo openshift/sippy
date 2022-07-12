@@ -64,7 +64,7 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 
 // GetPayloadAnalysis loads the most recent payloads  for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int) (*apitype.PayloadStreamAnalysis, error) {
+func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int, filterOpts *filter.FilterOptions) (*apitype.PayloadStreamAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -143,8 +143,13 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	// Query all test failures for the given job run IDs:
 	// NOTE: slow query here over our biggest table.
 	failedTests := []models.ProwJobRunTest{}
-	dbc.DB.Preload("Test").Preload("ProwJobRun.ProwJob").
-		Where("prow_job_run_id IN ? AND status = 12", jobRunIDs).Find(&failedTests)
+	q := dbc.DB.Preload("Test").Preload("ProwJobRun.ProwJob").
+		Where("prow_job_run_id IN ? AND status = 12", jobRunIDs)
+	q, err = filter.FilterableDBResult(q, filterOpts, nil)
+	if err != nil {
+		return nil, err
+	}
+	q.Find(&failedTests)
 	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
 
 	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.

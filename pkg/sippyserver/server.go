@@ -296,6 +296,12 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
+
 	log.WithFields(log.Fields{
 		"release": release,
 		"stream":  stream,
@@ -317,7 +323,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch, numPayloads)
+	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch, numPayloads, filterOpts)
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,

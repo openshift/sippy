@@ -97,11 +97,11 @@ function ReleaseStreamAnalysis(props) {
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'release_tag'
+      (f) => f.columnField !== 'name'
     )
     currentFilters.items.push({
       id: 99,
-      columnField: 'releaseTag',
+      columnField: 'name',
       operatorValue: 'contains',
       value: searchValue,
     })
@@ -137,17 +137,16 @@ function ReleaseStreamAnalysis(props) {
   }
 
   const fetchData = () => {
-    /*
-    const filter = safeEncodeURIComponent(
-      JSON.stringify({
-        items: [filterFor('release_tag', 'equals', releaseTag)],
-      })
-    )
-     */
+    let queryString = ''
+    if (filterModel && filterModel.items.length > 0) {
+      queryString +=
+        '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
+    }
 
     Promise.all([
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?release=${release}&arch=${arch}&stream=${stream}`
+        `${process.env.REACT_APP_API_URL}/api/releases/stream_analysis?release=${release}&arch=${arch}&stream=${stream}` +
+          queryString
       ),
     ])
       .then(([analysis]) => {
@@ -184,7 +183,7 @@ function ReleaseStreamAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [filterModel, sort, sortField])
 
   if (fetchError !== '') {
     return <Alert severity="error">Failed to load data, {fetchError}</Alert>
