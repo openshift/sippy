@@ -25,7 +25,7 @@ function ReleaseStreams(props) {
         currentPage="Payload Streams"
       />
       <Typography variant="h4" gutterBottom className={classes.title}>
-        Release Streams
+        Payload Streams
       </Typography>
       <ReleaseStreamTable release={props.release} />
     </Fragment>
