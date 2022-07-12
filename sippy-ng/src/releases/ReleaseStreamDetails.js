@@ -8,13 +8,14 @@ import {
   Tabs,
   Typography,
 } from '@material-ui/core'
-import { filterFor } from '../helpers'
+import { filterFor, not, SafeJSONParam } from '../helpers'
 import { Fragment, useState } from 'react'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TabContext, TabPanel } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
+import ReleasePayloadTable from './ReleasePayloadTable'
 import ReleaseStreamAnalysis from './ReleaseStreamAnalysis'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
@@ -50,6 +51,13 @@ export default function ReleaseStreamDetails(props) {
   )
 
   let currPage = props.arch + ' ' + props.stream
+
+  let payloadsFilterModel = {
+    items: [
+      filterFor('architecture', 'equals', props.arch),
+      filterFor('stream', 'equals', props.stream),
+    ],
+  }
 
   return (
     <Fragment>
@@ -112,7 +120,10 @@ export default function ReleaseStreamDetails(props) {
                     gutterBottom
                     className={classes.title}
                   >
-                    Another Tab for Payloads
+                    <ReleasePayloadTable
+                      release={props.release}
+                      filterModel={payloadsFilterModel}
+                    />
                   </Typography>
                 </Route>
                 <Redirect from="/" to={url + '/failures'} />
