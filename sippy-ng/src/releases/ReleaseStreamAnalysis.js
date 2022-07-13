@@ -192,8 +192,9 @@ function ReleaseStreamAnalysis(props) {
           <Tooltip
             title={
               <p>
-                Displays all test failures in payload jobs for this stream over
-                the last 10 attempts. Blocker score indicates how likely the
+                Displays all test failures in blocking payload jobs for this
+                stream over the last 10 attempts. Test failures in informing
+                jobs are not considered. Blocker score indicates how likely the
                 test is to be fully blocking payloads now.
               </p>
             }
