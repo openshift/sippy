@@ -205,6 +205,10 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		}
 	}
 
+	// TODO: sometimes we may have 10 failures, a test is in the last 2, then we failed one for another reason (infra),
+	// then test fails in next 2, which should be 100%. If it's in most recent, we should consider others in the chain
+	// of rejected payloads.
+
 	// TODO: should we analyze if it's in the same job each time, and weight that more heavily?
 	// TODO: should we analyze if it's in some percentage of most recent failures?
 
