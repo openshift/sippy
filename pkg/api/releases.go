@@ -200,6 +200,8 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 	for _, payloadTag := range consecutiveFailedPayloadTags {
 		if _, ok := ta.FailedPayloads[payloadTag]; ok {
 			payloadFailureStreak = append(payloadFailureStreak, ta.FailedPayloads[payloadTag])
+		} else {
+			break
 		}
 	}
 
