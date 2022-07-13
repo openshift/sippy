@@ -54,7 +54,7 @@ function ReleaseStreamAnalysis(props) {
         return (
           <div>
             {Number(params.value) * 100}%
-            <Tooltip title={params.row.blocker_score_reasons}>
+            <Tooltip title={params.row.blocker_score_reasons.join(' - ')}>
               <InfoIcon />
             </Tooltip>
           </div>
