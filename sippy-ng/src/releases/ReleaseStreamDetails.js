@@ -101,7 +101,7 @@ export default function ReleaseStreamDetails(props) {
                       label="Test Failures"
                       value="failures"
                       component={Link}
-                      to={url + '/failures'}
+                      to={url + '/testfailures'}
                     />
                   </Tabs>
                 </Paper>

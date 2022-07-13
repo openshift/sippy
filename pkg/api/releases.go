@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -188,6 +189,9 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 // calculateBlockerScore uses the list of most recent failed payloads, and compares to the failures we found
 // for a particular test, then attempts to calculate a blocker score between 0.0 (not a blocker) and 1.0 (almost
 // certainly a blocker) based on a number of criteria.
+//
+// consecutiveFailedPayloadTags is the list of our current streak of rejected payload tags. If most recent payload
+// was accepted, this list will be empty, and we don't have much processing to do.
 func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.TestFailureAnalysis) {
 	if len(consecutiveFailedPayloadTags) == 0 {
 		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
@@ -197,46 +201,59 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 	}
 
 	payloadFailureStreak := []*apitype.FailedPayload{}
+	failedInConsecPayloads := 0
+	var failedInConsecBreakFound bool
+	failedInStreak := 0
 	for _, payloadTag := range consecutiveFailedPayloadTags {
 		if _, ok := ta.FailedPayloads[payloadTag]; ok {
-			payloadFailureStreak = append(payloadFailureStreak, ta.FailedPayloads[payloadTag])
+			if !failedInConsecBreakFound {
+				failedInConsecPayloads++
+			}
+			failedInStreak++
 		} else {
-			break
+			// We didn't fail in a payload in the current streak of failures, but this could be infra
+			// failures, so we keep checking if we failed in more beyond this.
+			failedInConsecBreakFound = true
 		}
 	}
-
-	// TODO: sometimes we may have 10 failures, a test is in the last 2, then we failed one for another reason (infra),
-	// then test fails in next 2, which should be 100%. If it's in most recent, we should consider others in the chain
-	// of rejected payloads.
 
 	// TODO: should we analyze if it's in the same job each time, and weight that more heavily?
 	// TODO: should we analyze if it's in some percentage of most recent failures?
 
 	switch {
-	case len(payloadFailureStreak) >= 4:
+	case failedInConsecPayloads >= 4:
 		ta.BlockerScore = 1.0
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
-	case len(payloadFailureStreak) == 3:
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
+	case failedInConsecPayloads == 3:
 		ta.BlockerScore = 0.75
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
-	case len(payloadFailureStreak) == 2:
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
+	case failedInConsecPayloads == 2:
 		ta.BlockerScore = 0.50
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
 	case len(payloadFailureStreak) == 1:
 		ta.BlockerScore = 0.25
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
 	default:
 		ta.BlockerScore = 0.0
-		return
 	}
+
+	// Override the score if we see we failed in a more substantial portion of the current rejected streak
+	// (a test can disappear in a run if it fails on infra or other reasons).
+	fmt.Printf("%d / %d\n", failedInStreak, len(consecutiveFailedPayloadTags))
+	failedInStreakRate := float64(failedInStreak) / float64(len(consecutiveFailedPayloadTags))
+	ratio := math.Pow(10, float64(2))
+	failedInStreakRate = math.Round(failedInStreakRate*ratio) / ratio
+	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+		fmt.Sprintf("failed in %d/%d of current rejected payload streak", failedInStreak, len(consecutiveFailedPayloadTags)))
+	if ta.BlockerScore >= 0.50 && failedInStreakRate >= ta.BlockerScore {
+		ta.BlockerScore = failedInStreakRate
+	}
+
+	return
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
