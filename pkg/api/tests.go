@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	testReport7dMatView = "prow_test_report_7d_matview"
-	testReport2dMatView = "prow_test_report_2d_matview"
+	testReport7dMatView          = "prow_test_report_7d_matview"
+	testReport2dMatView          = "prow_test_report_2d_matview"
+	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 
 	queryTestSummer = `
            sum(current_runs)       AS current_runs,

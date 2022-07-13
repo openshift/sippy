@@ -1,6 +1,8 @@
 package query
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db/models"
@@ -54,14 +56,15 @@ func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]mod
 	return results, nil
 }
 
-// GetLastPayloadTags returns the most recent payload tags, sorted by date in descending order.
-func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, limit int) ([]models.ReleaseTag, error) {
+// GetLastPayloadTags returns payloads tags for last two weeks, sorted by date in descending order.
+func GetLastPayloadTags(db *gorm.DB, release, stream, arch string) ([]models.ReleaseTag, error) {
 	results := []models.ReleaseTag{}
 
 	result := db.Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", arch).
-		Limit(limit).Order("release_time DESC").Find(&results)
+		Where("release_time >= ?", time.Now().Add(-30*24*time.Hour)).
+		Order("release_time DESC").Find(&results)
 	if result.Error != nil {
 		return nil, result.Error
 	}

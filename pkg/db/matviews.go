@@ -288,6 +288,8 @@ SELECT
        rt.release,
        rt.architecture,
        rt.stream,
+	   rt.release_tag,
+       pjrt.id, 
        pjrt.test_id,
        pjrt.suite_id,
        pjrt.status,
@@ -305,6 +307,8 @@ FROM
 WHERE
     rt.release_time > (NOW() - '30 days'::interval)
     AND rjr.release_tag_id = rt.id
+    AND rjr.kind = 'Blocking'
+    AND rjr.State = 'Failed'
     AND pjrt.prow_job_run_id = rjr.prow_job_run_id
     AND pjrt.status = 12
     AND t.id = pjrt.test_id
