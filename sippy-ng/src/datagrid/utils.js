@@ -16,12 +16,21 @@ const theme = createTheme()
 
 // DataGrid tables can only be customized by specifying a classname, so this
 // creates the classes needed for creating background color gradient.
-export function generateClasses(threshold) {
-  const colors = scale([
+export function generateClasses(threshold, invert = false) {
+  let thresholds = [threshold.error, threshold.warning, threshold.success]
+  let scaleColors = [
     theme.palette.error.light,
     theme.palette.warning.light,
     theme.palette.success.light,
-  ]).domain([threshold.error, threshold.warning, threshold.success])
+  ]
+  if (invert) {
+    let scaleColors = [
+      theme.palette.success.light,
+      theme.palette.warning.light,
+      theme.palette.error.light,
+    ]
+  }
+  const colors = scale(scaleColors).domain(thresholds)
 
   const classes = {}
 

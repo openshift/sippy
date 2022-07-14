@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -196,7 +195,7 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 	if len(consecutiveFailedPayloadTags) == 0 {
 		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
 		// we have to assume 0.
-		ta.BlockerScore = 0.0
+		ta.BlockerScore = 0
 		return
 	}
 
@@ -222,34 +221,32 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 
 	switch {
 	case failedInConsecPayloads >= 4:
-		ta.BlockerScore = 1.0
+		ta.BlockerScore = 100
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
 	case failedInConsecPayloads == 3:
-		ta.BlockerScore = 0.75
+		ta.BlockerScore = 75
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
 	case failedInConsecPayloads == 2:
-		ta.BlockerScore = 0.50
+		ta.BlockerScore = 50
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
 	case len(payloadFailureStreak) == 1:
-		ta.BlockerScore = 0.25
+		ta.BlockerScore = 25
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
 	default:
-		ta.BlockerScore = 0.0
+		ta.BlockerScore = 0
 	}
 
 	// Override the score if we see we failed in a more substantial portion of the current rejected streak
 	// (a test can disappear in a run if it fails on infra or other reasons).
-	failedInStreakRate := float64(failedInStreak) / float64(len(consecutiveFailedPayloadTags))
-	ratio := math.Pow(10, float64(2))
-	failedInStreakRate = math.Round(failedInStreakRate*ratio) / ratio
+	failedInStreakPercentage := int((float64(failedInStreak) / float64(len(consecutiveFailedPayloadTags))) * 100)
 	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
 		fmt.Sprintf("failed in %d/%d of current rejected payload streak", failedInStreak, len(consecutiveFailedPayloadTags)))
-	if ta.BlockerScore >= 0.50 && failedInStreakRate >= ta.BlockerScore {
-		ta.BlockerScore = failedInStreakRate
+	if ta.BlockerScore >= 50 && failedInStreakPercentage >= ta.BlockerScore {
+		ta.BlockerScore = failedInStreakPercentage
 	}
 
 	return

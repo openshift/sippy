@@ -99,7 +99,7 @@ export default function ReleaseStreamDetails(props) {
                     />
                     <Tab
                       label="Test Failures"
-                      value="failures"
+                      value="testfailures"
                       component={Link}
                       to={url + '/testfailures'}
                     />

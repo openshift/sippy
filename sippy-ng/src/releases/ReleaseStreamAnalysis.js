@@ -1,9 +1,12 @@
+import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
 import { Button, Card, Grid, Tooltip, Typography } from '@material-ui/core'
 import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
+import { generateClasses } from '../datagrid/utils'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@material-ui/icons/Info'
@@ -28,7 +31,7 @@ const useStyles = makeStyles(
 )
 
 function ReleaseStreamAnalysis(props) {
-  const classes = useStyles()
+  const { classes } = props
 
   // Most things not filterable here, as we are not querying them directly from db,
   // but test name is, and that is likely the most important.
@@ -62,7 +65,7 @@ function ReleaseStreamAnalysis(props) {
       renderCell: (params) => {
         return (
           <div>
-            {Number(params.value) * 100}%
+            {Number(params.value)}%
             <Tooltip title={params.row.blocker_score_reasons.join(' - ')}>
               <InfoIcon />
             </Tooltip>
@@ -216,7 +219,6 @@ function ReleaseStreamAnalysis(props) {
           rows={rows}
           columns={columns}
           autoHeight={true}
-          getRowClassName={(params) => classes['rowPhase' + params.row.state]}
           disableColumnFilter={props.briefTable}
           disableColumnMenu={true}
           pageSize={props.pageSize}
@@ -231,6 +233,9 @@ function ReleaseStreamAnalysis(props) {
             },
           ]}
           onSortModelChange={(m) => updateSortModel(m)}
+          getRowClassName={(params) =>
+            classes['row-percent-' + params.row.blocker_score]
+          }
           componentsProps={{
             toolbar: {
               columns: columns,
@@ -267,10 +272,13 @@ ReleaseStreamAnalysis.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
+  classes: PropTypes.object,
 
   release: PropTypes.string,
   arch: PropTypes.string.isRequired,
   stream: PropTypes.string.isRequired,
 }
 
-export default ReleaseStreamAnalysis
+export default withStyles(generateClasses(BLOCKER_SCORE_THRESHOLDS, true))(
+  ReleaseStreamAnalysis
+)
