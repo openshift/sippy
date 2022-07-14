@@ -1,8 +1,8 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
-import { Button, Card, Grid, Tooltip, Typography } from '@material-ui/core'
-import { Check, DirectionsBoat, Error } from '@material-ui/icons'
+import { Card, Grid, Tooltip, Typography } from '@material-ui/core'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
+import { Error } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -12,23 +12,6 @@ import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import TestTable from '../tests/TestTable'
-
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseSucceeded: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseFailed: {
-      backgroundColor: theme.palette.error.light,
-    },
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
 
 function PayloadStreamTestFailures(props) {
   const { classes } = props
