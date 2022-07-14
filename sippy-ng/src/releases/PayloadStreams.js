@@ -1,8 +1,8 @@
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { Typography } from '@material-ui/core'
+import PayloadStreamsTable from './PayloadStreamsTable'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import ReleaseStreamTable from './ReleaseStreamTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
 const defaultTheme = createTheme()
@@ -15,7 +15,7 @@ const useStyles = makeStyles(
   { defaultTheme }
 )
 
-function ReleaseStreams(props) {
+function PayloadStreams(props) {
   const classes = useStyles()
 
   return (
@@ -27,13 +27,13 @@ function ReleaseStreams(props) {
       <Typography variant="h4" gutterBottom className={classes.title}>
         Payload Streams
       </Typography>
-      <ReleaseStreamTable release={props.release} />
+      <PayloadStreamsTable release={props.release} />
     </Fragment>
   )
 }
 
-ReleaseStreams.propTypes = {
+PayloadStreams.propTypes = {
   release: PropTypes.string,
 }
 
-export default ReleaseStreams
+export default PayloadStreams

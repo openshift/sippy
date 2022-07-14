@@ -16,12 +16,12 @@ import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
 import Jobs from './jobs/Jobs'
 import MenuIcon from '@material-ui/icons/Menu'
+import PayloadStream from './releases/PayloadStream'
+import PayloadStreams from './releases/PayloadStreams'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
-import ReleaseStreamDetails from './releases/ReleaseStreamDetails'
-import ReleaseStreams from './releases/ReleaseStreams'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -258,7 +258,7 @@ export default function App(props) {
                 <Route
                   path="/release/:release/streams"
                   render={(props) => (
-                    <ReleaseStreams
+                    <PayloadStreams
                       key={'release-streams-' + props.match.params.release}
                       release={props.match.params.release}
                     />
@@ -269,7 +269,7 @@ export default function App(props) {
                 <Route
                   path="/release/:release/stream/:arch/:stream"
                   render={(props) => (
-                    <ReleaseStreamDetails
+                    <PayloadStream
                       release={props.match.params.release}
                       arch={props.match.params.arch}
                       stream={props.match.params.stream}

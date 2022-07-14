@@ -30,7 +30,7 @@ const useStyles = makeStyles(
   { defaultTheme }
 )
 
-function ReleaseStreamAnalysis(props) {
+function PayloadStreamTestFailures(props) {
   const { classes } = props
 
   // Most things not filterable here, as we are not querying them directly from db,
@@ -252,7 +252,7 @@ function ReleaseStreamAnalysis(props) {
   )
 }
 
-ReleaseStreamAnalysis.defaultProps = {
+PayloadStreamTestFailures.defaultProps = {
   limit: 0,
   hideControls: false,
   pageSize: 25,
@@ -264,7 +264,7 @@ ReleaseStreamAnalysis.defaultProps = {
   sort: 'asc',
 }
 
-ReleaseStreamAnalysis.propTypes = {
+PayloadStreamTestFailures.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
@@ -280,5 +280,5 @@ ReleaseStreamAnalysis.propTypes = {
 }
 
 export default withStyles(generateClasses(BLOCKER_SCORE_THRESHOLDS, true))(
-  ReleaseStreamAnalysis
+  PayloadStreamTestFailures
 )

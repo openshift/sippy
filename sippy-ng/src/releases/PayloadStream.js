@@ -13,10 +13,10 @@ import { Fragment, useState } from 'react'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TabContext, TabPanel } from '@material-ui/lab'
+import PayloadStreamTestFailures from './PayloadStreamTestFailures'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
-import ReleaseStreamAnalysis from './ReleaseStreamAnalysis'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
 
@@ -30,7 +30,7 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function ReleaseStreamDetails(props) {
+export default function PayloadStream(props) {
   const classes = useStyles()
   const { path, url } = useRouteMatch()
 
@@ -108,7 +108,7 @@ export default function ReleaseStreamDetails(props) {
               </Grid>
               <Switch>
                 <Route path={path + '/testfailures'}>
-                  <ReleaseStreamAnalysis
+                  <PayloadStreamTestFailures
                     release={props.release}
                     stream={props.stream}
                     arch={props.arch}
@@ -136,7 +136,7 @@ export default function ReleaseStreamDetails(props) {
   )
 }
 
-ReleaseStreamDetails.propTypes = {
+PayloadStream.propTypes = {
   release: PropTypes.string,
   arch: PropTypes.string.isRequired,
   stream: PropTypes.string.isRequired,

@@ -26,7 +26,7 @@ const useStyles = makeStyles(
   { defaultTheme }
 )
 
-function ReleaseStreamTable(props) {
+function PayloadStreamsTable(props) {
   const classes = useStyles()
   const theme = defaultTheme
 
@@ -246,7 +246,7 @@ function ReleaseStreamTable(props) {
   )
 }
 
-ReleaseStreamTable.defaultProps = {
+PayloadStreamsTable.defaultProps = {
   limit: 0,
   hideControls: false,
   pageSize: 25,
@@ -258,7 +258,7 @@ ReleaseStreamTable.defaultProps = {
   sort: 'desc',
 }
 
-ReleaseStreamTable.propTypes = {
+PayloadStreamsTable.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
@@ -269,4 +269,4 @@ ReleaseStreamTable.propTypes = {
   sortField: PropTypes.string,
 }
 
-export default ReleaseStreamTable
+export default PayloadStreamsTable
