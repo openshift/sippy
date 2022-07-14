@@ -282,9 +282,9 @@ WHERE pjrt.status = 12
 GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id
 `
 
-// TODO: switch back to 14 days
+// TODO: remove distinct once bug fixed re dupes in release_job_runs
 const payloadTestFailuresMatView = `
-SELECT
+SELECT DISTINCT
        rt.release,
        rt.architecture,
        rt.stream,
@@ -305,7 +305,7 @@ FROM
      prow_jobs pj,
      prow_job_runs pjr
 WHERE
-    rt.release_time > (NOW() - '30 days'::interval)
+    rt.release_time > (NOW() - '14 days'::interval)
     AND rjr.release_tag_id = rt.id
     AND rjr.kind = 'Blocking'
     AND rjr.State = 'Failed'

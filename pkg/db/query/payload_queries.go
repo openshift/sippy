@@ -64,7 +64,7 @@ func GetLastPayloadTags(db *gorm.DB, release, stream, arch string) ([]models.Rel
 	result := db.Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", arch).
-		Where("release_time >= ?", time.Now().Add(-30*24*time.Hour)).
+		Where("release_time >= ?", time.Now().Add(-14*24*time.Hour)).
 		Order("release_time DESC").Find(&results)
 	if result.Error != nil {
 		return nil, result.Error

@@ -200,7 +200,6 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		return
 	}
 
-	payloadFailureStreak := []*apitype.FailedPayload{}
 	failedInConsecPayloads := 0
 	var failedInConsecBreakFound bool
 	failedInStreak := 0
@@ -232,11 +231,11 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 	case failedInConsecPayloads == 2:
 		ta.BlockerScore = 50
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
-	case len(payloadFailureStreak) == 1:
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
+	case failedInConsecPayloads == 1:
 		ta.BlockerScore = 25
 		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecBreakFound))
+			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
 	default:
 		ta.BlockerScore = 0
 	}
