@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
@@ -320,17 +321,27 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 				release, archStream.Architecture, archStream.Stream)
 		}
 
-		phaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream)
+		totalPhaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
+
+		weekAgo := time.Now().Add(-7 * 24 * time.Hour)
+		currentWeekPhaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
 		if err != nil {
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		apiResults = append(apiResults, apitype.ReleaseHealthReport{
-			ReleaseTag:  archStream,
-			LastPhase:   phase,
-			Count:       count,
-			PhaseCounts: phaseCounts,
+			ReleaseTag: archStream,
+			LastPhase:  phase,
+			Count:      count,
+			PhaseCounts: apitype.PayloadPhaseCounts{
+				CurrentWeek: currentWeekPhaseCounts,
+				Total:       totalPhaseCounts,
+			},
 		})
 	}
 

@@ -117,12 +117,16 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (st
 }
 
 // GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
-func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string) ([]api.PayloadPhaseCount, error) {
+func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string, since *time.Time) ([]api.PayloadPhaseCount, error) {
 	phaseCounts := []api.PayloadPhaseCount{}
-	r := db.Table("release_tags").Select("phase, COUNT(phase)").
+	q := db.Table("release_tags").Select("phase, COUNT(phase)").
 		Where("release = ? ", release).
 		Where("architecture = ?", architecture).
-		Where("stream = ?", stream).Group("phase").Find(&phaseCounts)
+		Where("stream = ?", stream).Group("phase")
+	if since != nil {
+		q = q.Where("release_time >= ?", *since)
+	}
+	r := q.Find(&phaseCounts)
 
 	return phaseCounts, r.Error
 }
