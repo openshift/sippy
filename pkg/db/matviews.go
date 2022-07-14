@@ -293,7 +293,7 @@ SELECT
        pjrt.test_id,
        pjrt.suite_id,
        pjrt.status,
-       t.name as test_name,
+       t.name,
        pjrt.prow_job_run_id as prow_job_run_id,
        pjr.url as prow_job_run_url,
        pj.name as prow_job_name

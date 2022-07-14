@@ -30,24 +30,33 @@ const useStyles = makeStyles(
 function ReleaseStreamAnalysis(props) {
   const classes = useStyles()
 
+  // Most things not filterable here, as we are not querying them directly from db,
+  // but test name is, and that is likely the most important.
   const columns = [
     {
       field: 'id',
       headerName: 'Test ID',
       hide: true,
+      filterable: false,
+      sortable: false,
     },
     {
       field: 'name',
       headerName: 'Test',
       flex: 5,
+      sortable: false,
     },
     {
       field: 'failure_count',
       headerName: 'Failures',
       flex: 1,
+      filterable: false,
+      sortable: false,
     },
     {
       field: 'blocker_score',
+      filterable: false,
+      sortable: false,
       headerName: 'Blocker Score',
       flex: 1,
       renderCell: (params) => {

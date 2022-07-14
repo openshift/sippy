@@ -72,7 +72,7 @@ type PayloadFailedTest struct {
 	TestID        uint
 	SuiteID       uint
 	Status        int
-	TestName      string
+	Name          string
 	ProwJobRunID  uint
 	ProwJobRunURL string
 	ProwJobName   string
@@ -148,19 +148,19 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
 	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
 	for _, ft := range failedTests {
-		if ft.TestName == testidentification.OpenShiftTestsName {
+		if ft.Name == testidentification.OpenShiftTestsName {
 			// Skip the "all tests passed" test we inject, it's not relevant here.
 			continue
 		}
-		if _, ok := testNameToAnalysis[ft.TestName]; !ok {
-			testNameToAnalysis[ft.TestName] = &apitype.TestFailureAnalysis{
-				Name:                ft.TestName,
+		if _, ok := testNameToAnalysis[ft.Name]; !ok {
+			testNameToAnalysis[ft.Name] = &apitype.TestFailureAnalysis{
+				Name:                ft.Name,
 				ID:                  ft.TestID,
 				FailedPayloads:      map[string]*apitype.FailedPayload{},
 				BlockerScoreReasons: []string{},
 			}
 		}
-		ta := testNameToAnalysis[ft.TestName]
+		ta := testNameToAnalysis[ft.Name]
 		ta.FailureCount++
 		pl := ft.ReleaseTag
 		if _, ok := ta.FailedPayloads[pl]; !ok {
