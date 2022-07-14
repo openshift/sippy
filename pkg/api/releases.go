@@ -243,7 +243,6 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 
 	// Override the score if we see we failed in a more substantial portion of the current rejected streak
 	// (a test can disappear in a run if it fails on infra or other reasons).
-	fmt.Printf("%d / %d\n", failedInStreak, len(consecutiveFailedPayloadTags))
 	failedInStreakRate := float64(failedInStreak) / float64(len(consecutiveFailedPayloadTags))
 	ratio := math.Pow(10, float64(2))
 	failedInStreakRate = math.Round(failedInStreakRate*ratio) / ratio
