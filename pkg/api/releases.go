@@ -319,10 +319,18 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 			return apiResults, errors.Wrapf(err, "error finding last %s payload status for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
+
+		phaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
+
 		apiResults = append(apiResults, apitype.ReleaseHealthReport{
-			ReleaseTag: archStream,
-			LastPhase:  phase,
-			Count:      count,
+			ReleaseTag:  archStream,
+			LastPhase:   phase,
+			Count:       count,
+			PhaseCounts: phaseCounts,
 		})
 	}
 

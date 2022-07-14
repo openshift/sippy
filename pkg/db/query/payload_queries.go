@@ -3,6 +3,7 @@ package query
 import (
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db/models"
@@ -72,22 +73,11 @@ func GetLastPayloadTags(db *gorm.DB, release, stream, arch string) ([]models.Rel
 	return results, nil
 }
 
-func ListPayloadBlockingFailedJobRuns(db *gorm.DB, payloadTagIDs []uint) ([]models.ReleaseJobRun, error) {
-	jobRuns := []models.ReleaseJobRun{}
-	q := db.Preload("ReleaseTag").Where("release_tag_id in ?", payloadTagIDs).
-		Where("kind = 'Blocking'").Where("state = 'Failed'")
-	res := q.Find(&jobRuns)
-	return jobRuns, res.Error
-}
-
 // GetLastPayloadStatus returns the most recent payload status for an architecture/stream combination,
 // as well as the count of how many of the last payloads had that status (e.g., when this returns
 // Rejected, 5 -- it means the last 5 payloads were rejected.
 func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (string, int, error) {
-	count := struct {
-		Phase string `gorm:"column:phase"`
-		Count int    `gorm:"column:count"`
-	}{}
+	count := api.PayloadPhaseCount{}
 
 	result := db.Raw(`
 		WITH releases AS
@@ -124,4 +114,15 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (st
 			phase`, architecture, stream, release).Scan(&count)
 
 	return count.Phase, count.Count, result.Error
+}
+
+// GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
+func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string) ([]api.PayloadPhaseCount, error) {
+	phaseCounts := []api.PayloadPhaseCount{}
+	r := db.Table("release_tags").Select("phase, COUNT(phase)").
+		Where("release = ? ", release).
+		Where("architecture = ?", architecture).
+		Where("stream = ?", stream).Group("phase").Find(&phaseCounts)
+
+	return phaseCounts, r.Error
 }

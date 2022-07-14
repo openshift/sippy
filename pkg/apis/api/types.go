@@ -368,6 +368,13 @@ type ReleaseHealthReport struct {
 	models.ReleaseTag
 	LastPhase string `json:"last_phase"`
 	Count     int    `json:"count"`
+	// PhaseCounts contains the total count of payloads in each phase for this stream throughout the entire release.
+	PhaseCounts []PayloadPhaseCount `json:phase_counts`
+}
+
+type PayloadPhaseCount struct {
+	Phase string `gorm:"column:phase"`
+	Count int    `gorm:"column:count"`
 }
 
 // PayloadStreamAnalysis contains a report on the health of a given payload stream.
