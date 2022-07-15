@@ -368,13 +368,15 @@ type ReleaseHealthReport struct {
 	models.ReleaseTag
 	LastPhase string `json:"last_phase"`
 	Count     int    `json:"count"`
-	// PhaseCounts contains the total count of payloads in each phase for this stream throughout the entire release.
+	// PhaseCounts contains the total count of payloads in each phase over several time periods.
 	PhaseCounts PayloadPhaseCounts `json:"phase_counts"`
 }
 
 type PayloadPhaseCounts struct {
+	// CurrentWeek contains payload phase counts over the past week.
 	CurrentWeek PayloadPhaseCount `json:"current_week"`
-	Total       PayloadPhaseCount `json:"total"`
+	// Total contains payload phase counts over the entire release.
+	Total PayloadPhaseCount `json:"total"`
 }
 
 type PayloadPhaseCount struct {

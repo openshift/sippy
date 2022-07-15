@@ -71,7 +71,7 @@ export default function PayloadStream(props) {
         path="/"
         render={({ location }) => (
           <TabContext value={path}>
-            <Container xl>
+            <Container>
               <Typography variant="h4" gutterBottom className={classes.title}>
                 {arch} {stream} Payload Stream
               </Typography>
