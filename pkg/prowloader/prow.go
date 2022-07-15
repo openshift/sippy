@@ -339,8 +339,13 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path stri
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
+		var failureOutput *models.ProwJobRunTestOutput
 		if tc.FailureOutput == nil {
 			status = v1.TestStatusSuccess
+		} else {
+			failureOutput = &models.ProwJobRunTestOutput{
+				Output: tc.FailureOutput.Output,
+			}
 		}
 
 		// FIXME: Ideally we'd stop including the suite name with the test name, but it's
@@ -351,15 +356,19 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		}
 		if existing, ok := testCases[testNameWithSuite]; !ok {
 			testCases[testNameWithSuite] = &models.ProwJobRunTest{
-				TestID:   pl.findOrAddTest(testNameWithSuite),
-				SuiteID:  pl.findOrAddSuite(suite.Name),
-				Status:   int(status),
-				Duration: tc.Duration,
+				TestID:               pl.findOrAddTest(testNameWithSuite),
+				SuiteID:              pl.findOrAddSuite(suite.Name),
+				Status:               int(status),
+				Duration:             tc.Duration,
+				ProwJobRunTestOutput: failureOutput,
 			}
 		} else if (existing.Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
 			(existing.Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
 			// One pass among failures makes this a flake
 			existing.Status = int(v1.TestStatusFlake)
+			if existing.ProwJobRunTestOutput == nil {
+				existing.ProwJobRunTestOutput = failureOutput
+			}
 		}
 	}
 

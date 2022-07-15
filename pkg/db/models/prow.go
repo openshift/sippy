@@ -77,6 +77,17 @@ type ProwJobRunTest struct {
 	Duration  float64
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
+
+	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
+	// we can keep the test result for a longer period of time than we keep the full failure output.
+	ProwJobRunTestOutput *ProwJobRunTestOutput
+}
+
+type ProwJobRunTestOutput struct {
+	gorm.Model
+	ProwJobRunTestID uint `gorm:"constraint:OnDelete:SET NULL;"`
+	// Output stores the output of a ProwJobRunTest.
+	Output string
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.

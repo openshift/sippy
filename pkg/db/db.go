@@ -72,6 +72,10 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
+		return nil, err
+	}
+
 	if err := db.AutoMigrate(&models.Bug{}); err != nil {
 		return nil, err
 	}
