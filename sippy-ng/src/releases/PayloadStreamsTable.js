@@ -98,8 +98,15 @@ function PayloadStreamsTable(props) {
     },
     {
       field: 'count',
-      headerName: 'Last Phase Count',
+      headerName: 'Last Phase',
       flex: 4,
+      renderCell: (params) => {
+        return (
+          <div>
+            Last {params.value} payloads have been {params.row.last_phase}
+          </div>
+        )
+      },
     },
   ]
 
