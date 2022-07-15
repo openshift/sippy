@@ -1,9 +1,10 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
-import { Card, Grid, Tooltip, Typography } from '@material-ui/core'
+import { Box, Card, Grid, Tooltip, Typography } from '@material-ui/core'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
+import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
@@ -53,6 +54,34 @@ function PayloadStreamTestFailures(props) {
               <InfoIcon />
             </Tooltip>
           </div>
+        )
+      },
+    },
+    {
+      field: 'failed_payloads',
+      headerName: 'Failed Payloads',
+      sortable: false,
+      filterable: false,
+      flex: 4,
+      renderCell: (params) => {
+        const renderPayloadLinks = () => {
+          let pl = []
+          for (let key of Object.keys(params.value)) {
+            pl.push(
+              <Link key={key} to={`/release/${params.release}/tags/${key}`}>
+                {key + '  '}
+              </Link>
+            )
+          }
+          return pl
+        }
+
+        return (
+          <Tooltip
+            title={`Failed in ${Object.keys(params.value).length} payloads`}
+          >
+            <Box className="clamped">{renderPayloadLinks()}</Box>
+          </Tooltip>
         )
       },
     },
@@ -183,7 +212,7 @@ function PayloadStreamTestFailures(props) {
     <Grid item md={12}>
       <Card className="test-failure-card" elevation={5}>
         <Typography variant="h5">
-          Test Failures Over Last 10 Payloads
+          Test Failures Over 7 Days of Payloads
           <Tooltip
             title={
               <p>
