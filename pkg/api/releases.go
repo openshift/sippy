@@ -249,7 +249,6 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		ta.BlockerScore = failedInStreakPercentage
 	}
 
-	return
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -359,7 +358,7 @@ func dbPayloadPhaseCountToAPI(dbpc []models.PayloadPhaseCount) apitype.PayloadPh
 		case "Rejected":
 			apipc.Rejected = c.Count
 		default:
-			log.Warn("Unexpected payload phase: %s", c.Phase)
+			log.Warnf("Unexpected payload phase: %s", c.Phase)
 		}
 	}
 	return apipc
