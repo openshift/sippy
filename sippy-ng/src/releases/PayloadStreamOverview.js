@@ -1,4 +1,11 @@
-import { Card, Grid, makeStyles, Tooltip, Typography } from '@material-ui/core'
+import {
+  Card,
+  Container,
+  Grid,
+  makeStyles,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
@@ -77,76 +84,78 @@ function PayloadStreamOverview(props) {
   }
 
   return (
-    <Grid item md={12}>
-      <Typography variant="h3" style={{ textAlign: 'center' }}>
-        Payload Stream Overview
-      </Typography>
-      <Grid container spacing={3} alignItems="stretch">
-        <Grid item md={3}>
-          <SummaryCard
-            key="payload-acceptance-summary-overall"
-            threshold={TEST_THRESHOLDS}
-            name="Overall"
-            success={streamHealth.phase_counts.total.accepted}
-            flakes={0}
-            caption={
-              <Fragment>
-                <Tooltip
-                  title={`${streamHealth.phase_counts.total.accepted} runs`}
-                >
-                  <span>
-                    {Number(
-                      (streamHealth.phase_counts.total.accepted /
-                        (streamHealth.phase_counts.total.accepted +
-                          streamHealth.phase_counts.total.rejected)) *
-                        100
-                    ).toFixed(2)}
-                    % Accepted
-                  </span>
-                </Tooltip>
-              </Fragment>
-            }
-            fail={streamHealth.phase_counts.total.rejected}
-          />
-        </Grid>
-        <Grid item md={3}>
-          <SummaryCard
-            key="payload-acceptance-summary-currentweek"
-            threshold={TEST_THRESHOLDS}
-            name="This Week"
-            success={streamHealth.phase_counts.current_week.accepted}
-            flakes={0}
-            caption={
-              <Fragment>
-                <Tooltip
-                  title={`${streamHealth.phase_counts.current_week.accepted} runs`}
-                >
-                  <span>
-                    {Number(
-                      (streamHealth.phase_counts.current_week.accepted /
-                        (streamHealth.phase_counts.current_week.accepted +
-                          streamHealth.phase_counts.current_week.rejected)) *
-                        100
-                    ).toFixed(2)}
-                    % Accepted
-                  </span>
-                </Tooltip>
-              </Fragment>
-            }
-            fail={streamHealth.phase_counts.current_week.rejected}
-          />
-        </Grid>
-        <Grid item md={6}>
-          <Typography variant="h6" style={{ textAlign: 'center' }}>
-            Last {streamHealth.count} payloads have been{' '}
-            {streamHealth.last_phase}
-          </Typography>
-          <Typography variant="h6" style={{ textAlign: 'center' }}>
-            Last payload accepted: {streamHealth.release_time}
-          </Typography>
+    <Container>
+      <Grid item md={12}>
+        <Typography variant="h3" style={{ textAlign: 'center' }}>
+          Payload Stream Overview
+        </Typography>
+        <Grid container spacing={3} alignItems="stretch">
+          <Grid item md={3}>
+            <SummaryCard
+              key="payload-acceptance-summary-overall"
+              threshold={TEST_THRESHOLDS}
+              name="Overall"
+              success={streamHealth.phase_counts.total.accepted}
+              flakes={0}
+              caption={
+                <Fragment>
+                  <Tooltip
+                    title={`${streamHealth.phase_counts.total.accepted} runs`}
+                  >
+                    <span>
+                      {Number(
+                        (streamHealth.phase_counts.total.accepted /
+                          (streamHealth.phase_counts.total.accepted +
+                            streamHealth.phase_counts.total.rejected)) *
+                          100
+                      ).toFixed(2)}
+                      % Accepted
+                    </span>
+                  </Tooltip>
+                </Fragment>
+              }
+              fail={streamHealth.phase_counts.total.rejected}
+            />
+          </Grid>
+          <Grid item md={3}>
+            <SummaryCard
+              key="payload-acceptance-summary-currentweek"
+              threshold={TEST_THRESHOLDS}
+              name="This Week"
+              success={streamHealth.phase_counts.current_week.accepted}
+              flakes={0}
+              caption={
+                <Fragment>
+                  <Tooltip
+                    title={`${streamHealth.phase_counts.current_week.accepted} runs`}
+                  >
+                    <span>
+                      {Number(
+                        (streamHealth.phase_counts.current_week.accepted /
+                          (streamHealth.phase_counts.current_week.accepted +
+                            streamHealth.phase_counts.current_week.rejected)) *
+                          100
+                      ).toFixed(2)}
+                      % Accepted
+                    </span>
+                  </Tooltip>
+                </Fragment>
+              }
+              fail={streamHealth.phase_counts.current_week.rejected}
+            />
+          </Grid>
+          <Grid item md={6}>
+            <Typography variant="h6" style={{ textAlign: 'center' }}>
+              Last {streamHealth.count} payloads have been{' '}
+              {streamHealth.last_phase}
+            </Typography>
+            <Typography variant="h6" style={{ textAlign: 'center' }}>
+              Last payload accepted: {streamHealth.release_time}
+            </Typography>
+          </Grid>
         </Grid>
       </Grid>
-    </Grid>
+    </Container>
   )
 }
 

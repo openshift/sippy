@@ -71,7 +71,7 @@ export default function PayloadStream(props) {
         path="/"
         render={({ location }) => (
           <TabContext value={path}>
-            <Container>
+            <Fragment>
               <Typography variant="h4" gutterBottom className={classes.title}>
                 {arch} {stream} Payload Stream
               </Typography>
@@ -140,7 +140,7 @@ export default function PayloadStream(props) {
                 </Route>
                 <Redirect from="/" to={url + '/overview'} />
               </Switch>
-            </Container>
+            </Fragment>
           </TabContext>
         )}
       />
