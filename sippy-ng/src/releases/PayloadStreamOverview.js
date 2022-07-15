@@ -82,7 +82,7 @@ function PayloadStreamOverview(props) {
         Payload Stream Overview
       </Typography>
       <Grid container spacing={3} alignItems="stretch">
-        <Grid item md={3}>
+        <Grid item md={6}>
           <SummaryCard
             key="payload-acceptance-summary-overall"
             threshold={TEST_THRESHOLDS}
@@ -109,7 +109,7 @@ function PayloadStreamOverview(props) {
             fail={streamHealth.phase_counts.total.rejected}
           />
         </Grid>
-        <Grid item md={3}>
+        <Grid item md={6}>
           <SummaryCard
             key="payload-acceptance-summary-currentweek"
             threshold={TEST_THRESHOLDS}
