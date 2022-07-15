@@ -320,18 +320,21 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 				release, archStream.Architecture, archStream.Stream)
 		}
 
-		totalPhaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil)
+		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil)
 		if err != nil {
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		weekAgo := time.Now().Add(-7 * 24 * time.Hour)
-		currentWeekPhaseCounts, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
+		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
 		if err != nil {
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
+
+		currentWeekPhaseCounts := dbPayloadPhaseCountToAPI(currentWeekPhaseCountsDB)
+		totalPhaseCounts := dbPayloadPhaseCountToAPI(totalPhaseCountsDB)
 
 		apiResults = append(apiResults, apitype.ReleaseHealthReport{
 			ReleaseTag: archStream,
@@ -345,6 +348,21 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 	}
 
 	return apiResults, nil
+}
+
+func dbPayloadPhaseCountToAPI(dbpc []models.PayloadPhaseCount) apitype.PayloadPhaseCount {
+	apipc := apitype.PayloadPhaseCount{}
+	for _, c := range dbpc {
+		switch c.Phase {
+		case "Accepted":
+			apipc.Accepted = c.Count
+		case "Rejected":
+			apipc.Rejected = c.Count
+		default:
+			log.Warn("Unexpected payload phase: %s", c.Phase)
+		}
+	}
+	return apipc
 }
 
 // ScanForReleaseWarnings looks for problems in current release health and returns them to the user.

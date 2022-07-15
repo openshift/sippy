@@ -1,5 +1,4 @@
 import {
-  Card,
   Container,
   Grid,
   makeStyles,
@@ -8,17 +7,17 @@ import {
   Tabs,
   Typography,
 } from '@material-ui/core'
-import { filterFor, not, SafeJSONParam } from '../helpers'
+import { filterFor } from '../helpers'
 import { Fragment, useState } from 'react'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TabContext, TabPanel } from '@material-ui/lab'
+import PayloadStreamOverview from './PayloadStreamOverview'
 import PayloadStreamTestFailures from './PayloadStreamTestFailures'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-import TestByVariantTable from '../tests/TestByVariantTable'
 
 const useStyles = makeStyles((theme) => ({
   title: {
@@ -92,6 +91,12 @@ export default function PayloadStream(props) {
                     textColor="primary"
                   >
                     <Tab
+                      label="Overview"
+                      value="overview"
+                      component={Link}
+                      to={url + '/overview'}
+                    />
+                    <Tab
                       label="Payloads"
                       value="payloads"
                       component={Link}
@@ -107,6 +112,13 @@ export default function PayloadStream(props) {
                 </Paper>
               </Grid>
               <Switch>
+                <Route path={path + '/overview'}>
+                  <PayloadStreamOverview
+                    release={props.release}
+                    stream={props.stream}
+                    arch={props.arch}
+                  />
+                </Route>
                 <Route path={path + '/testfailures'}>
                   <PayloadStreamTestFailures
                     release={props.release}
@@ -126,7 +138,7 @@ export default function PayloadStream(props) {
                     />
                   </Typography>
                 </Route>
-                <Redirect from="/" to={url + '/payloads'} />
+                <Redirect from="/" to={url + '/overview'} />
               </Switch>
             </Container>
           </TabContext>

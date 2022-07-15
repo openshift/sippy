@@ -119,3 +119,8 @@ type ReleaseJobRun struct {
 	UpgradesTo     string     `json:"upgrades_to" gorm:"column:upgrades_to"`
 	Upgrade        bool       `json:"upgrade" gorm:"column:upgrade"`
 }
+
+type PayloadPhaseCount struct {
+	Phase string `gorm:"column:phase"`
+	Count int    `gorm:"column:count"`
+}

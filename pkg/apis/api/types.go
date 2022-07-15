@@ -373,13 +373,13 @@ type ReleaseHealthReport struct {
 }
 
 type PayloadPhaseCounts struct {
-	CurrentWeek []PayloadPhaseCount `json:"current_week"`
-	Total       []PayloadPhaseCount `json:"total"`
+	CurrentWeek PayloadPhaseCount `json:"current_week"`
+	Total       PayloadPhaseCount `json:"total"`
 }
 
 type PayloadPhaseCount struct {
-	Phase string `gorm:"column:phase"`
-	Count int    `gorm:"column:count"`
+	Accepted int `json:"accepted"`
+	Rejected int `json:"rejected"`
 }
 
 // PayloadStreamAnalysis contains a report on the health of a given payload stream.
