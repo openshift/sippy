@@ -40,7 +40,7 @@ type ProwLoader struct {
 	prowJobRunCache      map[uint]bool
 	prowJobRunTestCache  map[string]uint
 	variantManager       testidentification.VariantManager
-	suiteCache           map[string]uint
+	suiteCache           map[string]*uint
 	syntheticTestManager synthetictests.SyntheticTestManager
 	releases             []string
 	config               *v1config.SippyConfig
@@ -57,7 +57,7 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager
 		prowJobRunCache:      loadProwJobRunCache(dbc),
 		prowJobCache:         loadProwJobCache(dbc),
 		prowJobRunTestCache:  make(map[string]uint),
-		suiteCache:           make(map[string]uint),
+		suiteCache:           make(map[string]*uint),
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
 		releases:             releases,
@@ -283,24 +283,24 @@ func (pl *ProwLoader) findOrAddTest(name string) uint {
 	return test.ID
 }
 
-func (pl *ProwLoader) findOrAddSuite(name string) *uint {
+func (pl *ProwLoader) findSuite(name string) *uint {
 	if name == "" {
 		return nil
 	}
 
 	if id, ok := pl.suiteCache[name]; ok {
-		return &id
+		return id
 	}
 
 	suite := &models.Suite{}
 	pl.dbc.DB.Where("name = ?", name).Find(&suite)
 	if suite.ID == 0 {
-		suite.Name = name
-		pl.dbc.DB.Save(suite)
+		pl.suiteCache[name] = nil
+	} else {
+		id := suite.ID
+		pl.suiteCache[name] = &id
 	}
-	id := suite.ID
-	pl.suiteCache[name] = id
-	return &id
+	return pl.suiteCache[name]
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
@@ -348,16 +348,16 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			}
 		}
 
-		// FIXME: Ideally we'd stop including the suite name with the test name, but it's
-		// currently too tied together with synthetic tests to separate.
-		testNameWithSuite := tc.Name
-		if suite.Name != "" && suite.Name != "openshift-tests" && suite.Name != "sippy" {
-			testNameWithSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		testNameWithKnownSuite := tc.Name
+		suiteID := pl.findSuite(suite.Name)
+		if suiteID == nil {
+			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		}
-		if existing, ok := testCases[testNameWithSuite]; !ok {
-			testCases[testNameWithSuite] = &models.ProwJobRunTest{
-				TestID:               pl.findOrAddTest(testNameWithSuite),
-				SuiteID:              pl.findOrAddSuite(suite.Name),
+
+		if existing, ok := testCases[testNameWithKnownSuite]; !ok {
+			testCases[testNameWithKnownSuite] = &models.ProwJobRunTest{
+				TestID:               pl.findOrAddTest(testNameWithKnownSuite),
+				SuiteID:              suiteID,
 				Status:               int(status),
 				Duration:             tc.Duration,
 				ProwJobRunTestOutput: failureOutput,
