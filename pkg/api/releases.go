@@ -2,9 +2,11 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
@@ -62,9 +64,24 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 	return jobRuns, res.Error
 }
 
-// GetPayloadAnalysis loads the most recent payloads  for a stream and attempts to search for most commonly
+type PayloadFailedTest struct {
+	ID            uint
+	Release       string
+	Architecture  string
+	Stream        string
+	ReleaseTag    string
+	TestID        uint
+	SuiteID       uint
+	Status        int
+	Name          string
+	ProwJobRunID  uint
+	ProwJobRunURL string
+	ProwJobName   string
+}
+
+// GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToAnalyze int) (*apitype.PayloadStreamAnalysis, error) {
+func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions) ([]*apitype.TestFailureAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -78,7 +95,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 
 	// Get latest payload tags for analysis:
 	lastPayloads, err := query.GetLastPayloadTags(dbc.DB, release,
-		stream, arch, numPayloadsToAnalyze)
+		stream, arch)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +104,7 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 
 	if len(lastPayloads) == 0 {
 		logger.Debug("no payload tags found")
-		return result, nil
+		return result.TestFailures, nil
 	}
 
 	result.LastPhase = lastPayloads[0].Phase
@@ -115,56 +132,38 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	}
 	logger.WithField("failedPayloads", len(onlyFailedPayloads)).Debug("failed payloads")
 
-	lastFailedPayloadIDs := make([]uint, len(onlyFailedPayloads))
-	for i, lfp := range onlyFailedPayloads {
-		lastFailedPayloadIDs[i] = lfp.ID
-	}
-	logger.WithField("failedPayloadIDs", lastFailedPayloadIDs).Debug("last failed payload IDs")
-
-	// Get the job runs for each of the last failed payloads:
-	jobRuns, err := query.ListPayloadBlockingFailedJobRuns(dbc.DB, lastFailedPayloadIDs)
+	// Query all test failures for the given payload stream in the last two weeks:
+	failedTests := []PayloadFailedTest{}
+	q := dbc.DB.Table(payloadFailedTests14dMatView).
+		Where("release = ?", release).
+		Where("architecture = ?", arch).
+		Where("stream = ?", stream).
+		Order("release_tag DESC")
+	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		return nil, err
 	}
-	logger.WithField("jobRuns", len(jobRuns)).Debug("loaded latest job runs")
-
-	// Build a map of job run to it's payload, we'll use later for identifying unique payloads:
-	jobRunToPayload := map[uint]string{}
-	for _, jr := range jobRuns {
-		jobRunToPayload[jr.Name] = jr.ReleaseTag.ReleaseTag
-	}
-
-	jobRunIDs := make([]uint, len(jobRuns))
-	for i, jr := range jobRuns {
-		jobRunIDs[i] = jr.Name
-	}
-	logger.WithField("jobRunIDs", jobRunIDs).Debug("got job run IDs")
-
-	// Query all test failures for the given job run IDs:
-	// NOTE: slow query here over our biggest table.
-	failedTests := []models.ProwJobRunTest{}
-	dbc.DB.Preload("Test").Preload("ProwJobRun.ProwJob").
-		Where("prow_job_run_id IN ? AND status = 12", jobRunIDs).Find(&failedTests)
+	q.Find(&failedTests)
 	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
 
 	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
 	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
 	for _, ft := range failedTests {
-		if ft.Test.Name == testidentification.OpenShiftTestsName {
+		if ft.Name == testidentification.OpenShiftTestsName {
 			// Skip the "all tests passed" test we inject, it's not relevant here.
 			continue
 		}
-		if _, ok := testNameToAnalysis[ft.Test.Name]; !ok {
-			testNameToAnalysis[ft.Test.Name] = &apitype.TestFailureAnalysis{
-				Name:                ft.Test.Name,
+		if _, ok := testNameToAnalysis[ft.Name]; !ok {
+			testNameToAnalysis[ft.Name] = &apitype.TestFailureAnalysis{
+				Name:                ft.Name,
 				ID:                  ft.TestID,
 				FailedPayloads:      map[string]*apitype.FailedPayload{},
 				BlockerScoreReasons: []string{},
 			}
 		}
-		ta := testNameToAnalysis[ft.Test.Name]
+		ta := testNameToAnalysis[ft.Name]
 		ta.FailureCount++
-		pl := jobRunToPayload[ft.ProwJobRunID]
+		pl := ft.ReleaseTag
 		if _, ok := ta.FailedPayloads[pl]; !ok {
 			ta.FailedPayloads[pl] = &apitype.FailedPayload{
 				FailedJobs:    []string{},
@@ -172,8 +171,8 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 			}
 		}
 
-		ta.FailedPayloads[pl].FailedJobs = append(ta.FailedPayloads[pl].FailedJobs, ft.ProwJobRun.ProwJob.Name)
-		ta.FailedPayloads[pl].FailedJobRuns = append(ta.FailedPayloads[pl].FailedJobRuns, ft.ProwJobRun.URL)
+		ta.FailedPayloads[pl].FailedJobs = append(ta.FailedPayloads[pl].FailedJobs, ft.ProwJobName)
+		ta.FailedPayloads[pl].FailedJobRuns = append(ta.FailedPayloads[pl].FailedJobRuns, ft.ProwJobRunURL)
 	}
 	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
 
@@ -185,50 +184,54 @@ func GetPayloadAnalysis(dbc *db.DB, release, stream, arch string, numPayloadsToA
 	// sort so the most likely blocker test failures are first in the slice:
 	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].BlockerScore >= testFailures[j].BlockerScore })
 	result.TestFailures = testFailures
-	return result, nil
+	return result.TestFailures, nil
 }
 
 // calculateBlockerScore uses the list of most recent failed payloads, and compares to the failures we found
 // for a particular test, then attempts to calculate a blocker score between 0.0 (not a blocker) and 1.0 (almost
 // certainly a blocker) based on a number of criteria.
+//
+// consecutiveFailedPayloadTags is the list of our current streak of rejected payload tags. If most recent payload
+// was accepted, this list will be empty, and we don't have much processing to do.
 func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.TestFailureAnalysis) {
 	if len(consecutiveFailedPayloadTags) == 0 {
 		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
 		// we have to assume 0.
-		ta.BlockerScore = 0.0
+		ta.BlockerScore = 0
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was Accepted, test may be failing intermittently but cannot be fully blocking")
 		return
 	}
 
-	payloadFailureStreak := []*apitype.FailedPayload{}
+	failedInConsecPayloads := 0
+	var failedInConsecBreakFound bool
+	failedInStreak := 0
 	for _, payloadTag := range consecutiveFailedPayloadTags {
 		if _, ok := ta.FailedPayloads[payloadTag]; ok {
-			payloadFailureStreak = append(payloadFailureStreak, ta.FailedPayloads[payloadTag])
+			if !failedInConsecBreakFound {
+				failedInConsecPayloads++
+			}
+			failedInStreak++
+		} else {
+			// We didn't fail in a payload in the current streak of failures, but this could be infra
+			// failures, so we keep checking if we failed in more beyond this.
+			failedInConsecBreakFound = true
 		}
 	}
 
-	// TODO: should we analyze if it's in the same job each time, and weight that more heavily?
-	// TODO: should we analyze if it's in some percentage of most recent failures?
+	// Currently assuming 25% per consecutive failure, at 4 we are 100% sure this is a blocker.
+	ta.BlockerScore = int(math.Min(float64(failedInConsecPayloads*25), 100))
+	message := fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads)
+	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, message)
 
-	switch {
-	case len(payloadFailureStreak) >= 3:
-		ta.BlockerScore = 1.0
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
-	case len(payloadFailureStreak) == 2:
-		ta.BlockerScore = 0.7
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
-	case len(payloadFailureStreak) == 1:
-		ta.BlockerScore = 0.2
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("test has failed consecutively in %d most recent rejected payloads", len(payloadFailureStreak)))
-		return
-	default:
-		ta.BlockerScore = 0.0
-		return
+	// Override the score if we see we failed in a more substantial portion of the current rejected streak
+	// (a test can disappear in a run if it fails on infra or other reasons).
+	failedInStreakPercentage := int((float64(failedInStreak) / float64(len(consecutiveFailedPayloadTags))) * 100)
+	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
+		fmt.Sprintf("failed in %d/%d of current rejected payload streak", failedInStreak, len(consecutiveFailedPayloadTags)))
+	if ta.BlockerScore >= 50 && failedInStreakPercentage >= ta.BlockerScore {
+		ta.BlockerScore = failedInStreakPercentage
 	}
+
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -298,14 +301,50 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 			return apiResults, errors.Wrapf(err, "error finding last %s payload status for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
+
+		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
+
+		weekAgo := time.Now().Add(-7 * 24 * time.Hour)
+		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
+
+		currentWeekPhaseCounts := dbPayloadPhaseCountToAPI(currentWeekPhaseCountsDB)
+		totalPhaseCounts := dbPayloadPhaseCountToAPI(totalPhaseCountsDB)
+
 		apiResults = append(apiResults, apitype.ReleaseHealthReport{
 			ReleaseTag: archStream,
 			LastPhase:  phase,
 			Count:      count,
+			PhaseCounts: apitype.PayloadPhaseCounts{
+				CurrentWeek: currentWeekPhaseCounts,
+				Total:       totalPhaseCounts,
+			},
 		})
 	}
 
 	return apiResults, nil
+}
+
+func dbPayloadPhaseCountToAPI(dbpc []models.PayloadPhaseCount) apitype.PayloadPhaseCount {
+	apipc := apitype.PayloadPhaseCount{}
+	for _, c := range dbpc {
+		switch c.Phase {
+		case "Accepted":
+			apipc.Accepted = c.Count
+		case "Rejected":
+			apipc.Rejected = c.Count
+		default:
+			log.Warnf("Unexpected payload phase: %s", c.Phase)
+		}
+	}
+	return apipc
 }
 
 // ScanForReleaseWarnings looks for problems in current release health and returns them to the user.

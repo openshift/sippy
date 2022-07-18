@@ -3,6 +3,7 @@ package metrics
 import (
 	"time"
 
+	"github.com/openshift/sippy/pkg/filter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -13,6 +14,10 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
+)
+
+const (
+	blockerScoreToAlertOn = 50
 )
 
 var (
@@ -35,6 +40,10 @@ var (
 	payloadHoursSinceLastOSUpgrade = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_payloads_hours_since_last_os_upgrade",
 		Help: "Number of hours since last OS upgrade.",
+	}, []string{"release", "stream", "architecture"})
+	payloadPossibleTestBlockersMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_payloads_possible_test_blockers",
+		Help: "Number of possible test blockers identified for a given payload stream.",
 	}, []string{"release", "stream", "architecture"})
 )
 
@@ -94,6 +103,24 @@ func refreshPayloadMetrics(dbc *db.DB) {
 				count = rhr.Count
 			}
 			payloadConsecutiveRejectionsMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture).Set(float64(count))
+
+			// Piggy back the results here to use the list of arch+streams:
+			if rhr.LastPhase == apitype.PayloadRejected {
+				possibleTestBlockers, err := api.GetPayloadStreamTestFailures(dbc, r.Release, rhr.Stream,
+					rhr.Architecture, &filter.FilterOptions{Filter: &filter.Filter{}})
+				if err != nil {
+					log.WithError(err).Error("error getting payload stream test failures")
+					return
+				}
+				blockersFound := 0
+				for _, t := range possibleTestBlockers {
+					if t.BlockerScore >= blockerScoreToAlertOn {
+						blockersFound++
+					}
+				}
+				payloadPossibleTestBlockersMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture).
+					Set(float64(blockersFound))
+			}
 		}
 
 		lastAcceptedReleaseTags, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, r.Release)

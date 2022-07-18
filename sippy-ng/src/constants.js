@@ -52,6 +52,12 @@ export const TEST_THRESHOLDS = {
   error: 0,
 }
 
+export const BLOCKER_SCORE_THRESHOLDS = {
+  success: 10,
+  warning: 50,
+  error: 75,
+}
+
 // Saved searches
 export const BOOKMARKS = {
   NEW_JOBS: {

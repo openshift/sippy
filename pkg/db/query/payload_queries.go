@@ -1,6 +1,8 @@
 package query
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db/models"
@@ -54,14 +56,15 @@ func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]mod
 	return results, nil
 }
 
-// GetLastPayloadTags returns the most recent payload tags, sorted by date in descending order.
-func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, limit int) ([]models.ReleaseTag, error) {
+// GetLastPayloadTags returns payloads tags for last two weeks, sorted by date in descending order.
+func GetLastPayloadTags(db *gorm.DB, release, stream, arch string) ([]models.ReleaseTag, error) {
 	results := []models.ReleaseTag{}
 
 	result := db.Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", arch).
-		Limit(limit).Order("release_time DESC").Find(&results)
+		Where("release_time >= ?", time.Now().Add(-14*24*time.Hour)).
+		Order("release_time DESC").Find(&results)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -69,22 +72,11 @@ func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, limit int) ([
 	return results, nil
 }
 
-func ListPayloadBlockingFailedJobRuns(db *gorm.DB, payloadTagIDs []uint) ([]models.ReleaseJobRun, error) {
-	jobRuns := []models.ReleaseJobRun{}
-	q := db.Preload("ReleaseTag").Where("release_tag_id in ?", payloadTagIDs).
-		Where("kind = 'Blocking'").Where("state = 'Failed'")
-	res := q.Find(&jobRuns)
-	return jobRuns, res.Error
-}
-
 // GetLastPayloadStatus returns the most recent payload status for an architecture/stream combination,
 // as well as the count of how many of the last payloads had that status (e.g., when this returns
 // Rejected, 5 -- it means the last 5 payloads were rejected.
 func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (string, int, error) {
-	count := struct {
-		Phase string `gorm:"column:phase"`
-		Count int    `gorm:"column:count"`
-	}{}
+	count := models.PayloadPhaseCount{}
 
 	result := db.Raw(`
 		WITH releases AS
@@ -121,4 +113,19 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (st
 			phase`, architecture, stream, release).Scan(&count)
 
 	return count.Phase, count.Count, result.Error
+}
+
+// GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
+func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string, since *time.Time) ([]models.PayloadPhaseCount, error) {
+	phaseCounts := []models.PayloadPhaseCount{}
+	q := db.Table("release_tags").Select("phase, COUNT(phase)").
+		Where("release = ? ", release).
+		Where("architecture = ?", architecture).
+		Where("stream = ?", stream).Group("phase")
+	if since != nil {
+		q = q.Where("release_time >= ?", *since)
+	}
+	r := q.Find(&phaseCounts)
+
+	return phaseCounts, r.Error
 }

@@ -368,6 +368,20 @@ type ReleaseHealthReport struct {
 	models.ReleaseTag
 	LastPhase string `json:"last_phase"`
 	Count     int    `json:"count"`
+	// PhaseCounts contains the total count of payloads in each phase over several time periods.
+	PhaseCounts PayloadPhaseCounts `json:"phase_counts"`
+}
+
+type PayloadPhaseCounts struct {
+	// CurrentWeek contains payload phase counts over the past week.
+	CurrentWeek PayloadPhaseCount `json:"current_week"`
+	// Total contains payload phase counts over the entire release.
+	Total PayloadPhaseCount `json:"total"`
+}
+
+type PayloadPhaseCount struct {
+	Accepted int `json:"accepted"`
+	Rejected int `json:"rejected"`
 }
 
 // PayloadStreamAnalysis contains a report on the health of a given payload stream.
@@ -389,11 +403,9 @@ type TestFailureAnalysis struct {
 	// FailureCount is the total number of times this test failed in the payloads queried.
 	FailureCount int `json:"failure_count"`
 
-	// FailingSincePayload ????
-
-	// BlockerScore represents our confidence this is a blocker, ranges from 0.0 -> 1.0, with 1.0 being near
+	// BlockerScore represents our confidence this is a blocker, ranges from 0 -> 100, with 100 being near
 	// certain this is a payload blocker.
-	BlockerScore float64 `json:"blocker_score"`
+	BlockerScore int `json:"blocker_score"`
 
 	// BlockerScoreReasons explain to humans why the blocker_score was given.
 	BlockerScoreReasons []string `json:"blocker_score_reasons"`

@@ -59,6 +59,12 @@ var PostgresMatViews = []PostgresMaterializedView{
 			"|||BY|||": "hour",
 		},
 	},
+	{
+		Name:           "payload_test_failures_14d_matview",
+		Definition:     payloadTestFailuresMatView,
+		IndexColumns:   []string{"release", "architecture", "stream", "prow_job_run_id", "test_id", "suite_id"},
+		ReplaceStrings: map[string]string{},
+	},
 }
 
 type PostgresMaterializedView struct {
@@ -274,4 +280,39 @@ FROM prow_job_runs
    JOIN tests tests ON pjrt.test_id = tests.id
 WHERE pjrt.status = 12
 GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id
+`
+
+// TODO: remove distinct once bug fixed re dupes in release_job_runs
+const payloadTestFailuresMatView = `
+SELECT DISTINCT
+       rt.release,
+       rt.architecture,
+       rt.stream,
+	   rt.release_tag,
+       pjrt.id, 
+       pjrt.test_id,
+       pjrt.suite_id,
+       pjrt.status,
+       t.name,
+       pjrt.prow_job_run_id as prow_job_run_id,
+       pjr.url as prow_job_run_url,
+       pj.name as prow_job_name
+FROM
+     release_tags rt,
+     release_job_runs rjr,
+     prow_job_run_tests pjrt,
+     tests t,
+     prow_jobs pj,
+     prow_job_runs pjr
+WHERE
+    rt.release_time > (NOW() - '14 days'::interval)
+    AND rjr.release_tag_id = rt.id
+    AND rjr.kind = 'Blocking'
+    AND rjr.State = 'Failed'
+    AND pjrt.prow_job_run_id = rjr.prow_job_run_id
+    AND pjrt.status = 12
+    AND t.id = pjrt.test_id
+    AND pjr.id = pjrt.prow_job_run_id
+    AND pj.id = pjr.prow_job_id
+ORDER BY pjrt.id DESC
 `

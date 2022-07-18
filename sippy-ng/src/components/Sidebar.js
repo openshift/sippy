@@ -123,14 +123,14 @@ export default function Sidebar(props) {
                         <ListItem
                           key={'release-tags-' + index}
                           component={Link}
-                          to={`/release/${release}/tags`}
+                          to={`/release/${release}/streams`}
                           button
                           className={classes.nested}
                         >
                           <ListItemIcon>
                             <FileCopyOutlined />
                           </ListItemIcon>
-                          <ListItemText primary="Payloads" />
+                          <ListItemText primary="Payload Streams" />
                         </ListItem>
                       )
                     }

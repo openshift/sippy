@@ -16,6 +16,8 @@ import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
 import Jobs from './jobs/Jobs'
 import MenuIcon from '@material-ui/icons/Menu'
+import PayloadStream from './releases/PayloadStream'
+import PayloadStreams from './releases/PayloadStreams'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
@@ -26,7 +28,6 @@ import Toolbar from '@material-ui/core/Toolbar'
 import Typography from '@material-ui/core/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
-import WorkloadMetricsOverview from './workloadmetrics/WorkloadMetricsOverview'
 
 const drawerWidth = 240
 
@@ -250,6 +251,27 @@ export default function App(props) {
                       key={'release-details-' + props.match.params.release}
                       release={props.match.params.release}
                       releaseTag={props.match.params.tag}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/release/:release/streams/:arch/:stream"
+                  render={(props) => (
+                    <PayloadStream
+                      release={props.match.params.release}
+                      arch={props.match.params.arch}
+                      stream={props.match.params.stream}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/release/:release/streams"
+                  render={(props) => (
+                    <PayloadStreams
+                      key={'release-streams-' + props.match.params.release}
+                      release={props.match.params.release}
                     />
                   )}
                 />

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -34,9 +33,8 @@ import (
 type Mode string
 
 const (
-	ModeOpenShift                Mode = "openshift"
-	ModeKubernetes               Mode = "kube"
-	defaultLastPayloadsToAnalyze      = 10
+	ModeOpenShift  Mode = "openshift"
+	ModeKubernetes Mode = "kube"
 )
 
 func NewServer(
@@ -296,28 +294,19 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
+
 	log.WithFields(log.Fields{
 		"release": release,
 		"stream":  stream,
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	numPayloads := defaultLastPayloadsToAnalyze
-	numPayloadsQuery := req.URL.Query().Get("numPayloads")
-	if numPayloadsQuery != "" {
-		var err error
-		numPayloads, err = strconv.Atoi(numPayloadsQuery)
-		if err != nil {
-			log.WithError(err).Error("error")
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "unable to parse numPayloads query param",
-			})
-			return
-		}
-	}
-
-	result, err := api.GetPayloadAnalysis(s.db, release, stream, arch, numPayloads)
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts)
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -556,7 +545,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
 
-		serveMux.HandleFunc("/api/releases/stream_analysis",
+		serveMux.HandleFunc("/api/releases/test_failures",
 			s.jsonGetPayloadAnalysis)
 	}
 
