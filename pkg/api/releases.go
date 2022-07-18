@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -216,29 +217,10 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		}
 	}
 
-	// TODO: should we analyze if it's in the same job each time, and weight that more heavily?
-	// TODO: should we analyze if it's in some percentage of most recent failures?
-
-	switch {
-	case failedInConsecPayloads >= 4:
-		ta.BlockerScore = 100
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
-	case failedInConsecPayloads == 3:
-		ta.BlockerScore = 75
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
-	case failedInConsecPayloads == 2:
-		ta.BlockerScore = 50
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
-	case failedInConsecPayloads == 1:
-		ta.BlockerScore = 25
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons,
-			fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads))
-	default:
-		ta.BlockerScore = 0
-	}
+	// Currently assuming 25% per consecutive failure, at 4 we are 100% sure this is a blocker.
+	ta.BlockerScore = int(math.Min(float64(failedInConsecPayloads*25), 100))
+	message := fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads)
+	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, message)
 
 	// Override the score if we see we failed in a more substantial portion of the current rejected streak
 	// (a test can disappear in a run if it fails on infra or other reasons).
