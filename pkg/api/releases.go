@@ -198,6 +198,7 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
 		// we have to assume 0.
 		ta.BlockerScore = 0
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was Accepted, test may be failing intermittently but cannot be fully blocking")
 		return
 	}
 
