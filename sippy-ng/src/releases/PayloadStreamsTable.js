@@ -84,7 +84,7 @@ function PayloadStreamsTable(props) {
       renderCell: (params) => {
         return (
           <Link
-            to={`/release/${params.row.release}/stream/${params.row.architecture}/${params.row.stream}`}
+            to={`/release/${params.row.release}/streams/${params.row.architecture}/${params.row.stream}`}
           >
             {params.row.architecture} {params.value}
           </Link>

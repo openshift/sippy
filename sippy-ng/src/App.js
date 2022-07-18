@@ -256,23 +256,22 @@ export default function App(props) {
                 />
 
                 <Route
-                  path="/release/:release/streams"
-                  render={(props) => (
-                    <PayloadStreams
-                      key={'release-streams-' + props.match.params.release}
-                      release={props.match.params.release}
-                    />
-                  )}
-                />
-
-                {/* TODO: dropped to singular 'stream' here so it doesn't match the above streams list */}
-                <Route
-                  path="/release/:release/stream/:arch/:stream"
+                  path="/release/:release/streams/:arch/:stream"
                   render={(props) => (
                     <PayloadStream
                       release={props.match.params.release}
                       arch={props.match.params.arch}
                       stream={props.match.params.stream}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/release/:release/streams"
+                  render={(props) => (
+                    <PayloadStreams
+                      key={'release-streams-' + props.match.params.release}
+                      release={props.match.params.release}
                     />
                   )}
                 />
