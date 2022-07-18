@@ -175,10 +175,6 @@ function PayloadStreamTestFailures(props) {
         return Promise.all([analysis.json()])
       })
       .then(([analysis]) => {
-        if (analysis.length === 0) {
-          return <Typography variant="h5">Analysis not found.</Typography>
-        }
-
         setRows(analysis)
         setLoaded(true)
       })
@@ -206,6 +202,10 @@ function PayloadStreamTestFailures(props) {
 
   if (!isLoaded) {
     return <p>Loading...</p>
+  }
+
+  if (rows.length === 0) {
+    return <Typography variant="h5">Analysis not found.</Typography>
   }
 
   return (

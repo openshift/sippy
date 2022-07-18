@@ -8,7 +8,7 @@ import {
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import Alert from '@material-ui/lab/Alert'
@@ -56,8 +56,8 @@ function PayloadStreamOverview(props) {
         // Find our specific stream's health in the list:
         for (const stream of json) {
           if (
-            stream.architecture == props.arch &&
-            stream.stream == props.stream
+            stream.architecture === props.arch &&
+            stream.stream === props.stream
           ) {
             console.log('Found our stream')
             console.log(stream)
@@ -86,10 +86,12 @@ function PayloadStreamOverview(props) {
   return (
     <Container>
       <Grid item md={12}>
-        <Typography variant="h3" style={{ textAlign: 'center' }}>
-          Payload Stream Overview
-        </Typography>
-        <Grid container spacing={3} alignItems="stretch">
+        <Grid
+          container
+          spacing={3}
+          alignItems="stretch"
+          justifyContent="center"
+        >
           <Grid item md={3}>
             <SummaryCard
               key="payload-acceptance-summary-overall"
@@ -144,13 +146,25 @@ function PayloadStreamOverview(props) {
               fail={streamHealth.phase_counts.current_week.rejected}
             />
           </Grid>
+        </Grid>
+        <Grid
+          container
+          spacing={3}
+          alignItems="stretch"
+          justifyContent="center"
+        >
           <Grid item md={6}>
             <Typography variant="h6" style={{ textAlign: 'center' }}>
               Last {streamHealth.count} payloads have been{' '}
               {streamHealth.last_phase}
             </Typography>
             <Typography variant="h6" style={{ textAlign: 'center' }}>
-              Last payload accepted: {streamHealth.release_time}
+              <Tooltip title={streamHealth.release_time}>
+                <Fragment>
+                  Last payload accepted:{' '}
+                  {relativeTime(new Date(streamHealth.release_time))}
+                </Fragment>
+              </Tooltip>
             </Typography>
           </Grid>
         </Grid>
