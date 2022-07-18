@@ -16,6 +16,7 @@ import PayloadStreamOverview from './PayloadStreamOverview'
 import PayloadStreamTestFailures from './PayloadStreamTestFailures'
 import PropTypes from 'prop-types'
 import React from 'react'
+import ReleasePayloadCalendar from './ReleasePayloadCalendar'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
@@ -97,6 +98,12 @@ export default function PayloadStream(props) {
                       to={url + '/overview'}
                     />
                     <Tab
+                      label="Calendar"
+                      value="calendar"
+                      component={Link}
+                      to={url + '/calendar'}
+                    />
+                    <Tab
                       label="Payloads"
                       value="payloads"
                       component={Link}
@@ -117,6 +124,13 @@ export default function PayloadStream(props) {
                     release={props.release}
                     stream={props.stream}
                     arch={props.arch}
+                  />
+                </Route>
+                <Route path={path + '/calendar'}>
+                  <ReleasePayloadCalendar
+                    release={props.release}
+                    arch={props.arch}
+                    stream={props.stream}
                   />
                 </Route>
                 <Route path={path + '/testfailures'}>

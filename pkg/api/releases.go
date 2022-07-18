@@ -234,6 +234,58 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 
 }
 
+// PrintReleaseEvents returns the list of release-tags in a format suitable for a calendar
+// like FullCalendar.
+func PrintReleaseEvents(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
+	type apiReleaseEvent struct {
+		Title  string `json:"title"`
+		Start  string `json:"start"`
+		AllDay bool   `json:"allDay"`
+	}
+
+	if dbClient == nil || dbClient.DB == nil {
+		RespondWithJSON(http.StatusOK, w, []struct{}{})
+	}
+
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "release_tag", apitype.SortDescending)
+	if err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
+		return
+	}
+	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient.DB), filterOpts, nil)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	var start, end time.Time
+	startParam := req.URL.Query().Get("start")
+	start, err = time.Parse("2006-01-02T15:04:05Z", startParam)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
+		return
+	}
+
+	endParam := req.URL.Query().Get("end")
+	end, err = time.Parse("2006-01-02T15:04:05Z", endParam)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding end param: %s", err.Error())})
+		return
+	}
+
+	releases := make([]apiReleaseEvent, 0)
+
+	q.Table("release_tags").
+		Select(`DATE(release_tags.release_time) as start, release_tag as title, 'TRUE' as all_day`).
+		Where("release_time >= ?", start).
+		Where("release_time <= ?", end).
+		Scan(&releases)
+
+	RespondWithJSON(http.StatusOK, w, releases)
+}
+
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiReleaseTag struct {
 		models.ReleaseTag
