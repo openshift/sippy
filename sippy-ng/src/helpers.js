@@ -60,6 +60,29 @@ export function relativeTime(date) {
   }
 }
 
+// relativeDuration shows a plain English rendering of a duration, e.g. "30 minutes".
+export function relativeDuration(secondsAgo) {
+  if (secondsAgo === undefined) {
+    return { value: 'N/A', units: 'N/A' }
+  }
+
+  const minute = 60
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  if (Math.abs(secondsAgo) < hour) {
+    return { value: Math.abs(secondsAgo) / minute, units: 'minutes' }
+  } else if (Math.abs(secondsAgo) < day) {
+    let hours = Math.abs(secondsAgo) / hour
+    return { value: hours, units: hours === 1 ? 'hour' : 'hours' }
+  } else if (Math.abs(secondsAgo) < 1.5 * day) {
+    return { value: 1, units: 'day' }
+  } else {
+    let days = Math.abs(secondsAgo) / day
+    return { value: days, units: days === 1 ? 'day' : 'days' }
+  }
+}
+
 export function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
