@@ -383,9 +383,9 @@ type PayloadPhaseCounts struct {
 }
 
 type PayloadStatistics struct {
-	// CurrentWeek contains payload phase counts over the past week.
+	// CurrentWeek contains the min, mean, and max times between accepted payloads over the past week.
 	CurrentWeek PayloadStatistic `json:"current_week"`
-	// Total contains payload phase counts over the entire release.
+	// Total contains the min, mean, and max times between accepted payloads over the entire release.
 	Total PayloadStatistic `json:"total"`
 }
 
