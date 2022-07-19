@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-export default function ReleasePayloadCalendar(props) {
+export default function PayloadCalendar(props) {
   const theme = useTheme()
   const history = useHistory()
 
@@ -71,7 +71,7 @@ export default function ReleasePayloadCalendar(props) {
   )
 }
 
-ReleasePayloadCalendar.propTypes = {
+PayloadCalendar.propTypes = {
   release: PropTypes.string,
   arch: PropTypes.string,
   stream: PropTypes.string,

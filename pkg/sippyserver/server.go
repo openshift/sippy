@@ -261,7 +261,7 @@ func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) 
 			return
 		}
 
-		results, err := api.GetReleaseEvents(s.db, release, filterOpts, start, end)
+		results, err := api.GetPayloadEvents(s.db, release, filterOpts, start, end)
 		if err != nil {
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
 				"message": "couldn't parse start param" + err.Error()})

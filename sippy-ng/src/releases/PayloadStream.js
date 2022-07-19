@@ -1,5 +1,5 @@
+import { filterFor } from '../helpers'
 import {
-  Container,
   Grid,
   makeStyles,
   Paper,
@@ -7,16 +7,14 @@ import {
   Tabs,
   Typography,
 } from '@material-ui/core'
-import { filterFor } from '../helpers'
-import { Fragment, useState } from 'react'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { TabContext, TabPanel } from '@material-ui/lab'
+import { TabContext } from '@material-ui/lab'
+import PayloadCalendar from './PayloadCalendar'
 import PayloadStreamOverview from './PayloadStreamOverview'
 import PayloadStreamTestFailures from './PayloadStreamTestFailures'
 import PropTypes from 'prop-types'
-import React from 'react'
-import ReleasePayloadCalendar from './ReleasePayloadCalendar'
+import React, { Fragment, useState } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
@@ -127,7 +125,7 @@ export default function PayloadStream(props) {
                   />
                 </Route>
                 <Route path={path + '/calendar'}>
-                  <ReleasePayloadCalendar
+                  <PayloadCalendar
                     release={props.release}
                     arch={props.arch}
                     stream={props.stream}
