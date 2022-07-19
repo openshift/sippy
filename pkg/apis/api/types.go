@@ -420,3 +420,11 @@ type FailedPayload struct {
 	// FailedJobRuns is a list of prow job URLs the test failed in for this payload.
 	FailedJobRuns []string `json:"failed_job_runs"`
 }
+
+// PayloadEvent is an API type representing a FullCalendar.io event type, for use
+// with calendering.
+type PayloadEvent struct {
+	Title  string `json:"title"`
+	Start  string `json:"start"`
+	AllDay bool   `json:"allDay"`
+}

@@ -1,20 +1,9 @@
-import {
-  Card,
-  Container,
-  Grid,
-  makeStyles,
-  Tooltip,
-  Typography,
-} from '@material-ui/core'
-import { DataGrid } from '@material-ui/data-grid'
+import { Container, Grid, Tooltip, Typography } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
-import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import Alert from '@material-ui/lab/Alert'
-import GridToolbar from '../datagrid/GridToolbar'
-import InfoIcon from '@material-ui/icons/Info'
-import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SummaryCard from '../components/SummaryCard'

@@ -1,6 +1,5 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
 import { Box, Card, Grid, Tooltip, Typography } from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'

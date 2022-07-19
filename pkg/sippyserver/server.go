@@ -11,12 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	log "github.com/sirupsen/logrus"
 
@@ -235,6 +236,42 @@ func (s *Server) jsonAutocompleteFromDB(w http.ResponseWriter, req *http.Request
 func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
 	api.PrintReleasesReport(w, req, s.db)
 }
+
+func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse filter opts " + err.Error()})
+			return
+		}
+
+		start, err := getISO8601Date("start", req)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		end, err := getISO8601Date("end", req)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		results, err := api.GetPayloadEvents(s.db, release, filterOpts, start, end)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		api.RespondWithJSON(http.StatusOK, w, results)
+	}
+}
+
 func (s *Server) jsonReleasePullRequestsReport(w http.ResponseWriter, req *http.Request) {
 	api.PrintPullRequestsReport(w, req, s.db)
 }
@@ -541,6 +578,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
+		serveMux.HandleFunc("/api/releases/tags/events", s.jsonReleaseTagsEvent)
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)

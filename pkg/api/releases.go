@@ -234,6 +234,30 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 
 }
 
+// GetPayloadEvents returns the list of release tags in a format suitable for a calendar
+// like FullCalendar.
+func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.FilterOptions,
+	start, end *time.Time) ([]apitype.PayloadEvent, error) {
+	releases := make([]apitype.PayloadEvent, 0)
+
+	if dbClient == nil || dbClient.DB == nil {
+		return nil, fmt.Errorf("no db client found")
+	}
+
+	q, err := filter.FilterableDBResult(dbClient.DB.Where("release = ?", release), filterOpts, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q.Table("release_tags").
+		Select(`DATE(release_tags.release_time) as start, release_tag as title, 'TRUE' as all_day`).
+		Where("release_time >= ?", start).
+		Where("release_time <= ?", end).
+		Scan(&releases)
+
+	return releases, nil
+}
+
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
 	type apiReleaseTag struct {
 		models.ReleaseTag
