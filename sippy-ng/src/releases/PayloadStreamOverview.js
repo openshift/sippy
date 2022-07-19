@@ -184,9 +184,11 @@ function PayloadStreamOverview(props) {
                 ).value
               ).toFixed(1)}
               caption={
+                'mean ' +
                 relativeDuration(
                   streamHealth.acceptance_statistics.total.mean_seconds_between
-                ).units + ' between accepted payloads'
+                ).units +
+                ' between accepted payloads'
               }
             />
           </Grid>
@@ -200,10 +202,12 @@ function PayloadStreamOverview(props) {
                 ).value
               ).toFixed(1)}
               caption={
+                'mean ' +
                 relativeDuration(
                   streamHealth.acceptance_statistics.current_week
                     .mean_seconds_between
-                ).units + ' between accepted payloads'
+                ).units +
+                ' between accepted payloads'
               }
             />
           </Grid>
