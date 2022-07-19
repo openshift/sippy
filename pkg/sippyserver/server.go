@@ -238,7 +238,38 @@ func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) {
-	api.PrintReleaseEvents(w, req, s.db)
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse filter opts " + err.Error()})
+			return
+		}
+
+		start, err := getISO8601Date("start", req)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		end, err := getISO8601Date("end", req)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		results, err := api.GetReleaseEvents(s.db, release, filterOpts, start, end)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse start param" + err.Error()})
+			return
+		}
+
+		api.RespondWithJSON(http.StatusOK, w, results)
+	}
 }
 
 func (s *Server) jsonReleasePullRequestsReport(w http.ResponseWriter, req *http.Request) {

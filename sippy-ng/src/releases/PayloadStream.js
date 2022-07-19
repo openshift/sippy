@@ -74,7 +74,7 @@ export default function PayloadStream(props) {
           <TabContext value={path}>
             <Fragment>
               <Typography variant="h4" gutterBottom className={classes.title}>
-                {arch} {stream} Payload Stream
+                {arch} {stream} {props.release} Payload Stream
               </Typography>
 
               <Grid
