@@ -12,6 +12,11 @@ while [ true ]; do
     --release 4.12 \
     --release 4.11 \
     --release Presubmits \
+    --arch amd64 \
+    --arch arm64 \
+    --arch multi \
+    --arch s390x \
+    --arch ppc64le \
     --config /config/openshift.yaml \
     --skip-bug-lookup \
     --mode=ocp
