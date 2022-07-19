@@ -331,11 +331,21 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
+		totalAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
 
 		weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
 		if err != nil {
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+				release, archStream.Architecture, archStream.Stream)
+		}
+		currentWeekAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
+		if err != nil {
+			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
@@ -349,6 +359,10 @@ func ReleaseHealthReports(dbClient *db.DB, release string) ([]apitype.ReleaseHea
 			PhaseCounts: apitype.PayloadPhaseCounts{
 				CurrentWeek: currentWeekPhaseCounts,
 				Total:       totalPhaseCounts,
+			},
+			PayloadStatistics: apitype.PayloadStatistics{
+				CurrentWeek: apitype.PayloadStatistic{PayloadStatistics: currentWeekAcceptanceStatistics},
+				Total:       apitype.PayloadStatistic{PayloadStatistics: totalAcceptanceStatistics},
 			},
 		})
 	}

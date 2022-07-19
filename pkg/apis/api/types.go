@@ -370,6 +370,9 @@ type ReleaseHealthReport struct {
 	Count     int    `json:"count"`
 	// PhaseCounts contains the total count of payloads in each phase over several time periods.
 	PhaseCounts PayloadPhaseCounts `json:"phase_counts"`
+	// PayloadStatistics contains the min, mean, and max times between accepted payloads
+	// over several time periods.
+	PayloadStatistics PayloadStatistics `json:"acceptance_statistics"`
 }
 
 type PayloadPhaseCounts struct {
@@ -377,6 +380,17 @@ type PayloadPhaseCounts struct {
 	CurrentWeek PayloadPhaseCount `json:"current_week"`
 	// Total contains payload phase counts over the entire release.
 	Total PayloadPhaseCount `json:"total"`
+}
+
+type PayloadStatistics struct {
+	// CurrentWeek contains payload phase counts over the past week.
+	CurrentWeek PayloadStatistic `json:"current_week"`
+	// Total contains payload phase counts over the entire release.
+	Total PayloadStatistic `json:"total"`
+}
+
+type PayloadStatistic struct {
+	models.PayloadStatistics
 }
 
 type PayloadPhaseCount struct {

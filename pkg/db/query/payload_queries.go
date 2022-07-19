@@ -129,3 +129,27 @@ func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream stri
 
 	return phaseCounts, r.Error
 }
+
+func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream string, since *time.Time) (models.PayloadStatistics, error) {
+	results := models.PayloadStatistics{}
+
+	q := db.Table("release_tags").
+		Select(`release_time 										                 AS start,
+                       LEAD(release_time, 1) OVER (ORDER BY release_time ASC)                AS next_time,
+					   LEAD(release_time, 1) OVER (ORDER BY release_time ASC) - release_time AS duration`).
+		Where("release = ?", release).
+		Where("stream = ?", stream).
+		Where("architecture = ?", architecture).
+		Where("phase = ?", "Accepted")
+
+	if since != nil {
+		q = q.Where("release_time >= ?", *since)
+	}
+
+	q = db.Table("(?) as durations", q).
+		Select(`EXTRACT(epoch FROM AVG(duration))::bigint as mean_seconds_between,
+					   EXTRACT(epoch FROM MIN(duration))::bigint as min_seconds_between,
+                       EXTRACT(epoch FROM MAX(duration))::bigint as max_seconds_between`).Scan(&results)
+
+	return results, q.Error
+}
