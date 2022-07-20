@@ -177,6 +177,13 @@ export default function JobRunsTable(props) {
       hide: 'true',
     },
     {
+      field: 'cluster',
+      autocomplete: 'cluster',
+      headerName: 'Build cluster',
+      type: 'string',
+      hide: 'true',
+    },
+    {
       field: 'current_pass_percentage',
       headerName: 'Current pass percentage',
       type: 'number',
