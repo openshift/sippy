@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,6 +81,12 @@ var matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 	Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
 }, []string{"view"})
 
+var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name:    "sippy_all_matviews_refresh_millis",
+	Help:    "Milliseconds to refresh our postgresql materialized views",
+	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
+})
+
 type Server struct {
 	mode                 Mode
 	listenAddr           string
@@ -127,20 +134,45 @@ func (s *Server) refreshMetrics() {
 // the views appear to be empty.
 func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	log.Info("refreshing materialized views")
+	allStart := time.Now()
 
 	if s.db == nil {
 		log.Info("skipping materialized view refresh as server has no db connection provided")
 		return
 	}
+	// create a channel for work "tasks"
+	ch := make(chan string)
+
+	wg := sync.WaitGroup{}
+
+	// allow concurrent workers for refreshing matviews in parallel
+	for t := 0; t < 3; t++ {
+		wg.Add(1)
+		go refreshMatview(s.db, refreshMatviewOnlyIfEmpty, ch, &wg)
+	}
 
 	for _, pmv := range db.PostgresMatViews {
+		ch <- pmv.Name
+	}
+
+	close(ch)
+	wg.Wait()
+
+	allElapsed := time.Since(allStart)
+	log.WithField("elapsed", allElapsed).Info("refreshed all materialized views")
+	allMatViewsRefreshMetric.Observe(float64(allElapsed.Milliseconds()))
+}
+
+func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+
+	for matView := range ch {
 		start := time.Now()
-		tmpLog := log.WithField("matview", pmv.Name)
+		tmpLog := log.WithField("matview", matView)
 
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if res := s.db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", pmv.Name)).Scan(&count); res.Error != nil {
+			if res := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
 				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
@@ -152,25 +184,26 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
 		// refresh which locks reads.
 		tmpLog.Info("refreshing materialized view")
-		if res := s.db.DB.Exec(
-			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", pmv.Name)); res.Error != nil {
+		if res := dbc.DB.Exec(
+			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matView)); res.Error != nil {
 			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
 
-			if res := s.db.DB.Exec(
-				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", pmv.Name)); res.Error != nil {
+			if res := dbc.DB.Exec(
+				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", matView)); res.Error != nil {
 				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
 			} else {
 				elapsed := time.Since(start)
 				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
-				matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
+				matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 			}
 
 		} else {
 			elapsed := time.Since(start)
 			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
-			matViewRefreshMetric.WithLabelValues(pmv.Name).Observe(float64(elapsed.Milliseconds()))
+			matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
+	wg.Done()
 }
 
 func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
