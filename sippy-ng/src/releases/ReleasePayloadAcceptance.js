@@ -8,8 +8,8 @@ import {
 } from '@material-ui/core'
 import { CheckCircle, Error, Help, Warning } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { filterFor, relativeTime, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
+import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -95,19 +95,10 @@ function ReleasePayloadAcceptance(props) {
       }
     }
 
-    let filter = {
-      items: [
-        filterFor('architecture', 'equals', row.architecture),
-        filterFor('stream', 'equals', row.stream),
-      ],
-    }
-
     cards.push(
       <Box
         component={Link}
-        to={`/release/${props.release}/tags?filters=${safeEncodeURIComponent(
-          JSON.stringify(filter)
-        )}`}
+        to={`/release/${props.release}/streams/${row.architecture}/${row.stream}/overview`}
       >
         <Tooltip title={tooltip}>
           <Card
