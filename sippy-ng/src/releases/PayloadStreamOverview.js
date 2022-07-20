@@ -1,14 +1,22 @@
 import { Container, Grid, Tooltip, Typography } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import {
+  relativeDuration,
+  relativeTime,
+  safeEncodeURIComponent,
+} from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
+import { useTheme } from '@material-ui/core/styles'
 import Alert from '@material-ui/lab/Alert'
+import NumberCard from '../components/NumberCard'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SummaryCard from '../components/SummaryCard'
 
 function PayloadStreamOverview(props) {
+  const theme = useTheme()
+
   const [release = props.release, setRelease] = useQueryParam(
     'release',
     StringParam
@@ -135,6 +143,31 @@ function PayloadStreamOverview(props) {
               fail={streamHealth.phase_counts.current_week.rejected}
             />
           </Grid>
+          <Grid item md={3}>
+            <NumberCard
+              title="Payload Streak"
+              number={streamHealth.count}
+              caption={`have been ${streamHealth.last_phase}`}
+              bgColor={
+                streamHealth.last_phase === 'Rejected'
+                  ? theme.palette.error.light
+                  : theme.palette.success.light
+              }
+            />
+          </Grid>
+          <Grid item md={6}>
+            <NumberCard
+              title="Last Payload Accepted"
+              number={relativeTime(new Date(streamHealth.release_time))}
+              bgColor={
+                new Date().getTime() -
+                  new Date(streamHealth.release_time).getTime() >
+                24 * 60 * 60 * 1000
+                  ? theme.palette.error.light
+                  : theme.palette.success.light
+              }
+            />
+          </Grid>{' '}
         </Grid>
         <Grid
           container
@@ -142,19 +175,41 @@ function PayloadStreamOverview(props) {
           alignItems="stretch"
           justifyContent="center"
         >
-          <Grid item md={6}>
-            <Typography variant="h6" style={{ textAlign: 'center' }}>
-              Last {streamHealth.count} payloads have been{' '}
-              {streamHealth.last_phase}
-            </Typography>
-            <Typography variant="h6" style={{ textAlign: 'center' }}>
-              <Tooltip title={streamHealth.release_time}>
-                <Fragment>
-                  Last payload accepted:{' '}
-                  {relativeTime(new Date(streamHealth.release_time))}
-                </Fragment>
-              </Tooltip>
-            </Typography>
+          <Grid item md={3}>
+            <NumberCard
+              title="Overall"
+              number={Number(
+                relativeDuration(
+                  streamHealth.acceptance_statistics.total.mean_seconds_between
+                ).value
+              ).toFixed(1)}
+              caption={
+                'mean ' +
+                relativeDuration(
+                  streamHealth.acceptance_statistics.total.mean_seconds_between
+                ).units +
+                ' between accepted payloads'
+              }
+            />
+          </Grid>
+          <Grid item md={3}>
+            <NumberCard
+              title="This Week"
+              number={Number(
+                relativeDuration(
+                  streamHealth.acceptance_statistics.current_week
+                    .mean_seconds_between
+                ).value
+              ).toFixed(1)}
+              caption={
+                'mean ' +
+                relativeDuration(
+                  streamHealth.acceptance_statistics.current_week
+                    .mean_seconds_between
+                ).units +
+                ' between accepted payloads'
+              }
+            />
           </Grid>
         </Grid>
       </Grid>

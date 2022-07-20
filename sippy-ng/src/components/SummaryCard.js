@@ -60,7 +60,7 @@ export default function SummaryCard(props) {
       <CardContent className={`${classes.cardContent}`}>
         <Typography variant="h6">
           {props.name}
-          <InfoIcon />
+          {props.tooltip ? <InfoIcon /> : ''}
         </Typography>
         <div align="center">
           <div style={{ width: '70%' }}>

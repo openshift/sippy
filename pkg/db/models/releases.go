@@ -124,3 +124,9 @@ type PayloadPhaseCount struct {
 	Phase string `gorm:"column:phase"`
 	Count int    `gorm:"column:count"`
 }
+
+type PayloadStatistics struct {
+	MinSecondsBetween  int64 `json:"min_seconds_between"`
+	MeanSecondsBetween int64 `json:"mean_seconds_between"`
+	MaxSecondsBetween  int64 `json:"max_seconds_between"`
+}
