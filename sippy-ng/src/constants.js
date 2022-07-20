@@ -91,12 +91,6 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'never-stable',
   },
-  NO_TECHPREVIEW: {
-    columnField: 'variants',
-    not: true,
-    operatorValue: 'contains',
-    value: 'techpreview',
-  },
   NO_STEP_GRAPH: {
     columnField: 'name',
     not: true,

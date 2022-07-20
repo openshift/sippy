@@ -36,7 +36,6 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@material-ui/icons/Search'
 import SippyLogo from './SippyLogo'
-import TableChartIcon from '@material-ui/icons/TableChart'
 
 export default function Sidebar(props) {
   const classes = useTheme()
@@ -162,7 +161,6 @@ export default function Sidebar(props) {
                       items: [
                         BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_TECHPREVIEW,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                         BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,

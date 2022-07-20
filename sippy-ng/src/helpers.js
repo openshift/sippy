@@ -218,10 +218,7 @@ export function filterFor(column, operator, value) {
 }
 
 export function withoutUnstable() {
-  return [
-    not(filterFor('variants', 'contains', 'never-stable')),
-    not(filterFor('variants', 'contains', 'techpreview')),
-  ]
+  return [not(filterFor('variants', 'contains', 'never-stable'))]
 }
 
 export function multiple(...filters) {
