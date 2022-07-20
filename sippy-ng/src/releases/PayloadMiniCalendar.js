@@ -94,7 +94,9 @@ export default function PayloadMiniCalendar(props) {
         setLoaded(true)
       })
       .catch((error) => {
-        setFetchError('Could not retrieve jobs ' + props.release + ', ' + error)
+        setFetchError(
+          'Could not retrieve release tag data ' + props.release + ', ' + error
+        )
       })
   }
 
