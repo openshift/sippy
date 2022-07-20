@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`SummaryCard shows overview 1`] = `
-<div class="MuiPaper-root MuiCard-root V7h2v2z">
+<div class="MuiPaper-root MuiCard-root h6">
   <div align="center">
     <div style="width: 70%;">
     </div>
