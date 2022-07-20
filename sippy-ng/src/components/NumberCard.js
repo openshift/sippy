@@ -29,7 +29,9 @@ export default function NumberCard(props) {
     >
       <CardContent className={`${classes.cardContent}`}>
         <Typography variant="h6">{props.title}</Typography>
-        <div style={{ fontSize: '6em' }}>{props.number}</div>
+        <div style={{ fontSize: `${props.size ? props.size : 6}em` }}>
+          {props.number}
+        </div>
         <div align="center">{props.caption}</div>
       </CardContent>
     </Card>
@@ -62,4 +64,5 @@ NumberCard.propTypes = {
   tooltip: PropTypes.string,
   bgColor: PropTypes.string,
   number: PropTypes.number,
+  size: PropTypes.number,
 }

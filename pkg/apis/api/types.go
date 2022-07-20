@@ -443,7 +443,9 @@ type FailedPayload struct {
 // PayloadEvent is an API type representing a FullCalendar.io event type, for use
 // with calendering.
 type PayloadEvent struct {
-	Title  string `json:"title"`
-	Start  string `json:"start"`
-	AllDay bool   `json:"allDay"`
+	Title   string `json:"title"`
+	Start   string `json:"start"`
+	Phase   string `json:"phase"`
+	AllDay  bool   `json:"allDay"`
+	Display string `json:"display,omitempty"`
 }
