@@ -51,6 +51,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 
 			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else if f.Field == "cluster" {
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
 		} else {
 			jobFilter.Items = append(jobFilter.Items, f)
 		}

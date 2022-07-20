@@ -153,6 +153,7 @@ type JobRun struct {
 	TestGridURL           string              `json:"test_grid_url"`
 	ProwID                uint                `json:"prow_id"`
 	Job                   string              `json:"job"`
+	Cluster               string              `json:"cluster"`
 	URL                   string              `json:"url"`
 	TestFlakes            int                 `json:"test_flakes"`
 	FlakedTestNames       pq.StringArray      `json:"flaked_test_names" gorm:"type:text[]"`
@@ -169,6 +170,8 @@ type JobRun struct {
 func (run JobRun) GetFieldType(param string) ColumnType {
 	switch param {
 	case "name":
+		return ColumnTypeString
+	case "cluster":
 		return ColumnTypeString
 	case "tags":
 		return ColumnTypeArray
@@ -195,6 +198,8 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 	switch param {
 	case "job", "name":
 		return run.Job, nil
+	case "cluster":
+		return run.Cluster, nil
 	case "overall_result":
 		return string(run.OverallResult), nil
 	case "test_grid_url":

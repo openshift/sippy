@@ -298,14 +298,16 @@ export function JobAnalysis(props) {
     setPeriod(newPeriod)
   }
 
-  function withoutTimestamps(filterModel) {
+  function withoutJobRunFilters(filterModel) {
+    let jobRunFilters = ['cluster', 'timestamp']
+
     if (!filterModel || filterModel.items === []) {
       return filterModel
     }
 
     let newFilters = []
     filterModel.items.forEach((filter) => {
-      if (filter.columnField !== 'timestamp') {
+      if (!jobRunFilters.includes(filter.columnField)) {
         newFilters.push(filter)
       }
     })
@@ -325,7 +327,7 @@ export function JobAnalysis(props) {
           <Link
             to={pathForJobsWithFilter(
               props.release,
-              withoutTimestamps(filterModel)
+              withoutJobRunFilters(filterModel)
             )}
           >
             Jobs
@@ -380,6 +382,13 @@ export function JobAnalysis(props) {
                       filterable: true,
                       type: 'date',
                     },
+                    {
+                      field: 'cluster',
+                      headerName: 'Build cluster',
+                      autocomplete: 'cluster',
+                      filterable: true,
+                      type: 'string',
+                    },
                     ...getColumns(props),
                   ]}
                 />
@@ -394,7 +403,7 @@ export function JobAnalysis(props) {
                   style={{ marginLeft: 20, marginRight: 20 }}
                   to={pathForJobsWithFilter(
                     props.release,
-                    withoutTimestamps(filterModel)
+                    withoutJobRunFilters(filterModel)
                   )}
                 >
                   View matching jobs

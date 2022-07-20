@@ -31,6 +31,11 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		q = q.Table("prow_jobs").
 			Select("name").
 			Order("name")
+	case "cluster":
+		q = q.Table("prow_job_runs").
+			Select("DISTINCT(cluster) as name").
+			Where("cluster IS NOT NULL").
+			Order("name")
 	default:
 		RespondWithJSON(404, w, map[string]string{"message": "Autocomplete field not found."})
 	}
