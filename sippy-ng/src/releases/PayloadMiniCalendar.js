@@ -76,10 +76,12 @@ export default function PayloadMiniCalendar(props) {
         // Rejected payloads will make the square red, and no payload at all will be an empty square.
         let eventsOnePerDay = {}
         json.forEach((event) => {
+          console.log(event)
           if (
-            !(event.start in eventsOnePerDay) ||
-            eventsOnePerDay[event.start] === 'Rejected'
+            event.phase === 'Accepted' ||
+            eventsOnePerDay[event.start] === undefined
           ) {
+            console.log('Updating')
             event.display = 'background'
             event.title = event.phase.charAt(0) // Show 'A' for accepted for 'R' for rejected
             eventsOnePerDay[event.start] = event
