@@ -1,5 +1,4 @@
 import FullCalendar from '@fullcalendar/react'
-import styled from '@emotion/styled'
 
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@material-ui/core'
@@ -19,13 +18,6 @@ export default function PayloadMiniCalendar(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [accepted, setAccepted] = React.useState([])
   const [rejected, setRejected] = React.useState([])
-
-  // StyleWrapper hides the highlighting on today
-  const StyleWrapper = styled.div`
-    .fc-day-today {
-      background-color: inherit !important;
-    }
-  `
 
   // Link to payloads page listing the payloads for the day clicked
   const eventClick = (info) => {
@@ -152,31 +144,29 @@ export default function PayloadMiniCalendar(props) {
         </Typography>
       </Tooltip>
 
-      <StyleWrapper>
-        <FullCalendar
-          timeZone="UTC"
-          headerToolbar={{
-            start: 'title',
-            center: '',
-            end: 'prev,next',
-          }}
-          plugins={[dayGridPlugin]}
-          initialView="dayGridMonth"
-          eventClick={eventClick}
-          eventSources={[
-            {
-              events: accepted,
-              color: theme.palette.success.light,
-              textColor: theme.palette.success.contrastText,
-            },
-            {
-              events: rejected,
-              color: theme.palette.error.light,
-              textColor: theme.palette.success.contrastText,
-            },
-          ]}
-        />
-      </StyleWrapper>
+      <FullCalendar
+        timeZone="UTC"
+        headerToolbar={{
+          start: 'title',
+          center: '',
+          end: 'prev,next',
+        }}
+        plugins={[dayGridPlugin]}
+        initialView="dayGridMonth"
+        eventClick={eventClick}
+        eventSources={[
+          {
+            events: accepted,
+            color: theme.palette.success.light,
+            textColor: theme.palette.success.contrastText,
+          },
+          {
+            events: rejected,
+            color: theme.palette.error.light,
+            textColor: theme.palette.success.contrastText,
+          },
+        ]}
+      />
     </Fragment>
   )
 }
