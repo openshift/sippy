@@ -38,7 +38,7 @@ type ProwJobRun struct {
 
 	// ProwJob is a link to the prow job this run belongs to.
 	ProwJob   ProwJob
-	ProwJobID uint
+	ProwJobID uint `gorm:"index"`
 
 	// Cluster is the cluster where the prow job was run.
 	Cluster string
@@ -67,13 +67,13 @@ type Test struct {
 // that execution.
 type ProwJobRunTest struct {
 	gorm.Model
-	ProwJobRunID uint
+	ProwJobRunID uint `gorm:"index"`
 	ProwJobRun   ProwJobRun
-	TestID       uint
+	TestID       uint `gorm:"index"`
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
-	SuiteID   *uint
-	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
+	SuiteID   *uint `gorm:"index"`
+	Status    int   // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
 	Duration  float64
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
