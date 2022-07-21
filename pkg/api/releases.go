@@ -250,10 +250,17 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 	}
 
 	q.Table("release_tags").
-		Select(`DATE(release_tags.release_time) as start, release_tag as title, 'TRUE' as all_day`).
-		Where("release_time >= ?", start).
-		Where("release_time <= ?", end).
-		Scan(&releases)
+		Select(`DATE(release_tags.release_time) as start, release_tag as title, phase, 'TRUE' as all_day`)
+
+	if start != nil {
+		q = q.Where("release_time >= ?", start)
+	}
+
+	if end != nil {
+		q = q.Where("release_time <= ?", end)
+	}
+
+	q.Scan(&releases)
 
 	return releases, nil
 }
