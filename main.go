@@ -315,16 +315,12 @@ func (o *Options) Run() error {
 
 		if o.LoadTestgrid {
 
-			/* TODO: DISABLED FOR JIRA SUPPORT WORK
 			trgc := sippyserver.TestReportGeneratorConfig{
 				TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
 				RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
 				DisplayDataConfig:           o.toDisplayDataConfig(),
 			}
 
-			*/
-
-			/* TODO: DISABLED FOR JIRA SUPPORT WORK
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
 					o.StartDay, o.NumDays)
@@ -333,7 +329,6 @@ func (o *Options) Run() error {
 					return err
 				}
 			}
-			*/
 
 		}
 
@@ -379,10 +374,9 @@ func (o *Options) Run() error {
 			if err := sippyserver.LoadBugs(dbc, testCache, prowJobCache); err != nil {
 				return errors.Wrapf(err, "error syncing issues to db")
 			}
-			os.Exit(0) // TODO: remove
 		}
 		bugsElapsed := time.Since(bugsStart)
-		log.Infof("Bugs load from search.ci in: %s", bugsElapsed)
+		log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
 
 		elapsed := time.Since(start)
 		log.Infof("Database loaded in: %s", elapsed)

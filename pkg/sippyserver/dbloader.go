@@ -337,11 +337,11 @@ func getOrCreateTestID(
 // LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
 func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
 	log.Info("querying search.ci for test/job associations")
-	testIssues, err := loader.UpdateForFailedTests(sets.StringKeySet(testCache).List()...)
+	testIssues, err := loader.FindIssuesForTests(sets.StringKeySet(testCache).List()...)
 	if err != nil {
 		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}
-	jobIssues, err := loader.UpdateJobBlockers(sets.StringKeySet(jobCache).List()...)
+	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
 	if err != nil {
 		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}
@@ -401,7 +401,11 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			log.Errorf("error updating bug test associations: %s %v", err, bug)
 			return errors.Wrap(res.Error, "error updating bug test assocations")
 		}
-		// TODO: why are we not doing the same for jobs?
+		err = dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
+		if err != nil {
+			log.Errorf("error updating bug job associations: %s %v", err, bug)
+			return errors.Wrap(res.Error, "error updating bug job assocations")
+		}
 	}
 
 	return nil

@@ -13,25 +13,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// UpdateForFailedTests updates a global variable with the bug mapping based on current failures.
-func UpdateForFailedTests(testNames ...string) (map[string][]jira.Issue, error) {
+// FindIssuesForTests queries search.ci for Jira issues mapping based to the given test names.
+func FindIssuesForTests(testNames ...string) (map[string][]jira.Issue, error) {
 
 	issues := map[string][]jira.Issue{}
-	/*
-		newTestNames := []string{}
-		for _, testName := range testNames {
-			if _, found := c.testBugsCache[testName]; !found {
-				newTestNames = append(newTestNames, testName)
-			}
-		}
-	*/
 
-	// TODO: Hack to override the full search for now.
-	newTestNames := []string{"Operator results.operator conditions etcd"}
-
-	// TODO: drop the whole concept of a cache and the locks, just use the db.
-
-	newBugs, lastUpdateError := findBugsForSearchStrings(newTestNames...)
+	newBugs, lastUpdateError := findBugsForSearchStrings(testNames...)
 
 	for testName, bug := range newBugs {
 		issues[testName] = bug
@@ -39,31 +26,15 @@ func UpdateForFailedTests(testNames ...string) (map[string][]jira.Issue, error) 
 	return issues, lastUpdateError
 }
 
-func GetJobKey(jobName string) string {
-	return fmt.Sprintf("job=%v=all", jobName)
-}
-
-// UpdateJobBlockers updates a global variable with the bug mapping based on current failures.
-func UpdateJobBlockers(jobNames ...string) (map[string][]jira.Issue, error) {
+// FindIssuesForJobs queries search.ci for Jira issues mapping based to the given job names.
+func FindIssuesForJobs(jobNames ...string) (map[string][]jira.Issue, error) {
 
 	issues := map[string][]jira.Issue{}
-	/*
-		jobSearchStrings := []string{}
-		for _, jobName := range jobNames {
-			jobKey := GetJobKey(jobName)
-			if _, found := c.jobBlockersBugCache[jobKey]; !found {
-				jobSearchStrings = append(jobSearchStrings, jobKey)
-			}
-		}
-	*/
 
-	// TODO: temporary hack for development
-	jobSearchStrings := []string{GetJobKey("periodic-ci-openshift-release-master-ci-4.12-e2e-azure-sdn-upgrade=")}
+	newBugs, lastUpdateError := findBugsForSearchStrings(jobNames...)
 
-	newBugs, lastUpdateError := findBugsForSearchStrings(jobSearchStrings...)
-
-	for testName, bug := range newBugs {
-		issues[testName] = bug
+	for jobKey, bug := range newBugs {
+		issues[jobKey] = bug
 	}
 	return issues, lastUpdateError
 }
@@ -103,7 +74,7 @@ func findBugsForSearchStrings(failedTestNames ...string) (map[string][]jira.Issu
 		}
 		batchTestNames = []string{}
 	}
-	log.Debugf("findBugsForSearchStrings made %d bugzilla requests", queryCtr)
+	log.Debugf("findBugsForSearchStrings made %d search.ci requests", queryCtr)
 
 	return ret, lastUpdateError
 }
@@ -206,7 +177,6 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 
 	bzQueryStart := time.Now()
 	searchURL := "https://search.ci.openshift.org/v2/search"
-	log.Info("encoded params: " + v.Encode())
 	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
@@ -219,7 +189,6 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 		return searchResults, e
 	}
 
-	log.Info(resp.Body)
 	search := Search{}
 
 	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
