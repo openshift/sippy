@@ -2,6 +2,7 @@ package sippyserver
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -417,16 +418,29 @@ func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {
 		URL:            fmt.Sprintf("https://issues.redhat.com/browse/%s", apiIssue.Key),
 		Tests:          []models.Test{},
 	}
-	// We are assuming single valued for each of these despite the fact the bz models appear to support
-	// multi-valued, OpenShift does not use this if so.
-	if len(apiIssue.Fields.FixVersions) > 0 {
-		newBug.TargetRelease = apiIssue.Fields.FixVersions[0].Name
+
+	// The version and components fields may typically or always be just one value, but we're told it
+	// may not be possible to actually prevent someone adding multiple, so we'll be ready for the possibility.
+	components := []string{}
+	for _, c := range apiIssue.Fields.Components {
+		components = append(components, c.Name)
 	}
-	if len(apiIssue.Fields.AffectsVersions) > 0 {
-		newBug.Version = apiIssue.Fields.AffectsVersions[0].Name
+	sort.Strings(components)
+	newBug.Components = components
+
+	affectsVersions := []string{}
+	for _, av := range apiIssue.Fields.AffectsVersions {
+		affectsVersions = append(affectsVersions, av.Name)
 	}
-	if len(apiIssue.Fields.Components) > 0 {
-		newBug.Component = apiIssue.Fields.Components[0].Name
+	sort.Strings(affectsVersions)
+	newBug.AffectsVersions = affectsVersions
+
+	fixVersions := []string{}
+	for _, fv := range apiIssue.Fields.FixVersions {
+		fixVersions = append(fixVersions, fv.Name)
 	}
+	sort.Strings(fixVersions)
+	newBug.FixVersions = fixVersions
+
 	return newBug
 }
