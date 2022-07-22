@@ -53,9 +53,9 @@ type ProwJobRun struct {
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
 	KnownFailure  bool
 	Succeeded     bool
-	Timestamp     time.Time
+	Timestamp     time.Time `gorm:"index"`
 	Duration      time.Duration
-	OverallResult v1.JobOverallResult
+	OverallResult v1.JobOverallResult `gorm:"index"`
 }
 
 type Test struct {
