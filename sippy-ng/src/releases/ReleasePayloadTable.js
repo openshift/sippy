@@ -179,7 +179,7 @@ function ReleasePayloadTable(props) {
       headerName: 'Current OS Version',
       flex: 3,
       renderCell: (params) => {
-        return <a href={params.row.currentOSURL}>{params.value}</a>
+        return <a href={params.row.current_os_url}>{params.value}</a>
       },
       hide: props.briefTable,
     },
@@ -190,13 +190,13 @@ function ReleasePayloadTable(props) {
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
-        if (params.row.previousOSVersion !== '') {
+        if (params.row.previous_os_version !== '') {
           return (
             <Tooltip title="See diff between these two OS releases">
               <Button
                 style={{ justifyContent: 'center' }}
                 startIcon={<CompareArrows />}
-                href={params.row.osDiffURL}
+                href={params.row.current_os_url}
               />
             </Tooltip>
           )
@@ -210,7 +210,7 @@ function ReleasePayloadTable(props) {
       flex: 3,
       renderCell: (params) => {
         if (params.value !== '') {
-          return <a href={params.row.previousOSURL}>{params.value}</a>
+          return <a href={params.row.previous_os_version}>{params.value}</a>
         }
       },
       hide: props.briefTable,
