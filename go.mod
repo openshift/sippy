@@ -5,6 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/anaskhan96/soup v1.2.5
+	github.com/andygrunwald/go-jira v1.14.0
 	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20210823155509-845c8efe54a7
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.2
@@ -22,7 +23,8 @@ require (
 	golang.org/x/sys v0.0.0-20211109184856-51b60fd695b3 // indirect
 	google.golang.org/api v0.60.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gorm.io/driver/postgres v1.2.1
 	gorm.io/gorm v1.22.2
+	k8s.io/klog v1.0.0
 )
