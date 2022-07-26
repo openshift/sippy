@@ -120,7 +120,7 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 		name string
 		url  string
 	}
-	rows := make(map[prlocator]models.ReleasePullRequest, 0)
+	rows := make(map[prlocator]models.ReleasePullRequest)
 
 	for _, section := range sections {
 		_, imageName, err := extractAnchor(section.Find("a"))
