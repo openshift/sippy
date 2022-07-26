@@ -48,7 +48,6 @@ export function TestAnalysis(props) {
       items: [
         filterFor('name', 'equals', testName),
         not(filterFor('variants', 'contains', 'never-stable')),
-        not(filterFor('variants', 'contains', 'techpreview')),
       ],
     },
     setFilterModel,

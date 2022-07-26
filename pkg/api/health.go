@@ -68,7 +68,7 @@ func useNewInstallTest(release string) bool {
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
-	excludedVariants := []string{"never-stable", "techpreview"}
+	excludedVariants := []string{"never-stable"}
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
 
@@ -209,7 +209,7 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 	prevStats.Histogram = make([]int, 10)
 
 	for _, result := range results {
-		if testreportconversion.IsNeverStableOrTechPreview(result.Variants) {
+		if testreportconversion.IsNeverStable(result.Variants) {
 			continue
 		}
 

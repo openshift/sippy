@@ -233,9 +233,6 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	if v.IsJobNeverStable(jobName) {
 		return []string{"never-stable"}
 	}
-	if techpreview.MatchString(jobName) {
-		return []string{"techpreview"}
-	}
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")
 		return variants
@@ -336,6 +333,9 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	}
 	if fipsRegex.MatchString(jobName) {
 		variants = append(variants, "fips")
+	}
+	if techpreview.MatchString(jobName) {
+		variants = append(variants, "techpreview")
 	}
 	if rtRegex.MatchString(jobName) {
 		variants = append(variants, "realtime")

@@ -4,9 +4,9 @@ import (
 	"math"
 )
 
-func IsNeverStableOrTechPreview(variants []string) bool {
+func IsNeverStable(variants []string) bool {
 	for _, variant := range variants {
-		if variant == "never-stable" || variant == "techpreview" {
+		if variant == "never-stable" {
 			return true
 		}
 	}
