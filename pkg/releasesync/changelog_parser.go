@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/anaskhan96/soup"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
@@ -112,7 +114,14 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 		return nil
 	}
 
-	rows := make([]models.ReleasePullRequest, 0)
+	// Ensure PR uniqueness, there have been examples of the release controller
+	// listing the same PR twice (from upstream and the fork). See OCPCRT-152.
+	type prlocator struct {
+		name string
+		url  string
+	}
+	rows := make(map[prlocator]models.ReleasePullRequest)
+
 	for _, section := range sections {
 		_, imageName, err := extractAnchor(section.Find("a"))
 		if err != nil {
@@ -148,11 +157,24 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 					row.BugURL = url
 				}
 			}
-			rows = append(rows, row)
+
+			prl := prlocator{
+				url:  row.URL,
+				name: row.Name,
+			}
+			if _, ok := rows[prl]; ok {
+				log.Warningf("duplicate PR in %q: %q, %q", c.releaseTag, row.URL, row.Name)
+			} else {
+				rows[prl] = row
+			}
 		}
 	}
 
-	return rows
+	result := make([]models.ReleasePullRequest, 0)
+	for _, v := range rows {
+		result = append(result, v)
+	}
+	return result
 }
 
 func extractAnchor(anchor soup.Root) (href, text string, err error) {
