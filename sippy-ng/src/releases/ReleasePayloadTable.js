@@ -121,6 +121,13 @@ function ReleasePayloadTable(props) {
       headerName: 'Reject reason',
       flex: 1.5,
       hide: props.briefTable,
+      renderCell: (params) => {
+        return (
+          <Tooltip title={`${params.row.reject_reason_note}`}>
+            <Typography>{params.value}</Typography>
+          </Tooltip>
+        )
+      },
     },
     {
       field: 'release_tag',

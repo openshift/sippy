@@ -19,11 +19,20 @@ class ReleaseTags(base):
     stream = Column(String)
     phase = Column(String)
     reject_reason = Column(String)
+    reject_reason_note = Column(String)
+
+class PayloadTestFailures(base):
+    __tablename__ = 'payload_test_failures_14d_matview'
+
+    id = Column(String, primary_key=True)
+    release_tag = Column(String)
+    name = Column(String)
+    prow_job_name = Column(DateTime)
 
 def selectReleases(session, release, stream, showAll, days):
     selectedTags = []
     start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).all()
+    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).order_by(ReleaseTags.release_time.desc()).all()
     for releaseTag in releaseTags:
         if release and releaseTag.release != release:
             continue
@@ -36,31 +45,66 @@ def selectReleases(session, release, stream, showAll, days):
     return selectedTags
 
 def printReleases(selectedTags):
-    print("%-10s%-50s%-20s%-20s" % ("index", "release tag", "phase", "reject reason"))
+    print("%-10s%-50s%-20s%-20s%s" % ("index", "release tag", "phase", "reject reason", "note"))
     for idx, releaseTag in enumerate(selectedTags):
-        print("%-10d%-50s%-20s%-20s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason))
+        print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason, releaseTag.reject_reason_note))
 
-def list(session, release, stream, showAll, days):
+def list_releases(session, release, stream, showAll, days):
     selectedTags = selectReleases(session, release, stream, showAll, days)
     printReleases(selectedTags)
 
-def categorizeSingle(session, releaseTag):
-    reject_reasons = ["TEST_FLAKE", "CLOUD_INFRA", "RH_INFRA", "PRODUCT_REGRESSION", "TEST_REGRESSION"]
-    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.release_tag == releaseTag).all()
+reject_reasons = {
+        "TEST_FLAKE": "tests intermittently failed and then corrected",
+        "CLOUD_INFRA": "inability to obtain cloud infrastructure or outages",
+        "CLOUD_QUOTA": "lack of quota on our CI accounts or rate limiting",
+        "RH_INFRA": "outage/problem in OpenShift CI or Red Hat registries",
+        "PRODUCT_REGRESSION": "actual product regression that needs a fix",
+        "TEST_REGRESSION": "regression in the test framework",
+}
+
+max_test_failures_printed_per_job = 5
+
+def categorizeSingle(session, tag):
+    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.release_tag == tag).all()
+    reject_reasons_keys = list(reject_reasons.keys())
     for releaseTag in releaseTags:
+
+        # Lookup and display test failures for this payload. If excessive numbers, limit to just a few.
+        test_failures = session.query(PayloadTestFailures).filter(PayloadTestFailures.release_tag == tag).all()
+        print()
+        print("Blocking job test failures in payload: %s" % tag)
+        print()
+        job_to_test_failures = {}
+        for test_failure in test_failures:
+            if test_failure.prow_job_name not in job_to_test_failures:
+                job_to_test_failures[test_failure.prow_job_name] = []
+            job_to_test_failures[test_failure.prow_job_name].append(test_failure.name)
+        for job in job_to_test_failures:
+            print("%s:" % job)
+            # print max 5 and indicate if there were more:
+            for test_name in job_to_test_failures[job][:max_test_failures_printed_per_job]:
+                print("   %s" % test_name)
+            if len(job_to_test_failures[job]) > max_test_failures_printed_per_job:
+                print("  ... and %d more" % (len(job_to_test_failures[job])-max_test_failures_printed_per_job))
+
+        print()
         print("Please choose the reject reason for tag %s from the following list:" % releaseTag.release_tag)
-        for idx, reason in enumerate(reject_reasons):
-            print("%10d: %20s" % (idx+1, reason))
+        for idx, reason in enumerate(reject_reasons_keys):
+            print("%10d: %20s - %s" % (idx+1, reason, reject_reasons[reason]))
 
         while True:
-            val = input("Enter your selection between 1 and " + str(len(reject_reasons)) + ": ")
+            val = input("Enter your selection between 1 and " + str(len(reject_reasons_keys)) + ": ")
             try:
                 index = int(val)
-                if index > 0 and index <= len(reject_reasons):
+                if index > 0 and index <= len(reject_reasons_keys):
                     break
             except ValueError:
                 continue
-        releaseTag.reject_reason = reject_reasons[index-1]
+        releaseTag.reject_reason = reject_reasons_keys[index-1]
+
+        note = input("Enter a brief note on why this payload was categorized as such (optional): ")
+        releaseTag.reject_reason_note = note
+
     session.commit()
 
 def categorize(session, release, stream, showAll, days):
@@ -123,5 +167,5 @@ if __name__ == '__main__':
         else:
             categorize(session, args["release"], args["stream"], args["all"], args["days"])
     else:
-        list(session, args["release"], args["stream"], args["all"], args["days"])
+        list_releases(session, args["release"], args["stream"], args["all"], args["days"])
 
