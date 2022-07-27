@@ -59,8 +59,12 @@ type ReleaseTag struct {
 
 	JobRuns []ReleaseJobRun `json:"-" gorm:"foreignKey:release_tag_id"`
 
-	// RejectReason is used to indicate why a payload is rejected.
+	// RejectReason is category of failure for why the payload was rejected. Today this is manually assigned
+	// by TRT, and there is no guarantee it will always be set.
 	RejectReason string `json:"reject_reason" gorm:"column:reject_reason"`
+
+	// RejectReasonNote is a description from TRT as to why the payload was categorized as it was.
+	RejectReasonNote string `json:"reject_reason_note" gorm:"column:reject_reason_note"`
 }
 
 // ReleasePullRequest represents a pull request that was included for the first time

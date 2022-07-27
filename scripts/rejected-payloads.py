@@ -19,6 +19,7 @@ class ReleaseTags(base):
     stream = Column(String)
     phase = Column(String)
     reject_reason = Column(String)
+    reject_reason_note = Column(String)
 
 class PayloadTestFailures(base):
     __tablename__ = 'payload_test_failures_14d_matview'
@@ -44,9 +45,9 @@ def selectReleases(session, release, stream, showAll, days):
     return selectedTags
 
 def printReleases(selectedTags):
-    print("%-10s%-50s%-20s%-20s" % ("index", "release tag", "phase", "reject reason"))
+    print("%-10s%-50s%-20s%-20s%s" % ("index", "release tag", "phase", "reject reason", "note"))
     for idx, releaseTag in enumerate(selectedTags):
-        print("%-10d%-50s%-20s%-20s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason))
+        print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason, releaseTag.reject_reason_note))
 
 def list_releases(session, release, stream, showAll, days):
     selectedTags = selectReleases(session, release, stream, showAll, days)
@@ -100,6 +101,10 @@ def categorizeSingle(session, tag):
             except ValueError:
                 continue
         releaseTag.reject_reason = reject_reasons_keys[index-1]
+
+        note = input("Enter a brief note on why this payload was categorized as such (optional): ")
+        releaseTag.reject_reason_note = note
+
     session.commit()
 
 def categorize(session, release, stream, showAll, days):
