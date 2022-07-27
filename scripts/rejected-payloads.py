@@ -23,7 +23,7 @@ class ReleaseTags(base):
 def selectReleases(session, release, stream, showAll, days):
     selectedTags = []
     start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).all()
+    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).order_by(ReleaseTags.release_time.desc()).all()
     for releaseTag in releaseTags:
         if release and releaseTag.release != release:
             continue
