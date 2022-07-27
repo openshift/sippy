@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -116,4 +117,17 @@ FROM results;
 	elapsed := time.Since(now)
 	log.Infof("TestReportExcludeVariants completed in %s", elapsed)
 	return testReport, nil
+}
+
+// LoadBugsForTest returns all bugs in the database for the given test, across all releases.
+func LoadBugsForTest(dbc *db.DB, testName string) ([]models.Bug, error) {
+	results := []models.Bug{}
+
+	test := models.Test{}
+	res := dbc.DB.Where("name = ?", testName).Preload("Bugs").First(&test)
+	if res.Error != nil {
+		return results, res.Error
+	}
+	log.Infof("found %d bugs for test", len(test.Bugs))
+	return test.Bugs, nil
 }

@@ -424,6 +424,28 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
+func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+
+	bugs, err := query.LoadBugsForTest(s.db, testName)
+	if err != nil {
+		log.WithError(err).Error("error querying test bugs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying last updated from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, bugs)
+}
+
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -595,6 +617,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
 	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
