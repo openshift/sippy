@@ -45,7 +45,7 @@ def list(session, release, stream, showAll, days):
     printReleases(selectedTags)
 
 def categorizeSingle(session, releaseTag):
-    reject_reasons = ["TEST_FLAKE", "CLOUD_INFRA", "RH_INFRA", "PRODUCT_REGRESSION", "TEST_REGRESSION"]
+    reject_reasons = ["TEST_FLAKE", "CLOUD_INFRA", "CLOUD_QUOTA", "RH_INFRA", "PRODUCT_REGRESSION", "TEST_REGRESSION"]
     releaseTags = session.query(ReleaseTags).filter(ReleaseTags.release_tag == releaseTag).all()
     for releaseTag in releaseTags:
         print("Please choose the reject reason for tag %s from the following list:" % releaseTag.release_tag)
