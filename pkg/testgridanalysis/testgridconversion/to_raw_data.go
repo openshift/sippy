@@ -35,7 +35,7 @@ func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgrid
 				failed = 1
 				passed = 0
 			}
-			addTestResult(jobResult.TestResults, &jobDetails, test.Name, passed, failed, 0)
+			addTestResult(jobResult.TestResults, &jobDetails, fmt.Sprintf("%s.%s", syntheticTests.Name, test.Name), passed, failed, 0)
 		}
 	}
 	return jobResult, []string{}
