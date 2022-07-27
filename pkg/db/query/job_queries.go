@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -83,4 +84,17 @@ ORDER BY current_pass_percentage ASC;
 	}
 	q.Scan(&variantResults)
 	return variantResults, nil
+}
+
+// LoadBugsForJob returns all bugs in the database for the given job, across all releases.
+func LoadBugsForJob(dbc *db.DB, jobName string) ([]models.Bug, error) {
+	results := []models.Bug{}
+
+	job := models.ProwJob{}
+	res := dbc.DB.Where("name = ?", jobName).Preload("Bugs").First(&job)
+	if res.Error != nil {
+		return results, res.Error
+	}
+	log.Infof("found %d bugs for job", len(job.Bugs))
+	return job.Bugs, nil
 }

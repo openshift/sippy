@@ -23,6 +23,7 @@ type ProwJob struct {
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[]"`
 	TestGridURL string
+	Bugs        []Bug `gorm:"many2many:bug_jobs;"`
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used

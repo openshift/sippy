@@ -439,7 +439,29 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		log.WithError(err).Error("error querying test bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying last updated from db",
+			"message": "error querying test bugs from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, bugs)
+}
+
+func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	testName := req.URL.Query().Get("job")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'job' is required.",
+		})
+		return
+	}
+
+	bugs, err := query.LoadBugsForJob(s.db, testName)
+	if err != nil {
+		log.WithError(err).Error("error querying job bugs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying job bugs from db",
 		})
 		return
 	}
@@ -614,6 +636,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
