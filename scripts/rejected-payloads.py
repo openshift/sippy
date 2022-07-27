@@ -20,6 +20,14 @@ class ReleaseTags(base):
     phase = Column(String)
     reject_reason = Column(String)
 
+class PayloadTestFailures(base):
+    __tablename__ = 'payload_test_failures_14d_matview'
+
+    id = Column(String, primary_key=True)
+    release_tag = Column(String)
+    name = Column(String)
+    prow_job_name = Column(DateTime)
+
 def selectReleases(session, release, stream, showAll, days):
     selectedTags = []
     start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
@@ -53,10 +61,32 @@ reject_reasons = {
         "TEST_REGRESSION": "regression in the test framework",
 }
 
-def categorizeSingle(session, releaseTag):
-    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.release_tag == releaseTag).all()
+max_test_failures_printed_per_job = 5
+
+def categorizeSingle(session, tag):
+    releaseTags = session.query(ReleaseTags).filter(ReleaseTags.release_tag == tag).all()
     reject_reasons_keys = list(reject_reasons.keys())
     for releaseTag in releaseTags:
+
+        # Lookup and display test failures for this payload. If excessive numbers, limit to just a few.
+        test_failures = session.query(PayloadTestFailures).filter(PayloadTestFailures.release_tag == tag).all()
+        print()
+        print("Blocking job test failures in payload: %s" % tag)
+        print()
+        job_to_test_failures = {}
+        for test_failure in test_failures:
+            if test_failure.prow_job_name not in job_to_test_failures:
+                job_to_test_failures[test_failure.prow_job_name] = []
+            job_to_test_failures[test_failure.prow_job_name].append(test_failure.name)
+        for job in job_to_test_failures:
+            print("%s:" % job)
+            # print max 5 and indicate if there were more:
+            for test_name in job_to_test_failures[job][:max_test_failures_printed_per_job]:
+                print("   %s" % test_name)
+            if len(job_to_test_failures[job]) > max_test_failures_printed_per_job:
+                print("  ... and %d more" % (len(job_to_test_failures[job])-max_test_failures_printed_per_job))
+
+        print()
         print("Please choose the reject reason for tag %s from the following list:" % releaseTag.release_tag)
         for idx, reason in enumerate(reject_reasons_keys):
             print("%10d: %20s - %s" % (idx+1, reason, reject_reasons[reason]))
