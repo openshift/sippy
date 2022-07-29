@@ -36,9 +36,9 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]v1.RawTestResult{},
 			},
 			expectedTestResults: []v1.RawJobRunTestResult{
-				{Name: testidentification.SippySuiteName + "." + testidentification.InstallTestName, Status: tgv1.TestStatusSuccess},
-				{Name: testidentification.SippySuiteName + "." + testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
-				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.InstallTestName, Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: "operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 		},
 		{
@@ -55,8 +55,8 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]v1.RawTestResult{},
 			},
 			expectedTestResults: []v1.RawJobRunTestResult{
-				{Name: testidentification.SippySuiteName + "." + testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
-				{Name: "sippy.operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
+				{Name: "operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
 			},
 			expectedFailedTestNames: []string{
 				testidentification.SippySuiteName + "." + testidentification.InstallTestName,

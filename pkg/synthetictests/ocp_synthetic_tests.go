@@ -2,6 +2,7 @@ package synthetictests
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -156,6 +157,8 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	}
 
 	for testName, result := range syntheticTests {
+		testNameWithoutSuite := strings.TrimPrefix(testName, testidentification.SippySuiteName+".")
+
 		// convert the result.pass or .fail to the status value we use for test results:
 		if result.fail > 0 {
 			jrr.TestFailures += result.fail
@@ -163,7 +166,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 		} else if result.pass > 0 {
 			// Add successful test results as well.
 			jrr.TestResults = append(jrr.TestResults, sippyprocessingv1.RawJobRunTestResult{
-				Name:   testName,
+				Name:   testNameWithoutSuite,
 				Status: v1.TestStatusSuccess,
 			})
 		}
@@ -171,11 +174,11 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 		// Create junits
 		if result.pass > 0 {
 			results = append(results, &junit.TestCase{
-				Name: testName,
+				Name: testNameWithoutSuite,
 			})
 		} else if result.fail > 0 {
 			results = append(results, &junit.TestCase{
-				Name: testName,
+				Name: testNameWithoutSuite,
 				FailureOutput: &junit.FailureOutput{
 					Output: fmt.Sprintf("Synthetic test %q failed", testName),
 				},
