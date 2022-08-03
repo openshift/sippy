@@ -46,7 +46,6 @@ type apiRunResults []apitype.JobRun
 
 // PrintJobsRunsReportFromDB renders a filtered summary of matching jobs.
 func PrintJobsRunsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-
 	var fil *filter.Filter
 
 	queryFilter := req.URL.Query().Get("filter")
