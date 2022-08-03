@@ -46,6 +46,12 @@ export const JOB_THRESHOLDS = {
   error: 50,
 }
 
+export const BUILD_CLUSTER_THRESHOLDS = {
+  success: 80,
+  warning: 60,
+  error: 50,
+}
+
 export const TEST_THRESHOLDS = {
   success: 80,
   warning: 60,
