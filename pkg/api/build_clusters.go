@@ -14,7 +14,7 @@ func GetBuildClusterHealthReport(dbc *db.DB, start, boundary, end time.Time) ([]
 }
 
 func GetBuildClusterHealthAnalysis(dbc *db.DB, period string) (map[string]apitype.BuildClusterHealthAnalysis, error) {
-	results := make(map[string]apitype.BuildClusterHealthAnalysis, 0)
+	results := make(map[string]apitype.BuildClusterHealthAnalysis)
 
 	health, err := query.BuildClusterAnalysis(dbc, period)
 	if err != nil {

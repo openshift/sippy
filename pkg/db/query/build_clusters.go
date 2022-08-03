@@ -15,10 +15,10 @@ func HasBuildClusterData(dbc *db.DB) (bool, error) {
 	return count > 0, res.Error
 }
 
-func BuildClusterHealth(db *db.DB, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
+func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
 	results := make([]models.BuildClusterHealthReport, 0)
 
-	rawResults := db.DB.Select(`
+	rawResults := dbc.DB.Select(`
 		ROW_NUMBER() OVER() AS id,
 		cluster,
 		coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
@@ -32,7 +32,7 @@ func BuildClusterHealth(db *db.DB, start, boundary, end time.Time) ([]models.Bui
 		Where(`cluster != '' AND cluster IS NOT NULL`).
 		Group("cluster")
 
-	q := db.DB.Table("(?) as results", rawResults).
+	q := dbc.DB.Table("(?) as results", rawResults).
 		Select(`*,
 		current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
@@ -42,10 +42,10 @@ func BuildClusterHealth(db *db.DB, start, boundary, end time.Time) ([]models.Bui
 	return results, q.Error
 }
 
-func BuildClusterAnalysis(db *db.DB, period string) ([]models.BuildClusterHealth, error) {
+func BuildClusterAnalysis(dbc *db.DB, period string) ([]models.BuildClusterHealth, error) {
 	results := make([]models.BuildClusterHealth, 0)
 
-	q := db.DB.Raw(fmt.Sprintf(`
+	q := dbc.DB.Raw(fmt.Sprintf(`
 WITH results AS (
 SELECT
     cluster,
