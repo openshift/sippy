@@ -1,7 +1,6 @@
 ## Building Sippy
 
-Running `make` will build an all-in-one binary that contains both the go
-app and frontend.
+Running `make` will build an all-in-one binary that contains both the go app and frontend.
 
 To build just the backend, run `go build -mod=vendor .`
 
@@ -13,9 +12,8 @@ Launch postgresql:
 podman run --name sippy-postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d quay.io/enterprisedb/postgresql
 ```
 
-Sippy will manage it's own schema on startup via gorm automigrations and
-some custom code for managing materialized view definitions and
-functions.
+Sippy will manage it's own schema on startup via gorm automigrations and some custom code for managing materialized view
+definitions and functions.
 
 ## Populating Data
 
@@ -31,9 +29,8 @@ Sippy obtains data from multiple sources:
 
 ### From a Prod Sippy Backup
 
-The simplest way to fetch data for Sippy, is to just get a copy of the
-production database. See the TRT team drive in Google, periodically
-there is a gzip'd backup stored there. Restore it locally with:
+The simplest way to fetch data for Sippy, is to just get a copy of the production database. See the TRT team drive in
+Google, periodically there is a gzip'd backup stored there. Restore it locally with:
 
 ```bash
 psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
@@ -41,16 +38,13 @@ psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
 
 ### From TestGrid
 
-Fetch data from TestGrid, and load it into the db. This process can take
-some time for recent OpenShift releases with substantial number of jobs.
-Using older releases like 4.7 can be fetched and loaded in just a couple
-minutes.
+Fetch data from TestGrid, and load it into the db. This process can take some time for recent OpenShift releases with
+substantial number of jobs. Using older releases like 4.7 can be fetched and loaded in just a couple minutes.
 
-TestGrid data is loaded into the database in two steps. It is first
-downloaded and stored in a local data directory, and then loaded into
-the DB.
+TestGrid data is loaded into the database in two steps. It is first downloaded and stored in a local data directory, and
+then loaded into the DB.
 
-To download TestGrid ata:
+To download TestGrid data:
 
 ```bash
 ./sippy --local-data /opt/sippy-testdata \
@@ -72,21 +66,16 @@ To load the database:
 
 ### From Prow and GCS buckets
 
-Fetching data from prow directly gives us access to more raw data that
-TestGrid doesn't have, such as build cluster data, raw junit files, test
-durations, and more -- but it requires more configuration that using
-TestGrid.
+Fetching data from prow directly gives us access to more raw data that TestGrid doesn't have, such as build cluster
+data, raw junit files, test durations, and more -- but it requires more configuration that using TestGrid.
 
-In order to access the GCS storage buckets where the raw junit data is
-stored, you need to provide Sippy with a google service account
-credential.  See the [official google
-docs](https://cloud.google.com/iam/docs/service-accounts) for
+In order to access the GCS storage buckets where the raw junit data is stored, you need to provide Sippy with a google
+service account credential. See the [official google docs](https://cloud.google.com/iam/docs/service-accounts) for
 information on how to get one.
 
-Additionally, you need a configuration file that maps job names to
-releases.  One should already be available in
-[./config/openshift.yaml](config/openshift.yaml).  Information about how
-to generate this file is available [here](config/README.md).
+Additionally, you need a configuration file that maps job names to releases. One should already be available in
+[./config/openshift.yaml](config/openshift.yaml). Information about how to generate this file is
+available [here](config/README.md).
 
 ```bash
 ./sippy --load-database \
@@ -102,9 +91,8 @@ to generate this file is available [here](config/README.md).
 
 ### From the release controller
 
-Sippy retrieves release-related data from release controllers. In order
-to fetch release data, give Sippy a list of releases and architectures
-like this:
+Sippy retrieves release-related data from release controllers. In order to fetch release data, give Sippy a list of
+releases and architectures like this:
 
 ```
 ./sippy --load-database \
@@ -121,7 +109,6 @@ like this:
   --config ./config/openshift.yaml
 ```
 
-
 ## Launch Sippy API
 
 ```bash
@@ -135,11 +122,10 @@ like this:
 
 ## Launch Sippy Web UI
 
-If you are developing on the front-end, you may start a development
-server which will update automatically when you edit files:
+If you are developing on the front-end, you may start a development server which will update automatically when you edit
+files:
 
-See [Sippy front-end docs](sippy-ng/README.md]) for more details about
-developing on the front-end.
+See [Sippy front-end docs](sippy-ng/README.md]) for more details about developing on the front-end.
 
 ```bash
 cd sippy-ng && npm start
