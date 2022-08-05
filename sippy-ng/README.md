@@ -12,6 +12,13 @@ When developing on the UI, it's better to run the API and UI separately
 for quicker feedback (Sippy will listen on `:8080`, and when run with
 `npm start`, the UI defaults to `:3000`)
 
+## Installing dependencies
+
+```bash
+cd sippy-ng
+npm install
+```
+
 ## Testing
 
 To run the tests run `npm test`.
