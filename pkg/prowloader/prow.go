@@ -340,7 +340,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
-		if tc.FailureOutput == nil {
+		if tc.SkipMessage != nil {
+			continue
+		} else if tc.FailureOutput == nil {
 			status = v1.TestStatusSuccess
 		} else {
 			failureOutput = &models.ProwJobRunTestOutput{
