@@ -29,7 +29,9 @@ func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.Bu
 		coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
 `, sql.Named("start", start), sql.Named("boundary", boundary), sql.Named("end", end)).
 		Table("prow_job_runs").
+		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where(`cluster != '' AND cluster IS NOT NULL`).
+		Where("prow_jobs.kind = 'periodic'").
 		Group("cluster")
 
 	q := dbc.DB.Table("(?) as results", rawResults).
@@ -56,8 +58,12 @@ SELECT
     sum(case when overall_result = 'S' then 1 else 0 end) * 100.0 / count(*) AS pass_percentage
 FROM
     prow_job_runs
+JOIN
+	prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE
     cluster is not null
+AND
+	prow_jobs.kind = 'periodic'
 AND
     cluster != ''
 AND
