@@ -387,14 +387,6 @@ func (o *Options) Run() error {
 }
 
 func (o *Options) runServerMode() error {
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":2112", nil)
-		if err != nil {
-			panic(err)
-		}
-	}()
-
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
@@ -429,6 +421,14 @@ func (o *Options) runServerMode() error {
 	if err := metrics.RefreshMetricsDB(dbc); err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":2112", nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// force a data refresh in the background. This is important to initially populate the db's materialized views
 	// if this is the first time starting sippy.
