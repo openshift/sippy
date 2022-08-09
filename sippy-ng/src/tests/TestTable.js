@@ -117,6 +117,10 @@ function TestTable(props) {
           flex: 3.5,
         },
         {
+          field: 'suite_name',
+          flex: 1.0,
+        },
+        {
           field: 'variants',
           flex: 1.5,
           hide: props.collapse,
@@ -152,6 +156,10 @@ function TestTable(props) {
         {
           field: 'name',
           flex: 3.5,
+        },
+        {
+          field: 'suite_name',
+          flex: 1.0,
         },
         {
           field: 'variants',
@@ -190,6 +198,10 @@ function TestTable(props) {
         {
           field: 'name',
           flex: 3.5,
+        },
+        {
+          field: 'suite_name',
+          flex: 1.0,
         },
         {
           field: 'variants',
@@ -310,6 +322,13 @@ function TestTable(props) {
           </div>
         )
       },
+    },
+    suite_name: {
+      field: 'suite_name',
+      headerName: 'Suite',
+      autocomplete: 'suite_name',
+      type: 'array',
+      renderCell: (params) => <div className="test-name">{params.value}</div>,
     },
     variants: {
       field: 'variants',

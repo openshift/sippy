@@ -190,7 +190,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse bool, fil *f
 	if collapse {
 		rawQuery = rawQuery.Select(`name,` + queryTestSummer).Group("name")
 	} else {
-		variantSelect = "variants, "
+		variantSelect = "suite_name,variants, "
 	}
 
 	if rawFilter != nil {
