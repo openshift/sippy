@@ -130,13 +130,13 @@ function TestTable(props) {
         {
           field: 'working_average',
           flex: 0.75,
-          hide: props.collapse,
+          hide: props.collapse || props.briefTable,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'working_standard_deviation',
           flex: 0.75,
-          hide: props.collapse,
+          hide: props.collapse || props.briefTable,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
