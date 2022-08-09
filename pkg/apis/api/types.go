@@ -269,6 +269,16 @@ type Test struct {
 	NetWorkingImprovement float64 `json:"net_working_improvement"`
 	NetImprovement        float64 `json:"net_improvement"`
 
+	WorkingAverage           float64 `json:"working_average,omitempty"`
+	WorkingStandardDeviation float64 `json:"working_standard_deviation,omitempty"`
+	DeltaFromWorkingAverage  float64 `json:"delta_from_working_average,omitempty"`
+	PassingAverage           float64 `json:"passing_average,omitempty"`
+	PassingStandardDeviation float64 `json:"passing_standard_deviation,omitempty"`
+	DeltaFromPassingAverage  float64 `json:"delta_from_passing_average,omitempty"`
+	FlakeAverage             float64 `json:"flake_average,omitempty"`
+	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
+	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
+
 	Tags           []string     `json:"tags"`
 	Bugs           []bugsv1.Bug `json:"bugs"`
 	AssociatedBugs []bugsv1.Bug `json:"associated_bugs"`
@@ -300,6 +310,8 @@ func (test Test) GetStringValue(param string) (string, error) {
 	}
 }
 
+//
+// nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {
 	case "id":
@@ -348,6 +360,24 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 		return float64(len(test.Bugs)), nil
 	case "associated_bugs":
 		return float64(len(test.AssociatedBugs)), nil
+	case "delta_from_working_average":
+		return test.DeltaFromWorkingAverage, nil
+	case "working_average":
+		return test.WorkingAverage, nil
+	case "working_standard_deviation":
+		return test.WorkingStandardDeviation, nil
+	case "delta_from_passing_average":
+		return test.DeltaFromPassingAverage, nil
+	case "passing_average":
+		return test.PassingAverage, nil
+	case "passing_standard_deviation":
+		return test.PassingStandardDeviation, nil
+	case "delta_from_flake_average":
+		return test.DeltaFromFlakeAverage, nil
+	case "flake_average":
+		return test.FlakeAverage, nil
+	case "flake_standard_deviation":
+		return test.FlakeStandardDeviation, nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}

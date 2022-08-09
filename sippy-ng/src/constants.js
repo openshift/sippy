@@ -97,6 +97,16 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'step graph.',
   },
+  HIGH_DELTA_FROM_WORKING_AVERAGE: {
+    columnField: 'delta_from_working_average',
+    operatorValue: '<=',
+    value: '20',
+  },
+  HIGH_STANDARD_DEVIATION: {
+    columnField: 'working_standard_deviation',
+    operatorValue: '>',
+    value: '1',
+  },
   NO_OPENSHIFT_TESTS_SHOULD_WORK: {
     columnField: 'name',
     not: true,

@@ -126,6 +126,24 @@ function TestTable(props) {
           hide: props.collapse,
         },
         {
+          field: 'delta_from_working_average',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'working_average',
+          flex: 0.75,
+          hide: props.collapse || props.briefTable,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'working_standard_deviation',
+          flex: 0.75,
+          hide: props.collapse || props.briefTable,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
           field: 'current_working_percentage',
           flex: 0.75,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
@@ -133,10 +151,12 @@ function TestTable(props) {
         {
           field: 'net_working_improvement',
           flex: 0.5,
+          hide: !props.collapse && props.briefTable,
         },
         {
           field: 'previous_working_percentage',
           flex: 0.75,
+          hide: !props.collapse && props.briefTable,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
@@ -165,6 +185,24 @@ function TestTable(props) {
           field: 'variants',
           flex: 1.5,
           hide: props.collapse,
+        },
+        {
+          field: 'delta_from_passing_average',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'passing_average',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'passing_standard_deviation',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'current_pass_percentage',
@@ -207,6 +245,24 @@ function TestTable(props) {
           field: 'variants',
           flex: 1.5,
           hide: props.collapse,
+        },
+        {
+          field: 'delta_from_flake_average',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'flake_average',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'flake_standard_deviation',
+          flex: 0.75,
+          hide: props.collapse,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'current_flake_percentage',
@@ -340,6 +396,99 @@ function TestTable(props) {
           {params.value ? params.value.join(', ') : ''}
         </div>
       ),
+    },
+    delta_from_working_average: {
+      field: 'delta_from_working_average',
+      headerName: 'Delta',
+      type: 'number',
+      renderCell: (params) => {
+        return (
+          <div className="percentage-cell">
+            {params.value
+              ? Number(params.value).toFixed(1).toLocaleString() + '%'
+              : ''}
+          </div>
+        )
+      },
+    },
+    working_average: {
+      field: 'working_average',
+      headerName: 'Average',
+      type: 'number',
+      renderCell: (params) => (
+        <div className="percentage-cell">
+          {params.value
+            ? Number(params.value).toFixed(1).toLocaleString() + '%'
+            : ''}
+        </div>
+      ),
+    },
+    working_standard_deviation: {
+      field: 'working_standard_deviation',
+      headerName: 'StdDev',
+      type: 'number',
+    },
+    delta_from_passing_average: {
+      field: 'delta_from_passing_average',
+      headerName: 'Delta',
+      type: 'number',
+      renderCell: (params) => {
+        return (
+          <div className="percentage-cell">
+            {params.value
+              ? Number(params.value).toFixed(1).toLocaleString() + '%'
+              : ''}
+          </div>
+        )
+      },
+    },
+    passing_average: {
+      field: 'passing_average',
+      headerName: 'Average',
+      type: 'number',
+      renderCell: (params) => (
+        <div className="percentage-cell">
+          {params.value
+            ? Number(params.value).toFixed(1).toLocaleString() + '%'
+            : ''}
+        </div>
+      ),
+    },
+    passing_standard_deviation: {
+      field: 'passing_standard_deviation',
+      headerName: 'StdDev',
+      type: 'number',
+    },
+    delta_from_flake_average: {
+      field: 'delta_from_flake_average',
+      headerName: 'Delta',
+      type: 'number',
+      renderCell: (params) => {
+        return (
+          <div className="percentage-cell">
+            {params.value
+              ? Number(params.value).toFixed(1).toLocaleString() + '%'
+              : ''}
+          </div>
+        )
+      },
+    },
+    flake_average: {
+      field: 'flake_average',
+      headerName: 'Average',
+      type: 'number',
+      renderCell: (params) => (
+        <div className="percentage-cell">
+          {params.value
+            ? Number(params.value).toFixed(1).toLocaleString() + '%'
+            : ''}
+        </div>
+      ),
+    },
+    flake_standard_deviation: {
+      field: 'flake_standard_deviation',
+      headerName: 'StdDev',
+      type: 'number',
     },
     current_working_percentage: {
       field: 'current_working_percentage',
@@ -581,6 +730,10 @@ function TestTable(props) {
       queryString += '&limit=' + safeEncodeURIComponent(props.limit)
     }
 
+    if (props.overall !== undefined) {
+      queryString += '&overall=' + safeEncodeURIComponent(props.overall)
+    }
+
     if (period) {
       queryString += '&period=' + safeEncodeURIComponent(period)
     }
@@ -787,6 +940,7 @@ TestTable.defaultProps = {
 TestTable.propTypes = {
   briefTable: PropTypes.bool,
   collapse: PropTypes.bool,
+  overall: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
