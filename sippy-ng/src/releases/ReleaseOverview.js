@@ -422,6 +422,58 @@ export default function ReleaseOverview(props) {
               <Card elevation={5} style={{ textAlign: 'center' }}>
                 <Typography
                   component={Link}
+                  to={`/tests/${props.release}/details?${queryForBookmark(
+                    BOOKMARKS.RUN_7,
+                    BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                    BOOKMARKS.NO_STEP_GRAPH,
+                    BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
+                    BOOKMARKS.HIGH_STANDARD_DEVIATION
+                  )}&sortField=delta_from_working_average&sort=asc`}
+                  style={{ textAlign: 'center' }}
+                  variant="h5"
+                >
+                  Top failing test NURPs
+                  <Tooltip
+                    title={
+                      'Show the list of tests with a variant that perform significiently worse than the other variants of the same tests.'
+                    }
+                  >
+                    <InfoIcon />
+                  </Tooltip>
+                </Typography>
+
+                <Container size="xl">
+                  <TestTable
+                    collapse={false}
+                    overall={false}
+                    hideControls={true}
+                    sortField="delta_from_working_average"
+                    sort="asc"
+                    limit={10}
+                    rowsPerPageOptions={[5]}
+                    filterModel={{
+                      items: [
+                        BOOKMARKS.RUN_7,
+                        BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                        BOOKMARKS.NO_STEP_GRAPH,
+                        BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
+                        BOOKMARKS.HIGH_STANDARD_DEVIATION,
+                      ],
+                    }}
+                    pageSize={5}
+                    briefTable={true}
+                    release={props.release}
+                  />
+                </Container>
+              </Card>
+            </Grid>
+
+            <Grid item md={6} sm={12}>
+              <Card elevation={5} style={{ textAlign: 'center' }}>
+                <Typography
+                  component={Link}
                   to={`/tests/${props.release}?${queryForBookmark(
                     BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
