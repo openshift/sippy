@@ -200,7 +200,8 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse bool, fil *f
 	testReports := make([]apitype.Test, 0)
 	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(`ROW_NUMBER() OVER() as id, name,` + variantSelect + queryTestSummarizer)
+		Select(`ROW_NUMBER() OVER() as id, name,` + variantSelect + queryTestSummarizer).
+		Where("current_runs > 0 or previous_runs > 0")
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)
 	if processedFilter != nil {
