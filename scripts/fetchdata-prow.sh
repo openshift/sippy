@@ -9,8 +9,14 @@ while [ true ]; do
   /bin/sippy --load-database \
     --load-prow=true \
     --load-testgrid=false \
-    --release 4.12 \
+    --release 3.11 \
+    --release 4.6 \
+    --release 4.7 \
+    --release 4.8 \
+    --release 4.9 \
+    --release 4.10 \
     --release 4.11 \
+    --release 4.12 \
     --release Presubmits \
     --arch amd64 \
     --arch arm64 \
