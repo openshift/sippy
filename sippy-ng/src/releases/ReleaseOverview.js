@@ -13,6 +13,7 @@ import {
   withSort,
 } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
+import BuildClusterHealthChart from '../build_clusters/BuildClusterHealthChart'
 import Grid from '@material-ui/core/Grid'
 import Histogram from '../components/Histogram'
 import InfoIcon from '@material-ui/icons/Info'

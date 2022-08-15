@@ -479,3 +479,9 @@ type PayloadEvent struct {
 	AllDay  bool   `json:"allDay"`
 	Display string `json:"display,omitempty"`
 }
+
+type BuildClusterHealthAnalysis struct {
+	ByPeriod map[string]BuildClusterHealth `json:"by_period"`
+}
+
+type BuildClusterHealth = models.BuildClusterHealthReport
