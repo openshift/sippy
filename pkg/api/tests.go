@@ -165,7 +165,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 		rawQuery = rawQuery.Select(`name,` + query.QueryTestSummer).Group("name")
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
-		variantSelect = "suite_name, variants, " +
+		variantSelect = "variants, " +
 			"delta_from_working_average, working_average, working_standard_deviation, " +
 			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
 			"delta_from_flake_average, flake_average, flake_standard_deviation, "
@@ -178,8 +178,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	testReports := make([]apitype.Test, 0)
 	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(`ROW_NUMBER() OVER() as id, name,` + variantSelect + query.QueryTestSummarizer).
-		Where("current_runs > 0 or previous_runs > 0")
+		Select(`ROW_NUMBER() OVER() as id, name,` + variantSelect + query.QueryTestSummarizer)
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)
 	if processedFilter != nil {
