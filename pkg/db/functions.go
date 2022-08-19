@@ -25,7 +25,7 @@ var PostgresFunctions = []PostgresFunction{
 func syncPostgresFunctions(db *gorm.DB) error {
 	for _, pgFunc := range PostgresFunctions {
 		dropSQL := fmt.Sprintf("DROP FUNCTION IF EXISTS %s", pgFunc.Name)
-		if err := syncSchema(db, hashTypeFunction, pgFunc.Name, pgFunc.Definition, dropSQL); err != nil {
+		if err := syncSchema(db, hashTypeFunction, pgFunc.Name, pgFunc.Definition, dropSQL, nil, nil); err != nil {
 			return err
 		}
 	}

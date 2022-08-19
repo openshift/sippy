@@ -15,9 +15,8 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView      SchemaHashType = "matview"
-	hashTypeMatViewIndex SchemaHashType = "matview_index"
-	hashTypeFunction     SchemaHashType = "function"
+	hashTypeMatView  SchemaHashType = "matview"
+	hashTypeFunction SchemaHashType = "function"
 )
 
 type DB struct {
@@ -119,10 +118,14 @@ func New(dsn string) (*DB, error) {
 //   have changed, the resource will be recreated.
 // dropSQL is the full SQL command we will run if we detect that the resource needs updating. It should include
 //   "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
+// indexes is a pointer to a SQL command we will run if present to create the desired indexes. This only happens if we detect
+//   the desiredSchema needed an update.
+// dropIndexes is a pointer to a SQL command we will run to drop indexes prior to creating them. This only happens if we detect
+//   the desiredSchema needed an update.
 //
 // This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
 // not be recreated until you also delete the corresponding row from schema_hashes.
-func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string) error {
+func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string, indexes, dropIndexes *string) error {
 
 	// Calculate hash of our schema to see if anything has changed.
 	hash := sha256.Sum256([]byte(desiredSchema))
@@ -176,6 +179,22 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 			}
 		}
 		vlog.Info("schema hash updated")
+
+		if dropIndexes != nil {
+			vlog.Info("dropping indexes")
+			if res := db.Exec(*dropIndexes); res.Error != nil {
+				vlog.WithError(res.Error).Error("error dropping indexes")
+				return res.Error
+			}
+		}
+
+		if indexes != nil {
+			vlog.Info("creating indexes")
+			if res := db.Exec(*indexes); res.Error != nil {
+				log.WithError(res.Error).Error("error creating indexes")
+				return res.Error
+			}
+		}
 	} else {
 		vlog.Debug("no schema update required")
 	}

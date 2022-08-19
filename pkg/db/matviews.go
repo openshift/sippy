@@ -89,15 +89,10 @@ func syncPostgresMaterializedViews(db *gorm.DB) error {
 		}
 		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)
 		schema := fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, viewDef)
-		if err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL); err != nil {
-			return err
-		}
-
-		// Sync index for the materialized view:
 		indexName := fmt.Sprintf("idx_%s", pmv.Name)
 		index := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, pmv.Name, strings.Join(pmv.IndexColumns, ","))
-		dropSQL = fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)
-		if err := syncSchema(db, hashTypeMatViewIndex, indexName, index, dropSQL); err != nil {
+		indexDropSQL := fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)
+		if err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL, &index, &indexDropSQL); err != nil {
 			return err
 		}
 	}
