@@ -2,6 +2,11 @@
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
 releases:
+  "3.11":
+    jobs:
+      periodic-ci-openshift-openshift-ansible-release-3.11-e2e-aws-nightly: true
+      periodic-ci-openshift-openshift-ansible-release-3.11-e2e-gcp-nightly: true
+  	  periodic-ci-openshift-origin-release-3.11-e2e-gcp: true
   "Presubmits":
     regexp:
       - "^pull-ci-openshift-.*-(master|main)-e2e-.*"
