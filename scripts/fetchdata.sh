@@ -1,16 +1,31 @@
 #!/bin/sh
 
-# sleep before fetching so that if we're in some sort of fast crashloop/reschedule mode,
-# we don't ping testgrid everytime we come back up
-echo "Doing initial sleep before fetching testgrid data"
-sleep 600 # 10 minutes
+# sleep before fetching so that if we're in some sort of fast crashloop/reschedule mode
+echo "Doing initial sleep before fetching prow data"
+sleep 600
 while [ true ]; do
-  echo "Fetching new testgrid data"
-  rm -rf /data/*
-  /bin/sippy --log-level debug --fetch-data /data --fetch-openshift-perfscale-data --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11 --release 4.12
+  echo "Fetching new prow data"
   echo "Loading database"
-  # Bug lookup skipped, we're struggling with the number of tests, and moving to Jira soon.
-  /bin/sippy --mode=ocp --log-level debug --load-database --local-data /data --skip-bug-lookup --arch amd64 --arch arm64 --arch multi --arch s390x --arch ppc64le --release 3.11 --release 4.6 --release 4.7 --release 4.8 --release 4.9 --release 4.10 --release 4.11 --release 4.12
+  /bin/sippy --load-database \
+    --load-prow=true \
+    --load-testgrid=false \
+    --release 3.11 \
+    --release 4.6 \
+    --release 4.7 \
+    --release 4.8 \
+    --release 4.9 \
+    --release 4.10 \
+    --release 4.11 \
+    --release 4.12 \
+    --release Presubmits \
+    --arch amd64 \
+    --arch arm64 \
+    --arch multi \
+    --arch s390x \
+    --arch ppc64le \
+    --config /config/openshift.yaml \
+    --skip-bug-lookup \
+    --mode=ocp
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
   echo "Done refreshing data, sleeping"
