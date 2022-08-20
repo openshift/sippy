@@ -112,7 +112,7 @@ type ReleaseJobRun struct {
 
 	ReleaseTag     ReleaseTag `json:"release_tag" gorm:"foreignKey:release_tag_id"`
 	ReleaseTagID   string     `gorm:"column:release_tag_id"`
-	Name           uint       `json:"name" gorm:"column:prow_job_run_id"` // TODO: this could use a rename to ProwJobRunID
+	Name           uint       `json:"name" gorm:"column:prow_job_run_id,index:unique"` // TODO: this could use a rename to ProwJobRunID
 	JobName        string     `json:"job_name" gorm:"column:job_name"`
 	Kind           string     `json:"kind" gorm:"column:kind"`
 	State          string     `json:"state" gorm:"column:state"`
