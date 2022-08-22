@@ -161,7 +161,6 @@ function BuildClusterTable(props) {
 
   // loading message
   if (!isLoaded) {
-    console.log(period)
     return <CircularProgress color="secondary" />
   }
 
