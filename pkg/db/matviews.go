@@ -198,7 +198,7 @@ SELECT tests.id,
    prow_jobs.release
 FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
-   JOIN suites on suites.id = prow_job_run_tests.suite_id
+   LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE NOT ('aggregated'::text = ANY (prow_jobs.variants))
