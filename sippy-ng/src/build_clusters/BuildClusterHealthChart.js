@@ -47,12 +47,14 @@ export default function BuildClusterHealthChart(props) {
     periodCount = 24
   }
 
-  let lastPeriods = new Set()
+  let lastPeriodsSet = new Set()
   Object.keys(data).forEach((k) => {
     Object.keys(data[k].by_period).forEach((p) => {
-      lastPeriods.add(p)
+      lastPeriodsSet.add(p)
     })
   })
+  const lastPeriods = Array.from(lastPeriodsSet)
+  lastPeriods.sort()
 
   const colors = chroma
     .scale('Spectral')
@@ -104,7 +106,6 @@ export default function BuildClusterHealthChart(props) {
       tension: 0.4,
     })
   })
-  console.log(chartData)
 
   return <Line key="build-cluster-chart" options={options} data={chartData} />
 }
