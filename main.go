@@ -311,8 +311,6 @@ func (o *Options) Run() error {
 
 		start := time.Now()
 
-		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
-
 		if o.LoadTestgrid {
 
 			trgc := sippyserver.TestReportGeneratorConfig{
@@ -361,8 +359,9 @@ func (o *Options) Run() error {
 			}
 		}
 
-		bugsStart := time.Now()
+		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		if loadBugs {
+			bugsStart := time.Now()
 			testCache, err := sippyserver.LoadTestCache(dbc)
 			if err != nil {
 				return err
@@ -374,9 +373,9 @@ func (o *Options) Run() error {
 			if err := sippyserver.LoadBugs(dbc, testCache, prowJobCache); err != nil {
 				return errors.Wrapf(err, "error syncing issues to db")
 			}
+			bugsElapsed := time.Since(bugsStart)
+			log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
 		}
-		bugsElapsed := time.Since(bugsStart)
-		log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
 
 		elapsed := time.Since(start)
 		log.Infof("Database loaded in: %s", elapsed)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/db/loader"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -22,7 +23,6 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func (a TestReportGeneratorConfig) LoadDatabase(
@@ -355,9 +355,13 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 		for _, apiBug := range apiBugArr {
 			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
 			if err != nil {
-				return errors.Wrap(err, "error parsing issue ID")
+				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
+				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
+				//return errors.Wrap(err, "error parsing issue ID")
+				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
+				log.Debugf("converting issue: %+v", apiBug)
 				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
 				dbExpectedBugs[issueID] = newBug
 			}
@@ -373,7 +377,10 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 		for _, apiBug := range apiBugArr {
 			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
 			if err != nil {
-				return errors.Wrap(err, "error parsing issue ID")
+				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
+				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
+				//return errors.Wrap(err, "error parsing issue ID")
+				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
 				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
