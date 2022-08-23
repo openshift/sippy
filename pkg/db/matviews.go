@@ -11,7 +11,7 @@ var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "release", "variants"},
+		IndexColumns: []string{"id", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "NOW() - INTERVAL '14 DAY'",
 			"|||BOUNDARY|||": "NOW() - INTERVAL '7 DAY'",
@@ -21,7 +21,7 @@ var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_report_2d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "release", "variants"},
+		IndexColumns: []string{"id", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "NOW() - INTERVAL '9 DAY'",
 			"|||BOUNDARY|||": "NOW() - INTERVAL '2 DAY'",
