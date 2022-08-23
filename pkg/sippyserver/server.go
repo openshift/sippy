@@ -583,6 +583,50 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 	}
 }
 
+func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "premerge_job_failures", apitype.SortDescending)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse filter opts " + err.Error()})
+			return
+		}
+
+		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts)
+		if err != nil {
+			log.WithError(err).Error("error")
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "Error fetching repositories " + err.Error()})
+			return
+		}
+
+		api.RespondWithJSON(http.StatusOK, w, results)
+	}
+}
+
+func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release != "" {
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "merged_at", apitype.SortDescending)
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse filter opts " + err.Error()})
+			return
+		}
+
+		results, err := api.GetPullRequestsReportFromDB(s.db, release, filterOpts)
+		if err != nil {
+			log.WithError(err).Error("error")
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "Error fetching pull requests" + err.Error()})
+			return
+		}
+
+		api.RespondWithJSON(http.StatusOK, w, results)
+	}
+}
+
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	api.PrintJobsRunsReportFromDB(w, req, s.db)
 }
@@ -637,6 +681,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+	serveMux.HandleFunc("/api/pull_requests", s.jsonPullRequestsReportFromDB)
+	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)

@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -36,6 +37,7 @@ type ProwLoader struct {
 	dbc                  *db.DB
 	bkt                  *storage.BucketHandle
 	bktName              string
+	githubClient         *github.Client
 	prowJobCache         map[string]*models.ProwJob
 	prowJobRunCache      map[uint]bool
 	prowJobRunTestCache  map[string]uint
@@ -46,7 +48,7 @@ type ProwLoader struct {
 	config               *v1config.SippyConfig
 }
 
-func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager testidentification.VariantManager,
+func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, githubClient *github.Client, variantManager testidentification.VariantManager,
 	syntheticTestManager synthetictests.SyntheticTestManager, releases []string, config *v1config.SippyConfig) *ProwLoader {
 	bkt := gcsClient.Bucket(gcsBucket)
 
@@ -54,6 +56,7 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, variantManager
 		dbc:                  dbc,
 		bkt:                  bkt,
 		bktName:              gcsBucket,
+		githubClient:         githubClient,
 		prowJobRunCache:      loadProwJobRunCache(dbc),
 		prowJobCache:         loadProwJobCache(dbc),
 		prowJobRunTestCache:  make(map[string]uint),
@@ -93,6 +96,12 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 }
 
 func (pl *ProwLoader) LoadProwJobsToDB() error {
+	// Update unmerged PR statuses in case any have merged
+	if err := pl.syncPRStatus(); err != nil {
+		return err
+	}
+
+	// Fetch/update job data
 	jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
 	if err != nil {
 		return err
@@ -130,6 +139,30 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 					}
 				}
 			}
+		}
+	}
+
+	return nil
+}
+
+func (pl *ProwLoader) syncPRStatus() error {
+	if pl.githubClient == nil {
+		log.Infof("No GitHub client, skipping PR sync")
+		return nil
+	}
+
+	pulls := make([]models.ProwPullRequest, 0)
+	pl.dbc.DB.Table("prow_pull_requests").Where("merged_at IS NULL").Scan(&pulls)
+	for _, pr := range pulls {
+		mergedAt, err := pl.githubClient.GetPRMerged(pr.Org, pr.Repo, pr.Number, pr.SHA)
+		if err != nil {
+			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", pr.Org, pr.Repo, pr.Number, pr.SHA)
+			return err
+		}
+		pr.MergedAt = mergedAt
+		if res := pl.dbc.DB.Save(pr); res.Error != nil {
+			log.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
+			return res.Error
 		}
 	}
 
@@ -234,7 +267,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 }
 
 func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRequest {
-	if refs == nil {
+	if refs == nil || pl.githubClient == nil {
 		return nil
 	}
 	pulls := make([]models.ProwPullRequest, 0)
@@ -244,9 +277,16 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 			continue
 		}
 
+		mergedAt, err := pl.githubClient.GetPRMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
+		if err != nil {
+			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
+		}
+
 		pull := models.ProwPullRequest{}
 		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)
+
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			pull.MergedAt = mergedAt
 			pull.Org = refs.Org
 			pull.Repo = refs.Repo
 			pull.Link = pr.Link
@@ -262,6 +302,14 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 		} else if res.Error != nil {
 			log.WithError(res.Error).Errorf("unexpected error looking for pull request %s (%s)", pr.Link, pr.SHA)
 			continue
+		}
+
+		if pull.MergedAt == nil || *pull.MergedAt != *mergedAt {
+			pull.MergedAt = mergedAt
+			if res := pl.dbc.DB.Save(pull); res.Error != nil {
+				log.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
+				continue
+			}
 		}
 
 		pulls = append(pulls, pull)

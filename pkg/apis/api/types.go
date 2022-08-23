@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lib/pq"
 
@@ -26,6 +27,144 @@ const (
 	SortAscending  Sort = "asc"
 	SortDescending Sort = "desc"
 )
+
+type Repository struct {
+	ID       int    `json:"id"`
+	Org      string `json:"org"`
+	Repo     string `json:"repo"`
+	JobCount int    `json:"job_count"`
+
+	// WorstPremergeJobFailures is the average number of tries on the worst
+	// performing presubmit job. For example, if e2e-aws-upgrade takes 7 tries
+	// on average to merge, and e2e-gcp takes 5, this value will be 7.
+	WorstPremergeJobFailures float64 `json:"worst_premerge_job_failures"`
+}
+
+func (r Repository) GetFieldType(param string) ColumnType {
+	switch param {
+	case "id":
+		return ColumnTypeNumerical
+	//nolint:goconst
+	case "org":
+		return ColumnTypeString
+	//nolint:goconst
+	case "repo":
+		return ColumnTypeString
+	case "job_count":
+		return ColumnTypeNumerical
+	case "worst_premerge_job_failures":
+		return ColumnTypeNumerical
+	default:
+		return ColumnTypeNumerical
+	}
+}
+
+func (r Repository) GetStringValue(param string) (string, error) {
+	switch param {
+	//nolint:goconst
+	case "org":
+		return r.Org, nil
+	//nolint:goconst
+	case "repo":
+		return r.Repo, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+func (r Repository) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(r.ID), nil
+	case "job_count":
+		return float64(r.JobCount), nil
+	case "worst_premerge_job_failures":
+		return r.WorstPremergeJobFailures, nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (r Repository) GetArrayValue(param string) ([]string, error) {
+	return nil, fmt.Errorf("unknown array value field %s", param)
+}
+
+type PullRequest struct {
+	ID       int        `json:"id"`
+	Org      string     `json:"org"`
+	Repo     string     `json:"repo"`
+	Number   int        `json:"number"`
+	Title    string     `json:"title"`
+	Author   string     `json:"author"`
+	SHA      string     `json:"sha"`
+	Link     string     `json:"link"`
+	MergedAt *time.Time `json:"merged_at"`
+}
+
+func (pr PullRequest) GetFieldType(param string) ColumnType {
+	switch param {
+	case "id":
+		return ColumnTypeNumerical
+	case "author":
+		return ColumnTypeString
+	//nolint:goconst
+	case "org":
+		return ColumnTypeString
+	//nolint:goconst
+	case "repo":
+		return ColumnTypeString
+	case "title":
+		return ColumnTypeString
+	case "number":
+		return ColumnTypeNumerical
+	case "sha":
+		return ColumnTypeString
+	case "link":
+		return ColumnTypeString
+	case "merged_at":
+		return ColumnTypeNumerical
+	default:
+		return ColumnTypeNumerical
+	}
+}
+
+func (pr PullRequest) GetStringValue(param string) (string, error) {
+	switch param {
+	case "author":
+		return pr.Author, nil
+	case "sha":
+		return pr.SHA, nil
+	case "link":
+		return pr.Link, nil
+	case "title":
+		return pr.Title, nil
+	//nolint:goconst
+	case "org":
+		return pr.Org, nil
+	//nolint:goconst
+	case "repo":
+		return pr.Repo, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+func (pr PullRequest) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(pr.ID), nil
+	case "number":
+		return float64(pr.Number), nil
+	case "merged_at":
+		return float64(pr.MergedAt.Unix()), nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (pr PullRequest) GetArrayValue(param string) ([]string, error) {
+	return nil, fmt.Errorf("unknown array value field %s", param)
+}
 
 type Variant struct {
 	ID   int    `json:"id"`
@@ -51,9 +190,12 @@ type Variant struct {
 type Job struct {
 	ID        int            `json:"id"`
 	Name      string         `json:"name"`
+	Org       string         `json:"org,omitempty"`
+	Repo      string         `json:"repo,omitempty"`
 	BriefName string         `json:"brief_name"`
 	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
 
+	AverageRetestsToMerge          float64 `json:"average_retests_to_merge"`
 	CurrentPassPercentage          float64 `json:"current_pass_percentage"`
 	CurrentProjectedPassPercentage float64 `json:"current_projected_pass_percentage"`
 	CurrentRuns                    int     `json:"current_runs"`
@@ -82,6 +224,12 @@ func (job Job) GetFieldType(param string) ColumnType {
 	case "briefName":
 		return ColumnTypeString
 	//nolint:goconst
+	case "org":
+		return ColumnTypeString
+	//nolint:goconst
+	case "repo":
+		return ColumnTypeString
+	//nolint:goconst
 	case "variants":
 		return ColumnTypeArray
 	//nolint:goconst
@@ -103,6 +251,12 @@ func (job Job) GetStringValue(param string) (string, error) {
 		return job.BriefName, nil
 	case "test_grid_url":
 		return job.TestGridURL, nil
+	//nolint:goconst
+	case "org":
+		return job.Org, nil
+	//nolint:goconst
+	case "repo":
+		return job.Repo, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
@@ -130,6 +284,8 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(len(job.Bugs)), nil
 	case "associated_bugs":
 		return float64(len(job.AssociatedBugs)), nil
+	case "average_runs_to_merge":
+		return job.AverageRetestsToMerge, nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}
@@ -165,6 +321,11 @@ type JobRun struct {
 	Succeeded             bool                `json:"succeeded"`
 	Timestamp             int                 `json:"timestamp"`
 	OverallResult         v1.JobOverallResult `json:"overall_result"`
+	PullRequestOrg        string              `json:"pull_request_org"`
+	PullRequestRepo       string              `json:"pull_request_repo"`
+	PullRequestLink       string              `json:"pull_request_link"`
+	PullRequestSHA        string              `json:"pull_request_sha"`
+	PullRequestAuthor     string              `json:"pull_request_author"`
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
@@ -189,6 +350,16 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "timestamp":
 		return ColumnTypeNumerical
+	case "pull_request_org":
+		return ColumnTypeString
+	case "pull_request_repo":
+		return ColumnTypeString
+	case "pull_request_author":
+		return ColumnTypeString
+	case "pull_request_sha":
+		return ColumnTypeString
+	case "pull_request_link":
+		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
 	}
@@ -204,6 +375,16 @@ func (run JobRun) GetStringValue(param string) (string, error) {
 		return string(run.OverallResult), nil
 	case "test_grid_url":
 		return run.TestGridURL, nil
+	case "pull_request_org":
+		return run.PullRequestOrg, nil
+	case "pull_request_repo":
+		return run.PullRequestRepo, nil
+	case "pull_request_author":
+		return run.PullRequestAuthor, nil
+	case "pull_request_sha":
+		return run.PullRequestSHA, nil
+	case "pull_request_link":
+		return run.PullRequestLink, nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}

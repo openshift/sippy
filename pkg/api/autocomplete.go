@@ -31,6 +31,18 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		q = q.Table("prow_jobs").
 			Select("name").
 			Order("name")
+	case "orgs":
+		q = q.Table("prow_pull_requests").
+			Select("DISTINCT(org) as name").
+			Order("name")
+	case "repos":
+		q = q.Table("prow_pull_requests").
+			Select("DISTINCT(repo) as name").
+			Order("name")
+	case "authors":
+		q = q.Table("prow_pull_requests").
+			Select("DISTINCT(author) as name").
+			Order("name")
 	case "cluster":
 		q = q.Table("prow_job_runs").
 			Select("DISTINCT(cluster) as name").
