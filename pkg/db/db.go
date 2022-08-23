@@ -122,7 +122,9 @@ func New(dsn string) (*DB, error) {
 //
 // This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
 // not be recreated until you also delete the corresponding row from schema_hashes.
-func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string) error {
+//
+// returns true if schema change was detected
+func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string, forceUpdate bool) (bool, error) {
 
 	// Calculate hash of our schema to see if anything has changed.
 	hash := sha256.Sum256([]byte(desiredSchema))
@@ -146,38 +148,41 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 			Hash: hashStr,
 		}
 	} else if currSchemaHash.Hash != hashStr {
-		vlog.WithField("oldHash", currSchemaHash.Hash).Debug("schema hash has has changed, recreating")
+		vlog.WithField("oldHash", currSchemaHash.Hash).Debug("schema hash has changed, recreating")
 		currSchemaHash.Hash = hashStr
+		updateRequired = true
+	} else if forceUpdate {
+		vlog.Debug("schema hash has not changed but a force update was requested, recreating")
 		updateRequired = true
 	}
 
 	if updateRequired {
 		if res := db.Exec(dropSQL); res.Error != nil {
 			vlog.WithError(res.Error).Error("error dropping")
-			return res.Error
+			return updateRequired, res.Error
 		}
 
 		vlog.Info("creating with latest schema")
 
 		if res := db.Exec(desiredSchema); res.Error != nil {
 			log.WithError(res.Error).Error("error creating")
-			return res.Error
+			return updateRequired, res.Error
 		}
 
 		if currSchemaHash.ID == 0 {
 			if res := db.Create(&currSchemaHash); res.Error != nil {
 				vlog.WithError(res.Error).Error("error creating schema hash")
-				return res.Error
+				return updateRequired, res.Error
 			}
 		} else {
 			if res := db.Save(&currSchemaHash); res.Error != nil {
 				vlog.WithError(res.Error).Error("error updating schema hash")
-				return res.Error
+				return updateRequired, res.Error
 			}
 		}
 		vlog.Info("schema hash updated")
 	} else {
 		vlog.Debug("no schema update required")
 	}
-	return nil
+	return updateRequired, nil
 }
