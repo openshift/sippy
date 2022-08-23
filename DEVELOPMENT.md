@@ -19,13 +19,14 @@ definitions and functions.
 
 Sippy obtains data from multiple sources:
 
-| Data Source         | Job names | Job runs | Test results | Release tags | Build cluster |
-|---------------------|-----------|----------|--------------|--------------|---------------|
-| TestGrid            | X         | X        | X            |              |               |
-| Prow                |           | X        |              |              | X             |
-| GCS Storage Buckets |           |          | X            |              |               |
-| Release controller  |           |          |              | X            |               |
-| Sippy configuration | X         |          |              |              |               |
+| Data Source         | Job names | Job runs | Test results | Release tags | Build cluster | PR State |
+|---------------------|-----------|----------|--------------|--------------|---------------|----------|
+| TestGrid            | X         | X        | X            |              |               |          |
+| Prow                |           | X        |              |              | X             |          |
+| Release controller  |           |          |              | X            |               |          |
+| Sippy configuration | X         |          |              |              |               |          |
+| GCS Storage Buckets |           |          | X            |              |               |          |
+| GitHub              |           |          |              |              |               | X        |
 
 ### From a Prod Sippy Backup
 
@@ -80,6 +81,26 @@ available [here](config/README.md).
 ```bash
 ./sippy --load-database \
   --load-prow=true \
+  --load-testgrid=false \
+  --release 4.11 \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --skip-bug-lookup \
+  --mode=ocp \
+  --config ./config/openshift.yaml \
+  --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
+```
+
+### From GitHub
+
+When using Prow in GitHub mode, it's possible to sync additional data from GitHub including PR state. GitHub throttles
+unauthenticated requests, limited to 60 an hour. If you don't need this in development, then simply omit `--load-github`
+, otherwise set `GITHUB_TOKEN` environment variable,
+or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505335/hiding-github-token-in-gitconfig).
+
+```bash
+./sippy --load-database \
+  --load-prow=true \
+  --load-github=true \
   --load-testgrid=false \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
