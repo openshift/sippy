@@ -89,7 +89,8 @@ func syncPostgresMaterializedViews(db *gorm.DB) error {
 		}
 		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)
 		schema := fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, viewDef)
-		if err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL); err != nil {
+		matViewUpdated, err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL, false)
+		if err != nil {
 			return err
 		}
 
@@ -97,7 +98,7 @@ func syncPostgresMaterializedViews(db *gorm.DB) error {
 		indexName := fmt.Sprintf("idx_%s", pmv.Name)
 		index := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, pmv.Name, strings.Join(pmv.IndexColumns, ","))
 		dropSQL = fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)
-		if err := syncSchema(db, hashTypeMatViewIndex, indexName, index, dropSQL); err != nil {
+		if _, err := syncSchema(db, hashTypeMatViewIndex, indexName, index, dropSQL, matViewUpdated); err != nil {
 			return err
 		}
 	}
@@ -153,6 +154,7 @@ FROM prow_job_runs
 const testReportMatView = `
 SELECT tests.id,
    tests.name,
+   suites.name as suite_name,
    COALESCE(count(
        CASE
            WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1
@@ -197,10 +199,11 @@ SELECT tests.id,
    prow_jobs.release
 FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
+   LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE NOT ('aggregated'::text = ANY (prow_jobs.variants))
-GROUP BY tests.id, tests.name, prow_jobs.variants, prow_jobs.release
+GROUP BY tests.id, tests.name, suites.name, prow_jobs.variants, prow_jobs.release
 `
 
 const testAnalysisByVariantMatView = `

@@ -223,6 +223,10 @@ export default function JobRunsTable(props) {
 
   const fetchData = () => {
     let queryString = ''
+    if (props.release !== '') {
+      queryString += '&release=' + props.release
+    }
+
     if (filterModel && filterModel.items.length > 0) {
       queryString +=
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
@@ -237,9 +241,8 @@ export default function JobRunsTable(props) {
 
     fetch(
       process.env.REACT_APP_API_URL +
-        '/api/jobs/runs?release=' +
-        props.release +
-        queryString
+        '/api/jobs/runs?' +
+        queryString.substring(1)
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -434,6 +437,7 @@ JobRunsTable.defaultProps = {
   briefTable: false,
   hideControls: false,
   pageSize: 25,
+  release: '',
   filterModel: {
     items: [],
   },
@@ -446,7 +450,7 @@ JobRunsTable.propTypes = {
   classes: PropTypes.object,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
-  release: PropTypes.string.isRequired,
+  release: PropTypes.string,
   title: PropTypes.string,
   hideControls: PropTypes.bool,
   period: PropTypes.string,

@@ -46,6 +46,12 @@ export const JOB_THRESHOLDS = {
   error: 50,
 }
 
+export const BUILD_CLUSTER_THRESHOLDS = {
+  success: 80,
+  warning: 60,
+  error: 50,
+}
+
 export const TEST_THRESHOLDS = {
   success: 80,
   warning: 60,
@@ -96,6 +102,16 @@ export const BOOKMARKS = {
     not: true,
     operatorValue: 'contains',
     value: 'step graph.',
+  },
+  HIGH_DELTA_FROM_WORKING_AVERAGE: {
+    columnField: 'delta_from_working_average',
+    operatorValue: '<=',
+    value: '20',
+  },
+  HIGH_STANDARD_DEVIATION: {
+    columnField: 'working_standard_deviation',
+    operatorValue: '>',
+    value: '1',
   },
   NO_OPENSHIFT_TESTS_SHOULD_WORK: {
     columnField: 'name',

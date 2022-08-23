@@ -167,6 +167,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	if !foundProwJob {
 		dbProwJob = &models.ProwJob{
 			Name:     pj.Spec.Job,
+			Kind:     models.ProwKind(pj.Spec.Type),
 			Release:  release,
 			Variants: pl.variantManager.IdentifyVariants(pj.Spec.Job),
 		}
@@ -177,7 +178,8 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
 		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
-		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) {
+		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
+			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
 			pl.dbc.DB.Save(&dbProwJob)
 		}
@@ -340,7 +342,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
-		if tc.FailureOutput == nil {
+		if tc.SkipMessage != nil {
+			continue
+		} else if tc.FailureOutput == nil {
 			status = v1.TestStatusSuccess
 		} else {
 			failureOutput = &models.ProwJobRunTestOutput{

@@ -8,6 +8,8 @@ import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import Alert from '@material-ui/lab/Alert'
 import AppBar from '@material-ui/core/AppBar'
+import BuildClusterDetails from './build_clusters/BuildClusterDetails'
+import BuildClusterOverview from './build_clusters/BuildClusterOverview'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
@@ -359,6 +361,21 @@ export default function App(props) {
                       release={props.match.params.release}
                     />
                   )}
+                />
+
+                <Route
+                  path="/build_clusters/:cluster"
+                  render={(props) => (
+                    <BuildClusterDetails
+                      key={'cluster-' + props.match.params.cluster}
+                      cluster={props.match.params.cluster}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/build_clusters"
+                  render={() => <BuildClusterOverview />}
                 />
 
                 <Route path="/">{landingPage}</Route>

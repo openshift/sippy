@@ -255,6 +255,13 @@ func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) 
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, "openshift_releases")
 	}
+
+	if hasBuildCluster, err := query.HasBuildClusterData(s.db); hasBuildCluster {
+		capabilities = append(capabilities, "build_clusters")
+	} else if err != nil {
+		log.WithError(err).Warningf("could not fetch build cluster data")
+	}
+
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
 }
 
@@ -531,6 +538,45 @@ func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request
 	}
 }
 
+func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
+	start, boundary, end := getPeriodDates("default", req)
+
+	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
+	if err != nil {
+		log.WithError(err).Error("error querying build cluster health from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying build cluster health from db " + err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(200, w, results)
+}
+
+func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http.Request) {
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = api.PeriodDay
+	}
+
+	results, err := api.GetBuildClusterHealthAnalysis(s.db, period)
+	if err != nil {
+		log.WithError(err).Error("error querying build cluster health from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying build cluster health from db " + err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(200, w, results)
+}
+
+func (s *Server) getRelease(req *http.Request) string {
+	return req.URL.Query().Get("release")
+}
+
 func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) string {
 	release := req.URL.Query().Get("release")
 
@@ -578,17 +624,12 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintJobsRunsReportFromDB(w, req, s.db)
-	}
+	api.PrintJobsRunsReportFromDB(w, req, s.db)
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
-	}
+	release := s.getRelease(req)
+	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
 }
 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
@@ -644,6 +685,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+	serveMux.HandleFunc("/api/health/build_cluster/analysis", s.jsonBuildClusterHealthAnalysis)
+	serveMux.HandleFunc("/api/health/build_cluster", s.jsonBuildClusterHealth)
 	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)

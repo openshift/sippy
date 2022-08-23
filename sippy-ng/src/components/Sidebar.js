@@ -3,6 +3,7 @@ import {
   BugReport,
   ExpandLess,
   ExpandMore,
+  Favorite,
   FileCopyOutlined,
   GitHub,
   Restore,
@@ -83,6 +84,37 @@ export default function Sidebar(props) {
           <ListItemText primary="Home" />
         </ListItem>
       </List>
+      <CapabilitiesContext.Consumer>
+        {(value) => {
+          if (value.includes('build_clusters')) {
+            return (
+              <Fragment>
+                <Divider />
+                <List
+                  subheader={
+                    <ListSubheader component="div" id="infrastructure">
+                      Infrastructure
+                    </ListSubheader>
+                  }
+                >
+                  <ListItem
+                    key={'build-cluster-health'}
+                    component={Link}
+                    to={`/build_clusters`}
+                    button
+                    className={classes.nested}
+                  >
+                    <ListItemIcon>
+                      <Favorite />
+                    </ListItemIcon>
+                    <ListItemText primary="Build Cluster Health" />
+                  </ListItem>
+                </List>
+              </Fragment>
+            )
+          }
+        }}
+      </CapabilitiesContext.Consumer>
       <Divider />
       <List
         subheader={
