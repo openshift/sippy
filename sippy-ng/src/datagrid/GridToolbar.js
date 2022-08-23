@@ -69,7 +69,7 @@ export default function GridToolbar(props) {
         ) : (
           ''
         )}
-        {props.views ? (
+        {props.views && props.views.length > 1 ? (
           <GridToolbarViewSelector
             setView={props.selectView}
             views={props.views}
@@ -88,41 +88,45 @@ export default function GridToolbar(props) {
           ''
         )}
       </div>
-      <div>
-        <TextField
-          variant="standard"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && props.doSearch(search)}
-          onBlur={() => props.doSearch(search)}
-          placeholder="Search…"
-          InputProps={{
-            endAdornment: (
-              <Fragment>
-                <IconButton
-                  title="Search"
-                  aria-label="Search"
-                  size="small"
-                  onClick={() => props.doSearch(search)}
-                >
-                  <SearchIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  title="Clear"
-                  aria-label="Clear"
-                  size="small"
-                  onClick={() => {
-                    props.clearSearch()
-                    setSearch('')
-                  }}
-                >
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </Fragment>
-            ),
-          }}
-        />
-      </div>
+      {props.doSearch ? (
+        <div>
+          <TextField
+            variant="standard"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && props.doSearch(search)}
+            onBlur={() => props.doSearch(search)}
+            placeholder="Search…"
+            InputProps={{
+              endAdornment: (
+                <Fragment>
+                  <IconButton
+                    title="Search"
+                    aria-label="Search"
+                    size="small"
+                    onClick={() => props.doSearch(search)}
+                  >
+                    <SearchIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    title="Clear"
+                    aria-label="Clear"
+                    size="small"
+                    onClick={() => {
+                      props.clearSearch()
+                      setSearch('')
+                    }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </Fragment>
+              ),
+            }}
+          />
+        </div>
+      ) : (
+        ''
+      )}
     </div>
   )
 }

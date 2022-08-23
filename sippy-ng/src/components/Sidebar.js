@@ -1,6 +1,7 @@
 import { BOOKMARKS } from '../constants'
 import {
   BugReport,
+  Code,
   ExpandLess,
   ExpandMore,
   Favorite,
@@ -185,6 +186,27 @@ export default function Sidebar(props) {
                   </ListItemIcon>
                   <ListItemText primary="Jobs" />
                 </ListItem>
+
+                {
+                  // FIXME: Base this on something like a per-release capabilities feature instead.
+                  release === 'Presubmits' ? (
+                    <ListItem
+                      key={'release-repositories-' + index}
+                      component={Link}
+                      to={`/repositories/${release}`}
+                      button
+                      className={classes.nested}
+                    >
+                      <ListItemIcon>
+                        <Code />
+                      </ListItemIcon>
+                      <ListItemText primary="Repositories" />
+                    </ListItem>
+                  ) : (
+                    ''
+                  )
+                }
+
                 <ListItem
                   key={'release-tests-' + index}
                   component={Link}

@@ -213,6 +213,10 @@ export function pathForJobsInPercentile(release, start, end) {
   )}`
 }
 
+export function pathForRepository(release, org, repo) {
+  return `/repositories/${release}/${org}/${repo}`
+}
+
 export function filterFor(column, operator, value) {
   return { columnField: column, operatorValue: operator, value: value }
 }

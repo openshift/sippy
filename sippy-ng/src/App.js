@@ -20,10 +20,13 @@ import Jobs from './jobs/Jobs'
 import MenuIcon from '@material-ui/icons/Menu'
 import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
+import PullRequestsTable from './pull_requests/PullRequestsTable'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
+import Repositories from './repositories/Repositories'
+import RepositoryDetails from './repositories/RepositoryDetails'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -376,6 +379,34 @@ export default function App(props) {
                 <Route
                   path="/build_clusters"
                   render={() => <BuildClusterOverview />}
+                />
+
+                <Route
+                  path="/repositories/:release/:org/:repo"
+                  render={(props) => (
+                    <RepositoryDetails
+                      release={props.match.params.release}
+                      org={props.match.params.org}
+                      repo={props.match.params.repo}
+                    />
+                  )}
+                />
+
+                <Route
+                  path="/repositories/:release"
+                  render={(props) => (
+                    <Repositories release={props.match.params.release} />
+                  )}
+                />
+
+                <Route
+                  path="/pull_requests/:release"
+                  render={(props) => (
+                    <PullRequestsTable
+                      key={'pr-' + props.match.params.release}
+                      release={props.match.params.release}
+                    />
+                  )}
                 />
 
                 <Route path="/">{landingPage}</Route>

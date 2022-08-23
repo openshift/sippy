@@ -31,9 +31,11 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+export const operatorWithoutValue = ['is empty', 'is not empty']
+
 const operatorValues = {
-  number: ['=', '!=', '<', '<=', '>', '>='],
-  date: ['=', '!=', '<', '<=', '>', '>='],
+  number: ['=', '!=', '<', '<=', '>', '>=', 'is empty', 'is not empty'],
+  date: ['=', '!=', '<', '<=', '>', '>=', 'is empty', 'is not empty'],
   string: ['contains', 'equals', 'starts with', 'ends with'],
   array: ['contains'],
 }
@@ -75,6 +77,13 @@ export default function GridToolbarFilterItem(props) {
     props.filterModel.errors && props.filterModel.errors.includes('value')
 
   const inputField = () => {
+    if (
+      props.filterModel.operatorValue === 'is empty' ||
+      props.filterModel.operatorValue === 'is not empty'
+    ) {
+      return ''
+    }
+
     switch (columnType) {
       case 'date':
         return (

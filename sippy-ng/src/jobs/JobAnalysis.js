@@ -18,25 +18,27 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { filterList } from '../datagrid/utils'
-import { getColumns } from './JobTable'
-import { hourFilter, JobStackedChart } from './JobStackedChart'
-import { JOB_THRESHOLDS } from '../constants'
-import { Line } from 'react-chartjs-2'
-import { Link } from 'react-router-dom'
 import {
+  filterFor,
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
   safeEncodeURIComponent,
   SafeJSONParam,
   withSort,
 } from '../helpers'
+import { filterList } from '../datagrid/utils'
+import { GridView } from '../datagrid/GridView'
+import { hourFilter, JobStackedChart } from './JobStackedChart'
+import { JOB_THRESHOLDS } from '../constants'
+import { Line } from 'react-chartjs-2'
+import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
 import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
+import JobTable, { getColumns } from './JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -319,6 +321,8 @@ export function JobAnalysis(props) {
     }
   }
 
+  const gridView = new GridView(getColumns(props), {}, '')
+
   return (
     <Fragment>
       <SimpleBreadcrumbs
@@ -389,7 +393,7 @@ export function JobAnalysis(props) {
                       filterable: true,
                       type: 'string',
                     },
-                    ...getColumns(props),
+                    ...gridView.filterColumns,
                   ]}
                 />
                 <Button variant="contained" onClick={togglePeriod}>
