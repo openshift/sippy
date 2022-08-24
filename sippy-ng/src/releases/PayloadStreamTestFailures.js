@@ -4,8 +4,8 @@ import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -110,6 +110,11 @@ function PayloadStreamTestFailures(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -232,7 +237,8 @@ function PayloadStreamTestFailures(props) {
           autoHeight={true}
           disableColumnFilter={props.briefTable}
           disableColumnMenu={true}
-          pageSize={props.pageSize}
+          pageSize={pageSize}
+          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
           rowsPerPageOptions={[5, 10, 25, 50]}
           filterMode="server"
           sortingMode="server"

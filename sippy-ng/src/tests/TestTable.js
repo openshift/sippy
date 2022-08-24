@@ -26,7 +26,7 @@ import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
-import { StringParam, useQueryParam } from 'use-query-params'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import BugzillaDialog from '../bugzilla/BugzillaDialog'
@@ -103,6 +103,11 @@ function TestTable(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
 
   const views = {
     Working: {
@@ -858,7 +863,8 @@ function TestTable(props) {
         rowHeight={100}
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
-        pageSize={props.pageSize}
+        pageSize={pageSize}
+        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
         rowsPerPageOptions={props.rowsPerPageOptions}
         checkboxSelection={false}
         filterMode="server"

@@ -1,8 +1,8 @@
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error } from '@material-ui/icons'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -74,6 +74,11 @@ function ReleasePayloadPullRequests(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -175,7 +180,8 @@ function ReleasePayloadPullRequests(props) {
       autoHeight={true}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
-      pageSize={props.pageSize}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       rowsPerPageOptions={[5, 10, 25, 50]}
       getRowClassName={(params) => classes['rowPhase' + params.row.phase]}
       filterMode="server"

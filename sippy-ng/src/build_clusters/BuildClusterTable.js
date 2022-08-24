@@ -1,6 +1,7 @@
 import {
   ArrayParam,
   JsonParam,
+  NumberParam,
   StringParam,
   useQueryParam,
 } from 'use-query-params'
@@ -51,6 +52,12 @@ function BuildClusterTable(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
+
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
     SafeJSONParam
@@ -174,7 +181,8 @@ function BuildClusterTable(props) {
       autoHeight={true}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
-      pageSize={props.pageSize}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       rowsPerPageOptions={props.rowsPerPageOptions}
       checkboxSelection={false}
       filterMode="server"
