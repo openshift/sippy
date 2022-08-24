@@ -5,6 +5,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
@@ -24,6 +26,7 @@ func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
 func getPeriodDates(defaultPeriod string, req *http.Request) (start, boundary, end time.Time) {
 	period := getPeriod(req, defaultPeriod)
 
+	// If start, boundary, and end params are all specified, use those
 	startp := getDateParam("start", req)
 	boundaryp := getDateParam("boundary", req)
 	endp := getDateParam("end", req)
@@ -31,17 +34,8 @@ func getPeriodDates(defaultPeriod string, req *http.Request) (start, boundary, e
 		return *startp, *boundaryp, *endp
 	}
 
-	if period == "twoDay" {
-		start = time.Now().Add(-9 * 24 * time.Hour)
-		boundary = time.Now().Add(-2 * 24 * time.Hour)
-
-	} else {
-		start = time.Now().Add(-14 * 24 * time.Hour)
-		boundary = time.Now().Add(-7 * 24 * time.Hour)
-	}
-	end = time.Now()
-
-	return start, boundary, end
+	// Otherwise generate from the period name
+	return util.PeriodToDates(period)
 }
 
 func getDateParam(paramName string, req *http.Request) *time.Time {
