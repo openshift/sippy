@@ -125,6 +125,23 @@ WITH failed_test_results AS (
 		JOIN tests ON tests.id = prow_job_run_tests.test_id
 	WHERE prow_job_run_tests.status = 13
 	GROUP BY prow_job_run_tests.prow_job_run_id
+),
+pull_requests AS (
+	SELECT
+		DISTINCT ON(prow_job_runs.id)
+		prow_job_runs.id as id,
+		prow_pull_requests.link,
+		prow_pull_requests.sha,
+		prow_pull_requests.org,
+		prow_pull_requests.author,
+		prow_pull_requests.repo
+        FROM
+                prow_pull_requests
+        INNER JOIN
+                prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id
+        INNER JOIN
+                prow_job_runs ON prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
+        GROUP BY prow_job_runs.id, prow_pull_requests.link, prow_pull_requests.sha, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.author
 )
 SELECT prow_job_runs.id,
    prow_jobs.release,
@@ -144,10 +161,16 @@ SELECT prow_job_runs.id,
    flaked_test_results.test_names AS flaked_test_names,
    flaked_test_results.test_count AS test_flakes,
    failed_test_results.test_names AS failed_test_names,
-   failed_test_results.test_count AS test_failures
+   failed_test_results.test_count AS test_failures,
+   pull_requests.link as pull_request_link,
+   pull_requests.sha as pull_request_sha,
+   pull_requests.org as pull_request_org,
+   pull_requests.repo as pull_request_repo,
+   pull_requests.author as pull_request_author
 FROM prow_job_runs
    LEFT JOIN failed_test_results ON failed_test_results.prow_job_run_id = prow_job_runs.id
    LEFT JOIN flaked_test_results ON flaked_test_results.prow_job_run_id = prow_job_runs.id
+   LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 `
 

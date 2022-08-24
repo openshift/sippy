@@ -7,7 +7,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { DirectionsBoat } from '@material-ui/icons'
+import { DirectionsBoat, GitHub } from '@material-ui/icons'
 import { Link } from 'react-router-dom'
 import {
   pathForExactJob,
@@ -149,6 +149,27 @@ export default function JobRunsTable(props) {
       filterable: false,
     },
     {
+      field: 'pull_request_link',
+      headerName: 'Pull request link',
+      flex: 0.4,
+      renderCell: (params) => {
+        if (params.value === undefined || params.value === '') {
+          return ''
+        }
+
+        return (
+          <Tooltip title="View pull request">
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<GitHub />}
+              href={params.value}
+            />
+          </Tooltip>
+        )
+      },
+    },
+    {
       field: 'variants',
       autocomplete: 'variants',
       headerName: 'Variants',
@@ -164,6 +185,29 @@ export default function JobRunsTable(props) {
       field: 'flaked_test_names',
       autocomplete: 'tests',
       headerName: 'Flaked tests',
+      hide: true,
+    },
+    {
+      field: 'pull_request_author',
+      autocomplete: 'authors',
+      headerName: 'Pull request author',
+      hide: true,
+    },
+    {
+      field: 'pull_request_repo',
+      autocomplete: 'repos',
+      headerName: 'Pull request repo',
+      hide: true,
+    },
+    {
+      field: 'pull_request_org',
+      autocomplete: 'org',
+      headerName: 'Pull request org',
+      hide: true,
+    },
+    {
+      field: 'pull_request_sha',
+      headerName: 'Pull request SHA',
       hide: true,
     },
     // These are fields on the job, not the run - but we can

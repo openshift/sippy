@@ -1,3 +1,9 @@
+export const MERGE_FAILURE_THERSHOLDS = {
+  success: 1.5,
+  warning: 2,
+  error: 3,
+}
+
 export const INFRASTRUCTURE_THRESHOLDS = {
   success: 90,
   warning: 85,

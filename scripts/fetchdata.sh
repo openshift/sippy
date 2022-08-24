@@ -8,6 +8,7 @@ while [ true ]; do
   echo "Loading database"
   /bin/sippy --load-database \
     --load-prow=true \
+    --load-github=true \
     --load-testgrid=false \
     --release 3.11 \
     --release 4.6 \

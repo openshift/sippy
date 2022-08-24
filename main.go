@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 
 	"github.com/openshift/sippy/pkg/buganalysis"
@@ -71,6 +72,7 @@ type Options struct {
 	LogLevel                           string
 	LoadTestgrid                       bool
 	LoadProw                           bool
+	LoadGitHub                         bool
 	Config                             string
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
@@ -127,6 +129,7 @@ func main() {
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
 
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
+	flags.BoolVar(&opt.LoadGitHub, "load-github", opt.LoadGitHub, "Fetch PR state data from GitHub, only for use with Prow-based Sippy")
 	flags.StringVar(&opt.Config, "config", opt.Config, "Configuration file for Sippy, required if using Prow-based Sippy")
 
 	// google cloud creds
@@ -224,6 +227,10 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
 	}
 
+	if o.LoadGitHub && !o.LoadProw {
+		return fmt.Errorf("--load-github must be specified with --load-prow")
+	}
+
 	if o.LoadProw && o.Config == "" {
 		return fmt.Errorf("must specify --config with --load-prow")
 	}
@@ -235,7 +242,7 @@ func (o *Options) Validate() error {
 	return nil
 }
 
-func (o *Options) Run() error {
+func (o *Options) Run() error { //nolint:gocyclo
 	// Set log level
 	level, err := log.ParseLevel(o.LogLevel)
 	if err != nil {
@@ -367,7 +374,12 @@ func (o *Options) Run() error {
 				return err
 			}
 
-			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
+			var githubClient *github.Client
+			if o.LoadGitHub {
+				githubClient = github.New(context.TODO())
+			}
+
+			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", githubClient, o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
 			if err := prowLoader.LoadProwJobsToDB(); err != nil {
 				return err
 			}
