@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -66,7 +67,7 @@ func (r *releaseSyncOptions) Run() error {
 						releaseTag.ID = mReleaseTag.ID
 						releaseTag.CreatedAt = mReleaseTag.CreatedAt
 
-						if err := r.db.DB.Table(releaseTagsTable).Save(releaseTag).Error; err != nil {
+						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(releaseTag).Error; err != nil {
 							return err
 						}
 					}
@@ -80,7 +81,7 @@ func (r *releaseSyncOptions) Run() error {
 					continue
 				}
 
-				if err := r.db.DB.Create(&releaseTag).Error; err != nil {
+				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&releaseTag).Error; err != nil {
 					return err
 				}
 			}
@@ -259,6 +260,7 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 		}
 	}
 
+	// For all upgrades, update the row for the corresponding prow job.
 	for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
 		for _, run := range upgrade.History {
 			id := idFromURL(run.URL)
@@ -266,6 +268,7 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 				result.Upgrade = true
 				result.UpgradesFrom = upgrade.From
 				result.UpgradesTo = upgrade.To
+				results[id] = result
 			}
 		}
 	}

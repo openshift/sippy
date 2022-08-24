@@ -1,6 +1,7 @@
 import { Tooltip } from '@material-ui/core'
 import ArrowDownwardRoundedIcon from '@material-ui/icons/ArrowDownwardRounded'
 import ArrowUpwardRoundedIcon from '@material-ui/icons/ArrowUpwardRounded'
+import PropTypes from 'prop-types'
 import React from 'react'
 import SyncAltRoundedIcon from '@material-ui/icons/SyncAltRounded'
 
@@ -53,4 +54,10 @@ export default function PassRateIcon(props) {
 PassRateIcon.defaultProps = {
   inverted: false,
   tooltip: false,
+}
+
+PassRateIcon.propTypes = {
+  improvement: PropTypes.number,
+  inverted: PropTypes.bool,
+  tooltip: PropTypes.string,
 }
