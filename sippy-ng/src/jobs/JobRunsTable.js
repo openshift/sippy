@@ -9,13 +9,13 @@ import {
 import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat, GitHub } from '@material-ui/icons'
 import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -39,6 +39,11 @@ export default function JobRunsTable(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
 
   const tooltips = {
     S: 'Success',
@@ -443,9 +448,10 @@ export default function JobRunsTable(props) {
       // Sorting:
       onSortModelChange={(m) => updateSortModel(m)}
       sortingMode="server"
-      pageSize={props.pageSize}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       disableColumnMenu={true}
-      rowsPerPageOptions={[5, 10, 25, 50]}
+      rowsPerPageOptions={[5, 10, 25, 50, 100]}
       componentsProps={{
         toolbar: {
           columns: columns,

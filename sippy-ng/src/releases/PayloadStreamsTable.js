@@ -2,8 +2,8 @@ import { CheckCircle, Error, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -125,6 +125,11 @@ function PayloadStreamsTable(props) {
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
+
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
@@ -222,8 +227,9 @@ function PayloadStreamsTable(props) {
       autoHeight={true}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
-      pageSize={props.pageSize}
-      rowsPerPageOptions={[5, 10, 25, 50]}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+      rowsPerPageOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true
           ? classes.rowPhaseForced

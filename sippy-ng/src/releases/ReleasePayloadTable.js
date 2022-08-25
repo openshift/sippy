@@ -10,8 +10,8 @@ import {
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -266,6 +266,11 @@ function ReleasePayloadTable(props) {
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
+
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
@@ -367,8 +372,9 @@ function ReleasePayloadTable(props) {
       autoHeight={true}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
-      pageSize={props.pageSize}
-      rowsPerPageOptions={[5, 10, 25, 50]}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+      rowsPerPageOptions={[5, 10, 25, 50, 100]}
       getRowClassName={(params) =>
         params.row.forced === true
           ? classes.rowPhaseForced
