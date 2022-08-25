@@ -3,11 +3,13 @@ package metrics
 import (
 	"time"
 
-	"github.com/openshift/sippy/pkg/filter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/util"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -21,6 +23,10 @@ const (
 )
 
 var (
+	buildClusterHealthMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_build_cluster_pass_ratio",
+		Help: "Ratio of passed job runs for a build cluster in a period (2 day, 7 day, etc)",
+	}, []string{"cluster", "period"})
 	jobPassRatioMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_job_pass_ratio",
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
@@ -79,7 +85,27 @@ func RefreshMetricsDB(dbc *db.DB) error {
 		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
 	}
 
+	if err := refreshBuildClusterMetrics(dbc); err != nil {
+		return errors.Wrapf(err, "error refreshing build cluster metrics")
+	}
+
 	refreshPayloadMetrics(dbc)
+
+	return nil
+}
+
+func refreshBuildClusterMetrics(dbc *db.DB) error {
+	for _, period := range []string{"default", "twoDay"} {
+		start, boundary, end := util.PeriodToDates(period)
+		result, err := query.BuildClusterHealth(dbc, start, boundary, end)
+		if err != nil {
+			return err
+		}
+
+		for _, cluster := range result {
+			buildClusterHealthMetric.WithLabelValues(cluster.Cluster, period).Set(cluster.CurrentPassPercentage / 100)
+		}
+	}
 
 	return nil
 }

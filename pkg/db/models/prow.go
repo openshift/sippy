@@ -134,7 +134,7 @@ type Bug struct {
 
 // ProwPullRequest represents a GitHub pull request, there can be multiple entries
 // for a pull request, if it was tested with different HEADs (SHA). This lets us
-// track jobs at a more granular level, allowing us differentiate between code pushes
+// track jobs at a more granular level, allowing us to differentiate between code pushes
 // and retests.
 type ProwPullRequest struct {
 	Model
@@ -152,4 +152,7 @@ type ProwPullRequest struct {
 	SHA string `json:"sha" gorm:"index:pr_link_sha,unique"`
 	// Link links to the pull request itself.
 	Link string `json:"link,omitempty" gorm:"index:pr_link_sha,unique"`
+
+	// MergedAt contains the time retrieved from GitHub that this PR was merged.
+	MergedAt *time.Time `json:"merged_at,omitempty" gorm:"merged_at"`
 }

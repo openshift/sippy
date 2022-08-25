@@ -15,7 +15,9 @@ import {
 import { filterTooltip } from './utils'
 import { makeStyles } from '@material-ui/core/styles'
 import Divider from '@material-ui/core/Divider'
-import GridToolbarFilterItem from './GridToolbarFilterItem'
+import GridToolbarFilterItem, {
+  operatorWithoutValue,
+} from './GridToolbarFilterItem'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
@@ -135,7 +137,17 @@ export default function GridToolbarFilterMenu(props) {
   const updateModel = (index, v) => {
     const fields = ['columnField', 'operatorValue', 'value']
     const blankFields = fields
-      .map((field) => (!v[field] || v[field] === '' ? field : null))
+      .map((field) => {
+        if (
+          !operatorWithoutValue.includes(v.operatorValue) &&
+          !v[field] &&
+          v[field] === ''
+        ) {
+          return field
+        } else {
+          return null
+        }
+      })
       .filter((field) => field)
 
     if (blankFields.length > 0 && blankFields.length < 3) {

@@ -65,4 +65,5 @@ NumberCard.propTypes = {
   bgColor: PropTypes.string,
   number: PropTypes.number,
   size: PropTypes.number,
+  link: PropTypes.element,
 }

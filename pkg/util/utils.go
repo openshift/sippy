@@ -2,6 +2,7 @@ package util
 
 import (
 	"regexp"
+	"time"
 
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
@@ -41,4 +42,19 @@ func StrSliceContains(strSlice []string, elem string) bool {
 		}
 	}
 	return false
+}
+
+// PeriodToDates takes a period name such as twoDay or default, and
+// converts to start, boundary, and end times.
+func PeriodToDates(period string) (start, boundary, end time.Time) {
+	if period == "twoDay" {
+		start = time.Now().Add(-9 * 24 * time.Hour)
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
+	} else {
+		start = time.Now().Add(-14 * 24 * time.Hour)
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
+	}
+	end = time.Now()
+
+	return start, boundary, end
 }
