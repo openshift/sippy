@@ -17,7 +17,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
-import BugzillaDialog from '../bugzilla/BugzillaDialog'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
@@ -235,17 +234,7 @@ function JobTable(props) {
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
-  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
   const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
-
-  const openBugzillaDialog = (job) => {
-    setJobDetails(job)
-    setBugzillaDialogOpen(true)
-  }
-
-  const closeBugzillaDialog = (details) => {
-    setBugzillaDialogOpen(false)
-  }
 
   const fetchData = () => {
     let queryString = ''
@@ -459,11 +448,7 @@ function JobTable(props) {
     },
   }
 
-  const gridView = new GridView(
-    getColumns(props, openBugzillaDialog),
-    views,
-    view
-  )
+  const gridView = new GridView(getColumns(props), views, view)
 
   const selectView = (v) => {
     setLoaded(false)
@@ -528,12 +513,6 @@ function JobTable(props) {
       />
       {props.briefTable ? '' : detailsButton}
       {props.briefTable ? '' : copyButton}
-      <BugzillaDialog
-        release={props.release}
-        item={jobDetails}
-        isOpen={isBugzillaDialogOpen}
-        close={closeBugzillaDialog}
-      />
     </Container>
   )
 }

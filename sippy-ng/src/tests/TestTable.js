@@ -29,7 +29,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
-import BugzillaDialog from '../bugzilla/BugzillaDialog'
 import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@material-ui/core/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
@@ -69,16 +68,6 @@ function TestTable(props) {
   const gridClasses = useStyles()
   const location = useLocation().pathname
 
-  const openBugzillaDialog = (test) => {
-    setTestDetails(test)
-    setBugzillaDialogOpen(true)
-  }
-
-  const closeBugzillaDialog = (details) => {
-    setBugzillaDialogOpen(false)
-  }
-
-  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
   const [testDetails, setTestDetails] = React.useState({ bugs: [] })
 
   const [fetchError, setFetchError] = React.useState('')
@@ -910,12 +899,6 @@ function TestTable(props) {
             downloadFilePrefix: 'tests',
           },
         }}
-      />
-      <BugzillaDialog
-        release={props.release}
-        item={testDetails}
-        isOpen={isBugzillaDialogOpen}
-        close={closeBugzillaDialog}
       />
     </Fragment>
   )
