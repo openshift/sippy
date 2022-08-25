@@ -218,10 +218,12 @@ SELECT tests.id,
            WHEN prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS current_runs,
+   count(bug_tests.bug_id) as open_bugs,
    prow_jobs.variants,
    prow_jobs.release
 FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
+   JOIN bug_tests on tests.id = bug_tests.test_id
    LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
