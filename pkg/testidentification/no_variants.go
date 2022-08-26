@@ -14,7 +14,7 @@ func (noVariants) AllVariants() sets.String {
 	return sets.String{}
 }
 
-func (v noVariants) IdentifyVariants(jobName string) []string {
+func (v noVariants) IdentifyVariants(jobName, release string) []string {
 	return []string{}
 }
 func (noVariants) IsJobNeverStable(jobName string) bool {
