@@ -69,7 +69,7 @@ export default function GridToolbar(props) {
         ) : (
           ''
         )}
-        {props.views && props.views.length > 1 ? (
+        {props.views && Object.keys(props.views).length > 1 ? (
           <GridToolbarViewSelector
             setView={props.selectView}
             views={props.views}
