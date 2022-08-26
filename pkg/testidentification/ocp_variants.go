@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -19,6 +20,7 @@ var (
 	azureRegex      = regexp.MustCompile(`(?i)-azure`)
 	compactRegex    = regexp.MustCompile(`(?i)-compact`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
+	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
@@ -38,6 +40,7 @@ var (
 	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
 	rtRegex           = regexp.MustCompile(`(?i)-rt`)
 	s390xRegex        = regexp.MustCompile(`(?i)-s390x`)
+	sdnRegex          = regexp.MustCompile(`(?i)-sdn`)
 	serialRegex       = regexp.MustCompile(`(?i)-serial`)
 	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
 	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
@@ -58,6 +61,7 @@ var (
 		"fips",
 		"gcp",
 		"ha",
+		"hypershift",
 		"heterogeneous",
 		"metal-assisted",
 		"metal-ipi",
@@ -218,7 +222,7 @@ func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
 }
 
-func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
+func (v openshiftVariants) IdentifyVariants(jobName string, release string) []string { //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 	variants := []string{}
 
 	defer func() {
@@ -261,11 +265,12 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	if openstackRegex.MatchString(jobName) {
 		variants = append(variants, "openstack")
 	}
+
 	// Without support for negative lookbacks in the native
 	// regexp library, it's easiest to differentiate these
 	// three by seeing if it's metal-assisted or metal-ipi, and then fall through
 	// to check if it's UPI metal.
-	if metalAssistedRegex.MatchString(jobName) {
+	if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
 		variants = append(variants, "metal-assisted")
 	} else if metalIPIRegex.MatchString(jobName) {
 		variants = append(variants, "metal-ipi")
@@ -307,8 +312,19 @@ func (v openshiftVariants) IdentifyVariants(jobName string) []string { //nolint:
 	// SDN
 	if ovnRegex.MatchString(jobName) {
 		variants = append(variants, "ovn")
-	} else {
+	} else if sdnRegex.MatchString(jobName) {
 		variants = append(variants, "sdn")
+	} else {
+		// If no explicit version, guess based on release
+		ovnBecomesDefault, _ := version.NewVersion("4.12")
+		releaseVersion, err := version.NewVersion(release)
+		if err != nil {
+			log.Warningf("could not determine network type for %q", jobName)
+		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+			variants = append(variants, "ovn")
+		} else {
+			variants = append(variants, "sdn")
+		}
 	}
 
 	// Topology

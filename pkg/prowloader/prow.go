@@ -207,7 +207,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 			Name:     pj.Spec.Job,
 			Kind:     models.ProwKind(pj.Spec.Type),
 			Release:  release,
-			Variants: pl.variantManager.IdentifyVariants(pj.Spec.Job),
+			Variants: pl.variantManager.IdentifyVariants(pj.Spec.Job, release),
 		}
 		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
@@ -215,7 +215,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		}
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
-		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
+		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release)
 		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
