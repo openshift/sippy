@@ -249,54 +249,22 @@ func (v openshiftVariants) IdentifyVariants(jobName string, release string) []st
 		return []string{"aggregated"}
 	}
 
-	// Platforms
-	if alibabaRegex.MatchString(jobName) {
-		variants = append(variants, "alibaba")
-	}
-	if awsRegex.MatchString(jobName) {
-		variants = append(variants, "aws")
-	}
-	if azureRegex.MatchString(jobName) {
-		variants = append(variants, "azure")
-	}
-	if gcpRegex.MatchString(jobName) {
-		variants = append(variants, "gcp")
-	}
-	if openstackRegex.MatchString(jobName) {
-		variants = append(variants, "openstack")
-	}
-
-	// Without support for negative lookbacks in the native
-	// regexp library, it's easiest to differentiate these
-	// three by seeing if it's metal-assisted or metal-ipi, and then fall through
-	// to check if it's UPI metal.
-	if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
-		variants = append(variants, "metal-assisted")
-	} else if metalIPIRegex.MatchString(jobName) {
-		variants = append(variants, "metal-ipi")
-	} else if metalRegex.MatchString(jobName) {
-		variants = append(variants, "metal-upi")
-	}
-	if ovirtRegex.MatchString(jobName) {
-		variants = append(variants, "ovirt")
-	}
-	if vsphereUPIRegex.MatchString(jobName) {
-		variants = append(variants, "vsphere-upi")
-	} else if vsphereRegex.MatchString(jobName) {
-		variants = append(variants, "vsphere-ipi")
+	// Platform
+	platform := determinePlatform(jobName, release)
+	if platform != "" {
+		variants = append(variants, platform)
 	}
 
 	// Architectures
-	if arm64Regex.MatchString(jobName) {
-		variants = append(variants, "arm64")
-	} else if ppc64leRegex.MatchString(jobName) {
-		variants = append(variants, "ppc64le")
-	} else if s390xRegex.MatchString(jobName) {
-		variants = append(variants, "s390x")
-	} else if multiRegex.MatchString(jobName) {
-		variants = append(variants, "heterogeneous")
-	} else {
-		variants = append(variants, "amd64")
+	arch := determineArchitecture(jobName, release)
+	if arch != "" {
+		variants = append(variants, arch)
+	}
+
+	// Network
+	network := determineNetwork(jobName, release)
+	if network != "" {
+		variants = append(variants, network)
 	}
 
 	// Upgrade
@@ -306,24 +274,6 @@ func (v openshiftVariants) IdentifyVariants(jobName string, release string) []st
 			variants = append(variants, "upgrade-minor")
 		} else {
 			variants = append(variants, "upgrade-micro")
-		}
-	}
-
-	// SDN
-	if ovnRegex.MatchString(jobName) {
-		variants = append(variants, "ovn")
-	} else if sdnRegex.MatchString(jobName) {
-		variants = append(variants, "sdn")
-	} else {
-		// If no explicit version, guess based on release
-		ovnBecomesDefault, _ := version.NewVersion("4.12")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			log.Warningf("could not determine network type for %q", jobName)
-		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-			variants = append(variants, "ovn")
-		} else {
-			variants = append(variants, "sdn")
 		}
 	}
 
@@ -367,6 +317,74 @@ func (v openshiftVariants) IdentifyVariants(jobName string, release string) []st
 
 	return variants
 }
+
+func determinePlatform(jobName, release string) string {
+	// Platforms
+	if alibabaRegex.MatchString(jobName) {
+		return "alibaba"
+	} else if awsRegex.MatchString(jobName) {
+		return "aws"
+	} else if azureRegex.MatchString(jobName) {
+		return "azure"
+	} else if gcpRegex.MatchString(jobName) {
+		return "gcp"
+	} else if openstackRegex.MatchString(jobName) {
+		return "openstack"
+	} else if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
+		// Without support for negative lookbacks in the native
+		// regexp library, it's easiest to differentiate these
+		// three by seeing if it's metal-assisted or metal-ipi, and then fall through
+		// to check if it's UPI metal.
+		return "metal-assisted"
+	} else if metalIPIRegex.MatchString(jobName) {
+		return "metal-ipi"
+	} else if metalRegex.MatchString(jobName) {
+		return "metal-upi"
+	} else if ovirtRegex.MatchString(jobName) {
+		return "ovirt"
+	} else if vsphereUPIRegex.MatchString(jobName) {
+		return "vsphere-upi"
+	} else if vsphereRegex.MatchString(jobName) {
+		return "vsphere-ipi"
+	}
+
+	return ""
+}
+
+func determineArchitecture(jobName, release string) string {
+	if arm64Regex.MatchString(jobName) {
+		return "arm64"
+	} else if ppc64leRegex.MatchString(jobName) {
+		return "ppc64le"
+	} else if s390xRegex.MatchString(jobName) {
+		return "s390x"
+	} else if multiRegex.MatchString(jobName) {
+		return "heterogeneous"
+	} else {
+		return "amd64"
+	}
+}
+
+func determineNetwork(jobName, release string) string {
+	if ovnRegex.MatchString(jobName) {
+		return "ovn"
+	} else if sdnRegex.MatchString(jobName) {
+		return "sdn"
+	} else {
+		// If no explicit version, guess based on release
+		ovnBecomesDefault, _ := version.NewVersion("4.12")
+		releaseVersion, err := version.NewVersion(release)
+		if err != nil {
+			log.Warningf("could not determine network type for %q", jobName)
+			return ""
+		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+			return "ovn"
+		} else {
+			return "sdn"
+		}
+	}
+}
+
 func (openshiftVariants) IsJobNeverStable(jobName string) bool {
 	return openshiftJobsNeverStableForVariants.Has(jobName)
 }
