@@ -222,7 +222,7 @@ func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
 }
 
-func (v openshiftVariants) IdentifyVariants(jobName string, release string) []string { //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
+func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
 	variants := []string{}
 
 	defer func() {
@@ -285,6 +285,9 @@ func (v openshiftVariants) IdentifyVariants(jobName string, release string) []st
 	}
 
 	// Other
+	if hypershiftRegex.MatchString(jobName) {
+		variants = append(variants, "hypershift")
+	}
 	if serialRegex.MatchString(jobName) {
 		variants = append(variants, "serial")
 	}
@@ -318,7 +321,7 @@ func (v openshiftVariants) IdentifyVariants(jobName string, release string) []st
 	return variants
 }
 
-func determinePlatform(jobName, release string) string {
+func determinePlatform(jobName, _ string) string {
 	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		return "alibaba"
@@ -351,7 +354,7 @@ func determinePlatform(jobName, release string) string {
 	return ""
 }
 
-func determineArchitecture(jobName, release string) string {
+func determineArchitecture(jobName, _ string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
 	} else if ppc64leRegex.MatchString(jobName) {

@@ -12,6 +12,11 @@ func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
 		want    []string
 	}{
 		{
+			name:    "periodic-ci-openshift-hypershift-main-periodics-conformance-aws-ovn-4-12",
+			release: "4.12",
+			want:    []string{"aws", "amd64", "ovn", "ha", "hypershift"},
+		},
+		{
 			name:    "periodic-ci-openshift-release-master-nightly-4.12-e2e-metal-ovn-single-node-live-iso",
 			release: "4.12",
 			want:    []string{"metal-assisted", "amd64", "ovn", "single-node"},
