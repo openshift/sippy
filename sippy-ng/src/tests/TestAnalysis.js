@@ -25,6 +25,7 @@ import { scale } from 'chroma-js'
 import { TEST_THRESHOLDS } from '../constants'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
+import BugTable from '../bugzilla/BugTable'
 import bugzillaURL from '../bugzilla/BugzillaUtils'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
@@ -39,6 +40,7 @@ import TestTable from './TestTable'
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_day: {} })
+  const [bugs, setBugs] = React.useState([])
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
@@ -74,8 +76,11 @@ export function TestAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
+      fetch(
+        `${process.env.REACT_APP_API_URL}/api/tests/bugs?test=${testName}&filter=${filter}`
+      ),
     ])
-      .then(([analysis, test]) => {
+      .then(([analysis, test, bugs]) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)
         }
@@ -83,15 +88,16 @@ export function TestAnalysis(props) {
         if (test.status !== 200) {
           throw new Error('server returned ' + analysis.status)
         }
-        return Promise.all([analysis.json(), test.json()])
+        return Promise.all([analysis.json(), test.json(), bugs.json()])
       })
-      .then(([failures, test]) => {
+      .then(([failures, test, bugs]) => {
         if (test.length === 0) {
           return <Typography variant="h5">No data for this test.</Typography>
         }
 
         setAnalysis(failures)
         setTest(test[0])
+        setBugs(bugs)
         setLoaded(true)
       })
       .catch((error) => {
@@ -539,6 +545,18 @@ export function TestAnalysis(props) {
                 options={byVariantChartOptions}
                 height={80}
               />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Issues
+                <Tooltip title="Issues links to all known Jira issues mentioning this test. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <BugTable bugs={bugs} />
             </Card>
           </Grid>
         </Grid>

@@ -120,16 +120,19 @@ type TestAnalysisRow struct {
 
 // Bug represents a Bugzilla bug.
 type Bug struct {
-	gorm.Model
-	Status          string
-	LastChangeTime  time.Time
-	Summary         string
-	AffectsVersions pq.StringArray `gorm:"type:text[]"`
-	FixVersions     pq.StringArray `gorm:"type:text[]"`
-	Components      pq.StringArray `gorm:"type:text[]"`
-	URL             string
-	Tests           []Test    `gorm:"many2many:bug_tests;"`
-	Jobs            []ProwJob `gorm:"many2many:bug_jobs;"`
+	ID              uint           `json:"id" gorm:"primarykey"`
+	CreatedAt       time.Time      `json:"created_at""`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	Status          string         `json:"status"`
+	LastChangeTime  time.Time      `json:"last_change_time"`
+	Summary         string         `json:"summary"`
+	AffectsVersions pq.StringArray `json:"affects_versions" gorm:"type:text[]"`
+	FixVersions     pq.StringArray `json:"fix_versions" gorm:"type:text[]"`
+	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
+	URL             string         `json:"url"`
+	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;"`
+	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;"`
 }
 
 // ProwPullRequest represents a GitHub pull request, there can be multiple entries

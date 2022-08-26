@@ -21,12 +21,12 @@ export default function BugTable(props) {
       <Table size="small" aria-label="bug-table">
         <TableHead>
           <TableRow>
-            <TableCell>Bug ID</TableCell>
+            <TableCell>Issue ID</TableCell>
             <TableCell>Summary</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Component</TableCell>
-            <TableCell>Found In</TableCell>
-            <TableCell>Target Release</TableCell>
+            <TableCell>Affects Versions</TableCell>
+            <TableCell>Fix Versions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -35,11 +35,13 @@ export default function BugTable(props) {
               <TableCell scope="row">
                 <a href={bug.url}>{bug.id}</a>
               </TableCell>
-              <TableCell>{bug.summary}</TableCell>
+              <TableCell>
+                <a href={bug.url}>{bug.summary}</a>
+              </TableCell>
               <TableCell>{bug.status}</TableCell>
-              <TableCell>{bug.component}</TableCell>
-              <TableCell>{bug.version}</TableCell>
-              <TableCell>{bug.target_release}</TableCell>
+              <TableCell>{bug.components[0]}</TableCell>
+              <TableCell>{bug.affects_versions[0]}</TableCell>
+              <TableCell>{bug.fix_versions[0]}</TableCell>
             </TableRow>
           ))}
         </TableBody>
