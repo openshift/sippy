@@ -50,7 +50,7 @@ func (kubeVariants) AllVariants() sets.String {
 	return allKubeVariants
 }
 
-func (v kubeVariants) IdentifyVariants(jobName string) []string {
+func (v kubeVariants) IdentifyVariants(jobName, release string) []string {
 	variants := []string{}
 
 	defer func() {

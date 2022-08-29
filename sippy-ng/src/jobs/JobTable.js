@@ -14,7 +14,7 @@ import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
-import { StringParam, useQueryParam } from 'use-query-params'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -232,6 +232,12 @@ function JobTable(props) {
     'sortField',
     StringParam
   )
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
+
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
@@ -479,12 +485,13 @@ function JobTable(props) {
         // Sorting:
         onSortModelChange={(m) => updateSortModel(m)}
         sortingMode="server"
-        pageSize={props.pageSize}
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
         checkboxSelection={!props.briefTable}
         onSelectionModelChange={(rows) => setSelectedJobs(rows)}
         rowsPerPageOptions={props.rowsPerPageOptions}
+        pageSize={pageSize}
+        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.current_pass_percentage)

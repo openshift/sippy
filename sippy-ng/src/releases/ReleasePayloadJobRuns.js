@@ -2,8 +2,8 @@ import { Button, Tooltip } from '@material-ui/core'
 import { Check, DirectionsBoat, Error } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -96,6 +96,11 @@ function ReleasePayloadJobRuns(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -198,7 +203,8 @@ function ReleasePayloadJobRuns(props) {
       getRowClassName={(params) => classes['rowPhase' + params.row.state]}
       disableColumnFilter={props.briefTable}
       disableColumnMenu={true}
-      pageSize={props.pageSize}
+      pageSize={pageSize}
+      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       rowsPerPageOptions={[5, 10, 25, 50]}
       filterMode="server"
       sortingMode="server"
