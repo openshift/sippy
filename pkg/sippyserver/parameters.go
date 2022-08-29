@@ -2,11 +2,18 @@ package sippyserver
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util"
+)
+
+const (
+	defaultSortField = "name"
+	defaultSort      = apitype.SortDescending
 )
 
 func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
@@ -58,4 +65,22 @@ func getPeriod(req *http.Request, defaultValue string) string {
 		return defaultValue
 	}
 	return period
+}
+
+func getLimitParam(req *http.Request) int {
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	return limit
+}
+
+func getSortParams(req *http.Request) (string, apitype.Sort) {
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	if sortField == "" {
+		sortField = defaultSortField
+	}
+	if sort == "" {
+		sort = defaultSort
+	}
+	return sortField, sort
+
 }

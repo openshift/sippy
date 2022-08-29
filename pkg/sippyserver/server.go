@@ -681,8 +681,16 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	}
 
 	start, boundary, end := getPeriodDates("default", req)
+	limit := getLimitParam(req)
+	sortField, sort := getSortParams(req)
 
-	results, err := api.PrintJobAnalysisJSONFromDB(req, s.db, release, fil, start, boundary, end)
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = api.PeriodDay
+	}
+
+	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, fil,
+		start, boundary, end, limit, sortField, sort, period)
 	if err != nil {
 		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})

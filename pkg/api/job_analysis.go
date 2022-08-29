@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -26,7 +25,15 @@ type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
 
-func PrintJobAnalysisJSONFromDB(req *http.Request, dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time) (JobAnalysisResult, error) {
+func PrintJobAnalysisJSONFromDB(
+	dbc *db.DB,
+	release string,
+	fil *filter.Filter,
+	start, boundary, end time.Time,
+	limit int,
+	sortField string,
+	sort apitype.Sort,
+	period string) (JobAnalysisResult, error) {
 
 	// This function is used by APIs that are largely interested in filtering on the jobs,
 	// but there is a case for filtering by the timestamp or build cluster on a job run.
@@ -53,14 +60,9 @@ func PrintJobAnalysisJSONFromDB(req *http.Request, dbc *db.DB, release string, f
 		}
 	}
 
-	period := req.URL.Query().Get("period")
-	if period == "" {
-		period = PeriodDay
-	}
-
 	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
 
-	q, err := filter.ApplyFilters(req, jobFilter, "name", table, apitype.Job{})
+	q, err := filter.ApplyFilters(jobFilter, sortField, sort, limit, table, apitype.Job{})
 	if err != nil {
 		return JobAnalysisResult{}, err
 	}
