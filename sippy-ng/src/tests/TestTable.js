@@ -154,8 +154,12 @@ function TestTable(props) {
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
+          field: 'open_bugs',
+          flex: 0.5,
+        },
+        {
           field: 'link',
-          flex: 1.5,
+          flex: 0.75,
           hide: props.briefTable,
         },
       ],
@@ -213,8 +217,12 @@ function TestTable(props) {
           headerClassName: 'wrapHeader',
         },
         {
+          field: 'open_bugs',
+          flex: 0.5,
+        },
+        {
           field: 'link',
-          flex: 1.5,
+          flex: 0.75,
           hide: props.briefTable,
         },
       ],
@@ -273,8 +281,12 @@ function TestTable(props) {
           headerClassName: 'wrapHeader',
         },
         {
+          field: 'open_bugs',
+          flex: 0.5,
+        },
+        {
           field: 'link',
-          flex: 1.5,
+          flex: 0.75,
           hide: props.briefTable,
         },
       ],
@@ -534,6 +546,12 @@ function TestTable(props) {
       type: 'number',
       renderCell: previousPercentageRender,
     },
+    open_bugs: {
+      field: 'open_bugs',
+      headerName: 'Bugs',
+      type: 'number',
+      renderCell: (params) => <div className="test-name">{params.value}</div>,
+    },
     link: {
       field: 'link',
       headerName: ' ',
@@ -613,18 +631,6 @@ function TestTable(props) {
                 >
                   <AcUnit />
                 </Badge>
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Find Bugs">
-              <IconButton
-                target="_blank"
-                href={
-                  'https://search.ci.openshift.org/?search=' +
-                  safeEncodeURIComponent(escapeRegex(params.row.name)) +
-                  '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
-                }
-              >
-                <BugReport />
               </IconButton>
             </Tooltip>
           </Grid>

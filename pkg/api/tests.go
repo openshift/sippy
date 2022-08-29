@@ -162,10 +162,10 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	variantSelect := ""
 	if collapse {
-		rawQuery = rawQuery.Select(`name,` + query.QueryTestSummer).Group("name")
+		rawQuery = rawQuery.Select(`name,open_bugs,` + query.QueryTestSummer).Group("name,open_bugs")
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
-		variantSelect = "suite_name, variants, " +
+		variantSelect = "suite_name, variants, open_bugs, " +
 			"delta_from_working_average, working_average, working_standard_deviation, " +
 			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
 			"delta_from_flake_average, flake_average, flake_standard_deviation, "

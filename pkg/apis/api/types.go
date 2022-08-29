@@ -460,9 +460,8 @@ type Test struct {
 	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
 
-	Tags           []string     `json:"tags"`
-	Bugs           []bugsv1.Bug `json:"bugs"`
-	AssociatedBugs []bugsv1.Bug `json:"associated_bugs"`
+	Tags     []string `json:"tags"`
+	OpenBugs int      `json:"open_bugs"`
 }
 
 func (test Test) GetFieldType(param string) ColumnType {
@@ -537,10 +536,8 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 		return test.NetImprovement, nil
 	case "net_working_improvement":
 		return test.NetWorkingImprovement, nil
-	case "bugs":
-		return float64(len(test.Bugs)), nil
-	case "associated_bugs":
-		return float64(len(test.AssociatedBugs)), nil
+	case "open_bugs":
+		return float64(test.OpenBugs), nil
 	case "delta_from_working_average":
 		return test.DeltaFromWorkingAverage, nil
 	case "working_average":
