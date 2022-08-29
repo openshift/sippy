@@ -673,7 +673,20 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
-	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
+
+	fil, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+	results, err := api.PrintJobAnalysisJSONFromDB(req, s.db, release, fil)
+	if err != nil {
+		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {

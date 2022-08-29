@@ -34,6 +34,7 @@ import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
+import BugTable from '../bugzilla/BugTable'
 import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
@@ -47,6 +48,7 @@ import SummaryCard from '../components/SummaryCard'
 export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
+  const [bugs, setBugs] = React.useState([])
 
   const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
   const [period, setPeriod] = useQueryParam('period', StringParam)
@@ -85,16 +87,20 @@ export function JobAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
       ),
+      fetch(
+        `${process.env.REACT_APP_API_URL}/api/jobs/bugs?filter=${filterModel}`
+      ),
     ])
-      .then(([analysis]) => {
+      .then(([analysis, bugs]) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)
         }
 
-        return Promise.all([analysis.json()])
+        return Promise.all([analysis.json(), bugs.json()])
       })
-      .then(([analysis]) => {
+      .then(([analysis, bugs]) => {
         setAnalysis(analysis)
+        setBugs(bugs)
 
         // allTests maps each test name to a struct containing the test name again, and the total number of
         // failures in the past 7 days. This value is used to sort on and determine the most relevant tests
@@ -345,7 +351,6 @@ export function JobAnalysis(props) {
           Job Analysis
         </Typography>
         <Divider style={{ margin: 20 }} />
-
         <Grid container spacing={3}>
           <Grid item md={4}>
             <SummaryCard
@@ -532,6 +537,20 @@ export function JobAnalysis(props) {
             </Card>
           </Grid>
         </Grid>
+
+        {/*
+        <Grid item md={12}>
+          <Card className="test-failure-card" elevation={5}>
+            <Typography variant="h5">
+              Issues
+              <Tooltip title="Issues links to all known Jira issues mentioning this job. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
+                <InfoIcon />
+              </Tooltip>
+            </Typography>
+            <BugTable bugs={bugs} />
+          </Card>
+        </Grid>
+        */}
       </Container>
     </Fragment>
   )

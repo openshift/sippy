@@ -86,23 +86,27 @@ export function TestAnalysis(props) {
         }
 
         if (test.status !== 200) {
-          throw new Error('server returned ' + analysis.status)
+          throw new Error('server returned ' + test.status)
+        }
+
+        if (bugs.status !== 200) {
+          throw new Error('server returned ' + bugs.status)
         }
         return Promise.all([analysis.json(), test.json(), bugs.json()])
       })
-      .then(([failures, test, bugs]) => {
+      .then(([analysis, test, bugs]) => {
         if (test.length === 0) {
           return <Typography variant="h5">No data for this test.</Typography>
         }
 
-        setAnalysis(failures)
+        setAnalysis(analysis)
         setTest(test[0])
         setBugs(bugs)
         setLoaded(true)
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve test failures ' + props.release + ', ' + error
+          'Could not retrieve test analysis ' + props.release + ', ' + error
         )
       })
   }
