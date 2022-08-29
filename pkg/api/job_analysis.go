@@ -26,7 +26,7 @@ type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
 
-func PrintJobAnalysisJSONFromDB(req *http.Request, dbc *db.DB, release string, fil *filter.Filter) (JobAnalysisResult, error) {
+func PrintJobAnalysisJSONFromDB(req *http.Request, dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time) (JobAnalysisResult, error) {
 
 	// This function is used by APIs that are largely interested in filtering on the jobs,
 	// but there is a case for filtering by the timestamp or build cluster on a job run.
@@ -58,10 +58,7 @@ func PrintJobAnalysisJSONFromDB(req *http.Request, dbc *db.DB, release string, f
 		period = PeriodDay
 	}
 
-	table, err := jobResultsFromDB(req, dbc.DB, release)
-	if err != nil {
-		return JobAnalysisResult{}, err
-	}
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
 
 	q, err := filter.ApplyFilters(req, jobFilter, "name", table, apitype.Job{})
 	if err != nil {

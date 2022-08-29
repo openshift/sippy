@@ -679,7 +679,10 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 		return
 	}
-	results, err := api.PrintJobAnalysisJSONFromDB(req, s.db, release, fil)
+
+	start, boundary, end := getPeriodDates("default", req)
+
+	results, err := api.PrintJobAnalysisJSONFromDB(req, s.db, release, fil, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
