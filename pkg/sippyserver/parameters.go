@@ -6,6 +6,7 @@ import (
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util"
@@ -82,5 +83,32 @@ func getSortParams(req *http.Request) (string, apitype.Sort) {
 		sort = defaultSort
 	}
 	return sortField, sort
+}
 
+func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filter, error) {
+	// This function is used by APIs that are largely interested in filtering on the jobs,
+	// but there is a case for filtering by the timestamp or build cluster on a job run.
+	// Break apart the filter we're given for the respective queries:
+	jobFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
+	}
+	jobRunsFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
+	}
+	for _, f := range fil.Items {
+		if f.Field == "timestamp" {
+			ms, err := strconv.ParseInt(f.Value, 0, 64)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else if f.Field == "cluster" {
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else {
+			jobFilter.Items = append(jobFilter.Items, f)
+		}
+	}
+	return jobFilter, jobRunsFilter, nil
 }

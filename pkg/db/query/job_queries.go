@@ -86,12 +86,28 @@ ORDER BY current_pass_percentage ASC;
 	return variantResults, nil
 }
 
-// LoadBugsForJob returns all bugs in the database for the given job, across all releases.
-func LoadBugsForJob(dbc *db.DB, jobName string) ([]models.Bug, error) {
+func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start time.Time, boundary time.Time, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
+
+	q, err := filter.ApplyFilters(fil, sortField, sort, limit, table, apitype.Job{})
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := make([]int, 0)
+	q.Pluck("id", &jobs)
+	log.WithField("jobIDs", jobs).Debug("found job IDs after filtering")
+	return jobs, nil
+}
+
+// LoadBugsForJobs returns all bugs in the database for the given jobs, across all releases.
+// See ListFilteredJobIDs for obtaining the list of job IDs.
+func LoadBugsForJobs(dbc *db.DB,
+	jobIDs []int) ([]models.Bug, error) {
 	results := []models.Bug{}
 
 	job := models.ProwJob{}
-	res := dbc.DB.Where("name = ?", jobName).Preload("Bugs").First(&job)
+	res := dbc.DB.Where("id IN ?", jobIDs).Preload("Bugs").First(&job)
 	if res.Error != nil {
 		return results, res.Error
 	}

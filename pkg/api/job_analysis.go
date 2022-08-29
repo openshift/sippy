@@ -2,14 +2,13 @@ package api
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
-	log "github.com/sirupsen/logrus"
 )
 
 const PeriodDay = "day"
@@ -28,48 +27,20 @@ type JobAnalysisResult struct {
 func PrintJobAnalysisJSONFromDB(
 	dbc *db.DB,
 	release string,
-	fil *filter.Filter,
+	jobFilter *filter.Filter,
+	jobRunsFilter *filter.Filter,
 	start, boundary, end time.Time,
 	limit int,
 	sortField string,
 	sort apitype.Sort,
 	period string) (JobAnalysisResult, error) {
+	result := JobAnalysisResult{}
 
-	// This function is used by APIs that are largely interested in filtering on the jobs,
-	// but there is a case for filtering by the timestamp or build cluster on a job run.
-	// Break apart the filter we're given for the respective queries:
-	jobFilter := &filter.Filter{
-		LinkOperator: fil.LinkOperator,
+	jobs, err2 := query.ListFilteredJobIDs(dbc, release, jobFilter,
+		start, boundary, end, limit, sortField, sort)
+	if err2 != nil {
+		return result, err2
 	}
-	jobRunsFilter := &filter.Filter{
-		LinkOperator: fil.LinkOperator,
-	}
-	for _, f := range fil.Items {
-		if f.Field == "timestamp" {
-			ms, err := strconv.ParseInt(f.Value, 0, 64)
-			if err != nil {
-				return JobAnalysisResult{}, err
-			}
-
-			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
-			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		} else if f.Field == "cluster" {
-			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		} else {
-			jobFilter.Items = append(jobFilter.Items, f)
-		}
-	}
-
-	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
-
-	q, err := filter.ApplyFilters(jobFilter, sortField, sort, limit, table, apitype.Job{})
-	if err != nil {
-		return JobAnalysisResult{}, err
-	}
-
-	jobs := make([]int, 0)
-	q.Pluck("id", &jobs)
-	log.Info("job ids? %v", jobs)
 
 	// Next is sum up individual job results
 	type resultSum struct {

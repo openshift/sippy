@@ -87,9 +87,7 @@ export function JobAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
       ),
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/jobs/bugs?filter=${filterModel}`
-      ),
+      fetch(`${process.env.REACT_APP_API_URL}/api/jobs/bugs?${queryParams}`),
     ])
       .then(([analysis, bugs]) => {
         if (analysis.status !== 200) {
@@ -536,21 +534,18 @@ export function JobAnalysis(props) {
               </Box>
             </Card>
           </Grid>
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Issues
+                <Tooltip title="Issues links to all known Jira issues mentioning this job. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <BugTable bugs={bugs} />
+            </Card>
+          </Grid>
         </Grid>
-
-        {/*
-        <Grid item md={12}>
-          <Card className="test-failure-card" elevation={5}>
-            <Typography variant="h5">
-              Issues
-              <Tooltip title="Issues links to all known Jira issues mentioning this job. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
-                <InfoIcon />
-              </Tooltip>
-            </Typography>
-            <BugTable bugs={bugs} />
-          </Card>
-        </Grid>
-        */}
       </Container>
     </Fragment>
   )

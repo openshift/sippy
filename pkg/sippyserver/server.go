@@ -454,16 +454,39 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
-	testName := req.URL.Query().Get("job")
-	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'job' is required.",
+	release := s.getRelease(req)
+
+	fil, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+	jobFilter, _, err := splitJobAndJobRunFilters(fil)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	start, boundary, end := getPeriodDates("default", req)
+	limit := getLimitParam(req)
+	sortField, sort := getSortParams(req)
+
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = api.PeriodDay
+	}
+
+	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
+	if err != nil {
+		log.WithError(err).Error("error querying jobs")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying jobs",
 		})
 		return
 	}
 
-	bugs, err := query.LoadBugsForJob(s.db, testName)
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -679,6 +702,11 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 		return
 	}
+	jobFilter, jobRunsFilter, err := splitJobAndJobRunFilters(fil)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
 
 	start, boundary, end := getPeriodDates("default", req)
 	limit := getLimitParam(req)
@@ -689,7 +717,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		period = api.PeriodDay
 	}
 
-	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, fil,
+	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period)
 	if err != nil {
 		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
