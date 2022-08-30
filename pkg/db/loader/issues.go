@@ -86,90 +86,6 @@ func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, err
 	return ret, lastUpdateError
 }
 
-/*
-//nolint:revive // flag-parameter: parameter 'invertReleaseQuery' seems to be a control flag, avoid control coupling
-func listBugsInternal(release, jobName, testName string, invertReleaseQuery bool) []bugsv1.Bug {
-	ret := []bugsv1.Bug{}
-
-	// first check if this job is covered by a job-blocking bug.  If so, all test
-	// failures are attributed to that bug instead of to individual test bugs.
-	bugList := c.jobBlockersBugCache[GetJobKey(jobName)]
-	for i := range bugList {
-		bug := bugList[i]
-		// If a target release is set, we prefer that, but if the bug was found in the version we're interested in,
-		// we consider that a linked bug and not an associated bug too.
-		if len(bug.TargetRelease) == 1 && bug.TargetRelease[0] == "---" {
-			for _, r := range bug.Version {
-				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-					ret = append(ret, bug)
-					break
-				}
-			}
-		} else {
-			for _, r := range bug.TargetRelease {
-				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-					ret = append(ret, bug)
-					break
-				}
-			}
-		}
-	}
-	if len(ret) > 0 {
-		return ret
-	}
-
-	bugList = c.testBugsCache[testName]
-	for i := range bugList {
-		bug := bugList[i]
-		if len(bug.TargetRelease) == 1 && bug.TargetRelease[0] == "---" {
-			for _, r := range bug.Version {
-				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-					ret = append(ret, bug)
-					break
-				}
-			}
-		} else {
-			for _, r := range bug.TargetRelease {
-				if (!invertReleaseQuery && strings.HasPrefix(r, release)) || (invertReleaseQuery && !strings.HasPrefix(r, release)) {
-					ret = append(ret, bug)
-					break
-				}
-			}
-		}
-	}
-	return ret
-}
-
-func (c *bugCache) ListBugs(release, jobName, testName string) []bugsv1.Bug {
-	return c.listBugsInternal(release, jobName, testName, false)
-}
-
-func (c *bugCache) ListAssociatedBugs(release, jobName, testName string) []bugsv1.Bug {
-	return c.listBugsInternal(release, jobName, testName, true)
-}
-
-func (c *bugCache) ListJobBlockingBugs(jobName string) []bugsv1.Bug {
-	return c.jobBlockersBugCache[GetJobKey(jobName)]
-}
-
-func (c *bugCache) ListAllTestBugs() map[string][]bugsv1.Bug {
-	return c.testBugsCache
-}
-
-func (c *bugCache) ListAllJobBlockingBugs() map[string][]bugsv1.Bug {
-	// Our job blocker cache is of format "job=[jobname]=all". For purposes of this function we need to
-	// return just the job name.
-	jobNameToBugs := map[string][]bugsv1.Bug{}
-	for jobSearchStr, bugs := range c.jobBlockersBugCache {
-		trimmed := strings.TrimPrefix(jobSearchStr, "job=")
-		trimmed = strings.TrimSuffix(trimmed, "=all")
-		jobNameToBugs[trimmed] = bugs
-	}
-	return jobNameToBugs
-}
-
-*/
-
 func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 	searchResults := make(map[string][]jira.Issue)
 
@@ -178,7 +94,6 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 	v.Set("context", "-1")
 	for _, testName := range testNames {
 		testName = regexp.QuoteMeta(testName)
-		//log.Debugf("Searching bugs for test name: %s\n", testName)
 		v.Add("search", testName)
 	}
 
@@ -210,25 +125,6 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 		searchString = string(r.Rune)
 		for _, match := range result.Matches {
 			issue := match.Issues
-			/*
-				bug := match.Bug
-				bug.URL = fmt.Sprintf("https://bugzilla.redhat.com/show_bug.cgi?id=%d", bug.ID)
-
-				// search.ci.openshift.org seems to occasionally return empty BZ results, filter
-				// them out.
-				if bug.ID == 0 {
-					continue
-				}
-
-				// ignore any bugs verified over a week ago, they cannot be responsible for test failures
-				// (or the bug was incorrectly verified and needs to be revisited)
-				if !util.IsActiveBug(bug) {
-					if bug.LastChangeTime.Add(time.Hour * 24 * 7).Before(time.Now()) {
-						continue
-					}
-				}
-
-			*/
 			searchResults[searchString] = append(searchResults[searchString], issue)
 		}
 	}
