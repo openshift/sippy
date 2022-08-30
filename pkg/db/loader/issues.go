@@ -233,7 +233,7 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 		}
 	}
 
-	log.Infof("Found bugs: %v", searchResults)
-	log.Infof("bugzilla query took: %s", time.Since(bzQueryStart))
+	log.Debugf("Found bugs: %v", searchResults)
+	log.Debugf("bugzilla query took: %s", time.Since(bzQueryStart))
 	return searchResults, nil
 }

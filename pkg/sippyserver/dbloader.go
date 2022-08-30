@@ -399,7 +399,9 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 		}
 	}
 
+	expectedBugIDs := make([]uint, 0, len(dbExpectedBugs))
 	for _, bug := range dbExpectedBugs {
+		expectedBugIDs = append(expectedBugIDs, bug.ID)
 		res := dbc.DB.Clauses(clause.OnConflict{
 			UpdateAll: true,
 		}).Create(bug)
@@ -419,6 +421,14 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			return errors.Wrap(res.Error, "error updating bug job assocations")
 		}
 	}
+
+	// Delete all stale referenced bugs that are no longer in our expected bugs.
+	// Unscoped deletes the rows from the db, rather than soft delete.
+	res := dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
+	if res.Error != nil {
+		return errors.Wrap(res.Error, "error deleting stale bugs")
+	}
+	log.Infof("deleted %d stale bugs", res.RowsAffected)
 
 	return nil
 }
