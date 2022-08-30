@@ -471,11 +471,6 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
-	period := req.URL.Query().Get("period")
-	if period == "" {
-		period = api.PeriodDay
-	}
-
 	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		log.WithError(err).Error("error querying jobs")

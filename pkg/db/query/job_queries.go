@@ -86,7 +86,7 @@ ORDER BY current_pass_percentage ASC;
 	return variantResults, nil
 }
 
-func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start time.Time, boundary time.Time, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
+func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
 	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
 
 	q, err := filter.ApplyFilters(fil, sortField, sort, limit, table, apitype.Job{})

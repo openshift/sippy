@@ -358,7 +358,7 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			if err != nil {
 				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
 				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
-				//return errors.Wrap(err, "error parsing issue ID")
+				// return errors.Wrap(err, "error parsing issue ID")
 				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
@@ -381,7 +381,7 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			if err != nil {
 				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
 				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
-				//return errors.Wrap(err, "error parsing issue ID")
+				// return errors.Wrap(err, "error parsing issue ID")
 				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
