@@ -341,6 +341,7 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 	if err != nil {
 		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
 	}
+
 	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
 	if err != nil {
 		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
@@ -373,7 +374,8 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 		}
 	}
 
-	for jobName, apiBugArr := range jobIssues {
+	log.WithField("jobIssues", len(jobIssues)).Info("found job issues")
+	for jobSearchStr, apiBugArr := range jobIssues {
 		for _, apiBug := range apiBugArr {
 			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
 			if err != nil {
@@ -386,6 +388,9 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
 				dbExpectedBugs[issueID] = newBug
 			}
+			// We search for job=[jobname]=all, need to extract the raw job name from that search string
+			// which is what appears in our jobIssues map.
+			jobName := jobSearchStr[4 : len(jobSearchStr)-4]
 			if _, ok := jobCache[jobName]; !ok {
 				// Shouldn't be possible, if it is we want to know.
 				panic("Job name in bug cache does not exist in db: " + jobName)

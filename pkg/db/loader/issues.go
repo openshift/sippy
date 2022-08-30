@@ -31,7 +31,14 @@ func FindIssuesForJobs(jobNames ...string) (map[string][]jira.Issue, error) {
 
 	issues := map[string][]jira.Issue{}
 
-	newBugs, lastUpdateError := findBugsForSearchStrings(jobNames...)
+	// To prevent jobs matching sub-strings of other jobs, we'll keep the old syntax
+	// from the bugzilla code where we search for job=[jobname]=all.
+	jobSearchStrings := make([]string, len(jobNames))
+	for i, jn := range jobNames {
+		jobSearchStrings[i] = fmt.Sprintf("job=%s=all", jn)
+	}
+
+	newBugs, lastUpdateError := findBugsForSearchStrings(jobSearchStrings...)
 
 	for jobKey, bug := range newBugs {
 		issues[jobKey] = bug
@@ -41,30 +48,30 @@ func FindIssuesForJobs(jobNames ...string) (map[string][]jira.Issue, error) {
 
 // findBugsForSearchStrings finds issues in batches based on the given search strings. These can be test names
 // or job names.
-func findBugsForSearchStrings(failedTestNames ...string) (map[string][]jira.Issue, error) {
+func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, error) {
 	ret := map[string][]jira.Issue{}
 
 	var lastUpdateError error
-	batchTestNames := []string{}
+	batchSearchStrs := []string{}
 	queryCtr := 0
-	for i, testName := range failedTestNames {
-		if _, found := ret[testName]; found {
+	for i, searchStr := range searchFor {
+		if _, found := ret[searchStr]; found {
 			continue
 		}
-		batchTestNames = append(batchTestNames, testName)
-		// we're going to lookup bugs for this test, so put an entry into the map.
-		// if we find a bug for this test, the entry will be replaced with the actual
+		batchSearchStrs = append(batchSearchStrs, searchStr)
+		// we're going to lookup bugs for this test/job, so put an entry into the map.
+		// if we find a bug for this search string, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
-		ret[testName] = []jira.Issue{}
+		ret[searchStr] = []jira.Issue{}
 
 		// continue building our batch until we have a largish set to check
-		onLastItem := (i + 1) == len(failedTestNames)
-		if !onLastItem && len(batchTestNames) <= 50 {
+		onLastItem := (i + 1) == len(searchFor)
+		if !onLastItem && len(batchSearchStrs) <= 50 {
 			continue
 		}
 
-		r, err := findBugs(batchTestNames)
+		r, err := findBugs(batchSearchStrs)
 		queryCtr++
 		for k, v := range r {
 			ret[k] = v
@@ -72,7 +79,7 @@ func findBugsForSearchStrings(failedTestNames ...string) (map[string][]jira.Issu
 		if err != nil {
 			lastUpdateError = err
 		}
-		batchTestNames = []string{}
+		batchSearchStrs = []string{}
 	}
 	log.Debugf("findBugsForSearchStrings made %d search.ci requests", queryCtr)
 
