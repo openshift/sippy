@@ -407,7 +407,7 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 
 		testNameWithKnownSuite := tc.Name
 		suiteID := pl.findSuite(suite.Name)
-		if suiteID == nil {
+		if suiteID == nil && suite.Name != "" {
 			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		}
 
