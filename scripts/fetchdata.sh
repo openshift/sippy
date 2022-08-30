@@ -25,7 +25,6 @@ while [ true ]; do
     --arch s390x \
     --arch ppc64le \
     --config /config/openshift.yaml \
-    --skip-bug-lookup \
     --mode=ocp
   echo "Done fetching data, refreshing server"
   curl localhost:8080/refresh
