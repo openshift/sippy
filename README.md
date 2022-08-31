@@ -81,6 +81,13 @@ $ ./rename.sh
 Update the deployment config for the historical instance, and commit the
 results.
 
+## Local Historical usage with DB
+See the [Development documentation](DEVELOPMENT.md) `From a Prod Sippy Backup` section to restore a backup locally.
+
+Start the server locally, pointing to the restored db, and set the pinnedDateTime configuration reflecting the end of the reporting period for the historical queries.
+
+`--pinnedDateTime=2022-08-10T00:00:00+00:00` 
+
 ## Non-OCP usage
 
 Sippy can be pointed at an arbitrary test-grid dashboard with a more limited featureset.

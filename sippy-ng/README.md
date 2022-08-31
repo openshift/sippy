@@ -12,6 +12,26 @@ When developing on the UI, it's better to run the API and UI separately
 for quicker feedback (Sippy will listen on `:8080`, and when run with
 `npm start`, the UI defaults to `:3000`)
 
+## Formattting requirements
+
+Formatting requirements are enforce on the order of imports (alphabetically) and [prettier](https://prettier.io/docs/en/options.html).  The [prettier config](prettier.config.js) can be modified to change the formatting standards.  From the command line prettier formatting can be applied via
+```
+sippy/sippy-ng: $ npx prettier -w src/
+```
+
+Imports must be sorted alphabetically.  If using a multi-line import (also sorted alphabetically) then the first entry in that import determines the sort order relative to the other import statements.
+```
+import { Link } from 'react-router-dom'
+import { relativeTime, safeEncodeURIComponent } from '../helpers'
+```
+vs.
+```
+import { getReportStartDate, relativeTime, safeEncodeURIComponent } from '../helpers'
+import { Link } from 'react-router-dom'
+```
+
+Helpers for each of these can be configured for on save actions or 'sort-imports'
+
 ## Installing dependencies
 
 ```bash

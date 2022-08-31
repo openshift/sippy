@@ -1,10 +1,12 @@
 import { Card, Container, Grid, Tooltip, Typography } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
 import {
+  getReportStartDate,
   relativeDuration,
   relativeTime,
   safeEncodeURIComponent,
 } from '../helpers'
+import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import { useTheme } from '@material-ui/core/styles'
@@ -31,6 +33,8 @@ function PayloadStreamOverview(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [streamHealth, setStreamHealth] = React.useState([])
+
+  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const fetchData = () => {
     let queryString = ''
@@ -88,9 +92,12 @@ function PayloadStreamOverview(props) {
           <NumberCard
             title="Last Payload Accepted"
             size={3}
-            number={relativeTime(new Date(streamHealth.release_time))}
+            number={relativeTime(
+              new Date(streamHealth.release_time),
+              startDate
+            )}
             bgColor={
-              new Date().getTime() -
+              startDate.getTime() -
                 new Date(streamHealth.release_time).getTime() >
               24 * 60 * 60 * 1000
                 ? theme.palette.error.light
