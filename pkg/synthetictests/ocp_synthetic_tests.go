@@ -206,13 +206,14 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 	if result.Succeeded {
 		return sippyprocessingv1.JobSucceeded
 	}
-
 	if result.Aborted {
 		return sippyprocessingv1.JobAborted
 	}
-
 	if !result.Failed {
 		return sippyprocessingv1.JobRunning
+	}
+	if result.Errored {
+		return sippyprocessingv1.JobFailureBeforeSetup
 	}
 
 	if result.InstallStatus == failure {
@@ -228,7 +229,7 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 		return sippyprocessingv1.JobTestFailure
 	}
 	if result.InstallStatus == "" {
-		return sippyprocessingv1.JobNoResults
+		return sippyprocessingv1.JobFailureBeforeSetup
 	}
 	return sippyprocessingv1.JobUnknown
 }

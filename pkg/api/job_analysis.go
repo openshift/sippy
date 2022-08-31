@@ -133,7 +133,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 				v1sippyprocessing.JobInfrastructureFailure: sum.Infrastructure,
 				v1sippyprocessing.JobUpgradeFailure:        sum.Upgrade,
 				v1sippyprocessing.JobInstallFailure:        sum.Install,
-				v1sippyprocessing.JobNoResults:             sum.NoResult,
+				v1sippyprocessing.JobFailureBeforeSetup:    sum.NoResult,
 				v1sippyprocessing.JobUnknown:               sum.FailureOther,
 				v1sippyprocessing.JobAborted:               sum.Aborted,
 			},

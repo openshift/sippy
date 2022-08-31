@@ -76,7 +76,7 @@ const (
 	JobInstallFailure        JobOverallResult = "I"
 	JobUpgradeFailure        JobOverallResult = "U"
 	JobTestFailure           JobOverallResult = "F"
-	JobNoResults             JobOverallResult = "n"
+	JobFailureBeforeSetup    JobOverallResult = "n"
 	JobAborted               JobOverallResult = "A"
 	JobUnknown               JobOverallResult = "f"
 )
@@ -146,6 +146,7 @@ type RawJobRunResult struct {
 	FailedTestNames []string // TODO: drop this and favor TestResults going forward, it has caused bugs.
 	TestResults     []RawJobRunTestResult
 	Failed          bool
+	Errored         bool
 	Succeeded       bool
 	Aborted         bool
 
