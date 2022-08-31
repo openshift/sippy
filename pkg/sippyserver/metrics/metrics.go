@@ -30,7 +30,7 @@ var (
 	jobPassRatioMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_job_pass_ratio",
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
-	}, []string{"release", "period", "name"})
+	}, []string{"release", "period", "name", "silenced"})
 	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_release_warnings",
 		Help: "Number of current warnings for a release, see overview page in UI for details",
@@ -74,7 +74,11 @@ func RefreshMetricsDB(dbc *db.DB) error {
 			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
 		}
 		for _, jobResult := range jobsResult {
-			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name).Set(jobResult.CurrentPassPercentage / 100)
+			silenced := "false"
+			if jobResult.CurrentRuns == 0 {
+				silenced = "true"
+			}
+			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced).Set(jobResult.CurrentPassPercentage / 100)
 		}
 	}
 
