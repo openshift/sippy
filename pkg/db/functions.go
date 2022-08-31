@@ -116,6 +116,7 @@ results AS (
                                 AND prow_jobs.release = $1
                 AND timestamp BETWEEN $2 AND $4
    		LEFT JOIN bug_jobs on prow_jobs.id = bug_jobs.prow_job_id
+        LEFT JOIN bugs on bugs.id = bug_jobs.bug_id AND lower(bugs.status) != 'closed'
         group by prow_jobs.name, prow_jobs.variants
 )
 SELECT pj_name,

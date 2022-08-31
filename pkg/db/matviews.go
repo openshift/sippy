@@ -224,7 +224,7 @@ SELECT tests.id,
 FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
    LEFT JOIN bug_tests on prow_job_run_tests.test_id = bug_tests.test_id
-   LEFT JOIN bugs on bug_tests.bug_id = bugs.id and bugs.status != 'CLOSED'
+   LEFT JOIN bugs on bug_tests.bug_id = bugs.id and lower(bugs.status) != 'closed'
    LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id

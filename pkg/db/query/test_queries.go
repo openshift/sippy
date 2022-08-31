@@ -33,7 +33,8 @@ const (
 		previous_runs,
 		previous_successes,
 		previous_failures,
-		previous_flakes`
+		previous_flakes,
+		open_bugs`
 
 	QueryTestPercentages = `
 		current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
