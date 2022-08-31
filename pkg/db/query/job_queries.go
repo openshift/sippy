@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 )
@@ -30,18 +29,6 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 	q.Scan(&jobReports)
 	elapsed := time.Since(now)
 	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
-
-	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
-	// instead of empty array. Quick hack to make this work.
-	for i, j := range jobReports {
-		if len(j.Bugs) == 0 {
-			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
-		}
-
-		if len(j.AssociatedBugs) == 0 {
-			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
-		}
-	}
 
 	return jobReports, nil
 }
