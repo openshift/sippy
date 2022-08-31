@@ -79,6 +79,13 @@ export const getColumns = (config, openBugzillaDialog) => {
         </div>
       ),
     },
+    open_bugs: {
+      field: 'open_bugs',
+      headerName: 'Bugs',
+      type: 'number',
+      flex: 0.5,
+      renderCell: (params) => <div className="test-name">{params.value}</div>,
+    },
     test_grid_url: {
       field: 'test_grid_url',
       headerName: ' ',
@@ -419,6 +426,10 @@ function JobTable(props) {
           field: 'previous_pass_percentage',
           flex: 0.75,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
         },
         {
           field: 'test_grid_url',
