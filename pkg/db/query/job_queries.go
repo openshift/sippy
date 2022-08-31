@@ -30,35 +30,6 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 	elapsed := time.Since(now)
 	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
 
-	// Separate query for open bug counts, add to the models before we return.
-	// This was getting too difficult to jam into the job_results function.
-	openBugsQuery := `SELECT prow_jobs.name AS name,
-		COUNT(DISTINCT bug_jobs.bug_id) AS open_bugs
-		FROM prow_jobs
-		JOIN bug_jobs ON prow_jobs.id = bug_jobs.prow_job_id
-		WHERE prow_jobs.release = ?
-		GROUP BY prow_jobs.name`
-
-	type jobOpenBugs struct {
-		Name     string
-		OpenBugs int
-	}
-	allOpenBugs := make([]*jobOpenBugs, 0)
-	res := dbc.DB.Raw(openBugsQuery, release).Scan(&allOpenBugs)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error loading all bugs to populate open_bugs for jobs")
-		return jobReports, res.Error
-	}
-	for i := range jobReports {
-		for _, ob := range allOpenBugs {
-			log.Infof("%s = %s?", ob.Name, jobReports[i].Name)
-			if ob.Name == jobReports[i].Name {
-				log.WithField("name", jobReports[i].Name).WithField("openBugs", ob.OpenBugs).Debug("job has open bugs")
-				jobReports[i].OpenBugs = ob.OpenBugs
-			}
-		}
-	}
-
 	return jobReports, nil
 }
 
