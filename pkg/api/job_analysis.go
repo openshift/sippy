@@ -25,7 +25,7 @@ type apiJobAnalysisResult struct {
 	ByPeriod map[string]analysisResult `json:"by_period"`
 }
 
-func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
+func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string, timeNow time.Time) {
 	fil, err := filter.ExtractFilters(req)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
@@ -63,7 +63,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 		period = PeriodDay
 	}
 
-	table, err := jobResultsFromDB(req, dbc.DB, release)
+	table, err := jobResultsFromDB(req, dbc.DB, release, timeNow)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job analysis report:" + table.Error.Error()})
 		return

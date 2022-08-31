@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
@@ -28,7 +29,7 @@ type DB struct {
 	BatchSize int
 }
 
-func New(dsn string) (*DB, error) {
+func New(dsn string, timeNow time.Time) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -96,7 +97,7 @@ func New(dsn string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := syncPostgresMaterializedViews(db); err != nil {
+	if err := syncPostgresMaterializedViews(db, timeNow); err != nil {
 		return nil, err
 	}
 

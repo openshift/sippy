@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
+	"github.com/openshift/sippy/pkg/util"
 
 	log "github.com/sirupsen/logrus"
 
@@ -52,6 +53,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	pinnedDateTime *time.Time,
 ) *Server {
 
 	server := &Server{
@@ -67,9 +69,10 @@ func NewServer(
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
 			DisplayDataConfig:           displayDataOptions,
 		},
-		sippyNG: sippyNG,
-		static:  static,
-		db:      dbClient,
+		sippyNG:        sippyNG,
+		static:         static,
+		db:             dbClient,
+		pinnedDateTime: pinnedDateTime,
 	}
 
 	return server
@@ -101,6 +104,7 @@ type Server struct {
 	static                     fs.FS
 	httpServer                 *http.Server
 	db                         *db.DB
+	pinnedDateTime             *time.Time
 }
 
 type TestGridDashboardCoordinates struct {
@@ -112,6 +116,10 @@ type TestGridDashboardCoordinates struct {
 	BugzillaRelease string
 }
 
+func (s *Server) GetTimeNow() time.Time {
+	return util.GetTimeNow(s.pinnedDateTime)
+}
+
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	s.RefreshData(false)
 
@@ -120,7 +128,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) refreshMetrics() {
-	err := metrics.RefreshMetricsDB(s.db)
+	err := metrics.RefreshMetricsDB(s.db, s.GetTimeNow())
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
@@ -383,7 +391,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts)
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetTimeNow())
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -404,7 +412,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	results, err := api.ReleaseHealthReports(s.db, release)
+	results, err := api.ReleaseHealthReports(s.db, release, s.GetTimeNow())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -494,12 +502,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release)
+		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetTimeNow())
 	}
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
-	start, boundary, end := getPeriodDates("default", req)
+	start, boundary, end := getPeriodDates("default", req, s.GetTimeNow())
 
 	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
 	if err != nil {
@@ -555,7 +563,7 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	release := s.getReleaseOrFail(w, req)
 	jobName := req.URL.Query().Get("job")
 	if release != "" && jobName != "" {
-		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
+		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName, s.GetTimeNow())
 		if err != nil {
 			log.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
 		}
@@ -572,14 +580,14 @@ func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Reques
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintVariantReportFromDB(w, req, s.db, release)
+		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetTimeNow())
 	}
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReportFromDB(w, req, s.db, release)
+		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetTimeNow())
 	}
 }
 
@@ -593,7 +601,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts)
+		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetTimeNow())
 		if err != nil {
 			log.WithError(err).Error("error")
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -633,7 +641,7 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
-	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
+	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release, s.GetTimeNow())
 }
 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
