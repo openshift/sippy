@@ -39,9 +39,9 @@ export default function BugTable(props) {
                 <a href={bug.url}>{bug.summary}</a>
               </TableCell>
               <TableCell>{bug.status}</TableCell>
-              <TableCell>{bug.components[0]}</TableCell>
-              <TableCell>{bug.affects_versions[0]}</TableCell>
-              <TableCell>{bug.fix_versions[0]}</TableCell>
+              <TableCell>{bug.components.join(',')}</TableCell>
+              <TableCell>{bug.affects_versions.join(',')}</TableCell>
+              <TableCell>{bug.fix_versions.join(',')}</TableCell>
             </TableRow>
           ))}
         </TableBody>
