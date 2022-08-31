@@ -211,7 +211,7 @@ type Job struct {
 	NetImprovement                  float64 `json:"net_improvement"`
 
 	TestGridURL string `json:"test_grid_url"`
-	OpenBugs    int    `json:"open_bugs" gorm:"-"`
+	OpenBugs    int    `json:"open_bugs"`
 }
 
 func (job Job) GetFieldType(param string) ColumnType {
