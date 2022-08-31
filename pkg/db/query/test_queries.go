@@ -175,6 +175,7 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 	stats := dbc.DB.Table(table).
 		Select(`
                  id                                                                             AS test_id,
+                 suite_name                                                                     AS stats_suite_name,
                  avg((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0))    AS working_average,
                  stddev((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)) AS working_standard_deviation,
                  avg(current_successes * 100.0 / NULLIF(current_runs, 0))                       AS passing_average,
@@ -182,19 +183,19 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
                  avg(current_flakes * 100.0 / NULLIF(current_runs, 0))                          AS flake_average,
                  stddev(current_flakes * 100.0 / NULLIF(current_runs, 0))                       AS flake_standard_deviation`).
 		Where(`release = ?`, release).
-		Group("id")
+		Group("id, suite_name")
 
 	// 2. Collect standard stats for all tests. Each row applies to one variant of a test.
 	passRates := dbc.DB.Table(table).
-		Select(`id as test_id, variants as pass_rate_variants, `+QueryTestPercentages).
+		Select(`id as test_id, suite_name as pass_rate_suite_name, variants as pass_rate_variants, `+QueryTestPercentages).
 		Where(`release = ?`, release)
 
 	// 3. Join the tables to produce test report. Each row represent one variant of a test and contains all stats, both unique to the specific variant and average across all variants.
 	return dbc.DB.
 		Table(table).
 		Select("*, (current_working_percentage - working_average) as delta_from_working_average, (current_pass_percentage - passing_average) as delta_from_passing_average, (current_flake_percentage - flake_average) as delta_from_flake_average").
-		Joins(fmt.Sprintf(`INNER JOIN (?) as pass_rates on pass_rates.test_id = %s.id AND pass_rates.pass_rate_variants = %s.variants`, table, table), passRates).
-		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id`, table), stats).
+		Joins(fmt.Sprintf(`INNER JOIN (?) as pass_rates on pass_rates.test_id = %s.id AND pass_rates.pass_rate_suite_name = %s.suite_name AND pass_rates.pass_rate_variants = %s.variants`, table, table, table), passRates).
+		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id AND stats.stats_suite_name = %s.suite_name`, table, table), stats).
 		Where(`release = ?`, release).
 		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
 }
