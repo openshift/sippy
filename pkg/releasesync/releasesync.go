@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm/clause"
+
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -54,20 +55,10 @@ func (r *releaseSyncOptions) Run() error {
 				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
 				// expect Phase to be populated if the record is present
 				if len(mReleaseTag.Phase) > 0 {
-
 					if mReleaseTag.Phase != tag.Phase {
-						log.Infof("Fetching updated tag %s from release controller...\n", tag.Name)
-						releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
-
-						if releaseTag == nil {
-							continue
-						}
-
-						// sync up the ids and created at
-						releaseTag.ID = mReleaseTag.ID
-						releaseTag.CreatedAt = mReleaseTag.CreatedAt
-
-						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(releaseTag).Error; err != nil {
+						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...\n", mReleaseTag.Phase, tag.Phase, tag.Name)
+						mReleaseTag.Phase = tag.Phase
+						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
 							return err
 						}
 					}
