@@ -51,6 +51,10 @@ var (
 		Name: "sippy_payloads_possible_test_blockers",
 		Help: "Number of possible test blockers identified for a given payload stream.",
 	}, []string{"release", "stream", "architecture"})
+	hoursSinceLastUpdate = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_hours_since_last_update",
+		Help: "Number of hours since Sippy last successfully fetched new data.",
+	}, []string{})
 )
 
 func RefreshMetricsDB(dbc *db.DB) error {
@@ -63,6 +67,13 @@ func RefreshMetricsDB(dbc *db.DB) error {
 	if err != nil {
 		return err
 	}
+
+	// Get last updated job run
+	var lastUpdated time.Time
+	if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
+		return errors.Wrapf(err, "could not fetch last updated time")
+	}
+	hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
 
 	for _, pType := range promReportTypes {
 		// start, boundary and end will just be defaults
