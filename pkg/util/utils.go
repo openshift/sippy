@@ -46,20 +46,20 @@ func StrSliceContains(strSlice []string, elem string) bool {
 
 // PeriodToDates takes a period name such as twoDay or default, and
 // converts to start, boundary, and end times.
-func PeriodToDates(period string, timeNow time.Time) (start, boundary, end time.Time) {
+func PeriodToDates(period string, reportEnd time.Time) (start, boundary, end time.Time) {
 	if period == "twoDay" {
-		start = timeNow.Add(-9 * 24 * time.Hour)
-		boundary = timeNow.Add(-2 * 24 * time.Hour)
+		start = reportEnd.Add(-9 * 24 * time.Hour)
+		boundary = reportEnd.Add(-2 * 24 * time.Hour)
 	} else {
-		start = timeNow.Add(-14 * 24 * time.Hour)
-		boundary = timeNow.Add(-7 * 24 * time.Hour)
+		start = reportEnd.Add(-14 * 24 * time.Hour)
+		boundary = reportEnd.Add(-7 * 24 * time.Hour)
 	}
-	end = timeNow
+	end = reportEnd
 
 	return start, boundary, end
 }
 
-func GetTimeNow(pinnedTime *time.Time) time.Time {
+func GetReportEnd(pinnedTime *time.Time) time.Time {
 	if pinnedTime == nil {
 		return time.Now()
 	}

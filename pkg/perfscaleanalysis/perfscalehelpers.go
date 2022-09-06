@@ -26,7 +26,7 @@ const (
 	ScaleJobsFilename = "perfscale-metrics.json"
 )
 
-func DownloadPerfScaleData(storagePath string, timeNow time.Time) error {
+func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 	log.Debugf("Downloading perfscale data from %s index %s", esURL, esIndex)
 	cfg := es7.Config{
 		Addresses: []string{esURL},
@@ -37,9 +37,9 @@ func DownloadPerfScaleData(storagePath string, timeNow time.Time) error {
 		return err
 	}
 
-	//TODO: Review with Devan how this is (or isn't) impacted by historical sippy / pinned timeNow
+	//TODO: Review with Devan how this is (or isn't) impacted by historical sippy / pinned reportEnd
 	// Calculate dates for our buckets:
-	now := timeNow
+	now := reportEnd
 	// Hardcoded for now:
 	currPeriod := 7 * 24 * time.Hour  // last week
 	prevPeriod := 30 * 24 * time.Hour // last month

@@ -81,7 +81,7 @@ type PayloadFailedTest struct {
 
 // GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, timeNow time.Time) ([]*apitype.TestFailureAnalysis, error) {
+func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, reportEnd time.Time) ([]*apitype.TestFailureAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -95,7 +95,7 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 
 	// Get latest payload tags for analysis:
 	lastPayloads, err := query.GetLastPayloadTags(dbc.DB, release,
-		stream, arch, timeNow)
+		stream, arch, reportEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 // ReleaseHealthReports returns a report on the most recent payload status for each arch/stream in
 // the given release.
-func ReleaseHealthReports(dbClient *db.DB, release string, timeNow time.Time) ([]apitype.ReleaseHealthReport, error) {
+func ReleaseHealthReports(dbClient *db.DB, release string, reportEnd time.Time) ([]apitype.ReleaseHealthReport, error) {
 	apiResults := make([]apitype.ReleaseHealthReport, 0)
 	if dbClient == nil || dbClient.DB == nil {
 		return apiResults, fmt.Errorf("no db client configured")
@@ -344,7 +344,7 @@ func ReleaseHealthReports(dbClient *db.DB, release string, timeNow time.Time) ([
 				release, archStream.Architecture, archStream.Stream)
 		}
 
-		weekAgo := timeNow.Add(-7 * 24 * time.Hour)
+		weekAgo := reportEnd.Add(-7 * 24 * time.Hour)
 		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo)
 		if err != nil {
 			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
@@ -393,8 +393,8 @@ func dbPayloadPhaseCountToAPI(dbpc []models.PayloadPhaseCount) apitype.PayloadPh
 }
 
 // ScanForReleaseWarnings looks for problems in current release health and returns them to the user.
-func ScanForReleaseWarnings(dbClient *db.DB, release string, timeNow time.Time) []string {
-	payloadHealth, err := ReleaseHealthReports(dbClient, release, timeNow)
+func ScanForReleaseWarnings(dbClient *db.DB, release string, reportEnd time.Time) []string {
+	payloadHealth, err := ReleaseHealthReports(dbClient, release, reportEnd)
 	if err != nil {
 		// treat the error as a warning itself
 		return []string{fmt.Sprintf("error checking release health, see logs: %v", err)}

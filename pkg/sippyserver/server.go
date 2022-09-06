@@ -116,8 +116,8 @@ type TestGridDashboardCoordinates struct {
 	BugzillaRelease string
 }
 
-func (s *Server) GetTimeNow() time.Time {
-	return util.GetTimeNow(s.pinnedDateTime)
+func (s *Server) GetReportEnd() time.Time {
+	return util.GetReportEnd(s.pinnedDateTime)
 }
 
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
@@ -128,7 +128,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) refreshMetrics() {
-	err := metrics.RefreshMetricsDB(s.db, s.GetTimeNow())
+	err := metrics.RefreshMetricsDB(s.db, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
@@ -391,7 +391,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetTimeNow())
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -412,7 +412,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	results, err := api.ReleaseHealthReports(s.db, release, s.GetTimeNow())
+	results, err := api.ReleaseHealthReports(s.db, release, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -502,12 +502,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetTimeNow())
+		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
-	start, boundary, end := getPeriodDates("default", req, s.GetTimeNow())
+	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 
 	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
 	if err != nil {
@@ -563,7 +563,7 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	release := s.getReleaseOrFail(w, req)
 	jobName := req.URL.Query().Get("job")
 	if release != "" && jobName != "" {
-		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName, s.GetTimeNow())
+		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName, s.GetReportEnd())
 		if err != nil {
 			log.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
 		}
@@ -580,14 +580,14 @@ func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Reques
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetTimeNow())
+		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetTimeNow())
+		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
@@ -601,7 +601,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetTimeNow())
+		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
 			log.WithError(err).Error("error")
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -641,7 +641,7 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
-	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release, s.GetTimeNow())
+	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release, s.GetReportEnd())
 }
 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {

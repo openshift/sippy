@@ -55,7 +55,7 @@ var (
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, timeNow time.Time) error {
+func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func RefreshMetricsDB(dbc *db.DB, timeNow time.Time) error {
 		// start, boundary and end will just be defaults
 		// the api will decide based on the period
 		// and current day / time
-		jobsResult, err := api.JobReportsFromDB(dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, timeNow)
+		jobsResult, err := api.JobReportsFromDB(dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, reportEnd)
 
 		if err != nil {
 			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
@@ -83,22 +83,22 @@ func RefreshMetricsDB(dbc *db.DB, timeNow time.Time) error {
 	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
 	// tell you x warnings are present and link you to the overview in the alert.
 	for _, release := range releases {
-		releaseWarnings := api.ScanForReleaseWarnings(dbc, release.Release, timeNow)
+		releaseWarnings := api.ScanForReleaseWarnings(dbc, release.Release, reportEnd)
 		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
 	}
 
-	if err := refreshBuildClusterMetrics(dbc, timeNow); err != nil {
+	if err := refreshBuildClusterMetrics(dbc, reportEnd); err != nil {
 		return errors.Wrapf(err, "error refreshing build cluster metrics")
 	}
 
-	refreshPayloadMetrics(dbc, timeNow)
+	refreshPayloadMetrics(dbc, reportEnd)
 
 	return nil
 }
 
-func refreshBuildClusterMetrics(dbc *db.DB, timeNow time.Time) error {
+func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 	for _, period := range []string{"default", "twoDay"} {
-		start, boundary, end := util.PeriodToDates(period, timeNow)
+		start, boundary, end := util.PeriodToDates(period, reportEnd)
 		result, err := query.BuildClusterHealth(dbc, start, boundary, end)
 		if err != nil {
 			return err
@@ -112,14 +112,14 @@ func refreshBuildClusterMetrics(dbc *db.DB, timeNow time.Time) error {
 	return nil
 }
 
-func refreshPayloadMetrics(dbc *db.DB, timeNow time.Time) {
+func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		log.WithError(err).Error("error querying releases from db")
 		return
 	}
 	for _, r := range releases {
-		results, err := api.ReleaseHealthReports(dbc, r.Release, timeNow)
+		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
 			log.WithError(err).Error("error calling ReleaseHealthReports")
 			return
@@ -135,7 +135,7 @@ func refreshPayloadMetrics(dbc *db.DB, timeNow time.Time) {
 			// Piggy back the results here to use the list of arch+streams:
 			if rhr.LastPhase == apitype.PayloadRejected {
 				possibleTestBlockers, err := api.GetPayloadStreamTestFailures(dbc, r.Release, rhr.Stream,
-					rhr.Architecture, &filter.FilterOptions{Filter: &filter.Filter{}}, timeNow)
+					rhr.Architecture, &filter.FilterOptions{Filter: &filter.Filter{}}, reportEnd)
 				if err != nil {
 					log.WithError(err).Error("error getting payload stream test failures")
 					return

@@ -29,7 +29,7 @@ type DB struct {
 	BatchSize int
 }
 
-func New(dsn string, timeNow time.Time) (*DB, error) {
+func New(dsn string, reportEnd time.Time) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
@@ -97,7 +97,7 @@ func New(dsn string, timeNow time.Time) (*DB, error) {
 		return nil, err
 	}
 
-	if err := syncPostgresMaterializedViews(db, timeNow); err != nil {
+	if err := syncPostgresMaterializedViews(db, reportEnd); err != nil {
 		return nil, err
 	}
 

@@ -138,7 +138,7 @@ func main() {
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
 
-	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use instead of the current time specified in RFC3339 format - 2006-01-02 15:04:05+00:00")
+	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use in a historical context with a fixed date / time value specified in RFC3339 format - 2006-01-02 15:04:05+00:00")
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
@@ -313,7 +313,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 			if err != nil {
 				return err
 			}
-			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir, util.GetTimeNow(pinnedTime))
+			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir, util.GetReportEnd(pinnedTime))
 			if err != nil {
 				return err
 			}
@@ -326,12 +326,12 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		_, err := db.New(o.DSN, util.GetTimeNow(pinnedTime))
+		_, err := db.New(o.DSN, util.GetReportEnd(pinnedTime))
 		return err
 	}
 
 	if o.LoadDatabase {
-		dbc, err := db.New(o.DSN, util.GetTimeNow(pinnedTime))
+		dbc, err := db.New(o.DSN, util.GetReportEnd(pinnedTime))
 		if err != nil {
 			return err
 		}
@@ -348,7 +348,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
-					o.StartDay, o.NumDays, util.GetTimeNow(pinnedTime))
+					o.StartDay, o.NumDays, util.GetReportEnd(pinnedTime))
 				if err != nil {
 					log.WithError(err).Error("error loading database")
 					return err
@@ -421,7 +421,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN, util.GetTimeNow(pinnedDateTime))
+		dbc, err = db.New(o.DSN, util.GetReportEnd(pinnedDateTime))
 		if err != nil {
 			return err
 		}
@@ -450,7 +450,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 
 	// Initial metrics refresh to get the endpoint scrapable ASAP and prevent prom gaps, before
 	// we start the lengthy mat view refreshes.
-	if err := metrics.RefreshMetricsDB(dbc, server.GetTimeNow()); err != nil {
+	if err := metrics.RefreshMetricsDB(dbc, server.GetReportEnd()); err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
 

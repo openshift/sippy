@@ -85,10 +85,10 @@ type PostgresMaterializedView struct {
 	IndexColumns []string
 }
 
-func syncPostgresMaterializedViews(db *gorm.DB, timeNow time.Time) error {
+func syncPostgresMaterializedViews(db *gorm.DB, reportEnd time.Time) error {
 
 	// initialize outside our loop
-	timeNowFmt := "TO_TIMESTAMP('" + timeNow.UTC().Format(TimestampFormat) + "', 'YYYY-MM-DD HH24:MI:SS')"
+	reportEndFmt := "TO_TIMESTAMP('" + reportEnd.UTC().Format(TimestampFormat) + "', 'YYYY-MM-DD HH24:MI:SS')"
 
 	for _, pmv := range PostgresMatViews {
 		// Sync materialized view:
@@ -98,7 +98,7 @@ func syncPostgresMaterializedViews(db *gorm.DB, timeNow time.Time) error {
 		}
 
 		// This has to occur after the replaceAll above as they might contain the REPLACE_TIME_NOW constant as well
-		viewDef = strings.ReplaceAll(viewDef, ReplaceTimeNow, timeNowFmt)
+		viewDef = strings.ReplaceAll(viewDef, ReplaceTimeNow, reportEndFmt)
 
 		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)
 		schema := fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, viewDef)
