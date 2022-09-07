@@ -14,16 +14,6 @@ import (
 const PeriodDay = "day"
 const PeriodHour = "hour"
 
-type AnalysisResult struct {
-	TotalRuns        int                                        `json:"total_runs"`
-	ResultCount      map[v1sippyprocessing.JobOverallResult]int `json:"result_count"`
-	TestFailureCount map[string]int                             `json:"test_count"`
-}
-
-type JobAnalysisResult struct {
-	ByPeriod map[string]AnalysisResult `json:"by_period"`
-}
-
 func PrintJobAnalysisJSONFromDB(
 	dbc *db.DB,
 	release string,
@@ -33,8 +23,8 @@ func PrintJobAnalysisJSONFromDB(
 	limit int,
 	sortField string,
 	sort apitype.Sort,
-	period string) (JobAnalysisResult, error) {
-	result := JobAnalysisResult{}
+	period string) (apitype.JobAnalysisResult, error) {
+	result := apitype.JobAnalysisResult{}
 
 	jobs, err2 := query.ListFilteredJobIDs(dbc, release, jobFilter,
 		start, boundary, end, limit, sortField, sort)
@@ -77,8 +67,8 @@ func PrintJobAnalysisJSONFromDB(
 	sumResults.Scan(&sums)
 
 	// collect the results
-	results := JobAnalysisResult{
-		ByPeriod: make(map[string]AnalysisResult),
+	results := apitype.JobAnalysisResult{
+		ByPeriod: make(map[string]apitype.AnalysisResult),
 	}
 	var formatter string
 	if period == PeriodDay {
@@ -88,7 +78,7 @@ func PrintJobAnalysisJSONFromDB(
 	}
 
 	for _, sum := range sums {
-		results.ByPeriod[sum.Period.UTC().Format(formatter)] = AnalysisResult{
+		results.ByPeriod[sum.Period.UTC().Format(formatter)] = apitype.AnalysisResult{
 			TotalRuns: sum.TotalRuns,
 			ResultCount: map[v1sippyprocessing.JobOverallResult]int{
 				v1sippyprocessing.JobSucceeded:             sum.Success,

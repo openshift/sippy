@@ -660,3 +660,13 @@ type BuildClusterHealthAnalysis struct {
 }
 
 type BuildClusterHealth = models.BuildClusterHealthReport
+
+type AnalysisResult struct {
+	TotalRuns        int                         `json:"total_runs"`
+	ResultCount      map[v1.JobOverallResult]int `json:"result_count"`
+	TestFailureCount map[string]int              `json:"test_count"`
+}
+
+type JobAnalysisResult struct {
+	ByPeriod map[string]AnalysisResult `json:"by_period"`
+}
