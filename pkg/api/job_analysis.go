@@ -26,10 +26,10 @@ func PrintJobAnalysisJSONFromDB(
 	period string) (apitype.JobAnalysisResult, error) {
 	result := apitype.JobAnalysisResult{}
 
-	jobs, err2 := query.ListFilteredJobIDs(dbc, release, jobFilter,
+	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
 		start, boundary, end, limit, sortField, sort)
-	if err2 != nil {
-		return result, err2
+	if err != nil {
+		return result, err
 	}
 
 	// Next is sum up individual job results
