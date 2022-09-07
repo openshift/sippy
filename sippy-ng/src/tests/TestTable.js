@@ -124,6 +124,7 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
+          hide: props.collapse,
         },
         {
           field: 'variants',
@@ -145,7 +146,7 @@ function TestTable(props) {
         {
           field: 'working_standard_deviation',
           flex: 0.75,
-          hide: props.collapse || props.briefTable,
+          hide: true,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
@@ -404,7 +405,7 @@ function TestTable(props) {
     },
     delta_from_working_average: {
       field: 'delta_from_working_average',
-      headerName: 'Delta',
+      headerName: 'Delta (working)',
       type: 'number',
       renderCell: (params) => {
         return (
@@ -418,7 +419,7 @@ function TestTable(props) {
     },
     working_average: {
       field: 'working_average',
-      headerName: 'Average',
+      headerName: 'Average (working)',
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
@@ -430,12 +431,13 @@ function TestTable(props) {
     },
     working_standard_deviation: {
       field: 'working_standard_deviation',
-      headerName: 'StdDev',
+      headerName: 'Standard Deviation (working)',
       type: 'number',
     },
     delta_from_passing_average: {
       field: 'delta_from_passing_average',
-      headerName: 'Delta',
+      headerName: 'Delta (pass)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => {
         return (
@@ -449,7 +451,8 @@ function TestTable(props) {
     },
     passing_average: {
       field: 'passing_average',
-      headerName: 'Average',
+      headerName: 'Average (pass)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
@@ -461,12 +464,14 @@ function TestTable(props) {
     },
     passing_standard_deviation: {
       field: 'passing_standard_deviation',
-      headerName: 'StdDev',
+      headerName: 'Standard Deviation (pass)',
+      filterable: false,
       type: 'number',
     },
     delta_from_flake_average: {
       field: 'delta_from_flake_average',
-      headerName: 'Delta',
+      headerName: 'Delta (flake)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => {
         return (
@@ -480,7 +485,8 @@ function TestTable(props) {
     },
     flake_average: {
       field: 'flake_average',
-      headerName: 'Average',
+      headerName: 'Average (flake)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => (
         <div className="percentage-cell">
@@ -492,7 +498,8 @@ function TestTable(props) {
     },
     flake_standard_deviation: {
       field: 'flake_standard_deviation',
-      headerName: 'StdDev',
+      headerName: 'Standard Deviation (flake)',
+      filterable: false,
       type: 'number',
     },
     current_working_percentage: {
@@ -504,6 +511,7 @@ function TestTable(props) {
     net_improvement: {
       field: 'net_improvement',
       headerName: 'Improvement (pass)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => {
         return <PassRateIcon tooltip={true} improvement={params.value} />
@@ -520,6 +528,7 @@ function TestTable(props) {
     net_flake_improvement: {
       field: 'net_flake_improvement',
       headerName: 'Improvement (flake)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => {
         return (
@@ -534,6 +543,7 @@ function TestTable(props) {
     net_failure_improvement: {
       field: 'net_failure_improvement',
       headerName: 'Improvement (failure)',
+      filterable: false,
       type: 'number',
       renderCell: (params) => {
         return <PassRateIcon tooltip={true} improvement={params.value} />

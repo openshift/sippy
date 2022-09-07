@@ -48,6 +48,7 @@ export function TestAnalysis(props) {
       items: [
         filterFor('name', 'equals', testName),
         not(filterFor('variants', 'contains', 'never-stable')),
+        filterFor('current_runs', '>', '0'),
       ],
     },
     setFilterModel,
@@ -509,6 +510,8 @@ export function TestAnalysis(props) {
                 hideControls={true}
                 collapse={false}
                 release={props.release}
+                sortField="delta_from_working_average"
+                sort="asc"
                 filterModel={filterModel}
               />
             </Card>
