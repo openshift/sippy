@@ -84,7 +84,13 @@ export const getColumns = (config, openBugzillaDialog) => {
       headerName: 'Bugs',
       type: 'number',
       flex: 0.5,
-      renderCell: (params) => <div className="test-name">{params.value}</div>,
+      renderCell: (params) => (
+        <div>
+          <Link to={pathForExactJobAnalysis(config.release, params.row.name)}>
+            {params.value}
+          </Link>
+        </div>
+      ),
     },
     test_grid_url: {
       field: 'test_grid_url',

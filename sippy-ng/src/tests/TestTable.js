@@ -16,6 +16,7 @@ import {
   escapeRegex,
   filterFor,
   not,
+  pathForExactJobAnalysis,
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
@@ -550,7 +551,20 @@ function TestTable(props) {
       field: 'open_bugs',
       headerName: 'Bugs',
       type: 'number',
-      renderCell: (params) => <div className="test-name">{params.value}</div>,
+      renderCell: (params) => (
+        <div>
+          <Link
+            to={
+              '/tests/' +
+              props.release +
+              '/analysis?test=' +
+              safeEncodeURIComponent(params.row.name)
+            }
+          >
+            {params.value}
+          </Link>
+        </div>
+      ),
     },
     link: {
       field: 'link',
