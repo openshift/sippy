@@ -432,6 +432,18 @@ export function JobAnalysis(props) {
           </Grid>
 
           <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Issues
+                <Tooltip title="Issues links to all known Jira issues mentioning this job. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <BugTable bugs={bugs} />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
             <Card className="job-failure-card" elevation={5}>
               <Typography variant="h5">Job results</Typography>
               <JobStackedChart
@@ -532,17 +544,6 @@ export function JobAnalysis(props) {
                   </Grid>
                 </Dialog>
               </Box>
-            </Card>
-          </Grid>
-          <Grid item md={12}>
-            <Card className="test-failure-card" elevation={5}>
-              <Typography variant="h5">
-                Issues
-                <Tooltip title="Issues links to all known Jira issues mentioning this job. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
-                  <InfoIcon />
-                </Tooltip>
-              </Typography>
-              <BugTable bugs={bugs} />
             </Card>
           </Grid>
         </Grid>
