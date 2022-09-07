@@ -194,8 +194,8 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 	return dbc.DB.
 		Table(table).
 		Select("*, (current_working_percentage - working_average) as delta_from_working_average, (current_pass_percentage - passing_average) as delta_from_passing_average, (current_flake_percentage - flake_average) as delta_from_flake_average").
-		Joins(fmt.Sprintf(`INNER JOIN (?) as pass_rates on pass_rates.test_id = %s.id AND pass_rates.pass_rate_suite_name = %s.suite_name AND pass_rates.pass_rate_variants = %s.variants`, table, table, table), passRates).
-		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id AND stats.stats_suite_name = %s.suite_name`, table, table), stats).
+		Joins(fmt.Sprintf(`INNER JOIN (?) as pass_rates on pass_rates.test_id = %s.id AND pass_rates.pass_rate_suite_name IS NOT DISTINCT FROM %s.suite_name AND pass_rates.pass_rate_variants = %s.variants`, table, table, table), passRates).
+		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id AND stats.stats_suite_name IS NOT DISTINCT FROM %s.suite_name`, table, table), stats).
 		Where(`release = ?`, release).
 		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
 }
