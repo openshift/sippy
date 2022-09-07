@@ -21,7 +21,7 @@ export default function BugTable(props) {
       <Table size="small" aria-label="bug-table">
         <TableHead>
           <TableRow>
-            <TableCell>Issue ID</TableCell>
+            <TableCell>Issue</TableCell>
             <TableCell>Summary</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Component</TableCell>
@@ -33,7 +33,7 @@ export default function BugTable(props) {
           {props.bugs.map((bug) => (
             <TableRow key={'bug-row-' + bug.id}>
               <TableCell scope="row">
-                <a href={bug.url}>{bug.id}</a>
+                <a href={bug.url}>{bug.key}</a>
               </TableCell>
               <TableCell>
                 <a href={bug.url}>{bug.summary}</a>

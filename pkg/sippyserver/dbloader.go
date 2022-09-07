@@ -436,6 +436,7 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {
 	newBug := &models.Bug{
 		ID:             uint(issueID),
+		Key:            apiIssue.Key,
 		Status:         apiIssue.Fields.Status.Name,
 		LastChangeTime: time.Time(apiIssue.Fields.Updated),
 		Summary:        apiIssue.Fields.Summary,

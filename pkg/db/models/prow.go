@@ -121,6 +121,7 @@ type TestAnalysisRow struct {
 // Bug represents a Bugzilla bug.
 type Bug struct {
 	ID              uint           `json:"id" gorm:"primarykey"`
+	Key             string         `json:"key" gorm:"index"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"index"`
