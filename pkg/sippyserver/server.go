@@ -24,7 +24,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
@@ -48,7 +47,6 @@ func NewServer(
 	listenAddr string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
-	bugCache buganalysis.BugCache,
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
@@ -61,7 +59,6 @@ func NewServer(
 
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
-		bugCache:             bugCache,
 		testReportGeneratorConfig: TestReportGeneratorConfig{
 			TestGridLoadingConfig:       testGridLoadingConfig,
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
@@ -94,7 +91,6 @@ type Server struct {
 
 	syntheticTestManager       synthetictests.SyntheticTestManager
 	variantManager             testidentification.VariantManager
-	bugCache                   buganalysis.BugCache
 	testReportGeneratorConfig  TestReportGeneratorConfig
 	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
 	sippyNG                    fs.FS
@@ -435,6 +431,68 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
+func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+
+	bugs, err := query.LoadBugsForTest(s.db, testName)
+	if err != nil {
+		log.WithError(err).Error("error querying test bugs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying test bugs from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, bugs)
+}
+
+func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getRelease(req)
+
+	fil, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+	jobFilter, _, err := splitJobAndJobRunFilters(fil)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	start, boundary, end := getPeriodDates("default", req)
+	limit := getLimitParam(req)
+	sortField, sort := getSortParams(req)
+
+	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
+	if err != nil {
+		log.WithError(err).Error("error querying jobs")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying jobs",
+		})
+		return
+	}
+
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs)
+	if err != nil {
+		log.WithError(err).Error("error querying job bugs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying job bugs from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, bugs)
+}
+
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -633,7 +691,36 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
-	api.PrintJobAnalysisJSONFromDB(w, req, s.db, release)
+
+	fil, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+	jobFilter, jobRunsFilter, err := splitJobAndJobRunFilters(fil)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	start, boundary, end := getPeriodDates("default", req)
+	limit := getLimitParam(req)
+	sortField, sort := getSortParams(req)
+
+	period := req.URL.Query().Get("period")
+	if period == "" {
+		period = api.PeriodDay
+	}
+
+	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
+		start, boundary, end, limit, sortField, sort, period)
+	if err != nil {
+		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
@@ -681,11 +768,13 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
 	serveMux.HandleFunc("/api/pull_requests", s.jsonPullRequestsReportFromDB)
 	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
 	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)

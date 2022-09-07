@@ -23,6 +23,7 @@ type ProwJob struct {
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[]"`
 	TestGridURL string
+	Bugs        []Bug `gorm:"many2many:bug_jobs;"`
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used
@@ -61,6 +62,7 @@ type ProwJobRun struct {
 type Test struct {
 	gorm.Model
 	Name string `gorm:"uniqueIndex"`
+	Bugs []Bug  `gorm:"many2many:bug_tests;"`
 }
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
@@ -118,18 +120,20 @@ type TestAnalysisRow struct {
 
 // Bug represents a Bugzilla bug.
 type Bug struct {
-	gorm.Model
-	Status         string
-	LastChangeTime time.Time
-	Summary        string
-	TargetRelease  string
-	Version        string
-	Component      string
-	URL            string
-	FailureCount   int
-	FlakeCount     int
-	Tests          []Test    `gorm:"many2many:bug_tests;"`
-	Jobs           []ProwJob `gorm:"many2many:bug_jobs;"`
+	ID              uint           `json:"id" gorm:"primarykey"`
+	Key             string         `json:"key" gorm:"index"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	Status          string         `json:"status"`
+	LastChangeTime  time.Time      `json:"last_change_time"`
+	Summary         string         `json:"summary"`
+	AffectsVersions pq.StringArray `json:"affects_versions" gorm:"type:text[]"`
+	FixVersions     pq.StringArray `json:"fix_versions" gorm:"type:text[]"`
+	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
+	URL             string         `json:"url"`
+	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;"`
+	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;"`
 }
 
 // ProwPullRequest represents a GitHub pull request, there can be multiple entries

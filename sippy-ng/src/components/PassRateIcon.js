@@ -59,5 +59,5 @@ PassRateIcon.defaultProps = {
 PassRateIcon.propTypes = {
   improvement: PropTypes.number,
   inverted: PropTypes.bool,
-  tooltip: PropTypes.string,
+  tooltip: PropTypes.bool,
 }

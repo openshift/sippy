@@ -9,7 +9,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/db/models"
 
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
 
@@ -211,9 +210,8 @@ type Job struct {
 	PreviousInfraFails              int     `json:"previous_infra_fails,omitempty"`
 	NetImprovement                  float64 `json:"net_improvement"`
 
-	TestGridURL    string       `json:"test_grid_url"`
-	Bugs           []bugsv1.Bug `json:"bugs" gorm:"-"`
-	AssociatedBugs []bugsv1.Bug `json:"associated_bugs" gorm:"-"`
+	TestGridURL string `json:"test_grid_url"`
+	OpenBugs    int    `json:"open_bugs"`
 }
 
 func (job Job) GetFieldType(param string) ColumnType {
@@ -280,10 +278,8 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.PreviousRuns), nil
 	case "net_improvement":
 		return job.NetImprovement, nil
-	case "bugs":
-		return float64(len(job.Bugs)), nil
-	case "associated_bugs":
-		return float64(len(job.AssociatedBugs)), nil
+	case "open_bugs":
+		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
 	default:
@@ -460,9 +456,8 @@ type Test struct {
 	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
 
-	Tags           []string     `json:"tags"`
-	Bugs           []bugsv1.Bug `json:"bugs"`
-	AssociatedBugs []bugsv1.Bug `json:"associated_bugs"`
+	Tags     []string `json:"tags"`
+	OpenBugs int      `json:"open_bugs"`
 }
 
 func (test Test) GetFieldType(param string) ColumnType {
@@ -537,10 +532,8 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 		return test.NetImprovement, nil
 	case "net_working_improvement":
 		return test.NetWorkingImprovement, nil
-	case "bugs":
-		return float64(len(test.Bugs)), nil
-	case "associated_bugs":
-		return float64(len(test.AssociatedBugs)), nil
+	case "open_bugs":
+		return float64(test.OpenBugs), nil
 	case "delta_from_working_average":
 		return test.DeltaFromWorkingAverage, nil
 	case "working_average":
@@ -667,3 +660,13 @@ type BuildClusterHealthAnalysis struct {
 }
 
 type BuildClusterHealth = models.BuildClusterHealthReport
+
+type AnalysisResult struct {
+	TotalRuns        int                         `json:"total_runs"`
+	ResultCount      map[v1.JobOverallResult]int `json:"result_count"`
+	TestFailureCount map[string]int              `json:"test_count"`
+}
+
+type JobAnalysisResult struct {
+	ByPeriod map[string]AnalysisResult `json:"by_period"`
+}

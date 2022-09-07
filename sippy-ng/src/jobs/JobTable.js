@@ -17,7 +17,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { withStyles } from '@material-ui/styles'
 import Alert from '@material-ui/lab/Alert'
-import BugzillaDialog from '../bugzilla/BugzillaDialog'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
@@ -77,6 +76,19 @@ export const getColumns = (config, openBugzillaDialog) => {
         <div className="percentage-cell">
           {Number(params.value).toFixed(1).toLocaleString()}%<br />
           <small>({params.row.previous_runs} runs)</small>
+        </div>
+      ),
+    },
+    open_bugs: {
+      field: 'open_bugs',
+      headerName: 'Bugs',
+      type: 'number',
+      flex: 0.5,
+      renderCell: (params) => (
+        <div>
+          <Link to={pathForExactJobAnalysis(config.release, params.row.name)}>
+            {params.value}
+          </Link>
         </div>
       ),
     },
@@ -241,17 +253,7 @@ function JobTable(props) {
 
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
-  const [isBugzillaDialogOpen, setBugzillaDialogOpen] = React.useState(false)
   const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
-
-  const openBugzillaDialog = (job) => {
-    setJobDetails(job)
-    setBugzillaDialogOpen(true)
-  }
-
-  const closeBugzillaDialog = (details) => {
-    setBugzillaDialogOpen(false)
-  }
 
   const fetchData = () => {
     let queryString = ''
@@ -432,6 +434,10 @@ function JobTable(props) {
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
+          field: 'open_bugs',
+          flex: 0.5,
+        },
+        {
           field: 'test_grid_url',
           flex: 0.4,
           hide: props.briefTable,
@@ -465,11 +471,7 @@ function JobTable(props) {
     },
   }
 
-  const gridView = new GridView(
-    getColumns(props, openBugzillaDialog),
-    views,
-    view
-  )
+  const gridView = new GridView(getColumns(props), views, view)
 
   const selectView = (v) => {
     setLoaded(false)
@@ -535,12 +537,6 @@ function JobTable(props) {
       />
       {props.briefTable ? '' : detailsButton}
       {props.briefTable ? '' : copyButton}
-      <BugzillaDialog
-        release={props.release}
-        item={jobDetails}
-        isOpen={isBugzillaDialogOpen}
-        close={closeBugzillaDialog}
-      />
     </Container>
   )
 }

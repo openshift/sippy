@@ -2,81 +2,35 @@ package api
 
 import (
 	"fmt"
-	"net/http"
-	"strconv"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 )
 
 const PeriodDay = "day"
 const PeriodHour = "hour"
 
-type analysisResult struct {
-	TotalRuns        int                                        `json:"total_runs"`
-	ResultCount      map[v1sippyprocessing.JobOverallResult]int `json:"result_count"`
-	TestFailureCount map[string]int                             `json:"test_count"`
-}
+func PrintJobAnalysisJSONFromDB(
+	dbc *db.DB,
+	release string,
+	jobFilter *filter.Filter,
+	jobRunsFilter *filter.Filter,
+	start, boundary, end time.Time,
+	limit int,
+	sortField string,
+	sort apitype.Sort,
+	period string) (apitype.JobAnalysisResult, error) {
+	result := apitype.JobAnalysisResult{}
 
-type apiJobAnalysisResult struct {
-	ByPeriod map[string]analysisResult `json:"by_period"`
-}
-
-func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
-	fil, err := filter.ExtractFilters(req)
+	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
+		start, boundary, end, limit, sortField, sort)
 	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-		return
+		return result, err
 	}
-
-	// This API is a bit special, since we are largely interested in filtering the jobs list,
-	// but there's a case for filtering by the time stamp on a job run.
-	jobRunsFilter := &filter.Filter{
-		LinkOperator: fil.LinkOperator,
-	}
-	jobFilter := &filter.Filter{
-		LinkOperator: fil.LinkOperator,
-	}
-
-	for _, f := range fil.Items {
-		if f.Field == "timestamp" {
-			ms, err := strconv.ParseInt(f.Value, 0, 64)
-			if err != nil {
-				RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
-				return
-			}
-
-			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
-			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		} else if f.Field == "cluster" {
-			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		} else {
-			jobFilter.Items = append(jobFilter.Items, f)
-		}
-	}
-
-	period := req.URL.Query().Get("period")
-	if period == "" {
-		period = PeriodDay
-	}
-
-	table, err := jobResultsFromDB(req, dbc.DB, release)
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job analysis report:" + table.Error.Error()})
-		return
-	}
-
-	q, err := filter.ApplyFilters(req, jobFilter, "name", table, apitype.Job{})
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
-		return
-	}
-
-	jobs := make([]int, 0)
-	q.Pluck("id", &jobs)
 
 	// Next is sum up individual job results
 	type resultSum struct {
@@ -113,8 +67,8 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	sumResults.Scan(&sums)
 
 	// collect the results
-	results := apiJobAnalysisResult{
-		ByPeriod: make(map[string]analysisResult),
+	results := apitype.JobAnalysisResult{
+		ByPeriod: make(map[string]apitype.AnalysisResult),
 	}
 	var formatter string
 	if period == PeriodDay {
@@ -124,7 +78,7 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 	}
 
 	for _, sum := range sums {
-		results.ByPeriod[sum.Period.UTC().Format(formatter)] = analysisResult{
+		results.ByPeriod[sum.Period.UTC().Format(formatter)] = apitype.AnalysisResult{
 			TotalRuns: sum.TotalRuns,
 			ResultCount: map[v1sippyprocessing.JobOverallResult]int{
 				v1sippyprocessing.JobSucceeded:             sum.Success,
@@ -161,6 +115,6 @@ func PrintJobAnalysisJSONFromDB(w http.ResponseWriter, req *http.Request, dbc *d
 			results.ByPeriod[dateKey].TestFailureCount[t.TestName] = t.Count
 		}
 	}
+	return results, nil
 
-	RespondWithJSON(http.StatusOK, w, results)
 }

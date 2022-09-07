@@ -2,11 +2,19 @@ package sippyserver
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util"
+)
+
+const (
+	defaultSortField = "name"
+	defaultSort      = apitype.SortDescending
 )
 
 func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
@@ -58,4 +66,49 @@ func getPeriod(req *http.Request, defaultValue string) string {
 		return defaultValue
 	}
 	return period
+}
+
+func getLimitParam(req *http.Request) int {
+	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
+	return limit
+}
+
+func getSortParams(req *http.Request) (string, apitype.Sort) {
+	sortField := req.URL.Query().Get("sortField")
+	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	if sortField == "" {
+		sortField = defaultSortField
+	}
+	if sort == "" {
+		sort = defaultSort
+	}
+	return sortField, sort
+}
+
+func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filter, error) {
+	// This function is used by APIs that are largely interested in filtering on the jobs,
+	// but there is a case for filtering by the timestamp or build cluster on a job run.
+	// Break apart the filter we're given for the respective queries:
+	jobFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
+	}
+	jobRunsFilter := &filter.Filter{
+		LinkOperator: fil.LinkOperator,
+	}
+	for _, f := range fil.Items {
+		if f.Field == "timestamp" {
+			ms, err := strconv.ParseInt(f.Value, 0, 64)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else if f.Field == "cluster" {
+			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
+		} else {
+			jobFilter.Items = append(jobFilter.Items, f)
+		}
+	}
+	return jobFilter, jobRunsFilter, nil
 }

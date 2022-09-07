@@ -11,6 +11,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 const (
@@ -32,7 +33,8 @@ const (
 		previous_runs,
 		previous_successes,
 		previous_failures,
-		previous_flakes`
+		previous_flakes,
+		open_bugs`
 
 	QueryTestPercentages = `
 		current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
@@ -156,6 +158,19 @@ FROM results;
 	elapsed := time.Since(now)
 	log.Infof("TestReportExcludeVariants completed in %s", elapsed)
 	return testReport, nil
+}
+
+// LoadBugsForTest returns all bugs in the database for the given test, across all releases.
+func LoadBugsForTest(dbc *db.DB, testName string) ([]models.Bug, error) {
+	results := []models.Bug{}
+
+	test := models.Test{}
+	res := dbc.DB.Where("name = ?", testName).Preload("Bugs").First(&test)
+	if res.Error != nil {
+		return results, res.Error
+	}
+	log.Infof("found %d bugs for test", len(test.Bugs))
+	return test.Bugs, nil
 }
 
 // TestsByNURPAndStandardDeviation returns a test report for every test in the db matching the given substrings, separated by variant.

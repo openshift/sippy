@@ -23,7 +23,6 @@ import (
 	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 
-	"github.com/openshift/sippy/pkg/buganalysis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
@@ -318,6 +317,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 		}
 
 		start := time.Now()
+
 		if o.LoadTestgrid {
 
 			trgc := sippyserver.TestReportGeneratorConfig{
@@ -326,7 +326,6 @@ func (o *Options) Run() error { //nolint:gocyclo
 				DisplayDataConfig:           o.toDisplayDataConfig(),
 			}
 
-			loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
 					o.StartDay, o.NumDays)
@@ -336,19 +335,6 @@ func (o *Options) Run() error { //nolint:gocyclo
 				}
 			}
 
-			if loadBugs {
-				testCache, err := sippyserver.LoadTestCache(dbc)
-				if err != nil {
-					return err
-				}
-				prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
-				if err != nil {
-					return err
-				}
-				if err := sippyserver.LoadBugs(dbc, o.getBugCache(), testCache, prowJobCache); err != nil {
-					return errors.Wrapf(err, "error syncing bugzilla bugs to db")
-				}
-			}
 		}
 
 		loadReleases := len(o.OpenshiftReleases) > 0
@@ -383,6 +369,24 @@ func (o *Options) Run() error { //nolint:gocyclo
 			if err := prowLoader.LoadProwJobsToDB(); err != nil {
 				return err
 			}
+		}
+
+		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
+		if loadBugs {
+			bugsStart := time.Now()
+			testCache, err := sippyserver.LoadTestCache(dbc)
+			if err != nil {
+				return err
+			}
+			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
+			if err != nil {
+				return err
+			}
+			if err := sippyserver.LoadBugs(dbc, testCache, prowJobCache); err != nil {
+				return errors.Wrapf(err, "error syncing issues to db")
+			}
+			bugsElapsed := time.Since(bugsStart)
+			log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
 		}
 
 		elapsed := time.Since(start)
@@ -422,7 +426,6 @@ func (o *Options) runServerMode() error {
 		o.ListenAddr,
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
-		o.getBugCache(),
 		webRoot,
 		&static,
 		dbc,
@@ -455,14 +458,6 @@ func (o *Options) getServerMode() sippyserver.Mode {
 		return sippyserver.ModeOpenShift
 	}
 	return sippyserver.ModeKubernetes
-}
-
-func (o *Options) getBugCache() buganalysis.BugCache {
-	if o.SkipBugLookup || len(o.OpenshiftReleases) == 0 {
-		return buganalysis.NewNoOpBugCache()
-	}
-
-	return buganalysis.NewBugCache()
 }
 
 func (o *Options) getVariantManager() testidentification.VariantManager {

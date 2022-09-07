@@ -13,20 +13,10 @@ const item = {
       last_change_time: '2021-08-02T18:09:41Z',
       summary:
         'workers-rhel7 job is permanently failing [periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7]',
-      target_release: ['4.8.0'],
-      component: ['Installer'],
+      affects_versions: ['4.11', '4.12'],
+      fix_versions: ['4.13.0'],
+      components: ['Installer'],
       url: 'https://bugzilla.redhat.com/show_bug.cgi?id=1979966',
-    },
-  ],
-  associated_bugs: [
-    {
-      id: 1989100,
-      status: 'NEW',
-      last_change_time: '2021-08-09T08:24:48Z',
-      summary: 'periodic-ci-openshift-release-master-ci-4.8-e2e-openstack-ovn',
-      target_release: ['---'],
-      component: ['Installer'],
-      url: 'https://bugzilla.redhat.com/show_bug.cgi?id=1989100',
     },
   ],
 }
@@ -48,10 +38,6 @@ describe(BugzillaDialog, () => {
     wrapper.update()
   })
 
-  it('renders correctly', async () => {
-    expect(withoutMuiID(wrapper)).toMatchSnapshot()
-  })
-
   it('shows the name of the test', async () => {
     expect(wrapper.find('h5').text()).toContain(item.name)
   })
@@ -60,14 +46,6 @@ describe(BugzillaDialog, () => {
     expect(
       wrapper
         .find('a[href="https://bugzilla.redhat.com/show_bug.cgi?id=1979966"]')
-        .exists()
-    ).toBeTruthy()
-  })
-
-  it('shows associated bugs', async () => {
-    expect(
-      wrapper
-        .find('a[href="https://bugzilla.redhat.com/show_bug.cgi?id=1989100"]')
         .exists()
     ).toBeTruthy()
   })

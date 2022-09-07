@@ -62,7 +62,6 @@ To load the database:
   --load-database \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
-  --skip-bug-lookup
 ````
 
 ### From Prow and GCS buckets
@@ -84,7 +83,6 @@ available [here](config/README.md).
   --load-testgrid=false \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
-  --skip-bug-lookup \
   --mode=ocp \
   --config ./config/openshift.yaml \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
@@ -104,7 +102,6 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
   --load-testgrid=false \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
-  --skip-bug-lookup \
   --mode=ocp \
   --config ./config/openshift.yaml \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
@@ -124,7 +121,6 @@ releases and architectures like this:
   --release 4.12 \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
-  --skip-bug-lookup \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json \
   --mode=ocp \
   --config ./config/openshift.yaml
@@ -136,7 +132,6 @@ releases and architectures like this:
 ./sippy --server \
   --release 4.11 \
   --log-level=debug \
-  --skip-bug-lookup \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
 ````

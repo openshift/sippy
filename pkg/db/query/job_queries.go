@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 )
@@ -29,18 +29,6 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 	q.Scan(&jobReports)
 	elapsed := time.Since(now)
 	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
-
-	// FIXME(stbenjam): There's a UI bug where the jobs page won't load if either bugs filled is "null"
-	// instead of empty array. Quick hack to make this work.
-	for i, j := range jobReports {
-		if len(j.Bugs) == 0 {
-			jobReports[i].Bugs = make([]bugsv1.Bug, 0)
-		}
-
-		if len(j.AssociatedBugs) == 0 {
-			jobReports[i].AssociatedBugs = make([]bugsv1.Bug, 0)
-		}
-	}
 
 	return jobReports, nil
 }
@@ -83,4 +71,33 @@ ORDER BY current_pass_percentage ASC;
 	}
 	q.Scan(&variantResults)
 	return variantResults, nil
+}
+
+func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
+
+	q, err := filter.ApplyFilters(fil, sortField, sort, limit, table, apitype.Job{})
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := make([]int, 0)
+	q.Pluck("id", &jobs)
+	log.WithField("jobIDs", jobs).Debug("found job IDs after filtering")
+	return jobs, nil
+}
+
+// LoadBugsForJobs returns all bugs in the database for the given jobs, across all releases.
+// See ListFilteredJobIDs for obtaining the list of job IDs.
+func LoadBugsForJobs(dbc *db.DB,
+	jobIDs []int) ([]models.Bug, error) {
+	results := []models.Bug{}
+
+	job := models.ProwJob{}
+	res := dbc.DB.Where("id IN ?", jobIDs).Preload("Bugs").First(&job)
+	if res.Error != nil {
+		return results, res.Error
+	}
+	log.Infof("found %d bugs for job", len(job.Bugs))
+	return job.Bugs, nil
 }

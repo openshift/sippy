@@ -21,25 +21,27 @@ export default function BugTable(props) {
       <Table size="small" aria-label="bug-table">
         <TableHead>
           <TableRow>
-            <TableCell>Bug ID</TableCell>
+            <TableCell>Issue</TableCell>
             <TableCell>Summary</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Component</TableCell>
-            <TableCell>Found In</TableCell>
-            <TableCell>Target Release</TableCell>
+            <TableCell>Affects Versions</TableCell>
+            <TableCell>Fix Versions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {props.bugs.map((bug) => (
             <TableRow key={'bug-row-' + bug.id}>
               <TableCell scope="row">
-                <a href={bug.url}>{bug.id}</a>
+                <a href={bug.url}>{bug.key}</a>
               </TableCell>
-              <TableCell>{bug.summary}</TableCell>
+              <TableCell>
+                <a href={bug.url}>{bug.summary}</a>
+              </TableCell>
               <TableCell>{bug.status}</TableCell>
-              <TableCell>{bug.component}</TableCell>
-              <TableCell>{bug.version}</TableCell>
-              <TableCell>{bug.target_release}</TableCell>
+              <TableCell>{bug.components.join(',')}</TableCell>
+              <TableCell>{bug.affects_versions.join(',')}</TableCell>
+              <TableCell>{bug.fix_versions.join(',')}</TableCell>
             </TableRow>
           ))}
         </TableBody>

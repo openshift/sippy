@@ -288,23 +288,22 @@ func ExtractFilters(req *http.Request) (*Filter, error) {
 	return filter, nil
 }
 
-func ApplyFilters(req *http.Request, filter *Filter, defaultSortField string, dbClient *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+func ApplyFilters(
+	filter *Filter,
+	sortField string,
+	sort apitype.Sort,
+	limit int,
+	dbClient *gorm.DB,
+	filterable Filterable) (*gorm.DB, error) {
+
 	q := filter.ToSQL(dbClient, filterable)
-	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
 
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
-	if sortField == "" {
-		sortField = defaultSortField
-	}
-	if sort == "" {
-		sort = apitype.SortDescending
-	}
-
-	q.Order(clause.OrderByColumn{Column: clause.Column{Name: sortField}, Desc: sort == apitype.SortDescending})
+	q.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: sortField},
+		Desc:   sort == apitype.SortDescending})
 
 	return q, nil
 }
