@@ -158,6 +158,7 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
@@ -221,6 +222,7 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
@@ -285,6 +287,7 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
