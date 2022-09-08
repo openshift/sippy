@@ -158,10 +158,11 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
-          flex: 0.75,
+          flex: props.collapse ? 1.25 : 2,
           hide: props.briefTable,
         },
       ],
@@ -221,6 +222,7 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
@@ -285,6 +287,7 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
@@ -598,7 +601,7 @@ function TestTable(props) {
         }
 
         return (
-          <Grid container justifyContent="space-between">
+          <Grid container justifyContent="space-evenly">
             <Tooltip title="Search CI Logs">
               <IconButton
                 target="_blank"
