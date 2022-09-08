@@ -216,7 +216,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
 		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release)
-		if !reflect.DeepEqual(newVariants, dbProwJob.Variants) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
+		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
 			pl.dbc.DB.Save(&dbProwJob)
