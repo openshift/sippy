@@ -22,18 +22,6 @@ var (
 		Name: "sippy_upgrade_success",
 		Help: "Successful upgrade percentage over the last 7 days for variants we're interested in, and All.",
 	}, []string{"release", "variant"})
-
-	// testMetricPlatformVariants will each get an install and upgrade metric label.
-	testMetricVariants = sets.NewString(
-		"All", // include the total All result across all variants, often what we're most interested in monitoring
-		"aws",
-		"gcp",
-		"azure",
-		"openstack",
-		"metal-ipi",
-		"single-node",
-		"vsphere-ipi",
-	)
 )
 
 // TODO: should we sum metrics for specific variants? platforms? techpreview?
@@ -57,9 +45,7 @@ func refreshInstallSuccessMetrics(dbc *db.DB) error {
 		}
 
 		for variant, testReport := range instTestVariants {
-			if testMetricVariants.Has(variant) {
-				installSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
-			}
+			installSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
 		}
 	}
 
@@ -85,9 +71,7 @@ func refreshUpgradeSuccessMetrics(dbc *db.DB) error {
 		}
 
 		for variant, testReport := range testVariants {
-			if testMetricVariants.Has(variant) {
-				upgradeSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
-			}
+			upgradeSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
 		}
 	}
 
