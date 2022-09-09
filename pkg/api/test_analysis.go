@@ -75,7 +75,6 @@ func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Re
 		if len(allowedVariants) > 0 {
 			vq = vq.Where("variant IN ?", allowedVariants)
 		}
-
 	}
 
 	r := vq.Scan(&byVariantAnalysisRows)

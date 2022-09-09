@@ -34,6 +34,23 @@ func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubs
 	RespondWithJSON(http.StatusOK, w, responseStr)
 }
 
+func PrintTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filter, quantity int) ([]apitype.TestOutput, error) {
+	var includedVariants, excludedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					excludedVariants = append(excludedVariants, f.Value)
+				} else {
+					includedVariants = append(includedVariants, f.Value)
+				}
+			}
+		}
+	}
+
+	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
+}
+
 type testsAPIResult []apitype.Test
 
 func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {

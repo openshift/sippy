@@ -1,7 +1,7 @@
 import './TestAnalysis.css'
 import './TestTable.css'
-import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
+  Box,
   Button,
   Card,
   Container,
@@ -9,6 +9,7 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
+import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
   filterFor,
   not,
@@ -23,6 +24,7 @@ import { Line, PolarArea } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
 import { TEST_THRESHOLDS } from '../constants'
+import { TestOutputs } from './TestOutputs'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import BugTable from '../bugzilla/BugTable'
@@ -536,6 +538,31 @@ export function TestAnalysis(props) {
                 sort="asc"
                 filterModel={filterModel}
               />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Most Recent Failure Outputs
+                <Tooltip
+                  title={
+                    <p>
+                      Shows the outputs from at most the last 10 failures with a
+                      link to the Prow job run.
+                    </p>
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <Box style={{ maxHeight: '35vh', overflow: 'auto' }}>
+                <TestOutputs
+                  release={props.release}
+                  test={testName}
+                  filterModel={filterModel}
+                />
+              </Box>
             </Card>
           </Grid>
 

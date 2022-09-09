@@ -219,3 +219,30 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 		Where(`release = ?`, release).
 		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
 }
+
+func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
+	results := make([]api.TestOutput, 0)
+	q := dbc.DB.Table("prow_job_run_test_outputs").
+		Joins("JOIN prow_job_run_tests ON prow_job_run_test_outputs.prow_job_run_test_id = prow_job_run_tests.id").
+		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
+		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
+		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
+		Where("tests.name = ?", test).
+		Where("prow_jobs.release = ?", release)
+
+	for _, variant := range includedVariants {
+		q = q.Where("? = any(prow_jobs.variants)", variant)
+	}
+
+	for _, variant := range excludedVariants {
+		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+	}
+
+	res := q.
+		Select("prow_job_runs.url, output").
+		Order("prow_job_run_test_outputs.created_at").
+		Limit(quantity).
+		Scan(&results)
+
+	return results, res.Error
+}

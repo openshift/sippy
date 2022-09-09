@@ -670,3 +670,8 @@ type AnalysisResult struct {
 type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
+
+type TestOutput struct {
+	URL    string `json:"url"`
+	Output string `json:"output"`
+}
