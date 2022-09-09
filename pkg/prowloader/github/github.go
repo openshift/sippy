@@ -56,6 +56,9 @@ func New(ctx context.Context) *Client {
 }
 
 func (c *Client) GetPRMerged(org, repo string, number int, sha string) (*time.Time, error) {
+	now := time.Now()
+	logrus.Infof("GetPRMerged(org=%s, repo=%s, number=%d, sha=%s) started at %s", org, repo, number, sha, now)
+
 	prl := prlocator{org: org, repo: repo, number: number, sha: sha}
 	if val, ok := c.cache[prl]; ok {
 		return val, nil
@@ -73,5 +76,6 @@ func (c *Client) GetPRMerged(org, repo string, number int, sha string) (*time.Ti
 	}
 
 	c.cache[prl] = state
+	logrus.Infof("GetPRMerged(org=%s, repo=%s, number=%d, sha=%s) completed at %s", org, repo, number, sha, time.Since(now))
 	return state, nil
 }

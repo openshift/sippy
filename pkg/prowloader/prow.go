@@ -69,6 +69,9 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, githubClient *
 }
 
 func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
+	now := time.Now()
+	log.Infof("loadProwJobCache started at %s", now)
+
 	prowJobCache := map[string]*models.ProwJob{}
 	var allJobs []*models.ProwJob
 	dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
@@ -77,13 +80,17 @@ func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
 			prowJobCache[j.Name] = j
 		}
 	}
-	log.Infof("job cache created with %d entries from database", len(prowJobCache))
+
+	log.Infof("loadProwJobCache completed in %s with %d entries from database", time.Since(now), len(prowJobCache))
 	return prowJobCache
 }
 
 // Cache the IDs of all known ProwJobRuns. Will be used to skip job run and test
 // results we've already processed.
 func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
+	now := time.Now()
+	log.Infof("loadProwJobRunCache started at %s", now)
+
 	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
 	knownJobRuns := []models.ProwJobRun{}
 	ids := make([]uint, 0)
@@ -92,10 +99,14 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 		prowJobRunCache[kjr] = true
 	}
 
+	log.Infof("loadProwJobRunCache completed in %s with %d entries from database", time.Since(now), len(prowJobRunCache))
 	return prowJobRunCache
 }
 
 func (pl *ProwLoader) LoadProwJobsToDB() error {
+	now := time.Now()
+	log.Infof("LoadProwJobsToDB() started at %s", now)
+
 	// Update unmerged PR statuses in case any have merged
 	if err := pl.syncPRStatus(); err != nil {
 		return err
@@ -142,10 +153,14 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 		}
 	}
 
+	log.Infof("LoadProwJobsToDB() completed in %s", time.Since(now))
 	return nil
 }
 
 func (pl *ProwLoader) syncPRStatus() error {
+	now := time.Now()
+	log.Infof("syncPRStatus started at %s", now)
+
 	if pl.githubClient == nil {
 		log.Infof("No GitHub client, skipping PR sync")
 		return nil
@@ -171,6 +186,7 @@ func (pl *ProwLoader) syncPRStatus() error {
 		}
 	}
 
+	log.Infof("syncPRStatus completed in %s", time.Since(now))
 	return nil
 }
 
@@ -200,6 +216,13 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	if err != nil {
 		return nil
 	}
+	// If it's in the cache, we saw this run already and let's just return early.
+	if _, ok := pl.prowJobRunCache[uint(id)]; ok {
+		return nil
+	}
+
+	now := time.Now()
+	log.Infof("prowJobToJobRun(pj=%s) started at %s", pj.Status.BuildID, now)
 
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
@@ -268,6 +291,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		}
 	}
 
+	log.Infof("prowJobToJobRun(pj=%s) complerted in %s", pj.Status.BuildID, time.Since(now))
 	return nil
 }
 
@@ -359,6 +383,9 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
+	now := time.Now()
+	log.Infof("prowJobRunTestsFromGCS(pj=%d) started at %s", id, now)
+
 	failures := 0
 
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
@@ -388,6 +415,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path stri
 		}
 	}
 
+	log.Infof("prowJobRunTestsFromGCS(pj=%d) completed in %s", id, time.Since(now))
 	return results, failures, jobResult, nil
 }
 
