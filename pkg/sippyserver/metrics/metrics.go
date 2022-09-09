@@ -101,10 +101,17 @@ func RefreshMetricsDB(dbc *db.DB) error {
 	}
 
 	if err := refreshBuildClusterMetrics(dbc); err != nil {
-		return errors.Wrapf(err, "error refreshing build cluster metrics")
+		log.WithError(err).Error("error refreshing build cluster metrics")
 	}
 
 	refreshPayloadMetrics(dbc)
+
+	if err := refreshInstallSuccessMetrics(dbc); err != nil {
+		log.WithError(err).Error("error refreshing install success metrics")
+	}
+	if err := refreshUpgradeSuccessMetrics(dbc); err != nil {
+		log.WithError(err).Error("error refreshing upgrade success metrics")
+	}
 
 	return nil
 }

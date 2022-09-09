@@ -166,9 +166,8 @@ var (
 	operatorsUpgradedRegex      = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster completes upgrade$`)
 	OperatorsUpgradedTest       = "[sig-cluster-lifecycle] Cluster completes upgrade"
 	machineConfigsUpgradedRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-mco\] Machine config pools complete upgrade$`)
-	MachineConfigsUpgradedRegex = "[sig-mco] Machine config pools complete upgrade"
+	MachineConfigsUpgradedTest  = "[sig-mco] Machine config pools complete upgrade"
 	openshiftTestsRegex         = regexp.MustCompile(`(?:^openshift-tests\.|\[Suite:openshift|\[k8s\.io\]|\[sig-|\[bz-)`)
-	UpgradeFastTest             = "[sig-cluster-lifecycle] cluster upgrade should be fast"
 	APIsRemainAvailTest         = "APIs remain available"
 	ignoreTestRegex             = regexp.MustCompile(`^$|Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 )
@@ -262,10 +261,6 @@ func IsUpgradeRelatedTest(testName string) bool {
 	}
 	if IsOperatorsUpgradedTest(testName) {
 		// indicates every cluster operator upgraded successfully.  This does not include machine config pools
-		return true
-	}
-	if strings.Contains(testName, UpgradeFastTest) {
-		// indicates that every cluster operator upgraded within X minutes (currently 75 as of today)
 		return true
 	}
 	if IsMachineConfigPoolsUpgradedTest(testName) {
