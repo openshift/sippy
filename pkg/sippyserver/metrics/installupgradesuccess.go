@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"fmt"
+	"math"
 
 	api "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -10,17 +10,28 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
 	installSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_install_success",
+		Name: "sippy_install_success_last_7d",
 		Help: "Successful install percentage over the last 7 days for variants we're interested in, and All.",
 	}, []string{"release", "variant"})
 
 	upgradeSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_upgrade_success",
+		Name: "sippy_upgrade_success_last_7d",
 		Help: "Successful upgrade percentage over the last 7 days for variants we're interested in, and All.",
+	}, []string{"release", "variant"})
+
+	installSuccessDeltaToPrevWeekMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_install_success_delta_last_7d_vs_prev_7d",
+		Help: "Change in successful install percentage over the last 7 days vs previous 7 days. If positive we're improving.",
+	}, []string{"release", "variant"})
+
+	upgradeSuccessDeltaToPrevWeekMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_upgrade_success_delta_last_7d_vs_prev_7d",
+		Help: "Change in successful upgrade percentage over the last 7 days vs previous 7 days. If positive we're improving.",
 	}, []string{"release", "variant"})
 )
 
@@ -41,11 +52,15 @@ func refreshInstallSuccessMetrics(dbc *db.DB) error {
 		// Just use the one install test we're interested in:
 		instTestVariants, ok := testToVariantToResults[testidentification.NewInstallTestName]
 		if !ok {
-			return fmt.Errorf("install report did not include test: %s", testidentification.NewInstallTestName)
+			log.WithField("release", release).Warnf("install report for release did not include test: %s",
+				testidentification.NewInstallTestName)
+			return nil
 		}
 
 		for variant, testReport := range instTestVariants {
-			installSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
+			installSuccessMetric.WithLabelValues(release.Release, variant).Set(math.Round(testReport.CurrentPassPercentage*100) / 100)
+			installSuccessDeltaToPrevWeekMetric.WithLabelValues(release.Release, variant).Set(
+				math.Round((testReport.CurrentPassPercentage-testReport.PreviousPassPercentage)*100) / 100)
 		}
 	}
 
@@ -67,11 +82,15 @@ func refreshUpgradeSuccessMetrics(dbc *db.DB) error {
 		// Just use the one install test we're interested in:
 		testVariants, ok := testToVariantToResults[testidentification.UpgradeTestName]
 		if !ok {
-			return fmt.Errorf("upgrade report did not include test: %s", testidentification.UpgradeTestName)
+			log.WithField("release", release).Warnf("upgrade report for release did not include test: %s",
+				testidentification.UpgradeTestName)
+			return nil
 		}
 
 		for variant, testReport := range testVariants {
-			upgradeSuccessMetric.WithLabelValues(release.Release, variant).Set(testReport.CurrentPassPercentage)
+			upgradeSuccessMetric.WithLabelValues(release.Release, variant).Set(math.Round(testReport.CurrentPassPercentage*100) / 100)
+			upgradeSuccessDeltaToPrevWeekMetric.WithLabelValues(release.Release, variant).Set(
+				math.Round((testReport.CurrentPassPercentage-testReport.PreviousPassPercentage)*100) / 100)
 		}
 	}
 
