@@ -148,3 +148,13 @@ See [Sippy front-end docs](sippy-ng/README.md]) for more details about developin
 ```bash
 cd sippy-ng && npm start
 ```
+
+## Run E2E Tests
+
+Sippy has a currently basic/minimal set of e2e tests which run a temporary postgres container, load the database with an
+older release with fewer runs, launch the API, and run a few tests against it to verify things are working.
+This runs as a presubmit on the repo, but developers can also run locally if they have a GCS service account JSON credential file.
+
+```bash
+GCS_SA_JSON_PATH=~/creds/openshift-ci-data-analysis.json make e2e
+```
