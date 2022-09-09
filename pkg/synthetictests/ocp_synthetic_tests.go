@@ -209,11 +209,11 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 	if result.Aborted {
 		return sippyprocessingv1.JobAborted
 	}
-	if !result.Failed {
-		return sippyprocessingv1.JobRunning
-	}
 	if result.Errored {
 		return sippyprocessingv1.JobFailureBeforeSetup
+	}
+	if !result.Failed {
+		return sippyprocessingv1.JobRunning
 	}
 
 	if result.InstallStatus == failure {
