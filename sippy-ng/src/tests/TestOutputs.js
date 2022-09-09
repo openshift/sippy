@@ -79,6 +79,10 @@ export function TestOutputs(props) {
     return <p>Loading...</p>
   }
 
+  if (outputs.length === 0) {
+    return <Fragment>No data.</Fragment>
+  }
+
   return (
     <Fragment>
       <TableContainer className={classes.table}>

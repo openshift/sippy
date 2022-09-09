@@ -24,6 +24,7 @@ import { Line, PolarArea } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
 import { TEST_THRESHOLDS } from '../constants'
+import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
@@ -590,6 +591,22 @@ export function TestAnalysis(props) {
                 data={byVariantChart}
                 options={byVariantChartOptions}
                 height={80}
+              />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Average Test Duration (Seconds)
+                <Tooltip title={<p>Shows the average test duration by day.</p>}>
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestDurationChart
+                release={props.release}
+                test={testName}
+                filterModel={filterModel}
               />
             </Card>
           </Grid>

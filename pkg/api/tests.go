@@ -51,6 +51,23 @@ func PrintTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
+func PrintTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
+	var includedVariants, excludedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					excludedVariants = append(excludedVariants, f.Value)
+				} else {
+					includedVariants = append(includedVariants, f.Value)
+				}
+			}
+		}
+	}
+
+	return query.TestDurations(dbc, release, test, includedVariants, excludedVariants)
+}
+
 type testsAPIResult []apitype.Test
 
 func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
