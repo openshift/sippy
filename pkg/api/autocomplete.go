@@ -19,7 +19,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 	q := dbc.DB
 
 	switch field {
-	case "variants":
+	case "variants": //nolint:goconst
 		q = q.Table("prow_jobs").
 			Select("DISTINCT(unnest(variants)) as name").
 			Order("name")
