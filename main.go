@@ -20,13 +20,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	"github.com/openshift/sippy/pkg/prowloader/github"
-	"github.com/openshift/sippy/pkg/sippyserver/metrics"
-
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/synthetictests"
@@ -430,12 +428,6 @@ func (o *Options) runServerMode() error {
 		&static,
 		dbc,
 	)
-
-	// Initial metrics refresh to get the endpoint scrapable ASAP and prevent prom gaps, before
-	// we start the lengthy mat view refreshes.
-	if err := metrics.RefreshMetricsDB(dbc); err != nil {
-		log.WithError(err).Error("error refreshing metrics")
-	}
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
