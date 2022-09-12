@@ -1,6 +1,14 @@
 import './App.css'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
-import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
+import {
+  CssBaseline,
+  Fab,
+  Grid,
+  Link,
+  MuiThemeProvider,
+  Tooltip,
+} from '@material-ui/core'
+import { Feedback } from '@material-ui/icons'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { QueryParamProvider } from 'use-query-params'
 import { relativeTime } from './helpers'
@@ -122,6 +130,8 @@ export default function App(props) {
   const [capabilities, setCapabilities] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
 
+  const feedbackURL = `https://github.com/openshift/sippy/issues/new`
+
   const fetchData = () => {
     Promise.all([
       fetch(process.env.REACT_APP_API_URL + '/api/releases'),
@@ -242,7 +252,6 @@ export default function App(props) {
               })}
             >
               <div className={classes.drawerHeader} />
-
               {/* eslint-disable react/prop-types */}
               <Switch>
                 <Route path="/about">
@@ -412,6 +421,23 @@ export default function App(props) {
                 <Route path="/">{landingPage}</Route>
               </Switch>
               {/* eslint-enable react/prop-types */}
+              <Tooltip title="Feature request? Complaint? Let us know how we're doing.">
+                <Fab
+                  target="_blank"
+                  href={feedbackURL}
+                  color="primary"
+                  aria-label="feedback"
+                  style={{
+                    right: 20,
+                    top: 'auto',
+                    bottom: 20,
+                    left: 'auto',
+                    position: 'fixed',
+                  }}
+                >
+                  <Feedback />
+                </Fab>
+              </Tooltip>
             </main>
           </div>
         </QueryParamProvider>
