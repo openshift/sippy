@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
@@ -57,6 +58,7 @@ const (
 func TestReportsByVariant(
 	dbc *db.DB,
 	release string,
+	reportType v1.ReportType, // defaults to "current" or last 7 days vs prev 7 days
 	testSubStrings []string,
 ) ([]api.Test, error) {
 	now := time.Now()
@@ -92,6 +94,9 @@ SELECT *,
        (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results;
 `
+	if reportType == v1.TwoDayReport {
+		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
+	}
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release),
 		sql.Named("testsubstrings", testSubstringFilter)).Scan(&testReports)

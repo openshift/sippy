@@ -69,7 +69,7 @@ func getDataForTestsByVariantFromDB(dbc *db.DB, release string, testSubStrings [
 		aggregationToOverallTestResult: map[string]*currPrevTestResult{}, // may not be used in output in our first use case
 	}
 
-	testReports, err := query.TestReportsByVariant(dbc, release, testSubStrings)
+	testReports, err := query.TestReportsByVariant(dbc, release, sippyprocessingv1.CurrentReport, testSubStrings)
 	if err != nil {
 		return ret, err
 	}

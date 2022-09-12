@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -22,7 +23,8 @@ func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release str
 		testidentification.InstallTestNamePrefix,
 	)
 
-	variantColumns, tests, err := VariantTestsReport(dbc, release, exactTestNames, testPrefixes, sets.NewString())
+	variantColumns, tests, err := VariantTestsReport(dbc, release, v1.CurrentReport,
+		exactTestNames, testPrefixes, sets.NewString())
 	if err != nil {
 		log.WithError(err).Error("could not generate install report")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})
@@ -50,7 +52,8 @@ func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release str
 
 // VariantTestsReport returns a set of all variant columns plus "All", and a map of testName to variant column to test results for that variant.
 // Caller can provide exact test names to match, test name prefixes, or test substrings.
-func VariantTestsReport(dbc *db.DB, release string, testNames, testPrefixes, testSubStrings sets.String) (sets.String, map[string]map[string]apitype.Test, error) {
+func VariantTestsReport(dbc *db.DB, release string, reportType v1.ReportType,
+	testNames, testPrefixes, testSubStrings sets.String) (sets.String, map[string]map[string]apitype.Test, error) {
 
 	// Build a list of all sub-strings to search for, we'll sort out exact matches later as these
 	// can pickup unintented tests.
@@ -58,7 +61,7 @@ func VariantTestsReport(dbc *db.DB, release string, testNames, testPrefixes, tes
 	testSearchStrings.Insert(testPrefixes.List()...)
 	testSearchStrings.Insert(testSubStrings.List()...)
 
-	testReports, err := query.TestReportsByVariant(dbc, release, testSearchStrings.List())
+	testReports, err := query.TestReportsByVariant(dbc, release, reportType, testSearchStrings.List())
 	if err != nil {
 		return sets.NewString(), map[string]map[string]apitype.Test{}, err
 	}
