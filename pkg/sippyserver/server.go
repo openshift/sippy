@@ -744,7 +744,12 @@ func (s *Server) Serve() {
 			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
 			if _, err := fs.Open(fullPath); err != nil {
 				if !os.IsNotExist(err) {
-					panic(err)
+					w.WriteHeader(http.StatusNotFound)
+					w.Header().Set("Content-Type", "text/plain")
+					if _, err := w.Write([]byte(fmt.Sprintf("404 Not Found: %s", fullPath))); err != nil {
+						log.WithError(err).Warningf("could not write response")
+					}
+					return
 				}
 				r.URL.Path = "/sippy-ng/"
 			}
