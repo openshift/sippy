@@ -45,20 +45,34 @@ func (runs apiRunResults) limit(req *http.Request) apiRunResults {
 type apiRunResults []apitype.JobRun
 
 // JobsRunsReportFromDB renders a filtered summary of matching jobs.
-func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination) ([]apitype.JobRun, error) {
+func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination) (*apitype.PaginationResult, error) {
 	jobsResult := make([]apitype.JobRun, 0)
 	q, err := filter.FilterableDBResult(dbc.DB, filterOpts, apitype.JobRun{})
 	if err != nil {
 		return nil, err
 	}
 	q = q.Table("prow_job_runs_report_matview").Where("release = ?", release)
-	if pagination != nil {
-		q = q.Limit(pagination.PerPage).Offset(pagination.Offset)
+
+	var rowCount int64
+	q.Count(&rowCount)
+
+	if pagination == nil {
+		pagination = &apitype.Pagination{
+			PerPage: int(rowCount),
+			Page:    0,
+		}
+	} else {
+		q = q.Limit(pagination.PerPage).Offset(pagination.Page * pagination.PerPage)
 	}
 
 	res := q.Scan(&jobsResult)
 
-	return jobsResult, res.Error
+	return &apitype.PaginationResult{
+		Rows:      jobsResult,
+		TotalRows: rowCount,
+		PageSize:  pagination.PerPage,
+		Page:      pagination.Page,
+	}, res.Error
 }
 
 // PrintJobsRunsReportFromDB renders a filtered summary of matching jobs.

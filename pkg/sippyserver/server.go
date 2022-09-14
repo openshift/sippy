@@ -700,7 +700,13 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination)
+	result, err := api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {

@@ -27,9 +27,16 @@ const (
 	SortDescending Sort = "desc"
 )
 
+type PaginationResult struct {
+	Rows      interface{} `json:"rows"`
+	PageSize  int         `json:"page_size"`
+	Page      int         `json:"page"`
+	TotalRows int64       `json:"total_rows"`
+}
+
 type Pagination struct {
 	PerPage int `json:"perPage"`
-	Offset  int `json:"offset"`
+	Page    int `json:"page"`
 }
 
 type Repository struct {

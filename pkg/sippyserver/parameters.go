@@ -76,16 +76,16 @@ func getLimitParam(req *http.Request) int {
 
 func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
 	perPage := req.URL.Query().Get("perPage")
-	offset := req.URL.Query().Get("offset")
+	page := req.URL.Query().Get("page")
 	if perPage != "" {
 		perPageInt, err := strconv.Atoi(perPage)
 		if err != nil {
 			return nil, err
 		}
 
-		offsetInt := 0
-		if offset != "" {
-			offsetInt, err = strconv.Atoi(offset)
+		pageNo := 0
+		if page != "" {
+			pageNo, err = strconv.Atoi(page)
 			if err != nil {
 				return nil, err
 			}
@@ -93,7 +93,7 @@ func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
 
 		return &apitype.Pagination{
 			PerPage: perPageInt,
-			Offset:  offsetInt,
+			Page:    pageNo,
 		}, nil
 	}
 

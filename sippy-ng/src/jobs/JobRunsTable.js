@@ -27,7 +27,7 @@ import React, { Fragment, useEffect } from 'react'
 export default function JobRunsTable(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
-  const [rows, setRows] = React.useState([])
+  const [apiResult, setApiResult] = React.useState([])
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
@@ -44,6 +44,8 @@ export default function JobRunsTable(props) {
     'pageSize',
     NumberParam
   )
+  const [page = 0, setPage] = useQueryParam('page', NumberParam)
+  const [pageFlip, setPageFlip] = React.useState(false)
 
   const tooltips = {
     S: 'Success',
@@ -287,6 +289,8 @@ export default function JobRunsTable(props) {
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
+    queryString += '&perPage=' + safeEncodeURIComponent(pageSize)
+    queryString += '&page=' + safeEncodeURIComponent(page)
 
     fetch(
       process.env.REACT_APP_API_URL +
@@ -300,8 +304,9 @@ export default function JobRunsTable(props) {
         return response.json()
       })
       .then((json) => {
-        setRows(json)
+        setApiResult(json)
         setLoaded(true)
+        setPageFlip(false)
       })
       .catch((error) => {
         setFetchError('Could not retrieve jobs ' + props.release + ', ' + error)
@@ -324,7 +329,7 @@ export default function JobRunsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField])
+  }, [filterModel, sort, sortField, page, pageSize])
 
   const pageTitle = () => {
     if (props.title) {
@@ -430,10 +435,20 @@ export default function JobRunsTable(props) {
     </div>
   )
 
+  const changePage = (newPage) => {
+    setPageFlip(true)
+    setPage(newPage)
+  }
+
   const table = (
     <DataGrid
       components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-      rows={rows}
+      rows={apiResult.rows}
+      rowCount={apiResult.total_rows}
+      loading={pageFlip}
+      pagination
+      paginationMode="server"
+      onPageChange={(newPage) => changePage(newPage)}
       columns={columns}
       autoHeight={true}
       // Filtering:
