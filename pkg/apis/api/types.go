@@ -27,6 +27,11 @@ const (
 	SortDescending Sort = "desc"
 )
 
+type Pagination struct {
+	PerPage int `json:"perPage"`
+	Offset  int `json:"offset"`
+}
+
 type Repository struct {
 	ID       int    `json:"id"`
 	Org      string `json:"org"`

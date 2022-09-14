@@ -686,7 +686,21 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	api.PrintJobsRunsReportFromDB(w, req, s.db)
+	release := s.getRelease(req)
+
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "asc")
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	pagination, err := getPaginationParams(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not parse pagination options: " + err.Error()})
+		return
+	}
+
+	api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination)
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {

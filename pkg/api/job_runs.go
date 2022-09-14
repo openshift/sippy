@@ -44,6 +44,23 @@ func (runs apiRunResults) limit(req *http.Request) apiRunResults {
 
 type apiRunResults []apitype.JobRun
 
+// JobsRunsReportFromDB renders a filtered summary of matching jobs.
+func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination) ([]apitype.JobRun, error) {
+	jobsResult := make([]apitype.JobRun, 0)
+	q, err := filter.FilterableDBResult(dbc.DB, filterOpts, apitype.JobRun{})
+	if err != nil {
+		return nil, err
+	}
+	q = q.Table("prow_job_runs_report_matview").Where("release = ?", release)
+	if pagination != nil {
+		q = q.Limit(pagination.PerPage).Offset(pagination.Offset)
+	}
+
+	res := q.Scan(&jobsResult)
+
+	return jobsResult, res.Error
+}
+
 // PrintJobsRunsReportFromDB renders a filtered summary of matching jobs.
 func PrintJobsRunsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
 	var fil *filter.Filter
