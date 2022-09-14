@@ -688,7 +688,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
 
-	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "asc")
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
 		return

@@ -46,11 +46,12 @@ type apiRunResults []apitype.JobRun
 // JobsRunsReportFromDB renders a filtered summary of matching jobs.
 func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination) (*apitype.PaginationResult, error) {
 	jobsResult := make([]apitype.JobRun, 0)
-	q, err := filter.FilterableDBResult(dbc.DB, filterOpts, apitype.JobRun{})
+	table := "prow_job_runs_report_matview"
+	q, err := filter.FilterableDBResult(dbc.DB.Table(table), filterOpts, apitype.JobRun{})
 	if err != nil {
 		return nil, err
 	}
-	q = q.Table("prow_job_runs_report_matview").Where("release = ?", release)
+	q = q.Where("release = ?", release)
 
 	// Get the row count before pagination
 	var rowCount int64
