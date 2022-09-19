@@ -27,6 +27,23 @@ const (
 	SortDescending Sort = "desc"
 )
 
+// PaginationResult is a type used by API endpoints that enable server-side
+// pagination. It wraps the returned rows  with page information such as page
+// size, which page, and the total rows.
+type PaginationResult struct {
+	Rows      interface{} `json:"rows"`
+	PageSize  int         `json:"page_size"`
+	Page      int         `json:"page"`
+	TotalRows int64       `json:"total_rows"`
+}
+
+// Pagination is a type used to request specific per-page and offset values
+// in an API request.
+type Pagination struct {
+	PerPage int `json:"per_page"`
+	Page    int `json:"page"`
+}
+
 type Repository struct {
 	ID       int    `json:"id"`
 	Org      string `json:"org"`

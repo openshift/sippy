@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -71,6 +72,32 @@ func getPeriod(req *http.Request, defaultValue string) string {
 func getLimitParam(req *http.Request) int {
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	return limit
+}
+
+func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
+	perPage := req.URL.Query().Get("perPage")
+	page := req.URL.Query().Get("page")
+	if perPage != "" {
+		perPageInt, err := strconv.Atoi(perPage)
+		if err != nil {
+			return nil, err
+		}
+
+		pageNo := 0
+		if page != "" {
+			pageNo, err = strconv.Atoi(page)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return &apitype.Pagination{
+			PerPage: perPageInt,
+			Page:    pageNo,
+		}, nil
+	}
+
+	return nil, nil
 }
 
 func getSortParams(req *http.Request) (string, apitype.Sort) {
