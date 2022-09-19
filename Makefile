@@ -6,15 +6,19 @@ CHECK := $(foreach dep,$(DEPS),\
 
 all: test build
 
-build: clean npm
+builddir:
+	mkdir -p sippy-ng/build
+	touch sippy-ng/build/index.html
+
+build: builddir clean npm
 	cd sippy-ng; npm run build
 	go build -mod=vendor .
 
-test: npm
+test: builddir npm
 	go test -v ./...
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 
-lint: npm
+lint: builddir npm
 	golangci-lint run ./...
 	cd sippy-ng; npx eslint .
 
@@ -27,4 +31,4 @@ npm:
 
 clean:
 	rm -f sippy
-	find sippy-ng/build/ -mindepth 1 -not -name .gitignore -not -name index.html -delete
+	rm -rf sippy-ng/build
