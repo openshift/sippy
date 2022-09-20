@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"flag"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -62,6 +61,7 @@ type Options struct {
 	InitDatabase                       bool
 	LoadDatabase                       bool
 	ListenAddr                         string
+	MetricsAddr                        string
 	Server                             bool
 	DBOnlyMode                         bool
 	SkipBugLookup                      bool
@@ -84,6 +84,7 @@ func main() {
 		FailureClusterThreshold: 10,
 		StartDay:                0,
 		ListenAddr:              ":8080",
+		MetricsAddr:             ":2112",
 	}
 
 	cmd := &cobra.Command{
@@ -118,7 +119,8 @@ func main() {
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
-	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
+	flags.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on (default :8080)")
+	flags.StringVar(&opt.MetricsAddr, "listen-metrics", opt.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
@@ -431,7 +433,7 @@ func (o *Options) runServerMode() error {
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":2112", nil)
+		err := http.ListenAndServe(o.MetricsAddr, nil)
 		if err != nil {
 			panic(err)
 		}

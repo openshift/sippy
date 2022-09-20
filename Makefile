@@ -15,7 +15,7 @@ build: builddir clean npm
 	go build -mod=vendor .
 
 test: builddir npm
-	go test -v ./...
+	go test -v ./pkg/...
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 
 lint: builddir npm
@@ -32,3 +32,6 @@ npm:
 clean:
 	rm -f sippy
 	rm -rf sippy-ng/build
+
+e2e:
+	./scripts/e2e.sh
