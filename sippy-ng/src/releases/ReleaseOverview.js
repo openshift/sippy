@@ -437,7 +437,7 @@ export default function ReleaseOverview(props) {
                   Top failing test NURPs
                   <Tooltip
                     title={
-                      'Show the list of tests with a variant that perform significiently worse than the other variants of the same tests.'
+                      'Show the list of tests with a variant that perform significantly worse than the other variants of the same tests.'
                     }
                   >
                     <InfoIcon />
