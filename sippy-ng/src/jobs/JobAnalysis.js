@@ -256,7 +256,17 @@ export function JobAnalysis(props) {
       field: 'name',
       headerName: 'Test name',
       flex: 4,
-      renderCell: (param) => <div className="job-name">{param.value}</div>,
+      renderCell: (param) => (
+        <div className="job-name">
+          <Link
+            to={`/tests/${props.release}/analysis?test=${safeEncodeURIComponent(
+              param.value
+            )}`}
+          >
+            {param.value}
+          </Link>
+        </div>
+      ),
     },
     {
       field: 'value',
@@ -496,7 +506,7 @@ export function JobAnalysis(props) {
                   color="secondary"
                   onClick={() => setTestSelectionDialog(true)}
                 >
-                  Select tests to chart
+                  Select/view tests to chart
                 </Button>
                 <Dialog
                   fullWidth={true}
