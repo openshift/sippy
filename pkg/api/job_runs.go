@@ -51,7 +51,10 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	if err != nil {
 		return nil, err
 	}
-	q = q.Where("release = ?", release)
+
+	if len(release) > 0 {
+		q = q.Where("release = ?", release)
+	}
 
 	// Get the row count before pagination
 	var rowCount int64
