@@ -19,11 +19,6 @@ while [ true ]; do
     --release 4.11 \
     --release 4.12 \
     --release Presubmits \
-    --arch amd64 \
-    --arch arm64 \
-    --arch multi \
-    --arch s390x \
-    --arch ppc64le \
     --config /config/openshift.yaml \
     --mode=ocp
   echo "Done fetching data, refreshing server"
