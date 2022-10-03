@@ -25,7 +25,7 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 	prFetchCalls := 0
 	expectedCalls := 3
 
-	PRFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
+	prFetch := func(org, repo string, number int) (*gh.PullRequest, error) {
 		prFetchCalls++
 		if org == openshift && repo == kubernetes && number == 1 {
 			return &gh.PullRequest{
@@ -48,8 +48,9 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 	}
 
 	client := &Client{
-		ctx:   context.TODO(),
-		cache: make(map[prlocator]*prentry),
+		ctx:     context.TODO(),
+		prFetch: prFetch,
+		cache:   make(map[prlocator]*prentry),
 	}
 
 	tests := []struct {

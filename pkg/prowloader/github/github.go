@@ -7,7 +7,7 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v45/github"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/tcnksm/go-gitconfig"
 	"golang.org/x/oauth2"
 )
@@ -24,12 +24,10 @@ type prentry struct {
 }
 
 type Client struct {
-	ctx   context.Context
-	cache map[prlocator]*prentry
+	ctx     context.Context
+	cache   map[prlocator]*prentry
+	prFetch func(org, repo string, number int) (*gh.PullRequest, error)
 }
-
-// PRFetch as a global allows tests to override.
-var PRFetch func(org, repo string, number int) (*gh.PullRequest, error)
 
 func New(ctx context.Context) *Client {
 	client := &Client{
@@ -38,34 +36,32 @@ func New(ctx context.Context) *Client {
 	}
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		logrus.Infof("No GitHub token environment variable, checking git config")
+		log.Infof("No GitHub token environment variable, checking git config")
 		var err error
 		token, err = gitconfig.GithubToken()
 		if err != nil {
-			logrus.WithError(err).Warningf("unable to retrieve GitHub token from git config")
+			log.WithError(err).Warningf("unable to retrieve GitHub token from git config")
 		}
 	}
 
-	if PRFetch != nil {
-		var ghc *gh.Client
+	var ghc *gh.Client
 
-		if token != "" {
-			ts := oauth2.StaticTokenSource(
-				&oauth2.Token{
-					AccessToken: token,
-				},
-			)
-			tc := oauth2.NewClient(client.ctx, ts)
-			ghc = gh.NewClient(tc)
-		} else {
-			logrus.Warningf("using unathenticated GitHub client, requests will be rate-limited")
-			ghc = gh.NewClient(nil)
-		}
+	if token != "" {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{
+				AccessToken: token,
+			},
+		)
+		tc := oauth2.NewClient(client.ctx, ts)
+		ghc = gh.NewClient(tc)
+	} else {
+		log.Warningf("using unathenticated GitHub client, requests will be rate-limited")
+		ghc = gh.NewClient(nil)
+	}
 
-		PRFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
-			pr, _, err := ghc.PullRequests.Get(client.ctx, org, repo, number)
-			return pr, err
-		}
+	client.prFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
+		pr, _, err := ghc.PullRequests.Get(client.ctx, org, repo, number)
+		return pr, err
 	}
 
 	return client
@@ -83,13 +79,20 @@ func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time
 		// If it's in the cache, and sha matches, this sha was merged.
 		return val.mergedAt, nil
 	} else if ok {
-		// If it's in the cache, but this isn't the sha, this sha wasn't merged.
+		// If it's in the cache, but this isn't the sha, the PR merged but not with this sha.
 		return nil, nil
 	}
 
 	// Get PR from GitHub
-	pr, err := PRFetch(org, repo, number)
+	pr, err := c.prFetch(org, repo, number)
 	if err != nil {
+		log.WithError(err).
+			WithField("org", org).
+			WithField("repo", repo).
+			WithField("number", number).
+			WithField("sha", sha).
+			Errorf("error retrieving pull request")
+
 		if resp, ok := err.(*gh.ErrorResponse); ok && resp.Response != nil && resp.Response.StatusCode == http.StatusNotFound {
 			c.cache[prl] = nil
 			return nil, nil
