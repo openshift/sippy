@@ -9,6 +9,11 @@ import (
 	gh "github.com/google/go-github/v45/github"
 )
 
+const (
+	openshift  = "openshift"
+	kubernetes = "kubernetes"
+)
+
 func TestClient_GetPRSHAMerged(t *testing.T) {
 	now := time.Now()
 	mergedSha := "96dcf2b704502a0b05c4bbff5e8c9bb836449fa6"
@@ -22,16 +27,16 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 
 	PRFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
 		prFetchCalls++
-		if org == "openshift" && repo == "kubernetes" && number == 1 {
+		if org == openshift && repo == kubernetes && number == 1 {
 			return &gh.PullRequest{
 				MergedAt: &now,
 				Head: &gh.PullRequestBranch{
 					SHA: &mergedSha,
 				},
 			}, nil
-		} else if org == "openshift" && repo == "kubernetes" && number == 2 {
+		} else if org == openshift && repo == kubernetes && number == 2 {
 			return &gh.PullRequest{}, nil
-		} else if org == "openshift" && repo == "not-exist" {
+		} else if org == openshift && repo == "not-exist" {
 			return nil, &gh.ErrorResponse{
 				Response: &http.Response{
 					StatusCode: 404,
@@ -58,39 +63,39 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 	}{
 		{
 			name:       "merged pr with matching sha",
-			org:        "openshift",
-			repo:       "kubernetes",
+			org:        openshift,
+			repo:       kubernetes,
 			sha:        mergedSha,
 			number:     1,
 			wantMerged: true,
 		},
 		{
 			name:       "merged pr with other sha",
-			org:        "openshift",
-			repo:       "kubernetes",
+			org:        openshift,
+			repo:       kubernetes,
 			sha:        unmergedSha1,
 			number:     1,
 			wantMerged: false,
 		},
 		{
 			name:       "unmerged pr",
-			org:        "openshift",
-			repo:       "kubernetes",
+			org:        openshift,
+			repo:       kubernetes,
 			sha:        unmergedSha1,
 			number:     2,
 			wantMerged: false,
 		},
 		{
 			name:       "unmerged pr other sha",
-			org:        "openshift",
-			repo:       "kubernetes",
+			org:        openshift,
+			repo:       kubernetes,
 			sha:        unmergedSha2,
 			number:     2,
 			wantMerged: false,
 		},
 		{
 			name:       "not found pr",
-			org:        "openshift",
+			org:        openshift,
 			repo:       "not-exist",
 			sha:        unmergedSha1,
 			number:     2,
@@ -98,7 +103,7 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 		},
 		{
 			name:       "not found pr other sha",
-			org:        "openshift",
+			org:        openshift,
 			repo:       "not-exist",
 			sha:        unmergedSha2,
 			number:     2,
