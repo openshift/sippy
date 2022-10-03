@@ -72,7 +72,7 @@ func (r *releaseSyncOptions) Run() error {
 					continue
 				}
 
-				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(&releaseTag).Error; err != nil {
+				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
 					return err
 				}
 			}
