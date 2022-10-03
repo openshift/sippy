@@ -7,27 +7,27 @@ import './JobAnalysis.css'
 import { pathForJobsInPercentile, safeEncodeURIComponent } from '../helpers'
 import { useHistory } from 'react-router-dom'
 
-export const dayFilter = (days, startDate) => {
+export const dayFilter = (days) => {
   return [
     {
       columnField: 'timestamp',
       operatorValue: '>',
-      value: `${startDate - 1000 * 60 * 60 * 24 * days}`,
+      value: `${Date.now() - 1000 * 60 * 60 * 24 * days}`,
     },
   ]
 }
 
-export const hourFilter = (dayOffset, startDate) => {
+export const hourFilter = (dayOffset) => {
   return [
     {
       columnField: 'timestamp',
       operatorValue: '>',
-      value: `${startDate - dayOffset * 1000 * 60 * 60 * 24}`,
+      value: `${Date.now() - dayOffset * 1000 * 60 * 60 * 24}`,
     },
     {
       columnField: 'timestamp',
       operatorValue: '<=',
-      value: `${startDate - (dayOffset - 1) * 1000 * 60 * 60 * 24}`,
+      value: `${Date.now() - (dayOffset - 1) * 1000 * 60 * 60 * 24}`,
     },
   ]
 }

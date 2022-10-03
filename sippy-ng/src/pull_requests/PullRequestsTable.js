@@ -2,15 +2,9 @@ import { Backdrop, Button, CircularProgress, Tooltip } from '@material-ui/core'
 import { BOOKMARKS } from '../constants'
 import { DataGrid } from '@material-ui/data-grid'
 import { Error, GitHub } from '@material-ui/icons'
-import {
-  getReportStartDate,
-  relativeTime,
-  safeEncodeURIComponent,
-  SafeJSONParam,
-} from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { makeStyles } from '@material-ui/core/styles'
-import { ReportEndContext } from '../App'
+import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useLocation } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
@@ -67,8 +61,6 @@ export default function PullRequestsTable(props) {
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
-
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const views = {
     Default: {
@@ -172,7 +164,7 @@ export default function PullRequestsTable(props) {
         }
 
         return (
-          <Tooltip title={relativeTime(new Date(params.value), startDate)}>
+          <Tooltip title={relativeTime(new Date(params.value))}>
             <p>{new Date(params.value).toLocaleString()}</p>
           </Tooltip>
         )

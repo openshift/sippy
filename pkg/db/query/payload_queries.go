@@ -9,7 +9,7 @@ import (
 )
 
 // GetLastAcceptedByArchitectureAndStream returns the last accepted payload for each architecture/stream combo.
-func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportEnd time.Time) ([]models.ReleaseTag, error) {
+func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)
 
 	result := db.Raw(`SELECT
@@ -22,10 +22,8 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportE
 							release = ?
 						AND
 							phase = 'Accepted'
-						AND
-							release_time < ?
 						ORDER BY
-							architecture, stream, release_time desc`, release, reportEnd).Scan(&results)
+							architecture, stream, release_time desc`, release).Scan(&results)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -59,13 +57,13 @@ func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]mod
 }
 
 // GetLastPayloadTags returns payloads tags for last two weeks, sorted by date in descending order.
-func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, reportEnd time.Time) ([]models.ReleaseTag, error) {
+func GetLastPayloadTags(db *gorm.DB, release, stream, arch string) ([]models.ReleaseTag, error) {
 	results := []models.ReleaseTag{}
 
 	result := db.Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", arch).
-		Where("release_time >= ?", reportEnd.Add(-14*24*time.Hour)).
+		Where("release_time >= ?", time.Now().Add(-14*24*time.Hour)).
 		Order("release_time DESC").Find(&results)
 	if result.Error != nil {
 		return nil, result.Error
@@ -77,7 +75,7 @@ func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, reportEnd tim
 // GetLastPayloadStatus returns the most recent payload status for an architecture/stream combination,
 // as well as the count of how many of the last payloads had that status (e.g., when this returns
 // Rejected, 5 -- it means the last 5 payloads were rejected.
-func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string, reportEnd time.Time) (string, int, error) {
+func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string) (string, int, error) {
 	count := models.PayloadPhaseCount{}
 
 	result := db.Raw(`
@@ -89,7 +87,7 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string, rep
 				FROM
 					release_tags
 				WHERE
-					architecture = ? AND stream = ? AND release = ? AND release_time <= ?
+					architecture = ? AND stream = ? AND release = ?
 			),
 		changes AS
 			(
@@ -112,19 +110,18 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string, rep
 		WHERE
 			groups.group = 1
 		GROUP BY
-			phase`, architecture, stream, release, reportEnd).Scan(&count)
+			phase`, architecture, stream, release).Scan(&count)
 
 	return count.Phase, count.Count, result.Error
 }
 
 // GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
-func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) ([]models.PayloadPhaseCount, error) {
+func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string, since *time.Time) ([]models.PayloadPhaseCount, error) {
 	phaseCounts := []models.PayloadPhaseCount{}
 	q := db.Table("release_tags").Select("phase, COUNT(phase)").
 		Where("release = ? ", release).
 		Where("architecture = ?", architecture).
-		Where("stream = ?", stream).
-		Where("release_time < ?", reportEnd).Group("phase")
+		Where("stream = ?", stream).Group("phase")
 	if since != nil {
 		q = q.Where("release_time >= ?", *since)
 	}
@@ -133,7 +130,7 @@ func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream stri
 	return phaseCounts, r.Error
 }
 
-func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) (models.PayloadStatistics, error) {
+func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream string, since *time.Time) (models.PayloadStatistics, error) {
 	results := models.PayloadStatistics{}
 
 	q := db.Table("release_tags").
@@ -143,8 +140,7 @@ func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream s
 		Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", architecture).
-		Where("phase = ?", "Accepted").
-		Where("release_time < ?", reportEnd)
+		Where("phase = ?", "Accepted")
 
 	if since != nil {
 		q = q.Where("release_time >= ?", *since)

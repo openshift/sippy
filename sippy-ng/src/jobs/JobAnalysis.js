@@ -20,7 +20,6 @@ import {
 import { DataGrid } from '@material-ui/data-grid'
 import {
   filterFor,
-  getReportStartDate,
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
   safeEncodeURIComponent,
@@ -33,7 +32,6 @@ import { hourFilter, JobStackedChart } from './JobStackedChart'
 import { JOB_THRESHOLDS } from '../constants'
 import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
-import { ReportEndContext } from '../App'
 import { scale } from 'chroma-js'
 import Alert from '@material-ui/lab/Alert'
 import BugTable from '../bugzilla/BugTable'
@@ -70,7 +68,6 @@ export function JobAnalysis(props) {
   )
 
   const [testSelectionDialog, setTestSelectionDialog] = React.useState(false)
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const fetchData = () => {
     document.title = `Sippy > ${props.release} > Jobs > Analysis`
@@ -106,9 +103,8 @@ export function JobAnalysis(props) {
         // allTests maps each test name to a struct containing the test name again, and the total number of
         // failures in the past 7 days. This value is used to sort on and determine the most relevant tests
         // to preselect in the graph.
-
         let allTests = new Map()
-        let twoWeeksAgo = new Date(+startDate - 1000 * 60 * 60 * 24 * 7)
+        let twoWeeksAgo = new Date(+new Date() - 1000 * 60 * 60 * 24 * 7)
         Object.keys(analysis.by_period).map((key) =>
           Object.keys(analysis.by_period[key].test_count).forEach((test) => {
             const count = allTests.get(test) || { name: test, value: 0 }
@@ -288,7 +284,7 @@ export function JobAnalysis(props) {
           newFilters.push(filter)
         }
       })
-    newFilters.push(...hourFilter(newOffset, startDate))
+    newFilters.push(...hourFilter(newOffset))
     setFilterModel({
       items: newFilters,
       linkOperator: filterModel ? filterModel.linkOperator : 'and',
@@ -308,7 +304,7 @@ export function JobAnalysis(props) {
       })
 
     if (newPeriod === 'hour') {
-      newFilters.push(...hourFilter(dayOffset, startDate))
+      newFilters.push(...hourFilter(dayOffset))
     }
 
     setFilterModel({

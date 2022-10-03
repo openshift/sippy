@@ -4,7 +4,6 @@ import (
 	"net/http"
 	gosort "sort"
 	"strconv"
-	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -45,7 +44,7 @@ func (runs apiRunResults) limit(req *http.Request) apiRunResults {
 type apiRunResults []apitype.JobRun
 
 // JobsRunsReportFromDB renders a filtered summary of matching jobs.
-func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination, reportEnd time.Time) (*apitype.PaginationResult, error) {
+func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination) (*apitype.PaginationResult, error) {
 	jobsResult := make([]apitype.JobRun, 0)
 	table := "prow_job_runs_report_matview"
 	q, err := filter.FilterableDBResult(dbc.DB.Table(table), filterOpts, apitype.JobRun{})
@@ -56,8 +55,6 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	if len(release) > 0 {
 		q = q.Where("release = ?", release)
 	}
-
-	q = q.Where("timestamp < ?", reportEnd.UnixMilli())
 
 	// Get the row count before pagination
 	var rowCount int64

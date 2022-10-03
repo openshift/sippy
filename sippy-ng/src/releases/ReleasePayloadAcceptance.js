@@ -8,13 +8,8 @@ import {
 } from '@material-ui/core'
 import { CheckCircle, Error, Help, Warning } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
-import {
-  getReportStartDate,
-  relativeTime,
-  safeEncodeURIComponent,
-} from '../helpers'
 import { Link } from 'react-router-dom'
-import { ReportEndContext } from '../App'
+import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -39,7 +34,6 @@ function ReleasePayloadAcceptance(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const fetchData = () => {
     fetch(
@@ -80,10 +74,10 @@ function ReleasePayloadAcceptance(props) {
     let icon = <Help />
     let text = 'Unknown'
     let tooltip = 'No information is available.'
-    let when = startDate.getTime() - new Date(row.release_time).getTime()
     if (row.release_time && row.release_time != '') {
       tooltip = `The last ${row.count} releases were ${row.last_phase}`
-      text = relativeTime(new Date(row.release_time), startDate)
+      text = relativeTime(new Date(row.release_time))
+      const when = new Date().getTime() - new Date(row.release_time).getTime()
 
       if (row.last_phase === 'Accepted' && when <= 24 * 60 * 60 * 1000) {
         // If we had an accepted release in the last 24 hours, we're green

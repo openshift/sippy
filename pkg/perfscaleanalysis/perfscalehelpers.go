@@ -26,7 +26,7 @@ const (
 	ScaleJobsFilename = "perfscale-metrics.json"
 )
 
-func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
+func DownloadPerfScaleData(storagePath string) error {
 	log.Debugf("Downloading perfscale data from %s index %s", esURL, esIndex)
 	cfg := es7.Config{
 		Addresses: []string{esURL},
@@ -37,9 +37,8 @@ func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 		return err
 	}
 
-	//TODO: Review with Devan how this is (or isn't) impacted by historical sippy / pinned reportEnd
 	// Calculate dates for our buckets:
-	now := reportEnd
+	now := time.Now()
 	// Hardcoded for now:
 	currPeriod := 7 * 24 * time.Hour  // last week
 	prevPeriod := 30 * 24 * time.Hour // last month
@@ -103,7 +102,7 @@ func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 		gjson.Get(j, "took").Int(),
 	)
 
-	// We are not presently prepared for pagination. At time of writing we expect roughly 600 results, and we're requesting 2000 at a time.
+	// We are not presently preapred for pagination. At time of writing we expect roughly 600 results, and we're requesting 2000 at a time.
 	// This will start erroring once if we surpass those limits and we'll need to bump our request, or paginate.
 	if totalHits > esQuerySize {
 		return fmt.Errorf("%d results returned which is greater than our query size of %d, code needs to be updated", totalHits, esQuerySize)

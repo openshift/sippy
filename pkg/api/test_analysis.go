@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -30,7 +29,7 @@ type apiTestByDayresults struct {
 	ByDay map[string]testResultDay `json:"by_day"`
 }
 
-func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Request, release, testName string, reportEnd time.Time) error {
+func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Request, release, testName string) error {
 	results := apiTestByDayresults{
 		ByDay: make(map[string]testResultDay),
 	}
@@ -120,14 +119,6 @@ func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Re
 	allRows := append(byVariantAnalysisRows, byJobAnalysisRows...)
 
 	for _, row := range allRows {
-
-		// need to know the report end, if the date is greater than that skip the row
-		// tried modifying the query but still get extra rows / days
-		// Where("date < ? ", reportEnd.UTC()).
-		if row.Date.After(reportEnd) {
-			continue
-		}
-
 		date := row.Date.Format("2006-01-02")
 
 		var dayResult testResultDay

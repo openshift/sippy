@@ -1,13 +1,11 @@
 import { Card, Container, Grid, Typography } from '@material-ui/core'
-import { filterFor, getReportStartDate } from '../helpers'
+import { filterFor } from '../helpers'
+import { Fragment, React } from 'react'
 import { JobStackedChart } from '../jobs/JobStackedChart'
-import { ReportEndContext } from '../App'
 import JobRunsTable from '../jobs/JobRunsTable'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
 
 export default function BuildClusterDetails(props) {
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
   return (
     <Container size="xl">
       <Grid container spacing={3} alignItems="stretch">
@@ -24,7 +22,7 @@ export default function BuildClusterDetails(props) {
                     'timestamp',
                     '>',
                     `${new Date(
-                      startDate - 14 * 24 * 60 * 60 * 1000
+                      Date.now() - 14 * 24 * 60 * 60 * 1000
                     ).getTime()}`
                   ),
                 ],

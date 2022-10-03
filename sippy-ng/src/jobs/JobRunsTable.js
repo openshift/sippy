@@ -8,16 +8,14 @@ import {
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat, GitHub } from '@material-ui/icons'
+import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
-  getReportStartDate,
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
-import { Link } from 'react-router-dom'
-import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { ReportEndContext } from '../App'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -61,8 +59,6 @@ export default function JobRunsTable(props) {
     R: 'running',
   }
 
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
-
   const columns = [
     {
       field: 'id',
@@ -81,7 +77,7 @@ export default function JobRunsTable(props) {
       },
       renderCell: (params) => {
         return (
-          <Tooltip title={relativeTime(new Date(params.value), startDate)}>
+          <Tooltip title={relativeTime(new Date(params.value))}>
             <p>{new Date(params.value).toLocaleString()}</p>
           </Tooltip>
         )

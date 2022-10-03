@@ -64,7 +64,7 @@ func briefName(job string) string {
 
 // PrintVariantReportFromDB
 func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
-	dbc *db.DB, release string, reportEnd time.Time) {
+	dbc *db.DB, release string) {
 	// Preferred method of slicing is with start->boundary->end query params in the format ?start=2021-12-02&boundary=2021-12-07.
 	// 'end' can be specified if you wish to view historical reports rather than now, which is assumed if end param is absent.
 	var start time.Time
@@ -81,10 +81,10 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 		}
 	} else if req.URL.Query().Get("period") == periodTwoDay {
 		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
-		start = reportEnd.Add(-9 * 24 * time.Hour)
+		start = time.Now().Add(-9 * 24 * time.Hour)
 	} else {
 		// Default start to 14 days ago
-		start = reportEnd.Add(-14 * 24 * time.Hour)
+		start = time.Now().Add(-14 * 24 * time.Hour)
 	}
 
 	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
@@ -97,10 +97,10 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 			return
 		}
 	} else if req.URL.Query().Get("period") == periodTwoDay {
-		boundary = reportEnd.Add(-2 * 24 * time.Hour)
+		boundary = time.Now().Add(-2 * 24 * time.Hour)
 	} else {
 		// Default boundary to 7 days ago
-		boundary = reportEnd.Add(-7 * 24 * time.Hour)
+		boundary = time.Now().Add(-7 * 24 * time.Hour)
 
 	}
 
@@ -113,7 +113,7 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 		}
 	} else {
 		// Default end to now
-		end = reportEnd
+		end = time.Now()
 	}
 
 	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
@@ -129,7 +129,7 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 
 // PrintJobsReportFromDB renders a filtered summary of matching jobs.
 func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
-	dbc *db.DB, release string, reportEnd time.Time) {
+	dbc *db.DB, release string) {
 
 	var fil *filter.Filter
 
@@ -186,7 +186,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end, reportEnd)
+	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
@@ -195,7 +195,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
 
-func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.FilterOptions, start, boundary, end, reportEnd time.Time) ([]apitype.Job, error) {
+func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.FilterOptions, start, boundary, end time.Time) ([]apitype.Job, error) {
 
 	// set a default filter if none provided
 	if filterOpts == nil {
@@ -207,24 +207,24 @@ func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.Fil
 	if period == periodTwoDay {
 		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
 		if start.IsZero() {
-			start = reportEnd.Add(-9 * 24 * time.Hour)
+			start = time.Now().Add(-9 * 24 * time.Hour)
 		}
 		if boundary.IsZero() {
-			boundary = reportEnd.Add(-2 * 24 * time.Hour)
+			boundary = time.Now().Add(-2 * 24 * time.Hour)
 		}
 	} else {
 		if start.IsZero() {
-			start = reportEnd.Add(-14 * 24 * time.Hour)
+			start = time.Now().Add(-14 * 24 * time.Hour)
 		}
 		if boundary.IsZero() {
 			// Default boundary to 7 days ago
-			boundary = reportEnd.Add(-7 * 24 * time.Hour)
+			boundary = time.Now().Add(-7 * 24 * time.Hour)
 		}
 
 	}
 
 	if end.IsZero() {
-		end = reportEnd
+		end = time.Now()
 	}
 
 	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
@@ -257,12 +257,12 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 }
 
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
-func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
+func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string) error {
 	var min, max int
 
 	// List all ProwJobRuns for the given release in the last two weeks.
 	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
-	since := reportEnd.Add(-14 * 24 * time.Hour)
+	since := time.Now().Add(-14 * 24 * time.Hour)
 
 	prowJobRuns := make([]*models.ProwJobRun, 0)
 	res := dbc.DB.Joins("ProwJob").

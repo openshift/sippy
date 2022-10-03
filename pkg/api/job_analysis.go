@@ -23,8 +23,7 @@ func PrintJobAnalysisJSONFromDB(
 	limit int,
 	sortField string,
 	sort apitype.Sort,
-	period string,
-	reportEnd time.Time) (apitype.JobAnalysisResult, error) {
+	period string) (apitype.JobAnalysisResult, error) {
 	result := apitype.JobAnalysisResult{}
 
 	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
@@ -79,12 +78,6 @@ func PrintJobAnalysisJSONFromDB(
 	}
 
 	for _, sum := range sums {
-
-		// remove empty rows after the reportEnd date
-		if sum.Period.After(reportEnd) {
-			continue
-		}
-
 		results.ByPeriod[sum.Period.UTC().Format(formatter)] = apitype.AnalysisResult{
 			TotalRuns: sum.TotalRuns,
 			ResultCount: map[v1sippyprocessing.JobOverallResult]int{

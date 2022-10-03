@@ -22,9 +22,9 @@ type ProcessingOptions struct {
 
 // ProcessJobDetailsIntoRawJobResult returns the raw data and a list of warnings encountered processing the data
 // for a specific job.
-func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails, reportEnd time.Time) (*v1.RawJobResult, []string) {
+func (o ProcessingOptions) ProcessJobDetailsIntoRawJobResult(jobDetails testgridv1.JobDetails) (*v1.RawJobResult, []string) {
 	log.Infof("processing test details for job %s\n", jobDetails.Name)
-	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps, reportEnd)
+	startCol, endCol := computeLookback(o.StartDay, o.NumDays, jobDetails.Timestamps)
 	jobResult := processJobDetails(jobDetails, startCol, endCol)
 	for _, jrr := range jobResult.JobRunResults {
 		syntheticTests := o.SyntheticTestManager.CreateSyntheticTests(jrr)
@@ -56,11 +56,11 @@ func processJobDetails(job testgridv1.JobDetails, startCol, endCol int) *v1.RawJ
 	return jobResult
 }
 
-func computeLookback(startDay, numDays int, timestamps []int, reportEnd time.Time) (int, int) {
+func computeLookback(startDay, numDays int, timestamps []int) (int, int) {
 	// WARNING: this is modelled as it is in testgrid where we read newest results to oldest left to right.
 	// Thus startTs is the newest timestamp, stopTs is the oldest.
-	stopTs := reportEnd.Add(time.Duration(-1*(startDay+numDays)*24)*time.Hour).Unix() * 1000
-	startTs := reportEnd.Add(time.Duration(-1*startDay*24)*time.Hour).Unix() * 1000
+	stopTs := time.Now().Add(time.Duration(-1*(startDay+numDays)*24)*time.Hour).Unix() * 1000
+	startTs := time.Now().Add(time.Duration(-1*startDay*24)*time.Hour).Unix() * 1000
 	if startDay <= -1 { // find the most recent startTime
 		mostRecentTimestamp := 0
 		for _, t := range timestamps {

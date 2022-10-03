@@ -3,17 +3,15 @@ import { CapabilitiesContext } from '../App'
 import { Card, Container, Tooltip, Typography } from '@material-ui/core'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
+import { Link } from 'react-router-dom'
+import { NumberParam, useQueryParam } from 'use-query-params'
 import {
-  getReportStartDate,
   pathForJobsWithFilter,
   queryForBookmark,
   safeEncodeURIComponent,
   withoutUnstable,
   withSort,
 } from '../helpers'
-import { Link } from 'react-router-dom'
-import { NumberParam, useQueryParam } from 'use-query-params'
-import { ReportEndContext } from '../App'
 import Alert from '@material-ui/lab/Alert'
 import BuildClusterHealthChart from '../build_clusters/BuildClusterHealthChart'
 import Grid from '@material-ui/core/Grid'
@@ -64,7 +62,6 @@ export default function ReleaseOverview(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const fetchData = () => {
     fetch(
@@ -188,10 +185,7 @@ export default function ReleaseOverview(props) {
                       props.release
                     }/analysis?filters=${safeEncodeURIComponent(
                       JSON.stringify({
-                        items: [
-                          ...withoutUnstable(),
-                          ...dayFilter(14, startDate),
-                        ],
+                        items: [...withoutUnstable(), ...dayFilter(14)],
                         linkOperator: 'and',
                       })
                     )}&period=day}`}
@@ -210,7 +204,7 @@ export default function ReleaseOverview(props) {
                   release={props.release}
                   period="day"
                   filter={{
-                    items: [...withoutUnstable(), ...dayFilter(14, startDate)],
+                    items: [...withoutUnstable(), ...dayFilter(14)],
                     linkOperator: 'and',
                   }}
                 />

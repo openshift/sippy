@@ -67,7 +67,7 @@ func useNewInstallTest(release string) bool {
 
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
-func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
+func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
 	excludedVariants := []string{"never-stable"}
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
@@ -153,9 +153,9 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		Sort:      apitype.SortDescending,
 		Limit:     0,
 	}
-	start := reportEnd.Add(-14 * 24 * time.Hour)
-	boundary := reportEnd.Add(-7 * 24 * time.Hour)
-	end := reportEnd
+	start := time.Now().Add(-14 * 24 * time.Hour)
+	boundary := time.Now().Add(-7 * 24 * time.Hour)
+	end := time.Now()
 	jobReports, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying job reports")
@@ -163,7 +163,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
-	warnings := ScanForReleaseWarnings(dbc, release, reportEnd)
+	warnings := ScanForReleaseWarnings(dbc, release)
 
 	RespondWithJSON(http.StatusOK, w, health{
 		Indicators:  indicators,

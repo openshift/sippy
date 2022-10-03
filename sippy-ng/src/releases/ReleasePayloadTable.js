@@ -9,15 +9,9 @@ import {
 } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import {
-  getReportStartDate,
-  relativeTime,
-  safeEncodeURIComponent,
-  SafeJSONParam,
-} from '../helpers'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { ReportEndContext } from '../App'
+import { relativeTime, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -43,7 +37,7 @@ const useStyles = makeStyles(
 function ReleasePayloadTable(props) {
   const classes = useStyles()
   const theme = defaultTheme
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
+
   const columns = [
     {
       field: 'phase',
@@ -176,7 +170,7 @@ function ReleasePayloadTable(props) {
 
         return (
           <Tooltip title={params.value}>
-            <p>{relativeTime(new Date(params.value), startDate)}</p>
+            <p>{relativeTime(new Date(params.value))}</p>
           </Tooltip>
         )
       },
