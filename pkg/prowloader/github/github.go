@@ -79,7 +79,8 @@ func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time
 		// If it's in the cache, and sha matches, this sha was merged.
 		return val.mergedAt, nil
 	} else if ok {
-		// If it's in the cache, but this isn't the sha, the PR merged but not with this sha.
+		// If it's in the cache, then either the PR merged with a different
+		// SHA, or has not merged at all.
 		return nil, nil
 	}
 
