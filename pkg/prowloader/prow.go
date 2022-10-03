@@ -152,12 +152,14 @@ func (pl *ProwLoader) syncPRStatus() error {
 	}
 
 	pulls := make([]models.ProwPullRequest, 0)
-	if res := pl.dbc.DB.Table("prow_pull_requests").Where("merged_at IS NULL").Scan(&pulls); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+	if res := pl.dbc.DB.
+		Table("prow_pull_requests").
+		Where("merged_at IS NULL").Scan(&pulls); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		return errors.Wrap(res.Error, "could not fetch prow_pull_requests")
 	}
 
 	for _, pr := range pulls {
-		mergedAt, err := pl.githubClient.GetPRMerged(pr.Org, pr.Repo, pr.Number, pr.SHA)
+		mergedAt, err := pl.githubClient.GetPRSHAMerged(pr.Org, pr.Repo, pr.Number, pr.SHA)
 		if err != nil {
 			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", pr.Org, pr.Repo, pr.Number, pr.SHA)
 			return err
@@ -282,7 +284,7 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 			continue
 		}
 
-		mergedAt, err := pl.githubClient.GetPRMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
+		mergedAt, err := pl.githubClient.GetPRSHAMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
 		if err != nil {
 			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
 		}
