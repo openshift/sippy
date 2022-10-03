@@ -3,19 +3,24 @@ package db
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
 
+const replaceTimeNow = "|||TIMENOW|||"
+const timestampFormat = "2006-01-02 15:04:05"
+
+// TODO: for historical sippy we need to specify the pinnedDate and not use NOW
 var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
 		IndexColumns: []string{"id", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
-			"|||START|||":    "NOW() - INTERVAL '14 DAY'",
-			"|||BOUNDARY|||": "NOW() - INTERVAL '7 DAY'",
-			"|||END|||":      "NOW()",
+			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
+			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
+			"|||END|||":      "|||TIMENOW|||",
 		},
 	},
 	{
@@ -23,9 +28,9 @@ var PostgresMatViews = []PostgresMaterializedView{
 		Definition:   testReportMatView,
 		IndexColumns: []string{"id", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
-			"|||START|||":    "NOW() - INTERVAL '9 DAY'",
-			"|||BOUNDARY|||": "NOW() - INTERVAL '2 DAY'",
-			"|||END|||":      "NOW()",
+			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
+			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",
+			"|||END|||":      "|||TIMENOW|||",
 		},
 	},
 	{
@@ -80,13 +85,25 @@ type PostgresMaterializedView struct {
 	IndexColumns []string
 }
 
-func syncPostgresMaterializedViews(db *gorm.DB) error {
+func syncPostgresMaterializedViews(db *gorm.DB, reportEnd *time.Time) error {
+
+	// initialize outside our loop
+	reportEndFmt := "NOW()"
+
+	if reportEnd != nil {
+		reportEndFmt = "TO_TIMESTAMP('" + reportEnd.UTC().Format(timestampFormat) + "', 'YYYY-MM-DD HH24:MI:SS')"
+	}
+
 	for _, pmv := range PostgresMatViews {
 		// Sync materialized view:
 		viewDef := pmv.Definition
 		for k, v := range pmv.ReplaceStrings {
 			viewDef = strings.ReplaceAll(viewDef, k, v)
 		}
+
+		// This has to occur after the replaceAll above as they might contain the REPLACE_TIME_NOW constant as well
+		viewDef = strings.ReplaceAll(viewDef, replaceTimeNow, reportEndFmt)
+
 		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)
 		schema := fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, viewDef)
 		matViewUpdated, err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL, false)
@@ -240,29 +257,29 @@ SELECT tests.id AS test_id,
    prow_jobs.release,
    COALESCE(count(
        CASE
-           WHEN prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS runs,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS passes,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS flakes,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS failures
 FROM prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
 	JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
 	JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE prow_job_runs."timestamp" > (now() - '14 days'::interval)
+WHERE prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), (unnest(prow_jobs.variants)), prow_jobs.release
 `
 
@@ -274,29 +291,29 @@ SELECT tests.id AS test_id,
    prow_jobs.name AS job_name,
    COALESCE(count(
        CASE
-           WHEN prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS runs,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS passes,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS flakes,
    COALESCE(count(
        CASE
-           WHEN prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (now() - '14 days'::interval) AND prow_job_runs."timestamp" <= now() THEN 1
+           WHEN prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS failures
 FROM prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE prow_job_runs."timestamp" > (now() - '14 days'::interval) AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
+WHERE prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval) AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
 GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), prow_jobs.release, prow_jobs.name
 `
 
@@ -335,7 +352,7 @@ FROM
      prow_jobs pj,
      prow_job_runs pjr
 WHERE
-    rt.release_time > (NOW() - '14 days'::interval)
+    rt.release_time > (|||TIMENOW||| - '14 days'::interval)
     AND rjr.release_tag_id = rt.id
     AND rjr.kind = 'Blocking'
     AND rjr.State = 'Failed'

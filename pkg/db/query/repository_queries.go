@@ -8,9 +8,9 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
-func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release string) ([]api.Repository, error) {
-	start := time.Now().Add(-14 * 24 * time.Hour)
-	end := time.Now()
+func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release string, reportEnd time.Time) ([]api.Repository, error) {
+	start := reportEnd.Add(-14 * 24 * time.Hour)
+	end := reportEnd
 	averageByJob := PullRequestAveragePremergeFailures(dbc, &start, &end)
 
 	repos := dbc.DB.Table("prow_pull_requests").

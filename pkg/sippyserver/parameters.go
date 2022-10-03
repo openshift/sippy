@@ -32,7 +32,7 @@ func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
 	return &date, nil
 }
 
-func getPeriodDates(defaultPeriod string, req *http.Request) (start, boundary, end time.Time) {
+func getPeriodDates(defaultPeriod string, req *http.Request, reportEnd time.Time) (start, boundary, end time.Time) {
 	period := getPeriod(req, defaultPeriod)
 
 	// If start, boundary, and end params are all specified, use those
@@ -44,7 +44,7 @@ func getPeriodDates(defaultPeriod string, req *http.Request) (start, boundary, e
 	}
 
 	// Otherwise generate from the period name
-	return util.PeriodToDates(period)
+	return util.PeriodToDates(period, reportEnd)
 }
 
 func getDateParam(paramName string, req *http.Request) *time.Time {

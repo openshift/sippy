@@ -30,7 +30,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	dashboard TestGridDashboardCoordinates,
 	variantManager testidentification.VariantManager,
 	syntheticTestManager synthetictests.SyntheticTestManager,
-	startDay, numDays int) error {
+	startDay, numDays int, reportEnd time.Time) error {
 
 	testGridJobDetails, _ := a.TestGridLoadingConfig.load(dashboard.TestGridDashboardNames)
 	rawJobResultOptions := testgridconversion.ProcessingOptions{
@@ -71,7 +71,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	log.Infof("test cache created with %d entries from database", len(testCache))
 
 	for i, jobDetails := range testGridJobDetails {
-		jobResult, warnings := rawJobResultOptions.ProcessJobDetailsIntoRawJobResult(jobDetails)
+		jobResult, warnings := rawJobResultOptions.ProcessJobDetailsIntoRawJobResult(jobDetails, reportEnd)
 		for _, warning := range warnings {
 			log.Warningf("warning from testgrid processing: " + warning)
 		}

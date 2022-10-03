@@ -38,7 +38,7 @@ export function safeEncodeURIComponent(value) {
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".
 // This is because the ES6 Intl.RelativeTime isn't available in all environments yet,
 // e.g. Safari and NodeJS.
-export function relativeTime(date) {
+export function relativeTime(date, startDate) {
   if (!date instanceof Date) {
     date = new Date(date)
   }
@@ -47,7 +47,7 @@ export function relativeTime(date) {
   const hour = 60 * minute // Milliseconds in an hour
   const day = 24 * hour // Milliseconds in a day
 
-  const millisAgo = date.getTime() - Date.now()
+  const millisAgo = date.getTime() - startDate
   if (Math.abs(millisAgo) < hour) {
     return Math.round(Math.abs(millisAgo) / minute) + ' minutes ago'
   } else if (Math.abs(millisAgo) < day) {
@@ -264,4 +264,12 @@ export function useNewInstallTests(release) {
     return false
   }
   return true
+}
+
+export function getReportStartDate(reportDate) {
+  let startDate = new Date()
+  if (reportDate.length > 0) {
+    startDate = new Date(reportDate)
+  }
+  return startDate
 }
