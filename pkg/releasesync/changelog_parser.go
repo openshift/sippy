@@ -171,8 +171,17 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 	}
 
 	result := make([]models.ReleasePullRequest, 0)
+	items := 0
 	for _, v := range rows {
+		// We had a case of a release payload changelog that contained 235,000 pull requests. Sippy got stuck on it
+		// so this check is here to prevent something like that from ever happening again.  2,500 seems like a very
+		// reasonable upper bound.
+		if items > 2500 {
+			log.Warningf("%q had more than 2,500 PR's! Ignoring the rest to protect ourself.", c.releaseTag)
+			break
+		}
 		result = append(result, v)
+		items++
 	}
 	return result
 }
