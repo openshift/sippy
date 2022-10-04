@@ -19,6 +19,8 @@ type Result struct {
 
 type Match struct {
 	Bug bugsv1.Bug `json:"bugInfo"`
+	// Context contains a list of all matched instances for the search regex
+	Context []string `json:"context"`
 	// Issues contains data on the jira issue. While plural, it can only contain one result from search.ci.
 	Issues gojira.Issue `json:"issues"`
 }
