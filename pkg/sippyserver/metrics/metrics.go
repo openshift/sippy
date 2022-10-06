@@ -91,6 +91,9 @@ func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
 			if jobResult.CurrentRuns == 0 {
 				silenced = "true"
 			}
+			if jobResult.OpenBugs > 0 {
+				silenced = "true"
+			}
 			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced).Set(jobResult.CurrentPassPercentage / 100)
 		}
 	}
