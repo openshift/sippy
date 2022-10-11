@@ -13,12 +13,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	// VariantSearchRegex defines the search regex for search.ci
+	VariantSearchRegex = "sippy-link=\\[variants=(\\S+)\\]"
+	// by default maxMatches is 1 for search.ci API. Since we are doing regex match, we pick 100 as the default.
+	// This should be decided by the number of combination of variants.
+	regexMaxMatches = "100"
+)
+
 // FindIssuesForTests queries search.ci for Jira issues mapping based to the given test names.
 func FindIssuesForTests(testNames ...string) (map[string][]jira.Issue, error) {
 
 	issues := map[string][]jira.Issue{}
 
-	newBugs, lastUpdateError := findBugsForSearchStrings(testNames...)
+	newBugs, lastUpdateError := findBugsForSearchStrings(false, testNames...)
 
 	for testName, bug := range newBugs {
 		issues[testName] = bug
@@ -38,7 +46,7 @@ func FindIssuesForJobs(jobNames ...string) (map[string][]jira.Issue, error) {
 		jobSearchStrings[i] = fmt.Sprintf("job=%s=all", jn)
 	}
 
-	newBugs, lastUpdateError := findBugsForSearchStrings(jobSearchStrings...)
+	newBugs, lastUpdateError := findBugsForSearchStrings(false, jobSearchStrings...)
 
 	for jobKey, bug := range newBugs {
 		issues[jobKey] = bug
@@ -46,9 +54,23 @@ func FindIssuesForJobs(jobNames ...string) (map[string][]jira.Issue, error) {
 	return issues, lastUpdateError
 }
 
-// findBugsForSearchStrings finds issues in batches based on the given search strings. These can be test names
-// or job names.
-func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, error) {
+// FindIssuesForVariants queries search.ci for Jira issues with incident=variants= annotation.
+func FindIssuesForVariants() (map[string][]jira.Issue, error) {
+	issues := map[string][]jira.Issue{}
+	variantSearchStrings := []string{VariantSearchRegex}
+	newBugs, lastUpdateError := findBugsForSearchStrings(true, variantSearchStrings...)
+
+	for jobKey, bug := range newBugs {
+		issues[jobKey] = bug
+	}
+	return issues, lastUpdateError
+}
+
+// findBugsForSearchStrings finds issues in batches based on the given search strings. These can be test names,
+// job names or job variants.
+// isRegex defines whether the search is exact match or match by regex. If match by regex, the matched strings
+// in the result context will be used as keys instead of the search string.
+func findBugsForSearchStrings(isRegex bool, searchFor ...string) (map[string][]jira.Issue, error) {
 	ret := map[string][]jira.Issue{}
 
 	var lastUpdateError error
@@ -63,7 +85,9 @@ func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, err
 		// if we find a bug for this search string, the entry will be replaced with the actual
 		// array of bugs.  if not, this serves as a placeholder so we know not to look
 		// it up again in the future.
-		ret[searchStr] = []jira.Issue{}
+		if !isRegex {
+			ret[searchStr] = []jira.Issue{}
+		}
 
 		// continue building our batch until we have a largish set to check
 		onLastItem := (i + 1) == len(searchFor)
@@ -71,7 +95,7 @@ func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, err
 			continue
 		}
 
-		r, err := findBugs(batchSearchStrs)
+		r, err := findBugs(isRegex, batchSearchStrs)
 		queryCtr++
 		for k, v := range r {
 			ret[k] = v
@@ -86,19 +110,23 @@ func findBugsForSearchStrings(searchFor ...string) (map[string][]jira.Issue, err
 	return ret, lastUpdateError
 }
 
-func findBugs(testNames []string) (map[string][]jira.Issue, error) {
+func findBugs(isRegex bool, testNames []string) (map[string][]jira.Issue, error) {
 	searchResults := make(map[string][]jira.Issue)
 
 	v := url.Values{}
 	v.Set("type", "issue")
-	v.Set("context", "-1")
+	v.Set("context", "1")
+	v.Set("maxMatches", regexMaxMatches)
 	for _, testName := range testNames {
-		testName = regexp.QuoteMeta(testName)
+		if !isRegex {
+			testName = regexp.QuoteMeta(testName)
+		}
 		v.Add("search", testName)
 	}
 
 	bzQueryStart := time.Now()
 	searchURL := "https://search.ci.openshift.org/v2/search"
+
 	resp, err := http.PostForm(searchURL, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
@@ -121,11 +149,19 @@ func findBugs(testNames []string) (map[string][]jira.Issue, error) {
 
 	for searchString, result := range search.Results {
 		// reverse the regex escaping we did earlier, so we get back the pure test name string.
-		r, _ := syntax.Parse(searchString, 0)
-		searchString = string(r.Rune)
+		if !isRegex {
+			r, _ := syntax.Parse(searchString, 0)
+			searchString = string(r.Rune)
+		}
 		for _, match := range result.Matches {
 			issue := match.Issues
-			searchResults[searchString] = append(searchResults[searchString], issue)
+			if !isRegex {
+				searchResults[searchString] = append(searchResults[searchString], issue)
+			} else {
+				for _, ctx := range match.Context {
+					searchResults[ctx] = append(searchResults[ctx], issue)
+				}
+			}
 		}
 	}
 

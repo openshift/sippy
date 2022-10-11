@@ -2,6 +2,7 @@ package sippyserver
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,8 @@ import (
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
+
+var FindIssuesForVariants = loader.FindIssuesForVariants
 
 func (a TestReportGeneratorConfig) LoadDatabase(
 	dbc *db.DB,
@@ -334,6 +337,77 @@ func getOrCreateTestID(
 	return testID, nil
 }
 
+func variantsKey(variants []string) string {
+	v := make([]string, len(variants))
+	copy(v, variants)
+	sort.Strings(v)
+	return strings.Join(v, ",")
+}
+
+func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues map[string][]jira.Issue) error {
+	// variantSetMap maps a sorted names of variants to a set of the variants for easy comparison
+	variantsSetMap := map[string]sets.String{}
+	// variantsIssuesMap maps a sorted names of variants to a slice of issues
+	variantsIssuesMap := map[string][]jira.Issue{}
+
+	variantIssues, err := FindIssuesForVariants()
+	if err != nil {
+		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for variants, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+		return err
+	}
+
+	variantMatches := regexp.MustCompile(loader.VariantSearchRegex)
+	for key, issues := range variantIssues {
+		subMatches := variantMatches.FindStringSubmatch(key)
+		if len(subMatches) == 2 {
+			// Update the variantsSetMap
+			variants := strings.Split(subMatches[1], ",")
+			variantsKey := variantsKey(variants)
+			if _, ok := variantsSetMap[variantsKey]; !ok {
+				variantsSetMap[variantsKey] = sets.NewString(variants...)
+			}
+
+			// Update the variantsIssuesMap
+			if _, ok := variantsIssuesMap[variantsKey]; !ok {
+				variantsIssuesMap[variantsKey] = []jira.Issue{}
+			}
+			variantsIssuesMap[variantsKey] = append(variantsIssuesMap[variantsKey], issues...)
+		}
+	}
+	// Now go through all jobs to append issues
+	for _, job := range jobCache {
+		if len(job.Variants) > 0 {
+			variantsKey := variantsKey(job.Variants)
+
+			// Cache in the map for subsequent jobs
+			if _, ok := variantsSetMap[variantsKey]; !ok {
+				variantsSetMap[variantsKey] = sets.NewString(job.Variants...)
+			}
+
+			for key, issues := range variantsIssuesMap {
+				if !variantsSetMap[variantsKey].IsSuperset(variantsSetMap[key]) {
+					continue
+				}
+				candidates := []jira.Issue{}
+				for _, issue := range issues {
+					for _, version := range issue.Fields.AffectsVersions {
+						if job.Release == version.Name || strings.HasPrefix(version.Name, job.Release+".") {
+							candidates = append(candidates, issue)
+							break
+						}
+					}
+				}
+				jobSearchStrings := fmt.Sprintf("job=%s=all", job.Name)
+				if _, ok := jobIssues[jobSearchStrings]; !ok {
+					jobIssues[jobSearchStrings] = []jira.Issue{}
+				}
+				jobIssues[jobSearchStrings] = append(jobIssues[jobSearchStrings], candidates...)
+			}
+		}
+	}
+	return nil
+}
+
 // LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
 func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
 	log.Info("querying search.ci for test/job associations")
@@ -345,6 +419,11 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
 	if err != nil {
 		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+	}
+
+	err = appendJobIssuesFromVariants(jobCache, jobIssues)
+	if err != nil {
+		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs by jobs by variants.  Lookup error: %v", err.Error())
 	}
 
 	log.Info("syncing issue test/job associations to db")
