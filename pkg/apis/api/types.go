@@ -687,3 +687,30 @@ type AnalysisResult struct {
 type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
+
+type ProwJobRunFailureAnalysis struct {
+	ProwJobName  string
+	ProwJobRunID uint
+	ProwJobURL   string
+	Timestamp    time.Time
+	Tests        []ProwJobRunTestFailureAnalysis
+}
+
+type ProwJobRunTestFailureAnalysis struct {
+	Name string
+	Risk FailureRisk
+}
+
+type FailureRisk struct {
+	Level   RiskLevel
+	Reasons []string
+}
+
+type RiskLevel string
+
+const (
+	FailureRiskLevelLow     = "Low"
+	FailureRiskLevelMedium  = "Medium"
+	FailureRiskLevelHigh    = "High"
+	FailureRiskLevelUnknown = "Unknown"
+)

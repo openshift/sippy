@@ -8,7 +8,9 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/filter"
+	log "github.com/sirupsen/logrus"
 )
 
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
@@ -80,4 +82,44 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		PageSize:  pagination.PerPage,
 		Page:      pagination.Page,
 	}, res.Error
+}
+
+func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalysis, error) {
+
+	jobRun := &models.ProwJobRun{}
+	// Load the ProwJobRun, ProwJob, and failed tests:
+	// TODO: we may want to expand to analyzing flakes here in the future
+	res := dbc.DB.Joins("ProwJob").Preload("Tests", "status = 12").Preload("Tests.Test").First(jobRun, jobRunID)
+	if res.Error != nil {
+		return apitype.ProwJobRunFailureAnalysis{}, res.Error
+	}
+
+	logger := log.WithFields(log.Fields{
+		"func":     "jobRunAnalysis",
+		"jobRunID": jobRun.ID,
+	})
+
+	logger.WithField("url", jobRun.URL).Info("loaded prow job run for analysis")
+	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
+
+	response := apitype.ProwJobRunFailureAnalysis{
+		ProwJobRunID: jobRun.ProwJobID,
+		ProwJobName:  jobRun.ProwJob.Name,
+		ProwJobURL:   jobRun.URL,
+		Timestamp:    jobRun.Timestamp,
+	}
+
+	// Get the test failures
+	for _, ft := range jobRun.Tests {
+		logger.WithFields(log.Fields{
+			"testID": ft.TestID,
+			"name":   ft.Test.Name,
+		}).Debug("failed test")
+	}
+
+	// Watchout for presubmits, we need this to work there especially, their release is "Presubmits", but we want to query against latest real release.
+
+	// Should we check if majority of tests actually ran?
+
+	return response, nil
 }
