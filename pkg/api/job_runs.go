@@ -117,15 +117,22 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		},
 	}
 
+	switch {
+
 	// Return early if no tests failed in this run:
-	if len(jobRun.Tests) == 0 {
+	case len(jobRun.Tests) == 0:
 		response.OverallRisk.Level = apitype.FailureRiskLevelNone
-		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, "No test failures found in this job run.")
+		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
+			"No test failures found in this job run.")
+		return response, nil
+
+	// Return early if we see mass test failures:
+	case len(jobRun.Tests) > 20:
+		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
+		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
+			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
 		return response, nil
 	}
-
-	// TODO: Fail out with a high sev failure if we see more than X failed tests, we don't want to do 3k queries below
-	// for effectively no purpose. 10 or 20 perhaps.
 
 	// Get the test failures
 	for _, ft := range jobRun.Tests {
@@ -179,7 +186,7 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	for _, ta := range response.Tests {
 		if ta.Risk.Level.Level >= response.OverallRisk.Level.Level {
 			response.OverallRisk.Level = ta.Risk.Level
-			maxTestRiskReason = fmt.Sprintf("Maximum failed test risk was: %s", ta.Risk.Level.Name)
+			maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", ta.Risk.Level.Name)
 		}
 	}
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
