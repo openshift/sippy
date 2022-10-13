@@ -689,12 +689,12 @@ type JobAnalysisResult struct {
 }
 
 type ProwJobRunFailureAnalysis struct {
-	ProwJobName      string
-	ProwJobRunID     uint
-	ProwJobURL       string
-	Timestamp        time.Time
-	Tests            []ProwJobRunTestFailureAnalysis
-	OverallRiskLevel RiskLevel
+	ProwJobName  string
+	ProwJobRunID uint
+	ProwJobURL   string
+	Timestamp    time.Time
+	Tests        []ProwJobRunTestFailureAnalysis
+	OverallRisk  FailureRisk
 }
 
 type ProwJobRunTestFailureAnalysis struct {
@@ -716,6 +716,6 @@ type RiskLevel struct {
 
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
-var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 2}
-var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 3}
-var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 4}
+var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 5}
+var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 7}
+var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 10}

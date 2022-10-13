@@ -111,12 +111,21 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		ProwJobURL:   jobRun.URL,
 		Timestamp:    jobRun.Timestamp,
 		Tests:        []apitype.ProwJobRunTestFailureAnalysis{},
+		OverallRisk: apitype.FailureRisk{
+			Level:   apitype.FailureRiskLevelNone,
+			Reasons: []string{},
+		},
+	}
+
+	// Return early if no tests failed in this run:
+	if len(jobRun.Tests) == 0 {
+		response.OverallRisk.Level = apitype.FailureRiskLevelNone
+		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, "No test failures found in this job run.")
+		return response, nil
 	}
 
 	// TODO: Fail out with a high sev failure if we see more than X failed tests, we don't want to do 3k queries below
 	// for effectively no purpose. 10 or 20 perhaps.
-
-	// TODO: Return early if no tests failed, this API shouldn't have been called?
 
 	// Get the test failures
 	for _, ft := range jobRun.Tests {
@@ -166,11 +175,14 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	}
 
 	// Set the overall risk level for this job run to the highest we encountered:
+	var maxTestRiskReason string
 	for _, ta := range response.Tests {
-		if ta.Risk.Level.Level >= response.OverallRiskLevel.Level {
-			response.OverallRiskLevel = ta.Risk.Level
+		if ta.Risk.Level.Level >= response.OverallRisk.Level.Level {
+			response.OverallRisk.Level = ta.Risk.Level
+			maxTestRiskReason = fmt.Sprintf("Maximum failed test risk was: %s", ta.Risk.Level.Name)
 		}
 	}
+	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
 
 	// Watchout for presubmits, we need this to work there especially, their release is "Presubmits", but we want to query against latest real release.
 
