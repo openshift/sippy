@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"reflect"
 	gosort "sort"
 	"strconv"
 	"time"
@@ -101,16 +103,22 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 
 	logger.WithField("url", jobRun.URL).Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
+	logger.WithField("variants", jobRun.ProwJob.Variants).Debug("job variants")
 
 	response := apitype.ProwJobRunFailureAnalysis{
 		ProwJobRunID: jobRun.ProwJobID,
 		ProwJobName:  jobRun.ProwJob.Name,
 		ProwJobURL:   jobRun.URL,
 		Timestamp:    jobRun.Timestamp,
+		Tests:        []apitype.ProwJobRunTestFailureAnalysis{},
 	}
+
+	// TODO: Fail out with a high sev failure if we see more than X failed tests, we don't want to do 3k queries below
+	// for effectively no purpose. 10 or 20 perhaps.
 
 	// Get the test failures
 	for _, ft := range jobRun.Tests {
+		// TODO: filter test names we don't care about
 		logger.WithFields(log.Fields{
 			"testID": ft.TestID,
 			"name":   ft.Test.Name,
@@ -130,12 +138,28 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			},
 			LinkOperator: "and",
 		}
-		tr, _, err := BuildTestsResults(dbc, jobRun.ProwJob.Release, "default", true, false,
+		trs, _, err := BuildTestsResults(dbc, jobRun.ProwJob.Release, "default", false, false,
 			fil)
 		if err != nil {
 			return apitype.ProwJobRunFailureAnalysis{}, res.Error
 		}
-		logger.Infof("Got test results: %d", len(tr))
+		logger.Infof("Got test results: %d", len(trs))
+		for _, tr := range trs {
+			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) {
+				response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
+					Name: tr.Name,
+					// TODO suite?
+					Risk: apitype.FailureRisk{
+						Level: getSeverityLevelForPassRate(tr.CurrentPassPercentage),
+						Reasons: []string{
+							fmt.Sprintf("This test has passed %.2f%% of %d runs on %v in the last week.",
+								tr.CurrentPassPercentage, tr.CurrentRuns, tr.Variants),
+						},
+					},
+				})
+
+			}
+		}
 	}
 
 	// Watchout for presubmits, we need this to work there especially, their release is "Presubmits", but we want to query against latest real release.
@@ -143,4 +167,16 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	// Should we check if majority of tests actually ran?
 
 	return response, nil
+}
+
+func getSeverityLevelForPassRate(passPercentage float64) apitype.RiskLevel {
+	switch {
+	case passPercentage >= 98.0:
+		return apitype.FailureRiskLevelHigh
+	case passPercentage >= 80:
+		return apitype.FailureRiskLevelMedium
+	case passPercentage < 80:
+		return apitype.FailureRiskLevelLow
+	}
+	return apitype.FailureRiskLevelUnknown
 }
