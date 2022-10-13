@@ -171,8 +171,8 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 					Risk: apitype.FailureRisk{
 						Level: getSeverityLevelForPassRate(tr.CurrentPassPercentage),
 						Reasons: []string{
-							fmt.Sprintf("This test has passed %.2f%% of %d runs on %s %v in the last week.",
-								tr.CurrentPassPercentage, tr.CurrentRuns, jobRun.ProwJob.Release, tr.Variants),
+							fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
+								tr.CurrentPassPercentage, tr.CurrentRuns, release, tr.Variants),
 						},
 					},
 				})
