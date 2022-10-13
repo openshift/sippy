@@ -706,11 +706,14 @@ type FailureRisk struct {
 	Reasons []string
 }
 
-type RiskLevel string
+type RiskLevel struct {
+	// Name is a human readable name for the given risk level.
+	Name string
+	// Level represents a numerical risk level, higher implies more risk.
+	Level int
+}
 
-const (
-	FailureRiskLevelLow     = "Low"
-	FailureRiskLevelMedium  = "Medium"
-	FailureRiskLevelHigh    = "High"
-	FailureRiskLevelUnknown = "Unknown"
-)
+var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
+var FailureRiskLevelMedium = RiskLevel{Name: "Low", Level: 2}
+var FailureRiskLevelHigh = RiskLevel{Name: "Low", Level: 3}
+var FailureRiskLevelUnknown = RiskLevel{Name: "Low", Level: 4}
