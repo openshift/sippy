@@ -116,6 +116,8 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	// TODO: Fail out with a high sev failure if we see more than X failed tests, we don't want to do 3k queries below
 	// for effectively no purpose. 10 or 20 perhaps.
 
+	// TODO: Return early if no tests failed, this API shouldn't have been called?
+
 	// Get the test failures
 	for _, ft := range jobRun.Tests {
 		// TODO: filter test names we don't care about
@@ -145,6 +147,7 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		}
 		logger.Infof("Got test results: %d", len(trs))
 		for _, tr := range trs {
+			// TODO: this is a weird way to get the variant we want, should we filter in the query?
 			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) {
 				response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 					Name: tr.Name,
@@ -152,13 +155,20 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 					Risk: apitype.FailureRisk{
 						Level: getSeverityLevelForPassRate(tr.CurrentPassPercentage),
 						Reasons: []string{
-							fmt.Sprintf("This test has passed %.2f%% of %d runs on %v in the last week.",
-								tr.CurrentPassPercentage, tr.CurrentRuns, tr.Variants),
+							fmt.Sprintf("This test has passed %.2f%% of %d runs on %s %v in the last week.",
+								tr.CurrentPassPercentage, tr.CurrentRuns, jobRun.ProwJob.Release, tr.Variants),
 						},
 					},
 				})
 
 			}
+		}
+	}
+
+	// Set the overall risk level for this job run to the highest we encountered:
+	for _, ta := range response.Tests {
+		if ta.Risk.Level.Level >= response.OverallRiskLevel.Level {
+			response.OverallRiskLevel = ta.Risk.Level
 		}
 	}
 
