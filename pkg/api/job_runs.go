@@ -115,6 +115,27 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			"testID": ft.TestID,
 			"name":   ft.Test.Name,
 		}).Debug("failed test")
+		release := jobRun.ProwJob.Release
+		if release == "Presubmits" {
+			release = "4.12" // TODO, how do we know what release a presubmit is for?
+		}
+		fil := &filter.Filter{
+			Items: []filter.FilterItem{
+				{
+					Field:    "name",
+					Not:      false,
+					Operator: filter.OperatorEquals,
+					Value:    ft.Test.Name,
+				},
+			},
+			LinkOperator: "and",
+		}
+		tr, _, err := BuildTestsResults(dbc, jobRun.ProwJob.Release, "default", true, false,
+			fil)
+		if err != nil {
+			return apitype.ProwJobRunFailureAnalysis{}, res.Error
+		}
+		logger.Infof("Got test results: %d", len(tr))
 	}
 
 	// Watchout for presubmits, we need this to work there especially, their release is "Presubmits", but we want to query against latest real release.
