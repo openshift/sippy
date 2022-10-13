@@ -11,6 +11,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	log "github.com/sirupsen/logrus"
 )
@@ -141,9 +142,22 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			"testID": ft.TestID,
 			"name":   ft.Test.Name,
 		}).Debug("failed test")
+
+		// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
+		// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
+		// master, so it should be safe to assume the latest release in the db.
 		release := jobRun.ProwJob.Release
 		if release == "Presubmits" {
-			release = "4.12" // TODO, how do we know what release a presubmit is for?
+			// Get latest release from the DB:
+			ar, err := query.ReleasesFromDB(dbc)
+			if err != nil {
+				return response, err
+			}
+			if len(ar) == 0 {
+				return response, fmt.Errorf("no releases found in db")
+			}
+
+			release = ar[0].Release
 		}
 		fil := &filter.Filter{
 			Items: []filter.FilterItem{
@@ -190,8 +204,6 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		}
 	}
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
-
-	// Watchout for presubmits, we need this to work there especially, their release is "Presubmits", but we want to query against latest real release.
 
 	// Should we check if majority of tests actually ran?
 
