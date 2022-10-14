@@ -75,7 +75,8 @@ type ProwJobRunTest struct {
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
 	SuiteID   *uint `gorm:"index"`
-	Status    int   // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
+	Suite     Suite
+	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
 	Duration  float64
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt

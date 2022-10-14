@@ -87,12 +87,15 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	}, res.Error
 }
 
+// JobRunAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
+// risk level for each failed test, and the job run overall.
 func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalysis, error) {
 
 	jobRun := &models.ProwJobRun{}
 	// Load the ProwJobRun, ProwJob, and failed tests:
 	// TODO: we may want to expand to analyzing flakes here in the future
-	res := dbc.DB.Joins("ProwJob").Preload("Tests", "status = 12").Preload("Tests.Test").First(jobRun, jobRunID)
+	res := dbc.DB.Joins("ProwJob").Preload("Tests", "status = 12").
+		Preload("Tests.Test").Preload("Tests.Suite").First(jobRun, jobRunID)
 	if res.Error != nil {
 		return apitype.ProwJobRunFailureAnalysis{}, res.Error
 	}
@@ -107,7 +110,7 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	logger.WithField("variants", jobRun.ProwJob.Variants).Debug("job variants")
 
 	response := apitype.ProwJobRunFailureAnalysis{
-		ProwJobRunID: jobRun.ProwJobID,
+		ProwJobRunID: jobRun.ID,
 		ProwJobName:  jobRun.ProwJob.Name,
 		ProwJobURL:   jobRun.URL,
 		Timestamp:    jobRun.Timestamp,
@@ -180,10 +183,9 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		for _, tr := range trs {
 			// TODO: this is a weird way to get the variant we want, should we filter in the query? Would require
 			// a new query function.
-			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) {
+			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) && tr.SuiteName == ft.Suite.Name {
 				response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 					Name: tr.Name,
-					// TODO suite?
 					Risk: apitype.FailureRisk{
 						Level: getSeverityLevelForPassRate(tr.CurrentPassPercentage),
 						Reasons: []string{
@@ -222,6 +224,8 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
 
 	// Should we check if majority of tests actually ran?
+
+	// TODO: deal with jira's linked to jobs nad tests
 
 	return response, nil
 }
