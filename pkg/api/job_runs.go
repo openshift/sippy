@@ -103,6 +103,66 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		return apitype.ProwJobRunFailureAnalysis{}, res.Error
 	}
 
+	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
+	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
+	// master, so it should be safe to assume the latest compareRelease in the db.
+	compareRelease := jobRun.ProwJob.Release
+	if compareRelease == "Presubmits" {
+		// Get latest release from the DB:
+		ar, err := query.ReleasesFromDB(dbc)
+		if err != nil {
+			return apitype.ProwJobRunFailureAnalysis{}, err
+		}
+		if len(ar) == 0 {
+			return apitype.ProwJobRunFailureAnalysis{}, fmt.Errorf("no releases found in db")
+		}
+
+		compareRelease = ar[0].Release
+	}
+
+	return runJobRunAnalysis(jobRun, compareRelease,
+		func(testName, release, suite string, variants []string) (*apitype.Test, error) {
+
+			logger := log.WithFields(log.Fields{
+				"func":     "testResultsFunc",
+				"jobRunID": jobRun.ID,
+			})
+
+			fil := &filter.Filter{
+				Items: []filter.FilterItem{
+					{
+						Field:    "name",
+						Not:      false,
+						Operator: filter.OperatorEquals,
+						Value:    testName,
+					},
+				},
+				LinkOperator: "and",
+			}
+			trs, _, err := BuildTestsResults(dbc, release, "default", false, false,
+				fil)
+			if err != nil {
+				return nil, err
+			}
+			logger.Infof("Got test results: %d", len(trs))
+			for _, tr := range trs {
+				// TODO: this is a weird way to get the variant we want, should we filter in the query? Would require
+				// a new query function.
+				if reflect.DeepEqual(tr.Variants, variants) && tr.SuiteName == suite {
+					return &tr, nil
+				}
+			}
+
+			return nil, nil
+		})
+}
+
+// testResultsFunc is used for injecting db responses in unit tests.
+type testResultsFunc func(testName string, release, suite string, variants []string) (*apitype.Test, error)
+
+func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
+	testResultsFunc testResultsFunc) (apitype.ProwJobRunFailureAnalysis, error) {
+
 	logger := log.WithFields(log.Fields{
 		"func":     "jobRunAnalysis",
 		"jobRunID": jobRun.ID,
@@ -150,61 +210,24 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			"name":   ft.Test.Name,
 		}).Debug("failed test")
 
-		// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
-		// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
-		// master, so it should be safe to assume the latest release in the db.
-		release := jobRun.ProwJob.Release
-		if release == "Presubmits" {
-			// Get latest release from the DB:
-			ar, err := query.ReleasesFromDB(dbc)
-			if err != nil {
-				return response, err
-			}
-			if len(ar) == 0 {
-				return response, fmt.Errorf("no releases found in db")
-			}
-
-			release = ar[0].Release
-		}
-		fil := &filter.Filter{
-			Items: []filter.FilterItem{
-				{
-					Field:    "name",
-					Not:      false,
-					Operator: filter.OperatorEquals,
-					Value:    ft.Test.Name,
-				},
-			},
-			LinkOperator: "and",
-		}
-		trs, _, err := BuildTestsResults(dbc, jobRun.ProwJob.Release, "default", false, false,
-			fil)
+		testResult, err := testResultsFunc(
+			ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants)
 		if err != nil {
-			return apitype.ProwJobRunFailureAnalysis{}, res.Error
+			return response, err
 		}
-		logger.Infof("Got test results: %d", len(trs))
-		var foundMatchingVariants bool
-		for _, tr := range trs {
-			// TODO: this is a weird way to get the variant we want, should we filter in the query? Would require
-			// a new query function.
-			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) && tr.SuiteName == ft.Suite.Name {
-				response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
-					Name: tr.Name,
-					Risk: apitype.FailureRisk{
-						Level: getSeverityLevelForPassRate(tr.CurrentPassPercentage),
-						Reasons: []string{
-							fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
-								tr.CurrentPassPercentage, tr.CurrentRuns, release, tr.Variants),
-						},
+		if testResult != nil {
+			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
+				Name: testResult.Name,
+				Risk: apitype.FailureRisk{
+					Level: getSeverityLevelForPassRate(testResult.CurrentPassPercentage),
+					Reasons: []string{
+						fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
+							testResult.CurrentPassPercentage, testResult.CurrentRuns, compareRelease, testResult.Variants),
 					},
-					OpenBugs: ft.Test.Bugs,
-				})
-				foundMatchingVariants = true
-				break
-			}
-		}
-
-		if !foundMatchingVariants {
+				},
+				OpenBugs: ft.Test.Bugs,
+			})
+		} else {
 			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 				Name: ft.Test.Name,
 				Risk: apitype.FailureRisk{
