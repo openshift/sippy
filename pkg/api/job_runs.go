@@ -176,8 +176,10 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			return apitype.ProwJobRunFailureAnalysis{}, res.Error
 		}
 		logger.Infof("Got test results: %d", len(trs))
+		var foundMatchingVariants bool
 		for _, tr := range trs {
-			// TODO: this is a weird way to get the variant we want, should we filter in the query?
+			// TODO: this is a weird way to get the variant we want, should we filter in the query? Would require
+			// a new query function.
 			if reflect.DeepEqual(tr.Variants, jobRun.ProwJob.Variants) {
 				response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 					Name: tr.Name,
@@ -190,8 +192,22 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 						},
 					},
 				})
-
+				foundMatchingVariants = true
+				break
 			}
+		}
+
+		if !foundMatchingVariants {
+			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
+				Name: ft.Test.Name,
+				Risk: apitype.FailureRisk{
+					Level: apitype.FailureRiskLevelUnknown,
+					Reasons: []string{
+						fmt.Sprintf("Unable to find matching test results for variants: %v",
+							jobRun.ProwJob.Variants),
+					},
+				},
+			})
 		}
 	}
 
