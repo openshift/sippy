@@ -94,8 +94,11 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 	jobRun := &models.ProwJobRun{}
 	// Load the ProwJobRun, ProwJob, and failed tests:
 	// TODO: we may want to expand to analyzing flakes here in the future
-	res := dbc.DB.Joins("ProwJob").Preload("Tests", "status = 12").
-		Preload("Tests.Test").Preload("Tests.Suite").First(jobRun, jobRunID)
+	res := dbc.DB.Joins("ProwJob").
+		Preload("ProwJob.Bugs", "status != 'Closed' and status != 'Verified'").
+		Preload("Tests", "status = 12").
+		Preload("Tests.Test").Preload("Tests.Test.Bugs").
+		Preload("Tests.Suite").First(jobRun, jobRunID)
 	if res.Error != nil {
 		return apitype.ProwJobRunFailureAnalysis{}, res.Error
 	}
@@ -119,6 +122,7 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			Level:   apitype.FailureRiskLevelNone,
 			Reasons: []string{},
 		},
+		OpenBugs: jobRun.ProwJob.Bugs,
 	}
 
 	switch {
@@ -138,9 +142,9 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		return response, nil
 	}
 
-	// Get the test failures
+	// Iterate each failed test, query it's pass rates by NURPs, find a matching variant combo, and
+	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
-		// TODO: filter test names we don't care about
 		logger.WithFields(log.Fields{
 			"testID": ft.TestID,
 			"name":   ft.Test.Name,
@@ -193,6 +197,7 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 								tr.CurrentPassPercentage, tr.CurrentRuns, release, tr.Variants),
 						},
 					},
+					OpenBugs: ft.Test.Bugs,
 				})
 				foundMatchingVariants = true
 				break
@@ -222,10 +227,6 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		}
 	}
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
-
-	// Should we check if majority of tests actually ran?
-
-	// TODO: deal with jira's linked to jobs nad tests
 
 	return response, nil
 }

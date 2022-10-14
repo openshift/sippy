@@ -695,11 +695,13 @@ type ProwJobRunFailureAnalysis struct {
 	Timestamp    time.Time
 	Tests        []ProwJobRunTestFailureAnalysis
 	OverallRisk  FailureRisk
+	OpenBugs     []models.Bug
 }
 
 type ProwJobRunTestFailureAnalysis struct {
-	Name string
-	Risk FailureRisk
+	Name     string
+	Risk     FailureRisk
+	OpenBugs []models.Bug
 }
 
 type FailureRisk struct {
