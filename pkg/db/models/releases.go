@@ -53,11 +53,11 @@ type ReleaseTag struct {
 	OSDiffURL string `json:"os_diff_url" gorm:"os_diff_url"`
 
 	// ReleasePullRequest contains a list of all the PR's in a release.
-	PullRequests []ReleasePullRequest `json:"-" gorm:"many2many:release_tag_pull_requests;"`
+	PullRequests []ReleasePullRequest `json:"-" gorm:"many2many:release_tag_pull_requests;constraint:OnDelete:CASCADE;"`
 
-	Repositories []ReleaseRepository `json:"-" gorm:"foreignKey:release_tag_id"`
+	Repositories []ReleaseRepository `json:"-" gorm:"foreignKey:release_tag_id;constraint:OnDelete:CASCADE;"`
 
-	JobRuns []ReleaseJobRun `json:"-" gorm:"foreignKey:release_tag_id"`
+	JobRuns []ReleaseJobRun `json:"-" gorm:"foreignKey:release_tag_id;constraint:OnDelete:CASCADE;"`
 
 	// RejectReason is category of failure for why the payload was rejected. Today this is manually assigned
 	// by TRT, and there is no guarantee it will always be set.
