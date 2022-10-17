@@ -407,14 +407,21 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			}
 		}
 
+		// Cache key should always have the suite name, so we don't combine
+		// a pass and a fail from two different suites to generate a flake.
+		testCacheKey := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+
+		// For historical reasons (TestGrid didn't know about suites), Sippy
+		// only had a limited set of preconfigured suites that it knew. If we don't
+		// know the suite, we prepend the suite name.
 		testNameWithKnownSuite := tc.Name
 		suiteID := pl.findSuite(suite.Name)
 		if suiteID == nil && suite.Name != "" {
 			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 		}
 
-		if existing, ok := testCases[testNameWithKnownSuite]; !ok {
-			testCases[testNameWithKnownSuite] = &models.ProwJobRunTest{
+		if existing, ok := testCases[testCacheKey]; !ok {
+			testCases[testCacheKey] = &models.ProwJobRunTest{
 				TestID:               pl.findOrAddTest(testNameWithKnownSuite),
 				SuiteID:              suiteID,
 				Status:               int(status),
