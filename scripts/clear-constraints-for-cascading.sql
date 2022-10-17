@@ -4,7 +4,6 @@
  * October 17, 2022. */
 ALTER TABLE "prow_job_runs" DROP CONSTRAINT "fk_prow_job_runs_prow_job";
 ALTER TABLE "prow_job_run_tests" DROP CONSTRAINT "fk_prow_job_runs_tests";
-ALTER TABLE "prow_job_run_tests" DROP CONSTRAINT "fk_prow_job_runs_tests";
 ALTER TABLE "prow_job_run_test_outputs" DROP CONSTRAINT "fk_prow_job_run_tests_prow_job_run_test_output";
 ALTER TABLE "prow_job_run_prow_pull_requests" DROP CONSTRAINT "fk_prow_job_run_prow_pull_requests_prow_job_run";
 ALTER TABLE "prow_job_run_prow_pull_requests" DROP CONSTRAINT "fk_prow_job_run_prow_pull_requests_prow_pull_request";
