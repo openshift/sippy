@@ -93,36 +93,39 @@ func TestRunJobAnalysis(t *testing.T) {
 	}
 	for _, tc := range tests {
 
-		// Assume to build out the failed tests as those we provided pass rates for.
-		for _, t := range tc.testPassRates {
-			fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
-				Test:   models.Test{Name: t.Name},
-				Suite:  models.Suite{Name: t.SuiteName},
-				Status: 12,
-			})
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			// Assume to build out the failed tests as those we provided pass rates for.
+			for _, t := range tc.testPassRates {
+				fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
+					Test:   models.Test{Name: t.Name},
+					Suite:  models.Suite{Name: t.SuiteName},
+					Status: 12,
+				})
+			}
 
-		// Fake test results lookup func:
-		testResultsLookupFunc := func(testName, release, suite string, variants []string) (*apitype.Test, error) {
-			for _, tpr := range tc.testPassRates {
-				if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
-					return &tpr, nil
+			// Fake test results lookup func:
+			testResultsLookupFunc := func(testName, release, suite string, variants []string) (*apitype.Test, error) {
+				for _, tpr := range tc.testPassRates {
+					if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
+						return &tpr, nil
+					}
 				}
+				return nil, nil
 			}
-			return nil, nil
-		}
 
-		result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", testResultsLookupFunc)
-		require.NoError(t, err)
-		for testName, expectedRisk := range tc.expectedTestRisks {
-			actualTestRisk := getTestRisk(result, testName)
-			if !assert.NotNil(t, actualTestRisk, "no test risk for test: %s", testName) {
-				continue
+			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", testResultsLookupFunc)
+			require.NoError(t, err)
+			for testName, expectedRisk := range tc.expectedTestRisks {
+				actualTestRisk := getTestRisk(result, testName)
+				if !assert.NotNil(t, actualTestRisk, "no test risk for test: %s", testName) {
+					continue
+				}
+				assert.Equal(t, expectedRisk, actualTestRisk.Risk.Level, "unexpected risk level for test: %s", testName)
 			}
-			assert.Equal(t, expectedRisk, actualTestRisk.Risk.Level, "unexpected risk level for test: %s", testName)
-		}
 
-		assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level)
+			assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level)
+
+		})
 	}
 }
 
