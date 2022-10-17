@@ -14,5 +14,7 @@ ALTER TABLE "release_job_runs" DROP CONSTRAINT "fk_release_tags_job_runs";
 ALTER TABLE "release_repositories" DROP CONSTRAINT "fk_release_tags_repositories";
 
 ALTER TABLE "bug_jobs" DROP CONSTRAINT "fk_bug_jobs_bug";
+ALTER TABLE "bug_jobs" DROP CONSTRAINT "fk_bug_jobs_prow_job";
+ALTER TABLE "bug_tests" DROP CONSTRAINT "fk_bug_tests_test";
 ALTER TABLE "bug_tests" DROP CONSTRAINT "fk_bug_tests_bug";
 
