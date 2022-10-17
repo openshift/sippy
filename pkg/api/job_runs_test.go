@@ -48,6 +48,29 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelHigh,
 		},
 		{
+			name: "max test risk level low",
+			testPassRates: []apitype.Test{
+				{
+					Name:                  "test1",
+					CurrentPassPercentage: 21.0,
+				},
+				{
+					Name:                  "test2",
+					CurrentPassPercentage: 5.0,
+				},
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 60.0,
+				},
+			},
+			expectedTestRisks: map[string]apitype.RiskLevel{
+				"test1": apitype.FailureRiskLevelLow,
+				"test2": apitype.FailureRiskLevelLow,
+				"test3": apitype.FailureRiskLevelLow,
+			},
+			expectedOverallRisk: apitype.FailureRiskLevelLow,
+		},
+		{
 			name: "max test risk level unknown",
 			testPassRates: []apitype.Test{
 				{
