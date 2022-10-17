@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -70,6 +71,21 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedTestRisks:   map[string]apitype.RiskLevel{},
 			expectedOverallRisk: apitype.FailureRiskLevelNone,
 		},
+		{
+			name: "max test risk level high with mass failures",
+			testPassRates: func() []apitype.Test {
+				fts := []apitype.Test{}
+				// One more than allowed. All low risk failures, but because so many we want to see high
+				// risk on the job.
+				for i := 0; i < 21; i++ {
+					fts = append(fts, apitype.Test{Name: fmt.Sprintf("test%d", i), CurrentPassPercentage: 2.0})
+				}
+				return fts
+			}(),
+			// We do not expect individual test analysis on this many failures:
+			expectedTestRisks:   map[string]apitype.RiskLevel{},
+			expectedOverallRisk: apitype.FailureRiskLevelHigh,
+		},
 	}
 	for _, tc := range tests {
 
@@ -96,6 +112,7 @@ func TestRunJobAnalysis(t *testing.T) {
 
 			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", testResultsLookupFunc)
 			require.NoError(t, err)
+			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {
 				actualTestRisk := getTestRisk(result, testName)
 				if !assert.NotNil(t, actualTestRisk, "no test risk for test: %s", testName) {
