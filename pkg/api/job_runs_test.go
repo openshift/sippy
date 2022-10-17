@@ -11,32 +11,6 @@ import (
 
 func TestRunJobAnalysis(t *testing.T) {
 
-	fakeProwJobRun := &models.ProwJobRun{
-		ProwJob: models.ProwJob{
-			Name:        "fake-prow-job",
-			Release:     "4.12",
-			Variants:    []string{"var1", "var2"},
-			TestGridURL: "https://example.com/foo",
-			Bugs: []models.Bug{
-				{
-					ID:              500,
-					Key:             "OCPBUGS-500",
-					Status:          "New",
-					Summary:         "This isn't a real bug",
-					AffectsVersions: []string{},
-					FixVersions:     []string{},
-				},
-			},
-		},
-		ProwJobID:             1000000000,
-		URL:                   "https://example.com/run/1000000000",
-		Tests:                 []models.ProwJobRunTest{}, // will be populated in the test cases
-		Failed:                true,
-		InfrastructureFailure: false,
-		Succeeded:             false,
-		OverallResult:         "f",
-	}
-
 	tests := []struct {
 		name          string
 		testPassRates []apitype.Test
@@ -90,10 +64,17 @@ func TestRunJobAnalysis(t *testing.T) {
 			},
 			expectedOverallRisk: apitype.FailureRiskLevelUnknown,
 		},
+		{
+			name:                "max test risk level none",
+			testPassRates:       []apitype.Test{},
+			expectedTestRisks:   map[string]apitype.RiskLevel{},
+			expectedOverallRisk: apitype.FailureRiskLevelNone,
+		},
 	}
 	for _, tc := range tests {
 
 		t.Run(tc.name, func(t *testing.T) {
+			fakeProwJobRun := buildFakeProwJobRun()
 			// Assume to build out the failed tests as those we provided pass rates for.
 			for _, t := range tc.testPassRates {
 				fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
@@ -127,6 +108,35 @@ func TestRunJobAnalysis(t *testing.T) {
 
 		})
 	}
+}
+
+func buildFakeProwJobRun() *models.ProwJobRun {
+	fakeProwJobRun := &models.ProwJobRun{
+		ProwJob: models.ProwJob{
+			Name:        "fake-prow-job",
+			Release:     "4.12",
+			Variants:    []string{"var1", "var2"},
+			TestGridURL: "https://example.com/foo",
+			Bugs: []models.Bug{
+				{
+					ID:              500,
+					Key:             "OCPBUGS-500",
+					Status:          "New",
+					Summary:         "This isn't a real bug",
+					AffectsVersions: []string{},
+					FixVersions:     []string{},
+				},
+			},
+		},
+		ProwJobID:             1000000000,
+		URL:                   "https://example.com/run/1000000000",
+		Tests:                 []models.ProwJobRunTest{}, // will be populated in the test cases
+		Failed:                true,
+		InfrastructureFailure: false,
+		Succeeded:             false,
+		OverallResult:         "f",
+	}
+	return fakeProwJobRun
 }
 
 func getTestRisk(result apitype.ProwJobRunFailureAnalysis, testName string) *apitype.ProwJobRunTestFailureAnalysis {

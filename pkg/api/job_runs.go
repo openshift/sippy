@@ -146,8 +146,8 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			}
 			logger.Infof("Got test results: %d", len(trs))
 			for _, tr := range trs {
-				// TODO: this is a weird way to get the variant we want, should we filter in the query? Would require
-				// a new query function.
+				// TODO: this is a weird way to get the variant we want, but it allows re-use
+				// of the existing code.
 				if reflect.DeepEqual(tr.Variants, variants) && tr.SuiteName == suite {
 					return &tr, nil
 				}
