@@ -202,6 +202,8 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		return response, nil
 	}
 
+	var maxTestRiskReason string
+
 	// Iterate each failed test, query it's pass rates by NURPs, find a matching variant combo, and
 	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
@@ -216,10 +218,15 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 			return response, err
 		}
 		if testResult != nil {
+			testRiskLvl := getSeverityLevelForPassRate(testResult.CurrentPassPercentage)
+			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
+				response.OverallRisk.Level = testRiskLvl
+				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
+			}
 			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 				Name: testResult.Name,
 				Risk: apitype.FailureRisk{
-					Level: getSeverityLevelForPassRate(testResult.CurrentPassPercentage),
+					Level: testRiskLvl,
 					Reasons: []string{
 						fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
 							testResult.CurrentPassPercentage, testResult.CurrentRuns, compareRelease, testResult.Variants),
@@ -228,10 +235,15 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 				OpenBugs: ft.Test.Bugs,
 			})
 		} else {
+			testRiskLvl := apitype.FailureRiskLevelUnknown
+			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
+				response.OverallRisk.Level = testRiskLvl
+				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
+			}
 			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
 				Name: ft.Test.Name,
 				Risk: apitype.FailureRisk{
-					Level: apitype.FailureRiskLevelUnknown,
+					Level: testRiskLvl,
 					Reasons: []string{
 						fmt.Sprintf("Unable to find matching test results for variants: %v",
 							jobRun.ProwJob.Variants),
@@ -241,14 +253,6 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		}
 	}
 
-	// Set the overall risk level for this job run to the highest we encountered:
-	var maxTestRiskReason string
-	for _, ta := range response.Tests {
-		if ta.Risk.Level.Level >= response.OverallRisk.Level.Level {
-			response.OverallRisk.Level = ta.Risk.Level
-			maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", ta.Risk.Level.Name)
-		}
-	}
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
 
 	return response, nil
