@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 const (
@@ -17,7 +20,20 @@ const (
 )
 
 func buildURL(apiPath string) string {
-	return fmt.Sprintf("http://localhost:%d%s", APIPort, apiPath)
+	envSippyAPIPort := os.Getenv("SIPPY_API_PORT")
+	envSippyEndpoint := os.Getenv("SIPPY_ENDPOINT")
+
+	var port = APIPort
+	if len(envSippyAPIPort) > 0 {
+		val, err := strconv.Atoi(envSippyAPIPort)
+		if err == nil {
+			port = val
+		}
+	}
+	if len(envSippyEndpoint) == 0 {
+		envSippyEndpoint = "localhost"
+	}
+	return fmt.Sprintf("http://%s%s", net.JoinHostPort(envSippyEndpoint, strconv.Itoa(port)), apiPath)
 }
 
 func SippyRequest(path string, data interface{}) error {
