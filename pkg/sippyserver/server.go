@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -725,6 +726,31 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonJobRunAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
+// pass rates for each failed test, on-going incidents, and other factors.
+func (s *Server) jsonJobRunAnalysis(w http.ResponseWriter, req *http.Request) {
+
+	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	if jobRunIDStr == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "prow_job_run_id parameter required"})
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "unable to parse prow_job_run_id: " + err.Error()})
+		return
+	}
+
+	result, err := api.JobRunAnalysis(s.db, jobRunID)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
 
@@ -807,6 +833,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/runs/analysis", s.jsonJobRunAnalysis)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)

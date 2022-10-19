@@ -687,3 +687,37 @@ type AnalysisResult struct {
 type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
+
+type ProwJobRunFailureAnalysis struct {
+	ProwJobName  string
+	ProwJobRunID uint
+	ProwJobURL   string
+	Timestamp    time.Time
+	Tests        []ProwJobRunTestFailureAnalysis
+	OverallRisk  FailureRisk
+	OpenBugs     []models.Bug
+}
+
+type ProwJobRunTestFailureAnalysis struct {
+	Name     string
+	Risk     FailureRisk
+	OpenBugs []models.Bug
+}
+
+type FailureRisk struct {
+	Level   RiskLevel
+	Reasons []string
+}
+
+type RiskLevel struct {
+	// Name is a human readable name for the given risk level.
+	Name string
+	// Level represents a numerical risk level, higher implies more risk.
+	Level int
+}
+
+var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
+var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
+var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 5}
+var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 7}
+var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 10}
