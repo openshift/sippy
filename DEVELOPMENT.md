@@ -32,10 +32,16 @@ Sippy obtains data from multiple sources:
 
 ### From a Prod Sippy Backup
 
-The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with:
+The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:
 
 ```bash
 psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
+```
+
+or with a command like this if you are using the custom format file:
+
+```bash
+pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -C -d postgres ./sippy-backup-2022-10-20.dump
 ```
 
 ### From TestGrid
