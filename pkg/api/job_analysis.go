@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -9,6 +10,8 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+
+	"pgregory.net/changepoint"
 )
 
 const PeriodDay = "day"
@@ -22,13 +25,13 @@ func PrintJobAnalysisJSONFromDB(
 	start, boundary, end time.Time,
 	limit int,
 	sortField string,
-	sort apitype.Sort,
+	sortType apitype.Sort,
 	period string,
 	reportEnd time.Time) (apitype.JobAnalysisResult, error) {
 	result := apitype.JobAnalysisResult{}
 
 	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
-		start, boundary, end, limit, sortField, sort)
+		start, boundary, end, limit, sortField, sortType)
 	if err != nil {
 		return result, err
 	}
@@ -78,12 +81,19 @@ func PrintJobAnalysisJSONFromDB(
 		formatter = "2006-01-02 15:00"
 	}
 
-	for _, sum := range sums {
+	// Ensure our sums are sorted so we can properly do a changepoint
+	// analysis later.
+	sort.Slice(sums, func(i, j int) bool {
+		return sums[i].Period.Before(sums[j].Period)
+	})
 
+	cpAnalysis := make([]float64, len(sums))
+	for idx, sum := range sums {
 		// remove empty rows after the reportEnd date
 		if sum.Period.After(reportEnd) {
 			continue
 		}
+		cpAnalysis[idx] = 100 * float64(sum.Success) / float64(sum.TotalRuns)
 
 		results.ByPeriod[sum.Period.UTC().Format(formatter)] = apitype.AnalysisResult{
 			TotalRuns: sum.TotalRuns,
@@ -101,6 +111,15 @@ func PrintJobAnalysisJSONFromDB(
 			TestFailureCount: map[string]int{},
 		}
 	}
+
+	// Determine changepoints for this job, i.e., determine when a job
+	// broke (or was fixed).
+	result.Changepoints = make([]string, 0)
+	for _, cp := range changepoint.NonParametric(cpAnalysis, 2) {
+		key := sums[cp].Period.UTC().Format(formatter)
+		results.Changepoints = append(results.Changepoints, key)
+	}
+
 	type testResult struct {
 		Period   time.Time
 		TestName string
@@ -122,6 +141,6 @@ func PrintJobAnalysisJSONFromDB(
 			results.ByPeriod[dateKey].TestFailureCount[t.TestName] = t.Count
 		}
 	}
-	return results, nil
 
+	return results, nil
 }

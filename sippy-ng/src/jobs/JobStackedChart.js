@@ -1,11 +1,15 @@
 import { Line } from 'react-chartjs-2'
 import Alert from '@material-ui/lab/Alert'
+import annotationPlugin from 'chartjs-plugin-annotation'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
 import './JobAnalysis.css'
+import { Chart } from 'chart.js'
 import { pathForJobsInPercentile, safeEncodeURIComponent } from '../helpers'
 import { useHistory } from 'react-router-dom'
+
+Chart.register(annotationPlugin)
 
 export const dayFilter = (days, startDate) => {
   return [
@@ -141,46 +145,6 @@ export function JobStackedChart(props) {
     )
   }
 
-  const colorByName = {}
-  Object.keys(resultTypes).forEach((key) => {
-    colorByName[resultTypes[key].name] = resultTypes[key].color
-  })
-
-  resultChart.datasets.push({
-    label: 'Run count',
-    tension: 0.5,
-    radius: 2,
-    yAxisID: 'y1',
-    xAxisID: 'x',
-    order: 1,
-    borderColor: '#000000',
-    backgroundColor: '#000000',
-    data: Object.keys(analysis.by_period).map(
-      (key) => analysis.by_period[key].total_runs
-    ),
-  })
-
-  Object.keys(resultTypes).forEach((result) => {
-    resultChart.datasets.push({
-      type: 'line',
-      fill: 'origin',
-      radius: 1,
-      label: `${resultTypes[result].name}`,
-      tension: 0.3,
-      yAxisID: 'y',
-      xAxisID: 'x',
-      order: 2,
-      borderColor: resultTypes[result].color,
-      backgroundColor: resultTypes[result].color,
-      data: Object.keys(analysis.by_period).map(
-        (key) =>
-          100 *
-          ((analysis.by_period[key].result_count[result] || 0) /
-            analysis.by_period[key].total_runs)
-      ),
-    })
-  })
-
   const handleHover = (e, item, legend) => {
     legend.chart.data.datasets.forEach((dataset, index) => {
       if (index !== item.datasetIndex) {
@@ -201,6 +165,9 @@ export function JobStackedChart(props) {
 
   const options = {
     plugins: {
+      annotation: {
+        annotations: [],
+      },
       line: {
         onHover: handleHover,
         onLeave: handleLeave,
@@ -244,6 +211,61 @@ export function JobStackedChart(props) {
       },
     },
   }
+
+  if (analysis.changepoints) {
+    console.log(analysis.changepoints)
+    analysis.changepoints.forEach((cp) => {
+      options.plugins.annotation.annotations.push({
+        type: 'line',
+        xMin: cp,
+        xMax: cp,
+        borderDash: [5, 6],
+        borderColor: '#ffffff',
+      })
+    })
+  }
+  console.log(options)
+
+  const colorByName = {}
+  Object.keys(resultTypes).forEach((key) => {
+    colorByName[resultTypes[key].name] = resultTypes[key].color
+  })
+
+  resultChart.datasets.push({
+    label: 'Run count',
+    tension: 0.5,
+    radius: 2,
+    yAxisID: 'y1',
+    xAxisID: 'x',
+    order: 1,
+    pointRadius: 0,
+    borderColor: '#000000',
+    backgroundColor: '#000000',
+    data: Object.keys(analysis.by_period).map(
+      (key) => analysis.by_period[key].total_runs
+    ),
+  })
+
+  Object.keys(resultTypes).forEach((result) => {
+    resultChart.datasets.push({
+      type: 'line',
+      fill: 'origin',
+      radius: 1,
+      label: `${resultTypes[result].name}`,
+      tension: 0.3,
+      yAxisID: 'y',
+      xAxisID: 'x',
+      order: 2,
+      borderColor: resultTypes[result].color,
+      backgroundColor: resultTypes[result].color,
+      data: Object.keys(analysis.by_period).map(
+        (key) =>
+          100 *
+          ((analysis.by_period[key].result_count[result] || 0) /
+            analysis.by_period[key].total_runs)
+      ),
+    })
+  })
 
   return (
     <Line

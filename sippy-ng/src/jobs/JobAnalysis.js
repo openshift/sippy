@@ -18,8 +18,9 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
+import { filterList } from '../datagrid/utils'
+import { getColumns } from './JobTable'
 import {
-  filterFor,
   getReportStartDate,
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
@@ -27,7 +28,6 @@ import {
   SafeJSONParam,
   withSort,
 } from '../helpers'
-import { filterList } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { hourFilter, JobStackedChart } from './JobStackedChart'
 import { JOB_THRESHOLDS } from '../constants'
@@ -41,7 +41,6 @@ import Divider from '@material-ui/core/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
-import JobTable, { getColumns } from './JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -459,7 +458,12 @@ export function JobAnalysis(props) {
 
           <Grid item md={12}>
             <Card className="job-failure-card" elevation={5}>
-              <Typography variant="h5">Job results</Typography>
+              <Typography variant="h5">
+                Job results
+                <Tooltip title="This stacked chart plots job results over time, categorized by result. The black line shows the total number of runs (right y axis).  Dashed white lines indicate estimated changepoints, which can be useful to determine when a job broke or improved.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
               <JobStackedChart
                 release={props.release}
                 analysis={analysis}

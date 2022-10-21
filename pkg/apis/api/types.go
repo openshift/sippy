@@ -685,7 +685,8 @@ type AnalysisResult struct {
 }
 
 type JobAnalysisResult struct {
-	ByPeriod map[string]AnalysisResult `json:"by_period"`
+	ByPeriod     map[string]AnalysisResult `json:"by_period"`
+	Changepoints []string                  `json:"changepoints"`
 }
 
 type ProwJobRunFailureAnalysis struct {

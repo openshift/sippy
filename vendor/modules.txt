@@ -350,3 +350,6 @@ gorm.io/gorm/schema
 gorm.io/gorm/utils
 # k8s.io/klog v1.0.0
 ## explicit
+# pgregory.net/changepoint v0.1.5
+## explicit
+pgregory.net/changepoint

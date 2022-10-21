@@ -29,5 +29,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.2.1
 	gorm.io/gorm v1.22.2
-	k8s.io/klog v1.0.0
+	k8s.io/klog v1.0.0 // indirect
+	pgregory.net/changepoint v0.1.5
 )

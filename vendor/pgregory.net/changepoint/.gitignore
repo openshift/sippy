@@ -1,0 +1,9 @@
+/.idea/
+/.vscode/
+*.swp
+
+/changepoint.test
+/changepoint.test.exe
+/cpu*.prof
+/mem*.prof
+/profile*
