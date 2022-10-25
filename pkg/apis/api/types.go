@@ -688,17 +688,17 @@ type JobAnalysisResult struct {
 	ByPeriod map[string]AnalysisResult `json:"by_period"`
 }
 
-type ProwJobRunFailureAnalysis struct {
+type ProwJobRunRiskAnalysis struct {
 	ProwJobName  string
 	ProwJobRunID uint
 	ProwJobURL   string
 	Timestamp    time.Time
-	Tests        []ProwJobRunTestFailureAnalysis
+	Tests        []ProwJobRunTestRiskAnalysis
 	OverallRisk  FailureRisk
 	OpenBugs     []models.Bug
 }
 
-type ProwJobRunTestFailureAnalysis struct {
+type ProwJobRunTestRiskAnalysis struct {
 	Name     string
 	Risk     FailureRisk
 	OpenBugs []models.Bug
