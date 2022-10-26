@@ -730,28 +730,26 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 // jsonJobRunRiskAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
 // pass rates for each failed test, on-going incidents, and other factors.
 //
-// This API can be called in two ways, a GET with a prow_job_run_id query param, or a POST with a
-// partial ProwJobRun struct serialized as json in the request body. The GET version will return the
-// stored analysis for the job when it was imported into sippy. The POST version is a transient
+// This API can be called in two ways, a GET with a prow_job_run_id query param, or a GET with a
+// partial ProwJobRun struct serialized as json in the request body. The ID version will return the
+// stored analysis for the job when it was imported into sippy. The other version is a transient
 // request to be used when sippy has not yet imported the job, but we wish to analyze the failure risk.
-// Soon, we expecct the POST version is called from CI to get a risk analysis json result, which will
+// Soon, we expect the transient version is called from CI to get a risk analysis json result, which will
 // be stored in the job run artifacts, then imported with the job run, and will ultimately be the
-// data that is returned by the GET version.
+// data that is returned by the get by ID version.
 func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request) {
 
 	jobRun := &models.ProwJobRun{}
 
-	switch req.Method {
-	case "GET":
-		jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
-		if jobRunIDStr == "" {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "prow_job_run_id parameter required"})
-			return
-		}
+	// API path one where we return a risk analysis for a prow job run ID we already know about:
+	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	if jobRunIDStr != "" {
 
 		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "unable to parse prow_job_run_id: " + err.Error()})
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "unable to parse prow_job_run_id: " + err.Error()})
 			return
 		}
 
@@ -762,34 +760,37 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			Preload("Tests.Test").
 			Preload("Tests.Suite").First(jobRun, jobRunID)
 		if res.Error != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": res.Error.Error()})
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code": http.StatusBadRequest, "message": res.Error.Error()})
 			return
 		}
-		// TODO: post implies a create, maybe we should just use GET with body or not
-	case "POST":
-		err := json.NewDecoder(req.Body).Decode(&jobRun)
-		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
-			return
-		}
-		// We don't expect the caller to fully populate the ProwJob, just it's name, so
-		// override the input by looking up the actual ProwJob by name so we have access to release and variants.
-		job := &models.ProwJob{}
-		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(&job)
-		if res.Error != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
-			return
-		}
-		jobRun.ProwJob = *job
-	default:
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("unsupported http request for this api: %s", req.Method)})
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&jobRun)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
 		return
 	}
+	// We don't expect the caller to fully populate the ProwJob, just it's name,
+	// override the input by looking up the actual ProwJob so we have access to release and variants.
+	job := &models.ProwJob{}
+	res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(&job)
+	if res.Error != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
+		return
+	}
+	jobRun.ProwJob = *job
 
 	log.Infof("job run = %+v", *jobRun)
 	result, err := api.JobRunRiskAnalysis(s.db, jobRun)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error()})
 		return
 	}
 
