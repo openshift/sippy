@@ -15,6 +15,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	// maxFailuresToFullyAnalyze is a limit to the number of failures we'll attempt to
+	// individually analyze, if you exceed this the job failure is classified as high risk.
+	maxFailuresToFullyAnalyze = 20
+)
+
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
 	sortField := req.URL.Query().Get("sortField")
 	sort := apitype.Sort(req.URL.Query().Get("sort"))
@@ -90,14 +96,6 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 // risk level for each failed test, and the job run overall.
 func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobRunRiskAnalysis, error) {
 
-	// TODO: load bugs for the job and it's failed tests
-	/*
-		jobBugs := []models.Bug{}
-		testBugs := []models.Bug{}
-		res := dbc.DB.Joins("Jobs", db.Where(&))
-
-	*/
-
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
 	// master, so it should be safe to assume the latest compareRelease in the db.
@@ -115,13 +113,29 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobR
 		compareRelease = ar[0].Release
 	}
 
+	// NOTE: we are including bugs for all releases, may want to filter here in future to just those
+	// with an AffectsVersions that seems to match our compareRelease?
+	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true)
+	if err != nil {
+		return apitype.ProwJobRunRiskAnalysis{}, err
+	}
+	jobRun.ProwJob.Bugs = jobBugs
+
+	// Pre-load test bugs as well:
+	if len(jobRun.Tests) <= maxFailuresToFullyAnalyze {
+		for i, tr := range jobRun.Tests {
+			bugs, err := query.LoadBugsForTest(dbc, tr.Test.Name, true)
+			if err != nil {
+				return apitype.ProwJobRunRiskAnalysis{}, err
+			}
+			log.Infof("Found %d bugs for test %s", len(bugs), tr.Test.Name)
+			tr.Test.Bugs = bugs
+			jobRun.Tests[i] = tr
+		}
+	}
+
 	return runJobRunAnalysis(jobRun, compareRelease,
 		func(testName, release, suite string, variants []string) (*apitype.Test, error) {
-
-			logger := log.WithFields(log.Fields{
-				"func":     "testResultsFunc",
-				"jobRunID": jobRun.ID,
-			})
 
 			fil := &filter.Filter{
 				Items: []filter.FilterItem{
@@ -134,27 +148,20 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobR
 				},
 				LinkOperator: "and",
 			}
-			logger.Infof("searching for results for release: %s and variants: %v", release, variants)
 			trs, _, err := BuildTestsResults(dbc, release, "default", false, false,
 				fil)
 			if err != nil {
 				return nil, err
 			}
-			logger.Infof("Got test results: %d", len(trs))
 			gosort.Strings(variants)
-			logger.Infof("sorted variants: %v", variants)
-			logger.Infof("suite: %s", suite)
 			for _, tr := range trs {
-				// TODO: this is a weird way to get the variant we want, but it allows re-use
+				// this is a weird way to get the variant we want, but it allows re-use
 				// of the existing code.
 				gosort.Strings(tr.Variants)
-				logger.Infof("sorted row variants: %v, suiteName: %s", tr.Variants, tr.SuiteName)
 				if stringSlicesEqual(variants, tr.Variants) && tr.SuiteName == suite {
-					logger.Infof("found our row!")
 					return &tr, nil
 				}
 			}
-			logger.Infof("unable to find a test results")
 
 			return nil, nil
 		})
@@ -171,15 +178,12 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		"jobRunID": jobRun.ID,
 	})
 
-	logger.WithField("url", jobRun.URL).Info("loaded prow job run for analysis")
+	logger.Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
-	logger.WithField("variants", jobRun.ProwJob.Variants).Debug("job variants")
 
 	response := apitype.ProwJobRunRiskAnalysis{
 		ProwJobRunID: jobRun.ID,
 		ProwJobName:  jobRun.ProwJob.Name,
-		ProwJobURL:   jobRun.URL,
-		Timestamp:    jobRun.Timestamp,
 		Tests:        []apitype.ProwJobRunTestRiskAnalysis{},
 		OverallRisk: apitype.FailureRisk{
 			Level:   apitype.FailureRiskLevelNone,
@@ -198,7 +202,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		return response, nil
 
 	// Return early if we see mass test failures:
-	case len(jobRun.Tests) > 20:
+	case len(jobRun.Tests) > maxFailuresToFullyAnalyze:
 		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
@@ -251,6 +255,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 							jobRun.ProwJob.Variants),
 					},
 				},
+				OpenBugs: ft.Test.Bugs,
 			})
 		}
 	}

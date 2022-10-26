@@ -451,7 +451,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForTest(s.db, testName)
+	bugs, err := query.LoadBugsForTest(s.db, testName, false)
 	if err != nil {
 		log.WithError(err).Error("error querying test bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -491,7 +491,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForJobs(s.db, jobIDs)
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{

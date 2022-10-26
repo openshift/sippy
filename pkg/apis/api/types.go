@@ -691,8 +691,6 @@ type JobAnalysisResult struct {
 type ProwJobRunRiskAnalysis struct {
 	ProwJobName  string
 	ProwJobRunID uint
-	ProwJobURL   string
-	Timestamp    time.Time
 	Tests        []ProwJobRunTestRiskAnalysis
 	OverallRisk  FailureRisk
 	OpenBugs     []models.Bug
