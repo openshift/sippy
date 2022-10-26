@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"reflect"
 	gosort "sort"
 	"strconv"
 	"time"
@@ -89,19 +88,15 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
-func JobRunRiskAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunRiskAnalysis, error) {
+func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobRunRiskAnalysis, error) {
 
-	jobRun := &models.ProwJobRun{}
-	// Load the ProwJobRun, ProwJob, and failed tests:
-	// TODO: we may want to expand to analyzing flakes here in the future
-	res := dbc.DB.Joins("ProwJob").
-		Preload("ProwJob.Bugs", "status != 'Closed' and status != 'Verified'").
-		Preload("Tests", "status = 12").
-		Preload("Tests.Test").Preload("Tests.Test.Bugs").
-		Preload("Tests.Suite").First(jobRun, jobRunID)
-	if res.Error != nil {
-		return apitype.ProwJobRunRiskAnalysis{}, res.Error
-	}
+	// TODO: load bugs for the job and it's failed tests
+	/*
+		jobBugs := []models.Bug{}
+		testBugs := []models.Bug{}
+		res := dbc.DB.Joins("Jobs", db.Where(&))
+
+	*/
 
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
@@ -139,19 +134,27 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunRiskAnaly
 				},
 				LinkOperator: "and",
 			}
+			logger.Infof("searching for results for release: %s and variants: %v", release, variants)
 			trs, _, err := BuildTestsResults(dbc, release, "default", false, false,
 				fil)
 			if err != nil {
 				return nil, err
 			}
 			logger.Infof("Got test results: %d", len(trs))
+			gosort.Strings(variants)
+			logger.Infof("sorted variants: %v", variants)
+			logger.Infof("suite: %s", suite)
 			for _, tr := range trs {
 				// TODO: this is a weird way to get the variant we want, but it allows re-use
 				// of the existing code.
-				if reflect.DeepEqual(tr.Variants, variants) && tr.SuiteName == suite {
+				gosort.Strings(tr.Variants)
+				logger.Infof("sorted row variants: %v, suiteName: %s", tr.Variants, tr.SuiteName)
+				if stringSlicesEqual(variants, tr.Variants) && tr.SuiteName == suite {
+					logger.Infof("found our row!")
 					return &tr, nil
 				}
 			}
+			logger.Infof("unable to find a test results")
 
 			return nil, nil
 		})
@@ -208,8 +211,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
 		logger.WithFields(log.Fields{
-			"testID": ft.TestID,
-			"name":   ft.Test.Name,
+			"name": ft.Test.Name,
 		}).Debug("failed test")
 
 		testResult, err := testResultsFunc(
@@ -268,4 +270,16 @@ func getSeverityLevelForPassRate(passPercentage float64) apitype.RiskLevel {
 		return apitype.FailureRiskLevelLow
 	}
 	return apitype.FailureRiskLevelUnknown
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }
