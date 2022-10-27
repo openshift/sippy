@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	blockerScoreToAlertOn = 50
+	blockerScoreToAlertOn = 70
 )
 
 var (
