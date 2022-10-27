@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -450,7 +451,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForTest(s.db, testName)
+	bugs, err := query.LoadBugsForTest(s.db, testName, false)
 	if err != nil {
 		log.WithError(err).Error("error querying test bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -490,7 +491,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForJobs(s.db, jobIDs)
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -726,25 +727,70 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
-// jsonJobRunAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
+// jsonJobRunRiskAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
 // pass rates for each failed test, on-going incidents, and other factors.
-func (s *Server) jsonJobRunAnalysis(w http.ResponseWriter, req *http.Request) {
+//
+// This API can be called in two ways, a GET with a prow_job_run_id query param, or a GET with a
+// partial ProwJobRun struct serialized as json in the request body. The ID version will return the
+// stored analysis for the job when it was imported into sippy. The other version is a transient
+// request to be used when sippy has not yet imported the job, but we wish to analyze the failure risk.
+// Soon, we expect the transient version is called from CI to get a risk analysis json result, which will
+// be stored in the job run artifacts, then imported with the job run, and will ultimately be the
+// data that is returned by the get by ID version.
+func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request) {
 
+	jobRun := &models.ProwJobRun{}
+
+	// API path one where we return a risk analysis for a prow job run ID we already know about:
 	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
-	if jobRunIDStr == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "prow_job_run_id parameter required"})
-		return
+	if jobRunIDStr != "" {
+
+		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "unable to parse prow_job_run_id: " + err.Error()})
+			return
+		}
+
+		// Load the ProwJobRun, ProwJob, and failed tests:
+		// TODO: we may want to expand to analyzing flakes here in the future
+		res := s.db.DB.Joins("ProwJob").
+			Preload("Tests", "status = 12").
+			Preload("Tests.Test").
+			Preload("Tests.Suite").First(jobRun, jobRunID)
+		if res.Error != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code": http.StatusBadRequest, "message": res.Error.Error()})
+			return
+		}
 	}
 
-	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	err := json.NewDecoder(req.Body).Decode(&jobRun)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "unable to parse prow_job_run_id: " + err.Error()})
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
 		return
 	}
+	// We don't expect the caller to fully populate the ProwJob, just it's name,
+	// override the input by looking up the actual ProwJob so we have access to release and variants.
+	job := &models.ProwJob{}
+	res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(&job)
+	if res.Error != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
+		return
+	}
+	jobRun.ProwJob = *job
 
-	result, err := api.JobRunAnalysis(s.db, jobRunID)
+	log.Infof("job run = %+v", *jobRun)
+	result, err := api.JobRunRiskAnalysis(s.db, jobRun)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error()})
 		return
 	}
 
@@ -833,7 +879,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/runs/analysis", s.jsonJobRunAnalysis)
+	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)

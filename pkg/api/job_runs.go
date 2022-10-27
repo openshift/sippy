@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"reflect"
 	gosort "sort"
 	"strconv"
 	"time"
@@ -14,6 +13,12 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	// maxFailuresToFullyAnalyze is a limit to the number of failures we'll attempt to
+	// individually analyze, if you exceed this the job failure is classified as high risk.
+	maxFailuresToFullyAnalyze = 20
 )
 
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
@@ -87,21 +92,9 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	}, res.Error
 }
 
-// JobRunAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
+// JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
-func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalysis, error) {
-
-	jobRun := &models.ProwJobRun{}
-	// Load the ProwJobRun, ProwJob, and failed tests:
-	// TODO: we may want to expand to analyzing flakes here in the future
-	res := dbc.DB.Joins("ProwJob").
-		Preload("ProwJob.Bugs", "status != 'Closed' and status != 'Verified'").
-		Preload("Tests", "status = 12").
-		Preload("Tests.Test").Preload("Tests.Test.Bugs").
-		Preload("Tests.Suite").First(jobRun, jobRunID)
-	if res.Error != nil {
-		return apitype.ProwJobRunFailureAnalysis{}, res.Error
-	}
+func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
@@ -111,22 +104,38 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 		// Get latest release from the DB:
 		ar, err := query.ReleasesFromDB(dbc)
 		if err != nil {
-			return apitype.ProwJobRunFailureAnalysis{}, err
+			return apitype.ProwJobRunRiskAnalysis{}, err
 		}
 		if len(ar) == 0 {
-			return apitype.ProwJobRunFailureAnalysis{}, fmt.Errorf("no releases found in db")
+			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("no releases found in db")
 		}
 
 		compareRelease = ar[0].Release
 	}
 
+	// NOTE: we are including bugs for all releases, may want to filter here in future to just those
+	// with an AffectsVersions that seems to match our compareRelease?
+	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true)
+	if err != nil {
+		return apitype.ProwJobRunRiskAnalysis{}, err
+	}
+	jobRun.ProwJob.Bugs = jobBugs
+
+	// Pre-load test bugs as well:
+	if len(jobRun.Tests) <= maxFailuresToFullyAnalyze {
+		for i, tr := range jobRun.Tests {
+			bugs, err := query.LoadBugsForTest(dbc, tr.Test.Name, true)
+			if err != nil {
+				return apitype.ProwJobRunRiskAnalysis{}, err
+			}
+			log.Infof("Found %d bugs for test %s", len(bugs), tr.Test.Name)
+			tr.Test.Bugs = bugs
+			jobRun.Tests[i] = tr
+		}
+	}
+
 	return runJobRunAnalysis(jobRun, compareRelease,
 		func(testName, release, suite string, variants []string) (*apitype.Test, error) {
-
-			logger := log.WithFields(log.Fields{
-				"func":     "testResultsFunc",
-				"jobRunID": jobRun.ID,
-			})
 
 			fil := &filter.Filter{
 				Items: []filter.FilterItem{
@@ -144,11 +153,12 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 			if err != nil {
 				return nil, err
 			}
-			logger.Infof("Got test results: %d", len(trs))
+			gosort.Strings(variants)
 			for _, tr := range trs {
-				// TODO: this is a weird way to get the variant we want, but it allows re-use
+				// this is a weird way to get the variant we want, but it allows re-use
 				// of the existing code.
-				if reflect.DeepEqual(tr.Variants, variants) && tr.SuiteName == suite {
+				gosort.Strings(tr.Variants)
+				if stringSlicesEqual(variants, tr.Variants) && tr.SuiteName == suite {
 					return &tr, nil
 				}
 			}
@@ -161,23 +171,20 @@ func JobRunAnalysis(dbc *db.DB, jobRunID int64) (apitype.ProwJobRunFailureAnalys
 type testResultsFunc func(testName string, release, suite string, variants []string) (*apitype.Test, error)
 
 func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
-	testResultsFunc testResultsFunc) (apitype.ProwJobRunFailureAnalysis, error) {
+	testResultsFunc testResultsFunc) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"func":     "jobRunAnalysis",
 		"jobRunID": jobRun.ID,
 	})
 
-	logger.WithField("url", jobRun.URL).Info("loaded prow job run for analysis")
+	logger.Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
-	logger.WithField("variants", jobRun.ProwJob.Variants).Debug("job variants")
 
-	response := apitype.ProwJobRunFailureAnalysis{
+	response := apitype.ProwJobRunRiskAnalysis{
 		ProwJobRunID: jobRun.ID,
 		ProwJobName:  jobRun.ProwJob.Name,
-		ProwJobURL:   jobRun.URL,
-		Timestamp:    jobRun.Timestamp,
-		Tests:        []apitype.ProwJobRunTestFailureAnalysis{},
+		Tests:        []apitype.ProwJobRunTestRiskAnalysis{},
 		OverallRisk: apitype.FailureRisk{
 			Level:   apitype.FailureRiskLevelNone,
 			Reasons: []string{},
@@ -195,7 +202,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		return response, nil
 
 	// Return early if we see mass test failures:
-	case len(jobRun.Tests) > 20:
+	case len(jobRun.Tests) > maxFailuresToFullyAnalyze:
 		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
@@ -208,8 +215,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
 		logger.WithFields(log.Fields{
-			"testID": ft.TestID,
-			"name":   ft.Test.Name,
+			"name": ft.Test.Name,
 		}).Debug("failed test")
 
 		testResult, err := testResultsFunc(
@@ -223,7 +229,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 				response.OverallRisk.Level = testRiskLvl
 				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
 			}
-			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
+			response.Tests = append(response.Tests, apitype.ProwJobRunTestRiskAnalysis{
 				Name: testResult.Name,
 				Risk: apitype.FailureRisk{
 					Level: testRiskLvl,
@@ -240,7 +246,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 				response.OverallRisk.Level = testRiskLvl
 				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
 			}
-			response.Tests = append(response.Tests, apitype.ProwJobRunTestFailureAnalysis{
+			response.Tests = append(response.Tests, apitype.ProwJobRunTestRiskAnalysis{
 				Name: ft.Test.Name,
 				Risk: apitype.FailureRisk{
 					Level: testRiskLvl,
@@ -249,6 +255,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 							jobRun.ProwJob.Variants),
 					},
 				},
+				OpenBugs: ft.Test.Bugs,
 			})
 		}
 	}
@@ -268,4 +275,16 @@ func getSeverityLevelForPassRate(passPercentage float64) apitype.RiskLevel {
 		return apitype.FailureRiskLevelLow
 	}
 	return apitype.FailureRiskLevelUnknown
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }

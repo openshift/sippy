@@ -90,11 +90,17 @@ func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, b
 // LoadBugsForJobs returns all bugs in the database for the given jobs, across all releases.
 // See ListFilteredJobIDs for obtaining the list of job IDs.
 func LoadBugsForJobs(dbc *db.DB,
-	jobIDs []int) ([]models.Bug, error) {
+	jobIDs []int, filterClosed bool) ([]models.Bug, error) {
 	results := []models.Bug{}
 
 	job := models.ProwJob{}
-	res := dbc.DB.Where("id IN ?", jobIDs).Preload("Bugs").First(&job)
+	q := dbc.DB.Where("id IN ?", jobIDs)
+	if filterClosed {
+		q = q.Preload("Bugs", "UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+	} else {
+		q = q.Preload("Bugs")
+	}
+	res := q.First(&job)
 	if res.Error != nil {
 		return results, res.Error
 	}

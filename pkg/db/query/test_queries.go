@@ -166,11 +166,17 @@ FROM results;
 }
 
 // LoadBugsForTest returns all bugs in the database for the given test, across all releases.
-func LoadBugsForTest(dbc *db.DB, testName string) ([]models.Bug, error) {
+func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.Bug, error) {
 	results := []models.Bug{}
 
 	test := models.Test{}
-	res := dbc.DB.Where("name = ?", testName).Preload("Bugs").First(&test)
+	q := dbc.DB.Where("name = ?", testName)
+	if filterClosed {
+		q = q.Preload("Bugs", "UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+	} else {
+		q = q.Preload("Bugs")
+	}
+	res := q.First(&test)
 	if res.Error != nil {
 		return results, res.Error
 	}
