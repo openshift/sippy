@@ -8,14 +8,16 @@ import {
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
 import { DirectionsBoat, GitHub } from '@material-ui/icons'
-import { Link } from 'react-router-dom'
-import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
+  getReportStartDate,
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
+import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
+import { ReportEndContext } from '../App'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -27,7 +29,7 @@ import React, { Fragment, useEffect } from 'react'
 export default function JobRunsTable(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
-  const [rows, setRows] = React.useState([])
+  const [apiResult, setApiResult] = React.useState([])
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
@@ -44,6 +46,8 @@ export default function JobRunsTable(props) {
     'pageSize',
     NumberParam
   )
+  const [page = 0, setPage] = useQueryParam('page', NumberParam)
+  const [pageFlip, setPageFlip] = React.useState(false)
 
   const tooltips = {
     S: 'Success',
@@ -56,6 +60,8 @@ export default function JobRunsTable(props) {
     n: 'failure before setup (infra)',
     R: 'running',
   }
+
+  const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const columns = [
     {
@@ -75,7 +81,7 @@ export default function JobRunsTable(props) {
       },
       renderCell: (params) => {
         return (
-          <Tooltip title={relativeTime(new Date(params.value))}>
+          <Tooltip title={relativeTime(new Date(params.value), startDate)}>
             <p>{new Date(params.value).toLocaleString()}</p>
           </Tooltip>
         )
@@ -287,6 +293,8 @@ export default function JobRunsTable(props) {
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
+    queryString += '&perPage=' + safeEncodeURIComponent(pageSize)
+    queryString += '&page=' + safeEncodeURIComponent(page)
 
     fetch(
       process.env.REACT_APP_API_URL +
@@ -300,8 +308,9 @@ export default function JobRunsTable(props) {
         return response.json()
       })
       .then((json) => {
-        setRows(json)
+        setApiResult(json)
         setLoaded(true)
+        setPageFlip(false)
       })
       .catch((error) => {
         setFetchError('Could not retrieve jobs ' + props.release + ', ' + error)
@@ -324,7 +333,7 @@ export default function JobRunsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField])
+  }, [filterModel, sort, sortField, page, pageSize])
 
   const pageTitle = () => {
     if (props.title) {
@@ -430,10 +439,20 @@ export default function JobRunsTable(props) {
     </div>
   )
 
+  const changePage = (newPage) => {
+    setPageFlip(true)
+    setPage(newPage)
+  }
+
   const table = (
     <DataGrid
       components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-      rows={rows}
+      rows={apiResult.rows}
+      rowCount={apiResult.total_rows}
+      loading={pageFlip}
+      pagination
+      paginationMode="server"
+      onPageChange={(newPage) => changePage(newPage)}
       columns={columns}
       autoHeight={true}
       // Filtering:

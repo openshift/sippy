@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
+	"github.com/openshift/sippy/pkg/util"
 
 	log "github.com/sirupsen/logrus"
 
@@ -50,6 +53,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	pinnedDateTime *time.Time,
 ) *Server {
 
 	server := &Server{
@@ -64,9 +68,10 @@ func NewServer(
 			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
 			DisplayDataConfig:           displayDataOptions,
 		},
-		sippyNG: sippyNG,
-		static:  static,
-		db:      dbClient,
+		sippyNG:        sippyNG,
+		static:         static,
+		db:             dbClient,
+		pinnedDateTime: pinnedDateTime,
 	}
 
 	return server
@@ -97,6 +102,7 @@ type Server struct {
 	static                     fs.FS
 	httpServer                 *http.Server
 	db                         *db.DB
+	pinnedDateTime             *time.Time
 }
 
 type TestGridDashboardCoordinates struct {
@@ -108,6 +114,10 @@ type TestGridDashboardCoordinates struct {
 	BugzillaRelease string
 }
 
+func (s *Server) GetReportEnd() time.Time {
+	return util.GetReportEnd(s.pinnedDateTime)
+}
+
 func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 	s.RefreshData(false)
 
@@ -116,7 +126,7 @@ func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) refreshMetrics() {
-	err := metrics.RefreshMetricsDB(s.db)
+	err := metrics.RefreshMetricsDB(s.db, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
@@ -379,7 +389,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts)
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -400,7 +410,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	results, err := api.ReleaseHealthReports(s.db, release)
+	results, err := api.ReleaseHealthReports(s.db, release, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -424,7 +434,7 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		err := api.PrintTestAnalysisJSONFromDB(s.db, w, req, release, testName)
+		err := api.PrintTestAnalysisJSONFromDB(s.db, w, req, release, testName, s.GetReportEnd())
 		if err != nil {
 			log.Errorf("error querying test analysis from db: %v", err)
 		}
@@ -441,7 +451,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForTest(s.db, testName)
+	bugs, err := query.LoadBugsForTest(s.db, testName, false)
 	if err != nil {
 		log.WithError(err).Error("error querying test bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -537,7 +547,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	start, boundary, end := getPeriodDates("default", req)
+	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
@@ -551,7 +561,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForJobs(s.db, jobIDs)
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -622,12 +632,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release)
+		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
-	start, boundary, end := getPeriodDates("default", req)
+	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 
 	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
 	if err != nil {
@@ -683,11 +693,19 @@ func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	release := s.getReleaseOrFail(w, req)
 	jobName := req.URL.Query().Get("job")
 	if release != "" && jobName != "" {
-		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName)
+		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName, s.GetReportEnd())
 		if err != nil {
 			log.Errorf("Error from PrintJobDetailsReportFromDB: %v", err)
 		}
 	}
+}
+
+func (s *Server) printReportDate(w http.ResponseWriter, req *http.Request) {
+	reportDate := ""
+	if s.pinnedDateTime != nil {
+		reportDate = s.pinnedDateTime.Format(time.RFC3339)
+	}
+	api.RespondWithJSON(http.StatusOK, w, map[string]interface{}{"pinnedDateTime": reportDate})
 }
 
 func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -700,14 +718,14 @@ func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Reques
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintVariantReportFromDB(w, req, s.db, release)
+		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		api.PrintJobsReportFromDB(w, req, s.db, release)
+		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
@@ -721,7 +739,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts)
+		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
 			log.WithError(err).Error("error")
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -756,7 +774,97 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	api.PrintJobsRunsReportFromDB(w, req, s.db)
+	release := s.getRelease(req)
+
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		return
+	}
+
+	pagination, err := getPaginationParams(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not parse pagination options: " + err.Error()})
+		return
+	}
+
+	result, err := api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination, s.GetReportEnd())
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
+// jsonJobRunRiskAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
+// pass rates for each failed test, on-going incidents, and other factors.
+//
+// This API can be called in two ways, a GET with a prow_job_run_id query param, or a GET with a
+// partial ProwJobRun struct serialized as json in the request body. The ID version will return the
+// stored analysis for the job when it was imported into sippy. The other version is a transient
+// request to be used when sippy has not yet imported the job, but we wish to analyze the failure risk.
+// Soon, we expect the transient version is called from CI to get a risk analysis json result, which will
+// be stored in the job run artifacts, then imported with the job run, and will ultimately be the
+// data that is returned by the get by ID version.
+func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request) {
+
+	jobRun := &models.ProwJobRun{}
+
+	// API path one where we return a risk analysis for a prow job run ID we already know about:
+	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	if jobRunIDStr != "" {
+
+		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "unable to parse prow_job_run_id: " + err.Error()})
+			return
+		}
+
+		// Load the ProwJobRun, ProwJob, and failed tests:
+		// TODO: we may want to expand to analyzing flakes here in the future
+		res := s.db.DB.Joins("ProwJob").
+			Preload("Tests", "status = 12").
+			Preload("Tests.Test").
+			Preload("Tests.Suite").First(jobRun, jobRunID)
+		if res.Error != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code": http.StatusBadRequest, "message": res.Error.Error()})
+			return
+		}
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&jobRun)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
+		return
+	}
+	// We don't expect the caller to fully populate the ProwJob, just it's name,
+	// override the input by looking up the actual ProwJob so we have access to release and variants.
+	job := &models.ProwJob{}
+	res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(&job)
+	if res.Error != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
+		return
+	}
+	jobRun.ProwJob = *job
+
+	log.Infof("job run = %+v", *jobRun)
+	result, err := api.JobRunRiskAnalysis(s.db, jobRun)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
@@ -773,7 +881,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	start, boundary, end := getPeriodDates("default", req)
+	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
@@ -783,7 +891,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	}
 
 	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
-		start, boundary, end, limit, sortField, sort, period)
+		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
@@ -814,7 +922,12 @@ func (s *Server) Serve() {
 			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
 			if _, err := fs.Open(fullPath); err != nil {
 				if !os.IsNotExist(err) {
-					panic(err)
+					w.WriteHeader(http.StatusNotFound)
+					w.Header().Set("Content-Type", "text/plain")
+					if _, err := w.Write([]byte(fmt.Sprintf("404 Not Found: %s", fullPath))); err != nil {
+						log.WithError(err).Warningf("could not write response")
+					}
+					return
 				}
 				r.URL.Path = "/sippy-ng/"
 			}
@@ -836,6 +949,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
+	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
@@ -855,6 +969,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
+	serveMux.HandleFunc("/api/report_date", s.printReportDate)
 
 	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)

@@ -27,6 +27,23 @@ const (
 	SortDescending Sort = "desc"
 )
 
+// PaginationResult is a type used by API endpoints that enable server-side
+// pagination. It wraps the returned rows  with page information such as page
+// size, which page, and the total rows.
+type PaginationResult struct {
+	Rows      interface{} `json:"rows"`
+	PageSize  int         `json:"page_size"`
+	Page      int         `json:"page"`
+	TotalRows int64       `json:"total_rows"`
+}
+
+// Pagination is a type used to request specific per-page and offset values
+// in an API request.
+type Pagination struct {
+	PerPage int `json:"per_page"`
+	Page    int `json:"page"`
+}
+
 type Repository struct {
 	ID       int    `json:"id"`
 	Org      string `json:"org"`
@@ -675,3 +692,35 @@ type TestOutput struct {
 	URL    string `json:"url"`
 	Output string `json:"output"`
 }
+
+type ProwJobRunRiskAnalysis struct {
+	ProwJobName  string
+	ProwJobRunID uint
+	Tests        []ProwJobRunTestRiskAnalysis
+	OverallRisk  FailureRisk
+	OpenBugs     []models.Bug
+}
+
+type ProwJobRunTestRiskAnalysis struct {
+	Name     string
+	Risk     FailureRisk
+	OpenBugs []models.Bug
+}
+
+type FailureRisk struct {
+	Level   RiskLevel
+	Reasons []string
+}
+
+type RiskLevel struct {
+	// Name is a human readable name for the given risk level.
+	Name string
+	// Level represents a numerical risk level, higher implies more risk.
+	Level int
+}
+
+var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
+var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
+var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 5}
+var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 7}
+var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 10}

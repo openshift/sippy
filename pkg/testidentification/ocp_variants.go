@@ -25,7 +25,8 @@ var (
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
 	// metal-ipi jobs do not have a trailing -version segment
-	metalIPIRegex = regexp.MustCompile(`(?i)-metal-ipi`)
+	metalIPIRegex   = regexp.MustCompile(`(?i)-metal-ipi`)
+	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
 	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
 	// 3.11 gcp jobs don't have a trailing -version segment
@@ -66,6 +67,7 @@ var (
 		"metal-assisted",
 		"metal-ipi",
 		"metal-upi",
+		"microshift",
 		"never-stable",
 		"openstack",
 		"osd",
@@ -101,6 +103,8 @@ var (
 		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
 		"periodic-ci-openshift-release-master-nightly-4.11-e2e-azurestack-csi",
 		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azurestack-csi",
+		"periodic-ci-openshift-microshift-main-periodic-ocp-4.12-conformance-serial",
+		"periodic-ci-openshift-microshift-main-periodic-ocp-4.12-conformance-parallel",
 
 		// These will fail until there's a stable 4.10 build
 		"periodic-ci-openshift-release-master-ci-4.11-upgrade-from-stable-4.10-e2e-aws-upgrade-infra",
@@ -241,6 +245,7 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
 		variants = append(variants, "promote")
 		return variants
 	}
+
 	// If a job is an aggregation, it should only be bucketed in
 	// `aggregated`. Pushing it into other variants causes unwanted
 	// hysteresis for test and job pass rates. The jobs that compose
@@ -285,6 +290,9 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
 	}
 
 	// Other
+	if microshiftRegex.MatchString(jobName) {
+		variants = append(variants, "microshift")
+	}
 	if hypershiftRegex.MatchString(jobName) {
 		variants = append(variants, "hypershift")
 	}

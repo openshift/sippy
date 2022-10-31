@@ -23,7 +23,8 @@ type ProwJob struct {
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[]"`
 	TestGridURL string
-	Bugs        []Bug `gorm:"many2many:bug_jobs;"`
+	Bugs        []Bug        `gorm:"many2many:bug_jobs;"`
+	JobRuns     []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used
@@ -46,8 +47,8 @@ type ProwJobRun struct {
 
 	URL          string
 	TestFailures int
-	Tests        []ProwJobRunTest
-	PullRequests []ProwPullRequest `gorm:"many2many:prow_job_run_prow_pull_requests;"`
+	Tests        []ProwJobRunTest  `gorm:"constraint:OnDelete:CASCADE;"`
+	PullRequests []ProwPullRequest `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
@@ -75,19 +76,20 @@ type ProwJobRunTest struct {
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
 	SuiteID   *uint `gorm:"index"`
-	Status    int   // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
+	Suite     Suite
+	Status    int // would like to use smallint here, but gorm auto-migrate breaks trying to change the type every start
 	Duration  float64
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
 
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
 	// we can keep the test result for a longer period of time than we keep the full failure output.
-	ProwJobRunTestOutput *ProwJobRunTestOutput
+	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type ProwJobRunTestOutput struct {
 	gorm.Model
-	ProwJobRunTestID uint `gorm:"constraint:OnDelete:SET NULL;"`
+	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string
 }
@@ -132,8 +134,8 @@ type Bug struct {
 	FixVersions     pq.StringArray `json:"fix_versions" gorm:"type:text[]"`
 	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
 	URL             string         `json:"url"`
-	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;"`
-	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;"`
+	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;constraint:OnDelete:CASCADE;"`
+	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;constraint:OnDelete:CASCADE;"`
 }
 
 // ProwPullRequest represents a GitHub pull request, there can be multiple entries

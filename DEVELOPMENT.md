@@ -2,7 +2,9 @@
 
 Running `make` will build an all-in-one binary that contains both the go app and frontend.
 
-To build just the backend, run `go build -mod=vendor .`
+To build just the backend, run `mkdir -p sippy-ng/build; touch sippy-ng/build/index.html; go build -mod=vendor .`.
+Note you have to `mkdir sippy-ng/build` and create a file in it first, otherwise you will get an error like
+`main.go:36:12: pattern sippy-ng/build: no matching files found`.
 
 ## Create PostgreSQL Database
 
@@ -30,11 +32,16 @@ Sippy obtains data from multiple sources:
 
 ### From a Prod Sippy Backup
 
-The simplest way to fetch data for Sippy, is to just get a copy of the production database. See the TRT team drive in
-Google, periodically there is a gzip'd backup stored there. Restore it locally with:
+The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:
 
 ```bash
 psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
+```
+
+or with a command like this if you are using the custom format file:
+
+```bash
+pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -C -d postgres ./sippy-backup-2022-10-20.dump
 ```
 
 ### From TestGrid
@@ -145,4 +152,14 @@ See [Sippy front-end docs](sippy-ng/README.md]) for more details about developin
 
 ```bash
 cd sippy-ng && npm start
+```
+
+## Run E2E Tests
+
+Sippy has a currently basic/minimal set of e2e tests which run a temporary postgres container, load the database with an
+older release with fewer runs, launch the API, and run a few tests against it to verify things are working.
+This runs as a presubmit on the repo, but developers can also run locally if they have a GCS service account JSON credential file.
+
+```bash
+GCS_SA_JSON_PATH=~/creds/openshift-ci-data-analysis.json make e2e
 ```

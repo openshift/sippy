@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	"flag"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -30,6 +29,7 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -62,6 +62,7 @@ type Options struct {
 	InitDatabase                       bool
 	LoadDatabase                       bool
 	ListenAddr                         string
+	MetricsAddr                        string
 	Server                             bool
 	DBOnlyMode                         bool
 	SkipBugLookup                      bool
@@ -73,6 +74,7 @@ type Options struct {
 	Config                             string
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
+	PinnedDateTime                     string
 }
 
 func main() {
@@ -84,6 +86,7 @@ func main() {
 		FailureClusterThreshold: 10,
 		StartDay:                0,
 		ListenAddr:              ":8080",
+		MetricsAddr:             ":2112",
 	}
 
 	cmd := &cobra.Command{
@@ -118,7 +121,8 @@ func main() {
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
-	flag.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on")
+	flags.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on (default :8080)")
+	flags.StringVar(&opt.MetricsAddr, "listen-metrics", opt.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
@@ -132,6 +136,8 @@ func main() {
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
+
+	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use in a historical context with a fixed date / time value specified in RFC3339 format - 2006-01-02 15:04:05+00:00")
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
@@ -270,6 +276,21 @@ func (o *Options) Run() error { //nolint:gocyclo
 		}
 	}
 
+	var pinnedTime *time.Time
+
+	if len(o.PinnedDateTime) > 0 {
+		parsedTime, err := time.Parse(time.RFC3339, o.PinnedDateTime)
+
+		if err != nil {
+			log.WithError(err).Fatal("Error parsing pinnedDateTime")
+		} else {
+			log.Infof("Set time now to %s", parsedTime)
+		}
+
+		// we made it here so parsedTime represents the pinnedTime and there was no error parsing
+		pinnedTime = &parsedTime
+	}
+
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
@@ -291,7 +312,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 			if err != nil {
 				return err
 			}
-			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir)
+			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir, util.GetReportEnd(pinnedTime))
 			if err != nil {
 				return err
 			}
@@ -304,12 +325,12 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		_, err := db.New(o.DSN)
+		_, err := db.New(o.DSN, pinnedTime)
 		return err
 	}
 
 	if o.LoadDatabase {
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, pinnedTime)
 		if err != nil {
 			return err
 		}
@@ -326,7 +347,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
 				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
-					o.StartDay, o.NumDays)
+					o.StartDay, o.NumDays, util.GetReportEnd(pinnedTime))
 				if err != nil {
 					log.WithError(err).Error("error loading database")
 					return err
@@ -394,17 +415,17 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.Server {
-		return o.runServerMode()
+		return o.runServerMode(pinnedTime)
 	}
 
 	return nil
 }
 
-func (o *Options) runServerMode() error {
+func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN)
+		dbc, err = db.New(o.DSN, pinnedDateTime)
 		if err != nil {
 			return err
 		}
@@ -427,11 +448,12 @@ func (o *Options) runServerMode() error {
 		webRoot,
 		&static,
 		dbc,
+		pinnedDateTime,
 	)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":2112", nil)
+		err := http.ListenAndServe(o.MetricsAddr, nil)
 		if err != nil {
 			panic(err)
 		}
