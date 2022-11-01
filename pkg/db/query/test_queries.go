@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -247,7 +248,7 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 
 	res := q.
 		Select("prow_job_runs.url, output").
-		Order("prow_job_run_test_outputs.created_at").
+		Order("prow_job_run_test_outputs.id DESC").
 		Limit(quantity).
 		Scan(&results)
 
