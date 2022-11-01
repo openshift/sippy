@@ -390,6 +390,9 @@ func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues 
 				}
 				candidates := []jira.Issue{}
 				for _, issue := range issues {
+					if issue.Fields == nil {
+						continue
+					}
 					for _, version := range issue.Fields.AffectsVersions {
 						if job.Release == version.Name || strings.HasPrefix(version.Name, job.Release+".") {
 							candidates = append(candidates, issue)
