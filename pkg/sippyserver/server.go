@@ -13,9 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/openshift/sippy/pkg/db/models"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
@@ -484,9 +485,10 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 			"code":    http.StatusInternalServerError,
 			"message": "error processing filter options",
 		})
+		return
 	}
 
-	outputs, err := api.PrintTestDurationsFromDB(s.db, release, testName, filters)
+	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
@@ -519,9 +521,10 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 			"code":    http.StatusInternalServerError,
 			"message": "error processing filter options",
 		})
+		return
 	}
 
-	outputs, err := api.PrintTestOutputsFromDB(s.db, release, testName, filters, 10)
+	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{

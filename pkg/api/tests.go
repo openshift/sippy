@@ -34,7 +34,7 @@ func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubs
 	RespondWithJSON(http.StatusOK, w, responseStr)
 }
 
-func PrintTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filter, quantity int) ([]apitype.TestOutput, error) {
+func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filter, quantity int) ([]apitype.TestOutput, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {
@@ -51,7 +51,7 @@ func PrintTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
-func PrintTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
+func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {
