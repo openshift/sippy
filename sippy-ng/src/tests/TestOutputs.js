@@ -91,7 +91,14 @@ export function TestOutputs(props) {
           <TableBody>
             {outputs.map((v, index) => (
               <TableRow key={`output-${index}`}>
-                <TableCell>
+                <TableCell
+                  style={{
+                    width: '70vw',
+                    maxWidth: '70vw',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
                   <pre style={{ whiteSpace: 'pre-wrap' }}>{v.output}</pre>
                 </TableCell>
                 <TableCell align="center" style={{ verticalAlign: 'top' }}>
