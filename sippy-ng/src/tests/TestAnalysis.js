@@ -1,7 +1,7 @@
 import './TestAnalysis.css'
 import './TestTable.css'
-import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
+  Box,
   Button,
   Card,
   Container,
@@ -9,6 +9,7 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
+import { BugReport, DirectionsRun } from '@material-ui/icons'
 import {
   filterFor,
   not,
@@ -19,10 +20,10 @@ import {
   searchCI,
   withSort,
 } from '../helpers'
-import { Line, PolarArea } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
-import { scale } from 'chroma-js'
 import { TEST_THRESHOLDS } from '../constants'
+import { TestDurationChart } from './TestDurationChart'
+import { TestOutputs } from './TestOutputs'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import BugTable from '../bugzilla/BugTable'
@@ -35,11 +36,11 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
+import TestPassRateCharts from './TestPassRateCharts'
 import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [analysis, setAnalysis] = React.useState({ by_day: {} })
   const [bugs, setBugs] = React.useState([])
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
@@ -72,20 +73,13 @@ export function TestAnalysis(props) {
 
     Promise.all([
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests/analysis?release=${props.release}&test=${testName}&filter=${filter}`
-      ),
-      fetch(
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
       fetch(
         `${process.env.REACT_APP_API_URL}/api/tests/bugs?test=${testName}&filter=${filter}`
       ),
     ])
-      .then(([analysis, test, bugs]) => {
-        if (analysis.status !== 200) {
-          throw new Error('server returned ' + analysis.status)
-        }
-
+      .then(([test, bugs]) => {
         if (test.status !== 200) {
           throw new Error('server returned ' + test.status)
         }
@@ -93,21 +87,16 @@ export function TestAnalysis(props) {
         if (bugs.status !== 200) {
           throw new Error('server returned ' + bugs.status)
         }
-        return Promise.all([analysis.json(), test.json(), bugs.json()])
+        return Promise.all([test.json(), bugs.json()])
       })
-      .then(([analysis, test, bugs]) => {
-        if (test.length === 0) {
-          return <Typography variant="h5">No data for this test.</Typography>
-        }
-
-        setAnalysis(analysis)
+      .then(([test, bugs]) => {
         setTest(test[0])
         setBugs(bugs)
         setLoaded(true)
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve test analysis ' + props.release + ', ' + error
+          'Could not retrieve test data ' + props.release + ', ' + error
         )
       })
   }
@@ -124,253 +113,6 @@ export function TestAnalysis(props) {
     return <p>Loading...</p>
   }
 
-  const percentage = (passes, runs) => {
-    return (100 * (passes / runs)).toFixed(2)
-  }
-
-  const byJobChart = {
-    labels: Object.keys(analysis.by_day),
-    datasets: [
-      {
-        type: 'line',
-        label: 'overall',
-        tension: 0.25,
-        borderColor: 'black',
-        backgroundColor: 'black',
-        fill: false,
-        data: Object.keys(analysis.by_day).map((key) => {
-          const passes = analysis.by_day[key].overall.passes
-          const runs = analysis.by_day[key].overall.runs
-
-          return percentage(passes, runs)
-        }),
-      },
-    ],
-  }
-
-  const byVariantChart = {
-    labels: Object.keys(analysis.by_day),
-    datasets: [
-      {
-        type: 'line',
-        label: 'overall',
-        tension: 0.25,
-        borderColor: 'black',
-        backgroundColor: 'black',
-        fill: false,
-        data: Object.keys(analysis.by_day).map((key) => {
-          const passes = analysis.by_day[key].overall.passes
-          const runs = analysis.by_day[key].overall.runs
-
-          return percentage(passes, runs)
-        }),
-      },
-    ],
-  }
-
-  // Get list of jobs in this data set
-  const jobs = new Set()
-
-  // Get a list of variants in this data set
-  const variants = new Set()
-  const variantFailures = []
-
-  Object.keys(analysis.by_day).forEach((key) => {
-    Object.keys(analysis.by_day[key].by_variant || {}).forEach((variant) => {
-      variants.add(variant)
-    })
-
-    Object.keys(analysis.by_day[key].by_job || {}).forEach((job) => {
-      // Omit jobs that never failed
-      if (
-        analysis.by_day[key].by_job[job].failures > 0 ||
-        analysis.by_day[key].by_job[job].flakes > 0
-      ) {
-        jobs.add(job)
-      }
-    })
-  })
-
-  const colors = scale('Set2').mode('lch').colors(jobs.size)
-
-  const byJobChartOptions = {
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: function (context) {
-            let passes, failures, flakes, runs
-
-            if (context.dataset.label === 'overall') {
-              passes = analysis.by_day[context.label].overall.passes || 0
-              flakes = analysis.by_day[context.label].overall.flakes || 0
-              failures = analysis.by_day[context.label].overall.failures || 0
-            } else {
-              passes = analysis.by_day[context.label].by_job[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_job[context.dataset.label]
-                    .passes
-                : 0
-
-              failures = analysis.by_day[context.label].by_job[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_job[context.dataset.label]
-                    .failures
-                : 0
-
-              flakes = analysis.by_day[context.label].by_job[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_job[context.dataset.label]
-                    .flakes
-                : 0
-            }
-
-            return `${context.dataset.label} ${context.raw}% (${passes} passed, ${failures} failed, ${flakes} flaked)`
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        max: 100,
-        ticks: {
-          callback: (value, index, values) => {
-            return `${value}%`
-          },
-        },
-      },
-    },
-  }
-
-  const byVariantChartOptions = {
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: function (context) {
-            let passes, failures, flakes
-
-            if (context.dataset.label === 'overall') {
-              passes = analysis.by_day[context.label].overall.passes || 0
-              flakes = analysis.by_day[context.label].overall.flakes || 0
-              failures = analysis.by_day[context.label].overall.failures || 0
-            } else {
-              passes = analysis.by_day[context.label].by_variant[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_variant[
-                    context.dataset.label
-                  ].passes
-                : 0
-
-              failures = analysis.by_day[context.label].by_variant[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_variant[
-                    context.dataset.label
-                  ].failures
-                : 0
-
-              flakes = analysis.by_day[context.label].by_variant[
-                context.dataset.label
-              ]
-                ? analysis.by_day[context.label].by_variant[
-                    context.dataset.label
-                  ].flakes
-                : 0
-            }
-
-            return `${context.dataset.label} ${context.raw}% (${passes} passed, ${failures} failed, ${flakes} flaked)`
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        max: 100,
-        ticks: {
-          callback: (value, index, values) => {
-            return `${value}%`
-          },
-        },
-      },
-    },
-  }
-
-  let index = 0
-  variants.forEach((variant) => {
-    variantFailures.push(
-      Object.keys(analysis.by_day)
-        .map((key) => {
-          return analysis.by_day[key].by_variant[variant]
-            ? analysis.by_day[key].by_variant[variant].failures
-            : 0
-        })
-        .reduce((acc, val) => acc + val)
-    )
-
-    byVariantChart.datasets.push({
-      type: 'line',
-      label: `${variant}`,
-      tension: 0.25,
-      yAxisID: 'y',
-      borderColor: colors[index],
-      backgroundColor: colors[index],
-      data: Object.keys(analysis.by_day).map((key) => {
-        const passes = analysis.by_day[key].by_variant[variant]
-          ? analysis.by_day[key].by_variant[variant].passes
-          : 0
-        const runs = analysis.by_day[key].by_variant[variant]
-          ? analysis.by_day[key].by_variant[variant].runs
-          : 0
-        // Percentage of variant runs not exhibiting failure, i.e.
-        // an approximation of the pass rate
-        return percentage(passes, runs)
-      }),
-    })
-
-    index++
-  })
-
-  index = 0
-  jobs.forEach((job) => {
-    byJobChart.datasets.push({
-      type: 'line',
-      label: `${job}`,
-      tension: 0.25,
-      yAxisID: 'y',
-      borderColor: colors[index],
-      backgroundColor: colors[index],
-      data: Object.keys(analysis.by_day).map((key) => {
-        const passes = analysis.by_day[key].by_job[job]
-          ? analysis.by_day[key].by_job[job].passes
-          : 0
-        const runs = analysis.by_day[key].by_job[job]
-          ? analysis.by_day[key].by_job[job].runs
-          : 0
-        // Percentage of job runs not exhibiting failure, i.e.
-        // an approximation of the pass rate
-        return percentage(passes, runs)
-      }),
-    })
-
-    index++
-  })
-
-  const variantPolar = {
-    labels: Array.from(variants),
-    datasets: [
-      {
-        label: '# of Failures',
-        data: variantFailures,
-        lineTension: 0.4,
-        backgroundColor: colors,
-        borderWidth: 1,
-      },
-    ],
-  }
-
   return (
     <Fragment>
       <SimpleBreadcrumbs
@@ -384,9 +126,8 @@ export function TestAnalysis(props) {
           Test Analysis
         </Typography>
         <Divider style={{ margin: 20 }} />
-
         <Grid container spacing={3} alignItems="stretch">
-          <Grid item md={3}>
+          <Grid item md={4}>
             <SummaryCard
               key="test-summary"
               threshold={TEST_THRESHOLDS}
@@ -407,17 +148,7 @@ export function TestAnalysis(props) {
               fail={test.current_failures}
             />
           </Grid>
-          <Grid item md={3}>
-            <Card
-              className="test-failure-card"
-              elevation={5}
-              style={{ height: '100%' }}
-            >
-              <Typography variant="h5">Failure count by variant</Typography>
-              <PolarArea data={variantPolar} />
-            </Card>
-          </Grid>
-          <Grid item md={6}>
+          <Grid item md={8}>
             <Card
               className="test-failure-card"
               elevation={5}
@@ -528,6 +259,7 @@ export function TestAnalysis(props) {
                 </Tooltip>
               </Typography>
               <TestTable
+                simpleLoading={true}
                 pageSize={5}
                 hideControls={true}
                 collapse={false}
@@ -539,31 +271,57 @@ export function TestAnalysis(props) {
             </Card>
           </Grid>
 
-          <Grid item md={12}>
-            <Card className="test-failure-card" elevation={5}>
-              <Typography variant="h5">
-                Pass Rate By Job
-                <Tooltip title="Only jobs with at least one failure over the reporting period are shown individually.">
-                  <InfoIcon />
-                </Tooltip>
-              </Typography>
-              <Line data={byJobChart} options={byJobChartOptions} height={80} />
-            </Card>
-          </Grid>
+          <TestPassRateCharts
+            test={testName}
+            release={props.release}
+            filterModel={filterModel}
+          />
 
           <Grid item md={12}>
             <Card className="test-failure-card" elevation={5}>
               <Typography variant="h5">
-                Pass Rate By Variant
-                <Tooltip title="Test pass rate is approximated by number of job runs on the given day without a test failure. Only variants with at least one failure over the reporting period are shown individually.">
+                Average Test Duration (Seconds)
+                <Tooltip title={<p>Shows the average test duration by day.</p>}>
                   <InfoIcon />
                 </Tooltip>
               </Typography>
-              <Line
-                data={byVariantChart}
-                options={byVariantChartOptions}
-                height={80}
+              <TestDurationChart
+                release={props.release}
+                test={testName}
+                filterModel={filterModel}
               />
+            </Card>
+          </Grid>
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Most Recent Failure Outputs
+                <Tooltip
+                  title={
+                    <p>
+                      Shows the outputs from at most the last 10 failures with a
+                      link to the Prow job run.
+                    </p>
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <Box
+                style={{
+                  maxHeight: '35vh',
+                  minHeight: '35vh',
+                  overflow: 'auto',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <TestOutputs
+                  release={props.release}
+                  test={testName}
+                  filterModel={filterModel}
+                />
+              </Box>
             </Card>
           </Grid>
         </Grid>

@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -224,4 +225,66 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id AND stats.stats_suite_name IS NOT DISTINCT FROM %s.suite_name`, table, table), stats).
 		Where(`release = ?`, release).
 		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
+}
+
+func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
+	results := make([]api.TestOutput, 0)
+	q := dbc.DB.Table("prow_job_run_test_outputs").
+		Joins("JOIN prow_job_run_tests ON prow_job_run_test_outputs.prow_job_run_test_id = prow_job_run_tests.id").
+		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
+		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
+		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
+		Where("tests.name = ?", test).
+		Where("NOT 'aggregated' = any(prow_jobs.variants)").
+		Where("prow_jobs.release = ?", release)
+
+	for _, variant := range includedVariants {
+		q = q.Where("? = any(prow_jobs.variants)", variant)
+	}
+
+	for _, variant := range excludedVariants {
+		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+	}
+
+	res := q.
+		Select("prow_job_runs.url, output").
+		Order("prow_job_run_test_outputs.id DESC").
+		Limit(quantity).
+		Scan(&results)
+
+	return results, res.Error
+}
+
+func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedVariants []string) (map[string]float64, error) {
+	type testDuration struct {
+		Period          time.Time `json:"period"`
+		AverageDuration float64   `json:"average_duration"`
+	}
+	rows := make([]testDuration, 0)
+	results := make(map[string]float64)
+
+	q := dbc.DB.Table("prow_job_run_tests").
+		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
+		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
+		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
+		Where("prow_job_runs.timestamp > current_date - interval '14' day").
+		Where("tests.name = ?", test).
+		Where("prow_jobs.release = ?", release)
+
+	for _, variant := range includedVariants {
+		q = q.Where("? = any(prow_jobs.variants)", variant)
+	}
+
+	for _, variant := range excludedVariants {
+		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+	}
+
+	res := q.Select("prow_job_runs.timestamp::date as period, AVG(prow_job_run_tests.duration) as average_duration").
+		Group("prow_job_runs.timestamp::date").Order("prow_job_runs.timestamp::date").Scan(&rows)
+
+	for _, row := range rows {
+		results[row.Period.Format("2006-01-02")] = row.AverageDuration
+	}
+
+	return results, res.Error
 }

@@ -827,7 +827,7 @@ function TestTable(props) {
   }
 
   if (isLoaded === false) {
-    if (props.briefTable) {
+    if (props.briefTable || props.simpleLoading) {
       return <p>Loading...</p>
     } else {
       return (
@@ -952,6 +952,7 @@ TestTable.defaultProps = {
   view: 'Working',
   rowsPerPageOptions: [5, 10, 25, 50, 100],
   briefTable: false,
+  simpleLoading: false,
   filterModel: {
     items: [],
   },
@@ -964,6 +965,7 @@ TestTable.propTypes = {
   collapse: PropTypes.bool,
   overall: PropTypes.bool,
   hideControls: PropTypes.bool,
+  simpleLoading: PropTypes.bool,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,

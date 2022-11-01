@@ -13,9 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/openshift/sippy/pkg/db/models"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
@@ -463,6 +464,78 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, bugs)
 }
 
+func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release == "" {
+		return
+	}
+
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+
+	filters, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error processing filter options",
+		})
+		return
+	}
+
+	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying test outputs from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
+func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request) {
+	release := s.getReleaseOrFail(w, req)
+	if release == "" {
+		return
+	}
+
+	testName := req.URL.Query().Get("test")
+	if testName == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "'test' is required.",
+		})
+		return
+	}
+
+	filters, err := filter.ExtractFilters(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error processing filter options",
+		})
+		return
+	}
+
+	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from db")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying test outputs from db",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getRelease(req)
 
@@ -889,6 +962,8 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
+	serveMux.HandleFunc("/api/tests/outputs", s.jsonTestOutputsFromDB)
+	serveMux.HandleFunc("/api/tests/durations", s.jsonTestDurationsFromDB)
 	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)

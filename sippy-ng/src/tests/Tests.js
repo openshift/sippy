@@ -18,7 +18,6 @@ import {
   useRouteMatch,
 } from 'react-router-dom'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-import TestDetails from './TestsDetail'
 import TestTable from './TestTable'
 
 /**
