@@ -234,6 +234,7 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("tests.name = ?", test).
+		Where("NOT 'aggregated' = any(prow_jobs.variants)").
 		Where("prow_jobs.release = ?", release)
 
 	for _, variant := range includedVariants {

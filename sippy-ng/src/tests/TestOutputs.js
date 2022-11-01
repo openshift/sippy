@@ -1,5 +1,6 @@
 import {
   Button,
+  CircularProgress,
   Paper,
   Table,
   TableBody,
@@ -76,7 +77,7 @@ export function TestOutputs(props) {
   }
 
   if (!isLoaded) {
-    return <p>Loading...</p>
+    return <CircularProgress color="inherit" />
   }
 
   if (outputs.length === 0) {
