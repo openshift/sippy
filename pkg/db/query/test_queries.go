@@ -279,8 +279,13 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
 	}
 
-	res := q.Select("prow_job_runs.timestamp::date as period, AVG(prow_job_run_tests.duration) as average_duration").
-		Group("prow_job_runs.timestamp::date").Order("prow_job_runs.timestamp::date").Scan(&rows)
+	res := q.
+		Select(`
+			date("timestamp" AT TIME ZONE 'UTC'::text) as period,
+			AVG(prow_job_run_tests.duration) as average_duration`).
+		Group(`date("timestamp" AT TIME ZONE 'UTC'::text)`).
+		Order(`date("timestamp" AT TIME ZONE 'UTC'::text)`).
+		Scan(&rows)
 
 	for _, row := range rows {
 		results[row.Period.Format("2006-01-02")] = row.AverageDuration
