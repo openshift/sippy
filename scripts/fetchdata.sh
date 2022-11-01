@@ -18,6 +18,7 @@ while [ true ]; do
     --release 4.10 \
     --release 4.11 \
     --release 4.12 \
+    --release 4.13 \
     --release Presubmits \
     --arch amd64 \
     --arch arm64 \

@@ -46,6 +46,10 @@ spec:
         - --local-data
         - /data
         - --release
+        - "4.13"
+        - --release
+        - "4.12"
+        - --release
         - "4.11"
         - --release
         - "4.10"
