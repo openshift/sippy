@@ -16,7 +16,7 @@ var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "release", "variants", "suite_name"},
+		IndexColumns: []string{"id", "name", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
@@ -26,7 +26,7 @@ var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_report_2d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "release", "variants", "suite_name"},
+		IndexColumns: []string{"id", "name", "release", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",
@@ -36,12 +36,12 @@ var PostgresMatViews = []PostgresMaterializedView{
 	{
 		Name:         "prow_test_analysis_by_variant_14d_matview",
 		Definition:   testAnalysisByVariantMatView,
-		IndexColumns: []string{"test_id", "date", "variant", "release"},
+		IndexColumns: []string{"test_id", "test_name", "date", "variant", "release"},
 	},
 	{
 		Name:         "prow_test_analysis_by_job_14d_matview",
 		Definition:   testAnalysisByJobMatView,
-		IndexColumns: []string{"test_id", "date", "job_name"},
+		IndexColumns: []string{"test_id", "test_name", "date", "job_name"},
 	},
 	{
 		Name:         "prow_job_runs_report_matview",
