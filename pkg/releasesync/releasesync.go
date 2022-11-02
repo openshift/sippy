@@ -223,7 +223,18 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 
 	if jobs, ok := details.Results["blockingJobs"]; ok {
 		for platform, jobResult := range jobs {
-			id := idFromURL(jobResult.URL)
+			id, err := idFromURL(jobResult.URL)
+			if id == 0 || err != nil {
+				log.WithFields(map[string]interface{}{
+					"id":         id,
+					"releaseTag": details.Name,
+					"url":        jobResult.URL,
+					"platform":   platform,
+					"error":      err,
+				}).Warningf("invalid ID or missing URL for job")
+				continue
+			}
+
 			results[id] = models.ReleaseJobRun{
 				Name:           id,
 				JobName:        platform,
@@ -238,7 +249,18 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 
 	if jobs, ok := details.Results["informingJobs"]; ok {
 		for platform, jobResult := range jobs {
-			id := idFromURL(jobResult.URL)
+			id, err := idFromURL(jobResult.URL)
+			if id == 0 || err != nil {
+				log.WithFields(map[string]interface{}{
+					"id":         id,
+					"releaseTag": details.Name,
+					"url":        jobResult.URL,
+					"platform":   platform,
+					"error":      err,
+				}).Warningf("invalid ID or missing URL for job")
+				continue
+			}
+
 			results[id] = models.ReleaseJobRun{
 				Name:           id,
 				JobName:        platform,
@@ -254,7 +276,17 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	// For all upgrades, update the row for the corresponding prow job.
 	for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
 		for _, run := range upgrade.History {
-			id := idFromURL(run.URL)
+			id, err := idFromURL(run.URL)
+			if id == 0 || err != nil {
+				log.WithFields(map[string]interface{}{
+					"id":         id,
+					"releaseTag": details.Name,
+					"url":        run.URL,
+					"error":      err,
+				}).Warningf("invalid ID or missing URL for job")
+				continue
+			}
+
 			if result, ok := results[id]; ok {
 				result.Upgrade = true
 				result.UpgradesFrom = upgrade.From
@@ -271,16 +303,20 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 	return rows
 }
 
-func idFromURL(prowURL string) uint {
+func idFromURL(prowURL string) (uint, error) {
+	if prowURL == "" {
+		return 0, fmt.Errorf("prowURL should not be blank")
+	}
+
 	parsed, err := url.Parse(prowURL)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
 	base := path.Base(parsed.Path)
 	prowID, err := strconv.ParseUint(base, 10, 64)
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return uint(prowID)
+	return uint(prowID), nil
 }
