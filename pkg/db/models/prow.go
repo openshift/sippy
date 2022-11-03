@@ -21,7 +21,7 @@ type ProwJob struct {
 	Kind        ProwKind
 	Name        string         `gorm:"unique"`
 	Release     string         `gorm:"varchar(10)"`
-	Variants    pq.StringArray `gorm:"type:text[]"`
+	Variants    pq.StringArray `gorm:"index;type:text[]"`
 	TestGridURL string
 	Bugs        []Bug        `gorm:"many2many:bug_jobs;"`
 	JobRuns     []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
@@ -55,7 +55,7 @@ type ProwJobRun struct {
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
 	KnownFailure  bool
 	Succeeded     bool
-	Timestamp     time.Time `gorm:"index"`
+	Timestamp     time.Time `gorm:"index;index:idx_prow_job_runs_timestamp_date,expression:DATE(timestamp AT TIME ZONE 'UTC')"`
 	Duration      time.Duration
 	OverallResult v1.JobOverallResult `gorm:"index"`
 }
