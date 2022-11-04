@@ -163,3 +163,30 @@ This runs as a presubmit on the repo, but developers can also run locally if the
 ```bash
 GCS_SA_JSON_PATH=~/creds/openshift-ci-data-analysis.json make e2e
 ```
+
+## Running the sippy e2e tests
+
+The sippy e2e tests run in
+[prow](https://prow.ci.openshift.org/job-history/gs/origin-ci-test/pr-logs/directory/pull-ci-openshift-sippy-master-e2e)
+as part of CI using the [scripts](e2e-scripts) in this repo.
+
+You can also run them locally using your own Kubernetes cluster.  These Kubernetes types have been tested:
+
+* [Minikube](https://minikube.sigs.k8s.io/docs/) on MacOS and Linux
+* [K3s](https://k3s.io/) on Linux
+* [Redhat Openshift Local](https://developers.redhat.com/products/openshift-local/overview)
+
+Setup you Kubernetes cluster, login, set context to your Kubernetes cluster, and run the
+[run-e2e.sh](e2e-scripts/run-e2e.sh) script like this:
+
+```
+  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+```
+
+Include and set the `DOCKERCONFIGJSON` variable appropriately if using a private container registry.
+
+To skip the `docker build` and `docker push` steps, set `SKIP_BUILD=1' like this:
+
+```
+  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json SKIP_BUILD=1 e2e-scripts/run-e2e.sh
+```
