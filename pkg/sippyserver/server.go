@@ -837,26 +837,26 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 				"code": http.StatusBadRequest, "message": res.Error.Error()})
 			return
 		}
+	} else {
+		err := json.NewDecoder(req.Body).Decode(&jobRun)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
+			return
+		}
+		// We don't expect the caller to fully populate the ProwJob, just it's name,
+		// override the input by looking up the actual ProwJob so we have access to release and variants.
+		job := &models.ProwJob{}
+		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(job)
+		if res.Error != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
+			return
+		}
+		jobRun.ProwJob = *job
 	}
-
-	err := json.NewDecoder(req.Body).Decode(&jobRun)
-	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
-		return
-	}
-	// We don't expect the caller to fully populate the ProwJob, just it's name,
-	// override the input by looking up the actual ProwJob so we have access to release and variants.
-	job := &models.ProwJob{}
-	res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(&job)
-	if res.Error != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
-		return
-	}
-	jobRun.ProwJob = *job
 
 	log.Infof("job run = %+v", *jobRun)
 	result, err := api.JobRunRiskAnalysis(s.db, jobRun)
