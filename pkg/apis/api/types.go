@@ -696,6 +696,7 @@ type TestOutput struct {
 type ProwJobRunRiskAnalysis struct {
 	ProwJobName  string
 	ProwJobRunID uint
+	Release      string
 	Tests        []ProwJobRunTestRiskAnalysis
 	OverallRisk  FailureRisk
 	OpenBugs     []models.Bug
