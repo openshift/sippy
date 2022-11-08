@@ -184,6 +184,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	response := apitype.ProwJobRunRiskAnalysis{
 		ProwJobRunID: jobRun.ID,
 		ProwJobName:  jobRun.ProwJob.Name,
+		Release:      jobRun.ProwJob.Release,
 		Tests:        []apitype.ProwJobRunTestRiskAnalysis{},
 		OverallRisk: apitype.FailureRisk{
 			Level:   apitype.FailureRiskLevelNone,
