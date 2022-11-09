@@ -29,7 +29,11 @@ k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do.func1()
 created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x88}`,
 			expectedTags: []map[string]string{
-				{"alert": "ExtremelyHighIndividualControlPlaneCPU", "state": "fired"},
+				{
+					"alert":     "ExtremelyHighIndividualControlPlaneCPU",
+					"state":     "fired",
+					"namespace": "openshift-kube-apiserver",
+				},
 			},
 		},
 		{
@@ -50,8 +54,16 @@ k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do.func1()
 created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x8b}`,
 			expectedTags: []map[string]string{
-				{"alert": "ClusterOperatorDegraded", "state": "fired"},
-				{"alert": "TargetDown", "state": "fired"},
+				{
+					"alert":     "ClusterOperatorDegraded",
+					"state":     "fired",
+					"namespace": "openshift-cluster-version",
+				},
+				{
+					"alert":     "TargetDown",
+					"state":     "fired",
+					"namespace": "openshift-ovn-kubernetes",
+				},
 			},
 		},
 	}

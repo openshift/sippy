@@ -12,7 +12,7 @@ type TagExtractor struct {
 func (te *TagExtractor) GetTestRegexes() map[string][]*regexp.Regexp {
 	return map[string][]*regexp.Regexp{
 		"Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success": []*regexp.Regexp{
-			regexp.MustCompile(`alert (?P<alert>[^\s]+) (?P<state>pending|fired)`),
+			regexp.MustCompile(`alert (?P<alert>[^\s]+) (?P<state>pending|fired) .*namespace="(?P<namespace>[a-zA-Z0-9-]+)", .*?`),
 		},
 		"[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]": []*regexp.Regexp{},
 		"[sig-arch] events should not repeat pathologically":                   []*regexp.Regexp{},
