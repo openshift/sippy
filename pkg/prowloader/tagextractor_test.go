@@ -30,6 +30,25 @@ created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x88}`,
 			expectedTags: []string{"ExtremelyHighIndividualControlPlaneCPU"},
 		},
+		{
+			name:     "upgrade alerts 2 firing duplicated text",
+			testName: "Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success",
+			testOutput: `{Nov  9 06:45:48.894: Unexpected alerts fired or pending during the upgrade:
+
+alert ClusterOperatorDegraded fired for 4288 seconds with labels: {name="network", namespace="openshift-cluster-version", reason="RolloutHung", severity="warning"}
+alert TargetDown fired for 5887 seconds with labels: {job="ovnkube-node", namespace="openshift-ovn-kubernetes", service="ovn-kubernetes-node", severity="warning"} Failure Nov  9 06:45:48.894: Unexpected alerts fired or pending during the upgrade:
+
+alert ClusterOperatorDegraded fired for 4288 seconds with labels: {name="network", namespace="openshift-cluster-version", reason="RolloutHung", severity="warning"}
+alert TargetDown fired for 5887 seconds with labels: {job="ovnkube-node", namespace="openshift-ovn-kubernetes", service="ovn-kubernetes-node", severity="warning"}
+
+github.com/openshift/origin/test/extended/util/disruption.(*chaosMonkeyAdapter).Test(0xc004840aa0, 0xc0007cd290)
+	github.com/openshift/origin/test/extended/util/disruption/disruption.go:197 +0x315
+k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do.func1()
+	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:94 +0x6a
+created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
+	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x8b}`,
+			expectedTags: []string{"ClusterOperatorDegraded", "TargetDown"},
+		},
 	}
 
 	for _, tc := range tests {
