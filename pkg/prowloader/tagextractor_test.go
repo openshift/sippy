@@ -66,6 +66,12 @@ created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 				},
 			},
 		},
+		{
+			name:         "upgrade alerts no match",
+			testName:     "Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success",
+			testOutput:   `jibberish that won't match anything`,
+			expectedTags: []map[string]string{},
+		},
 	}
 
 	for _, tc := range tests {
