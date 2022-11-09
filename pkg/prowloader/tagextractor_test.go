@@ -11,7 +11,7 @@ func TestTagExtractor_ExtractTags(t *testing.T) {
 		name         string
 		testName     string
 		testOutput   string
-		expectedTags []string
+		expectedTags []map[string]string
 	}{
 		{
 			name:     "upgrade alerts 1 firing duplicated text",
@@ -28,7 +28,9 @@ k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do.func1()
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:94 +0x6a
 created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x88}`,
-			expectedTags: []string{"ExtremelyHighIndividualControlPlaneCPU"},
+			expectedTags: []map[string]string{
+				{"alert": "ExtremelyHighIndividualControlPlaneCPU", "state": "fired"},
+			},
 		},
 		{
 			name:     "upgrade alerts 2 firing duplicated text",
@@ -47,7 +49,10 @@ k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do.func1()
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:94 +0x6a
 created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 	k8s.io/kubernetes@v1.25.0/test/e2e/chaosmonkey/chaosmonkey.go:91 +0x8b}`,
-			expectedTags: []string{"ClusterOperatorDegraded", "TargetDown"},
+			expectedTags: []map[string]string{
+				{"alert": "ClusterOperatorDegraded", "state": "fired"},
+				{"alert": "TargetDown", "state": "fired"},
+			},
 		},
 	}
 

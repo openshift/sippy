@@ -2,9 +2,8 @@ package prowloader
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
-
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type TagExtractor struct {
@@ -21,27 +20,46 @@ func (te *TagExtractor) GetTestRegexes() map[string][]*regexp.Regexp {
 	}
 }
 
-func (te *TagExtractor) ExtractTags(name, output string) []string {
-	tags := sets.NewString()
+func (te *TagExtractor) ExtractTags(name, testOutput string) []map[string]string {
+	allMetadata := []map[string]string{}
 	testRegexes := te.GetTestRegexes()
 	regexes, ok := testRegexes[name]
 	if !ok {
-		return tags.List()
+		// We have no regexes for this test:
+		return allMetadata
 	}
-	for _, rx := range regexes {
-		groupNames := rx.SubexpNames()
-		fmt.Printf("groupNames = %s\n", groupNames)
-		matches := rx.FindAllStringSubmatch(output, -1)
-		for _, m := range matches {
-			for i, name := range m {
-				if groupNames[i] != "" {
-					fmt.Printf("%d %s = %s\n", i, groupNames[i], name)
+	for _, re := range regexes {
+		matchMaps := findAllNamedMatches(re, testOutput)
+		fmt.Printf("%v\n", matchMaps)
+		// eliminate duplicates, for some reason we often duplicate the output within one test:
+		for _, mm := range matchMaps {
+			dupe := false
+			for _, em := range allMetadata {
+				if reflect.DeepEqual(em, mm) {
+					dupe = true
 				}
-
 			}
-			//fmt.Printf("%v\n", m)
-			//tags.Insert(m["alert"])
+			if !dupe {
+				allMetadata = append(allMetadata, mm)
+			}
 		}
 	}
-	return tags.List()
+	return allMetadata
+}
+
+func findAllNamedMatches(regex *regexp.Regexp, str string) []map[string]string {
+	matches := regex.FindAllStringSubmatch(str, -1)
+	allMatchMap := []map[string]string{}
+	for _, m := range matches {
+		results := map[string]string{}
+		for i, name := range m {
+			// Skip the empty group name to full string matched:
+			if i == 0 {
+				continue
+			}
+			results[regex.SubexpNames()[i]] = name
+		}
+		allMatchMap = append(allMatchMap, results)
+	}
+	return allMatchMap
 }
