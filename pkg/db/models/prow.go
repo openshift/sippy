@@ -85,6 +85,8 @@ type ProwJobRunTest struct {
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
 	// we can keep the test result for a longer period of time than we keep the full failure output.
 	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"constraint:OnDelete:CASCADE;"`
+
+	Tags []ProwJobRunTestTag `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type ProwJobRunTestOutput struct {
@@ -92,6 +94,14 @@ type ProwJobRunTestOutput struct {
 	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string
+}
+
+type ProwJobRunTestTag struct {
+	TestRun   ProwJobRunTest
+	TestRunID uint
+	// Value1 is a generic string that can be extracted from specific test outputs to help categorize failures
+	// and enabled us to find failure modes that require breaking out into separate tests, or trends over time.
+	Value1 string
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.
