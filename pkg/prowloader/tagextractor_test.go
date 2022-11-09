@@ -93,6 +93,27 @@ Ginkgo exit error 1: exit with code 1}`,
 				},
 			},
 		},
+		{
+			name:     "conformance alerts firing twice in different namespaces",
+			testName: "[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]",
+			testOutput: `{  fail [github.com/onsi/ginkgo/v2@v2.1.5-0.20220909190140-b488ab12695a/internal/suite.go:612]: Nov  9 09:59:59.990: Unexpected alerts fired or pending after the test run:
+
+alert TargetDown fired for 2632 seconds with labels: {job="metrics", namespace="openshift-cluster-samples-operator", service="metrics", severity="warning"}
+alert TargetDown fired for 2662 seconds with labels: {job="machine-api-controllers", namespace="openshift-machine-api", service="machine-api-controllers", severity="warning"}
+Ginkgo exit error 1: exit with code 1}`,
+			expectedTags: []map[string]string{
+				{
+					"alert":     "TargetDown",
+					"state":     "fired",
+					"namespace": "openshift-cluster-samples-operator",
+				},
+				{
+					"alert":     "TargetDown",
+					"state":     "fired",
+					"namespace": "openshift-machine-api",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
