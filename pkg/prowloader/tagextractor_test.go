@@ -69,8 +69,29 @@ created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 		{
 			name:         "upgrade alerts no match",
 			testName:     "Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success",
-			testOutput:   `jibberish that won't match anything`,
+			testOutput:   `gibberish that won't match anything`,
 			expectedTags: []map[string]string{},
+		},
+		{
+			name:     "conformance alerts 2 firing",
+			testName: "[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]",
+			testOutput: `{  fail [github.com/onsi/ginkgo@v4.7.0-origin.0+incompatible/internal/leafnodes/runner.go:113]: Nov  9 12:38:34.177: Unexpected alerts fired or pending after the test run:
+
+alert ClusterOperatorDown fired for 287 seconds with labels: {name="insights", namespace="openshift-cluster-version", severity="critical"}
+alert OperatorHubSourceError fired for 726 seconds with labels: {container="catalog-operator", endpoint="https-metrics", exported_namespace="openshift-marketplace", instance="10.129.0.18:8443", job="catalog-operator-metrics", name="redhat-operators", namespace="openshift-operator-lifecycle-manager", pod="catalog-operator-5988994647-wlfx8", service="catalog-operator-metrics", severity="warning"}
+Ginkgo exit error 1: exit with code 1}`,
+			expectedTags: []map[string]string{
+				{
+					"alert":     "ClusterOperatorDown",
+					"state":     "fired",
+					"namespace": "openshift-cluster-version",
+				},
+				{
+					"alert":     "OperatorHubSourceError",
+					"state":     "fired",
+					"namespace": "openshift-operator-lifecycle-manager",
+				},
+			},
 		},
 	}
 

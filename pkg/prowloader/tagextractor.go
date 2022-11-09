@@ -9,12 +9,18 @@ import (
 type TagExtractor struct {
 }
 
+const (
+	alertREStr = `alert (?P<alert>[^\s]+) (?P<state>pending|fired) .*namespace="(?P<namespace>[a-zA-Z0-9-]+)", .*?`
+)
+
 func (te *TagExtractor) GetTestRegexes() map[string][]*regexp.Regexp {
 	return map[string][]*regexp.Regexp{
 		"Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success": []*regexp.Regexp{
-			regexp.MustCompile(`alert (?P<alert>[^\s]+) (?P<state>pending|fired) .*namespace="(?P<namespace>[a-zA-Z0-9-]+)", .*?`),
+			regexp.MustCompile(alertREStr),
 		},
-		"[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]": []*regexp.Regexp{},
+		"[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]": []*regexp.Regexp{
+			regexp.MustCompile(alertREStr),
+		},
 		"[sig-arch] events should not repeat pathologically":                   []*regexp.Regexp{},
 		"[sig-arch] events should not repeat pathologically in e2e namespaces": []*regexp.Regexp{},
 	}
