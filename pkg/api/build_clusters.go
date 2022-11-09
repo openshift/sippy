@@ -34,6 +34,7 @@ func GetBuildClusterHealthAnalysis(dbc *db.DB, period string) (map[string]apityp
 				ByPeriod: make(map[string]apitype.BuildClusterHealth),
 			}
 		}
+		// nolint:typecheck
 		key := item.Period.UTC().Format(formatter)
 		results[item.Cluster].ByPeriod[key] = apitype.BuildClusterHealth{
 			CurrentRuns:           item.TotalRuns,

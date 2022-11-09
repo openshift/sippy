@@ -115,6 +115,7 @@ func TestRunJobAnalysis(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeProwJobRun := buildFakeProwJobRun()
 			// Assume to build out the failed tests as those we provided pass rates for.
+			// nolint:typecheck
 			for _, t := range tc.testPassRates {
 				fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
 					Test:   models.Test{Name: t.Name},

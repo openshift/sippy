@@ -210,6 +210,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		return response, nil
 	}
 
+	// nolint:typecheck
 	var maxTestRiskReason string
 
 	// Iterate each failed test, query it's pass rates by NURPs, find a matching variant combo, and

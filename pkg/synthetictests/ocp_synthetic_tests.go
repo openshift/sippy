@@ -6,7 +6,9 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
+
+	// nolint:typecheck
+	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -167,7 +169,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 			// Add successful test results as well.
 			jrr.TestResults = append(jrr.TestResults, sippyprocessingv1.RawJobRunTestResult{
 				Name:   testNameWithoutSuite,
-				Status: v1.TestStatusSuccess,
+				Status: testgridv1.TestStatusSuccess,
 			})
 		}
 

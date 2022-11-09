@@ -503,7 +503,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 	}
 }
 
-//
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {

@@ -220,6 +220,7 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 
 	// Currently assuming 25% per consecutive failure, at 4 we are 100% sure this is a blocker.
 	ta.BlockerScore = int(math.Min(float64(failedInConsecPayloads*25), 100))
+	// nolint:typecheck
 	message := fmt.Sprintf("failed in %d most recent rejected payloads", failedInConsecPayloads)
 	ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, message)
 

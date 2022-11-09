@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/db/loader"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"

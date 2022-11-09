@@ -8,7 +8,7 @@ import (
 
 	gh "github.com/google/go-github/v45/github"
 	log "github.com/sirupsen/logrus"
-	"github.com/tcnksm/go-gitconfig"
+	gitconfig "github.com/tcnksm/go-gitconfig"
 	"golang.org/x/oauth2"
 )
 

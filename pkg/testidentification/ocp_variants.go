@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hashicorp/go-version"
+	version "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util/sets"

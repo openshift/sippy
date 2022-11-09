@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 

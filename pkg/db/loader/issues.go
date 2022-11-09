@@ -9,7 +9,7 @@ import (
 	"regexp/syntax"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
 	log "github.com/sirupsen/logrus"
 )
 
