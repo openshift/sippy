@@ -120,7 +120,7 @@ func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 	if err != nil {
 		return errors.Wrap(err, "error marshalling scale jobs")
 	}
-	err = ioutil.WriteFile(filepath.Join(storagePath, ScaleJobsFilename), file, 0600)
+	err = ioutil.WriteFile(filepath.Join(storagePath, ScaleJobsFilename), file, 0o600)
 	if err != nil {
 		return errors.Wrap(err, "error writing scalejobs.json")
 	}
