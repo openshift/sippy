@@ -407,22 +407,6 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			failureOutput = &models.ProwJobRunTestOutput{
 				Output: tc.FailureOutput.Output,
 			}
-			// Check if this test is configured to extract metadata from it's output, and if so, create it
-			// in the db.
-			extractedMetadata := testOutputMetadataExtractor.ExtractMetadata(tc.Name, failureOutput.Output)
-			if len(extractedMetadata) > 0 {
-				failureOutput.Metadata = make([]models.ProwJobRunTestOutputMetadata, 0, len(extractedMetadata))
-				for _, m := range extractedMetadata {
-					jsonb := pgtype.JSONB{}
-					if err := jsonb.Set(m); err != nil {
-						panic(err)
-					}
-					failureOutput.Metadata = append(failureOutput.Metadata, models.ProwJobRunTestOutputMetadata{
-						Metadata: jsonb,
-					})
-				}
-			}
-
 		}
 
 		// Cache key should always have the suite name, so we don't combine
@@ -436,6 +420,24 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		suiteID := pl.findSuite(suite.Name)
 		if suiteID == nil && suite.Name != "" {
 			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		}
+
+		if failureOutput != nil {
+			// Check if this test is configured to extract metadata from it's output, and if so, create it
+			// in the db.
+			extractedMetadata := testOutputMetadataExtractor.ExtractMetadata(testNameWithKnownSuite, failureOutput.Output)
+			if len(extractedMetadata) > 0 {
+				failureOutput.Metadata = make([]models.ProwJobRunTestOutputMetadata, 0, len(extractedMetadata))
+				for _, m := range extractedMetadata {
+					jsonb := pgtype.JSONB{}
+					if err := jsonb.Set(m); err != nil {
+						panic(err)
+					}
+					failureOutput.Metadata = append(failureOutput.Metadata, models.ProwJobRunTestOutputMetadata{
+						Metadata: jsonb,
+					})
+				}
+			}
 		}
 
 		if existing, ok := testCases[testCacheKey]; !ok {
