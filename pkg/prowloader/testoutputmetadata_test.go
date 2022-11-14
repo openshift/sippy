@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTagExtractor_ExtractTags(t *testing.T) {
+func TestFailureMetadataExtractor_ExtractMetadata(t *testing.T) {
 	tests := []struct {
 		name         string
 		testName     string
@@ -140,8 +140,7 @@ body:
 }`,
 			expectedTags: []map[string]string{
 				{
-					"reason":    "ProbeError",
-					"namespace": "",
+					"reason": "ProbeError",
 				},
 			},
 		},
@@ -153,7 +152,6 @@ body:
 event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasSufficientPID roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasSufficientPID
 event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasSufficientMemory
 event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-clone - reason/NodeHasNoDiskPressure roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0-clone status is now: NodeHasNoDiskPressure
-event happened 21 times, something is wrong: ns/openshift-etcd-operator deployment/etcd-operator - reason/UnhealthyEtcdMember unhealthy members: gfq9r5kv-c805c-b7tdc-master-1
 event happened 24 times, something is wrong: ns/openshift-machine-api machine/gfq9r5kv-c805c-b7tdc-worker-0-wp9g8 - reason/Reconciled Reconciled machine gfq9r5kv-c805c-b7tdc-worker-0-wp9g8
 event happened 25 times, something is wrong: ns/openshift-machine-api machine/gfq9r5kv-c805c-b7tdc-worker-0-q2krf - reason/Reconciled Reconciled machine gfq9r5kv-c805c-b7tdc-worker-0-q2krf
 event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasNoDiskPressure roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasNoDiskPressure
@@ -173,10 +171,8 @@ event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-
 					"reason": "NodeHasNoDiskPressure",
 				},
 				{
-					"reason": "UnhealthyEtcdMember",
-				},
-				{
-					"reason": "Reconciled",
+					"reason":    "Reconciled",
+					"namespace": "openshift-machine-api",
 				},
 			},
 		},
