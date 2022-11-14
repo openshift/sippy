@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/jackc/pgtype"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
@@ -85,8 +86,6 @@ type ProwJobRunTest struct {
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
 	// we can keep the test result for a longer period of time than we keep the full failure output.
 	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"constraint:OnDelete:CASCADE;"`
-
-	Tags []ProwJobRunTestTag `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type ProwJobRunTestOutput struct {
@@ -94,14 +93,17 @@ type ProwJobRunTestOutput struct {
 	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string
+
+	// Metadata optionally contains metadata extracted from a select few generic backstop tests
+	// we use to catch problems. This metadata helps us identify developing problems in these broad
+	// tests and figure out what next needs to be broken out into its own test.
+	Metadata []ProwJobRunTestOutputMetadata `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
-type ProwJobRunTestTag struct {
-	TestRun   ProwJobRunTest
-	TestRunID uint
-	// Value1 is a generic string that can be extracted from specific test outputs to help categorize failures
-	// and enabled us to find failure modes that require breaking out into separate tests, or trends over time.
-	Value1 string
+type ProwJobRunTestOutputMetadata struct {
+	gorm.Model
+	ProwJobRunTestOutputID uint
+	Metadata               pgtype.JSONB `gorm:"type:jsonb"`
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.
