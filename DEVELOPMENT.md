@@ -32,16 +32,31 @@ Sippy obtains data from multiple sources:
 
 ### From a Prod Sippy Backup
 
-The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:
+The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores binary backups in S3 periodically,
+see the staff slack channel for links or reach out to a team member for more information.
 
-```bash
-psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
+The backups are stored in 3 Gig parts like these:
+
+```
+sippy-backup-2022-11-14.dump-part1
+sippy-backup-2022-11-14.dump-part2
 ```
 
-or with a command like this if you are using the custom format file:
+To create the full file, download all the parts do then do something like this:
 
 ```bash
-pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -C -d postgres ./sippy-backup-2022-10-20.dump
+# Note that there are to '>' characters.
+cat sippy-backup-2022-11-14.dump-part1 >> sippy-backup-2022-11-14.dump-part0
+mv sippy-backup-2022-11-14.dump-part0 sippy-backup-2022-11-14.dump
+rm sippy-backup-2022-11-14.dump-part1
+```
+
+Restore it locally with a command like this:
+
+```bash
+echo "CREATE USER sippyro;" | psql postgresql://postgres:password@localhost:5432/postgres
+echo "CREATE USER rdsadmin;" | psql postgresql://postgres:password@localhost:5432/postgres
+pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -C -d postgres ./sippy-backup-2022-11-14.dump
 ```
 
 ### From TestGrid
