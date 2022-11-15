@@ -118,9 +118,7 @@ func findAllNamedMatches(regex *regexp.Regexp, testOutput string) []map[string]s
 			if i == 0 {
 				continue
 			}
-			//if results[regex.SubexpNames()[i]] != "" {
 			results[regex.SubexpNames()[i]] = name
-			//}
 		}
 		allMatchMap = append(allMatchMap, results)
 	}
