@@ -102,7 +102,7 @@ type ProwJobRunTestOutput struct {
 
 type ProwJobRunTestOutputMetadata struct {
 	gorm.Model
-	ProwJobRunTestOutputID uint
+	ProwJobRunTestOutputID uint         `gorm:"index"`
 	Metadata               pgtype.JSONB `gorm:"type:jsonb"`
 }
 

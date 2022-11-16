@@ -1,7 +1,6 @@
 package prowloader
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -84,7 +83,6 @@ func matchFirstRegexPerLine(regexes []*regexp.Regexp, testOutput string) []map[s
 		for _, re := range regexes {
 			matchMaps := findAllNamedMatches(re, line)
 
-			fmt.Printf("%v\n", matchMaps)
 			// eliminate duplicates, for some reason we often duplicate the output within one test:
 			for _, mm := range matchMaps {
 				dupe := false
