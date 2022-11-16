@@ -115,6 +115,26 @@ Ginkgo exit error 1: exit with code 1}`,
 			},
 		},
 		{
+			name:     "conformance alerts firing no namespace",
+			testName: "[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]",
+			testOutput: `{  fail [github.com/onsi/ginkgo/v2@v2.1.5-0.20220909190140-b488ab12695a/internal/suite.go:612]: Nov  9 09:59:59.990: Unexpected alerts fired or pending after the test run:
+
+alert TargetDown fired for 2632 seconds with labels: {job="metrics", service="metrics", severity="warning"}
+alert TargetDown fired for 2662 seconds with labels: {job="machine-api-controllers", namespace="openshift-machine-api", service="machine-api-controllers", severity="warning"}
+Ginkgo exit error 1: exit with code 1}`,
+			expectedTags: []map[string]string{
+				{
+					"alert": "TargetDown",
+					"state": "fired",
+				},
+				{
+					"alert":     "TargetDown",
+					"state":     "fired",
+					"namespace": "openshift-machine-api",
+				},
+			},
+		},
+		{
 			name:     "pathological events single",
 			testName: "[sig-arch] events should not repeat pathologically",
 			testOutput: `{  1 events happened too frequently
@@ -124,8 +144,8 @@ body:
 }`,
 			expectedTags: []map[string]string{
 				{
-					"reason":    "ProbeError",
-					"namespace": "openshift-console",
+					"reason": "ProbeError",
+					"ns":     "openshift-console",
 				},
 			},
 		},
@@ -171,8 +191,8 @@ event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-
 					"reason": "NodeHasNoDiskPressure",
 				},
 				{
-					"reason":    "Reconciled",
-					"namespace": "openshift-machine-api",
+					"reason": "Reconciled",
+					"ns":     "openshift-machine-api",
 				},
 			},
 		},
