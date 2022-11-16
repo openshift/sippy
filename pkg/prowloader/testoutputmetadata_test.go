@@ -18,9 +18,9 @@ func TestFailureMetadataExtractor_ExtractMetadata(t *testing.T) {
 			testName: "Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success",
 			testOutput: `{Nov  2 12:52:51.223: Unexpected alerts fired or pending during the upgrade:
 
-alert ExtremelyHighIndividualControlPlaneCPU fired for 330 seconds with labels: {instance="ip-10-0-155-22.us-west-2.compute.internal", namespace="openshift-kube-apiserver", severity="warning"} Failure Nov  2 12:52:51.223: Unexpected alerts fired or pending during the upgrade:
+alert ExtremelyHighIndividualControlPlaneCPU fired for 330 seconds with labels: {instance="ip-10-0-155-22.us-west-2.compute.internal", namespace="openshift-kube-apiserver", severity="warning"} result=allowed Failure Nov  2 12:52:51.223: Unexpected alerts fired or pending during the upgrade:
 
-alert ExtremelyHighIndividualControlPlaneCPU fired for 330 seconds with labels: {instance="ip-10-0-155-22.us-west-2.compute.internal", namespace="openshift-kube-apiserver", severity="warning"}
+alert ExtremelyHighIndividualControlPlaneCPU fired for 330 seconds with labels: {instance="ip-10-0-155-22.us-west-2.compute.internal", namespace="openshift-kube-apiserver", severity="warning"} result=allowed
 
 github.com/openshift/origin/test/extended/util/disruption.(*chaosMonkeyAdapter).Test(0xc0096b29b0, 0xc000661e18)
 	github.com/openshift/origin/test/extended/util/disruption/disruption.go:197 +0x315
@@ -33,6 +33,7 @@ created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 					"alert":     "ExtremelyHighIndividualControlPlaneCPU",
 					"state":     "fired",
 					"namespace": "openshift-kube-apiserver",
+					"result":    "allowed",
 				},
 			},
 		},
@@ -77,19 +78,22 @@ created by k8s.io/kubernetes/test/e2e/chaosmonkey.(*Chaosmonkey).Do
 			testName: "[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]",
 			testOutput: `{  fail [github.com/onsi/ginkgo@v4.7.0-origin.0+incompatible/internal/leafnodes/runner.go:113]: Nov  9 12:38:34.177: Unexpected alerts fired or pending after the test run:
 
-alert ClusterOperatorDown fired for 287 seconds with labels: {name="insights", namespace="openshift-cluster-version", severity="critical"}
-alert OperatorHubSourceError fired for 726 seconds with labels: {container="catalog-operator", endpoint="https-metrics", exported_namespace="openshift-marketplace", instance="10.129.0.18:8443", job="catalog-operator-metrics", name="redhat-operators", namespace="openshift-operator-lifecycle-manager", pod="catalog-operator-5988994647-wlfx8", service="catalog-operator-metrics", severity="warning"}
+alert ClusterOperatorDown fired for 287 seconds with labels: {name="insights", namespace="openshift-cluster-version", severity="critical"} result=allowed bug=http://example.com/myjira
+alert OperatorHubSourceError fired for 726 seconds with labels: {container="catalog-operator", endpoint="https-metrics", exported_namespace="openshift-marketplace", instance="10.129.0.18:8443", job="catalog-operator-metrics", name="redhat-operators", namespace="openshift-operator-lifecycle-manager", pod="catalog-operator-5988994647-wlfx8", service="catalog-operator-metrics", severity="warning"} result=failure
 Ginkgo exit error 1: exit with code 1}`,
 			expectedTags: []map[string]string{
 				{
 					"alert":     "ClusterOperatorDown",
 					"state":     "fired",
 					"namespace": "openshift-cluster-version",
+					"result":    "allowed",
+					"bug":       "http://example.com/myjira",
 				},
 				{
 					"alert":     "OperatorHubSourceError",
 					"state":     "fired",
 					"namespace": "openshift-operator-lifecycle-manager",
+					"result":    "failure",
 				},
 			},
 		},

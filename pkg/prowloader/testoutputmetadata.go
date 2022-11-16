@@ -27,7 +27,7 @@ type TestOutputMetadataExtractorFunc func(testOutput string) []map[string]string
 
 func alertMetadataExtractor(testOutput string) []map[string]string {
 	re := regexp.MustCompile(alertREStr)
-	return scanTestOutput(re, []string{"namespace"}, testOutput)
+	return scanTestOutput(re, []string{"namespace", "result", "bug"}, testOutput)
 }
 
 func pathologicalEventsMetadataExtractor(testOutput string) []map[string]string {
