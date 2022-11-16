@@ -9,6 +9,15 @@
 #
 #   When using a public registry (where authentication is not needed):
 #     SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+#
+#   When using a local registry where you have loaded the image and don't want to pull remotely 
+#     (Implies something like: podman build -t sippy . && kind load docker-image sippy):
+#
+#     SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+#
+#   When you need more time to load sippy data from backup:
+#     SIPPY_LOAD_TIMEOUT=600s SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+
 
 # Print out the current kube context
 echo "The cluster context is: $(kubectl config current-context)"
