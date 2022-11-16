@@ -119,13 +119,11 @@ func scanLine(regex *regexp.Regexp, tokenKeys []string, line string) []map[strin
 			// key=val or key/val, both of which we need to look out for.
 			// NOTE: we do not support token values with whitespace, must be all one word so we can safely split
 			// on spaces. This appears to be a reasonable limitation given our current use.
-			lt := strings.Replace(line, "{", " ", -1)
-			lt = strings.Replace(line, "}", " ", -1)
+			lt := strings.ReplaceAll(line, "{", " ")
+			lt = strings.ReplaceAll(lt, "}", " ")
 			tokens := strings.Split(lt, " ")
 			for _, t := range tokens {
-				if strings.HasSuffix(t, ",") {
-					t = t[0 : len(t)-1]
-				}
+				t = strings.TrimSuffix(t, ",")
 				st := strings.Split(t, "=")
 				if len(st) == 2 && tokenKeyMap[st[0]] {
 					// Remove quotes around value if present:
