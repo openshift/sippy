@@ -769,6 +769,7 @@ function TestTable(props) {
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
     queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
+    queryString += '&watchlist=' + safeEncodeURIComponent(props.watchlist)
 
     fetch(
       process.env.REACT_APP_API_URL +
@@ -963,6 +964,7 @@ TestTable.defaultProps = {
 TestTable.propTypes = {
   briefTable: PropTypes.bool,
   collapse: PropTypes.bool,
+  watchlist: PropTypes.bool,
   overall: PropTypes.bool,
   hideControls: PropTypes.bool,
   simpleLoading: PropTypes.bool,

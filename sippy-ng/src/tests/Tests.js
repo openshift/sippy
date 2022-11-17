@@ -69,12 +69,25 @@ export default function Tests(props) {
                     component={Link}
                     to={url + '/details' + search}
                   />
+                  <Tab
+                    label="Watchlist"
+                    value="watchlist"
+                    component={Link}
+                    to={url + '/watchlist' + search}
+                  />
                 </Tabs>
               </Paper>
             </Grid>
             <Switch>
               <Route path={path + '/details'}>
                 <TestTable release={props.release} collapse={false} />
+              </Route>
+              <Route path={path + '/watchlist'}>
+                <TestTable
+                  release={props.release}
+                  collapse={false}
+                  watchlist={true}
+                />
               </Route>
               <Route exact path={path}>
                 <TestTable release={props.release} />
