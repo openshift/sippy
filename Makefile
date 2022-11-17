@@ -19,7 +19,7 @@ test: builddir npm
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 
 lint: builddir npm
-	golangci-lint run ./...
+	./hack/go-lint.sh run ./...
 	cd sippy-ng; npx eslint .
 
 npm:
