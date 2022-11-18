@@ -670,6 +670,10 @@ function TestTable(props) {
       headerName: 'Current runs',
       type: 'number',
     },
+    watchlist: {
+      field: 'watchlist',
+      headerName: 'Watchlist',
+    },
     current_failures: {
       field: 'current_failures',
       headerName: 'Current failures',
@@ -769,7 +773,6 @@ function TestTable(props) {
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
     queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
-    queryString += '&watchlist=' + safeEncodeURIComponent(props.watchlist)
 
     fetch(
       process.env.REACT_APP_API_URL +
@@ -964,7 +967,6 @@ TestTable.defaultProps = {
 TestTable.propTypes = {
   briefTable: PropTypes.bool,
   collapse: PropTypes.bool,
-  watchlist: PropTypes.bool,
   overall: PropTypes.bool,
   hideControls: PropTypes.bool,
   simpleLoading: PropTypes.bool,

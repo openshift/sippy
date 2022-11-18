@@ -119,6 +119,12 @@ export const BOOKMARKS = {
     operatorValue: '>',
     value: '1',
   },
+  WATCHLIST: {
+    columnField: 'watchlist',
+    not: false,
+    operatorValue: 'equals',
+    value: 'true',
+  },
   NO_OPENSHIFT_TESTS_SHOULD_WORK: {
     columnField: 'name',
     not: true,

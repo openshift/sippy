@@ -148,7 +148,7 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobR
 				},
 				LinkOperator: "and",
 			}
-			trs, _, err := BuildTestsResults(dbc, release, "default", false, false, false,
+			trs, _, err := BuildTestsResults(dbc, release, "default", false, false,
 				fil)
 			if err != nil {
 				return nil, err

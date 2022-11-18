@@ -472,6 +472,7 @@ type Test struct {
 	FlakeAverage             float64 `json:"flake_average,omitempty"`
 	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
+	Watchlist                bool    `json:"watchlist"`
 
 	Tags     []string `json:"tags"`
 	OpenBugs int      `json:"open_bugs"`

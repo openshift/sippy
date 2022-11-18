@@ -189,6 +189,15 @@ export function pathForTestsWithFilter(release, filter) {
   )}`
 }
 
+// apiPath should be something like '/tests/4.12' or '/tests/4.12/details'
+export function pathForAPIWithFilter(apiPath, filter) {
+  if (!filter || filter.items === []) {
+    return apiPath
+  }
+
+  return `${apiPath}?filters=${safeEncodeURIComponent(JSON.stringify(filter))}`
+}
+
 export function pathForJobsWithFilter(release, filter) {
   if (!filter || filter.items === []) {
     return `/jobs/${release}`
