@@ -121,7 +121,6 @@ export const BOOKMARKS = {
   },
   WATCHLIST: {
     columnField: 'watchlist',
-    not: false,
     operatorValue: 'equals',
     value: 'true',
   },
