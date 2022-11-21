@@ -9,6 +9,8 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20210823155509-845c8efe54a7
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-version v1.6.0
+	github.com/jackc/pgtype v1.8.1 // indirect
+	github.com/jackc/pgx v3.6.2+incompatible // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.2
 	github.com/montanaflynn/stats v0.6.6

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/jackc/pgtype"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
@@ -92,6 +93,17 @@ type ProwJobRunTestOutput struct {
 	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string
+
+	// Metadata optionally contains metadata extracted from a select few generic backstop tests
+	// we use to catch problems. This metadata helps us identify developing problems in these broad
+	// tests and figure out what next needs to be broken out into its own test.
+	Metadata []ProwJobRunTestOutputMetadata `gorm:"constraint:OnDelete:CASCADE;"`
+}
+
+type ProwJobRunTestOutputMetadata struct {
+	gorm.Model
+	ProwJobRunTestOutputID uint         `gorm:"index"`
+	Metadata               pgtype.JSONB `gorm:"type:jsonb"`
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.

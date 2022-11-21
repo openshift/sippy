@@ -77,6 +77,10 @@ func New(dsn string, reportEnd *time.Time) (*DB, error) {
 		return nil, err
 	}
 
+	if err := db.AutoMigrate(&models.ProwJobRunTestOutputMetadata{}); err != nil {
+		return nil, err
+	}
+
 	if err := db.AutoMigrate(&models.Bug{}); err != nil {
 		return nil, err
 	}

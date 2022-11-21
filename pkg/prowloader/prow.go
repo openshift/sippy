@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -394,6 +395,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path stri
 }
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
+	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
@@ -418,6 +420,24 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		suiteID := pl.findSuite(suite.Name)
 		if suiteID == nil && suite.Name != "" {
 			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		}
+
+		if failureOutput != nil {
+			// Check if this test is configured to extract metadata from it's output, and if so, create it
+			// in the db.
+			extractedMetadata := testOutputMetadataExtractor.ExtractMetadata(testNameWithKnownSuite, failureOutput.Output)
+			if len(extractedMetadata) > 0 {
+				failureOutput.Metadata = make([]models.ProwJobRunTestOutputMetadata, 0, len(extractedMetadata))
+				for _, m := range extractedMetadata {
+					jsonb := pgtype.JSONB{}
+					if err := jsonb.Set(m); err != nil {
+						log.WithError(err).Error("error setting jsonb value with extracted test metadata")
+					}
+					failureOutput.Metadata = append(failureOutput.Metadata, models.ProwJobRunTestOutputMetadata{
+						Metadata: jsonb,
+					})
+				}
+			}
 		}
 
 		if existing, ok := testCases[testCacheKey]; !ok {
