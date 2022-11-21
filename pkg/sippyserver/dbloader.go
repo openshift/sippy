@@ -423,7 +423,7 @@ func UpdateWatchlist(dbc *db.DB) error {
 	}
 
 	for testName, test := range testCache {
-		expected := testidentification.TestIsOnWatchlist(test)
+		expected := testidentification.IsTestOnWatchlist(test)
 		if test.Watchlist != expected {
 			log.WithFields(log.Fields{"old": test.Watchlist, "new": expected}).Infof("test watchlist status changed for %s", testName)
 			test.Watchlist = expected

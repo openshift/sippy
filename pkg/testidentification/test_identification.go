@@ -296,9 +296,9 @@ var (
 
 const watchlistLabel = "sippy-watchlist"
 
-// TestIsOnWatchlist returns true if the test matches one of our hardcoded regexes, or
+// IsTestOnWatchlist returns true if the test matches one of our hardcoded regexes, or
 // has an associated bug with the sippy-watchlist label.
-func TestIsOnWatchlist(test *models.Test) bool {
+func IsTestOnWatchlist(test *models.Test) bool {
 	watchlistREs := []*regexp.Regexp{
 		pathologicalEventsRE,
 		upgradeAlertsRE,
