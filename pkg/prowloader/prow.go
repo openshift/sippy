@@ -431,7 +431,7 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 				for _, m := range extractedMetadata {
 					jsonb := pgtype.JSONB{}
 					if err := jsonb.Set(m); err != nil {
-						panic(err)
+						log.WithError(err).Error("error setting jsonb value with extracted test metadata")
 					}
 					failureOutput.Metadata = append(failureOutput.Metadata, models.ProwJobRunTestOutputMetadata{
 						Metadata: jsonb,
