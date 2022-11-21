@@ -11,7 +11,6 @@ import (
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/db/loader"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -416,30 +415,6 @@ func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues 
 	return nil
 }
 
-const watchlistLabel = "sippy-watchlist"
-
-// TestIsOnWatchlist returns true if the test matches one of our hardcoded regexes, or
-// has an associated bug with the sippy-watchlist label.
-func TestIsOnWatchlist(test *models.Test) bool {
-	watchlistREs := []*regexp.Regexp{
-		regexp.MustCompile("events should not repeat pathologically$"),
-		regexp.MustCompile("Check if alerts are firing during or after upgrade success"),
-		regexp.MustCompile("Alerts shouldn't report any unexpected alerts in firing or pending state"),
-	}
-	for _, re := range watchlistREs {
-		if re.MatchString(test.Name) {
-			return true
-		}
-
-		for _, bug := range test.Bugs {
-			if util.StrSliceContains(bug.Labels, watchlistLabel) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func UpdateWatchlist(dbc *db.DB) error {
 	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
 	testCache, err := LoadTestCache(dbc, []string{"Bugs"})
@@ -448,7 +423,7 @@ func UpdateWatchlist(dbc *db.DB) error {
 	}
 
 	for testName, test := range testCache {
-		expected := TestIsOnWatchlist(test)
+		expected := testidentification.TestIsOnWatchlist(test)
 		if test.Watchlist != expected {
 			log.WithFields(log.Fields{"old": test.Watchlist, "new": expected}).Infof("test watchlist status changed for %s", testName)
 			test.Watchlist = expected
