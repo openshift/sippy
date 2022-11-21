@@ -25,7 +25,7 @@ spec:
   containers:
   - name: sippy-server
     image: ${SIPPY_IMAGE}
-    imagePullPolicy: Always
+    imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
     ports:
     - name: www
       containerPort: 8080
