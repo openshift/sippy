@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -501,6 +502,8 @@ func (test Test) GetStringValue(param string) (string, error) {
 		return test.Name, nil
 	case "variant":
 		return test.Variant, nil
+	case "watchlist":
+		return strconv.FormatBool(test.Watchlist), nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
