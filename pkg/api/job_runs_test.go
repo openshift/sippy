@@ -127,6 +127,7 @@ func TestRunJobAnalysis(t *testing.T) {
 			testResultsLookupFunc := func(testName, release, suite string, variants []string) (*apitype.Test, error) {
 				for _, tpr := range tc.testPassRates {
 					if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
+						tpr.CurrentRuns = 100
 						return &tpr, nil
 					}
 				}

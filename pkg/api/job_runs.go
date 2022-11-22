@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/testidentification"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -182,10 +183,11 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
 
 	response := apitype.ProwJobRunRiskAnalysis{
-		ProwJobRunID: jobRun.ID,
-		ProwJobName:  jobRun.ProwJob.Name,
-		Release:      jobRun.ProwJob.Release,
-		Tests:        []apitype.ProwJobRunTestRiskAnalysis{},
+		ProwJobRunID:   jobRun.ID,
+		ProwJobName:    jobRun.ProwJob.Name,
+		Release:        jobRun.ProwJob.Release,
+		CompareRelease: compareRelease,
+		Tests:          []apitype.ProwJobRunTestRiskAnalysis{},
 		OverallRisk: apitype.FailureRisk{
 			Level:   apitype.FailureRiskLevelNone,
 			Reasons: []string{},
@@ -215,6 +217,12 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	// Iterate each failed test, query it's pass rates by NURPs, find a matching variant combo, and
 	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
+
+		if ft.Test.Name == testidentification.OpenShiftTestsName {
+			// This can be quite misleading
+			continue
+		}
+
 		logger.WithFields(log.Fields{
 			"name": ft.Test.Name,
 		}).Debug("failed test")
@@ -224,7 +232,8 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		if err != nil {
 			return response, err
 		}
-		if testResult != nil {
+		// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
+		if testResult != nil && testResult.CurrentRuns > 0 {
 			testRiskLvl := getSeverityLevelForPassRate(testResult.CurrentPassPercentage)
 			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
 				response.OverallRisk.Level = testRiskLvl
