@@ -182,10 +182,11 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
 
 	response := apitype.ProwJobRunRiskAnalysis{
-		ProwJobRunID: jobRun.ID,
-		ProwJobName:  jobRun.ProwJob.Name,
-		Release:      jobRun.ProwJob.Release,
-		Tests:        []apitype.ProwJobRunTestRiskAnalysis{},
+		ProwJobRunID:   jobRun.ID,
+		ProwJobName:    jobRun.ProwJob.Name,
+		Release:        jobRun.ProwJob.Release,
+		CompareRelease: compareRelease,
+		Tests:          []apitype.ProwJobRunTestRiskAnalysis{},
 		OverallRisk: apitype.FailureRisk{
 			Level:   apitype.FailureRiskLevelNone,
 			Reasons: []string{},

@@ -700,12 +700,13 @@ type TestOutput struct {
 }
 
 type ProwJobRunRiskAnalysis struct {
-	ProwJobName  string
-	ProwJobRunID uint
-	Release      string
-	Tests        []ProwJobRunTestRiskAnalysis
-	OverallRisk  FailureRisk
-	OpenBugs     []models.Bug
+	ProwJobName    string
+	ProwJobRunID   uint
+	Release        string
+	CompareRelease string
+	Tests          []ProwJobRunTestRiskAnalysis
+	OverallRisk    FailureRisk
+	OpenBugs       []models.Bug
 }
 
 type ProwJobRunTestRiskAnalysis struct {
