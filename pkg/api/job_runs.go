@@ -225,7 +225,8 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 		if err != nil {
 			return response, err
 		}
-		if testResult != nil {
+		// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
+		if testResult != nil && testResult.CurrentRuns > 0 {
 			testRiskLvl := getSeverityLevelForPassRate(testResult.CurrentPassPercentage)
 			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
 				response.OverallRisk.Level = testRiskLvl
