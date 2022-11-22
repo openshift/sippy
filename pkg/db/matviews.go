@@ -194,6 +194,7 @@ FROM prow_job_runs
 const testReportMatView = `
 SELECT tests.id,
    tests.name,
+   tests.watchlist, 
    suites.name as suite_name,
    COALESCE(count(
        CASE
@@ -252,6 +253,7 @@ GROUP BY tests.id, tests.name, suites.name, prow_jobs.variants, prow_jobs.releas
 const testAnalysisByVariantMatView = `
 SELECT tests.id AS test_id,
    tests.name AS test_name,
+   tests.watchlist,
    date(prow_job_runs."timestamp") AS date,
    unnest(prow_jobs.variants) AS variant,
    prow_jobs.release,
@@ -286,6 +288,7 @@ GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), (unnest(prow_j
 const testAnalysisByJobMatView = `
 SELECT tests.id AS test_id,
    tests.name AS test_name,
+   tests.watchlist,
    date(prow_job_runs."timestamp") AS date,
    prow_jobs.release,
    prow_jobs.name AS job_name,

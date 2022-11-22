@@ -393,10 +393,11 @@ func (o *Options) Run() error { //nolint:gocyclo
 		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		if loadBugs {
 			bugsStart := time.Now()
-			testCache, err := sippyserver.LoadTestCache(dbc)
+			testCache, err := sippyserver.LoadTestCache(dbc, []string{})
 			if err != nil {
 				return err
 			}
+
 			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
 			if err != nil {
 				return err
@@ -406,6 +407,13 @@ func (o *Options) Run() error { //nolint:gocyclo
 			}
 			bugsElapsed := time.Since(bugsStart)
 			log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
+		}
+
+		// Update the tests watchlist flag. Anything matching one of our configured
+		// regexes, or any test linked to a jira with a particular label will land on the watchlist
+		// for easier viewing in the UI.
+		if err := sippyserver.UpdateWatchlist(dbc); err != nil {
+			return errors.Wrapf(err, "error syncing issues to db")
 		}
 
 		elapsed := time.Since(start)

@@ -10,6 +10,7 @@ import { TabContext } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
+import { BOOKMARKS } from '../constants'
 import {
   Link,
   Route,
@@ -17,6 +18,7 @@ import {
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
+import { pathForAPIWithFilter, withSort } from '../helpers'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestTable from './TestTable'
 
@@ -69,11 +71,34 @@ export default function Tests(props) {
                     component={Link}
                     to={url + '/details' + search}
                   />
+                  <Tab
+                    label="Watchlist"
+                    value="watchlist"
+                    component={Link}
+                    to={withSort(
+                      pathForAPIWithFilter(
+                        `/tests/${props.release}/watchlist`,
+                        {
+                          items: [
+                            BOOKMARKS.RUN_7,
+                            BOOKMARKS.NO_NEVER_STABLE,
+                            BOOKMARKS.WATCHLIST,
+                          ],
+                          linkOperator: 'and',
+                        }
+                      ),
+                      'current_working_percentage',
+                      'asc'
+                    )}
+                  />
                 </Tabs>
               </Paper>
             </Grid>
             <Switch>
               <Route path={path + '/details'}>
+                <TestTable release={props.release} collapse={false} />
+              </Route>
+              <Route path={path + '/watchlist'}>
                 <TestTable release={props.release} collapse={false} />
               </Route>
               <Route exact path={path}>

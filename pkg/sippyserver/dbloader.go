@@ -53,7 +53,7 @@ func (a TestReportGeneratorConfig) LoadDatabase(
 	prowJobCacheLock := &sync.RWMutex{}
 
 	// Load cache of all known tests from db:
-	testCache, err := LoadTestCache(dbc)
+	testCache, err := LoadTestCache(dbc, []string{})
 	if err != nil {
 		return err
 	}
@@ -129,11 +129,15 @@ func createOrUpdateJob(dbc *db.DB, reportName string,
 	return nil
 }
 
-func LoadTestCache(dbc *db.DB) (map[string]*models.Test, error) {
+func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
 	// Cache all tests by name to their ID, used for the join object.
 	testCache := map[string]*models.Test{}
 	allTests := []*models.Test{}
-	res := dbc.DB.Model(&models.Test{}).Find(&allTests)
+	q := dbc.DB.Model(&models.Test{})
+	for _, p := range preloads {
+		q = q.Preload(p)
+	}
+	res := q.Find(&allTests)
 	if res.Error != nil {
 		return map[string]*models.Test{}, res.Error
 	}
@@ -411,6 +415,27 @@ func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues 
 	return nil
 }
 
+func UpdateWatchlist(dbc *db.DB) error {
+	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
+	testCache, err := LoadTestCache(dbc, []string{"Bugs"})
+	if err != nil {
+		return err
+	}
+
+	for testName, test := range testCache {
+		expected := testidentification.IsTestOnWatchlist(test)
+		if test.Watchlist != expected {
+			log.WithFields(log.Fields{"old": test.Watchlist, "new": expected}).Infof("test watchlist status changed for %s", testName)
+			test.Watchlist = expected
+			res := dbc.DB.Save(test)
+			if res.Error != nil {
+				log.WithError(err).Error("error updating test watchlist status")
+			}
+		}
+	}
+	return nil
+}
+
 // LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
 func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
 	log.Info("querying search.ci for test/job associations")
@@ -548,6 +573,11 @@ func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {
 	}
 	sort.Strings(fixVersions)
 	newBug.FixVersions = fixVersions
+
+	labels := apiIssue.Fields.Labels
+	labels = append(labels, apiIssue.Fields.Labels...)
+	sort.Strings(labels)
+	newBug.Labels = labels
 
 	return newBug
 }

@@ -196,7 +196,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	variantSelect := ""
 	if collapse {
-		rawQuery = rawQuery.Select(`name,open_bugs,` + query.QueryTestSummer).Group("name,open_bugs")
+		rawQuery = rawQuery.Select(`name,watchlist,open_bugs,` + query.QueryTestSummer).Group("name,open_bugs,watchlist")
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
 		variantSelect = "suite_name, variants, open_bugs, " +
@@ -212,7 +212,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	testReports := make([]apitype.Test, 0)
 	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(`ROW_NUMBER() OVER() as id, name,` + variantSelect + query.QueryTestSummarizer).
+		Select(`ROW_NUMBER() OVER() as id, watchlist, name,` + variantSelect + query.QueryTestSummarizer).
 		Where("current_runs > 0 or previous_runs > 0")
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -236,6 +236,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 			ID:   math.MaxInt32,
 			Name: "Overall",
 		}
+		// TODO: column open_bugs does not exist here?
 		summaryResult.Scan(overallTest)
 	}
 

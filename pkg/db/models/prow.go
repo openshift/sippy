@@ -65,6 +65,8 @@ type Test struct {
 	gorm.Model
 	Name string `gorm:"uniqueIndex"`
 	Bugs []Bug  `gorm:"many2many:bug_tests;"`
+	// Watchlist are tests TRT is interested in keeping an eye on.
+	Watchlist bool
 }
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
@@ -128,11 +130,7 @@ type TestAnalysisRow struct {
 	Failures int
 }
 
-// NOTE: Unfortunate duplication of bugzilla types here, comments in the api/bugs/v1 package indicate we don't own
-// the definition of a bugzilla bug and need to match their API. When syncing to DB we'll convert to these customized
-// db types.
-
-// Bug represents a Bugzilla bug.
+// Bug represents a Jira bug.
 type Bug struct {
 	ID              uint           `json:"id" gorm:"primarykey"`
 	Key             string         `json:"key" gorm:"index"`
@@ -145,6 +143,7 @@ type Bug struct {
 	AffectsVersions pq.StringArray `json:"affects_versions" gorm:"type:text[]"`
 	FixVersions     pq.StringArray `json:"fix_versions" gorm:"type:text[]"`
 	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
+	Labels          pq.StringArray `json:"labels" gorm:"type:text[]"`
 	URL             string         `json:"url"`
 	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;constraint:OnDelete:CASCADE;"`
 	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;constraint:OnDelete:CASCADE;"`
