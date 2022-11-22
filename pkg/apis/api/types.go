@@ -488,6 +488,8 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
+	case "watchlist":
+		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
 	}
