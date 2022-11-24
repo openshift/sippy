@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fetchdata
+  namespace: sippy
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+          #- name: data
+            #persistentVolumeClaim:
+              #claimName: sippy
+          - name: bigquery-credentials
+            secret:
+              secretName: bigquery-credentials
+          containers:
+          - name: fetchdata
+            image: quay.io/dgoodwin/sippy:latest
+            imagePullPolicy: Always
+            resources:
+              limits:
+                memory: 2G
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            command:
+            - /bin/sippy
+            args:
+              - --load-database
+              - --mode=ocp
+              - --load-prow=true
+                #- --load-github=true
+              - --load-testgrid=false
+              - --config=/config/openshift.yaml
+              #- --release=3.11
+              #- --release=4.6
+              - --release=4.7
+              #- --release=4.8
+              #- --release=4.9
+              #- --release=4.10
+              #- --release=4.11
+              #- --release=4.12
+              #- --release=4.13
+              #- --release=Presubmits
+              - --arch=amd64
+              #- --arch=arm64
+              #- --arch=multi
+              #- --arch=s390x
+              #- --arch=ppc64le
+            env:
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: /etc/bigquery/credentials
+              - name: SIPPY_DATABASE_DSN
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres
+                    key: dsn
+              #- name: GITHUB_TOKEN
+                #valueFrom:
+                  #secretKeyRef:
+                    #name: sippy-github-token
+                    #key: token
+            volumeMounts:
+            #- mountPath: /data
+              #name: data
+            - mountPath: /etc/bigquery
+              name: bigquery-credentials

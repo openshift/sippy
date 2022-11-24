@@ -356,6 +356,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 		}
 
+		log.Info("Loading release streams...")
 		loadReleases := len(o.OpenshiftReleases) > 0
 		if loadReleases {
 			releaseStreams := make([]string, 0)
