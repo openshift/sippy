@@ -1,8 +1,6 @@
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
-  annotations:
-    openshift.io/generated-by: OpenShiftNewApp
   labels:
     app: sippy
     app.kubernetes.io/component: sippy
@@ -14,19 +12,13 @@ spec:
   revisionHistoryLimit: 10
   selector:
     deploymentconfig: sippy
-  strategy:
-    activeDeadlineSeconds: 21600
-    type: Recreate
   template:
     metadata:
-      annotations:
-        openshift.io/generated-by: OpenShiftNewApp
-      creationTimestamp: null
       labels:
         deploymentconfig: sippy
     spec:
       containers:
-      - image: docker.io/openshift/sippy
+      - image: quay.io/dgoodwin/sippy:latest
         imagePullPolicy: Always
         name: sippy
         ports:
@@ -46,24 +38,6 @@ spec:
         args:
         - --local-data
         - /data
-        - --release
-        - "4.13"
-        - --release
-        - "4.12"
-        - --release
-        - "4.11"
-        - --release
-        - "4.10"
-        - --release
-        - "4.9"
-        - --release
-        - "4.8"
-        - --release
-        - "4.7"
-        - --release
-        - "4.6"
-        - --release
-        - "3.11"
         - --mode=ocp
         - --db-only-mode
         - --server
@@ -76,59 +50,12 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-      - image: docker.io/openshift/sippy
-        imagePullPolicy: Always
-        name: fetchdata
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-        resources:
-          limits:
-            memory: 2G
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        command:
-        - /bin/fetchdata.sh
-        env:
-          - name: GOOGLE_APPLICATION_CREDENTIALS
-            value: /etc/bigquery/credentials
-          - name: SIPPY_DATABASE_DSN
-            valueFrom:
-              secretKeyRef:
-                name: postgres
-                key: dsn
-          - name: SIPPY_DATABASE_DSN
-            valueFrom:
-              secretKeyRef:
-                name: postgres
-                key: dsn
-        volumeMounts:
-        - mountPath: /data
-          name: data
-        - mountPath: /etc/bigquery
-          name: bigquery-credentials
       dnsPolicy: ClusterFirst
       restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
       terminationGracePeriodSeconds: 30
       volumes:
       - name: data
         persistentVolumeClaim:
           claimName: sippy
-      - name: bigquery-credentials
-        secret:
-          secretName: bigquery-credentials
-  test: false
   triggers:
   - type: ConfigChange
-  - imageChangeParams:
-      automatic: true
-      containerNames:
-      - sippy
-      - fetchdata
-      from:
-        kind: ImageStreamTag
-        name: sippy:latest
-        namespace: sippy
-    type: ImageChange
