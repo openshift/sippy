@@ -429,7 +429,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 		elapsed := time.Since(start)
 		log.Infof("Database loaded in: %s", elapsed)
 
-		sippyserver.RefreshData(dbc, pinnedTime, true)
+		sippyserver.RefreshData(dbc, pinnedTime, false)
 
 		return err
 	}
