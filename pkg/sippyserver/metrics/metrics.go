@@ -60,6 +60,8 @@ var (
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
 func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
+	start := time.Now()
+	log.Info("beginning refresh metrics")
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		return err
@@ -117,6 +119,7 @@ func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
 	if err := refreshUpgradeSuccessMetrics(dbc); err != nil {
 		log.WithError(err).Error("error refreshing upgrade success metrics")
 	}
+	log.Infof("refresh metrics completed in %s", time.Now().Sub(start))
 
 	return nil
 }

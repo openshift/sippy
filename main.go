@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -420,6 +421,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 		elapsed := time.Since(start)
 		log.Infof("Database loaded in: %s", elapsed)
 
+		sippyserver.RefreshData(dbc, pinnedTime, true)
+
 		return err
 	}
 
@@ -460,6 +463,32 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 		pinnedDateTime,
 	)
 
+	// Do an immediate metrics update
+	err = metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+	if err != nil {
+		log.WithError(err).Error("error refreshing metrics")
+	}
+
+	// Refresh our metrics every 20 minutes:
+	ticker := time.NewTicker(20 * time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				log.Info("tick")
+				err := metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+				if err != nil {
+					log.WithError(err).Error("error refreshing metrics")
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	// Serve our metrics endpoint for prometheus to scrape
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
 		err := http.ListenAndServe(o.MetricsAddr, nil)
@@ -467,10 +496,6 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 			panic(err)
 		}
 	}()
-
-	// force a data refresh in the background. This is important to initially populate the db's materialized views
-	// if this is the first time starting sippy.
-	go server.RefreshData(true)
 
 	server.Serve()
 	return nil
