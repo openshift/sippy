@@ -8,10 +8,19 @@ metadata:
   name: sippy
   namespace: sippy
 spec:
-  replicas: 1
+  replicas: 3
   revisionHistoryLimit: 10
   selector:
     deploymentconfig: sippy
+  strategy:
+    # This strategy ensures that on updates we roll out one container at a time, with a 10s
+    # pause after each is ready.
+    type: Rolling
+    rollingParams:
+      updatePeriodSeconds: 10
+      # TODO: investigate pre here to run a hook prior to each deployment and update db schema
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -30,7 +39,7 @@ spec:
           protocol: TCP
         resources:
           limits:
-            memory: 2G
+            memory: 512M
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:
