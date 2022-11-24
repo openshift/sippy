@@ -5,6 +5,7 @@ metadata:
   namespace: sippy
 spec:
   schedule: "0 * * * *"
+  concurrencyPolicy: Forbid # if we haven't finished the last, don't start a new
   jobTemplate:
     spec:
       template:
