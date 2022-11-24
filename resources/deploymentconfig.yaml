@@ -9,7 +9,7 @@ metadata:
   namespace: sippy
 spec:
   replicas: 3
-  revisionHistoryLimit: 10
+  revisionHistoryLimit: 5
   selector:
     deploymentconfig: sippy
   strategy:
