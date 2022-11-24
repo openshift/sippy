@@ -45,6 +45,8 @@ const (
 )
 
 type Options struct {
+	// LocalData is a directory used for storing testgrid data, and then loading into database.
+	// Not required when loading db from prow, or when running the server.
 	LocalData              string
 	OpenshiftReleases      []string
 	OpenshiftArchitectures []string

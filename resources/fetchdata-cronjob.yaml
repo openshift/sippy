@@ -12,9 +12,6 @@ spec:
         spec:
           restartPolicy: OnFailure
           volumes:
-          #- name: data
-            #persistentVolumeClaim:
-              #claimName: sippy
           - name: bigquery-credentials
             secret:
               secretName: bigquery-credentials
@@ -68,7 +65,5 @@ spec:
                     #name: sippy-github-token
                     #key: token
             volumeMounts:
-            #- mountPath: /data
-              #name: data
             - mountPath: /etc/bigquery
               name: bigquery-credentials

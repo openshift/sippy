@@ -61,8 +61,6 @@ spec:
         command:
         - /bin/sippy
         args:
-        - --local-data
-        - /data
         - --mode=ocp
         - --db-only-mode
         - --server
@@ -72,16 +70,9 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: dsn
-        volumeMounts:
-        - mountPath: /data
-          name: data
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
-      volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: sippy
   triggers:
   - type: ConfigChange
   - imageChangeParams:
