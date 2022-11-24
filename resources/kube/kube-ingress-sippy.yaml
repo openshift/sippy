@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: cert-issuer
+  name: kube-sippy
+  namespace: sippy
+spec:
+  tls:
+    - secretName: kube-sippy-tls
+      hosts:
+        - kube-sippy.dptools.openshift.org
+  rules:
+  - host: sippy.k8s.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: kube-sippy
+            port:
+              number: 8080
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: kube-sippy
+            port:
+              number: 2112
+        pathType: Prefix
+        path: /metrics
+  - host: kube-sippy.dptools.openshift.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: kube-sippy
+            port:
+              number: 8080
+        pathType: ImplementationSpecific
+      - backend:
+          service:
+            name: kube-sippy
+            port:
+              number: 2112
+        pathType: Prefix
+        path: /metrics
+

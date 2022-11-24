@@ -1,0 +1,102 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: kube-sippy
+    app.kubernetes.io/component: kube-sippy
+    app.kubernetes.io/instance: kube-sippy
+  name: kube-sippy
+  namespace: sippy
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    deploymentconfig: kube-sippy
+  strategy:
+    activeDeadlineSeconds: 21600
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        deploymentconfig: kube-sippy
+    spec:
+      containers:
+      - image: docker.io/openshift/sippy
+        imagePullPolicy: Always
+        name: sippy
+        ports:
+        - name: www
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 2112
+          protocol: TCP
+        resources:
+          limits:
+            memory: 1500M
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        command:
+        - /bin/sippy
+        args:
+          - --server
+          - --local-data
+          - /data
+          - --dashboard
+          - kube-master=sig-release-master-blocking,sig-release-master-informing=
+          - --mode=kube
+          - --db-only-mode
+        env:
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres-aws-kube
+                key: dsn
+        volumeMounts:
+        - mountPath: /data
+          name: data
+      - image: docker.io/openshift/sippy
+        imagePullPolicy: Always
+        name: fetchdata
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources:
+          limits:
+            memory: 500M
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        command:
+        - /bin/fetchdata-kube.sh
+        env:
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres-aws-kube
+                key: dsn
+        volumeMounts:
+        - mountPath: /data
+          name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: kube-sippy
+  test: false
+  triggers:
+  - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - sippy
+      - fetchdata
+      from:
+        kind: ImageStreamTag
+        name: sippy:latest
+        namespace: sippy
+    type: ImageChange
