@@ -20,10 +20,12 @@ spec:
               secretName: bigquery-credentials
           containers:
           - name: fetchdata
-            image: quay.io/dgoodwin/sippy:latest
+            # ImageStreamTags can't interact directly with Kube native CronJobs, but
+            # we can use the latest as published to our registry.
+            image: image-registry.openshift-image-registry.svc:5000/sippy/sippy:latest
             imagePullPolicy: Always
             resources:
-              limits:
+              requests:
                 memory: 2G
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File

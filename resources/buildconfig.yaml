@@ -22,13 +22,16 @@ spec:
   source:
     git:
       uri: https://github.com/openshift/sippy
+      ref: master
     type: Git
   strategy:
     dockerStrategy: {}
     type: Docker
   successfulBuildsHistoryLimit: 5
-#  triggers:
-#  - type: ConfigChange
+  triggers:
+  - type: ConfigChange
+# Can enable github webhook integration to build on merges:
+# Otherwise use: oc start-build sippy
 #  - github:
 #     secretReference:
 #       name: github-webhook-secret

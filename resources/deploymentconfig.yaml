@@ -8,7 +8,7 @@ metadata:
   name: sippy
   namespace: sippy
 spec:
-  replicas: 3
+  replicas: 2
   revisionHistoryLimit: 5
   selector:
     deploymentconfig: sippy
@@ -43,7 +43,8 @@ spec:
     spec:
       containers:
       - name: sippy
-        image: quay.io/dgoodwin/sippy:latest
+        # image gets replaced due to use of the image stream tag below
+        image: image-registry.openshift-image-registry.svc:5000/sippy/sippy:latest
         imagePullPolicy: Always
         ports:
         - name: www
@@ -53,7 +54,7 @@ spec:
           containerPort: 2112
           protocol: TCP
         resources:
-          limits:
+          requests:
             memory: 512M
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
@@ -83,3 +84,12 @@ spec:
           claimName: sippy
   triggers:
   - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - sippy
+      from:
+        kind: ImageStreamTag
+        name: sippy:latest
+        namespace: sippy
+    type: ImageChange
