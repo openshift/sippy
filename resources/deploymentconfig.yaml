@@ -17,8 +17,23 @@ spec:
     # pause after each is ready.
     type: Rolling
     rollingParams:
-      updatePeriodSeconds: 10
-      # TODO: investigate pre here to run a hook prior to each deployment and update db schema
+      # this pre hook runs once before each new deployment rollout begins.
+      # we use this mechanism to update the db schema so pods don't start at once and
+      # fight over making schema updates.
+      pre:
+        failurePolicy: Retry
+        execNewPod:
+          containerName: sippy
+          command:
+          - /bin/sippy
+          - --init-database
+          - --log-level=debug
+          env:
+          - name: SIPPY_DATABASE_DSN
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: dsn
       maxSurge: 1
       maxUnavailable: 0
   template:
@@ -27,9 +42,9 @@ spec:
         deploymentconfig: sippy
     spec:
       containers:
-      - image: quay.io/dgoodwin/sippy:latest
+      - name: sippy
+        image: quay.io/dgoodwin/sippy:latest
         imagePullPolicy: Always
-        name: sippy
         ports:
         - name: www
           containerPort: 8080

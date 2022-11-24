@@ -29,6 +29,7 @@ spec:
             command:
             - /bin/sippy
             args:
+              - --init-database
               - --load-database
               - --mode=ocp
               - --load-prow=true

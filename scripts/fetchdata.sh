@@ -9,6 +9,7 @@ while [ true ]; do
   echo "Fetching new prow data"
   echo "Loading database"
   /bin/sippy --load-database \
+    --init-database \
     --load-prow=true \
     --load-github=true \
     --load-testgrid=false \

@@ -102,6 +102,7 @@ func main() {
 			}
 		},
 	}
+
 	flags := cmd.Flags()
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringVar(&opt.DSN, "database-dsn", os.Getenv("SIPPY_DATABASE_DSN"), "Database DSN for storage of some types of data")
@@ -326,12 +327,17 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		_, err := db.New(o.DSN, pinnedTime)
-		return err
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+		if err := dbc.UpdateSchema(pinnedTime); err != nil {
+			return err
+		}
 	}
 
 	if o.LoadDatabase {
-		dbc, err := db.New(o.DSN, pinnedTime)
+		dbc, err := db.New(o.DSN)
 		if err != nil {
 			return err
 		}
@@ -437,7 +443,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN, pinnedDateTime)
+		dbc, err = db.New(o.DSN)
 		if err != nil {
 			return err
 		}
