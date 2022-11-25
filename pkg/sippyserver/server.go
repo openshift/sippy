@@ -552,12 +552,7 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
-	type jsonResponse struct {
-		Releases    []string  `json:"releases"`
-		LastUpdated time.Time `json:"last_updated"`
-	}
-
-	response := jsonResponse{}
+	response := apitype.Releases{}
 	releases, err := query.ReleasesFromDB(s.db)
 	if err != nil {
 		log.WithError(err).Error("error querying releases from db")

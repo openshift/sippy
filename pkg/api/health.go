@@ -22,26 +22,6 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
-type indicator struct {
-	Current  sippyv1.PassRate `json:"current"`
-	Previous sippyv1.PassRate `json:"previous"`
-}
-
-type variants struct {
-	Current  sippyprocessingv1.VariantHealth `json:"current"`
-	Previous sippyprocessingv1.VariantHealth `json:"previous"`
-}
-
-type health struct {
-	Indicators  map[string]indicator         `json:"indicators"`
-	Variants    variants                     `json:"variants"`
-	LastUpdated time.Time                    `json:"last_updated"`
-	Promotions  map[string]time.Time         `json:"promotions"`
-	Warnings    []string                     `json:"warnings"`
-	Current     sippyprocessingv1.Statistics `json:"current_statistics"`
-	Previous    sippyprocessingv1.Statistics `json:"previous_statistics"`
-}
-
 // useNewInstallTest decides which install test name to use based on releases. For
 // release 4.11 and above, it uses the new install test names
 func useNewInstallTest(release string) bool {
@@ -72,7 +52,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
 
-	indicators := make(map[string]indicator)
+	indicators := make(map[string]apitype.Indicator)
 
 	infraTestName := testidentification.InfrastructureTestName
 	installTestName := testidentification.InstallTestName
@@ -165,7 +145,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 
 	warnings := ScanForReleaseWarnings(dbc, release, reportEnd)
 
-	RespondWithJSON(http.StatusOK, w, health{
+	RespondWithJSON(http.StatusOK, w, apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
@@ -174,18 +154,18 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	})
 }
 
-func getIndicatorForTest(dbc *db.DB, release, testName string, excludedVariants []string) (indicator, error) {
+func getIndicatorForTest(dbc *db.DB, release, testName string, excludedVariants []string) (apitype.Indicator, error) {
 	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, excludedVariants)
 	if err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// This would likely mean we're in upstream kube mode. Returning an empty
 			// indicator will cause the UI to hide these panels.
-			return indicator{}, nil
+			return apitype.Indicator{}, nil
 		}
 
 		log.WithError(err).Error("error querying test report")
-		return indicator{}, err
+		return apitype.Indicator{}, err
 	}
 
 	currentPassRate := sippyv1.PassRate{
@@ -196,7 +176,7 @@ func getIndicatorForTest(dbc *db.DB, release, testName string, excludedVariants 
 		Percentage: testreportconversion.ConvertNaNToZero(testReport.PreviousPassPercentage),
 		Runs:       testReport.PreviousRuns,
 	}
-	return indicator{
+	return apitype.Indicator{
 		Current:  currentPassRate,
 		Previous: previousPassRate,
 	}, nil
