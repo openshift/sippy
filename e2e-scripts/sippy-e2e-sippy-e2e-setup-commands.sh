@@ -164,7 +164,7 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 # See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
 #
 
-kubectl create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
+${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
