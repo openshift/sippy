@@ -10,6 +10,7 @@ spec:
     spec:
       template:
         spec:
+
           restartPolicy: OnFailure
           volumes:
           - name: gcs-credentials
@@ -67,3 +68,13 @@ spec:
             volumeMounts:
             - mountPath: /etc/gcs
               name: gcs-credentials
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              runAsNonRoot: true
+              seccompProfile:
+                type:
+                  RuntimeDefault
+
