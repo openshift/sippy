@@ -32,13 +32,6 @@ e2e_pause() {
   sleep 30
 }
 
-# We need this for Linux version of base64 to suppress the line breaks.
-BASE64_OPTION="-w0"
-if [[ "${OSTYPE}" == "darwin"* ]]; then
-  # On MacOS, the -w0 option is an error.
-  BASE64_OPTION=""
-fi
-
 set +e
 # We don't want to exit on timeouts if the cluster we got was not quite ready yet.
 for i in `seq 1 20`; do
@@ -169,15 +162,9 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 # Get the gcs credentials out to the cluster-pool cluster.
 # These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
 # See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
-cat << END | sed s/CONTENT/"$(cat ${GCS_CRED} |base64 ${BASE64_OPTION})"/| ${KUBECTL_CMD} apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: gcs-cred
-  namespace: sippy-e2e
-data:
-  openshift-ci-data-analysis-ro: CONTENT
-END
+#
+
+kubectl create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
@@ -198,15 +185,15 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 2G
+            memory: 256M
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/openshift-ci-data-analysis-ro
+          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
-          value: /tmp/secrets/openshift-ci-data-analysis-ro
+          value: /tmp/secrets/gcs-cred
         volumeMounts:
         - mountPath: /tmp/secrets
           name: gcs-cred
