@@ -203,7 +203,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.postgres.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/openshift-ci-data-analysis-ro
+          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.postgres.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/openshift-ci-data-analysis-ro
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/openshift-ci-data-analysis-ro
