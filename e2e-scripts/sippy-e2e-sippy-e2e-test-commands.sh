@@ -72,23 +72,6 @@ END
 echo "Waiting for sippy api server pod to be Ready ..."
 ${KUBECTL_CMD} -n postgres wait --for=condition=Ready pod/sippy-server --timeout=30s
 
-is_ready=0
-for i in `seq 1 20`; do
-  c=$(${KUBECTL_CMD} -n postgres logs sippy-server|grep "Refresh complete"|wc -l)
-  if [ $c -eq 1 ]; then
-    echo "sippy server is ready."
-    is_ready=1
-    break
-  fi
-  echo "sippy server pod not ready yet ..."
-  echo "${i} Sleeping 30s ..."
-  sleep 30
-done
-if [ $is_ready -eq 0 ]; then
-  echo "sippy server didn't become ready in time."
-  exit 1
-fi
-
 ${KUBECTL_CMD} -n postgres get pod -o wide
 ${KUBECTL_CMD} -n postgres logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
 
