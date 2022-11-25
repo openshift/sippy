@@ -66,8 +66,8 @@ export KUBECTL_CMD=kubectl
 
 set -euo pipefail
 
-if [ $(${KUBECTL_CMD} get ns|grep postgres|wc -l) -gt 0 ]; then
-  ${KUBECTL_CMD} delete ns postgres
+if [ $(${KUBECTL_CMD} get ns|grep sippy-e2e|wc -l) -gt 0 ]; then
+  ${KUBECTL_CMD} delete ns sippy-e2e
 fi
 
 if [[ ${SKIP_BUILD} == "1" ]]; then
@@ -83,4 +83,4 @@ e2e-scripts/sippy-e2e-sippy-e2e-setup-commands.sh
 e2e-scripts/sippy-e2e-sippy-e2e-test-commands.sh
 
 # Cleanup as needed
-${KUBECTL_CMD} delete ns postgres
+${KUBECTL_CMD} delete ns sippy-e2e

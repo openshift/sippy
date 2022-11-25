@@ -83,7 +83,7 @@ cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: postgres
+  name: sippy-e2e
   labels:
     openshift.io/run-level: "0"
     openshift.io/cluster-monitoring: "true"
@@ -99,7 +99,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: postg1
-  namespace: postgres
+  namespace: sippy-e2e
   labels:
     app: postgres
 spec:
@@ -136,7 +136,7 @@ metadata:
   labels:
     app: postgres
   name: postgres
-  namespace: postgres
+  namespace: sippy-e2e
 spec:
   ports:
   - name: postgres
@@ -152,19 +152,19 @@ echo "Waiting for postgres pod to be Ready ..."
 set +e
 TIMEOUT=120s
 echo "Waiting up to ${TIMEOUT} for the postgres to come up..."
-${KUBECTL_CMD} -n postgres wait --for=condition=Ready pod/postg1 --timeout=${TIMEOUT}
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/postg1 --timeout=${TIMEOUT}
 retVal=$?
 set -e
 echo
 echo "Saving postgres logs ..."
-${KUBECTL_CMD} -n postgres logs postg1 > ${ARTIFACT_DIR}/postgres.log
+${KUBECTL_CMD} -n sippy-e2e logs postg1 > ${ARTIFACT_DIR}/postgres.log
 if [ ${retVal} -ne 0 ]; then
   echo "Postgres pod never came up"
   exit 1
 fi
 
-${KUBECTL_CMD} -n postgres get po -o wide
-${KUBECTL_CMD} -n postgres get svc,ep
+${KUBECTL_CMD} -n sippy-e2e get po -o wide
+${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 # Get the gcs credentials out to the cluster-pool cluster.
 # These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
@@ -174,13 +174,13 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: gcs-cred
-  namespace: postgres
+  namespace: sippy-e2e
 data:
   openshift-ci-data-analysis-ro: CONTENT
 END
 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
-${KUBECTL_CMD} -n postgres create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
+${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
 
 # Make the "sippy loader" pod.
 cat << END | ${KUBECTL_CMD} apply -f -
@@ -188,7 +188,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: sippy-load-job
-  namespace: postgres
+  namespace: sippy-e2e
 spec:
   template:
     spec:
@@ -203,7 +203,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.postgres.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/openshift-ci-data-analysis-ro
+          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.7 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/openshift.yaml --google-service-account-credential-file /tmp/secrets/openshift-ci-data-analysis-ro
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/openshift-ci-data-analysis-ro
@@ -227,20 +227,20 @@ END
 
 date
 echo "Waiting for sippy loader job to finish ..."
-${KUBECTL_CMD} -n postgres get job sippy-load-job
-${KUBECTL_CMD} -n postgres describe job sippy-load-job
+${KUBECTL_CMD} -n sippy-e2e get job sippy-load-job
+${KUBECTL_CMD} -n sippy-e2e describe job sippy-load-job
 
 # We set +e to avoid the script aborting before we can retrieve logs.
 set +e
 # This takes under 3 minutes so 5 minutes (300 seconds) should be plenty.
 
 echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=300s} for the sippy-load-job to complete..."
-${KUBECTL_CMD} -n postgres wait --for=condition=complete job/sippy-load-job --timeout ${SIPPY_LOAD_TIMEOUT}
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-load-job --timeout ${SIPPY_LOAD_TIMEOUT}
 retVal=$?
 set -e
 
-job_pod=$(${KUBECTL_CMD} -n postgres get pod --selector=job-name=sippy-load-job --output=jsonpath='{.items[0].metadata.name}')
-${KUBECTL_CMD} -n postgres logs ${job_pod} > ${ARTIFACT_DIR}/sippy-load.log
+job_pod=$(${KUBECTL_CMD} -n sippy-e2e get pod --selector=job-name=sippy-load-job --output=jsonpath='{.items[0].metadata.name}')
+${KUBECTL_CMD} -n sippy-e2e logs ${job_pod} > ${ARTIFACT_DIR}/sippy-load.log
 
 if [ ${retVal} -ne 0 ]; then
   echo "sippy loading never finished on time."
