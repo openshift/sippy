@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -449,6 +450,13 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Make sure the db is intialized, otherwise let the user know:
+	prowJobs := []models.ProwJob{}
+	res := dbc.DB.Find(&prowJobs).Limit(1)
+	if res.Error != nil {
+		log.WithError(res.Error).Fatal("error querying for a ProwJob, database may need to be initialized with --init-database")
 	}
 
 	webRoot, err := fs.Sub(sippyNG, "sippy-ng/build")
