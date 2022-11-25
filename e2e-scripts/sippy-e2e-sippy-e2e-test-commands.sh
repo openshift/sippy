@@ -1,5 +1,15 @@
 #!/bin/bash
 
+set -x
+
+function cleanup() {
+  echo "Cleaning up port forward"
+  pf_job=$(jobs -p)
+  kill ${pf_job} && wait
+  echo "Port forward is cleaned up"
+}
+trap cleanup EXIT
+
 # In Prow CI, SIPPY_IMAGE variable is defined in the sippy-e2e-ref.yaml file as a
 # dependency so that the pipeline:sippy image (containing the sippy binary)
 # will be available to start the sippy-load and sippy-server pods.
@@ -76,15 +86,6 @@ ${KUBECTL_CMD} -n sippy-e2e get pod -o wide
 ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
 
 echo "Setup services and port forwarding for the sippy api server ..."
-set -x
-
-function cleanup() {
-  echo "Cleaning up port forward"
-  pf_job=$(jobs -p)
-  kill ${pf_job} && wait
-  echo "Port forward is cleaned up"
-}
-trap cleanup EXIT
 
 # Create the Kubernetes service for the sippy-server pod
 # Setup port forward for port 18080 to get to the sippy-server pod

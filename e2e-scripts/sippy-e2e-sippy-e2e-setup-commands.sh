@@ -20,7 +20,7 @@ echo "The kubectl command is: ${KUBECTL_CMD}"
 echo "The Docker config.json is: ${DOCKERCONFIGJSON}"
 
 is_ready=0
-echo "Waiting for cluster-pool cluster to be usable ..."
+echo "Waiting for cluster to be usable..."
 
 e2e_pause() {
   if [ -z $OPENSHIFT_CI ]; then
@@ -44,7 +44,7 @@ for i in `seq 1 20`; do
     is_ready=1
     break
   fi
-  echo "Cluster-pool cluster not ready yet ..."
+  echo "Cluster not ready yet..."
 done
 set -e
 
@@ -185,7 +185,7 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 256M
+            memory: 1G
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
