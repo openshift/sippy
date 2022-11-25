@@ -65,10 +65,11 @@ To load the database:
 
 ```bash
 ./sippy --local-data /opt/sippy-testdata \
+  --init-database \
   --release 4.11 \
   --load-database \
   --log-level=debug \
-  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres"
 ````
 
 ### From Prow and GCS buckets
@@ -86,6 +87,7 @@ available [here](config/README.md).
 
 ```bash
 ./sippy --load-database \
+  --init-database \
   --load-prow=true \
   --load-testgrid=false \
   --release 4.11 \
@@ -104,6 +106,7 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
 
 ```bash
 ./sippy --load-database \
+  --init-database \
   --load-prow=true \
   --load-github=true \
   --load-testgrid=false \
@@ -121,6 +124,7 @@ releases and architectures like this:
 
 ```
 ./sippy --load-database \
+  --init-database \
   --load-prow=false \
   --load-testgrid=false \
   --arch amd64 \
@@ -135,9 +139,12 @@ releases and architectures like this:
 
 ## Launch Sippy API
 
+If you are *not* loading a backup for your data, you will need to initialize and/or update the database schema. This step is done automatically when fetching data from testgrid or prow, but may not have run if you start the server before doing so.
+
 ```bash
 ./sippy --server \
   --release 4.11 \
+  --init-database \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
