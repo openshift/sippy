@@ -6,10 +6,10 @@
 # When running locally, the user has to define SIPPY_IMAGE.
 echo "The sippy CI image: ${SIPPY_IMAGE}"
 
-# The BIG_QUERY_CRED is so you login to Big Query.
-# Redefine BIG_QUERY_CRED to use your own.
-BIG_QUERY_CRED="${BIG_QUERY_CRED:=/var/run/sippy-ci-gcs-sa/gcs-sa}"
-echo "The Big Query cred is: ${BIG_QUERY_CRED}"
+# The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
+# Redefine GCS_CRED to use your own.
+GCS_CRED="${GCS_CRED:=/var/run/sippy-ci-gcs-sa/gcs-sa}"
+echo "The GCS cred is: ${GCS_CRED}"
 
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
 # we use kubectl.
@@ -69,10 +69,10 @@ fi
 e2e_pause
 
 echo "Checking for presense of GCS credentials ..."
-if [ -f ${BIG_QUERY_CRED} ]; then
-  ls -l ${BIG_QUERY_CRED}
+if [ -f ${GCS_CRED} ]; then
+  ls -l ${GCS_CRED}
 else
-  echo "Aborting: Big Query credential file ${BIG_QUERY_CRED} not found"
+  echo "Aborting: GCS credential file ${GCS_CRED} not found"
   exit 1
 fi
 
@@ -169,7 +169,7 @@ ${KUBECTL_CMD} -n postgres get svc,ep
 # Get the gcs credentials out to the cluster-pool cluster.
 # These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
 # See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
-cat << END | sed s/CONTENT/"$(cat ${BIG_QUERY_CRED} |base64 ${BASE64_OPTION})"/| ${KUBECTL_CMD} apply -f -
+cat << END | sed s/CONTENT/"$(cat ${GCS_CRED} |base64 ${BASE64_OPTION})"/| ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Secret
 metadata:

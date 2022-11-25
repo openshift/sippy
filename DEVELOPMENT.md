@@ -187,7 +187,7 @@ Setup you Kubernetes cluster, login, set context to your Kubernetes cluster, and
 [run-e2e.sh](e2e-scripts/run-e2e.sh) script like this:
 
 ```
-  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+  SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
 ```
 
 Include and set the `DOCKERCONFIGJSON` variable appropriately if using a private container registry.
@@ -195,5 +195,5 @@ Include and set the `DOCKERCONFIGJSON` variable appropriately if using a private
 To skip the `docker build` and `docker push` steps, set `SKIP_BUILD=1' like this:
 
 ```
-  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json SKIP_BUILD=1 e2e-scripts/run-e2e.sh
+  SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json SKIP_BUILD=1 e2e-scripts/run-e2e.sh
 ```
