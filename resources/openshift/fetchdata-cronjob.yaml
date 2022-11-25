@@ -12,9 +12,9 @@ spec:
         spec:
           restartPolicy: OnFailure
           volumes:
-          - name: bigquery-credentials
+          - name: gcs-credentials
             secret:
-              secretName: bigquery-credentials
+              secretName: gcs-credentials
           containers:
           - name: fetchdata
             # ImageStreamTags can't interact directly with Kube native CronJobs, but
@@ -53,7 +53,7 @@ spec:
               #- --arch=ppc64le
             env:
               - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: /etc/bigquery/credentials
+                value: /etc/gcs/credentials
               - name: SIPPY_DATABASE_DSN
                 valueFrom:
                   secretKeyRef:
@@ -65,5 +65,5 @@ spec:
                     #name: sippy-github-token
                     #key: token
             volumeMounts:
-            - mountPath: /etc/bigquery
-              name: bigquery-credentials
+            - mountPath: /etc/gcs
+              name: gcs-credentials

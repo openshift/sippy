@@ -8,12 +8,17 @@ To begin, you'll need a KUBECONFIG pointing to an OpenShift cluster.
 
 ## Sippy for OpenShift CI
 
-You will need a GCS credential for reading OpenShift CI artifacts when importing jobs from our prow.
-Instructions: TBD
-
 ```bash
 oc new-project sippy
 ```
+
+You will need a GCS credential for reading OpenShift CI artifacts when importing jobs from our prow.
+
+
+```bash
+oc create secret generic gcs-credentials --from-file credentials=$GCS_CRED -n sippy
+```
+
 
 If you do not wish to build and deploy github.com/openshift/sippy master branch, you can edit `resources/buildconfig.yaml` and point to your own fork and branch.
 
