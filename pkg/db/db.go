@@ -116,6 +116,8 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	log.Info("db schema updated")
+
 	return nil
 }
 

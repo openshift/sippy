@@ -119,7 +119,7 @@ func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
 	if err := refreshUpgradeSuccessMetrics(dbc); err != nil {
 		log.WithError(err).Error("error refreshing upgrade success metrics")
 	}
-	log.Infof("refresh metrics completed in %s", time.Now().Sub(start))
+	log.Infof("refresh metrics completed in %s", time.Since(start))
 
 	return nil
 }
