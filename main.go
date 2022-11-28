@@ -485,8 +485,8 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 		log.WithError(err).Error("error refreshing metrics")
 	}
 
-	// Refresh our metrics every 20 minutes:
-	ticker := time.NewTicker(20 * time.Minute)
+	// Refresh our metrics every 5 minutes:
+	ticker := time.NewTicker(5 * time.Minute)
 	quit := make(chan struct{})
 	go func() {
 		for {
