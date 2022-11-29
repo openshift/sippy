@@ -46,7 +46,7 @@ func Import(dbc *db.DB, releases, architectures []string) error {
 func (r *releaseSyncOptions) Run() error {
 	for _, release := range r.releases {
 
-		log.Infof("Fetching release %s from release controller...\n", release)
+		log.Infof("Fetching release %s from release controller...", release)
 		allTags := r.fetchReleaseTags(release)
 
 		for _, tags := range allTags {
@@ -56,7 +56,7 @@ func (r *releaseSyncOptions) Run() error {
 				// expect Phase to be populated if the record is present
 				if len(mReleaseTag.Phase) > 0 {
 					if mReleaseTag.Phase != tag.Phase {
-						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...\n", mReleaseTag.Phase, tag.Phase, tag.Name)
+						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
 						mReleaseTag.Phase = tag.Phase
 						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
 							return err
@@ -65,7 +65,7 @@ func (r *releaseSyncOptions) Run() error {
 					continue
 				}
 
-				log.Infof("Fetching tag %s from release controller...\n", tag.Name)
+				log.Infof("Fetching tag %s from release controller...", tag.Name)
 				releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
 
 				if releaseTag == nil {

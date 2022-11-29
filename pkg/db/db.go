@@ -29,90 +29,96 @@ type DB struct {
 	BatchSize int
 }
 
-func New(dsn string, reportEnd *time.Time) (*DB, error) {
+func New(dsn string) (*DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
 		return nil, err
 	}
+	return &DB{
+		DB:        db,
+		BatchSize: 1024,
+	}, nil
+}
 
-	if err := db.AutoMigrate(&models.ReleaseTag{}); err != nil {
-		return nil, err
+func (d *DB) UpdateSchema(reportEnd *time.Time) error {
+
+	if err := d.DB.AutoMigrate(&models.ReleaseTag{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ReleaseRepository{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ReleaseRepository{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJob{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwJob{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJobRun{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwJobRun{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.Test{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.Test{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.Suite{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.Suite{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwJobRunTestOutputMetadata{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwJobRunTestOutputMetadata{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.Bug{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.Bug{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.ProwPullRequest{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.ProwPullRequest{}); err != nil {
+		return err
 	}
 
-	if err := db.AutoMigrate(&models.SchemaHash{}); err != nil {
-		return nil, err
+	if err := d.DB.AutoMigrate(&models.SchemaHash{}); err != nil {
+		return err
 	}
 
 	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
 	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
 	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
 	// change this happens without thinking to update sippy.
-	if err := populateTestSuitesInDB(db); err != nil {
-		return nil, err
+	if err := populateTestSuitesInDB(d.DB); err != nil {
+		return err
 	}
 
-	if err := syncPostgresMaterializedViews(db, reportEnd); err != nil {
-		return nil, err
+	if err := syncPostgresMaterializedViews(d.DB, reportEnd); err != nil {
+		return err
 	}
 
-	if err := syncPostgresFunctions(db); err != nil {
-		return nil, err
+	if err := syncPostgresFunctions(d.DB); err != nil {
+		return err
 	}
 
-	return &DB{
-		DB:        db,
-		BatchSize: 1024,
-	}, nil
+	log.Info("db schema updated")
+
+	return nil
 }
 
 // syncSchema will update generic db resources if their schema has changed. (functions, materialized views, indexes)

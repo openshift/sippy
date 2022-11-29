@@ -3,7 +3,9 @@ import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
+import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
+import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
 import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import Alert from '@material-ui/lab/Alert'
@@ -195,7 +197,14 @@ export default function App(props) {
       <CapabilitiesContext.Provider value={capabilities}>
         <MuiThemeProvider theme={createTheme(lightMode)}>
           <CssBaseline />
-          <QueryParamProvider ReactRouterRoute={Route}>
+          <QueryParamProvider
+            ReactRouterRoute={Route}
+            adapter={ReactRouter5Adapter}
+            options={{
+              searchStringToObject: parse,
+              objectToSearchString: stringify,
+            }}
+          >
             <div className={classes.root}>
               <AppBar
                 position="fixed"

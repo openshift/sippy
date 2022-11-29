@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +18,6 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/util"
 
@@ -30,7 +27,6 @@ import (
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -119,31 +115,17 @@ func (s *Server) GetReportEnd() time.Time {
 	return util.GetReportEnd(s.pinnedDateTime)
 }
 
-func (s *Server) refresh(w http.ResponseWriter, req *http.Request) {
-	s.RefreshData(false)
-
-	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-}
-
-func (s *Server) refreshMetrics() {
-	err := metrics.RefreshMetricsDB(s.db, s.GetReportEnd())
-	if err != nil {
-		log.WithError(err).Error("error refreshing metrics")
-	}
-}
-
 // refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
 // for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
 // main postgresql tables.
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
 // the views appear to be empty.
-func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
+func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	log.Info("refreshing materialized views")
 	allStart := time.Now()
 
-	if s.db == nil {
+	if dbc == nil {
 		log.Info("skipping materialized view refresh as server has no db connection provided")
 		return
 	}
@@ -155,7 +137,7 @@ func (s *Server) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	// allow concurrent workers for refreshing matviews in parallel
 	for t := 0; t < 3; t++ {
 		wg.Add(1)
-		go refreshMatview(s.db, refreshMatviewOnlyIfEmpty, ch, &wg)
+		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 
 	for _, pmv := range db.PostgresMatViews {
@@ -213,33 +195,10 @@ func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, 
 	wg.Done()
 }
 
-func (s *Server) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
+func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
 
-	s.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
-
-	// TODO: skip if not enabled or data does not exist.
-	// Load the scale job reports from disk:
-	scaleJobsFilePath := filepath.Join(s.testReportGeneratorConfig.TestGridLoadingConfig.LocalData,
-		perfscaleanalysis.ScaleJobsSubDir, perfscaleanalysis.ScaleJobsFilename)
-	if _, err := os.Stat(scaleJobsFilePath); err == nil {
-		log.Debugf("loading scale job data from: %s", scaleJobsFilePath)
-		jsonFile, err := os.Open(scaleJobsFilePath)
-		if err != nil {
-			log.Errorf("error opening %s: %v", scaleJobsFilePath, err)
-		}
-		defer jsonFile.Close()
-		scaleJobsBytes, err := ioutil.ReadAll(jsonFile)
-		if err != nil {
-			log.Errorf("error reading %s: %v", scaleJobsFilePath, err)
-		}
-		err = json.Unmarshal(scaleJobsBytes, &s.perfscaleMetricsJobReports)
-		if err != nil {
-			log.Errorf("error parsing json from %s: %v", scaleJobsFilePath, err)
-		}
-	}
-
-	s.refreshMetrics()
+	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
 
 	log.Infof("Refresh complete")
 }
@@ -974,7 +933,6 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
 
-	serveMux.HandleFunc("/refresh", s.refresh)
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {

@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/component: sippy
     app.kubernetes.io/instance: sippy
   name: sippy
+  namespace: sippy
 spec:
   failedBuildsHistoryLimit: 5
   nodeSelector: null
@@ -21,6 +22,7 @@ spec:
   source:
     git:
       uri: https://github.com/openshift/sippy
+      ref: master
     type: Git
   strategy:
     dockerStrategy: {}
@@ -28,3 +30,10 @@ spec:
   successfulBuildsHistoryLimit: 5
   triggers:
   - type: ConfigChange
+# Can enable github webhook integration to build on merges:
+# Otherwise use: oc start-build sippy
+#  - github:
+#     secretReference:
+#       name: github-webhook-secret
+#   type: GitHub
+

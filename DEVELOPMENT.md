@@ -65,10 +65,11 @@ To load the database:
 
 ```bash
 ./sippy --local-data /opt/sippy-testdata \
+  --init-database \
   --release 4.11 \
   --load-database \
   --log-level=debug \
-  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres"
 ````
 
 ### From Prow and GCS buckets
@@ -86,6 +87,7 @@ available [here](config/README.md).
 
 ```bash
 ./sippy --load-database \
+  --init-database \
   --load-prow=true \
   --load-testgrid=false \
   --release 4.11 \
@@ -104,6 +106,7 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
 
 ```bash
 ./sippy --load-database \
+  --init-database \
   --load-prow=true \
   --load-github=true \
   --load-testgrid=false \
@@ -121,6 +124,7 @@ releases and architectures like this:
 
 ```
 ./sippy --load-database \
+  --init-database \
   --load-prow=false \
   --load-testgrid=false \
   --arch amd64 \
@@ -135,9 +139,12 @@ releases and architectures like this:
 
 ## Launch Sippy API
 
+If you are *not* loading a backup for your data, you will need to initialize and/or update the database schema. This step is done automatically when fetching data from testgrid or prow, but may not have run if you start the server before doing so.
+
 ```bash
 ./sippy --server \
   --release 4.11 \
+  --init-database \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
@@ -180,7 +187,7 @@ Setup you Kubernetes cluster, login, set context to your Kubernetes cluster, and
 [run-e2e.sh](e2e-scripts/run-e2e.sh) script like this:
 
 ```
-  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+  SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
 ```
 
 Include and set the `DOCKERCONFIGJSON` variable appropriately if using a private container registry.
@@ -188,5 +195,5 @@ Include and set the `DOCKERCONFIGJSON` variable appropriately if using a private
 To skip the `docker build` and `docker push` steps, set `SKIP_BUILD=1' like this:
 
 ```
-  SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json SKIP_BUILD=1 e2e-scripts/run-e2e.sh
+  SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json SKIP_BUILD=1 e2e-scripts/run-e2e.sh
 ```

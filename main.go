@@ -20,12 +20,14 @@ import (
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -44,6 +46,8 @@ const (
 )
 
 type Options struct {
+	// LocalData is a directory used for storing testgrid data, and then loading into database.
+	// Not required when loading db from prow, or when running the server.
 	LocalData              string
 	OpenshiftReleases      []string
 	OpenshiftArchitectures []string
@@ -101,6 +105,7 @@ func main() {
 			}
 		},
 	}
+
 	flags := cmd.Flags()
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringVar(&opt.DSN, "database-dsn", os.Getenv("SIPPY_DATABASE_DSN"), "Database DSN for storage of some types of data")
@@ -325,12 +330,17 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		_, err := db.New(o.DSN, pinnedTime)
-		return err
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+		if err := dbc.UpdateSchema(pinnedTime); err != nil {
+			return err
+		}
 	}
 
 	if o.LoadDatabase {
-		dbc, err := db.New(o.DSN, pinnedTime)
+		dbc, err := db.New(o.DSN)
 		if err != nil {
 			return err
 		}
@@ -356,6 +366,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 		}
 
+		log.Info("Loading release streams...")
 		loadReleases := len(o.OpenshiftReleases) > 0
 		if loadReleases {
 			releaseStreams := make([]string, 0)
@@ -419,6 +430,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 		elapsed := time.Since(start)
 		log.Infof("Database loaded in: %s", elapsed)
 
+		sippyserver.RefreshData(dbc, pinnedTime, false)
+
 		return err
 	}
 
@@ -433,10 +446,17 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN, pinnedDateTime)
+		dbc, err = db.New(o.DSN)
 		if err != nil {
 			return err
 		}
+	}
+
+	// Make sure the db is intialized, otherwise let the user know:
+	prowJobs := []models.ProwJob{}
+	res := dbc.DB.Find(&prowJobs).Limit(1)
+	if res.Error != nil {
+		log.WithError(res.Error).Fatal("error querying for a ProwJob, database may need to be initialized with --init-database")
 	}
 
 	webRoot, err := fs.Sub(sippyNG, "sippy-ng/build")
@@ -459,6 +479,32 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 		pinnedDateTime,
 	)
 
+	// Do an immediate metrics update
+	err = metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+	if err != nil {
+		log.WithError(err).Error("error refreshing metrics")
+	}
+
+	// Refresh our metrics every 5 minutes:
+	ticker := time.NewTicker(5 * time.Minute)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				log.Info("tick")
+				err := metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+				if err != nil {
+					log.WithError(err).Error("error refreshing metrics")
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	// Serve our metrics endpoint for prometheus to scrape
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
 		err := http.ListenAndServe(o.MetricsAddr, nil)
@@ -466,10 +512,6 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
 			panic(err)
 		}
 	}()
-
-	// force a data refresh in the background. This is important to initially populate the db's materialized views
-	// if this is the first time starting sippy.
-	go server.RefreshData(true)
 
 	server.Serve()
 	return nil

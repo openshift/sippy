@@ -1,4 +1,6 @@
 #!/bin/sh
+#
+# WARNING: no longer used, database load command is embedded in fetchdata CronJob yaml
 
 # sleep before fetching so that if we're in some sort of fast crashloop/reschedule mode
 echo "Doing initial sleep before fetching prow data"
@@ -7,6 +9,7 @@ while [ true ]; do
   echo "Fetching new prow data"
   echo "Loading database"
   /bin/sippy --load-database \
+    --init-database \
     --load-prow=true \
     --load-github=true \
     --load-testgrid=false \

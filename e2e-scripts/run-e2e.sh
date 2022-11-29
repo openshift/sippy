@@ -5,18 +5,18 @@
 #
 #   When using a private registry (where auth.json is one of ~/.docker/config.json for Docker or
 #   ${XDG_RUNTIME_DIR}/containers/auth.json for Podman):
-#     SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json DOCKERCONFIGJSON=auth.json e2e-scripts/run-e2e.sh
+#     SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json DOCKERCONFIGJSON=auth.json e2e-scripts/run-e2e.sh
 #
 #   When using a public registry (where authentication is not needed):
-#     SIPPY_IMAGE=quay.io/username/sippy BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+#     SIPPY_IMAGE=quay.io/username/sippy GCS_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
 #
-#   When using a local registry where you have loaded the image and don't want to pull remotely 
+#   When using a local registry where you have loaded the image and don't want to pull remotely
 #     (Implies something like: podman build -t sippy . && kind load docker-image sippy):
 #
-#     SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+#     SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent GCS_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
 #
 #   When you need more time to load sippy data from backup:
-#     SIPPY_LOAD_TIMEOUT=600s SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent BIG_QUERY_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
+#     SIPPY_LOAD_TIMEOUT=600s SKIP_BUILD=1 SIPPY_IMAGE=localhost/sippy SIPPY_IMAGE_PULL_POLICY=IfNotPresent GCS_CRED=/path/to/cred.json e2e-scripts/run-e2e.sh
 
 
 # Print out the current kube context
@@ -29,15 +29,15 @@ if [ -z ${SIPPY_IMAGE} ]; then
   exit 1
 fi
 
-# Big query credentials should be read-only for safety.
-if [ -z ${BIG_QUERY_CRED} ]; then
-  echo "Aborting: Set BIG_QUERY_CRED to a valid filespec where your big query read-only credentials are located."
-  echo "  Example: BIG_QUERY_CRED=/path/to/bigquery-readonly.json"
+# GCS credentials should be read-only for safety.
+if [ -z ${GCS_CRED} ]; then
+  echo "Aborting: Set GCS_CRED to a valid file where your GCS read-only credentials are located."
+  echo "  Example: GCS_CRED=/path/to/gcs-readonly.json"
   exit 1
 fi
 
-if [ ! -f ${BIG_QUERY_CRED} ]; then
-  echo "Aborting: Missing Big Query credentials file; file not found: ${BIG_QUERY_CRED}"
+if [ ! -f ${GCS_CRED} ]; then
+  echo "Aborting: Missing GCS credentials file; file not found: ${GCS_CRED}"
 fi
 
 # The artifacts directory is for logs and can be any directory you have access to.
@@ -66,8 +66,8 @@ export KUBECTL_CMD=kubectl
 
 set -euo pipefail
 
-if [ $(${KUBECTL_CMD} get ns|grep postgres|wc -l) -gt 0 ]; then
-  ${KUBECTL_CMD} delete ns postgres
+if [ $(${KUBECTL_CMD} get ns|grep sippy-e2e|wc -l) -gt 0 ]; then
+  ${KUBECTL_CMD} delete ns sippy-e2e
 fi
 
 if [[ ${SKIP_BUILD} == "1" ]]; then
@@ -83,4 +83,4 @@ e2e-scripts/sippy-e2e-sippy-e2e-setup-commands.sh
 e2e-scripts/sippy-e2e-sippy-e2e-test-commands.sh
 
 # Cleanup as needed
-${KUBECTL_CMD} delete ns postgres
+${KUBECTL_CMD} delete ns sippy-e2e
