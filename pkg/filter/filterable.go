@@ -61,86 +61,75 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
-func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
+func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
+
 	switch f.Operator {
 	case OperatorContains:
 		// "contains" is an overloaded operator: 1) see if an array field contains an item,
 		// 2) string contains a substring, so we need to know the field type.
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
-				db = db.Or(fmt.Sprintf("? != ALL(%s)", f.Field), f.Value)
-			} else {
-				db = db.Or(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+				return fmt.Sprintf("? != ALL(%s)", f.Field), f.Value
 			}
-		} else {
-			if f.Not {
-				db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
-			} else {
-				db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
-			}
+			return fmt.Sprintf("? = ANY(%s)", f.Field), f.Value
 		}
+		if f.Not {
+			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value)
+		}
+		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value)
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q != ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q = ?", f.Field), f.Value)
+			return fmt.Sprintf("%q != ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q = ?", f.Field), f.Value
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q <= ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q > ?", f.Field), f.Value)
+			return fmt.Sprintf("%q <= ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q > ?", f.Field), f.Value
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q < ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+			return fmt.Sprintf("%q < ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q >= ?", f.Field), f.Value
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q >= ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q < ?", f.Field), f.Value)
+			return fmt.Sprintf("%q >= ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q < ?", f.Field), f.Value
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q > ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+			return fmt.Sprintf("%q > ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q <= ?", f.Field), f.Value
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q = ?", f.Field), f.Value)
-		} else {
-			db = db.Or(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+			return fmt.Sprintf("%q = ?", f.Field), f.Value
 		}
+		return fmt.Sprintf("%q <> ?", f.Field), f.Value
 	case OperatorStartsWith:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
-		} else {
-			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value)
 		}
+		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value)
 	case OperatorEndsWith:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
-		} else {
-			db = db.Or(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value)
 		}
+		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value)
 	case OperatorIsEmpty:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q IS NOT NULL", f.Field))
-		} else {
-			db = db.Or(fmt.Sprintf("%q IS NULL", f.Field))
+			return fmt.Sprintf("%q IS NOT NULL", f.Field), nil
 		}
+		return fmt.Sprintf("%q IS NULL", f.Field), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
-			db = db.Or(fmt.Sprintf("%q IS NULL", f.Field))
-		} else {
-			db = db.Or(fmt.Sprintf("%q IS NOT NULL", f.Field))
+			return fmt.Sprintf("%q IS NULL", f.Field), nil
 		}
+		return fmt.Sprintf("%q IS NOT NULL", f.Field), nil
 	}
-	return db
+
+	return "", nil
 }
 
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
@@ -353,13 +342,28 @@ filterOuterLoop:
 }
 
 func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
+
+	orFilters := []string{}
+	orFilterParams := []interface{}{}
+
 	for _, f := range filters.Items {
 		if filters.LinkOperator == LinkOperatorAnd || filters.LinkOperator == "" {
 			db = f.andFilterToSQL(db, filterable)
 		} else if filters.LinkOperator == LinkOperatorOr {
-			db = f.orFilterToSQL(db, filterable)
+			q, p := f.orFilterToSQL(db, filterable)
+			orFilters = append(orFilters, q)
+			if p != nil {
+				orFilterParams = append(orFilterParams, p)
+			}
 		}
 	}
+
+	// Filter ORs require special handling because they can be mixed into a query that already has
+	// an AND (i.e. AND release="4.12"), which we can't then start adding ORs to or we match everything
+	// unintentionally. ORs will be batched together, and then ANDed with the query.
+	queryStr := strings.Join(orFilters, " or ")
+	log.Debugf("final query string: %s", queryStr)
+	db = db.Where(queryStr, orFilterParams...)
 
 	return db
 }
