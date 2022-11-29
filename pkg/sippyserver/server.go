@@ -796,6 +796,9 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 				"code": http.StatusBadRequest, "message": res.Error.Error()})
 			return
 		}
+
+		// TODO: get the count of tests that were run overall
+
 	} else {
 		err := json.NewDecoder(req.Body).Decode(&jobRun)
 		if err != nil {
@@ -804,6 +807,28 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 				"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
 			return
 		}
+
+		// validate the jobRun isn't empty
+		// valid case where test artifacts are not available
+		// we want to mark this as a high risk
+		if isValid, detailReason := isValidProwJobRun(jobRun); !isValid {
+
+			log.Warn("Invalid ProwJob provided for analysis, returning elevated risk")
+			result := apitype.ProwJobRunRiskAnalysis{
+				OverallRisk: apitype.FailureRisk{
+					Level:   apitype.FailureRiskLevelHigh,
+					Reasons: []string{fmt.Sprintf("Invalid ProwJob provided for analysis: %s", detailReason)},
+				},
+			}
+
+			// respond ok since we handle it
+			api.RespondWithJSON(http.StatusOK, w, result)
+			return
+		}
+
+		// TODO:
+		// check to see if prow_job_test_count was included in the query params
+
 		// We don't expect the caller to fully populate the ProwJob, just it's name,
 		// override the input by looking up the actual ProwJob so we have access to release and variants.
 		job := &models.ProwJob{}
@@ -827,6 +852,27 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
+func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
+	if (jobRun == nil || jobRun == &models.ProwJobRun{} || &jobRun.ProwJob == &models.ProwJob{} || jobRun.ProwJob.Name == "") {
+
+		detailReason := "empty ProwJobRun"
+
+		if (jobRun != nil && jobRun != &models.ProwJobRun{}) {
+
+			// not likely to be empty when we have a non empty ProwJobRun
+			detailReason = "empty ProwJob"
+
+			if (&jobRun.ProwJob != &models.ProwJob{}) {
+				detailReason = "missing ProwJob Name"
+			}
+		}
+
+		return false, detailReason
+	}
+
+	return true, ""
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
