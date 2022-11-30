@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -697,6 +698,31 @@ type JobAnalysisResult struct {
 type TestOutput struct {
 	URL    string `json:"url"`
 	Output string `json:"output"`
+}
+
+type Releases struct {
+	Releases    []string  `json:"releases"`
+	LastUpdated time.Time `json:"last_updated"`
+}
+
+type Indicator struct {
+	Current  sippyv1.PassRate `json:"current"`
+	Previous sippyv1.PassRate `json:"previous"`
+}
+
+type Variants struct {
+	Current  v1.VariantHealth `json:"current"`
+	Previous v1.VariantHealth `json:"previous"`
+}
+
+type Health struct {
+	Indicators  map[string]Indicator `json:"indicators"`
+	Variants    Variants             `json:"variants"`
+	LastUpdated time.Time            `json:"last_updated"`
+	Promotions  map[string]time.Time `json:"promotions"`
+	Warnings    []string             `json:"warnings"`
+	Current     v1.Statistics        `json:"current_statistics"`
+	Previous    v1.Statistics        `json:"previous_statistics"`
 }
 
 type ProwJobRunRiskAnalysis struct {
