@@ -6,6 +6,8 @@ CHECK := $(foreach dep,$(DEPS),\
 
 all: test build
 
+verify: lint
+
 builddir:
 	mkdir -p sippy-ng/build
 	touch sippy-ng/build/index.html
