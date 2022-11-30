@@ -421,13 +421,14 @@ func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues 
 	return nil
 }
 
-func UpdateWatchlist(dbc *db.DB) error {
+func UpdateWatchlist(dbc *db.DB) []error {
 	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
 	testCache, err := LoadTestCache(dbc, []string{"Bugs"})
 	if err != nil {
-		return err
+		return []error{errors.Wrap(err, "error loading test class for UpdateWatchList")}
 	}
 
+	errs := []error{}
 	for testName, test := range testCache {
 		expected := testidentification.IsTestOnWatchlist(test)
 		if test.Watchlist != expected {
@@ -435,29 +436,47 @@ func UpdateWatchlist(dbc *db.DB) error {
 			test.Watchlist = expected
 			res := dbc.DB.Save(test)
 			if res.Error != nil {
-				log.WithError(err).Error("error updating test watchlist status")
+				log.WithError(err).Errorf("error updating test watchlist status for: %s", testName)
+				errs = append(errs, errors.Wrapf(err, "error updating test watchlist status for: %s", testName))
 			}
 		}
 	}
-	return nil
+	return errs
 }
 
 // LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
-func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string]*models.ProwJob) error {
+func LoadBugs(dbc *db.DB) []error {
+	testCache, err := LoadTestCache(dbc, []string{})
+	if err != nil {
+		return []error{err}
+	}
+
+	jobCache, err := LoadProwJobCache(dbc)
+	if err != nil {
+		return []error{err}
+	}
+
+	errs := []error{}
 	log.Info("querying search.ci for test/job associations")
 	testIssues, err := loader.FindIssuesForTests(sets.StringKeySet(testCache).List()...)
 	if err != nil {
-		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.")
+		err = errors.Wrap(err, "error querying bugs for tests")
+		errs = append(errs, err)
 	}
 
 	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
 	if err != nil {
-		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.  Lookup error: %v", err.Error())
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.")
+		err = errors.Wrap(err, "error querying bugs for jobs")
+		errs = append(errs, err)
 	}
 
 	err = appendJobIssuesFromVariants(jobCache, jobIssues)
 	if err != nil {
-		log.Warningf("Issue Lookup Error: an error was encountered looking up existing bugs by jobs by variants.  Lookup error: %v", err.Error())
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs by jobs by variants.")
+		err = errors.Wrap(err, "error querying bugs for variants")
+		errs = append(errs, err)
 	}
 
 	log.Info("syncing issue test/job associations to db")
@@ -470,8 +489,8 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
 			if err != nil {
 				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
-				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
-				// return errors.Wrap(err, "error parsing issue ID")
+				err = errors.Wrap(err, "error parsing issue ID")
+				errs = append(errs, err)
 				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
@@ -481,7 +500,10 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			}
 			if _, ok := testCache[testName]; !ok {
 				// Shouldn't be possible, if it is we want to know.
-				panic("Test name in bug cache does not exist in db: " + testName)
+				err := fmt.Errorf("test name was in bug cache but not in database?: %s", testName)
+				log.WithError(err).Error("unexpected error getting test from cache")
+				errs = append(errs, err)
+				continue
 			}
 			dbExpectedBugs[issueID].Tests = append(dbExpectedBugs[issueID].Tests, *testCache[testName])
 		}
@@ -493,8 +515,8 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
 			if err != nil {
 				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
-				// TODO: start returning errors here? Eris working on a fix for results with context but no issues
-				// return errors.Wrap(err, "error parsing issue ID")
+				err = errors.Wrap(err, "error parsing issue ID")
+				errs = append(errs, err)
 				continue
 			}
 			if _, ok := dbExpectedBugs[issueID]; !ok {
@@ -506,7 +528,10 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 			jobName := jobSearchStr[4 : len(jobSearchStr)-4]
 			if _, ok := jobCache[jobName]; !ok {
 				// Shouldn't be possible, if it is we want to know.
-				panic("Job name in bug cache does not exist in db: " + jobName)
+				err := fmt.Errorf("job name was in bug cache but not in database?: %s", jobName)
+				log.WithError(err).Error("unexpected error getting job from cache")
+				errs = append(errs, err)
+				continue
 			}
 			dbExpectedBugs[issueID].Jobs = append(dbExpectedBugs[issueID].Jobs, *jobCache[jobName])
 		}
@@ -520,18 +545,24 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 		}).Create(bug)
 		if res.Error != nil {
 			log.Errorf("error creating bug: %s %v", res.Error, bug)
-			return errors.Wrap(res.Error, "error creating bug")
+			err := errors.Wrap(res.Error, "error creating bug")
+			errs = append(errs, err)
+			continue
 		}
 		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
 		err := dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
 		if err != nil {
 			log.Errorf("error updating bug test associations: %s %v", err, bug)
-			return errors.Wrap(res.Error, "error updating bug test assocations")
+			err := errors.Wrap(res.Error, "error updating bug test assocations")
+			errs = append(errs, err)
+			continue
 		}
 		err = dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
 		if err != nil {
 			log.Errorf("error updating bug job associations: %s %v", err, bug)
-			return errors.Wrap(res.Error, "error updating bug job assocations")
+			err := errors.Wrap(res.Error, "error updating bug job assocations")
+			errs = append(errs, err)
+			continue
 		}
 	}
 
@@ -539,11 +570,12 @@ func LoadBugs(dbc *db.DB, testCache map[string]*models.Test, jobCache map[string
 	// Unscoped deletes the rows from the db, rather than soft delete.
 	res := dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
 	if res.Error != nil {
-		return errors.Wrap(res.Error, "error deleting stale bugs")
+		err := errors.Wrap(res.Error, "error deleting stale bugs")
+		errs = append(errs, err)
 	}
 	log.Infof("deleted %d stale bugs", res.RowsAffected)
 
-	return nil
+	return errs
 }
 
 func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {

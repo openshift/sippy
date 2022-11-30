@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm/clause"
 
@@ -32,7 +33,7 @@ type releaseSyncOptions struct {
 	architectures []string
 }
 
-func Import(dbc *db.DB, releases, architectures []string) error {
+func Import(dbc *db.DB, releases, architectures []string) []error {
 	o := releaseSyncOptions{
 		db:            dbc,
 		releases:      releases,
@@ -40,10 +41,11 @@ func Import(dbc *db.DB, releases, architectures []string) error {
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
 	}
 
-	return o.Run()
+	return o.run()
 }
 
-func (r *releaseSyncOptions) Run() error {
+func (r *releaseSyncOptions) run() []error {
+	errs := []error{}
 	for _, release := range r.releases {
 
 		log.Infof("Fetching release %s from release controller...", release)
@@ -59,7 +61,8 @@ func (r *releaseSyncOptions) Run() error {
 						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
 						mReleaseTag.Phase = tag.Phase
 						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
-							return err
+							log.WithError(err).Errorf("error updating release tag")
+							errs = append(errs, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
 						}
 					}
 					continue
@@ -73,13 +76,13 @@ func (r *releaseSyncOptions) Run() error {
 				}
 
 				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
-					return err
+					errs = append(errs, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
 				}
 			}
 		}
 	}
 
-	return nil
+	return errs
 }
 
 func (r *releaseSyncOptions) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {

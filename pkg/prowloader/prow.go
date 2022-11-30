@@ -96,20 +96,23 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	return prowJobRunCache
 }
 
-func (pl *ProwLoader) LoadProwJobsToDB() error {
+func (pl *ProwLoader) LoadProwJobsToDB() []error {
+	errs := []error{}
 	// Update unmerged PR statuses in case any have merged
 	if err := pl.syncPRStatus(); err != nil {
-		return err
+		errs = append(errs, errors.Wrap(err, "error in syncPRStatus"))
 	}
 
 	// Fetch/update job data
 	jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
 	if err != nil {
-		return err
+		errs = append(errs, errors.Wrap(err, "error fetching job JSON data from prow"))
+		return errs
 	}
 	prowJobs, err := jobsJSONToProwJobs(jobsJSON)
 	if err != nil {
-		return err
+		errs = append(errs, errors.Wrap(err, "error decoding job JSON data from prow"))
+		return errs
 	}
 
 	for _, pj := range prowJobs {
@@ -122,7 +125,9 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 
 			if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
 				if err := pl.prowJobToJobRun(pj, release); err != nil {
-					return err
+					err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
+					log.WithError(err).Warning("prow import error")
+					errs = append(errs, err)
 				}
 				break
 			}
@@ -130,20 +135,24 @@ func (pl *ProwLoader) LoadProwJobsToDB() error {
 			for _, expr := range cfg.Regexp {
 				re, err := regexp.Compile(expr)
 				if err != nil {
-					log.WithError(err).Errorf("invalid regex in configuration")
-					return fmt.Errorf("invalid regex in configuration %w", err)
+					err = errors.Wrap(err, "invalid regex in configuration")
+					log.WithError(err).Errorf("config regex error")
+					errs = append(errs, err)
+					continue
 				}
 
 				if re.MatchString(pj.Spec.Job) {
 					if err := pl.prowJobToJobRun(pj, release); err != nil {
-						return err
+						err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
+						log.WithError(err).Warning("prow import error")
+						errs = append(errs, err)
 					}
 				}
 			}
 		}
 	}
 
-	return nil
+	return errs
 }
 
 func (pl *ProwLoader) syncPRStatus() error {
