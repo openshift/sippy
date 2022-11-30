@@ -132,20 +132,26 @@ func createOrUpdateJob(dbc *db.DB, reportName string,
 func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
 	// Cache all tests by name to their ID, used for the join object.
 	testCache := map[string]*models.Test{}
-	allTests := []*models.Test{}
 	q := dbc.DB.Model(&models.Test{})
 	for _, p := range preloads {
 		q = q.Preload(p)
 	}
-	res := q.Find(&allTests)
+
+	// Kube exceeds 60000 tests, more than postgres can load at once:
+	testsBatch := []*models.Test{}
+	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
+		for _, idn := range testsBatch {
+			if _, ok := testCache[idn.Name]; !ok {
+				testCache[idn.Name] = idn
+			}
+		}
+		return nil
+	})
+
 	if res.Error != nil {
 		return map[string]*models.Test{}, res.Error
 	}
-	for _, idn := range allTests {
-		if _, ok := testCache[idn.Name]; !ok {
-			testCache[idn.Name] = idn
-		}
-	}
+
 	log.Infof("test cache created with %d entries from database", len(testCache))
 	return testCache, nil
 }
