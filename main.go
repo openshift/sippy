@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -296,6 +295,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 		pinnedTime = &parsedTime
 	}
 
+	// This block downloads testgrid data and stores as files on disk.
+	// Typically unused for OpenShift we now scrape prow directly instead.
 	if o.FetchData != "" {
 		start := time.Now()
 		err := os.MkdirAll(o.FetchData, os.ModePerm)
@@ -340,6 +341,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.LoadDatabase {
+
 		dbc, err := db.New(o.DSN)
 		if err != nil {
 			return err
@@ -366,6 +368,10 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 		}
 
+		// Track all errors we encountered during the update. We'll log each again at the end, and return
+		// an overall error to exit non-zero and fail the job.
+		allErrs := []error{}
+
 		log.Info("Loading release streams...")
 		loadReleases := len(o.OpenshiftReleases) > 0
 		if loadReleases {
@@ -376,9 +382,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 				}
 			}
 
-			if err := releasesync.Import(dbc, releaseStreams, o.OpenshiftArchitectures); err != nil {
-				panic(err)
-			}
+			releaseSyncErrs := releasesync.Import(dbc, releaseStreams, o.OpenshiftArchitectures)
+			allErrs = append(allErrs, releaseSyncErrs...)
 		}
 
 		if o.LoadProw {
@@ -387,35 +392,26 @@ func (o *Options) Run() error { //nolint:gocyclo
 				o.GoogleOAuthClientCredentialFile,
 			)
 			if err != nil {
-				return err
-			}
+				log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
+				allErrs = append(allErrs, err)
+			} else {
 
-			var githubClient *github.Client
-			if o.LoadGitHub {
-				githubClient = github.New(context.TODO())
-			}
+				var githubClient *github.Client
+				if o.LoadGitHub {
+					githubClient = github.New(context.TODO())
+				}
 
-			prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", githubClient, o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
-			if err := prowLoader.LoadProwJobsToDB(); err != nil {
-				return err
+				prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", githubClient, o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
+				errs := prowLoader.LoadProwJobsToDB()
+				allErrs = append(allErrs, errs...)
 			}
 		}
 
 		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		if loadBugs {
 			bugsStart := time.Now()
-			testCache, err := sippyserver.LoadTestCache(dbc, []string{})
-			if err != nil {
-				return err
-			}
-
-			prowJobCache, err := sippyserver.LoadProwJobCache(dbc)
-			if err != nil {
-				return err
-			}
-			if err := sippyserver.LoadBugs(dbc, testCache, prowJobCache); err != nil {
-				return errors.Wrapf(err, "error syncing issues to db")
-			}
+			errs := sippyserver.LoadBugs(dbc)
+			allErrs = append(allErrs, errs...)
 			bugsElapsed := time.Since(bugsStart)
 			log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
 		}
@@ -423,16 +419,23 @@ func (o *Options) Run() error { //nolint:gocyclo
 		// Update the tests watchlist flag. Anything matching one of our configured
 		// regexes, or any test linked to a jira with a particular label will land on the watchlist
 		// for easier viewing in the UI.
-		if err := sippyserver.UpdateWatchlist(dbc); err != nil {
-			return errors.Wrapf(err, "error syncing issues to db")
-		}
+		watchlistErrs := sippyserver.UpdateWatchlist(dbc)
+		allErrs = append(allErrs, watchlistErrs...)
 
 		elapsed := time.Since(start)
-		log.Infof("Database loaded in: %s", elapsed)
+		log.WithField("elapsed", elapsed).Info("database load complete")
 
 		sippyserver.RefreshData(dbc, pinnedTime, false)
 
-		return err
+		if len(allErrs) > 0 {
+			log.Warningf("%d errors were encountered while loading database:", len(allErrs))
+			for _, err := range allErrs {
+				log.Error(err.Error())
+			}
+			return fmt.Errorf("errors were encountered while loading database, see logs for details")
+		}
+		log.Info("no errors encountered during db refresh")
+		return nil
 	}
 
 	if o.Server {
