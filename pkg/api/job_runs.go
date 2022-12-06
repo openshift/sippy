@@ -218,8 +218,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
 
-		if ft.Test.Name == testidentification.OpenShiftTestsName {
-			// This can be quite misleading
+		if ft.Test.Name == testidentification.OpenShiftTestsName || testidentification.IsIgnoredTest(ft.Test.Name) {
 			continue
 		}
 
