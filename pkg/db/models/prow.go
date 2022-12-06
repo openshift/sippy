@@ -59,6 +59,8 @@ type ProwJobRun struct {
 	Timestamp     time.Time `gorm:"index;index:idx_prow_job_runs_timestamp_date,expression:DATE(timestamp AT TIME ZONE 'UTC')"`
 	Duration      time.Duration
 	OverallResult v1.JobOverallResult `gorm:"index"`
+	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
+	TestCount int `gorm:"-"`
 }
 
 type Test struct {
