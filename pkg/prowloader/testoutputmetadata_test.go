@@ -216,6 +216,38 @@ event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-
 				},
 			},
 		},
+		{
+			name:     "watch channels many hits",
+			testName: "[sig-arch][Late] operators should not create watch channels very often [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]",
+			testOutput: `{  fail [github.com/openshift/origin/test/extended/apiserver/api_requests.go:446]: Expected
+    <[]string | len:3, cap:4>: [
+        "Operator \"openshift-controller-manager-operator\" produces more watch requests than expected: watchrequestcount=421, upperbound=360, ratio=1.1694444444444445",
+        "Operator \"kube-controller-manager-operator\" produces more watch requests than expected: watchrequestcount=324, upperbound=290, ratio=1.1172413793103448",
+        "Operator \"prometheus-operator\" produces more watch requests than expected: watchrequestcount=212, upperbound=200, ratio=1.06",
+    ]
+to be empty
+Ginkgo exit error 1: exit with code 1}`,
+			expectedTags: []map[string]string{
+				{
+					"operator":          "openshift-controller-manager-operator",
+					"watchrequestcount": "421",
+					"upperbound":        "360",
+					"ratio":             "1.1694444444444445", // we expect rounding?
+				},
+				{
+					"operator":          "kube-controller-manager-operator",
+					"watchrequestcount": "324",
+					"upperbound":        "290",
+					"ratio":             "1.1172413793103448", // we expect rounding?
+				},
+				{
+					"operator":          "prometheus-operator",
+					"watchrequestcount": "212",
+					"upperbound":        "200",
+					"ratio":             "1.06", // we expect rounding?
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

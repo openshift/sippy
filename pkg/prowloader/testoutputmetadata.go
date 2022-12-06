@@ -6,12 +6,14 @@ import (
 	"strings"
 )
 
-const (
-	alertREStr = `alert (?P<alert>[^\s]+) (?P<state>pending|fired)`
+var (
+	alertRE = regexp.MustCompile(`alert (?P<alert>[^\s]+) (?P<state>pending|fired)`)
 
 	// NOTE: order important here, if ns ever moves after reason, we'd need another regex added to each test name below that matches the new order
 	// NOTE: these two should just be one but I am unable to make the namespace match group optional, ? doesn't seem to work
-	pathologicalEventsREStr = `reason\/(?P<reason>[a-zA-Z0-9]+)`
+	pathologicalEventsRE = regexp.MustCompile(`reason\/(?P<reason>[a-zA-Z0-9]+)`)
+
+	watchRequestsRE = regexp.MustCompile(`Operator \\"(?P<operator>[a-zA-Z0-9-]+)\\" produces more watch requests than expected`)
 )
 
 func GetTestOutputMetadataExtractors() map[string]TestOutputMetadataExtractorFunc {
@@ -20,19 +22,23 @@ func GetTestOutputMetadataExtractors() map[string]TestOutputMetadataExtractorFun
 		"[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]": alertMetadataExtractor,
 		"[sig-arch] events should not repeat pathologically":                                                                                                                         pathologicalEventsMetadataExtractor,
 		"[sig-arch] events should not repeat pathologically in e2e namespaces":                                                                                                       pathologicalEventsMetadataExtractor,
+		"[sig-arch][Late] operators should not create watch channels very often [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]":                               watchRequestsMetadataExtractor,
 	}
 }
 
 type TestOutputMetadataExtractorFunc func(testOutput string) []map[string]string
 
 func alertMetadataExtractor(testOutput string) []map[string]string {
-	re := regexp.MustCompile(alertREStr)
-	return scanTestOutput(re, []string{"namespace", "service", "severity", "reason", "result", "bug"}, testOutput)
+	return scanTestOutput(alertRE, []string{"namespace", "service", "severity", "reason", "result", "bug"}, testOutput)
+}
+
+func watchRequestsMetadataExtractor(testOutput string) []map[string]string {
+	return scanTestOutput(watchRequestsRE, []string{"watchrequestcount", "upperbound", "ratio"}, testOutput)
 }
 
 func pathologicalEventsMetadataExtractor(testOutput string) []map[string]string {
 	return scanTestOutput(
-		regexp.MustCompile(pathologicalEventsREStr),
+		pathologicalEventsRE,
 		[]string{"ns"},
 		testOutput,
 	)
@@ -123,14 +129,13 @@ func scanLine(regex *regexp.Regexp, tokenKeys []string, line string) []map[strin
 			lt = strings.ReplaceAll(lt, "}", " ")
 			tokens := strings.Split(lt, " ")
 			for _, t := range tokens {
-				t = strings.TrimSuffix(t, ",")
+				t = strings.TrimSuffix(t, ",") // i.e. trim the trailing comma after: reason=foobar,
 				st := strings.Split(t, "=")
 				if len(st) == 2 && tokenKeyMap[st[0]] {
-					// Remove quotes around value if present:
 					v := st[1]
-					if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {
-						v = v[1 : len(v)-1]
-					}
+					// Remove quotes around value if present:
+					v = strings.TrimPrefix(v, "\"")
+					v = strings.TrimSuffix(v, "\"")
 					results[st[0]] = v
 				}
 				st = strings.Split(t, "/")
