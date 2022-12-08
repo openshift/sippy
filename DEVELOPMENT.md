@@ -38,10 +38,10 @@ The simplest way to fetch data for Sippy, is to just get a copy of the productio
 psql -h localhost -U postgres -p 5432 postgres < sippy-backup-2022-05-02.sql
 ```
 
-or with a command like this if you are using the custom format file:
+or with a command like this if you are using the custom format file (you can ignore errors regarding missing roles):
 
 ```bash
-pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -C -d postgres ./sippy-backup-2022-10-20.dump
+pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -d postgres ./sippy-backup-2022-10-20.dump
 ```
 
 ### From TestGrid

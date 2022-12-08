@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hashicorp/go-version"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -95,7 +96,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
-func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobRunRiskAnalysis, error) {
+func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount int, logger *log.Entry) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
@@ -114,28 +115,52 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobR
 		compareRelease = ar[0].Release
 	}
 
+	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID)
+
+	// if we had an error we will continue the risk analysis and not elevate based on test counts
+	if err != nil {
+		logger.WithError(err).Error("Error comparing historical job run test count")
+		historicalCount = 0
+	}
+
+	// -1 indicates an error getting the jobRunTest count we will log an error and skip this validation
+	if jobRunTestCount < 0 {
+		logger.Error("Unable to determine job run test count, initializing to historical count")
+		jobRunTestCount = historicalCount
+	} else if jobRunTestCount == 0 {
+		// hack since we don't currently get the jobRunTestCount for 4.12 jobs.
+		// If the jobRunTestCount is 0 and we are pre 4.13 set the jobRunTestCount to the historicalCount
+		preSupportVersion, _ := version.NewVersion("4.12")
+		currentVersion, _ := version.NewVersion(compareRelease)
+		if preSupportVersion.GreaterThanOrEqual(currentVersion) {
+			jobRunTestCount = historicalCount
+		}
+	}
+
 	// NOTE: we are including bugs for all releases, may want to filter here in future to just those
 	// with an AffectsVersions that seems to match our compareRelease?
 	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true)
 	if err != nil {
-		return apitype.ProwJobRunRiskAnalysis{}, err
+		logger.WithError(err).Errorf("Error evaluating bugs for prow job: %d", jobRun.ProwJob.ID)
+	} else {
+		jobRun.ProwJob.Bugs = jobBugs
 	}
-	jobRun.ProwJob.Bugs = jobBugs
 
 	// Pre-load test bugs as well:
 	if len(jobRun.Tests) <= maxFailuresToFullyAnalyze {
 		for i, tr := range jobRun.Tests {
 			bugs, err := query.LoadBugsForTest(dbc, tr.Test.Name, true)
 			if err != nil {
-				return apitype.ProwJobRunRiskAnalysis{}, err
+				logger.WithError(err).Errorf("Error evaluating bugs for prow job: %d, test name: %s", jobRun.ProwJob.ID, tr.Test.Name)
+			} else {
+				logger.Infof("Found %d bugs for test %s", len(bugs), tr.Test.Name)
+				tr.Test.Bugs = bugs
+				jobRun.Tests[i] = tr
 			}
-			log.Infof("Found %d bugs for test %s", len(bugs), tr.Test.Name)
-			tr.Test.Bugs = bugs
-			jobRun.Tests[i] = tr
 		}
 	}
 
-	return runJobRunAnalysis(jobRun, compareRelease,
+	return runJobRunAnalysis(jobRun, compareRelease, jobRunTestCount, historicalCount, logger.WithField("func", "runJobRunAnalysis"),
 		func(testName, release, suite string, variants []string) (*apitype.Test, error) {
 
 			fil := &filter.Filter{
@@ -171,13 +196,8 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun) (apitype.ProwJobR
 // testResultsFunc is used for injecting db responses in unit tests.
 type testResultsFunc func(testName string, release, suite string, variants []string) (*apitype.Test, error)
 
-func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
+func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunTestCount int, historicalRunTestCount int, logger *log.Entry,
 	testResultsFunc testResultsFunc) (apitype.ProwJobRunRiskAnalysis, error) {
-
-	logger := log.WithFields(log.Fields{
-		"func":     "jobRunAnalysis",
-		"jobRunID": jobRun.ID,
-	})
 
 	logger.Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
@@ -196,6 +216,15 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string,
 	}
 
 	switch {
+
+	// Return early if we see a large gap in the number of tests:
+	// order matters, if we have 0 tests that ran && 0 tests that failed we
+	// want to compare that here before the 'no test failures' case
+	case jobRunTestCount < (int(float64(historicalRunTestCount) * .75)):
+		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
+		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
+			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): High", jobRunTestCount, historicalRunTestCount))
+		return response, nil
 
 	// Return early if no tests failed in this run:
 	case len(jobRun.Tests) == 0:

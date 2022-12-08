@@ -6,6 +6,7 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,7 +135,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				return nil, nil
 			}
 
-			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", testResultsLookupFunc)
+			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, log.WithField("jobRunID", "test"), testResultsLookupFunc)
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {

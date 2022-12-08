@@ -12,6 +12,40 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
+func JobRunTestCount(dbc *db.DB, jobRunID int64) (int, error) {
+	var prowJobRunTestCount int
+	var tests []models.ProwJobRunTest
+
+	res := dbc.DB.Find(&tests, "prow_job_run_id = ?", jobRunID)
+
+	if res.Error != nil {
+		return -1, res.Error
+	}
+
+	prowJobRunTestCount = len(tests)
+
+	return prowJobRunTestCount, nil
+}
+
+func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint) (int, error) {
+
+	var historicalProwJobRunTestCount float64
+	q := dbc.DB.Raw(`SELECT avg(count) 
+	FROM (SELECT count(*) 
+	FROM prow_job_run_tests INNER JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id 
+	WHERE prow_job_runs.prow_job_id = ? 
+	AND prow_job_runs.timestamp >= CURRENT_DATE - interval '14' day  
+	GROUP BY prow_job_run_id) t`, prowJobID)
+
+	if q.Error != nil {
+		return 0, q.Error
+	}
+
+	q.First(&historicalProwJobRunTestCount)
+
+	return int(historicalProwJobRunTestCount), nil
+}
+
 func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, start, boundary, end time.Time) ([]apitype.Job, error) {
 	now := time.Now()
 	jobReports := make([]apitype.Job, 0)
