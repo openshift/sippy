@@ -2,7 +2,6 @@ package prowloader
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -40,10 +39,13 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			prowjob_build_id, 
 			prowjob_type, 
 			prowjob_cluster, 
+            prowjob_url,
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts, 
 			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts ` +
 		"FROM `ci_analysis_us.jobs` " +
-		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom ORDER BY prowjob_start_ts`)
+		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom 
+           AND prowjob_url IS NOT NULL 
+           ORDER BY prowjob_start_ts`)
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "queryFrom",
@@ -81,7 +83,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				StartTime:      bqjr.StartTime,
 				CompletionTime: &bqjr.CompletionTime,
 				State:          prow.ProwJobState(bqjr.State),
-				URL:            bqjr.GetURL(),
+				URL:            bqjr.URL,
 				BuildID:        bqjr.BuildID,
 			},
 		}
@@ -103,9 +105,5 @@ type bigqueryProwJobRun struct {
 	Cluster        string    `bigquery:"prowjob_cluster"`
 	StartTime      time.Time `bigquery:"prowjob_start_ts"`
 	CompletionTime time.Time `bigquery:"prowjob_completion_ts"`
-}
-
-// GetURL returns the guessed URL for the prow job using it's name and build ID.
-func (jr bigqueryProwJobRun) GetURL() string {
-	return fmt.Sprintf("https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/%s/%s", jr.JobName, jr.BuildID)
+	URL            string    `bigquery:"prowjob_url"`
 }

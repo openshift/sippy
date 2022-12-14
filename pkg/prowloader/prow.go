@@ -315,7 +315,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 			if err != nil {
 				return err
 			}
-			*newJobRunsCtr += 1
+			*newJobRunsCtr++
 		}
 	}
 
