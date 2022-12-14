@@ -29,9 +29,29 @@ type DB struct {
 	BatchSize int
 }
 
+// log2LogrusWriter bridges gorm logging to logrus logging.
+// All messages will come through at DEBUG level.
+type log2LogrusWriter struct {
+	entry *log.Entry
+}
+
+func (w log2LogrusWriter) Printf(msg string, args ...interface{}) {
+	w.entry.Debugf(msg, args...)
+}
+
 func New(dsn string) (*DB, error) {
+	gormLogger := logger.New(
+		log2LogrusWriter{entry: log.WithField("source", "gorm")},
+		logger.Config{
+			SlowThreshold:             2 * time.Second,
+			LogLevel:                  logger.Warn, // Change to info if you want to see all sql being used, but it's a LOT
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: gormLogger,
 	})
 	if err != nil {
 		return nil, err
