@@ -31,7 +31,9 @@ import (
 	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/synthetictests"
+	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type ProwLoader struct {
@@ -203,6 +205,25 @@ func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 	return results["items"], nil
 }
 
+func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
+	if releaseConfig, ok := pl.config.Releases[release]; ok {
+		dashboard := "redhat-openshift-ocp-release-" + release
+		blockingJobs := sets.NewString(releaseConfig.BlockingJobs...)
+		informingJobs := sets.NewString(releaseConfig.InformingJobs...)
+		jobType := ""
+		if blockingJobs.Has(jobName) {
+			jobType = "blocking"
+		} else if informingJobs.Has(jobName) {
+			jobType = "informing"
+		}
+		if len(jobType) != 0 {
+			dashboard = dashboard + "-" + jobType
+			return testgridhelpers.URLForJob(dashboard, jobName)
+		}
+	}
+	return &url.URL{}
+}
+
 func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
@@ -217,10 +238,11 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
 		dbProwJob = &models.ProwJob{
-			Name:     pj.Spec.Job,
-			Kind:     models.ProwKind(pj.Spec.Type),
-			Release:  release,
-			Variants: pl.variantManager.IdentifyVariants(pj.Spec.Job, release),
+			Name:        pj.Spec.Job,
+			Kind:        models.ProwKind(pj.Spec.Type),
+			Release:     release,
+			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job, release),
+			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
 		}
 		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
