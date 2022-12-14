@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
@@ -39,6 +40,7 @@ type ProwLoader struct {
 	bkt                  *storage.BucketHandle
 	bktName              string
 	githubClient         *github.Client
+	bigQueryClient       *bigquery.Client
 	prowJobCache         map[string]*models.ProwJob
 	prowJobRunCache      map[uint]bool
 	prowJobRunTestCache  map[string]uint
@@ -49,8 +51,17 @@ type ProwLoader struct {
 	config               *v1config.SippyConfig
 }
 
-func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, githubClient *github.Client, variantManager testidentification.VariantManager,
-	syntheticTestManager synthetictests.SyntheticTestManager, releases []string, config *v1config.SippyConfig) *ProwLoader {
+func New(
+	dbc *db.DB,
+	gcsClient *storage.Client,
+	bigQueryClient *bigquery.Client,
+	gcsBucket string,
+	githubClient *github.Client,
+	variantManager testidentification.VariantManager,
+	syntheticTestManager synthetictests.SyntheticTestManager,
+	releases []string,
+	config *v1config.SippyConfig) *ProwLoader {
+
 	bkt := gcsClient.Bucket(gcsBucket)
 
 	return &ProwLoader{
@@ -58,6 +69,7 @@ func New(dbc *db.DB, gcsClient *storage.Client, gcsBucket string, githubClient *
 		bkt:                  bkt,
 		bktName:              gcsBucket,
 		githubClient:         githubClient,
+		bigQueryClient:       bigQueryClient,
 		prowJobRunCache:      loadProwJobRunCache(dbc),
 		prowJobCache:         loadProwJobCache(dbc),
 		prowJobRunTestCache:  make(map[string]uint),
@@ -84,6 +96,7 @@ func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
 
 // Cache the IDs of all known ProwJobRuns. Will be used to skip job run and test
 // results we've already processed.
+// TODO: over 800k in our db now, should we only cache those within last two weeks?
 func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
 	knownJobRuns := []models.ProwJobRun{}
@@ -103,19 +116,31 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 		errs = append(errs, errors.Wrap(err, "error in syncPRStatus"))
 	}
 
+	// Grab the ProwJob definitions from prow or CI bigquery. Note that these are the Kube
+	// ProwJob CRDs, not our sippy db model ProwJob.
+	var prowJobs []prow.ProwJob
 	// Fetch/update job data
-	jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
-	if err != nil {
-		errs = append(errs, errors.Wrap(err, "error fetching job JSON data from prow"))
-		return errs
-	}
-	prowJobs, err := jobsJSONToProwJobs(jobsJSON)
-	if err != nil {
-		errs = append(errs, errors.Wrap(err, "error decoding job JSON data from prow"))
-		return errs
+	if pl.bigQueryClient != nil {
+		var bqErrs []error
+		prowJobs, bqErrs = pl.fetchProwJobsFromOpenShiftBigQuery()
+		if len(bqErrs) > 0 {
+			errs = append(errs, bqErrs...)
+		}
+	} else {
+		jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "error fetching job JSON data from prow"))
+			return errs
+		}
+		prowJobs, err = jobsJSONToProwJobs(jobsJSON)
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "error decoding job JSON data from prow"))
+			return errs
+		}
 	}
 
-	for _, pj := range prowJobs {
+	var newJobRunsCtr int
+	for i, pj := range prowJobs {
 		for _, release := range pl.releases {
 			cfg, ok := pl.config.Releases[release]
 			if !ok {
@@ -124,7 +149,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 			}
 
 			if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
-				if err := pl.prowJobToJobRun(pj, release); err != nil {
+				if err := pl.prowJobToJobRun(pj, release, &newJobRunsCtr, i, len(prowJobs)); err != nil {
 					err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
 					log.WithError(err).Warning("prow import error")
 					errs = append(errs, err)
@@ -142,7 +167,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 				}
 
 				if re.MatchString(pj.Spec.Job) {
-					if err := pl.prowJobToJobRun(pj, release); err != nil {
+					if err := pl.prowJobToJobRun(pj, release, &newJobRunsCtr, i, len(prowJobs)); err != nil {
 						err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
 						log.WithError(err).Warning("prow import error")
 						errs = append(errs, err)
@@ -151,6 +176,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 			}
 		}
 	}
+	log.WithField("newJobRuns", newJobRunsCtr).Info("finished importing new ProwJobs and ProwJobRuns")
 
 	return errs
 }
@@ -203,7 +229,7 @@ func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 	return results["items"], nil
 }
 
-func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
+func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRunsCtr *int, currentIndex, totalJobsToScan int) error {
 	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
 		return nil
@@ -214,8 +240,16 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		return nil
 	}
 
+	pjLog := log.WithFields(log.Fields{
+		"job":      pj.Spec.Job,
+		"buildID":  pj.Status.BuildID,
+		"start":    pj.Status.StartTime,
+		"progress": fmt.Sprintf("%d/%d", currentIndex, totalJobsToScan),
+	})
+
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
+		pjLog.Info("creating new ProwJob")
 		dbProwJob = &models.ProwJob{
 			Name:     pj.Spec.Job,
 			Kind:     models.ProwKind(pj.Spec.Type),
@@ -237,6 +271,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 	}
 
 	if _, ok := pl.prowJobRunCache[uint(id)]; !ok {
+		pjLog.Info("creating new ProwJobRun")
 		pjURL, err := url.Parse(pj.Status.URL)
 		if err != nil {
 			return err
@@ -273,11 +308,14 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 			if err != nil {
 				return err
 			}
+			// Looks like sometimes, we might be getting duplicate entries from bigquery:
+			pl.prowJobRunCache[uint(id)] = true
 
 			err = pl.dbc.DB.CreateInBatches(tests, 1000).Error
 			if err != nil {
 				return err
 			}
+			*newJobRunsCtr += 1
 		}
 	}
 

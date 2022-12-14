@@ -12,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -72,6 +74,7 @@ type Options struct {
 	DSN                                string
 	LogLevel                           string
 	LoadTestgrid                       bool
+	LoadOpenShiftCIBigQuery            bool
 	LoadProw                           bool
 	LoadGitHub                         bool
 	Config                             string
@@ -132,6 +135,7 @@ func main() {
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
+	flags.BoolVar(&opt.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
 
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
 	flags.BoolVar(&opt.LoadGitHub, "load-github", opt.LoadGitHub, "Fetch PR state data from GitHub, only for use with Prow-based Sippy")
@@ -235,7 +239,11 @@ func (o *Options) Validate() error {
 	}
 
 	if o.LoadGitHub && !o.LoadProw {
-		return fmt.Errorf("--load-github must be specified with --load-prow")
+		return fmt.Errorf("--load-github can only be specified with --load-prow")
+	}
+
+	if o.LoadOpenShiftCIBigQuery && !o.LoadProw {
+		return fmt.Errorf("--load-openshift-ci-bigquery can only be specified with --load-prow")
 	}
 
 	if o.LoadProw && o.Config == "" {
@@ -387,22 +395,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 		}
 
 		if o.LoadProw {
-			gcsClient, err := gcs.NewGCSClient(context.TODO(),
-				o.GoogleServiceAccountCredentialFile,
-				o.GoogleOAuthClientCredentialFile,
-			)
-			if err != nil {
-				log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
-				allErrs = append(allErrs, err)
-			} else {
-
-				var githubClient *github.Client
-				if o.LoadGitHub {
-					githubClient = github.New(context.TODO())
-				}
-
-				prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", githubClient, o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
-				errs := prowLoader.LoadProwJobsToDB()
+			errs := o.loadProwJobs(dbc, sippyConfig)
+			if len(errs) > 0 {
 				allErrs = append(allErrs, errs...)
 			}
 		}
@@ -443,6 +437,51 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	return nil
+}
+
+func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
+
+	allErrs := []error{}
+
+	gcsClient, err := gcs.NewGCSClient(context.TODO(),
+		o.GoogleServiceAccountCredentialFile,
+		o.GoogleOAuthClientCredentialFile,
+	)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
+		allErrs = append(allErrs, err)
+		return allErrs
+	}
+
+	var bigQueryClient *bigquery.Client
+	if o.LoadOpenShiftCIBigQuery {
+		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		// TODO: support GoogleOAuthClientCredentailFile like above for GCS?
+		if err != nil {
+			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+			allErrs = append(allErrs, err)
+			return allErrs
+		}
+	}
+
+	var githubClient *github.Client
+	if o.LoadGitHub {
+		githubClient = github.New(context.TODO())
+	}
+
+	prowLoader := prowloader.New(dbc,
+		gcsClient,
+		bigQueryClient,
+		"origin-ci-test",
+		githubClient,
+		o.getVariantManager(),
+		o.getSyntheticTestManager(),
+		o.OpenshiftReleases,
+		&sippyConfig)
+	errs := prowLoader.LoadProwJobsToDB()
+	allErrs = append(allErrs, errs...)
+	return allErrs
 }
 
 func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
