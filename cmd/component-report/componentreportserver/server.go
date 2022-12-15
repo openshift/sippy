@@ -17,7 +17,8 @@ func NewServer(databaseConnection *db.DB) *Server {
 		httpServer:         http.NewServeMux(),
 	}
 
-	s.httpServer.HandleFunc("/componentsByJob", s.handleComponentsByJob)
+	s.httpServer.HandleFunc("/jobsByComponent", s.handleJobsByComponent)
+	s.httpServer.HandleFunc("/testsForComponents/", s.handleTestsForComponent)
 
 	return s
 }

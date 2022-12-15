@@ -12,7 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func (s *Server) handleComponentsByJob(w http.ResponseWriter, req *http.Request) {
+func (s *Server) handleJobsByComponent(w http.ResponseWriter, req *http.Request) {
 	var errToReport error
 	buf := &bytes.Buffer{}
 	defer func() {
@@ -35,12 +35,22 @@ func (s *Server) handleComponentsByJob(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	toDisplay, err := forDisplay(componentJobSummaries)
+	toDisplay, err := componentJobSummaryForDisplay(componentJobSummaries)
 	if err != nil {
 		errToReport = err
 		return
 	}
 
+	fmt.Fprintf(buf, `
+<head>
+<style>
+table, th, td {
+  border: 1px solid black;
+}
+</style>
+</head>
+<body>
+`)
 	fmt.Fprintf(buf, "<table>\n")
 	fmt.Fprintf(buf, "\t<tr>\n")
 	fmt.Fprintf(buf, "\t<th>%v</th>\n", "Component")
@@ -53,12 +63,21 @@ func (s *Server) handleComponentsByJob(w http.ResponseWriter, req *http.Request)
 		fmt.Fprintf(buf, "\t<tr>\n")
 		fmt.Fprintf(buf, "\t<td>%v</td>\n", currRow[0].ComponentName)
 		for _, currJob := range currRow {
-			fmt.Fprintf(buf, "\t<td>%v</td>\n", currJob.Status)
+			color := ""
+			switch currJob.Status {
+			case "Fail":
+				color = "#b35656"
+			case "Pass":
+				color = "##4a8242"
+			}
+			fmt.Fprintf(buf, "\t<td bgcolor=\"%v\">%v</td>\n", color, currJob.Status)
 		}
 		fmt.Fprintf(buf, "\t</tr>\n")
 	}
 
 	fmt.Fprintf(buf, "</table>\n")
+	fmt.Fprintf(buf, "</body>\n")
+
 }
 
 type ComponentJobSummary struct {
@@ -96,7 +115,7 @@ func listComponentJobSummaries(dbc *db.DB) ([]ComponentJobSummary, error) {
 	return ret, nil
 }
 
-func forDisplay(in []ComponentJobSummary) ([][]ComponentJobSummary, error) {
+func componentJobSummaryForDisplay(in []ComponentJobSummary) ([][]ComponentJobSummary, error) {
 	// simple, not efficient, not sparse
 
 	components := sets.NewString()
@@ -147,8 +166,20 @@ func forDisplay(in []ComponentJobSummary) ([][]ComponentJobSummary, error) {
 	ret := [][]ComponentJobSummary{}
 	for _, componentName := range components.List() {
 		jobData := componentToJobs[componentName]
-		jobData = append(jobData, summarizeComponentJobs(jobData))
-		ret = append(ret, jobData)
+		currRow := []ComponentJobSummary{summarizeComponentJobs(jobData)}
+		currRow = append(currRow, jobData...)
+		ret = append(ret, currRow)
+	}
+
+	// tidy names. This should be replaced by something that actually looks at variants
+	for i := range ret {
+		for j := range ret[i] {
+			currJob := ret[i][j]
+			if index := strings.Index(currJob.JobName, "4.12"); index > 0 {
+				ret[i][j].JobName = currJob.JobName[index+4:]
+			}
+			ret[i][j].JobName = strings.ReplaceAll(ret[i][j].JobName, "-", " ")
+		}
 	}
 
 	return ret, nil
