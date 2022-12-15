@@ -3,3 +3,4 @@ report.sh
 /data
 .vscode/
 /sippy-ng/build/*
+/component-report
