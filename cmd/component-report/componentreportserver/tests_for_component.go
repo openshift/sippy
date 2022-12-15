@@ -150,13 +150,24 @@ func listTestsForComponent(dbc *db.DB, componentName string) ([]TestForComponent
 	return ret, nil
 }
 
+type testKey struct {
+	suiteName string
+	testName  string
+}
+
+type bySuiteAndTest []testKey
+
+func (a bySuiteAndTest) Len() int      { return len(a) }
+func (a bySuiteAndTest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a bySuiteAndTest) Less(i, j int) bool {
+	if a[i].suiteName != a[j].suiteName {
+		return strings.Compare(a[i].suiteName, a[j].suiteName) < 0
+	}
+	return strings.Compare(a[i].testName, a[j].testName) < 0
+}
+
 func testForComponentForDisplay(in []TestForComponent, componentName string) ([][]TestForComponent, error) {
 	// simple, not efficient, not sparse
-
-	type testKey struct {
-		suiteName string
-		testName  string
-	}
 
 	tests := map[testKey][]TestForComponent{}
 	testKeys := []testKey{}
@@ -169,7 +180,9 @@ func testForComponentForDisplay(in []TestForComponent, componentName string) ([]
 			suiteName: curr.SuiteName,
 			testName:  curr.TestName,
 		}
-		testKeys = append(testKeys, currKey)
+		if _, ok := tests[currKey]; !ok {
+			testKeys = append(testKeys, currKey)
+		}
 		tests[currKey] = append(tests[currKey], curr)
 		testToID[curr.TestName] = curr.TestID
 		suiteToID[curr.SuiteName] = curr.SuiteID
@@ -226,7 +239,8 @@ func testForComponentForDisplay(in []TestForComponent, componentName string) ([]
 	}
 
 	ret := [][]TestForComponent{}
-	for testKey := range tests {
+	sort.Sort(bySuiteAndTest(testKeys))
+	for _, testKey := range testKeys {
 		jobData := tests[testKey]
 		currRow := []TestForComponent{summarizeTestForComponent(jobData)}
 		currRow = append(currRow, jobData...)
@@ -251,6 +265,9 @@ func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 	failed := false
 	for i := range in {
 		curr := in[i]
+		if curr.TotalCount == 0 {
+			continue // TODO handle skips.  We probably get better when we fix dimensions.
+		}
 		if curr.WorkingPercentage < 95 {
 			failed = true
 			break
