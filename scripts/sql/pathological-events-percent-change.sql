@@ -71,7 +71,7 @@ SELECT
     previous_events.ns,
     previous_events.count AS previous_count,
     current_events.count AS current_count,
-    100.0 * (current_events.count::float - previous_events.count::float) / previous_events.count::float AS percent_change
+    round((100.0 * (current_events.count::float - previous_events.count::float) / previous_events.count::float)::numeric,2) AS percent_change
 FROM
     current_events
     INNER JOIN previous_events ON previous_events.reason = current_events.reason
