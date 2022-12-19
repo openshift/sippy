@@ -72,7 +72,8 @@ table, th, td {
 
 	for _, currRow := range toDisplay {
 		fmt.Fprintf(buf, "\t<tr>\n")
-		fmt.Fprintf(buf, "\t<td>%v</td>\n", currRow[0].FeatureName)
+		href := fmt.Sprintf("/testsForFeature/%v/%v", componentName, currRow[0].FeatureName)
+		fmt.Fprintf(buf, "\t<td><a href=\"%v\">%v</a></td>\n", href, currRow[0].FeatureName)
 		for _, currJob := range currRow {
 			color := ""
 			switch currJob.Status {
