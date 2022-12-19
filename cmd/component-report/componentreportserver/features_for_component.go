@@ -66,7 +66,7 @@ table, th, td {
 	fmt.Fprintf(buf, "\t<tr>\n")
 	fmt.Fprintf(buf, "\t<th>%v</th>\n", "Feature")
 	for _, curr := range toDisplay[0] {
-		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.JobName)
+		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.VariantSelectorName)
 	}
 	fmt.Fprintf(buf, "\t</tr>\n")
 
@@ -92,16 +92,16 @@ table, th, td {
 }
 
 type FeatureForComponent struct {
-	ComponentID   int            `json:"component_id"`
-	FeatureID     int            `json:"feature_id"`
-	JobID         int            `json:"job_id"`
-	FailingMark   int            `json:"failing_mark"`
-	WorkingMark   int            `json:"working_mark"`
-	Status        string         `json:"status"`
-	ComponentName string         `json:"component_name"`
-	FeatureName   string         `json:"feature_name"`
-	JobName       string         `json:"job_name"`
-	Variants      pq.StringArray `json:"variants" gorm:"type:text[]"`
+	ComponentID         int            `json:"component_id"`
+	FeatureID           int            `json:"feature_id"`
+	VariantSelectorID   int            `json:"variant_selector_id"`
+	FailingMark         int            `json:"failing_mark"`
+	WorkingMark         int            `json:"working_mark"`
+	Status              string         `json:"status"`
+	ComponentName       string         `json:"component_name"`
+	FeatureName         string         `json:"feature_name"`
+	VariantSelectorName string         `json:"job_name"`
+	Variants            pq.StringArray `json:"variants" gorm:"type:text[]"`
 }
 
 type byComponentAndFeature []FeatureForComponent
@@ -115,19 +115,19 @@ func (a byComponentAndFeature) Less(i, j int) bool {
 	if a[i].FeatureName != a[j].FeatureName {
 		return strings.Compare(a[i].FeatureName, a[j].FeatureName) < 0
 	}
-	if a[i].JobName == "Summary" {
+	if a[i].VariantSelectorName == "Summary" {
 		return true
 	}
-	if a[i].JobName != a[j].JobName {
-		return strings.Compare(a[i].JobName, a[j].JobName) < 0
+	if a[i].VariantSelectorName != a[j].VariantSelectorName {
+		return strings.Compare(a[i].VariantSelectorName, a[j].VariantSelectorName) < 0
 	}
 
-	return strings.Compare(a[i].JobName, a[j].JobName) < 0
+	return strings.Compare(a[i].VariantSelectorName, a[j].VariantSelectorName) < 0
 }
 
 func listFeaturesForComponent(dbc *db.DB, componentName string) ([]FeatureForComponent, error) {
 	ret := make([]FeatureForComponent, 0)
-	q := dbc.DB.Raw(`SELECT * from feature_rollup_with_metadata where component_name=@component_name`, sql.Named("component_name", componentName))
+	q := dbc.DB.Raw(`SELECT * from feature_rollup_with_metadata_2 where component_name=@component_name`, sql.Named("component_name", componentName))
 	if q.Error != nil {
 		return nil, q.Error
 	}
@@ -144,7 +144,7 @@ func featureForComponentForDisplay(in []FeatureForComponent, componentName strin
 	for i := range in {
 		curr := in[i]
 		features.Insert(curr.FeatureName)
-		jobNameToID[curr.JobName] = curr.JobID
+		jobNameToID[curr.VariantSelectorName] = curr.VariantSelectorID
 		featureToJobs[curr.FeatureName] = append(featureToJobs[curr.FeatureName], curr)
 	}
 
@@ -158,7 +158,7 @@ func featureForComponentForDisplay(in []FeatureForComponent, componentName strin
 		for jobName, jobID := range jobNameToID {
 			found := false
 			for _, currJobData := range jobData {
-				if currJobData.JobName == jobName {
+				if currJobData.VariantSelectorName == jobName {
 					found = true
 					break
 				}
@@ -167,16 +167,16 @@ func featureForComponentForDisplay(in []FeatureForComponent, componentName strin
 				continue
 			}
 			jobData = append(jobData, FeatureForComponent{
-				ComponentID:   jobData[0].ComponentID,
-				FeatureID:     jobData[0].FeatureID,
-				JobID:         jobID,
-				FailingMark:   0,
-				WorkingMark:   0,
-				Status:        "", // could be "Missing"
-				ComponentName: jobData[0].ComponentName,
-				FeatureName:   jobData[0].FeatureName,
-				JobName:       jobName,
-				Variants:      nil,
+				ComponentID:         jobData[0].ComponentID,
+				FeatureID:           jobData[0].FeatureID,
+				VariantSelectorID:   jobID,
+				FailingMark:         0,
+				WorkingMark:         0,
+				Status:              "", // could be "Missing"
+				ComponentName:       jobData[0].ComponentName,
+				FeatureName:         jobData[0].FeatureName,
+				VariantSelectorName: jobName,
+				Variants:            nil,
 			})
 			featureToJobs[featureName] = jobData
 		}
@@ -197,10 +197,10 @@ func featureForComponentForDisplay(in []FeatureForComponent, componentName strin
 	for i := range ret {
 		for j := range ret[i] {
 			currJob := ret[i][j]
-			if index := strings.Index(currJob.JobName, "4.12"); index > 0 {
-				ret[i][j].JobName = currJob.JobName[index+4:]
+			if index := strings.Index(currJob.VariantSelectorName, "4.12"); index > 0 {
+				ret[i][j].VariantSelectorName = currJob.VariantSelectorName[index+4:]
 			}
-			ret[i][j].JobName = strings.ReplaceAll(ret[i][j].JobName, "-", " ")
+			ret[i][j].VariantSelectorName = strings.ReplaceAll(ret[i][j].VariantSelectorName, "-", " ")
 		}
 	}
 
@@ -218,13 +218,13 @@ func summarizeFeatureForComponent(in []FeatureForComponent) FeatureForComponent 
 	}
 
 	ret := FeatureForComponent{
-		ComponentID:   in[0].ComponentID,
-		FeatureID:     in[0].FeatureID,
-		JobID:         -2,
-		ComponentName: in[0].ComponentName,
-		FeatureName:   in[0].FeatureName,
-		JobName:       "Summary",
-		Variants:      nil,
+		ComponentID:         in[0].ComponentID,
+		FeatureID:           in[0].FeatureID,
+		VariantSelectorID:   -2,
+		ComponentName:       in[0].ComponentName,
+		FeatureName:         in[0].FeatureName,
+		VariantSelectorName: "Summary",
+		Variants:            nil,
 	}
 	if failed {
 		ret.FailingMark = 1

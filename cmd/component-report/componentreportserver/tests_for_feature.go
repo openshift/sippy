@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -69,7 +70,7 @@ table, th, td {
 	fmt.Fprintf(buf, "\t<th>%v</th>\n", "Suite")
 	fmt.Fprintf(buf, "\t<th>%v</th>\n", "Test")
 	for _, curr := range toDisplay[0] {
-		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.JobName)
+		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.VariantSelectorName)
 	}
 	fmt.Fprintf(buf, "\t</tr>\n")
 
@@ -79,7 +80,7 @@ table, th, td {
 		fmt.Fprintf(buf, "\t<td>%v</td>\n", currRow[0].TestName)
 		for _, currJob := range currRow {
 			color := ""
-			text := fmt.Sprintf("%v%%", currJob.WorkingPercentage)
+			text := fmt.Sprintf("%.0f%%", currJob.WorkingPercentage)
 			switch {
 			case currJob.TotalCount == 0:
 				// no color
@@ -100,28 +101,28 @@ table, th, td {
 }
 
 type TestForComponent struct {
-	TestID            int `json:"test_id"`
-	SuiteID           int `json:"suite_id"`
-	ComponentID       int `json:"component_id"`
-	FeatureID         int `json:"feature_id"`
-	JobID             int `json:"job_id"`
-	SuccessCount      int `json:"success_count"`
-	RunningCount      int `json:"running_count"`
-	FailureCount      int `json:"failure_count"`
-	FlakeCount        int `json:"flake_count"`
-	WorkingCount      int `json:"working_count"`
-	TotalCount        int `json:"total_count"`
-	SuccessPercentage int `json:"success_percentage"`
-	FailurePercentage int `json:"failure_percentage"`
-	FlakingPercentage int `json:"flaking_percentage"`
-	WorkingPercentage int `json:"working_percentage"`
+	TestID            int     `json:"test_id"`
+	SuiteID           int     `json:"suite_id"`
+	VariantSelectorID int     `json:"variant_selector_id"`
+	ComponentID       int     `json:"component_id"`
+	FeatureID         int     `json:"feature_id"`
+	SuccessCount      int     `json:"success_count"`
+	RunningCount      int     `json:"running_count"`
+	FailureCount      int     `json:"failure_count"`
+	FlakeCount        int     `json:"flake_count"`
+	WorkingCount      int     `json:"working_count"`
+	TotalCount        int     `json:"total_count"`
+	SuccessPercentage float64 `json:"success_percentage"`
+	FailurePercentage float64 `json:"failure_percentage"`
+	FlakingPercentage float64 `json:"flaking_percentage"`
+	WorkingPercentage float64 `json:"working_percentage"`
 
-	ComponentName string         `json:"component_name"`
-	FeatureName   string         `json:"feature_name"`
-	JobName       string         `json:"job_name"`
-	SuiteName     string         `json:"suite_name"`
-	TestName      string         `json:"test_name"`
-	Variants      pq.StringArray `json:"variants" gorm:"type:text[]"`
+	ComponentName       string         `json:"component_name"`
+	FeatureName         string         `json:"feature_name"`
+	VariantSelectorName string         `json:"variant_selector_name"`
+	SuiteName           string         `json:"suite_name"`
+	TestName            string         `json:"test_name"`
+	Variants            pq.StringArray `json:"variants" gorm:"type:text[]"`
 }
 
 type byComponentAndTest []TestForComponent
@@ -141,19 +142,19 @@ func (a byComponentAndTest) Less(i, j int) bool {
 	if a[i].TestName != a[j].TestName {
 		return strings.Compare(a[i].TestName, a[j].TestName) < 0
 	}
-	if a[i].JobName == "Summary" {
+	if a[i].VariantSelectorName == "Summary" {
 		return true
 	}
-	if a[i].JobName != a[j].JobName {
-		return strings.Compare(a[i].JobName, a[j].JobName) < 0
+	if a[i].VariantSelectorName != a[j].VariantSelectorName {
+		return strings.Compare(a[i].VariantSelectorName, a[j].VariantSelectorName) < 0
 	}
 
-	return strings.Compare(a[i].JobName, a[j].JobName) < 0
+	return strings.Compare(a[i].VariantSelectorName, a[j].VariantSelectorName) < 0
 }
 
 func listTestsForComponent(dbc *db.DB, componentName, featureName string) ([]TestForComponent, error) {
 	ret := make([]TestForComponent, 0)
-	q := dbc.DB.Raw(`SELECT * from feature_tests_by_job where component_name=@component_name and feature_name=@feature_name`, sql.Named("component_name", componentName), sql.Named("feature_name", featureName))
+	q := dbc.DB.Raw(`SELECT * from feature_tests_by_job_2 where component_name=@component_name and feature_name=@feature_name`, sql.Named("component_name", componentName), sql.Named("feature_name", featureName))
 	if q.Error != nil {
 		return nil, q.Error
 	}
@@ -198,7 +199,7 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 		testToID[curr.TestName] = curr.TestID
 		suiteToID[curr.SuiteName] = curr.SuiteID
 
-		jobNameToID[curr.JobName] = curr.JobID
+		jobNameToID[curr.VariantSelectorName] = curr.VariantSelectorID
 	}
 
 	// add entries for missing jobs and sort
@@ -211,7 +212,7 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 		for jobName, jobID := range jobNameToID {
 			found := false
 			for _, currJobData := range jobData {
-				if currJobData.JobName == jobName {
+				if currJobData.VariantSelectorName == jobName {
 					found = true
 					break
 				}
@@ -224,7 +225,7 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 				SuiteID:           suiteToID[testKey.suiteName],
 				ComponentID:       jobData[0].ComponentID,
 				FeatureID:         jobData[0].FeatureID,
-				JobID:             jobID,
+				VariantSelectorID: jobID,
 				SuccessCount:      0,
 				RunningCount:      0,
 				FailureCount:      0,
@@ -236,11 +237,11 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 				FlakingPercentage: 0,
 				WorkingPercentage: 0,
 
-				ComponentName: jobData[0].ComponentName,
-				FeatureName:   jobData[0].FeatureName,
-				JobName:       jobName,
-				SuiteName:     testKey.suiteName,
-				TestName:      testKey.testName,
+				ComponentName:       jobData[0].ComponentName,
+				FeatureName:         jobData[0].FeatureName,
+				VariantSelectorName: jobName,
+				SuiteName:           testKey.suiteName,
+				TestName:            testKey.testName,
 
 				Variants: nil,
 			})
@@ -264,10 +265,10 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 	for i := range ret {
 		for j := range ret[i] {
 			currJob := ret[i][j]
-			if index := strings.Index(currJob.JobName, "4.12"); index > 0 {
-				ret[i][j].JobName = currJob.JobName[index+4:]
+			if index := strings.Index(currJob.VariantSelectorName, "4.12"); index > 0 {
+				ret[i][j].VariantSelectorName = currJob.VariantSelectorName[index+4:]
 			}
-			ret[i][j].JobName = strings.ReplaceAll(ret[i][j].JobName, "-", " ")
+			ret[i][j].VariantSelectorName = strings.ReplaceAll(ret[i][j].VariantSelectorName, "-", " ")
 		}
 	}
 
@@ -276,56 +277,47 @@ func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, er
 
 func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 	failed := false
-	lowestWorking := 100
-	lowestSuccess := 100
-	highestFailure := 0
-	highestFlake := 0
+	lowestWorking := 100.0
+	lowestSuccess := 100.0
+	highestFailure := 0.0
+	highestFlake := 0.0
 	for i := range in {
 		curr := in[i]
 		if curr.TotalCount == 0 {
-			continue // TODO handle skips.  We probably get better when we fix dimensions.
+			continue
 		}
-		if lowestWorking > curr.WorkingPercentage {
-			lowestWorking = curr.WorkingPercentage
-		}
-		if lowestSuccess > curr.SuccessPercentage {
-			lowestSuccess = curr.SuccessPercentage
-		}
-		if highestFailure < curr.FailurePercentage {
-			highestFailure = curr.FailurePercentage
-		}
-		if highestFlake < curr.FlakingPercentage {
-			highestFlake = curr.FlakingPercentage
-		}
+		lowestWorking = math.Min(lowestWorking, curr.WorkingPercentage)
+		lowestSuccess = math.Min(lowestSuccess, curr.SuccessPercentage)
+		highestFailure = math.Max(highestFailure, curr.FailurePercentage)
+		highestFlake = math.Max(highestFlake, curr.FlakingPercentage)
 
 		if curr.WorkingPercentage < 95 {
 			failed = true
-			break
 		}
 	}
 
 	ret := TestForComponent{
-		TestID:            in[0].TestID,
-		SuiteID:           in[0].SuiteID,
-		ComponentID:       in[0].ComponentID,
-		FeatureID:         in[0].FeatureID,
-		JobID:             -2,
-		SuccessCount:      0,
-		RunningCount:      0,
-		FailureCount:      0,
-		FlakeCount:        0,
-		WorkingCount:      0,
-		TotalCount:        0,
-		SuccessPercentage: lowestWorking,
-		FailurePercentage: highestFailure,
-		FlakingPercentage: highestFlake,
-		WorkingPercentage: lowestWorking,
-		ComponentName:     in[0].ComponentName,
-		FeatureName:       in[0].FeatureName,
-		JobName:           "Summary",
-		SuiteName:         in[0].SuiteName,
-		TestName:          in[0].TestName,
-		Variants:          nil,
+		TestID:              in[0].TestID,
+		SuiteID:             in[0].SuiteID,
+		ComponentID:         in[0].ComponentID,
+		FeatureID:           in[0].FeatureID,
+		VariantSelectorID:   -2,
+		SuccessCount:        0,
+		RunningCount:        0,
+		FailureCount:        0,
+		FlakeCount:          0,
+		WorkingCount:        0,
+		TotalCount:          0,
+		SuccessPercentage:   lowestWorking,
+		FailurePercentage:   highestFailure,
+		FlakingPercentage:   highestFlake,
+		WorkingPercentage:   lowestWorking,
+		ComponentName:       in[0].ComponentName,
+		FeatureName:         in[0].FeatureName,
+		VariantSelectorName: "Summary",
+		SuiteName:           in[0].SuiteName,
+		TestName:            in[0].TestName,
+		Variants:            nil,
 	}
 	if !failed {
 		ret.SuccessCount = 1

@@ -55,7 +55,7 @@ table, th, td {
 	fmt.Fprintf(buf, "\t<tr>\n")
 	fmt.Fprintf(buf, "\t<th>%v</th>\n", "Component")
 	for _, curr := range toDisplay[0] {
-		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.JobName)
+		fmt.Fprintf(buf, "\t<th>%v</th>\n", curr.VariantSelectorName)
 	}
 	fmt.Fprintf(buf, "\t</tr>\n")
 
@@ -81,14 +81,14 @@ table, th, td {
 }
 
 type ComponentJobSummary struct {
-	ComponentID   int            `json:"component_id"`
-	JobID         int            `json:"job_id"`
-	FailingMark   int            `json:"failing_mark"`
-	WorkingMark   int            `json:"working_mark"`
-	Status        string         `json:"status"`
-	ComponentName string         `json:"component_name"`
-	JobName       string         `json:"job_name"`
-	Variants      pq.StringArray `json:"variants" gorm:"type:text[]"`
+	ComponentID         int            `json:"component_id"`
+	VariantSelectorID   int            `json:"variant_selector_id"`
+	FailingMark         int            `json:"failing_mark"`
+	WorkingMark         int            `json:"working_mark"`
+	Status              string         `json:"status"`
+	ComponentName       string         `json:"component_name"`
+	VariantSelectorName string         `json:"variant_selector_name"`
+	Variants            pq.StringArray `json:"variants" gorm:"type:text[]"`
 }
 
 type byComponentAndJob []ComponentJobSummary
@@ -99,15 +99,15 @@ func (a byComponentAndJob) Less(i, j int) bool {
 	if a[i].ComponentName != a[j].ComponentName {
 		return strings.Compare(a[i].ComponentName, a[j].ComponentName) < 0
 	}
-	if a[i].JobName == "Summary" {
+	if a[i].VariantSelectorName == "Summary" {
 		return true
 	}
-	return strings.Compare(a[i].JobName, a[j].JobName) < 0
+	return strings.Compare(a[i].VariantSelectorName, a[j].VariantSelectorName) < 0
 }
 
 func listComponentJobSummaries(dbc *db.DB) ([]ComponentJobSummary, error) {
 	ret := make([]ComponentJobSummary, 0)
-	q := dbc.DB.Raw(`SELECT * from component_rollup_with_metadata`)
+	q := dbc.DB.Raw(`SELECT * from component_rollup_with_metadata_2`)
 	if q.Error != nil {
 		return nil, q.Error
 	}
@@ -124,7 +124,7 @@ func componentJobSummaryForDisplay(in []ComponentJobSummary) ([][]ComponentJobSu
 	for i := range in {
 		curr := in[i]
 		components.Insert(curr.ComponentName)
-		jobNameToID[curr.JobName] = curr.JobID
+		jobNameToID[curr.VariantSelectorName] = curr.VariantSelectorID
 		componentToJobs[curr.ComponentName] = append(componentToJobs[curr.ComponentName], curr)
 	}
 
@@ -138,7 +138,7 @@ func componentJobSummaryForDisplay(in []ComponentJobSummary) ([][]ComponentJobSu
 		for jobName, jobID := range jobNameToID {
 			found := false
 			for _, currJobData := range jobData {
-				if currJobData.JobName == jobName {
+				if currJobData.VariantSelectorName == jobName {
 					found = true
 					break
 				}
@@ -147,14 +147,14 @@ func componentJobSummaryForDisplay(in []ComponentJobSummary) ([][]ComponentJobSu
 				continue
 			}
 			jobData = append(jobData, ComponentJobSummary{
-				ComponentID:   jobData[0].ComponentID,
-				JobID:         jobID,
-				FailingMark:   0,
-				WorkingMark:   0,
-				Status:        "Missing",
-				ComponentName: jobData[0].ComponentName,
-				JobName:       jobName,
-				Variants:      nil,
+				ComponentID:         jobData[0].ComponentID,
+				VariantSelectorID:   jobID,
+				FailingMark:         0,
+				WorkingMark:         0,
+				Status:              "Missing",
+				ComponentName:       jobData[0].ComponentName,
+				VariantSelectorName: jobName,
+				Variants:            nil,
 			})
 			componentToJobs[componentName] = jobData
 		}
@@ -171,17 +171,6 @@ func componentJobSummaryForDisplay(in []ComponentJobSummary) ([][]ComponentJobSu
 		ret = append(ret, currRow)
 	}
 
-	// tidy names. This should be replaced by something that actually looks at variants
-	for i := range ret {
-		for j := range ret[i] {
-			currJob := ret[i][j]
-			if index := strings.Index(currJob.JobName, "4.12"); index > 0 {
-				ret[i][j].JobName = currJob.JobName[index+4:]
-			}
-			ret[i][j].JobName = strings.ReplaceAll(ret[i][j].JobName, "-", " ")
-		}
-	}
-
 	return ret, nil
 }
 
@@ -196,11 +185,11 @@ func summarizeComponentJobs(in []ComponentJobSummary) ComponentJobSummary {
 	}
 
 	ret := ComponentJobSummary{
-		ComponentID:   in[0].ComponentID,
-		JobID:         -2,
-		ComponentName: in[0].ComponentName,
-		JobName:       "Summary",
-		Variants:      nil,
+		ComponentID:         in[0].ComponentID,
+		VariantSelectorID:   -2,
+		ComponentName:       in[0].ComponentName,
+		VariantSelectorName: "Summary",
+		Variants:            nil,
 	}
 	if failed {
 		ret.FailingMark = 1
