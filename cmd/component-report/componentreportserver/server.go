@@ -18,7 +18,8 @@ func NewServer(databaseConnection *db.DB) *Server {
 	}
 
 	s.httpServer.HandleFunc("/jobsByComponent", s.handleJobsByComponent)
-	s.httpServer.HandleFunc("/testsForComponents/", s.handleTestsForComponent)
+	s.httpServer.HandleFunc("/featuresForComponent/", s.handleFeaturesForComponent)
+	s.httpServer.HandleFunc("/testsForFeature/", s.handleTestsForComponent)
 
 	return s
 }

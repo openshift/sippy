@@ -12,6 +12,8 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 )
 
+// aws, ovn, arm64, techpreview
+
 func (s *Server) handleTestsForComponent(w http.ResponseWriter, req *http.Request) {
 	var errToReport error
 	buf := &bytes.Buffer{}
@@ -29,19 +31,20 @@ func (s *Server) handleTestsForComponent(w http.ResponseWriter, req *http.Reques
 		}
 	}()
 	segments := strings.Split(req.URL.Path, "/")
-	if len(segments) != 3 {
+	if len(segments) != 4 {
 		errToReport = fmt.Errorf("bad format")
 		return
 	}
 	componentName := segments[2]
+	featureName := segments[3]
 
-	testsForComponent, err := listTestsForComponent(s.databaseConnection, componentName)
+	testsForComponent, err := listTestsForComponent(s.databaseConnection, componentName, featureName)
 	if err != nil {
 		errToReport = err
 		return
 	}
 
-	toDisplay, err := testForComponentForDisplay(testsForComponent, componentName)
+	toDisplay, err := testForComponentForDisplay(testsForComponent)
 	if err != nil {
 		errToReport = err
 		return
@@ -58,6 +61,7 @@ table, th, td {
 <body>
 `)
 	fmt.Fprintf(buf, "<h1>%v</h1>\n", componentName)
+	fmt.Fprintf(buf, "<h2>%v</h2>\n", featureName)
 	fmt.Fprintf(buf, "<table>\n")
 	fmt.Fprintf(buf, "<table>\n")
 	fmt.Fprintf(buf, "<table>\n")
@@ -75,15 +79,17 @@ table, th, td {
 		fmt.Fprintf(buf, "\t<td>%v</td>\n", currRow[0].TestName)
 		for _, currJob := range currRow {
 			color := ""
+			text := fmt.Sprintf("%v%%", currJob.WorkingPercentage)
 			switch {
 			case currJob.TotalCount == 0:
 				// no color
+				text = ""
 			case currJob.WorkingPercentage < 95:
 				color = "#b35656"
 			default:
 				color = "##4a8242"
 			}
-			fmt.Fprintf(buf, "\t<td bgcolor=\"%v\">%v%%</td>\n", color, currJob.WorkingPercentage)
+			fmt.Fprintf(buf, "\t<td bgcolor=\"%v\">%v</td>\n", color, text)
 		}
 		fmt.Fprintf(buf, "\t</tr>\n")
 	}
@@ -97,6 +103,7 @@ type TestForComponent struct {
 	TestID            int `json:"test_id"`
 	SuiteID           int `json:"suite_id"`
 	ComponentID       int `json:"component_id"`
+	FeatureID         int `json:"feature_id"`
 	JobID             int `json:"job_id"`
 	SuccessCount      int `json:"success_count"`
 	RunningCount      int `json:"running_count"`
@@ -110,6 +117,7 @@ type TestForComponent struct {
 	WorkingPercentage int `json:"working_percentage"`
 
 	ComponentName string         `json:"component_name"`
+	FeatureName   string         `json:"feature_name"`
 	JobName       string         `json:"job_name"`
 	SuiteName     string         `json:"suite_name"`
 	TestName      string         `json:"test_name"`
@@ -123,6 +131,9 @@ func (a byComponentAndTest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a byComponentAndTest) Less(i, j int) bool {
 	if a[i].ComponentName != a[j].ComponentName {
 		return strings.Compare(a[i].ComponentName, a[j].ComponentName) < 0
+	}
+	if a[i].FeatureName != a[j].FeatureName {
+		return strings.Compare(a[i].FeatureName, a[j].FeatureName) < 0
 	}
 	if a[i].SuiteName != a[j].SuiteName {
 		return strings.Compare(a[i].SuiteName, a[j].SuiteName) < 0
@@ -140,9 +151,9 @@ func (a byComponentAndTest) Less(i, j int) bool {
 	return strings.Compare(a[i].JobName, a[j].JobName) < 0
 }
 
-func listTestsForComponent(dbc *db.DB, componentName string) ([]TestForComponent, error) {
+func listTestsForComponent(dbc *db.DB, componentName, featureName string) ([]TestForComponent, error) {
 	ret := make([]TestForComponent, 0)
-	q := dbc.DB.Raw(`SELECT * from component_tests_by_job where component_name=@component_name`, sql.Named("component_name", componentName))
+	q := dbc.DB.Raw(`SELECT * from feature_tests_by_job where component_name=@component_name and feature_name=@feature_name`, sql.Named("component_name", componentName), sql.Named("feature_name", featureName))
 	if q.Error != nil {
 		return nil, q.Error
 	}
@@ -166,7 +177,7 @@ func (a bySuiteAndTest) Less(i, j int) bool {
 	return strings.Compare(a[i].testName, a[j].testName) < 0
 }
 
-func testForComponentForDisplay(in []TestForComponent, componentName string) ([][]TestForComponent, error) {
+func testForComponentForDisplay(in []TestForComponent) ([][]TestForComponent, error) {
 	// simple, not efficient, not sparse
 
 	tests := map[testKey][]TestForComponent{}
@@ -212,6 +223,7 @@ func testForComponentForDisplay(in []TestForComponent, componentName string) ([]
 				TestID:            testToID[testKey.testName],
 				SuiteID:           suiteToID[testKey.suiteName],
 				ComponentID:       jobData[0].ComponentID,
+				FeatureID:         jobData[0].FeatureID,
 				JobID:             jobID,
 				SuccessCount:      0,
 				RunningCount:      0,
@@ -225,6 +237,7 @@ func testForComponentForDisplay(in []TestForComponent, componentName string) ([]
 				WorkingPercentage: 0,
 
 				ComponentName: jobData[0].ComponentName,
+				FeatureName:   jobData[0].FeatureName,
 				JobName:       jobName,
 				SuiteName:     testKey.suiteName,
 				TestName:      testKey.testName,
@@ -263,11 +276,28 @@ func testForComponentForDisplay(in []TestForComponent, componentName string) ([]
 
 func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 	failed := false
+	lowestWorking := 100
+	lowestSuccess := 100
+	highestFailure := 0
+	highestFlake := 0
 	for i := range in {
 		curr := in[i]
 		if curr.TotalCount == 0 {
 			continue // TODO handle skips.  We probably get better when we fix dimensions.
 		}
+		if lowestWorking > curr.WorkingPercentage {
+			lowestWorking = curr.WorkingPercentage
+		}
+		if lowestSuccess > curr.SuccessPercentage {
+			lowestSuccess = curr.SuccessPercentage
+		}
+		if highestFailure < curr.FailurePercentage {
+			highestFailure = curr.FailurePercentage
+		}
+		if highestFlake < curr.FlakingPercentage {
+			highestFlake = curr.FlakingPercentage
+		}
+
 		if curr.WorkingPercentage < 95 {
 			failed = true
 			break
@@ -278,6 +308,7 @@ func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 		TestID:            in[0].TestID,
 		SuiteID:           in[0].SuiteID,
 		ComponentID:       in[0].ComponentID,
+		FeatureID:         in[0].FeatureID,
 		JobID:             -2,
 		SuccessCount:      0,
 		RunningCount:      0,
@@ -285,11 +316,12 @@ func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 		FlakeCount:        0,
 		WorkingCount:      0,
 		TotalCount:        0,
-		SuccessPercentage: 0,
-		FailurePercentage: 0,
-		FlakingPercentage: 0,
-		WorkingPercentage: 0,
+		SuccessPercentage: lowestWorking,
+		FailurePercentage: highestFailure,
+		FlakingPercentage: highestFlake,
+		WorkingPercentage: lowestWorking,
 		ComponentName:     in[0].ComponentName,
+		FeatureName:       in[0].FeatureName,
 		JobName:           "Summary",
 		SuiteName:         in[0].SuiteName,
 		TestName:          in[0].TestName,
@@ -298,8 +330,11 @@ func summarizeTestForComponent(in []TestForComponent) TestForComponent {
 	if !failed {
 		ret.SuccessCount = 1
 		ret.TotalCount = 1
-		ret.SuccessPercentage = 100
-		ret.WorkingPercentage = 100
+		ret.SuccessPercentage = lowestWorking
+		ret.WorkingPercentage = lowestWorking
+	} else {
+		ret.FailureCount = 1
+		ret.TotalCount = 1
 	}
 
 	return ret
