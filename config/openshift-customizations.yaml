@@ -10,3 +10,4 @@ releases:
   "Presubmits":
     regexp:
       - "^pull-ci-openshift-.*-(master|main).*-e2e-.*"
+      - "^pull-ci-operator-framework.*-(master|main).*-e2e-.*"
