@@ -250,10 +250,18 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string) error {
 		}
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
+		saveDB := false
 		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release)
 		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
+			saveDB = true
+		}
+		if len(dbProwJob.TestGridURL) == 0 {
+			dbProwJob.TestGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
+			saveDB = true
+		}
+		if saveDB {
 			pl.dbc.DB.Save(&dbProwJob)
 		}
 	}
