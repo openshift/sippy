@@ -7,11 +7,13 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgtype"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type Snapshotter struct {
@@ -23,6 +25,16 @@ type Snapshotter struct {
 
 func (s *Snapshotter) Create() error {
 	log.Info("creating snapshot")
+
+	// Early check to make sure the name is unique:
+	var existing models.APISnapshot
+	res := s.DBC.DB.Where("name = ?", s.Name).First(&existing)
+	if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return errors.Wrap(res.Error, "error checking if snapshot exists already with name: "+s.Name)
+	}
+	if existing.ID != 0 {
+		return fmt.Errorf("snapshot already exists: %s", s.Name)
+	}
 
 	snapshot := models.APISnapshot{
 		Name:    s.Name,
