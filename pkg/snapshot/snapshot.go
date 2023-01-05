@@ -101,6 +101,7 @@ func (s *Snapshotter) getUpgradeHealth() (pgtype.JSONB, error) {
 	return get(apiURL, &map[string]interface{}{})
 }
 
+// nolint:gosec
 func get(url string, data interface{}) (pgtype.JSONB, error) {
 	logger := log.WithField("api", url)
 	logger.Info("GET")
