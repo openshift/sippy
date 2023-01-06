@@ -108,6 +108,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.APISnapshot{}); err != nil {
+		return err
+	}
+
 	if err := d.DB.AutoMigrate(&models.Bug{}); err != nil {
 		return err
 	}

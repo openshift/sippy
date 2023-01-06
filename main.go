@@ -29,6 +29,7 @@ import (
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
+	"github.com/openshift/sippy/pkg/snapshot"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -81,6 +82,11 @@ type Options struct {
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
 	PinnedDateTime                     string
+
+	CreateSnapshot  bool
+	SippyURL        string
+	SnapshotName    string
+	SnapshotRelease string
 }
 
 func main() {
@@ -136,6 +142,12 @@ func main() {
 	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
 	flags.BoolVar(&opt.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
+
+	// Snapshotter setup, should be a sub-command someday:
+	flags.BoolVar(&opt.CreateSnapshot, "create-snapshot", false, "Create snapshots using current sippy overview API json and store in db")
+	flags.StringVar(&opt.SippyURL, "snapshot-sippy-url", "https://sippy.dptools.openshift.org", "Sippy endpoint to hit when creating a snapshot")
+	flags.StringVar(&opt.SnapshotName, "snapshot-name", "", "Snapshot name (i.e. 4.12 GA)")
+	flags.StringVar(&opt.SnapshotRelease, "snapshot-release", "", "Snapshot release (i.e. 4.12)")
 
 	flags.BoolVar(&opt.LoadProw, "load-prow", opt.LoadProw, "Fetch job and job run data from prow")
 	flags.BoolVar(&opt.LoadGitHub, "load-github", opt.LoadGitHub, "Fetch PR state data from GitHub, only for use with Prow-based Sippy")
@@ -234,8 +246,8 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
-	if (o.LoadDatabase || o.Server) && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with --load-database and --server")
+	if (o.LoadDatabase || o.Server || o.CreateSnapshot) && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database, --server, and --create-snapshot")
 	}
 
 	if o.LoadGitHub && !o.LoadProw {
@@ -248,6 +260,15 @@ func (o *Options) Validate() error {
 
 	if o.LoadProw && o.Config == "" {
 		return fmt.Errorf("must specify --config with --load-prow")
+	}
+
+	if o.CreateSnapshot {
+		if o.SnapshotName == "" {
+			return fmt.Errorf("must specify --snapshot-name when creating a snapshot")
+		}
+		if o.SnapshotRelease == "" {
+			return fmt.Errorf("must specify --snapshot-release when creating a snapshot")
+		}
 	}
 
 	if !o.DBOnlyMode {
@@ -301,6 +322,22 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 		// we made it here so parsedTime represents the pinnedTime and there was no error parsing
 		pinnedTime = &parsedTime
+	}
+
+	if o.CreateSnapshot {
+		dbc, err := db.New(o.DSN)
+		if err != nil {
+			return err
+		}
+
+		snapshotter := &snapshot.Snapshotter{
+			DBC:      dbc,
+			SippyURL: o.SippyURL,
+			Name:     o.SnapshotName,
+			Release:  o.SnapshotRelease,
+		}
+
+		return snapshotter.Create()
 	}
 
 	// This block downloads testgrid data and stores as files on disk.

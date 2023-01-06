@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/jackc/pgtype"
 	"gorm.io/gorm"
 )
 
@@ -27,4 +28,32 @@ type SchemaHash struct {
 	// Hash is the SHA256 hash of the string we generate programatically to see if anything
 	// has changed since last applied.
 	Hash string `json:"hash"`
+}
+
+// APISnapshot is a minimal implementation of historical data tracking. On GA or other dates of interest, we use the snapshot CLI command
+// to query some of the main API endpoints, and store the resulting json with an type (indicating the API) into our database.
+type APISnapshot struct {
+	gorm.Model
+	// Name is a user friendly name for this snapshot, i.e. "4.12 GA"
+	Name    string `json:"name" gorm:"unique"`
+	Release string `json:"release"`
+
+	// OverallHealth is json from the /api/health?release=X API.
+	OverallHealth pgtype.JSONB `json:"overall_health" gorm:"type:jsonb"`
+
+	// PayloadHealth is json from the /api/releases/health?release=4.12 API and contains stats on payload health for
+	// each stream in the release.
+	PayloadHealth pgtype.JSONB `json:"payload_health" gorm:"type:jsonb"`
+
+	// VariantHealth is json from the /api/variants?release=4.12 API and contains stats on job pass rates
+	// for each variant.
+	VariantHealth pgtype.JSONB `json:"variant_health" gorm:"type:jsonb"`
+
+	// InstallHealth is json from the /api/install?release=4.12 API and contains stats on install success rates
+	// by variant.
+	InstallHealth pgtype.JSONB `json:"install_health" gorm:"type:jsonb"`
+
+	// UpgradeHealth is json from the /api/upgrade?release=4.12 API and contains stats on upgrade success rates
+	// by variant.
+	UpgradeHealth pgtype.JSONB `json:"upgrade_health" gorm:"type:jsonb"`
 }
