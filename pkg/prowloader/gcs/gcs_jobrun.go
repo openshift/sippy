@@ -83,6 +83,17 @@ func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.Test
 	return testSuites, nil
 }
 
+func (j *GCSJobRun) ContentExists(ctx context.Context, path string) bool {
+
+	// Get an Object handle for the path
+	obj := j.bkt.Object(path)
+	
+	// if we can get the attrs then presume the object exists
+	// otherwise presume it doesn't
+	_, err := obj.Attrs(ctx)
+	return err == nil 
+}
+
 func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error) {
 	if len(path) == 0 {
 		return nil, fmt.Errorf("missing path to GCS content for jobrun")
@@ -94,6 +105,7 @@ func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error)
 	// Get an Object handle for the path
 	obj := j.bkt.Object(path)
 
+	
 	// use the object attributes to try to get the latest generation to try to retrieve the data without getting a cached
 	// version of data that does not match the latest content.  I don't know if this will work, but in the easy case
 	// it doesn't seem to fail.
