@@ -97,6 +97,10 @@ export const getColumns = (config, openBugzillaDialog) => {
       headerName: ' ',
       flex: 0.4,
       renderCell: (params) => {
+        if (params.value === undefined || params.value === '') {
+          return
+        }
+
         return (
           <Tooltip title="TestGrid">
             <Button
