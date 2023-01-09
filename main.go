@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
+	gormlogger "gorm.io/gorm/logger"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -44,7 +45,8 @@ var sippyNG embed.FS
 var static embed.FS
 
 const (
-	defaultLogLevel = "info"
+	defaultLogLevel   = "info"
+	defaultDBLogLevel = "warn"
 )
 
 type Options struct {
@@ -74,6 +76,7 @@ type Options struct {
 	SkipBugLookup                      bool
 	DSN                                string
 	LogLevel                           string
+	DBLogLevel                         string
 	LoadTestgrid                       bool
 	LoadOpenShiftCIBigQuery            bool
 	LoadProw                           bool
@@ -139,7 +142,8 @@ func main() {
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
-	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
+	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error) (default info)")
+	flags.StringVar(&opt.DBLogLevel, "db-log-level", defaultDBLogLevel, "gorm database log level (info,warn,error,silent) (default warn)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
 	flags.BoolVar(&opt.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
 
@@ -283,9 +287,14 @@ func (o *Options) Run() error { //nolint:gocyclo
 	// Set log level
 	level, err := log.ParseLevel(o.LogLevel)
 	if err != nil {
-		log.WithError(err).Fatal("Cannot parse log level")
+		log.WithError(err).Fatal("Cannot parse log-level")
 	}
 	log.SetLevel(level)
+
+	gormLogLevel, err := db.ParseGormLogLevel(o.DBLogLevel)
+	if err != nil {
+		log.WithError(err).Fatal("Cannot parse db-log-level")
+	}
 
 	// Add some millisecond precision to log timestamps, useful for debugging performance.
 	formatter := new(log.TextFormatter)
@@ -326,7 +335,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.CreateSnapshot {
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -377,7 +386,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -388,7 +397,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 	if o.LoadDatabase {
 
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -471,7 +480,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.Server {
-		return o.runServerMode(pinnedTime)
+		return o.runServerMode(pinnedTime, gormLogLevel)
 	}
 
 	return nil
@@ -521,11 +530,11 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	return allErrs
 }
 
-func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
+func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN)
+		dbc, err = db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}

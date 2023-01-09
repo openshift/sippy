@@ -3,12 +3,13 @@ package db
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -39,12 +40,12 @@ func (w log2LogrusWriter) Printf(msg string, args ...interface{}) {
 	w.entry.Debugf(msg, args...)
 }
 
-func New(dsn string) (*DB, error) {
-	gormLogger := logger.New(
+func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
+	gormLogger := gormlogger.New(
 		log2LogrusWriter{entry: log.WithField("source", "gorm")},
-		logger.Config{
+		gormlogger.Config{
 			SlowThreshold:             2 * time.Second,
-			LogLevel:                  logger.Warn, // Change to info if you want to see all sql being used, but it's a LOT
+			LogLevel:                  logLevel,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  false,
 		},
@@ -220,4 +221,19 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 		vlog.Debug("no schema update required")
 	}
 	return updateRequired, nil
+}
+
+func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {
+	switch logLevel {
+	case "info":
+		return gormlogger.Info, nil
+	case "warn":
+		return gormlogger.Warn, nil
+	case "error":
+		return gormlogger.Error, nil
+	case "silent":
+		return gormlogger.Silent, nil
+	default:
+		return gormlogger.Info, fmt.Errorf("Unknown gorm LogLevel: %s", logLevel)
+	}
 }
