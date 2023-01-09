@@ -495,7 +495,6 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	if o.LoadOpenShiftCIBigQuery {
 		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
-		// TODO: support GoogleOAuthClientCredentailFile like above for GCS?
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
 			allErrs = append(allErrs, err)
