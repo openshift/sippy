@@ -204,6 +204,7 @@ func dashboardArgFromOpenshiftRelease(release string) string {
 	return argString
 }
 
+// nolint:gocyclo
 func (o *Options) Validate() error {
 	switch o.Output {
 	case "json":
