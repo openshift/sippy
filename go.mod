@@ -3,7 +3,8 @@ module github.com/openshift/sippy
 go 1.16
 
 require (
-	cloud.google.com/go/storage v1.10.0
+	cloud.google.com/go/bigquery v1.44.0 // indirect
+	cloud.google.com/go/storage v1.27.0
 	github.com/anaskhan96/soup v1.2.5
 	github.com/andygrunwald/go-jira v1.14.0
 	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20210823155509-845c8efe54a7
@@ -20,13 +21,11 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tcnksm/go-gitconfig v0.1.2
 	github.com/tidwall/gjson v1.9.4
-	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
-	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
-	golang.org/x/sys v0.0.0-20211109184856-51b60fd695b3 // indirect
-	google.golang.org/api v0.60.0
+	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
+	google.golang.org/api v0.103.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.2.1

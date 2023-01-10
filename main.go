@@ -12,11 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/snapshot"
+	"cloud.google.com/go/bigquery"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/api/option"
 	"gopkg.in/yaml.v3"
+	gormlogger "gorm.io/gorm/logger"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -28,6 +30,7 @@ import (
 	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
+	"github.com/openshift/sippy/pkg/snapshot"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -42,7 +45,8 @@ var sippyNG embed.FS
 var static embed.FS
 
 const (
-	defaultLogLevel = "info"
+	defaultLogLevel   = "info"
+	defaultDBLogLevel = "warn"
 )
 
 type Options struct {
@@ -72,7 +76,9 @@ type Options struct {
 	SkipBugLookup                      bool
 	DSN                                string
 	LogLevel                           string
+	DBLogLevel                         string
 	LoadTestgrid                       bool
+	LoadOpenShiftCIBigQuery            bool
 	LoadProw                           bool
 	LoadGitHub                         bool
 	Config                             string
@@ -136,8 +142,10 @@ func main() {
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
-	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error)")
+	flags.StringVar(&opt.LogLevel, "log-level", defaultLogLevel, "Log level (trace,debug,info,warn,error) (default info)")
+	flags.StringVar(&opt.DBLogLevel, "db-log-level", defaultDBLogLevel, "gorm database log level (info,warn,error,silent) (default warn)")
 	flags.BoolVar(&opt.LoadTestgrid, "load-testgrid", true, "Fetch job and job run data from testgrid")
+	flags.BoolVar(&opt.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
 
 	// Snapshotter setup, should be a sub-command someday:
 	flags.BoolVar(&opt.CreateSnapshot, "create-snapshot", false, "Create snapshots using current sippy overview API json and store in db")
@@ -200,6 +208,7 @@ func dashboardArgFromOpenshiftRelease(release string) string {
 	return argString
 }
 
+// nolint:gocyclo
 func (o *Options) Validate() error {
 	switch o.Output {
 	case "json":
@@ -247,7 +256,11 @@ func (o *Options) Validate() error {
 	}
 
 	if o.LoadGitHub && !o.LoadProw {
-		return fmt.Errorf("--load-github must be specified with --load-prow")
+		return fmt.Errorf("--load-github can only be specified with --load-prow")
+	}
+
+	if o.LoadOpenShiftCIBigQuery && !o.LoadProw {
+		return fmt.Errorf("--load-openshift-ci-bigquery can only be specified with --load-prow")
 	}
 
 	if o.LoadProw && o.Config == "" {
@@ -274,9 +287,14 @@ func (o *Options) Run() error { //nolint:gocyclo
 	// Set log level
 	level, err := log.ParseLevel(o.LogLevel)
 	if err != nil {
-		log.WithError(err).Fatal("Cannot parse log level")
+		log.WithError(err).Fatal("Cannot parse log-level")
 	}
 	log.SetLevel(level)
+
+	gormLogLevel, err := db.ParseGormLogLevel(o.DBLogLevel)
+	if err != nil {
+		log.WithError(err).Fatal("Cannot parse db-log-level")
+	}
 
 	// Add some millisecond precision to log timestamps, useful for debugging performance.
 	formatter := new(log.TextFormatter)
@@ -317,7 +335,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.CreateSnapshot {
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -368,7 +386,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.InitDatabase {
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -379,7 +397,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 	if o.LoadDatabase {
 
-		dbc, err := db.New(o.DSN)
+		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
@@ -424,22 +442,8 @@ func (o *Options) Run() error { //nolint:gocyclo
 		}
 
 		if o.LoadProw {
-			gcsClient, err := gcs.NewGCSClient(context.TODO(),
-				o.GoogleServiceAccountCredentialFile,
-				o.GoogleOAuthClientCredentialFile,
-			)
-			if err != nil {
-				log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
-				allErrs = append(allErrs, err)
-			} else {
-
-				var githubClient *github.Client
-				if o.LoadGitHub {
-					githubClient = github.New(context.TODO())
-				}
-
-				prowLoader := prowloader.New(dbc, gcsClient, "origin-ci-test", githubClient, o.getVariantManager(), o.getSyntheticTestManager(), o.OpenshiftReleases, &sippyConfig)
-				errs := prowLoader.LoadProwJobsToDB()
+			errs := o.loadProwJobs(dbc, sippyConfig)
+			if len(errs) > 0 {
 				allErrs = append(allErrs, errs...)
 			}
 		}
@@ -476,17 +480,61 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.Server {
-		return o.runServerMode(pinnedTime)
+		return o.runServerMode(pinnedTime, gormLogLevel)
 	}
 
 	return nil
 }
 
-func (o *Options) runServerMode(pinnedDateTime *time.Time) error {
+func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
+
+	allErrs := []error{}
+
+	gcsClient, err := gcs.NewGCSClient(context.TODO(),
+		o.GoogleServiceAccountCredentialFile,
+		o.GoogleOAuthClientCredentialFile,
+	)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
+		allErrs = append(allErrs, err)
+		return allErrs
+	}
+
+	var bigQueryClient *bigquery.Client
+	if o.LoadOpenShiftCIBigQuery {
+		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		if err != nil {
+			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+			allErrs = append(allErrs, err)
+			return allErrs
+		}
+	}
+
+	var githubClient *github.Client
+	if o.LoadGitHub {
+		githubClient = github.New(context.TODO())
+	}
+
+	prowLoader := prowloader.New(dbc,
+		gcsClient,
+		bigQueryClient,
+		"origin-ci-test",
+		githubClient,
+		o.getVariantManager(),
+		o.getSyntheticTestManager(),
+		o.OpenshiftReleases,
+		&sippyConfig)
+	errs := prowLoader.LoadProwJobsToDB()
+	allErrs = append(allErrs, errs...)
+	return allErrs
+}
+
+func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
-		dbc, err = db.New(o.DSN)
+		dbc, err = db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
