@@ -215,6 +215,18 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 			jobType = "blocking"
 		} else if informingJobs.Has(jobName) {
 			jobType = "informing"
+		} else if strings.HasPrefix(jobName, "release-openshift-") ||
+			strings.HasPrefix(jobName, "promote-release-openshift-") ||
+			strings.HasPrefix(jobName, "periodic-ci-openshift-hypershift-main-periodics-") ||
+			strings.HasPrefix(jobName, "periodic-ci-openshift-multiarch") ||
+			strings.HasPrefix(jobName, "periodic-ci-openshift-release-master-ci-") ||
+			strings.HasPrefix(jobName, "periodic-ci-openshift-release-master-okd-") ||
+			strings.HasPrefix(jobName, "periodic-ci-openshift-release-master-nightly-") ||
+			strings.HasPrefix(jobName, "periodic-ci-shiftstack-shiftstack-ci-main-periodic-") {
+			// This special case is here because of the special handling in test grid generator defined in
+			// https://github.com/openshift/ci-tools/blob/2492ee3127698a2e6db17f5a8e457c73fae26ddd/cmd/testgrid-config-generator/main.go#L219
+			// We should try to stay in sync.
+			jobType = "informing"
 		}
 		if len(jobType) != 0 {
 			dashboard = dashboard + "-" + jobType
