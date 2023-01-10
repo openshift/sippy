@@ -159,13 +159,14 @@ Ginkgo exit error 1: exit with code 1}`,
 			testName: "[sig-arch] events should not repeat pathologically",
 			testOutput: `{  1 events happened too frequently
 
-event happened 31 times, something is wrong: ns/openshift-console pod/console-7f577bcddd-t8qg4 node/ci-op-n960xqmi-7f65d-2wn89-master-0 - reason/ProbeError Readiness probe error: Get "https://10.130.0.49:8443/health": dial tcp 10.130.0.49:8443: connect: connection refused
+event happened 31 times, something is wrong: ns/openshift-console pod/console-7f577bcddd-t8qg4 node/ci-op-n960xqmi-7f65d-2wn89-master-0 - reason/ProbeError Readiness probe error: Get "https://10.130.0.49:8443/health": dial tcp 10.130.0.49:8443: connect: connection refused result=allow 
 body: 
 }`,
 			expectedTags: []map[string]string{
 				{
 					"reason": "ProbeError",
 					"ns":     "openshift-console",
+					"result": "allow",
 				},
 			},
 		},
@@ -189,23 +190,25 @@ body:
 			testName: "[sig-arch] events should not repeat pathologically",
 			testOutput: `{  12 events happened too frequently
 
-event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasSufficientPID roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasSufficientPID
-event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasSufficientMemory
+event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasSufficientPID roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasSufficientPID result=allow 
+event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasSufficientMemory result=reject 
 event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-clone - reason/NodeHasNoDiskPressure roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0-clone status is now: NodeHasNoDiskPressure
 event happened 24 times, something is wrong: ns/openshift-machine-api machine/gfq9r5kv-c805c-b7tdc-worker-0-wp9g8 - reason/Reconciled Reconciled machine gfq9r5kv-c805c-b7tdc-worker-0-wp9g8
 event happened 25 times, something is wrong: ns/openshift-machine-api machine/gfq9r5kv-c805c-b7tdc-worker-0-q2krf - reason/Reconciled Reconciled machine gfq9r5kv-c805c-b7tdc-worker-0-q2krf
 event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasNoDiskPressure roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasNoDiskPressure
-event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasSufficientMemory
+event happened 33 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-2 - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-2 status is now: NodeHasSufficientMemory result=reject 
 event happened 22 times, something is wrong: ns/openshift-machine-api machine/gfq9r5kv-c805c-b7tdc-worker-0-sbxp6 - reason/Reconciled Reconciled machine gfq9r5kv-c805c-b7tdc-worker-0-sbxp6
 event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasNoDiskPressure roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasNoDiskPressure
-event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasSufficientPID roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasSufficientPID
-event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-clone - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0-clone status is now: NodeHasSufficientMemory}`,
+event happened 31 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0 - reason/NodeHasSufficientPID roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0 status is now: NodeHasSufficientPID  result=allow 
+event happened 26 times, something is wrong: node/gfq9r5kv-c805c-b7tdc-master-0-clone - reason/NodeHasSufficientMemory roles/control-plane,master Node gfq9r5kv-c805c-b7tdc-master-0-clone status is now: NodeHasSufficientMemory result=reject }`,
 			expectedTags: []map[string]string{
 				{
 					"reason": "NodeHasSufficientPID",
+					"result": "allow",
 				},
 				{
 					"reason": "NodeHasSufficientMemory",
+					"result": "reject",
 				},
 				{
 					"reason": "NodeHasNoDiskPressure",

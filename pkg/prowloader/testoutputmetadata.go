@@ -39,7 +39,7 @@ func watchRequestsMetadataExtractor(testOutput string) []map[string]string {
 func pathologicalEventsMetadataExtractor(testOutput string) []map[string]string {
 	return scanTestOutput(
 		pathologicalEventsRE,
-		[]string{"ns"},
+		[]string{"ns", "result"},
 		testOutput,
 	)
 }
