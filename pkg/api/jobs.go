@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/db/query"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"

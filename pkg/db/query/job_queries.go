@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/filter"
 )
 

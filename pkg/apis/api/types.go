@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 
 	"github.com/openshift/sippy/pkg/db/models"
@@ -212,6 +213,7 @@ type Job struct {
 	Repo      string         `json:"repo,omitempty"`
 	BriefName string         `json:"brief_name"`
 	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
+	LastPass  *time.Time     `json:"last_pass,omitempty"`
 
 	AverageRetestsToMerge          float64 `json:"average_retests_to_merge"`
 	CurrentPassPercentage          float64 `json:"current_pass_percentage"`
