@@ -303,6 +303,8 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
+	case "merged_at":
+		return float64(job.LastPass.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}

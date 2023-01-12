@@ -10,6 +10,7 @@ import { TabContext } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
+import { filterFor, multiple } from '../helpers'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import JobRunsTable from './JobRunsTable'
 import JobsDetail from './JobsDetail'
@@ -58,6 +59,12 @@ export default function Jobs(props) {
                     to={url}
                   />
                   <Tab
+                    label="Permafailing"
+                    value="permafailing"
+                    component={Link}
+                    to={url + '/permafailing'}
+                  />
+                  <Tab
                     label="All job runs"
                     value="runs"
                     component={Link}
@@ -70,6 +77,21 @@ export default function Jobs(props) {
               <Switch>
                 <Route path={path + '/runs'}>
                   <JobRunsTable release={props.release} />
+                </Route>
+                <Route path={path + '/permafailing'}>
+                  <JobTable
+                    release={props.release}
+                    filterModel={{
+                      items: [
+                        filterFor('current_pass_percentage', '=', '0'),
+                        filterFor('previous_pass_percentage', '=', '0'),
+                      ],
+                    }}
+                    sortField="current_runs"
+                    sort="desc"
+                    view="Permafailing"
+                    hideControls="true"
+                  />
                 </Route>
 
                 <Route exact path={path}>

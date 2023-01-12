@@ -7,6 +7,7 @@ import {
   escapeRegex,
   pathForExactJobAnalysis,
   pathForExactJobRuns,
+  relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
@@ -20,7 +21,7 @@ import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { Fragment, useEffect } from 'react'
 
 const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
@@ -78,6 +79,33 @@ export const getColumns = (config, openBugzillaDialog) => {
           <small>({params.row.previous_runs} runs)</small>
         </div>
       ),
+    },
+    last_pass: {
+      field: 'last_pass',
+      headerName: 'Last pass date',
+      filterable: true,
+      flex: 1.25,
+      type: 'date',
+      valueFormatter: (params) => {
+        return new Date(params.value)
+      },
+      renderCell: (params) => {
+        if (params.value === undefined || params.value === '') {
+          return (
+            <Tooltip title="Job has never passed, or pass predates Sippy's history (typically about 90 days)">
+              <Fragment>Never</Fragment>
+            </Tooltip>
+          )
+        }
+
+        return (
+          <Tooltip title={params.value}>
+            <Fragment>
+              {relativeTime(new Date(params.value), new Date())}
+            </Fragment>
+          </Tooltip>
+        )
+      },
     },
     open_bugs: {
       field: 'open_bugs',
@@ -471,6 +499,49 @@ function JobTable(props) {
           field: 'average_retests_to_merge',
           flex: 1,
           headerClassName: 'wrapHeader',
+        },
+      ],
+    },
+    Permafailing: {
+      sortField: 'current_runs',
+      sort: 'desc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'last_pass',
+          flex: 1.0,
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'test_grid_url',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+        {
+          field: 'job_runs',
+          flex: 0.4,
+          hide: props.briefTable,
         },
       ],
     },
