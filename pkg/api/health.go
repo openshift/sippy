@@ -189,6 +189,11 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 	prevStats.Histogram = make([]int, 10)
 
 	for _, result := range results {
+		// Skip jobs that have no runs
+		if result.CurrentRuns == 0 {
+			continue
+		}
+
 		if testreportconversion.IsNeverStable(result.Variants) {
 			continue
 		}
