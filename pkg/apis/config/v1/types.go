@@ -11,8 +11,6 @@ type ProwConfig struct {
 	URL string `yaml:"url"`
 }
 
-type JobState string
-
 type ReleaseConfig struct {
 	// Jobs is a set of jobs that should be considered part of the release.
 	Jobs map[string]bool `yaml:"jobs,omitempty"`

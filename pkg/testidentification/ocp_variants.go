@@ -1,6 +1,7 @@
 package testidentification
 
 import (
+	_ "embed"
 	"fmt"
 	"regexp"
 
@@ -13,7 +14,8 @@ import (
 // openshiftJobsNeverStable is a list of jobs that have permafailed
 // (0%) for at least two weeks. They are excluded from "normal" variants. The list
 // is generated programatically via scripts/update-neverstable.sh
-// go:embed ocp_never_stable.txt
+//
+//go:embed ocp_never_stable.txt
 var openshiftJobsNeverStable []byte
 
 var (

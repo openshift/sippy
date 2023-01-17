@@ -15,16 +15,15 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/openshift/sippy/pkg/db/loader"
-	"github.com/openshift/sippy/pkg/util/sets"
-
 	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/loader"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testgridanalysis/testgridconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 var FindIssuesForVariants = loader.FindIssuesForVariants

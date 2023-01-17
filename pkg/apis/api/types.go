@@ -9,10 +9,8 @@ import (
 	"github.com/lib/pq"
 
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-
-	"github.com/openshift/sippy/pkg/db/models"
-
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 type ColumnType int
@@ -303,7 +301,7 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
-	case "merged_at":
+	case "last_pass":
 		return float64(job.LastPass.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
@@ -514,7 +512,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 	}
 }
 
-//
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {
