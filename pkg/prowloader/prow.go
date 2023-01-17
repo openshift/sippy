@@ -353,12 +353,11 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 }
 
 func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRequest {
-
 	if refs == nil || pl.githubClient == nil {
 		if refs == nil {
-			log.Info("findOrAddPullRequests nil refs")
+			log.Debug("findOrAddPullRequests nil refs")
 		} else {
-			log.Info("findOrAddPullRequests nil githubclient")
+			log.Debug("findOrAddPullRequests nil githubclient")
 		}
 		return nil
 	}
@@ -367,25 +366,43 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 
 	for _, pr := range refs.Pulls {
 
-		log.Infof("findOrAddPullRequests for link: %s, sha: %s", pr.Link, pr.SHA)
-
-		if pr.Link == "" {
-			log.Infof("findOrAddPullRequests skipping empty link for sha: %s", pr.SHA)
-			continue
-		}
+		// title and link are not filled in via bigquery
+		// so get them from github if missing
 
 		mergedAt, err := pl.githubClient.GetPRSHAMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
 		if err != nil {
 			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
+		} else {
+			// pr should be cached from lookup above
+			if pr.Title == "" {
+				ghTitle, err := pl.githubClient.GetPRTitle(refs.Org, refs.Repo, pr.Number)
+				if err != nil {
+					log.WithError(err).Warningf("could not fetch pull request title from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
+				} else if ghTitle != nil {
+					pr.Title = *ghTitle
+				}
+			}
+			if pr.Link == "" {
+				ghLink, err := pl.githubClient.GetPRURL(refs.Org, refs.Repo, pr.Number)
+				if err != nil {
+					log.WithError(err).Warningf("could not fetch pull request url from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
+				} else if ghLink != nil {
+					pr.Link = *ghLink
+				}
+			}
 		}
+
+		if pr.Link == "" {
+			log.Debugf("findOrAddPullRequests skipping empty link for sha: %s", pr.SHA)
+			continue
+		}
+
+		// any concerns if we are missing title?
 
 		pull := models.ProwPullRequest{}
 		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)
 
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-
-			log.Infof("findOrAddPullRequests record not found for link: %s, sha: %s", pr.Link, pr.SHA)
-
 			pull.MergedAt = mergedAt
 			pull.Org = refs.Org
 			pull.Repo = refs.Repo
@@ -400,13 +417,10 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 				continue
 			}
 
-			log.Infof("findOrAddPullRequests record saved for link: %s, sha: %s", pr.Link, pr.SHA)
 		} else if res.Error != nil {
 			log.WithError(res.Error).Errorf("unexpected error looking for pull request %s (%s)", pr.Link, pr.SHA)
 			continue
 		}
-
-		log.Infof("findOrAddPullRequests found record for link: %s, sha: %s", pr.Link, pr.SHA)
 
 		if pull.MergedAt == nil || *pull.MergedAt != *mergedAt {
 			pull.MergedAt = mergedAt
