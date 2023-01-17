@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/openshift/sippy/pkg/db/loader"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/openshift/sippy/pkg/db/loader"
+	"github.com/openshift/sippy/pkg/util/sets"
 
 	processingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
@@ -105,8 +106,6 @@ func createOrUpdateJob(dbc *db.DB, reportName string,
 	variantManager testidentification.VariantManager, prowJobCache map[string]*models.ProwJob,
 	jr *processingv1.RawJobResult) error {
 	// Create ProwJob if we don't have one already:
-	// TODO: we do not presently update a ProwJob once created, so any change in our variant detection code for ex
-	// would not make it to the db.
 	if _, ok := prowJobCache[jr.JobName]; !ok {
 		dbProwJob := &models.ProwJob{
 			Name:        jr.JobName,

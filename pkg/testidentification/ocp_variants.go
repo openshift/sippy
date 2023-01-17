@@ -10,6 +10,12 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+// openshiftJobsNeverStable is a list of jobs that have permafailed
+// (0%) for at least two weeks. They are excluded from "normal" variants. The list
+// is generated programatically via scripts/update-neverstable.sh
+// go:embed ocp_never_stable.txt
+var openshiftJobsNeverStable []byte
+
 var (
 	// variant regexes
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
@@ -88,17 +94,6 @@ var (
 		"vsphere-ipi",
 		"vsphere-upi",
 	)
-
-	// openshiftJobsNeverStableForVariants is a list of unproven new jobs or
-	// jobs that are near permafail (i.e. < 40%) for an extended period of time.
-	// They are excluded from "normal" variants and once they are passing above
-	// 40% can "graduated" from never-stable.
-	//
-	// Jobs should have a linked BZ before being added to this list.
-	//
-	// These jobs are still listed as jobs in total and when individual
-	// tests fail, they will still be listed with these jobs as causes.
-	openshiftJobsNeverStableForVariants = sets.NewString()
 )
 
 type openshiftVariants struct{}
@@ -282,5 +277,6 @@ func determineNetwork(jobName, release string) string {
 }
 
 func (openshiftVariants) IsJobNeverStable(jobName string) bool {
-	return openshiftJobsNeverStableForVariants.Has(jobName)
+	matched, _ := regexp.Match(fmt.Sprintf("^%s$", jobName), openshiftJobsNeverStable)
+	return matched
 }
