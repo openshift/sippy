@@ -82,7 +82,7 @@ export const getColumns = (config, openBugzillaDialog) => {
     },
     last_pass: {
       field: 'last_pass',
-      headerName: 'Last pass date',
+      headerName: 'Last pass',
       filterable: true,
       flex: 1.25,
       type: 'date',
@@ -93,7 +93,7 @@ export const getColumns = (config, openBugzillaDialog) => {
         if (params.value === undefined || params.value === '') {
           return (
             <Tooltip title="Job has never passed, or pass predates Sippy's history (typically about 90 days)">
-              <Fragment>Never</Fragment>
+              <Fragment>-</Fragment>
             </Tooltip>
           )
         }
@@ -502,7 +502,7 @@ function JobTable(props) {
         },
       ],
     },
-    Permafailing: {
+    'Last passing': {
       sortField: 'current_runs',
       sort: 'desc',
       fieldOrder: [

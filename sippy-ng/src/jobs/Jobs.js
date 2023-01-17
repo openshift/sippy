@@ -87,9 +87,9 @@ export default function Jobs(props) {
                         filterFor('previous_pass_percentage', '=', '0'),
                       ],
                     }}
-                    sortField="current_runs"
+                    sortField="last_pass"
                     sort="desc"
-                    view="Permafailing"
+                    view="Last passing"
                     hideControls="true"
                   />
                 </Route>
