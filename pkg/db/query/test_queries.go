@@ -26,7 +26,7 @@ const (
            sum(previous_successes) AS previous_successes,
            sum(previous_failures)  AS previous_failures,
            sum(previous_flakes)    AS previous_flakes,
-           sum(open_bugs)          AS open_bugs`
+           (array_agg(open_bugs))[1] AS open_bugs`
 
 	QueryTestFields = `
 		current_runs,
