@@ -1,8 +1,12 @@
 package releasesync
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 func TestReleaseTagForcedFlag(t *testing.T) {
@@ -164,5 +168,152 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 	releaseDetails.ChangeLog = []uint8("<h2>Changes from <a target=\"_blank\" href=\"/releasetag/4.7.0-0.ci-2022-06-18-175830\">4.7.0-0.ci-2022-06-18-175830</a></h2>\n\n<p>Created: 2022-06-24 18:20:08 +0000 UTC</p>\n\n<p>Image Digest: <code>sha256:f854883113a2edeb559dbd7cda40b96b0b5c7a86dfcc9d9b6026096908fe170f</code></p>\n\n<h3>Components</h3>\n\n<ul>\n<li>Kubernetes 1.20.15</li>\n<li>Red Hat Enterprise Linux CoreOS <a target=\"_blank\" href=\"https://releases-rhcos-art.cloud.privileged.psi.redhat.com/?release=47.84.202206171954-0&amp;stream=releases%2Frhcos-4.7")
 
 	return releaseDetails
+
+}
+
+func TestChangeLog(t *testing.T) {
+
+	data, err := ioutil.ReadFile(`4.13.0-0.nightly-2023-01-18-004822_test.json`)
+	if err != nil {
+		t.Fatal("Failed to read test file")
+	}
+
+	releaseDetails := ReleaseDetails{}
+
+	if err := json.Unmarshal(data, &releaseDetails); err != nil {
+		panic(err)
+	}
+
+	if len(releaseDetails.ChangeLog) == 0 {
+		t.Fatal("Failed unmarshalling")
+	}
+
+	changeLogStr := string(releaseDetails.ChangeLog)
+	releaseChangeLog := models.ReleaseTag{}
+	changelog := NewChangelog("amd64", changeLogStr)
+	releaseChangeLog.KubernetesVersion = changelog.KubernetesVersion()
+	releaseChangeLog.CurrentOSURL, releaseChangeLog.CurrentOSVersion, releaseChangeLog.PreviousOSURL, releaseChangeLog.PreviousOSVersion, releaseChangeLog.OSDiffURL = changelog.CoreOSVersion()
+	releaseChangeLog.PreviousReleaseTag = changelog.PreviousReleaseTag()
+	releaseChangeLog.Repositories = changelog.Repositories()
+	releaseChangeLog.PullRequests = changelog.PullRequests()
+
+	releaseChangeLogJSON := parseChangeLogJSON("test", releaseDetails.ChangeLogJSON)
+
+	if releaseChangeLogJSON.KubernetesVersion != releaseChangeLog.KubernetesVersion {
+		t.Fatalf("ReleaseChangeLog Kubernetes versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.KubernetesVersion, releaseChangeLogJSON.KubernetesVersion)
+	}
+
+	if releaseChangeLogJSON.CurrentOSVersion != releaseChangeLog.CurrentOSVersion {
+		t.Fatalf("ReleaseChangeLog CurrentOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSVersion, releaseChangeLogJSON.CurrentOSVersion)
+	}
+
+	if releaseChangeLogJSON.PreviousOSURL != releaseChangeLog.PreviousOSURL {
+		t.Fatalf("ReleaseChangeLog PreviousOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSURL, releaseChangeLogJSON.PreviousOSURL)
+	}
+
+	if releaseChangeLogJSON.PreviousOSVersion != releaseChangeLog.PreviousOSVersion {
+		t.Fatalf("ReleaseChangeLog PreviousOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSVersion, releaseChangeLogJSON.PreviousOSVersion)
+	}
+
+	if releaseChangeLogJSON.OSDiffURL != releaseChangeLog.OSDiffURL {
+		t.Fatalf("ReleaseChangeLog OSDiffURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.OSDiffURL, releaseChangeLogJSON.OSDiffURL)
+	}
+
+	if releaseChangeLogJSON.PreviousReleaseTag != releaseChangeLog.PreviousReleaseTag {
+		t.Fatalf("ReleaseChangeLog PreviousReleaseTag versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousReleaseTag, releaseChangeLogJSON.PreviousReleaseTag)
+	}
+
+	if len(releaseChangeLogJSON.Repositories) != len(releaseChangeLog.Repositories) {
+		t.Fatalf("ReleaseChangeLog Repositories versions don't match.  ChangeLog: %v, ChangeLogJson: %v", releaseChangeLog.Repositories, releaseChangeLogJSON.Repositories)
+	}
+
+	for _, repoBase := range releaseChangeLog.Repositories {
+		found := false
+		for _, repoJSON := range releaseChangeLogJSON.Repositories {
+			if repoBase.Name != repoJSON.Name {
+				continue
+			}
+			found = true
+			if repoBase.DiffURL != repoJSON.DiffURL {
+				t.Fatalf("ReleaseChangeLog Repositories DiffURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJSON.Name, repoBase.DiffURL, repoJSON.DiffURL)
+			}
+
+			// html was
+			// <h3><a target="_blank" href="https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d">cli, cli-artifacts, deploy
+			// json value is coming in as https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d)
+			// "path": "https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d)",
+			// "path": "https://github.com/openshift/vmware-vsphere-csi-driver-operator/tree/b254985419983f3338ce7d15a56eb0eb4dce745e)",
+			// if repoBase.Head != repoJson.Head {
+			//  	t.Fatalf("ReleaseChangeLog Repositories Head don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJson.Name, repoBase.Head, repoJson.Head)
+			// }
+		}
+
+		if !found {
+			t.Fatalf("ReleaseChangeLog Repositories match for %s.", repoBase.Name)
+		}
+	}
+
+	if len(releaseChangeLogJSON.PullRequests) != len(releaseChangeLog.PullRequests) {
+		t.Fatalf("ReleaseChangeLog PullRequests versions don't match.  ChangeLog: %v, ChangeLogJson: %v", releaseChangeLog.PullRequests, releaseChangeLogJSON.PullRequests)
+	}
+
+	for _, prBase := range releaseChangeLog.PullRequests {
+		found := false
+		for _, prJSON := range releaseChangeLogJSON.PullRequests {
+			if prBase.Name != prJSON.Name {
+				continue
+			}
+			found = true
+
+			if prBase.PullRequestID != prJSON.PullRequestID {
+				t.Fatalf("ReleaseChangeLog PullRequest PullRequestID don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.PullRequestID, prJSON.PullRequestID)
+			}
+
+			if prBase.Description != prJSON.Description {
+				t.Fatalf("ReleaseChangeLog PullRequest Description don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.Description, prJSON.Description)
+			}
+
+			if prBase.URL != prJSON.URL {
+				t.Fatalf("ReleaseChangeLog PullRequest URL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.URL, prJSON.URL)
+			}
+
+			// we were previously only looking for bugzilla
+			// but now we will pick up issues.redhat.com as well
+			// if strings.Contains(url, "bugzilla.redhat.com") || strings.Contains(url, "issues.redhat.com") {
+			//					row.BugURL = url
+			//				}
+			if prBase.BugURL != prJSON.BugURL {
+				t.Fatalf("ReleaseChangeLog PullRequest BugURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.BugURL, prJSON.BugURL)
+			}
+
+		}
+
+		if !found {
+			t.Fatalf("ReleaseChangeLog Repositories match for %s.", prBase.Name)
+		}
+	}
+
+	// don't have this currently
+	// was
+	// <h3>Components</h3>
+	//
+	// <ul>
+	// <li>Kubernetes 1.25.2</li>
+	// <li>Red Hat Enterprise Linux CoreOS <a target="_blank" href="https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=413.86.202301170928-0&amp;stream=releases%2Frhcos-4.13">413.86.202301170928-0</a></li>
+	// </ul>
+	// now
+	//    "components": [
+	//      {
+	//        "name": "Kubernetes",
+	//        "version": "1.25.2"
+	//      },
+	//      {
+	//        "name": "Red Hat Enterprise Linux CoreOS",
+	//        "version": "413.86.202301170928-0"
+	//      }
+	//    ],
+	// if releaseChangeLogJson.CurrentOSURL != releaseChangeLog.CurrentOSURL {
+	// 	t.Fatalf("ReleaseChangeLog CurrentOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSURL, releaseChangeLogJson.CurrentOSURL)
+	// }
 
 }

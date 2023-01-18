@@ -191,12 +191,30 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 		return nil // changelog not available yet
 	}
 
+	// not ready to enable this yet
+	// presume we must have some components, kubernetes, coreos
+	// if len(details.ChangeLogJSON.Components) > 0 {
+	// 	jsonChangeLog := parseChangeLogJSON(tag.Name, details.ChangeLogJSON)
+	//
+	// 	release.KubernetesVersion = jsonChangeLog.KubernetesVersion
+	// 	release.CurrentOSURL = jsonChangeLog.CurrentOSURL
+	// 	release.CurrentOSVersion = jsonChangeLog.CurrentOSVersion
+	// 	release.PreviousOSURL = jsonChangeLog.PreviousOSURL
+	// 	release.PreviousOSVersion = jsonChangeLog.PreviousOSVersion
+	// 	release.OSDiffURL = jsonChangeLog.OSDiffURL
+	//
+	// 	release.PreviousReleaseTag = jsonChangeLog.PreviousReleaseTag
+	// 	release.Repositories = jsonChangeLog.Repositories
+	// 	release.PullRequests = jsonChangeLog.PullRequests
+	//
+	// } else {
 	changelog := NewChangelog(tag.Name, string(details.ChangeLog))
 	release.KubernetesVersion = changelog.KubernetesVersion()
 	release.CurrentOSURL, release.CurrentOSVersion, release.PreviousOSURL, release.PreviousOSVersion, release.OSDiffURL = changelog.CoreOSVersion()
 	release.PreviousReleaseTag = changelog.PreviousReleaseTag()
 	release.Repositories = changelog.Repositories()
 	release.PullRequests = changelog.PullRequests()
+	// }
 	release.JobRuns = releaseJobRunsToDB(details)
 
 	// set forced flag
@@ -218,6 +236,91 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 	}
 
 	return &release
+}
+
+func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.ReleaseTag {
+	releaseChangeLogJSON := models.ReleaseTag{}
+
+	releaseChangeLogJSON.PreviousReleaseTag = changeLogJSON.From.Name
+
+	for _, c := range changeLogJSON.Components {
+		if c.Name == "Kubernetes" {
+			releaseChangeLogJSON.KubernetesVersion = c.Version
+		} else if c.Name == "Red Hat Enterprise Linux CoreOS" {
+			releaseChangeLogJSON.CurrentOSVersion = c.Version
+
+			// doesn't seem like we have all the right data to build this out
+			// https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=413.86.202301170928-0&stream=releases%2Frhcos-4.13
+			// releaseChangeLogJson.CurrentOSURL = fmt.Sprintf("https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=%s&stream=", releaseChangeLogJson.CurrentOSVersion, "???")
+		}
+	}
+
+	type prlocator struct {
+		name string
+		url  string
+	}
+
+	releaseRepoRows := make([]models.ReleaseRepository, 0)
+	releasePRRows := make(map[prlocator]models.ReleasePullRequest)
+	for _, ui := range changeLogJSON.UpdatedImages {
+
+		releaseRepoRow := models.ReleaseRepository{
+			Name:    ui.Name,
+			Head:    ui.Path,
+			DiffURL: ui.FullChangeLog,
+		}
+
+		releaseRepoRows = append(releaseRepoRows, releaseRepoRow)
+
+		for _, commit := range ui.Commits {
+			releasePRRow := models.ReleasePullRequest{
+				Name:          ui.Name,
+				Description:   commit.Subject,
+				URL:           commit.PullURL,
+				PullRequestID: fmt.Sprintf("%d", commit.PullID),
+			}
+
+			// saves the last one..
+			for _, value := range commit.Issues {
+				releasePRRow.BugURL = value
+			}
+
+			for _, value := range commit.Bugs {
+				releasePRRow.BugURL = value
+			}
+
+			prl := prlocator{
+				url:  releasePRRow.URL,
+				name: releasePRRow.Name,
+			}
+			if _, ok := releasePRRows[prl]; ok {
+				log.Warningf("duplicate PR in %q: %q, %q", releaseTag, releasePRRow.URL, releasePRRow.Name)
+			} else {
+				releasePRRows[prl] = releasePRRow
+			}
+		}
+
+	}
+
+	releaseChangeLogJSON.Repositories = releaseRepoRows
+
+	releasePullRequestResult := make([]models.ReleasePullRequest, 0)
+	items := 0
+	for _, v := range releasePRRows {
+		// We had a case of a release payload changelog that contained 235,000 pull requests. Sippy got stuck on it
+		// so this check is here to prevent something like that from ever happening again.  2,500 seems like a very
+		// reasonable upper bound.
+		if items > 2500 {
+			log.Warningf("%q had more than 2,500 PR's! Ignoring the rest to protect ourself.", releaseTag)
+			break
+		}
+		releasePullRequestResult = append(releasePullRequestResult, v)
+		items++
+	}
+
+	releaseChangeLogJSON.PullRequests = releasePullRequestResult
+
+	return releaseChangeLogJSON
 }
 
 func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {

@@ -1,6 +1,8 @@
 package releasesync
 
-import "time"
+import (
+	"time"
+)
 
 // ReleaseTags represents the type returned from a release controller endpoint
 // like https://amd64.ocp.releases.ci.openshift.org/api/v1/releasestream/4.9.0-0.nightly/tags
@@ -39,9 +41,43 @@ type UpgradeResult struct {
 
 // ReleaseDetails represents the details of a release from the release controller.
 type ReleaseDetails struct {
-	Name         string                             `json:"name"`
-	Results      map[string]map[string]JobRunResult `json:"results"`
-	UpgradesTo   []UpgradeResult                    `json:"upgradesTo"`
-	UpgradesFrom []UpgradeResult                    `json:"upgradesFrom"`
-	ChangeLog    []byte                             `json:"changeLog"`
+	Name          string                             `json:"name"`
+	Results       map[string]map[string]JobRunResult `json:"results"`
+	UpgradesTo    []UpgradeResult                    `json:"upgradesTo"`
+	UpgradesFrom  []UpgradeResult                    `json:"upgradesFrom"`
+	ChangeLog     []byte                             `json:"changeLog"`
+	ChangeLogJSON ChangeLog                          `json:"changeLogJson"`
+}
+
+type ChangeLog struct {
+	Components    []ChangeLogComponent `json:"components"`
+	From          ChangeLogRelease     `json:"from"`
+	To            ChangeLogRelease     `json:"to"`
+	UpdatedImages []UpdatedImage       `json:"updatedImages"`
+}
+
+type ChangeLogComponent struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+type ChangeLogRelease struct {
+	Name    string `json:"name"`
+	Created string `json:"created"`
+	Digest  string `json:"digest"`
+}
+
+type UpdatedImage struct {
+	Name          string                `json:"name"`
+	Path          string                `json:"path"`
+	Commits       []UpdatedImageCommits `json:"commits"`
+	FullChangeLog string                `json:"fullChangeLog"`
+}
+
+type UpdatedImageCommits struct {
+	Issues  map[string]string `json:"issues"`
+	Bugs    map[string]string `json:"bugs"`
+	Subject string            `json:"subject"`
+	PullID  int               `json:"pullID"`
+	PullURL string            `json:"pullURL"`
 }
