@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
@@ -16,7 +17,8 @@ import (
 // is generated programatically via scripts/update-neverstable.sh
 //
 //go:embed ocp_never_stable.txt
-var openshiftJobsNeverStable []byte
+var openshiftJobsNeverStableRaw string
+var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
 var (
 	// variant regexes
@@ -279,6 +281,11 @@ func determineNetwork(jobName, release string) string {
 }
 
 func (openshiftVariants) IsJobNeverStable(jobName string) bool {
-	matched, _ := regexp.Match(fmt.Sprintf("^%s$", jobName), openshiftJobsNeverStable)
-	return matched
+	for _, ns := range openshiftJobsNeverStable {
+		if ns == jobName {
+			return true
+		}
+	}
+
+	return false
 }
