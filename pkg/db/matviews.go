@@ -192,6 +192,19 @@ FROM prow_job_runs
 `
 
 const testReportMatView = `
+WITH open_bugs AS (
+  SELECT
+    test_id,
+    count(distinct bugs.id) AS open_bugs
+  FROM
+    bug_tests
+    INNER JOIN tests ON tests.id = bug_tests.test_id
+    INNER JOIN bugs ON bug_tests.bug_id = bugs.id
+  WHERE
+    lower(bugs.status) <> 'closed'::text
+  GROUP BY
+    test_id
+)
 SELECT tests.id,
    tests.name,
    tests.watchlist, 
@@ -236,18 +249,17 @@ SELECT tests.id,
            WHEN prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END||| THEN 1
            ELSE NULL::integer
        END), 0::bigint) AS current_runs,
-   count(distinct bugs.id) as open_bugs,
+   open_bugs.open_bugs AS open_bugs,
    prow_jobs.variants,
    prow_jobs.release
 FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
-   LEFT JOIN bug_tests on prow_job_run_tests.test_id = bug_tests.test_id
-   LEFT JOIN bugs on bug_tests.bug_id = bugs.id and lower(bugs.status) != 'closed'
+   LEFT JOIN open_bugs ON prow_job_run_tests.test_id = open_bugs.test_id
    LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs.timestamp >= |||START||| AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
-GROUP BY tests.id, tests.name, suites.name, prow_jobs.variants, prow_jobs.release
+GROUP BY tests.id, tests.name, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
 `
 
 const testAnalysisByVariantMatView = `
