@@ -76,7 +76,7 @@ $_$;
 `
 
 const jobResultFunction = `
-CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int)
+CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp)
     LANGUAGE sql
     AS $_$
 WITH repo_org_jobs AS (
@@ -118,6 +118,9 @@ results AS (
    		LEFT JOIN bug_jobs on prow_jobs.id = bug_jobs.prow_job_id
         LEFT JOIN bugs on bugs.id = bug_jobs.bug_id AND lower(bugs.status) != 'closed'
         group by prow_jobs.name, prow_jobs.variants
+),
+last_pass AS (
+	SELECT prow_job_id, max(timestamp) as last_pass from prow_job_runs where overall_result = 'S' group by prow_job_id
 )
 SELECT pj_name,
        pj_variants,
@@ -149,10 +152,12 @@ SELECT pj_name,
        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
        previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement,
-       open_bugs
+       open_bugs,
+       last_pass.last_pass 
 FROM results
          JOIN prow_jobs ON prow_jobs.name = results.pj_name
          LEFT JOIN repo_org_jobs ON prow_jobs.id = repo_org_jobs.id
 		 LEFT JOIN retests ON prow_jobs.id = retests.prow_job_id
+		 LEFT JOIN last_pass ON prow_jobs.id = last_pass.prow_job_id
     $_$;
 `

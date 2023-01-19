@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-
-	"github.com/openshift/sippy/pkg/db/models"
-
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 type ColumnType int
@@ -212,6 +211,7 @@ type Job struct {
 	Repo      string         `json:"repo,omitempty"`
 	BriefName string         `json:"brief_name"`
 	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
+	LastPass  *time.Time     `json:"last_pass,omitempty"`
 
 	AverageRetestsToMerge          float64 `json:"average_retests_to_merge"`
 	CurrentPassPercentage          float64 `json:"current_pass_percentage"`
@@ -301,6 +301,8 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
+	case "last_pass":
+		return float64(job.LastPass.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}
@@ -510,7 +512,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 	}
 }
 
-//
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {

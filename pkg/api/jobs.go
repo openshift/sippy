@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"

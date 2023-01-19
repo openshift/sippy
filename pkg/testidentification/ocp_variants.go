@@ -1,14 +1,24 @@
 package testidentification
 
 import (
+	_ "embed"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/util/sets"
 )
+
+// openshiftJobsNeverStable is a list of jobs that have permafailed
+// (0%) for at least two weeks. They are excluded from "normal" variants. The list
+// is generated programatically via scripts/update-neverstable.sh
+//
+//go:embed ocp_never_stable.txt
+var openshiftJobsNeverStableRaw string
+var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
 var (
 	// variant regexes
@@ -87,132 +97,6 @@ var (
 		"upgrade-minor",
 		"vsphere-ipi",
 		"vsphere-upi",
-	)
-
-	// openshiftJobsNeverStableForVariants is a list of unproven new jobs or
-	// jobs that are near permafail (i.e. < 40%) for an extended period of time.
-	// They are excluded from "normal" variants and once they are passing above
-	// 40% can "graduated" from never-stable.
-	//
-	// Jobs should have a linked BZ before being added to this list.
-	//
-	// These jobs are still listed as jobs in total and when individual
-	// tests fail, they will still be listed with these jobs as causes.
-	openshiftJobsNeverStableForVariants = sets.NewString(
-		// Experimental jobs that are under active development
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi",
-		"periodic-ci-openshift-release-master-nightly-4.11-e2e-azurestack-csi",
-		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azurestack-csi",
-		"periodic-ci-openshift-microshift-main-periodic-ocp-4.12-conformance-serial",
-		"periodic-ci-openshift-microshift-main-periodic-ocp-4.12-conformance-parallel",
-
-		// These will fail until there's a stable 4.10 build
-		"periodic-ci-openshift-release-master-ci-4.11-upgrade-from-stable-4.10-e2e-aws-upgrade-infra",
-		"periodic-ci-openshift-release-master-ci-4.11-upgrade-from-stable-4.10-e2e-azure-ovn-upgrade",
-		"periodic-ci-openshift-release-master-nightly-4.11-upgrade-from-stable-4.10-e2e-metal-ipi-upgrade-ovn-ipv6",
-		"periodic-ci-shiftstack-shiftstack-ci-main-periodic-4.11-upgrade-from-stable-4.10-e2e-openstack-upgrade",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2057502
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-telco5g",
-		"periodic-ci-openshift-release-master-nightly-4.11-e2e-telco5g",
-		"periodic-ci-openshift-release-master-nightly-4.12-e2e-telco5g",
-
-		// 5-10-2022 https://bugzilla.redhat.com/show_bug.cgi?id=2083614
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-aws-arm64-single-node",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-arm64-single-node",
-		"periodic-ci-openshift-multiarch-master-nightly-4.12-ocp-e2e-aws-arm64-single-node",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-aws-upgrade-single-node",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-upgrade-single-node",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-aws-upgrade-single-node",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-upgrade-single-node",
-		"periodic-ci-openshift-release-master-ci-4.12-e2e-aws-upgrade-single-node",
-		"periodic-ci-openshift-release-master-ci-4.12-e2e-azure-upgrade-single-node",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-single-node-serial",
-		"periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-single-node-serial",
-		"periodic-ci-openshift-release-master-nightly-4.12-e2e-aws-single-node-serial",
-
-		// CNV jobs are missing images: https://bugzilla.redhat.com/show_bug.cgi?id=2103973
-		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azure-deploy-cnv",
-		"periodic-ci-openshift-release-master-nightly-4.12-e2e-azure-upgrade-cnv",
-
-		// Reported on slack to SD-CICD
-		"release-openshift-ocp-osd-aws-nightly-4.10",
-		"release-openshift-ocp-osd-gcp-nightly-4.10",
-		"release-openshift-ocp-osd-aws-nightly-4.11",
-		"release-openshift-ocp-osd-gcp-nightly-4.11",
-		"release-openshift-ocp-osd-aws-nightly-4.12",
-		"release-openshift-ocp-osd-gcp-nightly-4.12",
-
-		// All metal upi jobs are being removed, see https://github.com/openshift/release/pull/29966
-		// Remove from never-stable once history is gone.
-		"release-openshift-ocp-installer-e2e-metal-4.10",
-		"release-openshift-ocp-installer-e2e-metal-4.11",
-		"release-openshift-ocp-installer-e2e-metal-4.12",
-		"release-openshift-ocp-installer-e2e-metal-compact-4.10",
-		"release-openshift-ocp-installer-e2e-metal-compact-4.11",
-		"release-openshift-ocp-installer-e2e-metal-compact-4.12",
-		"release-openshift-ocp-installer-e2e-metal-serial-4.10",
-		"release-openshift-ocp-installer-e2e-metal-serial-4.11",
-		"release-openshift-ocp-installer-e2e-metal-serial-4.12",
-
-		// TODO: Add bug as these are investigated. These have been near 0% for more than two weeks.
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.10-upgrade-from-nightly-4.9-ocp-e2e-aws-arm64",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-aws-ovn-arm64",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.11-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-image-ecosystem-remote-libvirt-s390x",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-upgrade-from-nightly-4.8-ocp-remote-libvirt-s390x",
-
-		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-ovn-upgrade-rollback",
-		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-aws-upgrade-rollback",
-		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-azure-ovn-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-e2e-openstack-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.10-upgrade-from-stable-4.9-from-stable-4.8-e2e-aws-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-aws-uwm",
-		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-azure-ovn-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-gcp-ovn-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-openstack-upgrade",
-		"periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-from-stable-4.7-e2e-aws-upgrade",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-ovn-local-gateway",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-fips",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-libvirt-cert-rotation",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-serial-compact",
-		"periodic-ci-openshift-release-master-nightly-4.10-e2e-vsphere-proxy",
-		"periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.8-e2e-aws-upgrade-paused",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-aws-upgrade-rollback-oldest-supported",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-gcp-libvirt-cert-rotation",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-az",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-fips",
-		"periodic-ci-openshift-release-master-nightly-4.9-e2e-openstack-proxy",
-
-		"release-openshift-origin-installer-e2e-aws-disruptive-4.9",
-		"release-openshift-origin-installer-e2e-aws-disruptive-4.10",
-		"release-openshift-origin-installer-e2e-aws-disruptive-4.11",
-		"release-openshift-origin-installer-e2e-aws-disruptive-4.12",
-
-		"release-openshift-origin-installer-e2e-aws-upgrade-4.6-to-4.7-to-4.8-to-4.9-ci",
-		"release-openshift-origin-installer-e2e-aws-upgrade-4.7-to-4.8-to-4.9-to-4.10-ci",
-		"release-openshift-origin-installer-e2e-aws-upgrade-4.9-to-4.10-to-4.11-to-4.12-ci",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=2083616
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-azure-cilium",
-		"periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-azure-cilium",
-		"periodic-ci-openshift-release-master-ci-4.10-e2e-gcp-cilium",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-azure-cilium",
-		"periodic-ci-openshift-release-master-ci-4.11-e2e-gcp-cilium",
-		"periodic-ci-openshift-release-master-ci-4.12-e2e-azure-cilium",
-		"periodic-ci-openshift-release-master-ci-4.12-e2e-gcp-cilium",
-
-		// https://bugzilla.redhat.com/show_bug.cgi?id=1997345
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-compact-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-ppc64le",
-		"periodic-ci-openshift-multiarch-master-nightly-4.9-ocp-e2e-remote-libvirt-s390x",
 	)
 )
 
@@ -397,5 +281,11 @@ func determineNetwork(jobName, release string) string {
 }
 
 func (openshiftVariants) IsJobNeverStable(jobName string) bool {
-	return openshiftJobsNeverStableForVariants.Has(jobName)
+	for _, ns := range openshiftJobsNeverStable {
+		if ns == jobName {
+			return true
+		}
+	}
+
+	return false
 }
