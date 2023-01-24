@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/push"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -122,6 +123,13 @@ func (s *Server) GetReportEnd() time.Time {
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
 // the views appear to be empty.
 func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
+	var promPusher *push.Pusher
+	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
+		promPusher = push.New(pushgateway, "sippy-matviews")
+		promPusher.Collector(matViewRefreshMetric)
+		promPusher.Collector(allMatViewsRefreshMetric)
+	}
+
 	log.Info("refreshing materialized views")
 	allStart := time.Now()
 
@@ -150,6 +158,15 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	allElapsed := time.Since(allStart)
 	log.WithField("elapsed", allElapsed).Info("refreshed all materialized views")
 	allMatViewsRefreshMetric.Observe(float64(allElapsed.Milliseconds()))
+
+	if promPusher != nil {
+		log.Info("pushing metrics to prometheus gateway")
+		if err := promPusher.Add(); err != nil {
+			log.WithError(err).Error("could not push to prometheus pushgateway")
+		} else {
+			log.Info("successfully pushed metrics to prometheus gateway")
+		}
+	}
 }
 
 func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
