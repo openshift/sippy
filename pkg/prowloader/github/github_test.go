@@ -20,8 +20,11 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 	unmergedSha1 := "aff4434f177142ff6ae2e4df895be5173700cbbe"
 	unmergedSha2 := "aff4434f177142ff6ae2e4df895be5173700cbbf"
 
+	pr1Title := "pr1"
+	pr1URL := "link/to/pr/1"
+
 	// We want to minimize the number of API calls to GitHub, this verifies
-	// we only called GitHub once for each PR, not each SHA.
+	// we only called GitHub once for each PR, not each SHA, Title or URL.
 	prFetchCalls := 0
 	expectedCalls := 3
 
@@ -33,6 +36,8 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 				Head: &gh.PullRequestBranch{
 					SHA: &mergedSha,
 				},
+				Title: &pr1Title,
+				URL:   &pr1URL,
 			}, nil
 		} else if org == openshift && repo == kubernetes && number == 2 {
 			return &gh.PullRequest{}, nil
@@ -59,6 +64,8 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 		repo       string
 		number     int
 		sha        string
+		title      string
+		url        string
 		wantMerged bool
 		wantErr    bool
 	}{
@@ -67,6 +74,8 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 			org:        openshift,
 			repo:       kubernetes,
 			sha:        mergedSha,
+			title:      pr1Title,
+			url:        pr1URL,
 			number:     1,
 			wantMerged: true,
 		},
@@ -75,6 +84,8 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 			org:        openshift,
 			repo:       kubernetes,
 			sha:        unmergedSha1,
+			title:      pr1Title,
+			url:        pr1URL,
 			number:     1,
 			wantMerged: false,
 		},
@@ -122,6 +133,34 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 				t.Errorf("GetPRSHAMerged() want merged, got unmerged")
 				return
 			}
+
+			title, err := client.GetPRTitle(tt.org, tt.repo, tt.number)
+
+			if err != nil {
+				t.Errorf("GetPRTitle() error = %v", err)
+				return
+			}
+			if title == nil && tt.title != "" {
+				t.Errorf("GetPRTitle() want : %s, got nil", tt.title)
+				return
+			} else if title != nil && *title != tt.title {
+				t.Errorf("GetPRTitle() want : %s, got: %s", tt.title, *title)
+				return
+			}
+
+			url, err := client.GetPRURL(tt.org, tt.repo, tt.number)
+			if err != nil {
+				t.Errorf("GetPRURL() error = %v", err)
+				return
+			}
+			if url == nil && tt.url != "" {
+				t.Errorf("GetPRURL() want : %s, got nil", tt.url)
+				return
+			} else if url != nil && *url != tt.url {
+				t.Errorf("GetPRURL() want : %s, got: %s", tt.url, *url)
+				return
+			}
+
 		})
 	}
 

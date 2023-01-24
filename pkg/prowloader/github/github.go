@@ -21,6 +21,8 @@ type prlocator struct {
 type prentry struct {
 	mergedAt *time.Time
 	sha      string
+	title    *string
+	url      *string
 }
 
 type Client struct {
@@ -67,34 +69,74 @@ func New(ctx context.Context) *Client {
 	return client
 }
 
+func (c *Client) GetPRURL(org, repo string, number int) (*string, error) {
+	prEntry, err := c.getPREntry(org, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	if prEntry != nil {
+		return prEntry.url, nil
+	}
+	return nil, nil
+}
+
+func (c *Client) GetPRTitle(org, repo string, number int) (*string, error) {
+	prEntry, err := c.getPREntry(org, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	if prEntry != nil {
+		return prEntry.title, nil
+	}
+	return nil, nil
+}
+
 // GetPRSHAMerged returns the merge time for a PR/SHA combination. The caching is designed
 // to minimize queries to GitHub. We basically have to handle these cases:
 //   - the PR doesn't exist (cache as nil)
-//   - the PR is unmerged (cache as nil)
+//   - the PR is unmerged (cache with nil mergedAt)
 //   - the PR is merged with a different SHA (cache with the merged sha, return nil)
 //   - the PR is merged with the same SHA (cache with the merged sha, return merged time)
 func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time.Time, error) {
-	prl := prlocator{org: org, repo: repo, number: number}
-	if val, ok := c.cache[prl]; ok && val != nil && val.sha == sha {
-		// If it's in the cache, and sha matches, this sha was merged.
-		return val.mergedAt, nil
-	} else if ok {
-		// If it's in the cache, then either the PR merged with a different
-		// SHA, or has not merged at all.
-		return nil, nil
+	pr, err := c.getPREntry(org, repo, number)
+	if err != nil {
+		return nil, err
 	}
+	if pr != nil && pr.sha == sha {
+		return pr.mergedAt, nil
+	}
+	// if it isn't in the cache or the sha doesn't match then return nil
+	return nil, nil
+}
 
+func (c *Client) getPREntry(org, repo string, number int) (*prentry, error) {
+	prl := prlocator{org: org, repo: repo, number: number}
+	if val, ok := c.cache[prl]; ok {
+		// If it's in the cache return it
+		return val, nil
+	}
+	pr, err := c.fetchPR(prl)
+	if err != nil {
+		return nil, err
+	}
+	if pr != nil {
+		return pr, nil
+	}
+	return nil, nil
+}
+
+func (c *Client) fetchPR(prl prlocator) (*prentry, error) {
 	// Get PR from GitHub
-	pr, err := c.prFetch(org, repo, number)
+	pr, err := c.prFetch(prl.org, prl.repo, prl.number)
 	if err != nil {
 		log.WithError(err).
-			WithField("org", org).
-			WithField("repo", repo).
-			WithField("number", number).
-			WithField("sha", sha).
+			WithField("org", prl.org).
+			WithField("repo", prl.repo).
+			WithField("number", prl.number).
 			Errorf("error retrieving pull request")
 
 		if resp, ok := err.(*gh.ErrorResponse); ok && resp.Response != nil && resp.Response.StatusCode == http.StatusNotFound {
+			// cache nil record to prevent additional fetching
 			c.cache[prl] = nil
 			return nil, nil
 		}
@@ -102,21 +144,19 @@ func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time
 	}
 
 	var state *prentry
-	if pr != nil && pr.Head != nil && pr.Head.SHA != nil && pr.MergedAt != nil {
-		// If PR was merged, store merged sha in cache
+	if pr != nil {
+		// Store any pr data we have, so we don't fetch again
 		state = &prentry{
-			sha:      *pr.Head.SHA,
 			mergedAt: pr.MergedAt,
+			title:    pr.Title,
+			url:      pr.URL,
 		}
+
+		if pr.Head != nil && pr.Head.SHA != nil {
+			state.sha = *pr.Head.SHA
+		}
+
 		c.cache[prl] = state
-	} else if pr != nil && pr.MergedAt == nil {
-		// If PR was not merged yet, store that in cache
-		c.cache[prl] = nil
 	}
-
-	if state != nil && state.sha == sha {
-		return state.mergedAt, nil
-	}
-
-	return nil, nil
+	return state, nil
 }
