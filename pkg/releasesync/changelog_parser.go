@@ -46,8 +46,8 @@ func (c *Changelog) CoreOSVersion() (currentURL, currentVersion, previousURL, pr
 	if strings.Contains(component.Text(), "upgraded from") {
 		anchors := component.FindAll("a")
 		if len(anchors) == 3 {
-			currentURL, currentVersion, _ = extractAnchor(anchors[0])
-			previousURL, previousVersion, _ = extractAnchor(anchors[1])
+			previousURL, previousVersion, _ = extractAnchor(anchors[0])
+			currentURL, currentVersion, _ = extractAnchor(anchors[1])
 			diffURL, _, _ = extractAnchor(anchors[2])
 		}
 	} else {

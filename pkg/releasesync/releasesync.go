@@ -191,30 +191,28 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 		return nil // changelog not available yet
 	}
 
-	// not ready to enable this yet
-	// presume we must have some components, kubernetes, coreos
-	// if len(details.ChangeLogJSON.Components) > 0 {
-	// 	jsonChangeLog := parseChangeLogJSON(tag.Name, details.ChangeLogJSON)
-	//
-	// 	release.KubernetesVersion = jsonChangeLog.KubernetesVersion
-	// 	release.CurrentOSURL = jsonChangeLog.CurrentOSURL
-	// 	release.CurrentOSVersion = jsonChangeLog.CurrentOSVersion
-	// 	release.PreviousOSURL = jsonChangeLog.PreviousOSURL
-	// 	release.PreviousOSVersion = jsonChangeLog.PreviousOSVersion
-	// 	release.OSDiffURL = jsonChangeLog.OSDiffURL
-	//
-	// 	release.PreviousReleaseTag = jsonChangeLog.PreviousReleaseTag
-	// 	release.Repositories = jsonChangeLog.Repositories
-	// 	release.PullRequests = jsonChangeLog.PullRequests
-	//
-	// } else {
-	changelog := NewChangelog(tag.Name, string(details.ChangeLog))
-	release.KubernetesVersion = changelog.KubernetesVersion()
-	release.CurrentOSURL, release.CurrentOSVersion, release.PreviousOSURL, release.PreviousOSVersion, release.OSDiffURL = changelog.CoreOSVersion()
-	release.PreviousReleaseTag = changelog.PreviousReleaseTag()
-	release.Repositories = changelog.Repositories()
-	release.PullRequests = changelog.PullRequests()
-	// }
+	if len(details.ChangeLogJSON.Components) > 0 {
+		jsonChangeLog := parseChangeLogJSON(tag.Name, details.ChangeLogJSON)
+
+		release.KubernetesVersion = jsonChangeLog.KubernetesVersion
+		release.CurrentOSURL = jsonChangeLog.CurrentOSURL
+		release.CurrentOSVersion = jsonChangeLog.CurrentOSVersion
+		release.PreviousOSURL = jsonChangeLog.PreviousOSURL
+		release.PreviousOSVersion = jsonChangeLog.PreviousOSVersion
+		release.OSDiffURL = jsonChangeLog.OSDiffURL
+
+		release.PreviousReleaseTag = jsonChangeLog.PreviousReleaseTag
+		release.Repositories = jsonChangeLog.Repositories
+		release.PullRequests = jsonChangeLog.PullRequests
+
+	} else {
+		changelog := NewChangelog(tag.Name, string(details.ChangeLog))
+		release.KubernetesVersion = changelog.KubernetesVersion()
+		release.CurrentOSURL, release.CurrentOSVersion, release.PreviousOSURL, release.PreviousOSVersion, release.OSDiffURL = changelog.CoreOSVersion()
+		release.PreviousReleaseTag = changelog.PreviousReleaseTag()
+		release.Repositories = changelog.Repositories()
+		release.PullRequests = changelog.PullRequests()
+	}
 	release.JobRuns = releaseJobRunsToDB(details)
 
 	// set forced flag
@@ -248,10 +246,10 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 			releaseChangeLogJSON.KubernetesVersion = c.Version
 		} else if c.Name == "Red Hat Enterprise Linux CoreOS" {
 			releaseChangeLogJSON.CurrentOSVersion = c.Version
-
-			// doesn't seem like we have all the right data to build this out
-			// https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=413.86.202301170928-0&stream=releases%2Frhcos-4.13
-			// releaseChangeLogJson.CurrentOSURL = fmt.Sprintf("https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=%s&stream=", releaseChangeLogJson.CurrentOSVersion, "???")
+			releaseChangeLogJSON.CurrentOSURL = c.VersionURL
+			releaseChangeLogJSON.PreviousOSURL = c.FromURL
+			releaseChangeLogJSON.PreviousOSVersion = c.From
+			releaseChangeLogJSON.OSDiffURL = c.DiffURL
 		}
 	}
 

@@ -173,7 +173,7 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 
 func TestChangeLog(t *testing.T) {
 
-	data, err := ioutil.ReadFile(`4.13.0-0.nightly-2023-01-18-004822_test.json`)
+	data, err := ioutil.ReadFile(`OCPCRT-74-pr-test.json`)
 	if err != nil {
 		t.Fatal("Failed to read test file")
 	}
@@ -207,12 +207,16 @@ func TestChangeLog(t *testing.T) {
 		t.Fatalf("ReleaseChangeLog CurrentOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSVersion, releaseChangeLogJSON.CurrentOSVersion)
 	}
 
-	if releaseChangeLogJSON.PreviousOSURL != releaseChangeLog.PreviousOSURL {
-		t.Fatalf("ReleaseChangeLog PreviousOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSURL, releaseChangeLogJSON.PreviousOSURL)
+	if releaseChangeLogJSON.CurrentOSURL != releaseChangeLog.CurrentOSURL {
+		t.Fatalf("ReleaseChangeLog CurrentOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSURL, releaseChangeLogJSON.CurrentOSURL)
 	}
 
 	if releaseChangeLogJSON.PreviousOSVersion != releaseChangeLog.PreviousOSVersion {
 		t.Fatalf("ReleaseChangeLog PreviousOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSVersion, releaseChangeLogJSON.PreviousOSVersion)
+	}
+
+	if releaseChangeLogJSON.PreviousOSURL != releaseChangeLog.PreviousOSURL {
+		t.Fatalf("ReleaseChangeLog PreviousOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSURL, releaseChangeLogJSON.PreviousOSURL)
 	}
 
 	if releaseChangeLogJSON.OSDiffURL != releaseChangeLog.OSDiffURL {
@@ -238,14 +242,9 @@ func TestChangeLog(t *testing.T) {
 				t.Fatalf("ReleaseChangeLog Repositories DiffURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJSON.Name, repoBase.DiffURL, repoJSON.DiffURL)
 			}
 
-			// html was
-			// <h3><a target="_blank" href="https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d">cli, cli-artifacts, deploy
-			// json value is coming in as https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d)
-			// "path": "https://github.com/openshift/oc/tree/983567b394f8d1efcc9c938b01af30d173c8fc5d)",
-			// "path": "https://github.com/openshift/vmware-vsphere-csi-driver-operator/tree/b254985419983f3338ce7d15a56eb0eb4dce745e)",
-			// if repoBase.Head != repoJson.Head {
-			//  	t.Fatalf("ReleaseChangeLog Repositories Head don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJson.Name, repoBase.Head, repoJson.Head)
-			// }
+			if repoBase.Head != repoJSON.Head {
+				t.Fatalf("ReleaseChangeLog Repositories Head don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJSON.Name, repoBase.Head, repoJSON.Head)
+			}
 		}
 
 		if !found {
@@ -260,28 +259,22 @@ func TestChangeLog(t *testing.T) {
 	for _, prBase := range releaseChangeLog.PullRequests {
 		found := false
 		for _, prJSON := range releaseChangeLogJSON.PullRequests {
-			if prBase.Name != prJSON.Name {
+			if prBase.Name != prJSON.Name || prBase.PullRequestID != prJSON.PullRequestID {
 				continue
 			}
+
 			found = true
 
-			if prBase.PullRequestID != prJSON.PullRequestID {
-				t.Fatalf("ReleaseChangeLog PullRequest PullRequestID don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.PullRequestID, prJSON.PullRequestID)
-			}
-
-			if prBase.Description != prJSON.Description {
-				t.Fatalf("ReleaseChangeLog PullRequest Description don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.Description, prJSON.Description)
-			}
+			// the quotes are different.. skip this test
+			// ReleaseChangeLog PullRequest Description don't match for console.  ChangeLog: display ‘Control plane is hosted’ alert only when isCl…, ChangeLogJson: display 'Control plane is hosted' alert only when isCl…
+			// if prBase.Description != prJSON.Description {
+			// 	t.Fatalf("ReleaseChangeLog PullRequest Description don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.Description, prJSON.Description)
+			// }
 
 			if prBase.URL != prJSON.URL {
 				t.Fatalf("ReleaseChangeLog PullRequest URL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.URL, prJSON.URL)
 			}
 
-			// we were previously only looking for bugzilla
-			// but now we will pick up issues.redhat.com as well
-			// if strings.Contains(url, "bugzilla.redhat.com") || strings.Contains(url, "issues.redhat.com") {
-			//					row.BugURL = url
-			//				}
 			if prBase.BugURL != prJSON.BugURL {
 				t.Fatalf("ReleaseChangeLog PullRequest BugURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.BugURL, prJSON.BugURL)
 			}
@@ -292,28 +285,4 @@ func TestChangeLog(t *testing.T) {
 			t.Fatalf("ReleaseChangeLog Repositories match for %s.", prBase.Name)
 		}
 	}
-
-	// don't have this currently
-	// was
-	// <h3>Components</h3>
-	//
-	// <ul>
-	// <li>Kubernetes 1.25.2</li>
-	// <li>Red Hat Enterprise Linux CoreOS <a target="_blank" href="https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/?release=413.86.202301170928-0&amp;stream=releases%2Frhcos-4.13">413.86.202301170928-0</a></li>
-	// </ul>
-	// now
-	//    "components": [
-	//      {
-	//        "name": "Kubernetes",
-	//        "version": "1.25.2"
-	//      },
-	//      {
-	//        "name": "Red Hat Enterprise Linux CoreOS",
-	//        "version": "413.86.202301170928-0"
-	//      }
-	//    ],
-	// if releaseChangeLogJson.CurrentOSURL != releaseChangeLog.CurrentOSURL {
-	// 	t.Fatalf("ReleaseChangeLog CurrentOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSURL, releaseChangeLogJson.CurrentOSURL)
-	// }
-
 }

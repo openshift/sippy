@@ -57,8 +57,12 @@ type ChangeLog struct {
 }
 
 type ChangeLogComponent struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	VersionURL string `json:"versionUrl"`
+	From       string `json:"from"`
+	FromURL    string `json:"fromUrl"`
+	DiffURL    string `json:"diffUrl"`
 }
 
 type ChangeLogRelease struct {
