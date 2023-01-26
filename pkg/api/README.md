@@ -1,10 +1,11 @@
 # Sippy API
 
-Sippy has a simple REST API at `/api`. There is an older API available at `/json` as well, with a single endpoint that
-displays multiple reports.
+Sippy has a simple REST API at `/api`. The API is used by the front-end.
+The docs here may not be fully up-to-date, although we do try not to
+break backwards compatability where possible.
 
-Note that where the responses include a top-level ID, these are synthetic and may change across API calls. These are
-only used by the frontend data tables. Other ID's when provided such as Bugzilla, Prow ID's, etc are accurate.
+For exact API usage, you can use your browser's web developer tools to
+examine the requests we make.
 
 ## Filtering and sorting
 
@@ -262,7 +263,7 @@ Endpoint: `/api/jobs`
 |----------|----------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                                 |
 | filter   | Filter         | Filters the results by the specified value. Can be specified multiple times, e.g. filterBy=hasBug&filterBy=name&job=aws  | See filtering                                       |
-| sortField| Field name     | Sort by this field                                                                                                       |                                                     | 
+| sortField| Field name     | Sort by this field                                                                                                       |                                                     |
 | sort     | asc / desc     | Sort type, ascending or descending                                                                                       | "asc" or "desc"                                     |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                                 |
 
@@ -405,7 +406,7 @@ Endpoint: `/api/tests`
 |----------|----------------|-------------------------------------------------------------------------------------------|-----------------------------------------------------|
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                  | N/A                                                 |
 | filter   | Filter         | Filters the results by the specified value.                                               | See filtering                                       |
-| sortField| Field name     | Sort by this field                                                                        |                                                     | 
+| sortField| Field name     | Sort by this field                                                                        |                                                     |
 | sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
 | limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
 
