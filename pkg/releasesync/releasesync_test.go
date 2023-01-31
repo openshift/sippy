@@ -1,8 +1,12 @@
 package releasesync
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 func TestReleaseTagForcedFlag(t *testing.T) {
@@ -165,4 +169,120 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 
 	return releaseDetails
 
+}
+
+func TestChangeLog(t *testing.T) {
+
+	data, err := ioutil.ReadFile(`OCPCRT-74-pr-test.json`)
+	if err != nil {
+		t.Fatal("Failed to read test file")
+	}
+
+	releaseDetails := ReleaseDetails{}
+
+	if err := json.Unmarshal(data, &releaseDetails); err != nil {
+		panic(err)
+	}
+
+	if len(releaseDetails.ChangeLog) == 0 {
+		t.Fatal("Failed unmarshalling")
+	}
+
+	changeLogStr := string(releaseDetails.ChangeLog)
+	releaseChangeLog := models.ReleaseTag{}
+	changelog := NewChangelog("amd64", changeLogStr)
+	releaseChangeLog.KubernetesVersion = changelog.KubernetesVersion()
+	releaseChangeLog.CurrentOSURL, releaseChangeLog.CurrentOSVersion, releaseChangeLog.PreviousOSURL, releaseChangeLog.PreviousOSVersion, releaseChangeLog.OSDiffURL = changelog.CoreOSVersion()
+	releaseChangeLog.PreviousReleaseTag = changelog.PreviousReleaseTag()
+	releaseChangeLog.Repositories = changelog.Repositories()
+	releaseChangeLog.PullRequests = changelog.PullRequests()
+
+	releaseChangeLogJSON := parseChangeLogJSON("test", releaseDetails.ChangeLogJSON)
+
+	if releaseChangeLogJSON.KubernetesVersion != releaseChangeLog.KubernetesVersion {
+		t.Fatalf("ReleaseChangeLog Kubernetes versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.KubernetesVersion, releaseChangeLogJSON.KubernetesVersion)
+	}
+
+	if releaseChangeLogJSON.CurrentOSVersion != releaseChangeLog.CurrentOSVersion {
+		t.Fatalf("ReleaseChangeLog CurrentOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSVersion, releaseChangeLogJSON.CurrentOSVersion)
+	}
+
+	if releaseChangeLogJSON.CurrentOSURL != releaseChangeLog.CurrentOSURL {
+		t.Fatalf("ReleaseChangeLog CurrentOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.CurrentOSURL, releaseChangeLogJSON.CurrentOSURL)
+	}
+
+	if releaseChangeLogJSON.PreviousOSVersion != releaseChangeLog.PreviousOSVersion {
+		t.Fatalf("ReleaseChangeLog PreviousOSVersion versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSVersion, releaseChangeLogJSON.PreviousOSVersion)
+	}
+
+	if releaseChangeLogJSON.PreviousOSURL != releaseChangeLog.PreviousOSURL {
+		t.Fatalf("ReleaseChangeLog PreviousOSURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousOSURL, releaseChangeLogJSON.PreviousOSURL)
+	}
+
+	if releaseChangeLogJSON.OSDiffURL != releaseChangeLog.OSDiffURL {
+		t.Fatalf("ReleaseChangeLog OSDiffURL versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.OSDiffURL, releaseChangeLogJSON.OSDiffURL)
+	}
+
+	if releaseChangeLogJSON.PreviousReleaseTag != releaseChangeLog.PreviousReleaseTag {
+		t.Fatalf("ReleaseChangeLog PreviousReleaseTag versions don't match.  ChangeLog: %s, ChangeLogJson: %s", releaseChangeLog.PreviousReleaseTag, releaseChangeLogJSON.PreviousReleaseTag)
+	}
+
+	if len(releaseChangeLogJSON.Repositories) != len(releaseChangeLog.Repositories) {
+		t.Fatalf("ReleaseChangeLog Repositories versions don't match.  ChangeLog: %v, ChangeLogJson: %v", releaseChangeLog.Repositories, releaseChangeLogJSON.Repositories)
+	}
+
+	for _, repoBase := range releaseChangeLog.Repositories {
+		found := false
+		for _, repoJSON := range releaseChangeLogJSON.Repositories {
+			if repoBase.Name != repoJSON.Name {
+				continue
+			}
+			found = true
+			if repoBase.DiffURL != repoJSON.DiffURL {
+				t.Fatalf("ReleaseChangeLog Repositories DiffURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJSON.Name, repoBase.DiffURL, repoJSON.DiffURL)
+			}
+
+			if repoBase.Head != repoJSON.Head {
+				t.Fatalf("ReleaseChangeLog Repositories Head don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", repoJSON.Name, repoBase.Head, repoJSON.Head)
+			}
+		}
+
+		if !found {
+			t.Fatalf("ReleaseChangeLog Repositories match for %s.", repoBase.Name)
+		}
+	}
+
+	if len(releaseChangeLogJSON.PullRequests) != len(releaseChangeLog.PullRequests) {
+		t.Fatalf("ReleaseChangeLog PullRequests versions don't match.  ChangeLog: %v, ChangeLogJson: %v", releaseChangeLog.PullRequests, releaseChangeLogJSON.PullRequests)
+	}
+
+	for _, prBase := range releaseChangeLog.PullRequests {
+		found := false
+		for _, prJSON := range releaseChangeLogJSON.PullRequests {
+			if prBase.Name != prJSON.Name || prBase.PullRequestID != prJSON.PullRequestID {
+				continue
+			}
+
+			found = true
+
+			// the quotes are different.. skip this test
+			// ReleaseChangeLog PullRequest Description don't match for console.  ChangeLog: display ‘Control plane is hosted’ alert only when isCl…, ChangeLogJson: display 'Control plane is hosted' alert only when isCl…
+			// if prBase.Description != prJSON.Description {
+			// 	t.Fatalf("ReleaseChangeLog PullRequest Description don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.Description, prJSON.Description)
+			// }
+
+			if prBase.URL != prJSON.URL {
+				t.Fatalf("ReleaseChangeLog PullRequest URL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.URL, prJSON.URL)
+			}
+
+			if prBase.BugURL != prJSON.BugURL {
+				t.Fatalf("ReleaseChangeLog PullRequest BugURL don't match for %s.  ChangeLog: %s, ChangeLogJson: %s", prJSON.Name, prBase.BugURL, prJSON.BugURL)
+			}
+
+		}
+
+		if !found {
+			t.Fatalf("ReleaseChangeLog Repositories match for %s.", prBase.Name)
+		}
+	}
 }

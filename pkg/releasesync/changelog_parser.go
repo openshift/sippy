@@ -46,8 +46,8 @@ func (c *Changelog) CoreOSVersion() (currentURL, currentVersion, previousURL, pr
 	if strings.Contains(component.Text(), "upgraded from") {
 		anchors := component.FindAll("a")
 		if len(anchors) == 3 {
-			currentURL, currentVersion, _ = extractAnchor(anchors[0])
-			previousURL, previousVersion, _ = extractAnchor(anchors[1])
+			previousURL, previousVersion, _ = extractAnchor(anchors[0])
+			currentURL, currentVersion, _ = extractAnchor(anchors[1])
 			diffURL, _, _ = extractAnchor(anchors[2])
 		}
 	} else {
@@ -153,7 +153,7 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 					row.URL = url
 					row.PullRequestID = strings.ReplaceAll(text, "#", "")
 				}
-				if strings.Contains(url, "bugzilla.redhat.com") {
+				if strings.Contains(url, "bugzilla.redhat.com") || strings.Contains(url, "issues.redhat.com") {
 					row.BugURL = url
 				}
 			}

@@ -1,0 +1,1102 @@
+{
+  "name": "4.12.1",
+  "phase": "Accepted",
+  "results": {
+    "blockingJobs": {
+      "upgrade": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235879136956416"
+      },
+      "upgrade-minor": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235726195855360"
+      }
+    },
+    "informingJobs": {
+      "aws-sdn-serial": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.12-e2e-aws-sdn-serial/1618289423353384960",
+        "retries": 2,
+        "transitionTime": "2023-01-25T19:11:56Z"
+      },
+      "install-analysis-all": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.12-install-analysis-all/1618235872824528896"
+      },
+      "metal-ipi-ovn-ipv6": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.12-e2e-metal-ipi-ovn-ipv6/1618235712535007232",
+        "transitionTime": "2023-01-25T15:27:52Z"
+      },
+      "metal-ipi-sdn": {
+        "state": "Succeeded",
+        "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.12-e2e-metal-ipi-sdn-bm/1618235731883331584",
+        "transitionTime": "2023-01-25T15:33:47Z"
+      }
+    }
+  },
+  "upgradesTo": [
+    {
+      "From": "4.12.0-rc.3",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235863181824000": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235863181824000"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.4",
+      "To": "4.12.1",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235727038910464": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235727038910464"
+        }
+      }
+    },
+    {
+      "From": "4.11.13",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235875336916992": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235875336916992"
+        }
+      }
+    },
+    {
+      "From": "4.11.23",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235741567979520": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235741567979520"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.1",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235748694102016": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235748694102016"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.5",
+      "To": "4.12.1",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235762094903296": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235762094903296"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.7",
+      "To": "4.12.1",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235890440605696": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235890440605696"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.8",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235888754495488": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235888754495488"
+        }
+      }
+    },
+    {
+      "From": "4.11.11",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235782642798592": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235782642798592"
+        }
+      }
+    },
+    {
+      "From": "4.11.14",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235749927227392": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235749927227392"
+        }
+      }
+    },
+    {
+      "From": "4.11.18",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235720156057600": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235720156057600"
+        }
+      }
+    },
+    {
+      "From": "4.11.24",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235793959030784": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235793959030784"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.0",
+      "To": "4.12.1",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235827131781120": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-gcp-upgrade/1618235827131781120"
+        }
+      }
+    },
+    {
+      "From": "4.11.25",
+      "To": "4.12.1",
+      "Success": 2,
+      "Failure": 0,
+      "Total": 2,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235716376989696": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235716376989696"
+        },
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235726195855360": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235726195855360"
+        }
+      }
+    },
+    {
+      "From": "4.11.12",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235774732341248": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235774732341248"
+        }
+      }
+    },
+    {
+      "From": "4.11.16",
+      "To": "4.12.1",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235859826380800": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-azure-upgrade/1618235859826380800"
+        }
+      }
+    },
+    {
+      "From": "4.12.0",
+      "To": "4.12.1",
+      "Success": 2,
+      "Failure": 0,
+      "Total": 2,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235791119486976": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235791119486976"
+        },
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235879136956416": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235879136956416"
+        }
+      }
+    },
+    {
+      "From": "4.12.0-rc.2",
+      "To": "4.12.1",
+      "Success": 1,
+      "Failure": 0,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235810794967040": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/release-openshift-origin-installer-e2e-aws-upgrade/1618235810794967040"
+        }
+      }
+    }
+  ],
+  "upgradesFrom": [
+    {
+      "From": "4.12.1",
+      "To": "4.13.0-0.ci-2023-01-26-011032",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618416379940048896": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618416379940048896"
+        }
+      }
+    },
+    {
+      "From": "4.12.1",
+      "To": "4.13.0-0.ci-2023-01-26-071032",
+      "Success": 0,
+      "Failure": 1,
+      "Total": 1,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618506963954438144": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618506963954438144"
+        }
+      }
+    },
+    {
+      "From": "4.12.1",
+      "To": "4.13.0-0.ci-2023-01-26-131032",
+      "Success": 1,
+      "Failure": 1,
+      "Total": 3,
+      "History": {
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-aws-ovn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618598998476591104": {
+          "state": "Succeeded",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-aws-ovn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618598998476591104"
+        },
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618599008442257408": {
+          "state": "Pending",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/aggregated-azure-sdn-upgrade-4.13-minor-release-openshift-release-analysis-aggregator/1618599008442257408"
+        },
+        "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.13-upgrade-from-stable-4.12-e2e-aws-sdn-upgrade/1618598987521069056": {
+          "state": "Failed",
+          "url": "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.13-upgrade-from-stable-4.12-e2e-aws-sdn-upgrade/1618598987521069056"
+        }
+      }
+    }
+  ],
+  "changeLog": "PGgyPkNoYW5nZXMgZnJvbSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iL3JlbGVhc2V0YWcvNC4xMi4wIj40LjEyLjA8L2E+PC9oMj4KCjxwPkNyZWF0ZWQ6IDIwMjMtMDEtMjUgMTM6MDU6NTcgKzAwMDAgVVRDPC9wPgoKPHA+SW1hZ2UgRGlnZXN0OiA8Y29kZT5zaGEyNTY6YTQ4MzhjOTM3YmJmMDkwMmE4MzYxMDc0NzZmNjE2N2U0N2IwMzQwYjJhZDI0NDQ5MzdjNjlhMGE4NDA5Zjg5NjwvY29kZT48L3A+Cgo8cD5SZWxlYXNlIDQuMTIuMSB3YXMgY3JlYXRlZCBmcm9tIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSIvcmVsZWFzZXRhZy80LjEyLjAtMC5uaWdodGx5LTIwMjMtMDEtMjQtMTUwNDE1Ij5yZWdpc3RyeS5jaS5vcGVuc2hpZnQub3JnL29jcC9yZWxlYXNlOjQuMTIuMC0wLm5pZ2h0bHktMjAyMy0wMS0yNC0xNTA0MTU8L2E+PC9wPgoKPGgzPkNvbXBvbmVudHM8L2gzPgoKPHVsPgo8bGk+S3ViZXJuZXRlcyAxLjI1LjQ8L2xpPgo8bGk+UmVkIEhhdCBFbnRlcnByaXNlIExpbnV4IENvcmVPUyB1cGdyYWRlZCBmcm9tIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL3JlbGVhc2VzLXJoY29zLWFydC5hcHBzLm9jcC12aXJ0LnByb2QucHNpLnJlZGhhdC5jb20vc3RvcmFnZS9icm93c2VyP2FyY2g9eDg2XzY0JmFtcDtzdHJlYW09NC4xMiI+NDEyLjg2LjIwMjMwMTA2MTU0OC0wPC9hPiB0byA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9yZWxlYXNlcy1yaGNvcy1hcnQuYXBwcy5vY3AtdmlydC5wcm9kLnBzaS5yZWRoYXQuY29tL3N0b3JhZ2UvYnJvd3Nlcj9hcmNoPXg4Nl82NCZhbXA7c3RyZWFtPTQuMTIiPjQxMi44Ni4yMDIzMDExOTEwNTMtMDwvYT4gKDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL3JlbGVhc2VzLXJoY29zLWFydC5hcHBzLm9jcC12aXJ0LnByb2QucHNpLnJlZGhhdC5jb20vZGlmZi5odG1sP2FyY2g9eDg2XzY0JmFtcDtmaXJzdF9yZWxlYXNlPTQxMi44Ni4yMDIzMDEwNjE1NDgtMCZhbXA7Zmlyc3Rfc3RyZWFtPTQuMTImYW1wO3NlY29uZF9yZWxlYXNlPTQxMi44Ni4yMDIzMDExOTEwNTMtMCZhbXA7c2Vjb25kX3N0cmVhbT00LjEyIj5kaWZmPC9hPik8L2xpPgo8L3VsPgoKPGgzPlJlYnVpbHQgaW1hZ2VzIHdpdGhvdXQgY29kZSBjaGFuZ2U8L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvYXNzaXN0ZWQtc2VydmljZSI+YWdlbnQtaW5zdGFsbGVyLWFwaS1zZXJ2ZXI8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9hc3Npc3RlZC1zZXJ2aWNlL2NvbW1pdC80MDkzNmU3YTkxNTkxODk4ODljNjM3ZmExNjMxZjhjYmRkNWMzYzRmIj40MDkzNmU3YTwvYT4gPGNvZGU+c2hhMjU2OmZjYjhmZjA3YjBjMzVhMTc0MTJjYWFkNGVmNTNiMDBjNDY5ZjgxZjNlZTdkNGZjMjgyNzhiYmI0MDA0NWNlMDc8L2NvZGU+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2Fzc2lzdGVkLWluc3RhbGxlci1hZ2VudCI+YWdlbnQtaW5zdGFsbGVyLW5vZGUtYWdlbnQ8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9hc3Npc3RlZC1pbnN0YWxsZXItYWdlbnQvY29tbWl0LzI3MWE2ZjQ4NDg2ZGI1NzAyZDNlYmM0YjY0NGI3NDcyMjMxOWQ0OWQiPjI3MWE2ZjQ4PC9hPiA8Y29kZT5zaGEyNTY6Y2MwZmFkYTIwMWFiYzIzNDc5MTVmMTE1Yjc0ZDdiYmEwOWEzYmY2MjI1NDJiMTRlZmVlNTNiODJjNWE3ODk0ZTwvY29kZT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvYnVpbGRlciI+ZG9ja2VyLWJ1aWxkZXI8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9idWlsZGVyL2NvbW1pdC9lNzY4MjhlYjI5ZThhZmVmYzYzOTcwNmE3ZWFkNGU0NTg0ZDRlYjBhIj5lNzY4MjhlYjwvYT4gPGNvZGU+c2hhMjU2OjMyOTE0NjUzMzliODEyYTdkOWZhNTEzYzZkYTgyYTg5NjFiM2FlMzAxOGE5OTg0MGY0ZDE0OWM2MTQxOGNkODg8L2NvZGU+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2RyaXZlci10b29sa2l0Ij5kcml2ZXItdG9vbGtpdDwvYT4gZ2l0IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2RyaXZlci10b29sa2l0L2NvbW1pdC9lMzFhYmYyY2Y1NDdmMTcyZGE3ZDUxYjk5OGZmNWI1OGMwNWE3YTZhIj5lMzFhYmYyYzwvYT4gPGNvZGU+c2hhMjU2OjhhZjJlNTFmMzM4Mjg2NWJkNTg3Yjc2ZTFlYjMwMWQxOThmMTU3OTQ3ZTg0NDk4MmY2ZTUyODA3MjU3MGUxMjQ8L2NvZGU+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L3JvdXRlciI+aGFwcm94eS1yb3V0ZXI8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9yb3V0ZXIvY29tbWl0LzMwNjVmNjU4M2YzOTI1MzI4ZmJkYmZlOTVlM2JjN2JiN2EwODRkMzMiPjMwNjVmNjU4PC9hPiA8Y29kZT5zaGEyNTY6ZmExZmY1MjA1NWVkZWRjMDM4NmVlNmIzMzRmZmUwY2Q5MjUyZjU4NzhmY2NjZjEzOTZhZWUzMGFkZjZkZTA0NjwvY29kZT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaXJvbmljLWltYWdlIj5pcm9uaWM8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9pcm9uaWMtaW1hZ2UvY29tbWl0LzI3Njk1YjY5ODUxYjA2ODdlMTdiNDMyNWUzNjQ3OTIwMjYyODJkOWYiPjI3Njk1YjY5PC9hPiA8Y29kZT5zaGEyNTY6MGM3Njc5NGYwYjBmMjZlNGI0OWMxNmJlMmFkMzExNjk0ZjYyMTk1ZmQxNGM3MjQzM2JhNjFmMzNkNjJlZTAyMjwvY29kZT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaXJvbmljLXJoY29zLWRvd25sb2FkZXIiPmlyb25pYy1tYWNoaW5lLW9zLWRvd25sb2FkZXI8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9pcm9uaWMtcmhjb3MtZG93bmxvYWRlci9jb21taXQvYTU4MGE0NDc5Y2I2OTg4ZjMwNjVlZjNkNGM1ZmNmY2ZjMzYwOWQxMiI+YTU4MGE0NDc8L2E+IDxjb2RlPnNoYTI1NjpjNTQ5OGEwNWVhNDZhNWUyNzIzOWI3NGJkYWZjN2Y2YmNhYWRmNTA2YmY0OWY1ZjY5MDZkYTRjOGJiMjU0ZjViPC9jb2RlPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9rdXJ5ci1rdWJlcm5ldGVzIj5rdXJ5ci1jbmk8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9rdXJ5ci1rdWJlcm5ldGVzL2NvbW1pdC85MmI5YmUyNTk5OWFlZTljM2IyMjU2MDY1MTBjNTZmZDE0Mzc4YmRmIj45MmI5YmUyNTwvYT4gPGNvZGU+c2hhMjU2OjU3MzEzY2ZiZmM0NGE1NzhlZjE3NGE2NjdmZjUyYzczYjRkMjA5MGFkNjFjYTk4ZTBlZjNmN2NlZDg1NDJkNGU8L2NvZGU+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2t1cnlyLWt1YmVybmV0ZXMiPmt1cnlyLWNvbnRyb2xsZXI8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9rdXJ5ci1rdWJlcm5ldGVzL2NvbW1pdC85MmI5YmUyNTk5OWFlZTljM2IyMjU2MDY1MTBjNTZmZDE0Mzc4YmRmIj45MmI5YmUyNTwvYT4gPGNvZGU+c2hhMjU2OjMyYWZkMTFmN2M2Yzg2ZWFhOWY0MmI3ZTU1ZDYzMjkwNzk0ODExMGI0MzM0MTlhMzVjNGQ5MjY5ODdkNTk0ZGU8L2NvZGU+PC9saT4KPGxpPm1hY2hpbmUtb3MtY29udGVudCA8Y29kZT5zaGEyNTY6NjZhNGUxZDcyNTA2NDBmZTZjNTU5ZjcxNGY2ZTVlOTcwYzdkOWVkMDY1MGJmOWE3YmU5YWVmMzIwYTBhNTdjNDwvY29kZT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvbWFjaGluZS1vcy1pbWFnZXMiPm1hY2hpbmUtb3MtaW1hZ2VzPC9hPiBnaXQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvbWFjaGluZS1vcy1pbWFnZXMvY29tbWl0LzU2NmJmNTk1MDFmMTc4YmQ4MGU0MTBmZGE2NmNjNDI0ZGU2YTQ4OTEiPjU2NmJmNTk1PC9hPiA8Y29kZT5zaGEyNTY6OTg0ZmQyMGIyNTE1NDliOWEzZGRhYWNlMTgxMmU4ZWFjOTE0OGFhNDc1ZTA1Nzg4ZjdjNmNmMDIxNWZiN2QyNDwvY29kZT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvbmV0d29yay10b29scyI+bmV0d29yay10b29sczwvYT4gZ2l0IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L25ldHdvcmstdG9vbHMvY29tbWl0L2M3NjYxM2M3N2M4Nzg1YjkxNjExYmIzYzQyNDViYzM0ZjNiMTRmNzYiPmM3NjYxM2M3PC9hPiA8Y29kZT5zaGEyNTY6NDI5MmVjMzZiNjFmMGJjNzk5YjdmNGY4MGZkOTk3OTQ5ZDc3OTgzYjExNjIxMDBkNzczZWY0MmMxYmE4NTY1MTwvY29kZT48L2xpPgo8bGk+cmhlbC1jb3Jlb3MtOCA8Y29kZT5zaGEyNTY6ZjNhZDg5NGQ1MGZhNWZiNWNjM2UxNDUwMDUzMTVlYzM5ZjkxMjI1ZmNlODJiY2IyYjI5NjJlNmQ2OGQ0OWQzZDwvY29kZT48L2xpPgo8bGk+cmhlbC1jb3Jlb3MtOC1leHRlbnNpb25zIDxjb2RlPnNoYTI1NjplOTYwMTFkNWMwMTliMzYwNGJmMjM3ZjczNWI3ZTU4YzRiZGU1YjQxODExZDBiOTJiMGYzMWU1ODIxY2Q2NjIwPC9jb2RlPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9vYyI+dG9vbHM8L2E+IGdpdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9vYy9jb21taXQvODU0ZjgwN2Q4YTg0ZGRlNzEwYzA2MmE1MjgxYmNhNWJjMDdjYjU2MiI+ODU0ZjgwN2Q8L2E+IDxjb2RlPnNoYTI1NjpmYTBkOTVkMjQ5Njc5NmY1NjEzNDZlNThkNTgzMTZhMjA1NDNhMGI5OWUxMTBkNDk4ZjYyZjFiYjc3NTBiMTFmPC9jb2RlPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3RyZWUvMzAzYzlkNDk0YTE1MDNjMTM0YjkyYjE1YzVkYThhYzhjYTAxMjk1ZCI+YmFyZW1ldGFsLWluc3RhbGxlciwgaW5zdGFsbGVyLCBpbnN0YWxsZXItYXJ0aWZhY3RzPC9hPjwvaDM+Cgo8dWw+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy00ODk1Ij5PQ1BCVUdTLTQ4OTU8L2E+OiBTZXQgaXA9ZGhjcCxkaGNwNiBmb3IgbWFzdGVyIG5vZGVzIG9uIGR1YWxzdGFjayA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9pbnN0YWxsZXIvcHVsbC82NzA2Ij4jNjcwNjwvYT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNjAxNSI+T0NQQlVHUy02MDE1PC9hPjogZmFpbCB0byBjcmVhdGUgaW5zdGFsbC1jb25maWcueWFtbCBhcyBhcGlWSVAgYW5kIGluZ3Jlc3MgVklQIGFyZSBub3QgaW4gbWFjaGluZSBuZXR3b3JrcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9pbnN0YWxsZXIvcHVsbC82NzgzIj4jNjc4MzwvYT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTg0NCI+T0NQQlVHUy01ODQ0PC9hPjogVXBkYXRlIEZDT1MgdG8gbGF0ZXN0IDM3LjIwMjIxMTI3LjMuMCBzdGFibGUgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3B1bGwvNjc3MyI+IzY3NzM8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU3NjQiPk9DUEJVR1MtNTc2NDwvYT46IEV4cG9zZSBBenVyZSB1c2VJbWFnZUdhbGxlcnkgcGFyYW1ldGVyIGluIHRoZSBNYWNoaW5lU2V0cygpIGNhbGwgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3B1bGwvNjc1MyI+IzY3NTM8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTQ0NjAiPk9DUEJVR1MtNDQ2MDwvYT46IGhvbGQgYm9vdGt1YmUgc2VydmljZSB1bnRpbCBib290c3RyYXAgaGFzIHBpdm90ZWQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3B1bGwvNjY2MSI+IzY2NjE8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU1MTMiPk9DUEJVR1MtNTUxMzwvYT46IFVwZGF0ZSBBenVyZSBTREsgdG8gdjYzLjEuMCtpbmNvbXBhdGlibGUgW3JlbGVhc2UtNC4xMl0gPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3B1bGwvNjc1MSI+IzY3NTE8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTQ2NDkiPk9DUEJVR1MtNDY0OTwvYT46IFJlcG9ydCBhZ2VudCBpbnN0YWxsYXRpb24gcHJvYmxlbXMgb24gdGhlIGNvbnNvbGUgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zdGFsbGVyL3B1bGwvNjY4MCI+IzY2ODA8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2luc3RhbGxlci9jb21wYXJlL2JhOTQwMzExYzhjYjJhMDcxNzM3MjVlNWMyZjY2OGRmN2M2MTkyNGMuLi4zMDNjOWQ0OTRhMTUwM2MxMzRiOTJiMTVjNWRhOGFjOGNhMDEyOTVkIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItY2FwaS1vcGVyYXRvci90cmVlLzNiZmUzNmFhOWQxYWJiZGZiMTFmYWNmODZhN2VjNjUxMGFiYzM5MGEiPmNsdXN0ZXItY2FwaS1vcGVyYXRvcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9MjExNjY4NiI+QnVnIDIxMTY2ODY8L2E+OiBPQ1BCVUdTLTUxNTU6IEFkZCBwcm92aWRlciB3ZWJob29rIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItY2FwaS1vcGVyYXRvci9wdWxsLzk2Ij4jOTY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItY2FwaS1vcGVyYXRvci9jb21wYXJlLzg0OTZjNTA4NWRhYWY5Y2U4ZWE0N2FjODg1ZTU2MzEwODk4YTVjNTQuLi4zYmZlMzZhYTlkMWFiYmRmYjExZmFjZjg2YTdlYzY1MTBhYmMzOTBhIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItY29udHJvbC1wbGFuZS1tYWNoaW5lLXNldC1vcGVyYXRvci90cmVlLzg5NzI3ZDg4MzEyNDY0MzYxNTkzYTBjY2M4YWQwN2U3OWRiOWJkMTYiPmNsdXN0ZXItY29udHJvbC1wbGFuZS1tYWNoaW5lLXNldC1vcGVyYXRvcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTgyMCI+T0NQQlVHUy01ODIwPC9hPjogRGVkdXBsaWNhdGUgRmFpbHVyZSBEb21haW5zIGZvciB0aGUgQ1BNUyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLWNvbnRyb2wtcGxhbmUtbWFjaGluZS1zZXQtb3BlcmF0b3IvcHVsbC8xNjAiPiMxNjA8L2E+PC9saT4KPGxpPkJhY2twb3J0IGUyZS9pbnRlZ3JhdGlvbiB0ZXN0aW5nIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItY29udHJvbC1wbGFuZS1tYWNoaW5lLXNldC1vcGVyYXRvci9wdWxsLzE2MSI+IzE2MTwvYT48L2xpPgo8bGk+Z29sYW5nY2ktbGludDogZml4IGhlYWRlciB5ZWFyIGxpbnRpbmcgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2x1c3Rlci1jb250cm9sLXBsYW5lLW1hY2hpbmUtc2V0LW9wZXJhdG9yL3B1bGwvMTYzIj4jMTYzPC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLWNvbnRyb2wtcGxhbmUtbWFjaGluZS1zZXQtb3BlcmF0b3IvY29tcGFyZS81ZjBlOTc1YzI2OTZhM2NlZTJlMWM0NWYwNGY2M2U0NjBlYzQ2NzM4Li4uODk3MjdkODgzMTI0NjQzNjE1OTNhMGNjYzhhZDA3ZTc5ZGI5YmQxNiI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLWltYWdlLXJlZ2lzdHJ5LW9wZXJhdG9yL3RyZWUvM2UxNGZkNWRiMTgyNTEwYzZjNDNhZTAwMDNmMzE1OGY1YTUxYzhlOSI+Y2x1c3Rlci1pbWFnZS1yZWdpc3RyeS1vcGVyYXRvcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTE1NCI+T0NQQlVHUy01MTU0PC9hPjogc3dpZnQ6IFJldHJ5IGNvbm5lY3RpbmcgdG8gT3BlblN0YWNrIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItaW1hZ2UtcmVnaXN0cnktb3BlcmF0b3IvcHVsbC84MjYiPiM4MjY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItaW1hZ2UtcmVnaXN0cnktb3BlcmF0b3IvY29tcGFyZS9jMGU1ZGVjN2FiNTAzMGQ5MjRmN2ZiOTZlMTczMzc5MmFhM2EzMDk3Li4uM2UxNGZkNWRiMTgyNTEwYzZjNDNhZTAwMDNmMzE1OGY1YTUxYzhlOSI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLW1vbml0b3Jpbmctb3BlcmF0b3IvdHJlZS81YTE1NGMzZGQwMTU0NGFkYzI4MDY5MWJlNTRmZWM5NGE1ZGM4ZDY3Ij5jbHVzdGVyLW1vbml0b3Jpbmctb3BlcmF0b3I8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTQzNjMiPk9DUEJVR1MtNDM2MzwvYT46IEZpeGVkIFRhcmdldERvd24gZXhwcmVzc2lvbiB0byBqb2luIG9uIHRoZSBwcm9wZXIgbGFiZWwgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2x1c3Rlci1tb25pdG9yaW5nLW9wZXJhdG9yL3B1bGwvMTgzMyI+IzE4MzM8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItbW9uaXRvcmluZy1vcGVyYXRvci9jb21wYXJlL2VlMzFkMWQyNzEzMWFhMjE4ZjBjMWIyMjExOGEwNjQ2OGQyMGIwZWEuLi41YTE1NGMzZGQwMTU0NGFkYzI4MDY5MWJlNTRmZWM5NGE1ZGM4ZDY3Ij5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItbm9kZS10dW5pbmctb3BlcmF0b3IvdHJlZS8xMDhkOGYwODRkY2NhOTY4OTgyZjQ5MjhmMWJiMTJhNzQyNWRhODA1Ij5jbHVzdGVyLW5vZGUtdHVuaW5nLW9wZXJhdG9yPC9hPjwvaDM+Cgo8dWw+CjxsaT5SZW1vdmUgdHJhaWxpbmcgc3BhY2UgZnJvbSB0ZXN0IG5hbWUgKCM1NDYpIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItbm9kZS10dW5pbmctb3BlcmF0b3IvcHVsbC81NDYiPiM1NDY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItbm9kZS10dW5pbmctb3BlcmF0b3IvY29tcGFyZS8yNDg4Yjk4NmMwYTA1MmExMTFiMTcyMDZlZTcwZjdkY2YzZmJmNzJjLi4uMTA4ZDhmMDg0ZGNjYTk2ODk4MmY0OTI4ZjFiYjEyYTc0MjVkYTgwNSI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLXBvbGljeS1jb250cm9sbGVyL3RyZWUvMTA1Y2M3NzNiMzdmMDBiZTIzNTFjOWE0ZTZkZjI0YWY5NGQ1NDdjMSI+Y2x1c3Rlci1wb2xpY3ktY29udHJvbGxlcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTc4NiI+T0NQQlVHUy01Nzg2PC9hPjogY2x1c3RlcnF1b3RhcmVjb25jaWxpYXRpb246IGRvIG5vdCBzeW5jIHF1b3RhIG1vbml0b3IgY2FjaGUgd2l0aCBubyBtb25pdG9ycyByZWdpc3RlcmVkIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NsdXN0ZXItcG9saWN5LWNvbnRyb2xsZXIvcHVsbC85NSI+Izk1PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLXBvbGljeS1jb250cm9sbGVyL2NvbXBhcmUvYzdhNjMzNDE2YThlZTcwMmZhNjUzNjQ5NDg4YTEzZjU3OGYzZjg1Ny4uLjEwNWNjNzczYjM3ZjAwYmUyMzUxYzlhNGU2ZGYyNGFmOTRkNTQ3YzEiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2x1c3Rlci12ZXJzaW9uLW9wZXJhdG9yL3RyZWUvYjI0ZDYwZTU1NTc2ZTE5OTdkNmQ0NTBiYTkxMDZhODA5ODNmMTUxMiI+Y2x1c3Rlci12ZXJzaW9uLW9wZXJhdG9yPC9hPjwvaDM+Cgo8dWw+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy01ODc5Ij5PQ1BCVUdTLTU4Nzk8L2E+OiBTZXQgdXBncmFkZWFiaWxpdHkgY2hlY2sgdGhyb3R0bGluZyBwZXJpb2QgdG8gMm0gPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2x1c3Rlci12ZXJzaW9uLW9wZXJhdG9yL3B1bGwvODg0Ij4jODg0PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy01MDgzIj5PQ1BCVUdTLTUwODM8L2E+OiBwa2cvcGF5bG9hZC9wcmVjb25kaXRpb246IERvIG5vdCBjbGFpbSB3YXJuaW5ncyB3b3VsZCBoYXZlIGJsb2NrZWQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2x1c3Rlci12ZXJzaW9uLW9wZXJhdG9yL3B1bGwvODc4Ij4jODc4PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jbHVzdGVyLXZlcnNpb24tb3BlcmF0b3IvY29tcGFyZS9mMWRjM2I2YTZiN2M1ZjVhODVmOTQyMDFhYjkwZjllMDM1NDdhOGEzLi4uYjI0ZDYwZTU1NTc2ZTE5OTdkNmQ0NTBiYTkxMDZhODA5ODNmMTUxMiI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jb25zb2xlL3RyZWUvOWMyZDJlOWYyN2Q0NDE1MzYxYjU0ODIyODI0YTUxNDg5YmIzNDA4ZSI+Y29uc29sZTwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTMwMyI+T0NQQlVHUy01MzAzPC9hPjogZGlzcGxheSAmbHNxdW87Q29udHJvbCBwbGFuZSBpcyBob3N0ZWQmcnNxdW87IGFsZXJ0IG9ubHkgd2hlbiBpc0Ns4oCmIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NvbnNvbGUvcHVsbC8xMjQwOSI+IzEyNDA5PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy01MjYzIj5PQ1BCVUdTLTUyNjM8L2E+OiBvbmx5IHNob3cgdXBncmFkZSBkZXRhaWxzIGlmIGNsdXN0ZXIgbm90IGV4dGVybmFsbHkgbWFu4oCmIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2NvbnNvbGUvcHVsbC8xMjQwNCI+IzEyNDA0PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jb25zb2xlL2NvbXBhcmUvYjIzN2MzNDQ5OWRiNmU0MTdlOWI2N2I0NTkwZTczNDUwYmJjOTMxYy4uLjljMmQyZTlmMjdkNDQxNTM2MWI1NDgyMjgyNGE1MTQ4OWJiMzQwOGUiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY29uc29sZS1vcGVyYXRvci90cmVlLzhjOTM4YTQ2Njg2NzQ2NTE4Y2MzN2U3MWI0NDRkNDBkMWI0ZTZjMmQiPmNvbnNvbGUtb3BlcmF0b3I8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU0MjAiPk9DUEJVR1MtNTQyMDwvYT46IEFkZCBob3N0IGludmVudG9yeSBxdWlja3N0YXJ0ICgjNzExKSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jb25zb2xlLW9wZXJhdG9yL3B1bGwvNzExIj4jNzExPC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9jb25zb2xlLW9wZXJhdG9yL2NvbXBhcmUvYTM0ZjJlNGRhNTUyNzdiOGFlNjNmOTAyNDdkZmE0MDZhYTZmNjE4OS4uLjhjOTM4YTQ2Njg2NzQ2NTE4Y2MzN2U3MWI0NDRkNDBkMWI0ZTZjMmQiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2xvdWQtcHJvdmlkZXItb3BlbnN0YWNrL3RyZWUvMzEyNWZlNzI5MjIxMTM5YWE4Yzg3YjQyNzY1NTY2OTg4MGJiZDA2YyI+Y3NpLWRyaXZlci1tYW5pbGEsIG9wZW5zdGFjay1jaW5kZXItY3NpLWRyaXZlciwgb3BlbnN0YWNrLWNsb3VkLWNvbnRyb2xsZXItbWFuYWdlcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNjA2NCI+T0NQQlVHUy02MDY0PC9hPjogTWVyZ2UgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9rdWJlcm5ldGVzL2Nsb3VkLXByb3ZpZGVyLW9wZW5zdGFjazpyZWxlYXNlLTEuMjUiPmh0dHBzOi8vZ2l0aHViLmNvbS9rdWJlcm5ldGVzL2Nsb3VkLXByb3ZpZGVyLW9wZW5zdGFjazpyZWxlYXNlLTEuMjU8L2E+IGludG8gcmVsZWFzZS00LjEyIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2Nsb3VkLXByb3ZpZGVyLW9wZW5zdGFjay9wdWxsLzE3MiI+IzE3MjwvYT48L2xpPgo8bGk+QnVnIE9DUEJVR1MtNTQwMzogTWFrZSBzdXJlIExCIHN0YXR1cyBpcyB1cGRhdGVkIGltbWVkaWF0ZWx5IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2Nsb3VkLXByb3ZpZGVyLW9wZW5zdGFjay9wdWxsLzE2NCI+IzE2NDwvYT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvY2xvdWQtcHJvdmlkZXItb3BlbnN0YWNrL2NvbXBhcmUvNjE1ZGM2MDYyMDEzYTdkODcyZmQzZjA5NzhjZGE4YWM3ZWRhNmFjOC4uLjMxMjVmZTcyOTIyMTEzOWFhOGM4N2I0Mjc2NTU2Njk4ODBiYmQwNmMiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW1hZ2UtcmVnaXN0cnkvdHJlZS8zYmY4ZTI1ZDU2OTRmN2E0ZGJiZTc2MjBhMWNjMmUyNmQ2MTFjZjYwIj5kb2NrZXItcmVnaXN0cnk8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTQ2NzgiPk9DUEJVR1MtNDY3ODwvYT46IEJ1bXAgYXdzLXNkay1nbyB0byB2MS40NC4xNDUgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW1hZ2UtcmVnaXN0cnkvcHVsbC8zNTciPiMzNTc8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2ltYWdlLXJlZ2lzdHJ5L2NvbXBhcmUvZmFiMTkyMGM4NzFhMmMzOGRhYWZhZGRmYTMxYWFmYTVkOWQxZDUzZC4uLjNiZjhlMjVkNTY5NGY3YTRkYmJlNzYyMGExY2MyZTI2ZDYxMWNmNjAiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvZXRjZC90cmVlLzk3OGNmZWZkMmYyMWM0ZWMxYWM4NGVkOTUxMzBjYmZmNTEwZmJlMWIiPmV0Y2Q8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU3NjEiPk9DUEJVR1MtNTc2MTwvYT46IFVQU1RSRUFNOiZhbXA7bHQ7Y2FycnkmYW1wO2d0OzogZXRjZHNlcnZlcjogcHJvY2VzcyB0aGUgc2NlbmFybyBvZiB0aGUgbGFzdCBXQUwgcmVj4oCmIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2V0Y2QvcHVsbC8xNzYiPiMxNzY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2V0Y2QvY29tcGFyZS84OWE0NTFjNDk5ZTA2YjNlOWY4MDcyYzdjZDcwYjg2ZDc4ZjU5N2JmLi4uOTc4Y2ZlZmQyZjIxYzRlYzFhYzg0ZWQ5NTEzMGNiZmY1MTBmYmUxYiI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9rdWJlcm5ldGVzL3RyZWUvYTM0YjllOTQ5OWU2YzNhOTRlMjMyNjY1MmJkODIzNmE1Mzc4YzBiMiI+aHlwZXJrdWJlLCBwb2Q8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU0OTAiPk9DUEJVR1MtNTQ5MDwvYT46IHJlbW92ZSBpbi10cmVlIHZvbHVtZSBsaW1pdHMgdGVzdCBub3cgdGhhdCBDU0lNaWdyYXRpb24gaXMgR0EgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQva3ViZXJuZXRlcy9wdWxsLzE0NDkiPiMxNDQ5PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9rdWJlcm5ldGVzL2NvbXBhcmUvNzdiZWM3YWIzNTczNDk0ZjIyOGZiYWE0OTY3Yzc2ZTNkMmRmMGZiMy4uLmEzNGI5ZTk0OTllNmMzYTk0ZTIzMjY2NTJiZDgyMzZhNTM3OGMwYjIiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC90cmVlLzhmMjdjNTFjNDMwNmUxMmUyYzVlOTI2ZjkwOTVmMWQ3NGQwOGM1YWIiPmh5cGVyc2hpZnQ8L2E+PC9oMz4KCjx1bD4KPGxpPk1lcmdlIG1haW4gaW50byByZWxlYXNlLTQuMTIgYnJhbmNoIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDUzIj4jMjA1MzwvYT48L2xpPgo8bGk+RGVmYXVsdCBJbmdyZXNzIFBhc3N0aHJvdWdoIGZvciBLdWJlVmlydCBwcm92aWRlciA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMTc4NyI+IzE3ODc8L2E+PC9saT4KPGxpPlJlbGVhc2UgNC4xMiByZWJhc2UgbGF0ZXN0IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDQ3Ij4jMjA0NzwvYT48L2xpPgo8bGk+c3dpdGNoIE9MTSBjYXRhbG9ncyB0byBpbWFnZXN0cmVhbSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAzMiI+IzIwMzI8L2E+PC9saT4KPGxpPmZpeCBjbHVzdGVyIGNzaSBkcml2ZXIgcmVjb25jaWxlIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDQzIj4jMjA0MzwvYT48L2xpPgo8bGk+QWRkIHJlZiBmb3IgU0xPcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjA0MCI+IzIwNDA8L2E+PC9saT4KPGxpPkFkZCBzdXBwb3J0IHRvIHByb3BhZ2F0ZSBsYWJlbHMgZnJvbSBOb2RlUG9vbHMgdG8gTm9kZXMgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMjYiPiMyMDI2PC9hPjwvbGk+CjxsaT5BZGQgdmFsdWUgdG8gaG9zdGVkIGNvbnRyb2wgcGxhbmUgbmFtZXNwYWNlIGxhYmVsIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDM2Ij4jMjAzNjwvYT48L2xpPgo8bGk+RXhwb3NlIHByb3h5LCBpZGVudGl0eVByb3ZpZGVycyBhbmQgbGltaXRlZCBzdXBwb3J0IG1ldHJpY3MgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMTUiPiMyMDE1PC9hPjwvbGk+CjxsaT5VcGRhdGVkIHNlY3JldCBwZXJtaXNzaW9ucyB0byAwNjQwIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8xODE4Ij4jMTgxODwvYT48L2xpPgo8bGk+YWRqdXN0IHJhdGUgaW50ZXJ2YWwgb24gaHlwZXJzaGlmdDpjb250cm9scGxhbmU6Y29tcG9uZW50X2NwdV91c2FnZV9z4oCmIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDM1Ij4jMjAzNTwvYT48L2xpPgo8bGk+Zml4KGNwbyk6IFJlbW92ZSBzdG9yYWdlIGZyb20gbWdtdCBjbHVzdGVyIGZvciBJQk0gQ2xvdWQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMDciPiMyMDA3PC9hPjwvbGk+CjxsaT5BZGQgc3VwcG9ydCBmb3IgYWRkaXRpb25hbCBhbGxvd2VkIHByaW5jaXBhbHMgZm9yIEFXUyBob3N0ZWQgY2x1c3RlciBWUEMgRW5kcG9pbnQgU2VydmljZXMgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMjEiPiMyMDIxPC9hPjwvbGk+CjxsaT5GaXggT3BlbklEIE9BdXRoIGNvbmZpZyBwYXJzaW5nIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDI3Ij4jMjAyNzwvYT48L2xpPgo8bGk+QWRkIFRlc3RSZWNvbmNpbGVIb3N0ZWRDb250cm9sUGxhbmVDb25maWd1cmF0aW9uIHVuaXQgdGVzdCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAyMCI+IzIwMjA8L2E+PC9saT4KPGxpPk1ha2VmaWxlOiBJbmNsdWRlIGZ1bGwgJmxzcXVvO2dpdCBkaWZmJnJzcXVvOyBvdXRwdXQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMjQiPiMyMDI0PC9hPjwvbGk+CjxsaT5BZGQgQ1NSIHNpZ25lciB0byBLdWJlbGV0IGNsaWVudCBDQSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAyNSI+IzIwMjU8L2E+PC9saT4KPGxpPnJlbW92ZSBjb250cm9sLXBsYW5lLWNvbXBvbmVudCBsYWJlbCBmcm9tIGt1YmUtYXBpc2VydmVyLXByb3h5IGFuZCBrb25uZWN0aXZpdHktYWdlbnQgcG9kcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAxMiI+IzIwMTI8L2E+PC9saT4KPGxpPkNoYW5nZSBhd3Mga21zIGlucHV0IHRvIHJlcXVpcmUgYW4gYXJuIHN0cmluZyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMTk5MSI+IzE5OTE8L2E+PC9saT4KPGxpPmFkZCBub2RlLWRyYWluLXRpbWVvdXQgZmxhZyB0byBjcmVhdGUgY2x1c3RlciBjbWQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMjMiPiMyMDIzPC9hPjwvbGk+CjxsaT5maXggcGFuaWMgaW4gbG9nZ2VyIGV4cGVjdGVkIGtleS12YWx1ZXMgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMTkiPiMyMDE5PC9hPjwvbGk+CjxsaT50ZXN0OiBkeW5hbWljYWxseSBhc3NpZ24gc2luZ2xlIEFXUyB6b25lIHRvIFNpbmdsZVJlcGxpY2EgZ3Vlc3QgY2x1c3RlcnMgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzE5NTEiPiMxOTUxPC9hPjwvbGk+CjxsaT53b3JrYXJvdW5kIE9wZW5TaGlmdFNETiBuZXR3b3JrIHBvbGljeSBlZ3Jlc3MgYnVnIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDIyIj4jMjAyMjwvYT48L2xpPgo8bGk+YWRkIEtBUyBlZ3Jlc3MgbmV0d29yayBwb2xpY3kgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMDUiPiMyMDA1PC9hPjwvbGk+CjxsaT5hdm9pZCB1c2luZyByb3V0ZTUzIGFwaSBmb3IgT0lEQyBoZWFsdGggY2hlY2sgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMTgiPiMyMDE4PC9hPjwvbGk+CjxsaT5BZGQgZGVmYXVsdCBrdWJldmlydCBndWVzdCBjbHVzdGVyIHN0b3JhZ2VjbGFzcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAxNCI+IzIwMTQ8L2E+PC9saT4KPGxpPmZpeChobyk6IFNldCByZXN0YXJ0IGRhdGUgYW5ub3RhdGlvbiBiYWNrIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8xOTg2Ij4jMTk4NjwvYT48L2xpPgo8bGk+YWRkIG1pc3NpbmcgYXBwIGxhYmVsIHRvIEhDUCBjb21wb25lbnRzIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDEzIj4jMjAxMzwvYT48L2xpPgo8bGk+ZXh0ZXJuYWwtZG5zOiBzZXQgQVdTIGJhdGNoIGludGVybmFsIHRvIDEwcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAxMCI+IzIwMTA8L2E+PC9saT4KPGxpPkFkZCBjbGFyaWZ5aW5nIGNvbW1lbnQgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMDgiPiMyMDA4PC9hPjwvbGk+CjxsaT5QcmV2ZW50IGNsdXN0ZXIgZGVsZXRpb24gaGFuZ3MgYnkgdXNpbmcgaGVhcnRiZWF0IGNvbmRpdGlvbiA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMTk0NyI+IzE5NDc8L2E+PC9saT4KPGxpPkFkZCBhbm5vdGF0aW9uIGZvciBjcm9zcyB6b25lIGxiIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDA0Ij4jMjAwNDwvYT48L2xpPgo8bGk+Y21kOiBkdW1wOiBpbmNsdWRlIG5ldHdvcmtwb2xpY2llcyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMjAwMiI+IzIwMDI8L2E+PC9saT4KPGxpPlJldmVydCAmbGRxdW87YWRkIEtBUyBlZ3Jlc3MgbmV0d29yayBwb2xpY3kmcmRxdW87IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8yMDAxIj4jMjAwMTwvYT48L2xpPgo8bGk+YWRkIEtBUyBlZ3Jlc3MgbmV0d29yayBwb2xpY3kgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzE5MDUiPiMxOTA1PC9hPjwvbGk+CjxsaT50ZXN0OiBlMmU6IHJlbW92ZSBub2RlIGNoZWNrcyBkdXJpbmcgTm9kZVBvb2wgdXBncmFkZSB0ZXN0IDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2h5cGVyc2hpZnQvcHVsbC8xOTk3Ij4jMTk5NzwvYT48L2xpPgo8bGk+Zml4KGhvKTogVXNlIHYxYWxwaGExIG93bmVyUmVmIGZvciBmdXR1cmUgQ1BPIG1hbmFnZWQgY29tcG9uZW50cyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L3B1bGwvMTk1OSI+IzE5NTk8L2E+PC9saT4KPGxpPkZpeCBPcGVuSUQgT0F1dGggY29uZmlnIHBhcnNpbmcgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaHlwZXJzaGlmdC9wdWxsLzIwMjkiPiMyMDI5PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9oeXBlcnNoaWZ0L2NvbXBhcmUvZTg4NzQzNjcyOTg5NzA1ZmExYmZiMjkxNDNhMTNmYzRjNTQ3MjYzZi4uLjhmMjdjNTFjNDMwNmUxMmUyYzVlOTI2ZjkwOTVmMWQ3NGQwOGM1YWIiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zaWdodHMtb3BlcmF0b3IvdHJlZS9lMTcyYTkxOGNjNjUzNWRmZWIyZDA2YjQ5MTMzZjMyM2FlZDkyN2VjIj5pbnNpZ2h0cy1vcGVyYXRvcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTM0OCI+T0NQQlVHUy01MzQ4PC9hPjogZG8gbm90IHBlcmlvZGljYWxseSB1cGRhdGUgQXZhaWxhYmxlIGNsdXN0ZXJvcGVyYXRvciBjb+KApiAoIzcxMCkgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zaWdodHMtb3BlcmF0b3IvcHVsbC83MTAiPiM3MTA8L2E+PC9saT4KPGxpPmRvIG5vdCBnZXQgZGlzYWJsZWQgcnVsZXMgKCM3MDYpICgjNzEzKSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9pbnNpZ2h0cy1vcGVyYXRvci9wdWxsLzcwNiI+IzcwNjwvYT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvaW5zaWdodHMtb3BlcmF0b3IvY29tcGFyZS9jZDExNDJlYzdmMzI0ZGMxNWI3MjNhZTE3NWYzYmFiNzk3ZmZjMmVhLi4uZTE3MmE5MThjYzY1MzVkZmViMmQwNmI0OTEzM2YzMjNhZWQ5MjdlYyI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9zZG4vdHJlZS9kNjkwMzMwNWNhMTJiZjIxZjRlZjZiOTZjYjdhZWVkN2RlZmEyZmMyIj5rdWJlLXByb3h5LCBzZG48L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTQ0ODYiPk9DUEJVR1MtNDQ4NjwvYT46IEFkZCBub2RlIGVncmVzcyBJUCBhc3NpZ25tZW50IHJlc3luYyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9zZG4vcHVsbC80ODciPiM0ODc8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L3Nkbi9jb21wYXJlL2FhZTgyNjQyODQxNDQzMDFiNGE2ZWJjYzVjOTI3MWI4ZjJhMzNmZjkuLi5kNjkwMzMwNWNhMTJiZjIxZjRlZjZiOTZjYjdhZWVkN2RlZmEyZmMyIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L21hY2hpbmUtYXBpLW9wZXJhdG9yL3RyZWUvYTk5YTYzYjk5NDQwNzIxMmE1ZGNjODNjYzViYzdjMDIyMjIzNTBiMyI+bWFjaGluZS1hcGktb3BlcmF0b3I8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU0MTMiPk9DUEJVR1MtNTQxMzwvYT46IEFwcGVuZCBhbm5vdGF0aW9ucyBmcm9tIG1hY2hpbmUgdGVtcGxhdGUgc3BlYyB0byB0aGUgbm9kZSA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9tYWNoaW5lLWFwaS1vcGVyYXRvci9wdWxsLzExMDQiPiMxMTA0PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy01MTE3Ij5PQ1BCVUdTLTUxMTc8L2E+OiBbcmVsZWFzZS00LjEyXSBBbGxvdyB0byB1c2UgbWFjaGluZS5vcGVuc2hpZnQuaW8gQVBJIGluIHByb3ZpZGVyIHNwZWNzIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L21hY2hpbmUtYXBpLW9wZXJhdG9yL3B1bGwvMTA4NiI+IzEwODY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L21hY2hpbmUtYXBpLW9wZXJhdG9yL2NvbXBhcmUvNGMyYTA4YmI0Y2ExYjQyMTA0NWUxMWVkZmY4OTcyNTViNDJiMmEyNS4uLmE5OWE2M2I5OTQ0MDcyMTJhNWRjYzgzY2M1YmM3YzAyMjIyMzUwYjMiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cgo8aDM+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvbWFjaGluZS1jb25maWctb3BlcmF0b3IvdHJlZS82MGZiNjRmYTg2MWYxMjMxZjc3OTIyNmFhNWRjZDVjNGVmNjA0ZGNiIj5tYWNoaW5lLWNvbmZpZy1vcGVyYXRvcjwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTc0MyI+T0NQQlVHUy01NzQzPC9hPjogTW91bnQgL3J1bi9ub2RlaXAtY29uZmlndXJhdGlvbiBpbnRvIGtlZXBhbGl2ZWQgY29udGFpbmVycyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9tYWNoaW5lLWNvbmZpZy1vcGVyYXRvci9wdWxsLzM0NzkiPiMzNDc5PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9tYWNoaW5lLWNvbmZpZy1vcGVyYXRvci9jb21wYXJlLzJiM2ViYTc0ZGQ5ZTQzNzFmMzVhYjQxZGJkYTAyNjQyZjYwNzA3ZWMuLi42MGZiNjRmYTg2MWYxMjMxZjc3OTIyNmFhNWRjZDVjNGVmNjA0ZGNiIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2ltYWdlLWN1c3RvbWl6YXRpb24tY29udHJvbGxlci90cmVlLzI3Nzc3ZDBlMDMyMTE5OTY1YzdlYTVjZTViOGY3NGJkODg1OTkwYmQiPm1hY2hpbmUtaW1hZ2UtY3VzdG9taXphdGlvbi1jb250cm9sbGVyPC9hPjwvaDM+Cgo8dWw+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy01NjU1Ij5PQ1BCVUdTLTU2NTU8L2E+OiBVcGRhdGUgZGVwZW5kZW5jaWVzIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2ltYWdlLWN1c3RvbWl6YXRpb24tY29udHJvbGxlci9wdWxsLzc2Ij4jNzY8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L2ltYWdlLWN1c3RvbWl6YXRpb24tY29udHJvbGxlci9jb21wYXJlLzVmODNiZDdjMjA1NzRlNTYyMGU3Y2M5MmRkNDI0ODM1ZWY4YTBiMjguLi4yNzc3N2QwZTAzMjExOTk2NWM3ZWE1Y2U1YjhmNzRiZDg4NTk5MGJkIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlcmF0b3ItZnJhbWV3b3JrL29wZXJhdG9yLW1hcmtldHBsYWNlL3RyZWUvODc3OTBkYTZlMTdmY2NiNmZkNTNiMjNmN2ViMDYwNjExZmU3M2MyYiI+b3BlcmF0b3ItbWFya2V0cGxhY2U8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU0NjgiPk9DUEJVR1MtNTQ2ODwvYT46IFJlbW92ZSBQU0EgYXVkaXQgYW5kIHdhcm5pbmdzIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlcmF0b3ItZnJhbWV3b3JrL29wZXJhdG9yLW1hcmtldHBsYWNlL3B1bGwvNTAzIj4jNTAzPC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZXJhdG9yLWZyYW1ld29yay9vcGVyYXRvci1tYXJrZXRwbGFjZS9jb21wYXJlLzRlM2VjYTY3MmVhOTIzZjk4YjEwYmZhODQ5ODViMjQ3MGRhOWFjOTYuLi44Nzc5MGRhNmUxN2ZjY2I2ZmQ1M2IyM2Y3ZWIwNjA2MTFmZTczYzJiIj5GdWxsIGNoYW5nZWxvZzwvYT48L2xpPgo8L3VsPgoKPGgzPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L292bi1rdWJlcm5ldGVzL3RyZWUvZjUxYjBjOGQ5YTlkNjhiZThlZGZiMjZiZTI4NTFjZDEzZjg5NGJlNiI+b3ZuLWt1YmVybmV0ZXMsIG92bi1rdWJlcm5ldGVzLW1pY3Jvc2hpZnQ8L2E+PC9oMz4KCjx1bD4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTU5MjMiPk9DUEJVR1MtNTkyMzwvYT46IFtyZWxlYXNlLTQuMTJdIEZpeCBlZ3Jlc3MgZmlyZXdhbGwgdG8gYWxsb3cgaW5ib3VuZCBjb25uZWN0aW9ucyBpbiBib3RoIGd3IG1vZGVzIDxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vb3BlbnNoaWZ0L292bi1rdWJlcm5ldGVzL3B1bGwvMTQ3NyI+IzE0Nzc8L2E+PC9saT4KPGxpPjxhIHRhcmdldD0iX2JsYW5rIiBocmVmPSJodHRwczovL2lzc3Vlcy5yZWRoYXQuY29tL2Jyb3dzZS9PQ1BCVUdTLTUwNDYiPk9DUEJVR1MtNTA0NjwvYT46IFtyZWxlYXNlLTQuMTJdIGVncmVzc2lwOiBmaXggdGVzdCBkYXRhIHJhY2UgYWNjZXNzaW5nIHBvZEFzc2lnbm1lbnQgY2FjaGUgPGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvb3ZuLWt1YmVybmV0ZXMvcHVsbC8xNDY3Ij4jMTQ2NzwvYT48L2xpPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuc2hpZnQvb3ZuLWt1YmVybmV0ZXMvY29tcGFyZS81NmViYTllMmZmZTdhN2MxNWNhMzc3NTEzYzkzYmZmM2Q5OWM0NTdjLi4uZjUxYjBjOGQ5YTlkNjhiZThlZGZiMjZiZTI4NTFjZDEzZjg5NGJlNiI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9vcmlnaW4vdHJlZS81MTdmZjUxZTQwNGY1Yzg5YzdlMzhjNzFmODM2YWY2ZmFlMGNiYTgyIj50ZXN0czwvYT48L2gzPgoKPHVsPgo8bGk+PGEgdGFyZ2V0PSJfYmxhbmsiIGhyZWY9Imh0dHBzOi8vaXNzdWVzLnJlZGhhdC5jb20vYnJvd3NlL09DUEJVR1MtNTQ5MCI+T0NQQlVHUy01NDkwPC9hPjogRml4IGludGVydmFsY3JlYXRpb24gaW5jb3JyZWN0IHllYXIgdW5pdCB0ZXN0IGJ1ZyA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9vcmlnaW4vcHVsbC8yNzY2OCI+IzI3NjY4PC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC9vcmlnaW4vY29tcGFyZS81ZTQxYjIyM2NhZDZjMjJjMTE3ZWJkZTk5NjkyM2YyM2Y1ZmZhYjNlLi4uNTE3ZmY1MWU0MDRmNWM4OWM3ZTM4YzcxZjgzNmFmNmZhZTBjYmE4MiI+RnVsbCBjaGFuZ2Vsb2c8L2E+PC9saT4KPC91bD4KCjxoMz48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC92bXdhcmUtdnNwaGVyZS1jc2ktZHJpdmVyLW9wZXJhdG9yL3RyZWUvMDM5OTllNDZiOTU0MTUxYjUyYzdkYzc5OWI3MzQxY2E3ZDNlMTc0NCI+dnNwaGVyZS1jc2ktZHJpdmVyLW9wZXJhdG9yPC9hPjwvaDM+Cgo8dWw+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9pc3N1ZXMucmVkaGF0LmNvbS9icm93c2UvT0NQQlVHUy00NjA5Ij5PQ1BCVUdTLTQ2MDk8L2E+OiBBZGQgbXVsdGlwbGUgZGF0YWNlbnRlcnMgc3VwcG9ydCA8YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC92bXdhcmUtdnNwaGVyZS1jc2ktZHJpdmVyLW9wZXJhdG9yL3B1bGwvMTIzIj4jMTIzPC9hPjwvbGk+CjxsaT48YSB0YXJnZXQ9Il9ibGFuayIgaHJlZj0iaHR0cHM6Ly9naXRodWIuY29tL29wZW5zaGlmdC92bXdhcmUtdnNwaGVyZS1jc2ktZHJpdmVyLW9wZXJhdG9yL2NvbXBhcmUvN2M4Y2NjN2QyNWQ5YmZkYTJmNzlhOWM5NjVhNjY3YmVkMzQzMWUxMS4uLjAzOTk5ZTQ2Yjk1NDE1MWI1MmM3ZGM3OTliNzM0MWNhN2QzZTE3NDQiPkZ1bGwgY2hhbmdlbG9nPC9hPjwvbGk+CjwvdWw+Cg==",
+  "changeLogJson": {
+    "from": {
+      "name": "4.12.0",
+      "created": "2023-01-12T18:29:52Z",
+      "digest": "sha256:4c5a7e26d707780be6466ddc9591865beb2e3baa5556432d23e8d57966a2dd18",
+      "promotedFrom": "registry.ci.openshift.org/ocp/release:4.12.0-0.nightly-2023-01-09-095104"
+    },
+    "to": {
+      "name": "4.12.1",
+      "created": "2023-01-25T13:05:57Z",
+      "digest": "sha256:a4838c937bbf0902a836107476f6167e47b0340b2ad2444937c69a0a8409f896",
+      "promotedFrom": "registry.ci.openshift.org/ocp/release:4.12.0-0.nightly-2023-01-24-150415"
+    },
+    "components": [
+      {
+        "name": "Kubernetes",
+        "version": "1.25.4"
+      },
+      {
+        "name": "Red Hat Enterprise Linux CoreOS",
+        "version": "412.86.202301191053-0",
+        "versionUrl": "https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/storage/browser?arch=x86_64\u0026stream=4.12",
+        "from": "412.86.202301061548-0",
+        "fromUrl": "https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/storage/browser?arch=x86_64\u0026stream=4.12",
+        "diffUrl": "https://releases-rhcos-art.apps.ocp-virt.prod.psi.redhat.com/diff.html?arch=x86_64\u0026first_release=412.86.202301061548-0\u0026first_stream=4.12\u0026second_release=412.86.202301191053-0\u0026second_stream=4.12"
+      }
+    ],
+    "rebuiltImages": [
+      {
+        "name": "agent-installer-api-server",
+        "path": "https://github.com/openshift/assisted-service",
+        "shortCommit": "40936e7a",
+        "commit": "40936e7a9159189889c637fa1631f8cbdd5c3c4f",
+        "imageRef": "sha256:fcb8ff07b0c35a17412caad4ef53b00c469f81f3ee7d4fc28278bbb40045ce07"
+      },
+      {
+        "name": "agent-installer-node-agent",
+        "path": "https://github.com/openshift/assisted-installer-agent",
+        "shortCommit": "271a6f48",
+        "commit": "271a6f48486db5702d3ebc4b644b74722319d49d",
+        "imageRef": "sha256:cc0fada201abc2347915f115b74d7bba09a3bf622542b14efee53b82c5a7894e"
+      },
+      {
+        "name": "docker-builder",
+        "path": "https://github.com/openshift/builder",
+        "shortCommit": "e76828eb",
+        "commit": "e76828eb29e8afefc639706a7ead4e4584d4eb0a",
+        "imageRef": "sha256:3291465339b812a7d9fa513c6da82a8961b3ae3018a99840f4d149c61418cd88"
+      },
+      {
+        "name": "driver-toolkit",
+        "path": "https://github.com/openshift/driver-toolkit",
+        "shortCommit": "e31abf2c",
+        "commit": "e31abf2cf547f172da7d51b998ff5b58c05a7a6a",
+        "imageRef": "sha256:8af2e51f3382865bd587b76e1eb301d198f157947e844982f6e528072570e124"
+      },
+      {
+        "name": "haproxy-router",
+        "path": "https://github.com/openshift/router",
+        "shortCommit": "3065f658",
+        "commit": "3065f6583f3925328fbdbfe95e3bc7bb7a084d33",
+        "imageRef": "sha256:fa1ff52055ededc0386ee6b334ffe0cd9252f5878fcccf1396aee30adf6de046"
+      },
+      {
+        "name": "ironic",
+        "path": "https://github.com/openshift/ironic-image",
+        "shortCommit": "27695b69",
+        "commit": "27695b69851b0687e17b4325e364792026282d9f",
+        "imageRef": "sha256:0c76794f0b0f26e4b49c16be2ad311694f62195fd14c72433ba61f33d62ee022"
+      },
+      {
+        "name": "ironic-machine-os-downloader",
+        "path": "https://github.com/openshift/ironic-rhcos-downloader",
+        "shortCommit": "a580a447",
+        "commit": "a580a4479cb6988f3065ef3d4c5fcfcfc3609d12",
+        "imageRef": "sha256:c5498a05ea46a5e27239b74bdafc7f6bcaadf506bf49f5f6906da4c8bb254f5b"
+      },
+      {
+        "name": "kuryr-cni",
+        "path": "https://github.com/openshift/kuryr-kubernetes",
+        "shortCommit": "92b9be25",
+        "commit": "92b9be25999aee9c3b225606510c56fd14378bdf",
+        "imageRef": "sha256:57313cfbfc44a578ef174a667ff52c73b4d2090ad61ca98e0ef3f7ced8542d4e"
+      },
+      {
+        "name": "kuryr-controller",
+        "path": "https://github.com/openshift/kuryr-kubernetes",
+        "shortCommit": "92b9be25",
+        "commit": "92b9be25999aee9c3b225606510c56fd14378bdf",
+        "imageRef": "sha256:32afd11f7c6c86eaa9f42b7e55d632907948110b433419a35c4d926987d594de"
+      },
+      {
+        "name": "machine-os-content",
+        "path": "",
+        "imageRef": "sha256:66a4e1d7250640fe6c559f714f6e5e970c7d9ed0650bf9a7be9aef320a0a57c4"
+      },
+      {
+        "name": "machine-os-images",
+        "path": "https://github.com/openshift/machine-os-images",
+        "shortCommit": "566bf595",
+        "commit": "566bf59501f178bd80e410fda66cc424de6a4891",
+        "imageRef": "sha256:984fd20b251549b9a3ddaace1812e8eac9148aa475e05788f7c6cf0215fb7d24"
+      },
+      {
+        "name": "network-tools",
+        "path": "https://github.com/openshift/network-tools",
+        "shortCommit": "c76613c7",
+        "commit": "c76613c77c8785b91611bb3c4245bc34f3b14f76",
+        "imageRef": "sha256:4292ec36b61f0bc799b7f4f80fd997949d77983b1162100d773ef42c1ba85651"
+      },
+      {
+        "name": "rhel-coreos-8",
+        "path": "",
+        "imageRef": "sha256:f3ad894d50fa5fb5cc3e145005315ec39f91225fce82bcb2b2962e6d68d49d3d"
+      },
+      {
+        "name": "rhel-coreos-8-extensions",
+        "path": "",
+        "imageRef": "sha256:e96011d5c019b3604bf237f735b7e58c4bde5b41811d0b92b0f31e5821cd6620"
+      },
+      {
+        "name": "tools",
+        "path": "https://github.com/openshift/oc",
+        "shortCommit": "854f807d",
+        "commit": "854f807d8a84dde710c062a5281bca5bc07cb562",
+        "imageRef": "sha256:fa0d95d2496796f561346e58d58316a20543a0b99e110d498f62f1bb7750b11f"
+      }
+    ],
+    "updatedImages": [
+      {
+        "name": "baremetal-installer, installer, installer-artifacts",
+        "path": "https://github.com/openshift/installer/tree/303c9d494a1503c134b92b15c5da8ac8ca01295d",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-4895": "https://issues.redhat.com/browse/OCPBUGS-4895"
+            },
+            "subject": "Set ip=dhcp,dhcp6 for master nodes on dualstack",
+            "pullID": 6706,
+            "pullURL": "https://github.com/openshift/installer/pull/6706"
+          },
+          {
+            "issues": {
+              "OCPBUGS-6015": "https://issues.redhat.com/browse/OCPBUGS-6015"
+            },
+            "subject": "fail to create install-config.yaml as apiVIP and ingress VIP are not in machine networks",
+            "pullID": 6783,
+            "pullURL": "https://github.com/openshift/installer/pull/6783"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5844": "https://issues.redhat.com/browse/OCPBUGS-5844"
+            },
+            "subject": "Update FCOS to latest 37.20221127.3.0 stable",
+            "pullID": 6773,
+            "pullURL": "https://github.com/openshift/installer/pull/6773"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5764": "https://issues.redhat.com/browse/OCPBUGS-5764"
+            },
+            "subject": "Expose Azure useImageGallery parameter in the MachineSets() call",
+            "pullID": 6753,
+            "pullURL": "https://github.com/openshift/installer/pull/6753"
+          },
+          {
+            "issues": {
+              "OCPBUGS-4460": "https://issues.redhat.com/browse/OCPBUGS-4460"
+            },
+            "subject": "hold bootkube service until bootstrap has pivoted",
+            "pullID": 6661,
+            "pullURL": "https://github.com/openshift/installer/pull/6661"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5513": "https://issues.redhat.com/browse/OCPBUGS-5513"
+            },
+            "subject": "Update Azure SDK to v63.1.0+incompatible [release-4.12]",
+            "pullID": 6751,
+            "pullURL": "https://github.com/openshift/installer/pull/6751"
+          },
+          {
+            "issues": {
+              "OCPBUGS-4649": "https://issues.redhat.com/browse/OCPBUGS-4649"
+            },
+            "subject": "Report agent installation problems on the console",
+            "pullID": 6680,
+            "pullURL": "https://github.com/openshift/installer/pull/6680"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/installer/compare/ba940311c8cb2a07173725e5c2f668df7c61924c...303c9d494a1503c134b92b15c5da8ac8ca01295d"
+      },
+      {
+        "name": "cluster-capi-operator",
+        "path": "https://github.com/openshift/cluster-capi-operator/tree/3bfe36aa9d1abbdfb11facf86a7ec6510abc390a",
+        "commits": [
+          {
+            "bugs": {
+              "2116686": "https://bugzilla.redhat.com/show_bug.cgi?id=2116686"
+            },
+            "subject": "OCPBUGS-5155: Add provider webhook",
+            "pullID": 96,
+            "pullURL": "https://github.com/openshift/cluster-capi-operator/pull/96"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-capi-operator/compare/8496c5085daaf9ce8ea47ac885e56310898a5c54...3bfe36aa9d1abbdfb11facf86a7ec6510abc390a"
+      },
+      {
+        "name": "cluster-control-plane-machine-set-operator",
+        "path": "https://github.com/openshift/cluster-control-plane-machine-set-operator/tree/89727d88312464361593a0ccc8ad07e79db9bd16",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5820": "https://issues.redhat.com/browse/OCPBUGS-5820"
+            },
+            "subject": "Deduplicate Failure Domains for the CPMS",
+            "pullID": 160,
+            "pullURL": "https://github.com/openshift/cluster-control-plane-machine-set-operator/pull/160"
+          },
+          {
+            "subject": "Backport e2e/integration testing",
+            "pullID": 161,
+            "pullURL": "https://github.com/openshift/cluster-control-plane-machine-set-operator/pull/161"
+          },
+          {
+            "subject": "golangci-lint: fix header year linting",
+            "pullID": 163,
+            "pullURL": "https://github.com/openshift/cluster-control-plane-machine-set-operator/pull/163"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-control-plane-machine-set-operator/compare/5f0e975c2696a3cee2e1c45f04f63e460ec46738...89727d88312464361593a0ccc8ad07e79db9bd16"
+      },
+      {
+        "name": "cluster-image-registry-operator",
+        "path": "https://github.com/openshift/cluster-image-registry-operator/tree/3e14fd5db182510c6c43ae0003f3158f5a51c8e9",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5154": "https://issues.redhat.com/browse/OCPBUGS-5154"
+            },
+            "subject": "swift: Retry connecting to OpenStack",
+            "pullID": 826,
+            "pullURL": "https://github.com/openshift/cluster-image-registry-operator/pull/826"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-image-registry-operator/compare/c0e5dec7ab5030d924f7fb96e1733792aa3a3097...3e14fd5db182510c6c43ae0003f3158f5a51c8e9"
+      },
+      {
+        "name": "cluster-monitoring-operator",
+        "path": "https://github.com/openshift/cluster-monitoring-operator/tree/5a154c3dd01544adc280691be54fec94a5dc8d67",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-4363": "https://issues.redhat.com/browse/OCPBUGS-4363"
+            },
+            "subject": "Fixed TargetDown expression to join on the proper label",
+            "pullID": 1833,
+            "pullURL": "https://github.com/openshift/cluster-monitoring-operator/pull/1833"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-monitoring-operator/compare/ee31d1d27131aa218f0c1b22118a06468d20b0ea...5a154c3dd01544adc280691be54fec94a5dc8d67"
+      },
+      {
+        "name": "cluster-node-tuning-operator",
+        "path": "https://github.com/openshift/cluster-node-tuning-operator/tree/108d8f084dcca968982f4928f1bb12a7425da805",
+        "commits": [
+          {
+            "subject": "Remove trailing space from test name (#546)",
+            "pullID": 546,
+            "pullURL": "https://github.com/openshift/cluster-node-tuning-operator/pull/546"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-node-tuning-operator/compare/2488b986c0a052a111b17206ee70f7dcf3fbf72c...108d8f084dcca968982f4928f1bb12a7425da805"
+      },
+      {
+        "name": "cluster-policy-controller",
+        "path": "https://github.com/openshift/cluster-policy-controller/tree/105cc773b37f00be2351c9a4e6df24af94d547c1",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5786": "https://issues.redhat.com/browse/OCPBUGS-5786"
+            },
+            "subject": "clusterquotareconciliation: do not sync quota monitor cache with no monitors registered",
+            "pullID": 95,
+            "pullURL": "https://github.com/openshift/cluster-policy-controller/pull/95"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-policy-controller/compare/c7a633416a8ee702fa653649488a13f578f3f857...105cc773b37f00be2351c9a4e6df24af94d547c1"
+      },
+      {
+        "name": "cluster-version-operator",
+        "path": "https://github.com/openshift/cluster-version-operator/tree/b24d60e55576e1997d6d450ba9106a80983f1512",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5879": "https://issues.redhat.com/browse/OCPBUGS-5879"
+            },
+            "subject": "Set upgradeability check throttling period to 2m",
+            "pullID": 884,
+            "pullURL": "https://github.com/openshift/cluster-version-operator/pull/884"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5083": "https://issues.redhat.com/browse/OCPBUGS-5083"
+            },
+            "subject": "pkg/payload/precondition: Do not claim warnings would have blocked",
+            "pullID": 878,
+            "pullURL": "https://github.com/openshift/cluster-version-operator/pull/878"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cluster-version-operator/compare/f1dc3b6a6b7c5f5a85f94201ab90f9e03547a8a3...b24d60e55576e1997d6d450ba9106a80983f1512"
+      },
+      {
+        "name": "console",
+        "path": "https://github.com/openshift/console/tree/9c2d2e9f27d4415361b54822824a51489bb3408e",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5303": "https://issues.redhat.com/browse/OCPBUGS-5303"
+            },
+            "subject": "display 'Control plane is hosted' alert only when isCl…",
+            "pullID": 12409,
+            "pullURL": "https://github.com/openshift/console/pull/12409"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5263": "https://issues.redhat.com/browse/OCPBUGS-5263"
+            },
+            "subject": "only show upgrade details if cluster not externally man…",
+            "pullID": 12404,
+            "pullURL": "https://github.com/openshift/console/pull/12404"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/console/compare/b237c34499db6e417e9b67b4590e73450bbc931c...9c2d2e9f27d4415361b54822824a51489bb3408e"
+      },
+      {
+        "name": "console-operator",
+        "path": "https://github.com/openshift/console-operator/tree/8c938a46686746518cc37e71b444d40d1b4e6c2d",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5420": "https://issues.redhat.com/browse/OCPBUGS-5420"
+            },
+            "subject": "Add host inventory quickstart (#711)",
+            "pullID": 711,
+            "pullURL": "https://github.com/openshift/console-operator/pull/711"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/console-operator/compare/a34f2e4da55277b8ae63f90247dfa406aa6f6189...8c938a46686746518cc37e71b444d40d1b4e6c2d"
+      },
+      {
+        "name": "csi-driver-manila, openstack-cinder-csi-driver, openstack-cloud-controller-manager",
+        "path": "https://github.com/openshift/cloud-provider-openstack/tree/3125fe729221139aa8c87b427655669880bbd06c",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-6064": "https://issues.redhat.com/browse/OCPBUGS-6064"
+            },
+            "subject": "Merge https://github.com/kubernetes/cloud-provider-openstack:release-1.25 into release-4.12",
+            "pullID": 172,
+            "pullURL": "https://github.com/openshift/cloud-provider-openstack/pull/172"
+          },
+          {
+            "subject": "Bug OCPBUGS-5403: Make sure LB status is updated immediately",
+            "pullID": 164,
+            "pullURL": "https://github.com/openshift/cloud-provider-openstack/pull/164"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/cloud-provider-openstack/compare/615dc6062013a7d872fd3f0978cda8ac7eda6ac8...3125fe729221139aa8c87b427655669880bbd06c"
+      },
+      {
+        "name": "docker-registry",
+        "path": "https://github.com/openshift/image-registry/tree/3bf8e25d5694f7a4dbbe7620a1cc2e26d611cf60",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-4678": "https://issues.redhat.com/browse/OCPBUGS-4678"
+            },
+            "subject": "Bump aws-sdk-go to v1.44.145",
+            "pullID": 357,
+            "pullURL": "https://github.com/openshift/image-registry/pull/357"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/image-registry/compare/fab1920c871a2c38daafaddfa31aafa5d9d1d53d...3bf8e25d5694f7a4dbbe7620a1cc2e26d611cf60"
+      },
+      {
+        "name": "etcd",
+        "path": "https://github.com/openshift/etcd/tree/978cfefd2f21c4ec1ac84ed95130cbff510fbe1b",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5761": "https://issues.redhat.com/browse/OCPBUGS-5761"
+            },
+            "subject": "UPSTREAM:\u0026lt;carry\u0026gt;: etcdserver: process the scenaro of the last WAL rec…",
+            "pullID": 176,
+            "pullURL": "https://github.com/openshift/etcd/pull/176"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/etcd/compare/89a451c499e06b3e9f8072c7cd70b86d78f597bf...978cfefd2f21c4ec1ac84ed95130cbff510fbe1b"
+      },
+      {
+        "name": "hyperkube, pod",
+        "path": "https://github.com/openshift/kubernetes/tree/a34b9e9499e6c3a94e2326652bd8236a5378c0b2",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5490": "https://issues.redhat.com/browse/OCPBUGS-5490"
+            },
+            "subject": "remove in-tree volume limits test now that CSIMigration is GA",
+            "pullID": 1449,
+            "pullURL": "https://github.com/openshift/kubernetes/pull/1449"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/kubernetes/compare/77bec7ab3573494f228fbaa4967c76e3d2df0fb3...a34b9e9499e6c3a94e2326652bd8236a5378c0b2"
+      },
+      {
+        "name": "hypershift",
+        "path": "https://github.com/openshift/hypershift/tree/8f27c51c4306e12e2c5e926f9095f1d74d08c5ab",
+        "commits": [
+          {
+            "subject": "Merge main into release-4.12 branch",
+            "pullID": 2053,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2053"
+          },
+          {
+            "subject": "Default Ingress Passthrough for KubeVirt provider",
+            "pullID": 1787,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1787"
+          },
+          {
+            "subject": "Release 4.12 rebase latest",
+            "pullID": 2047,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2047"
+          },
+          {
+            "subject": "switch OLM catalogs to imagestream",
+            "pullID": 2032,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2032"
+          },
+          {
+            "subject": "fix cluster csi driver reconcile",
+            "pullID": 2043,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2043"
+          },
+          {
+            "subject": "Add ref for SLOs",
+            "pullID": 2040,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2040"
+          },
+          {
+            "subject": "Add support to propagate labels from NodePools to Nodes",
+            "pullID": 2026,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2026"
+          },
+          {
+            "subject": "Add value to hosted control plane namespace label",
+            "pullID": 2036,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2036"
+          },
+          {
+            "subject": "Expose proxy, identityProviders and limited support metrics",
+            "pullID": 2015,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2015"
+          },
+          {
+            "subject": "Updated secret permissions to 0640",
+            "pullID": 1818,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1818"
+          },
+          {
+            "subject": "adjust rate interval on hypershift:controlplane:component_cpu_usage_s…",
+            "pullID": 2035,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2035"
+          },
+          {
+            "subject": "fix(cpo): Remove storage from mgmt cluster for IBM Cloud",
+            "pullID": 2007,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2007"
+          },
+          {
+            "subject": "Add support for additional allowed principals for AWS hosted cluster VPC Endpoint Services",
+            "pullID": 2021,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2021"
+          },
+          {
+            "subject": "Fix OpenID OAuth config parsing",
+            "pullID": 2027,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2027"
+          },
+          {
+            "subject": "Add TestReconcileHostedControlPlaneConfiguration unit test",
+            "pullID": 2020,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2020"
+          },
+          {
+            "subject": "Makefile: Include full 'git diff' output",
+            "pullID": 2024,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2024"
+          },
+          {
+            "subject": "Add CSR signer to Kubelet client CA",
+            "pullID": 2025,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2025"
+          },
+          {
+            "subject": "remove control-plane-component label from kube-apiserver-proxy and konnectivity-agent pods",
+            "pullID": 2012,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2012"
+          },
+          {
+            "subject": "Change aws kms input to require an arn string",
+            "pullID": 1991,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1991"
+          },
+          {
+            "subject": "add node-drain-timeout flag to create cluster cmd",
+            "pullID": 2023,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2023"
+          },
+          {
+            "subject": "fix panic in logger expected key-values",
+            "pullID": 2019,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2019"
+          },
+          {
+            "subject": "test: dynamically assign single AWS zone to SingleReplica guest clusters",
+            "pullID": 1951,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1951"
+          },
+          {
+            "subject": "workaround OpenShiftSDN network policy egress bug",
+            "pullID": 2022,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2022"
+          },
+          {
+            "subject": "add KAS egress network policy",
+            "pullID": 2005,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2005"
+          },
+          {
+            "subject": "avoid using route53 api for OIDC health check",
+            "pullID": 2018,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2018"
+          },
+          {
+            "subject": "Add default kubevirt guest cluster storageclass",
+            "pullID": 2014,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2014"
+          },
+          {
+            "subject": "fix(ho): Set restart date annotation back",
+            "pullID": 1986,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1986"
+          },
+          {
+            "subject": "add missing app label to HCP components",
+            "pullID": 2013,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2013"
+          },
+          {
+            "subject": "external-dns: set AWS batch internal to 10s",
+            "pullID": 2010,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2010"
+          },
+          {
+            "subject": "Add clarifying comment",
+            "pullID": 2008,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2008"
+          },
+          {
+            "subject": "Prevent cluster deletion hangs by using heartbeat condition",
+            "pullID": 1947,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1947"
+          },
+          {
+            "subject": "Add annotation for cross zone lb",
+            "pullID": 2004,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2004"
+          },
+          {
+            "subject": "cmd: dump: include networkpolicies",
+            "pullID": 2002,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2002"
+          },
+          {
+            "subject": "Revert \"add KAS egress network policy\"",
+            "pullID": 2001,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2001"
+          },
+          {
+            "subject": "add KAS egress network policy",
+            "pullID": 1905,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1905"
+          },
+          {
+            "subject": "test: e2e: remove node checks during NodePool upgrade test",
+            "pullID": 1997,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1997"
+          },
+          {
+            "subject": "fix(ho): Use v1alpha1 ownerRef for future CPO managed components",
+            "pullID": 1959,
+            "pullURL": "https://github.com/openshift/hypershift/pull/1959"
+          },
+          {
+            "subject": "Fix OpenID OAuth config parsing",
+            "pullID": 2029,
+            "pullURL": "https://github.com/openshift/hypershift/pull/2029"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/hypershift/compare/e88743672989705fa1bfb29143a13fc4c547263f...8f27c51c4306e12e2c5e926f9095f1d74d08c5ab"
+      },
+      {
+        "name": "insights-operator",
+        "path": "https://github.com/openshift/insights-operator/tree/e172a918cc6535dfeb2d06b49133f323aed927ec",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5348": "https://issues.redhat.com/browse/OCPBUGS-5348"
+            },
+            "subject": "do not periodically update Available clusteroperator co… (#710)",
+            "pullID": 710,
+            "pullURL": "https://github.com/openshift/insights-operator/pull/710"
+          },
+          {
+            "subject": "do not get disabled rules (#706) (#713)",
+            "pullID": 706,
+            "pullURL": "https://github.com/openshift/insights-operator/pull/706"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/insights-operator/compare/cd1142ec7f324dc15b723ae175f3bab797ffc2ea...e172a918cc6535dfeb2d06b49133f323aed927ec"
+      },
+      {
+        "name": "kube-proxy, sdn",
+        "path": "https://github.com/openshift/sdn/tree/d6903305ca12bf21f4ef6b96cb7aeed7defa2fc2",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-4486": "https://issues.redhat.com/browse/OCPBUGS-4486"
+            },
+            "subject": "Add node egress IP assignment resync",
+            "pullID": 487,
+            "pullURL": "https://github.com/openshift/sdn/pull/487"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/sdn/compare/aae8264284144301b4a6ebcc5c9271b8f2a33ff9...d6903305ca12bf21f4ef6b96cb7aeed7defa2fc2"
+      },
+      {
+        "name": "machine-api-operator",
+        "path": "https://github.com/openshift/machine-api-operator/tree/a99a63b994407212a5dcc83cc5bc7c02222350b3",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5413": "https://issues.redhat.com/browse/OCPBUGS-5413"
+            },
+            "subject": "Append annotations from machine template spec to the node",
+            "pullID": 1104,
+            "pullURL": "https://github.com/openshift/machine-api-operator/pull/1104"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5117": "https://issues.redhat.com/browse/OCPBUGS-5117"
+            },
+            "subject": "[release-4.12] Allow to use machine.openshift.io API in provider specs",
+            "pullID": 1086,
+            "pullURL": "https://github.com/openshift/machine-api-operator/pull/1086"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/machine-api-operator/compare/4c2a08bb4ca1b421045e11edff897255b42b2a25...a99a63b994407212a5dcc83cc5bc7c02222350b3"
+      },
+      {
+        "name": "machine-config-operator",
+        "path": "https://github.com/openshift/machine-config-operator/tree/60fb64fa861f1231f779226aa5dcd5c4ef604dcb",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5743": "https://issues.redhat.com/browse/OCPBUGS-5743"
+            },
+            "subject": "Mount /run/nodeip-configuration into keepalived containers",
+            "pullID": 3479,
+            "pullURL": "https://github.com/openshift/machine-config-operator/pull/3479"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/machine-config-operator/compare/2b3eba74dd9e4371f35ab41dbda02642f60707ec...60fb64fa861f1231f779226aa5dcd5c4ef604dcb"
+      },
+      {
+        "name": "machine-image-customization-controller",
+        "path": "https://github.com/openshift/image-customization-controller/tree/27777d0e032119965c7ea5ce5b8f74bd885990bd",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5655": "https://issues.redhat.com/browse/OCPBUGS-5655"
+            },
+            "subject": "Update dependencies",
+            "pullID": 76,
+            "pullURL": "https://github.com/openshift/image-customization-controller/pull/76"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/image-customization-controller/compare/5f83bd7c20574e5620e7cc92dd424835ef8a0b28...27777d0e032119965c7ea5ce5b8f74bd885990bd"
+      },
+      {
+        "name": "operator-marketplace",
+        "path": "https://github.com/operator-framework/operator-marketplace/tree/87790da6e17fccb6fd53b23f7eb060611fe73c2b",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5468": "https://issues.redhat.com/browse/OCPBUGS-5468"
+            },
+            "subject": "Remove PSA audit and warnings",
+            "pullID": 503,
+            "pullURL": "https://github.com/operator-framework/operator-marketplace/pull/503"
+          }
+        ],
+        "fullChangeLog": "https://github.com/operator-framework/operator-marketplace/compare/4e3eca672ea923f98b10bfa84985b2470da9ac96...87790da6e17fccb6fd53b23f7eb060611fe73c2b"
+      },
+      {
+        "name": "ovn-kubernetes, ovn-kubernetes-microshift",
+        "path": "https://github.com/openshift/ovn-kubernetes/tree/f51b0c8d9a9d68be8edfb26be2851cd13f894be6",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5923": "https://issues.redhat.com/browse/OCPBUGS-5923"
+            },
+            "subject": "[release-4.12] Fix egress firewall to allow inbound connections in both gw modes",
+            "pullID": 1477,
+            "pullURL": "https://github.com/openshift/ovn-kubernetes/pull/1477"
+          },
+          {
+            "issues": {
+              "OCPBUGS-5046": "https://issues.redhat.com/browse/OCPBUGS-5046"
+            },
+            "subject": "[release-4.12] egressip: fix test data race accessing podAssignment cache",
+            "pullID": 1467,
+            "pullURL": "https://github.com/openshift/ovn-kubernetes/pull/1467"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/ovn-kubernetes/compare/56eba9e2ffe7a7c15ca377513c93bff3d99c457c...f51b0c8d9a9d68be8edfb26be2851cd13f894be6"
+      },
+      {
+        "name": "tests",
+        "path": "https://github.com/openshift/origin/tree/517ff51e404f5c89c7e38c71f836af6fae0cba82",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-5490": "https://issues.redhat.com/browse/OCPBUGS-5490"
+            },
+            "subject": "Fix intervalcreation incorrect year unit test bug",
+            "pullID": 27668,
+            "pullURL": "https://github.com/openshift/origin/pull/27668"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/origin/compare/5e41b223cad6c22c117ebde996923f23f5ffab3e...517ff51e404f5c89c7e38c71f836af6fae0cba82"
+      },
+      {
+        "name": "vsphere-csi-driver-operator",
+        "path": "https://github.com/openshift/vmware-vsphere-csi-driver-operator/tree/03999e46b954151b52c7dc799b7341ca7d3e1744",
+        "commits": [
+          {
+            "issues": {
+              "OCPBUGS-4609": "https://issues.redhat.com/browse/OCPBUGS-4609"
+            },
+            "subject": "Add multiple datacenters support",
+            "pullID": 123,
+            "pullURL": "https://github.com/openshift/vmware-vsphere-csi-driver-operator/pull/123"
+          }
+        ],
+        "fullChangeLog": "https://github.com/openshift/vmware-vsphere-csi-driver-operator/compare/7c8ccc7d25d9bfda2f79a9c965a667bed3431e11...03999e46b954151b52c7dc799b7341ca7d3e1744"
+      }
+    ]
+  }
+}

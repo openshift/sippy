@@ -116,10 +116,10 @@ func TestChangelog_CoreOSVersion(t *testing.T) {
 		{
 			name:                "Changelog with CoreOS upgrade",
 			root:                soup.HTMLParse(rejectedWithCoreOSUpgrade),
-			wantCurrentURL:      "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/?release=48.84.202110152059-0&stream=releases%2Frhcos-4.8",
-			wantCurrentVersion:  "48.84.202110152059-0",
-			wantPreviousURL:     "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/?release=48.84.202110270303-0&stream=releases%2Frhcos-4.8",
-			wantPreviousVersion: "48.84.202110270303-0",
+			wantCurrentURL:      "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/?release=48.84.202110270303-0&stream=releases%2Frhcos-4.8",
+			wantCurrentVersion:  "48.84.202110270303-0",
+			wantPreviousURL:     "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/?release=48.84.202110152059-0&stream=releases%2Frhcos-4.8",
+			wantPreviousVersion: "48.84.202110152059-0",
 			wantDiffURL:         "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/diff.html?arch=x86_64&first_release=48.84.202110152059-0&first_stream=releases%2Frhcos-4.8&second_release=48.84.202110270303-0&second_stream=releases%2Frhcos-4.8",
 		},
 	}
