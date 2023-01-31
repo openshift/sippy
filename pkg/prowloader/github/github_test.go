@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 
@@ -55,7 +56,7 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 	client := &Client{
 		ctx:     context.TODO(),
 		prFetch: prFetch,
-		cache:   make(map[prlocator]*prentry),
+		cache:   make(map[prlocator]*PREntry),
 	}
 
 	tests := []struct {
@@ -170,5 +171,49 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 			return
 		}
 	})
+
+}
+
+func TestClient_IsCommentIdMatch(t *testing.T) {
+	client := &Client{commentMetaRegEx: regexp.MustCompile(commentIDRegex)}
+
+	tests := []struct {
+		name          string
+		comment       string
+		commentKey    string
+		commentID     string
+		expectedMatch bool
+	}{
+		{
+			name:          "match key and id",
+			comment:       "<!-- META={\"trt_comment_id\": \"sha1\"} -->\ncomment\ntext",
+			commentKey:    "trt_comment_id",
+			commentID:     "sha1",
+			expectedMatch: true,
+		},
+		{
+			name:          "match id not key",
+			comment:       "<!-- META={\"trt_alt_comment_id\": \"sha1\"} -->\ncomment\ntext",
+			commentKey:    "trt_comment_id",
+			commentID:     "sha1",
+			expectedMatch: false,
+		},
+		{
+			name:          "match key not id",
+			comment:       "<!-- META={\"trt_comment_id\": \"sha1\"} -->\ncomment\ntext",
+			commentKey:    "trt_comment_id",
+			commentID:     "sha11",
+			expectedMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectedMatch != client.isCommentIDMatch(tt.comment, tt.commentKey, tt.commentID) {
+				t.Errorf("isCommentIdMatch did not match expected: %v for:%s, key: %s, id: %s, comment: %s", tt.expectedMatch, tt.name, tt.commentKey, tt.commentID, tt.comment)
+				return
+			}
+		})
+	}
 
 }

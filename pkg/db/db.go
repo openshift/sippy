@@ -125,6 +125,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.PullRequestComment{}); err != nil {
+		return err
+	}
+
 	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
 	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
 	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good

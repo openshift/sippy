@@ -800,24 +800,15 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			return
 		}
 
-		// Load the ProwJobRun, ProwJob, and failed tests:
-		// TODO: we may want to expand to analyzing flakes here in the future
-		res := s.db.DB.Joins("ProwJob").
-			Preload("Tests", "status = 12").
-			Preload("Tests.Test").
-			Preload("Tests.Suite").First(jobRun, jobRunID)
-		if res.Error != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code": http.StatusBadRequest, "message": res.Error.Error()})
-			return
-		}
-
 		logger = logger.WithField("jobRunID", jobRunID)
 
-		jobRunTestCount, err = query.JobRunTestCount(s.db, jobRunID)
+		// lookup prowjob and run count
+		jobRun, jobRunTestCount, err = api.FetchJobRun(s.db, jobRunID, logger)
+
 		if err != nil {
-			logger.WithError(err).Error("Error getting job run test count")
-			jobRunTestCount = -1
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code": http.StatusBadRequest, "message": err.Error()})
+			return
 		}
 
 	} else {

@@ -19,6 +19,13 @@ You will need a GCS credential for reading OpenShift CI artifacts when importing
 oc create secret generic gcs-credentials --from-file credentials=$GCS_CRED -n sippy
 ```
 
+If you want the sippy daemon server and commenting processor to run you need to add a github api token 
+You should enable the sippy-github-token in fetchdata-cronjob.yaml as well as --load-github=true for the import
+side of things as well
+
+```bash
+oc create secret generic sippy-github-token --from-literal token=ghp_THE_TOKEN -n sippy
+```
 
 If you do not wish to build and deploy github.com/openshift/sippy master branch, you can edit `resources/buildconfig.yaml` and point to your own fork and branch.
 
@@ -35,7 +42,7 @@ You will see a build pod start up, this will take a few minutes to pull source, 
 The fetchdata CronJob runs once and hour on the hour to populate the db and materialized views, until then sippy will be empty and may not work. You can trigger it manually with:
 
 ```bash
-oc create job --from=cronjob/fetchdata fetchdata-manual-01`
+oc create job --from=cronjob/fetchdata fetchdata-manual-01
 ```
 
 The CronJob is configured to just pull one small older release for development purposes, but the others are present just commented out.
@@ -43,7 +50,7 @@ The CronJob is configured to just pull one small older release for development p
 We have not included ingress/routing, you will need to expose Sippy yourself, but you can locally access it with:
 
 ```bash
-oc port-forward svc/sippy 8080:8080`
+oc port-forward svc/sippy 8080:8080
 ```
 
 This also works if you wish to access the postgres service with a client tool.

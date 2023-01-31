@@ -28,6 +28,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/prowloader/testconversion"
@@ -51,6 +52,7 @@ type ProwLoader struct {
 	syntheticTestManager synthetictests.SyntheticTestManager
 	releases             []string
 	config               *v1config.SippyConfig
+	ghCommenter          *commenter.GitHubCommenter
 }
 
 func New(
@@ -62,7 +64,8 @@ func New(
 	variantManager testidentification.VariantManager,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	releases []string,
-	config *v1config.SippyConfig) *ProwLoader {
+	config *v1config.SippyConfig,
+	ghCommenter *commenter.GitHubCommenter) *ProwLoader {
 
 	bkt := gcsClient.Bucket(gcsBucket)
 
@@ -80,6 +83,7 @@ func New(
 		variantManager:       variantManager,
 		releases:             releases,
 		config:               config,
+		ghCommenter:          ghCommenter,
 	}
 }
 
@@ -197,16 +201,50 @@ func (pl *ProwLoader) syncPRStatus() error {
 	}
 
 	for _, pr := range pulls {
-		mergedAt, err := pl.githubClient.GetPRSHAMerged(pr.Org, pr.Repo, pr.Number, pr.SHA)
+		logger := log.WithField("org", pr.Org).
+			WithField("repo", pr.Repo).
+			WithField("number", pr.Number).
+			WithField("sha", pr.SHA)
+
+		// first check to see if this pr has recently closed (indicating it may have merged)
+		recentMergedAt, mergeCommitSha, err := pl.githubClient.IsPrRecentlyMerged(pr.Org, pr.Repo, pr.Number)
+
+		// the client should have logged the error, we want
+		// to see if we are rate limited or not, if so return
+		// otherwise keep processing
 		if err != nil {
-			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", pr.Org, pr.Repo, pr.Number, pr.SHA)
-			return err
+			if pl.githubClient.IsWithinRateLimitThreshold() {
+				return err
+			}
 		}
-		if pr.MergedAt != mergedAt {
-			pr.MergedAt = mergedAt
-			if res := pl.dbc.DB.Save(pr); res.Error != nil {
-				log.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
-				return res.Error
+
+		if recentMergedAt != nil {
+			// we have the recentMergedAt but, we don't know if it is associated with this SHA so do
+			// the SHA specific verification
+			if mergeCommitSha != nil && *mergeCommitSha == pr.SHA {
+				if pr.MergedAt != recentMergedAt {
+					pr.MergedAt = recentMergedAt
+					if res := pl.dbc.DB.Save(pr); res.Error != nil {
+						logger.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
+						continue
+					}
+				}
+			}
+
+			// if we see that any sha has merged for this pr then we should clear out any risk analysis pending comment records
+			// if we don't get them here we will catch them before writing the risk analysis comment
+			// but, we should clean up here if possible
+			if recentMergedAt != nil {
+				pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
+
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					logger.WithError(err).Error("Unable to fetch pending comments ")
+				}
+
+				for _, pc := range pendingComments {
+					pcp := pc
+					pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, &pcp)
+				}
 			}
 		}
 	}
@@ -313,7 +351,8 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 			if err != nil {
 				return err
 			}
-			pulls := pl.findOrAddPullRequests(pj.Spec.Refs)
+
+			pulls := pl.findOrAddPullRequests(pj.Spec.Refs, parts[1][1:])
 
 			var duration time.Duration
 			if pj.Status.CompletionTime != nil {
@@ -352,7 +391,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 	return nil
 }
 
-func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRequest {
+func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []models.ProwPullRequest {
 	if refs == nil || pl.githubClient == nil {
 		if refs == nil {
 			log.Debug("findOrAddPullRequests nil refs")
@@ -398,6 +437,9 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs) []models.ProwPullRe
 		}
 
 		// any concerns if we are missing title?
+
+		// create / update any presubmit comment records
+		pl.ghCommenter.UpdatePendingCommentRecords(refs.Org, refs.Repo, pr.Number, pr.SHA, models.CommentTypeRiskAnalysis, mergedAt, pjPath)
 
 		pull := models.ProwPullRequest{}
 		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)

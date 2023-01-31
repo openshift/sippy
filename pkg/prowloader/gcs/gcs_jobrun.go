@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -13,6 +14,12 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 )
+
+const TestFailureSummaryFilePrefix = "risk-analysis"
+
+func GetDefaultRiskAnalysisSummaryFile() *regexp.Regexp {
+	return regexp.MustCompile(fmt.Sprintf("%s.json", TestFailureSummaryFilePrefix))
+}
 
 type GCSJobRun struct {
 	// retrieval mechanisms
@@ -111,4 +118,39 @@ func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error)
 	defer gcsReader.Close()
 
 	return ioutil.ReadAll(gcsReader)
+}
+
+func (j *GCSJobRun) ContentExists(ctx context.Context, path string) bool {
+	// Get an Object handle for the path
+	obj := j.bkt.Object(path)
+
+	// if we can get the attrs then presume the object exists
+	// otherwise presume it doesn't
+	_, err := obj.Attrs(ctx)
+	return err == nil
+}
+
+func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
+	it := j.bkt.Objects(context.Background(), &storage.Query{
+		Prefix: root,
+	})
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if filename.MatchString(attrs.Name) {
+			data, err := j.GetContent(context.Background(), attrs.Name)
+
+			// if we had an error keep looking, or bail?
+			if err != nil {
+				log.WithError(err).Errorf("Error reading file: %s/%s", root, attrs.Name)
+				return nil
+			}
+			return data
+		}
+	}
+
+	return nil
 }
