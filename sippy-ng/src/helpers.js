@@ -218,6 +218,7 @@ export function pathForJobsInPercentile(release, start, end) {
   return `/jobs/${release}?${multiple(
     filterFor('current_pass_percentage', '>=', `${start}`),
     filterFor('current_pass_percentage', '<', `${end}`),
+    filterFor('current_runs', '>=', '7'),
     ...withoutUnstable()
   )}`
 }
