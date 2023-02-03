@@ -179,6 +179,18 @@ metadata:
 spec:
   template:
     spec:
+      initContainers:
+      - name: init-db
+        image: ${SIPPY_IMAGE}
+        imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
+        resources:
+          limits:
+            memory: 1G
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        command:  ["/bin/sh", "-c"]
+        args:
+          - /bin/sippy migrate --log-level=debug --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
       containers:
       - name: sippy
         image: ${SIPPY_IMAGE}
