@@ -42,7 +42,7 @@ func (f *LoadProwFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ModeFlags.BindFlags(fs)
 	fs.BoolVar(&f.LoadFromBigQuery, "load-openshift-ci-bigquery", f.LoadFromBigQuery, "Load from OpenShift CI BigQuery tables instead of directly from Prow")
 	fs.BoolVar(&f.LoadGitHub, "load-github", f.LoadGitHub, "Fetch PR state date from GitHub")
-	fs.StringArrayVar(&f.Releases, "releases", f.Releases, "Which releases to load from")
+	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load from")
 }
 
 func init() {
