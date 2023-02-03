@@ -31,6 +31,7 @@ type LoadProwFlags struct {
 func NewLoadProwFlags() *LoadProwFlags {
 	return &LoadProwFlags{
 		DBFlags:                    flags.NewPostgresDatabaseFlags(),
+		ModeFlags:                  flags.NewModeFlags(),
 		GoogleCloudCredentialFlags: flags.NewGoogleCloudCredentialFlags(),
 		ConfigFlags:                flags.NewConfigFlags(),
 	}

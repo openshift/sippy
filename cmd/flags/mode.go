@@ -13,7 +13,9 @@ type ModeFlags struct {
 }
 
 func NewModeFlags() *ModeFlags {
-	return &ModeFlags{}
+	return &ModeFlags{
+		Mode: "ocp",
+	}
 }
 
 func (f *ModeFlags) BindFlags(fs *pflag.FlagSet) {

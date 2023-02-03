@@ -51,8 +51,8 @@ func init() {
 	f := NewServerFlags()
 
 	cmd := &cobra.Command{
-		Use:   "releases",
-		Short: "Load releases from the OpenShift release controllers",
+		Use:   "serve",
+		Short: "Run the sippy server",
 		Run: func(cmd *cobra.Command, args []string) {
 			dbc, err := db.New(f.DBFlags.DSN, gormlogger.LogLevel(f.DBFlags.LogLevel))
 			if err != nil {
@@ -128,7 +128,5 @@ func init() {
 	}
 
 	f.BindFlags(cmd.Flags())
-	cmd.MarkFlagRequired("releases")
-	cmd.MarkFlagRequired("architectures")
-	loadCmd.AddCommand(cmd)
+	rootCmd.AddCommand(cmd)
 }
