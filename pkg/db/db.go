@@ -80,65 +80,65 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 	}, nil
 }
 
-func (d *DB) UpdateSchema(reportEnd *time.Time) error {
+func (db *DB) UpdateSchema(reportEnd *time.Time) error {
 
-	if err := d.DB.AutoMigrate(&models.ReleaseTag{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ReleaseTag{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ReleaseRepository{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ReleaseRepository{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwJob{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwJob{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwJobRun{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwJobRun{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.Test{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.Test{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.Suite{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.Suite{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwJobRunTestOutputMetadata{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwJobRunTestOutputMetadata{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.APISnapshot{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.APISnapshot{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.Bug{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.Bug{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.ProwPullRequest{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.ProwPullRequest{}); err != nil {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.SchemaHash{}); err != nil {
+	if err := db.DB.AutoMigrate(&models.SchemaHash{}); err != nil {
 		return err
 	}
 
@@ -146,15 +146,15 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
 	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
 	// change this happens without thinking to update sippy.
-	if err := populateTestSuitesInDB(d.DB); err != nil {
+	if err := populateTestSuitesInDB(db.DB); err != nil {
 		return err
 	}
 
-	if err := syncPostgresMaterializedViews(d.DB, reportEnd); err != nil {
+	if err := syncPostgresMaterializedViews(db.DB, reportEnd); err != nil {
 		return err
 	}
 
-	if err := syncPostgresFunctions(d.DB); err != nil {
+	if err := syncPostgresFunctions(db.DB); err != nil {
 		return err
 	}
 
@@ -169,7 +169,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
 // the views appear to be empty.
-func (dbc *DB) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
+func (db *DB) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-matviews")
@@ -180,7 +180,7 @@ func (dbc *DB) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	log.Info("refreshing materialized views")
 	allStart := time.Now()
 
-	if dbc == nil {
+	if db == nil {
 		log.Info("skipping materialized view refresh as server has no db connection provided")
 		return
 	}
@@ -192,7 +192,7 @@ func (dbc *DB) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	// allow concurrent workers for refreshing matviews in parallel
 	for t := 0; t < 3; t++ {
 		wg.Add(1)
-		go dbc.refreshMatview(refreshMatviewOnlyIfEmpty, ch, &wg)
+		go db.refreshMatview(refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 
 	for _, pmv := range PostgresMatViews {
@@ -216,7 +216,7 @@ func (dbc *DB) refreshMaterializedViews(refreshMatviewOnlyIfEmpty bool) {
 	}
 }
 
-func (dbc *DB) refreshMatview(refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+func (db *DB) refreshMatview(refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
 	for matView := range ch {
 		start := time.Now()
 		tmpLog := log.WithField("matview", matView)
@@ -224,7 +224,7 @@ func (dbc *DB) refreshMatview(refreshMatviewOnlyIfEmpty bool, ch chan string, wg
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if res := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
+			if res := db.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
 				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
@@ -236,11 +236,11 @@ func (dbc *DB) refreshMatview(refreshMatviewOnlyIfEmpty bool, ch chan string, wg
 		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
 		// refresh which locks reads.
 		tmpLog.Info("refreshing materialized view")
-		if res := dbc.DB.Exec(
+		if res := db.DB.Exec(
 			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matView)); res.Error != nil {
 			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
 
-			if res := dbc.DB.Exec(
+			if res := db.DB.Exec(
 				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", matView)); res.Error != nil {
 				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
 			} else {
@@ -258,9 +258,9 @@ func (dbc *DB) refreshMatview(refreshMatviewOnlyIfEmpty bool, ch chan string, wg
 	wg.Done()
 }
 
-func (dbc *DB) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
+func (db *DB) RefreshData(refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
-	dbc.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
+	db.refreshMaterializedViews(refreshMatviewsOnlyIfEmpty)
 	log.Infof("Refresh complete")
 }
 

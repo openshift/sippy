@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"io/fs"
-	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -27,13 +26,13 @@ func Execute(frontend, staticAssets fs.FS) {
 	// Set log level
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
-		log.WithError(err).Fatal("Cannot parse log-level")
+		log.WithError(err).Fatal("cannot parse log-level")
 	}
 	log.SetLevel(level)
 
 	err = rootCmd.Execute()
 	if err != nil {
-		os.Exit(1)
+		log.WithError(err).Fatal("could not execute root command")
 	}
 }
 

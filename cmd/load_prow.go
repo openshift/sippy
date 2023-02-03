@@ -61,7 +61,7 @@ func init() {
 				f.GoogleCloudCredentialFlags.OAuthClientCredentialFile,
 			)
 			if err != nil {
-				cmd.Usage()
+				cmd.Usage() //nolint:errcheck
 				log.WithError(err).Fatal("CRITICAL error getting GCS client which prevents importing prow jobs")
 			}
 
@@ -70,7 +70,7 @@ func init() {
 				bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
 					option.WithCredentialsFile(f.GoogleCloudCredentialFlags.ServiceAccountCredentialFile))
 				if err != nil {
-					cmd.Usage()
+					cmd.Usage() //nolint:errcheck
 					log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents importing prow jobs")
 				}
 			}
@@ -94,8 +94,8 @@ func init() {
 			allErrs = append(allErrs, errs...)
 			if len(allErrs) > 0 {
 				for _, err := range allErrs {
-					log.Error("error loading jobs: %+v\n")
-					log.Error("%+v", err)
+					log.Error("error loading jobs\n")
+					log.Error(err)
 				}
 				os.Exit(1)
 			}

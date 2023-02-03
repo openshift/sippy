@@ -64,7 +64,7 @@ func init() {
 	}
 
 	f.BindFlags(cmd.Flags())
-	cmd.MarkFlagRequired("releases")
-	cmd.MarkFlagRequired("architectures")
+	cmd.MarkFlagRequired("releases")      //nolint:errcheck
+	cmd.MarkFlagRequired("architectures") //nolint:errcheck
 	loadCmd.AddCommand(cmd)
 }

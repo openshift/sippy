@@ -12,9 +12,15 @@ type ModeFlags struct {
 	Mode string
 }
 
+const (
+	ModeOpenshift  = "ocp"
+	ModeKubernetes = "kube"
+	ModeNone       = "none"
+)
+
 func NewModeFlags() *ModeFlags {
 	return &ModeFlags{
-		Mode: "ocp",
+		Mode: ModeOpenshift,
 	}
 }
 
@@ -23,7 +29,7 @@ func (f *ModeFlags) BindFlags(fs *pflag.FlagSet) {
 }
 
 func (f *ModeFlags) GetServerMode() sippyserver.Mode {
-	if f.Mode == "ocp" {
+	if f.Mode == ModeOpenshift {
 		return sippyserver.ModeOpenShift
 	}
 
@@ -32,11 +38,11 @@ func (f *ModeFlags) GetServerMode() sippyserver.Mode {
 
 func (f *ModeFlags) GetVariantManager() testidentification.VariantManager {
 	switch f.Mode {
-	case "ocp":
+	case ModeOpenshift:
 		return testidentification.NewOpenshiftVariantManager()
-	case "kube":
+	case ModeKubernetes:
 		return testidentification.NewKubeVariantManager()
-	case "none":
+	case ModeNone:
 		return testidentification.NewEmptyVariantManager()
 	default:
 		panic("only ocp, kube, or none is allowed")
@@ -44,7 +50,7 @@ func (f *ModeFlags) GetVariantManager() testidentification.VariantManager {
 }
 
 func (f *ModeFlags) GetSyntheticTestManager() synthetictests.SyntheticTestManager {
-	if f.Mode == "ocp" {
+	if f.Mode == ModeOpenshift {
 		return synthetictests.NewOpenshiftSyntheticTestManager()
 	}
 

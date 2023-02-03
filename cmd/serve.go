@@ -35,12 +35,12 @@ func NewServerFlags() *ServerFlags {
 	}
 }
 
-func (f *ServerFlags) BindFlags(fs *pflag.FlagSet) {
-	f.DBFlags.BindFlags(fs)
-	f.ModeFlags.BindFlags(fs)
-	f.TestGridFlags.BindFlags(fs)
-	fs.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
-	fs.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
+func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
+	f.DBFlags.BindFlags(flagSet)
+	f.ModeFlags.BindFlags(flagSet)
+	f.TestGridFlags.BindFlags(flagSet)
+	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
+	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
 
 func init() {
