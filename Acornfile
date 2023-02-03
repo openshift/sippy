@@ -1,0 +1,25 @@
+containers: {
+    "sippy": {
+        build: {
+            context: "."
+            dockerfile: "./Dockerfile"
+        }
+        entrypoint: ["/bin/sippy", "--server", "--release", "4.12", "--db-only-mode", "--mode", "ocp", "--db-log-level", "info", "--log-level", "debug", "--init-database"]
+        ports: expose: "8080/tcp"
+        env: {"SIPPY_DATABASE_DSN": "postgresql://postgres:password@postgres:5432/postgres"}
+    }
+    "postgres": {
+        image: "quay.io/enterprisedb/postgresql"
+        ports: expose: "5432/tcp"
+        env: {"POSTGRES_PASSWORD": "secret://postgres/password"}
+    }
+}
+
+secrets: {
+    "postgres": {
+        type: "basic"
+        data: {
+            password: "password"
+        }
+    }
+}
