@@ -29,6 +29,14 @@ func Execute(frontend, staticAssets fs.FS) {
 		log.WithError(err).Fatal("cannot parse log-level")
 	}
 	log.SetLevel(level)
+	log.Debug("debug logging enabled")
+
+	// Add some millisecond precision to log timestamps, useful for debugging performance.
+	formatter := new(log.TextFormatter)
+	formatter.TimestampFormat = "2006-01-02T15:04:05.999Z07:00"
+	formatter.FullTimestamp = true
+	formatter.DisableColors = false
+	log.SetFormatter(formatter)
 
 	err = rootCmd.Execute()
 	if err != nil {
