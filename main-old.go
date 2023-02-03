@@ -466,7 +466,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 		elapsed := time.Since(start)
 		log.WithField("elapsed", elapsed).Info("database load complete")
 
-		sippyserver.RefreshData(dbc, pinnedTime, false)
+		dbc.RefreshData(false)
 
 		if len(allErrs) > 0 {
 			log.Warningf("%d errors were encountered while loading database:", len(allErrs))

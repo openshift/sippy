@@ -8,12 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/push"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -75,18 +70,6 @@ func NewServer(
 	return server
 }
 
-var matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
-	Name:    "sippy_matview_refresh_millis",
-	Help:    "Milliseconds to refresh our postgresql materialized views",
-	Buckets: []float64{10, 100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
-}, []string{"view"})
-
-var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_all_matviews_refresh_millis",
-	Help:    "Milliseconds to refresh our postgresql materialized views",
-	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
-})
-
 type Server struct {
 	mode                 Mode
 	listenAddr           string
@@ -114,110 +97,6 @@ type TestGridDashboardCoordinates struct {
 
 func (s *Server) GetReportEnd() time.Time {
 	return util.GetReportEnd(s.pinnedDateTime)
-}
-
-// refreshMaterializedViews updates the postgresql materialized views backing our reports. It is called by the handler
-// for the /refresh API endpoint, which is called by the sidecar script which loads the new data from testgrid into the
-// main postgresql tables.
-//
-// refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
-// the views appear to be empty.
-func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
-	var promPusher *push.Pusher
-	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
-		promPusher = push.New(pushgateway, "sippy-matviews")
-		promPusher.Collector(matViewRefreshMetric)
-		promPusher.Collector(allMatViewsRefreshMetric)
-	}
-
-	log.Info("refreshing materialized views")
-	allStart := time.Now()
-
-	if dbc == nil {
-		log.Info("skipping materialized view refresh as server has no db connection provided")
-		return
-	}
-	// create a channel for work "tasks"
-	ch := make(chan string)
-
-	wg := sync.WaitGroup{}
-
-	// allow concurrent workers for refreshing matviews in parallel
-	for t := 0; t < 3; t++ {
-		wg.Add(1)
-		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
-	}
-
-	for _, pmv := range db.PostgresMatViews {
-		ch <- pmv.Name
-	}
-
-	close(ch)
-	wg.Wait()
-
-	allElapsed := time.Since(allStart)
-	log.WithField("elapsed", allElapsed).Info("refreshed all materialized views")
-	allMatViewsRefreshMetric.Observe(float64(allElapsed.Milliseconds()))
-
-	if promPusher != nil {
-		log.Info("pushing metrics to prometheus gateway")
-		if err := promPusher.Add(); err != nil {
-			log.WithError(err).Error("could not push to prometheus pushgateway")
-		} else {
-			log.Info("successfully pushed metrics to prometheus gateway")
-		}
-	}
-}
-
-func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
-
-	for matView := range ch {
-		start := time.Now()
-		tmpLog := log.WithField("matview", matView)
-
-		// If requested, we only refresh the materialized view if it has no rows
-		if refreshMatviewOnlyIfEmpty {
-			var count int
-			if res := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
-				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
-			} else if count > 0 {
-				tmpLog.Info("skipping matview refresh as it appears to be populated")
-				continue
-			}
-		}
-
-		// Try to refresh concurrently, if we get an error that likely means the view has never been
-		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
-		// refresh which locks reads.
-		tmpLog.Info("refreshing materialized view")
-		if res := dbc.DB.Exec(
-			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matView)); res.Error != nil {
-			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
-
-			if res := dbc.DB.Exec(
-				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", matView)); res.Error != nil {
-				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
-			} else {
-				elapsed := time.Since(start)
-				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
-				matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
-			}
-
-		} else {
-			elapsed := time.Since(start)
-			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
-			matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
-		}
-	}
-	wg.Done()
-}
-
-func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool) {
-	log.Infof("Refreshing data")
-
-	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
-
-	log.Infof("Refresh complete")
 }
 
 func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
