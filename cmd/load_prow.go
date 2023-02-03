@@ -16,18 +16,16 @@ import (
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/prowloader/github"
-	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 type LoadProwFlags struct {
 	DBFlags                    *flags.PostgresDatabaseFlags
 	GoogleCloudCredentialFlags *flags.GoogleCloudCredentialFlags
 	ConfigFlags                *flags.ConfigFlags
+	ModeFlags                  *flags.ModeFlags
 	LoadFromBigQuery           bool
 	LoadGitHub                 bool
 	Releases                   []string
-	Mode                       string
 }
 
 func NewLoadProwFlags() *LoadProwFlags {
@@ -42,31 +40,10 @@ func (f *LoadProwFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
 	f.GoogleCloudCredentialFlags.BindFlags(fs)
 	f.ConfigFlags.BindFlags(fs)
+	f.ModeFlags.BindFlags(fs)
 	fs.BoolVar(&f.LoadFromBigQuery, "load-openshift-ci-bigquery", f.LoadFromBigQuery, "Load from OpenShift CI BigQuery tables instead of directly from Prow")
 	fs.BoolVar(&f.LoadGitHub, "load-github", f.LoadGitHub, "Fetch PR state date from GitHub")
 	fs.StringArrayVar(&f.Releases, "releases", f.Releases, "Which releases to load from")
-	fs.StringVar(&f.Mode, "mode", f.Mode, "Mode to use: {ocp,kube,none}")
-}
-
-func (f *LoadProwFlags) GetVariantManager() testidentification.VariantManager {
-	switch f.Mode {
-	case "ocp":
-		return testidentification.NewOpenshiftVariantManager()
-	case "kube":
-		return testidentification.NewKubeVariantManager()
-	case "none":
-		return testidentification.NewEmptyVariantManager()
-	default:
-		panic("only ocp, kube, or none is allowed")
-	}
-}
-
-func (f *LoadProwFlags) GetSyntheticTestManager() synthetictests.SyntheticTestManager {
-	if f.Mode == "ocp" {
-		return synthetictests.NewOpenshiftSyntheticTestManager()
-	}
-
-	return synthetictests.NewEmptySyntheticTestManager()
 }
 
 func init() {
@@ -112,8 +89,8 @@ func init() {
 				bigQueryClient,
 				"origin-ci-test",
 				githubClient,
-				f.GetVariantManager(),
-				f.GetSyntheticTestManager(),
+				f.ModeFlags.GetVariantManager(),
+				f.ModeFlags.GetSyntheticTestManager(),
 				f.Releases,
 				f.ConfigFlags.LoadConfig())
 

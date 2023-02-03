@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io/fs"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -15,7 +16,12 @@ including name, suite, or NURP+ variants (network, upgrade, release,
 platform, etc).`,
 }
 
-func Execute() {
+var frontendFS, staticFS fs.FS
+
+func Execute(frontend, staticAssets fs.FS) {
+	frontendFS = frontend
+	staticFS = staticAssets
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
