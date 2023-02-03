@@ -92,6 +92,10 @@ func init() {
 
 			errs := prowLoader.LoadProwJobsToDB()
 			allErrs = append(allErrs, errs...)
+
+			// Refresh matviews if they're empty
+			dbc.RefreshData(true)
+
 			if len(allErrs) > 0 {
 				for _, err := range allErrs {
 					log.Error("error loading jobs\n")
