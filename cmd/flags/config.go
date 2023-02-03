@@ -10,7 +10,8 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 )
 
-// ConfigFlags contain auth information for Google cloud-related services.
+// ConfigFlags holds configuration information for Sippy such as the location
+// of its configuration file.
 type ConfigFlags struct {
 	Path string
 }
