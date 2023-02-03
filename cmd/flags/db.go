@@ -15,30 +15,37 @@ import (
 // Gorm Log Level Custom Flag Type
 type logLevel logger.LogLevel
 
+const (
+	LogLevelInfo   = "info"
+	LogLevelWarn   = "warn"
+	LogLevelError  = "error"
+	LogLevelSilent = "silent"
+)
+
 func (l *logLevel) String() string {
 	switch *l {
 	case logLevel(logger.Info):
-		return "info"
+		return LogLevelInfo
 	case logLevel(logger.Warn):
-		return "warn"
+		return LogLevelWarn
 	case logLevel(logger.Error):
-		return "error"
+		return LogLevelError
 	case logLevel(logger.Silent):
-		return "silent"
+		return LogLevelSilent
 	}
 
-	return "info"
+	return LogLevelInfo
 }
 
 func (l *logLevel) Set(v string) error {
 	switch v {
-	case "info":
+	case LogLevelInfo:
 		*l = logLevel(logger.Info)
-	case "warn":
+	case LogLevelWarn:
 		*l = logLevel(logger.Warn)
-	case "error":
+	case LogLevelError:
 		*l = logLevel(logger.Error)
-	case "silent":
+	case LogLevelSilent:
 		*l = logLevel(logger.Silent)
 	default:
 		return fmt.Errorf("unknown gorm log level: %s", v)

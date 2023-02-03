@@ -56,7 +56,7 @@ func init() {
 	}
 
 	f.BindFlags(cmd.Flags())
-	cmd.MarkFlagRequired("name")
-	cmd.MarkFlagRequired("release")
+	cmd.MarkFlagRequired("name")    //nolint:errcheck
+	cmd.MarkFlagRequired("release") //nolint:errcheck
 	rootCmd.AddCommand(cmd)
 }
