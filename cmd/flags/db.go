@@ -1,4 +1,4 @@
-package cmd
+package flags
 
 import (
 	"fmt"
@@ -6,21 +6,21 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	gormlogger "gorm.io/gorm/logger"
+	"gorm.io/gorm/logger"
 )
 
 // Gorm Log Level Custom Flag Type
-type logLevel gormlogger.LogLevel
+type logLevel logger.LogLevel
 
 func (l *logLevel) String() string {
 	switch *l {
-	case logLevel(gormlogger.Info):
+	case logLevel(logger.Info):
 		return "info"
-	case logLevel(gormlogger.Warn):
+	case logLevel(logger.Warn):
 		return "warn"
-	case logLevel(gormlogger.Error):
+	case logLevel(logger.Error):
 		return "error"
-	case logLevel(gormlogger.Silent):
+	case logLevel(logger.Silent):
 		return "silent"
 	}
 
@@ -30,13 +30,13 @@ func (l *logLevel) String() string {
 func (l *logLevel) Set(v string) error {
 	switch v {
 	case "info":
-		*l = logLevel(gormlogger.Info)
+		*l = logLevel(logger.Info)
 	case "warn":
-		*l = logLevel(gormlogger.Warn)
+		*l = logLevel(logger.Warn)
 	case "error":
-		*l = logLevel(gormlogger.Error)
+		*l = logLevel(logger.Error)
 	case "silent":
-		*l = logLevel(gormlogger.Silent)
+		*l = logLevel(logger.Silent)
 	default:
 		return fmt.Errorf("unknown gorm log level: %s", v)
 	}
@@ -69,6 +69,7 @@ func (p *pinnedTime) Type() string {
 	return "pinnedTime"
 }
 
+// PostgresDatabaseFlags contains the set of flags needed to connect to a postgres database.
 type PostgresDatabaseFlags struct {
 	LogLevel   logLevel
 	PinnedTime pinnedTime
@@ -82,7 +83,7 @@ func NewPostgresDatabaseFlags() *PostgresDatabaseFlags {
 	}
 
 	return &PostgresDatabaseFlags{
-		LogLevel:   logLevel(gormlogger.Info),
+		LogLevel:   logLevel(logger.Info),
 		DSN:        dsn,
 		PinnedTime: pinnedTime(time.Now()),
 	}

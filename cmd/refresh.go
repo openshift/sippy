@@ -8,17 +8,18 @@ import (
 	"github.com/spf13/pflag"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/openshift/sippy/cmd/flags"
 	"github.com/openshift/sippy/pkg/db"
 )
 
 type RefreshFlags struct {
-	DBFlags            *PostgresDatabaseFlags
+	DBFlags            *flags.PostgresDatabaseFlags
 	RefreshOnlyIfEmpty bool
 }
 
 func NewRefreshFlags() *RefreshFlags {
 	return &RefreshFlags{
-		DBFlags: NewPostgresDatabaseFlags(),
+		DBFlags: flags.NewPostgresDatabaseFlags(),
 	}
 }
 

@@ -8,12 +8,13 @@ import (
 	"github.com/spf13/pflag"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/openshift/sippy/cmd/flags"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/snapshot"
 )
 
 type SnapshotFlags struct {
-	DBFlags  *PostgresDatabaseFlags
+	DBFlags  *flags.PostgresDatabaseFlags
 	SippyURL string
 	Name     string
 	Release  string
@@ -21,7 +22,7 @@ type SnapshotFlags struct {
 
 func NewSnapshotFlags() *SnapshotFlags {
 	return &SnapshotFlags{
-		DBFlags:  NewPostgresDatabaseFlags(),
+		DBFlags:  flags.NewPostgresDatabaseFlags(),
 		SippyURL: "https://sippy.dptools.openshift.org",
 	}
 }

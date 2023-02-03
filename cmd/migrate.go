@@ -8,11 +8,12 @@ import (
 	"github.com/spf13/cobra"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/openshift/sippy/cmd/flags"
 	"github.com/openshift/sippy/pkg/db"
 )
 
 func init() {
-	f := NewPostgresDatabaseFlags()
+	f := flags.NewPostgresDatabaseFlags()
 
 	cmd := &cobra.Command{
 		Use:   "migrate",
