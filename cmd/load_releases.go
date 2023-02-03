@@ -6,10 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/cmd/flags"
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/releasesync"
 )
 
@@ -38,12 +36,7 @@ func init() {
 		Use:   "releases",
 		Short: "Load releases from the OpenShift release controllers",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbc, err := db.New(f.DBFlags.DSN, gormlogger.LogLevel(f.DBFlags.LogLevel))
-			if err != nil {
-				fmt.Printf("could not connect to db: %+v", err)
-				os.Exit(1)
-			}
-
+			dbc := f.DBFlags.GetDBClient()
 			releaseStreams := make([]string, 0)
 			for _, release := range f.Releases {
 				for _, stream := range []string{"nightly", "ci"} {

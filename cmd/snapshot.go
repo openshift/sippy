@@ -6,10 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/cmd/flags"
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/snapshot"
 )
 
@@ -41,11 +39,7 @@ func init() {
 		Use:   "snapshot",
 		Short: "Create snapshots using current sippy overview API json and store in the database",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbc, err := db.New(f.DBFlags.DSN, gormlogger.LogLevel(f.DBFlags.LogLevel))
-			if err != nil {
-				fmt.Printf("could not connect to db: %+v", err)
-				os.Exit(1)
-			}
+			dbc := f.DBFlags.GetDBClient()
 
 			snapshotter := &snapshot.Snapshotter{
 				DBC:      dbc,

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -17,17 +18,26 @@ platform, etc).`,
 }
 
 var frontendFS, staticFS fs.FS
+var logLevel string
 
 func Execute(frontend, staticAssets fs.FS) {
 	frontendFS = frontend
 	staticFS = staticAssets
 
-	err := rootCmd.Execute()
+	// Set log level
+	level, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.WithError(err).Fatal("Cannot parse log-level")
+	}
+	log.SetLevel(level)
+
+	err = rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
 func init() {
-
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
+		"Log level (trace,debug,info,warn,error) (default info)")
 }

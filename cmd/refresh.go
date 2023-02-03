@@ -1,15 +1,10 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/cmd/flags"
-	"github.com/openshift/sippy/pkg/db"
 )
 
 type RefreshFlags struct {
@@ -35,12 +30,7 @@ func init() {
 		Use:   "refresh",
 		Short: "Refresh data in database such as materialized views",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbc, err := db.New(f.DBFlags.DSN, gormlogger.LogLevel(f.DBFlags.LogLevel))
-			if err != nil {
-				fmt.Printf("could not connect to db: %+v", err)
-				os.Exit(1)
-			}
-
+			dbc := f.DBFlags.GetDBClient()
 			dbc.RefreshData(f.RefreshOnlyIfEmpty)
 		},
 	}

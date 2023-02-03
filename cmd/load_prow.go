@@ -9,10 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/api/option"
-	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/cmd/flags"
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/prowloader/github"
@@ -54,12 +52,9 @@ func init() {
 		Use:   "prow",
 		Short: "Load job runs and test data from prow",
 		Run: func(cmd *cobra.Command, args []string) {
-			dbc, err := db.New(f.DBFlags.DSN, gormlogger.LogLevel(f.DBFlags.LogLevel))
-			if err != nil {
-				log.WithError(err).Fatal("could not connect to db")
-			}
-
 			var allErrs []error
+
+			dbc := f.DBFlags.GetDBClient()
 
 			gcsClient, err := gcs.NewGCSClient(context.TODO(),
 				f.GoogleCloudCredentialFlags.ServiceAccountCredentialFile,

@@ -5,8 +5,11 @@ import (
 	"os"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"gorm.io/gorm/logger"
+
+	"github.com/openshift/sippy/pkg/db"
 )
 
 // Gorm Log Level Custom Flag Type
@@ -93,4 +96,13 @@ func (f *PostgresDatabaseFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "database-log-level", "gorm database log level")
 	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres")
 	fs.Var(&f.PinnedTime, "pinned-date-time", "optional value to use in a historical context with a fixed date/time")
+}
+
+func (f *PostgresDatabaseFlags) GetDBClient() *db.DB {
+	dbc, err := db.New(f.DSN, logger.LogLevel(f.LogLevel))
+	if err != nil {
+		log.WithError(err).Fatal("could not connect to db")
+	}
+
+	return dbc
 }
