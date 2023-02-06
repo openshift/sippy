@@ -18,27 +18,24 @@ import (
 )
 
 type ServerFlags struct {
-	DBFlags       *flags.PostgresDatabaseFlags
-	ModeFlags     *flags.ModeFlags
-	TestGridFlags *flags.TestGridFlags
-	ListenAddr    string
-	MetricsAddr   string
+	DBFlags     *flags.PostgresDatabaseFlags
+	ModeFlags   *flags.ModeFlags
+	ListenAddr  string
+	MetricsAddr string
 }
 
 func NewServerFlags() *ServerFlags {
 	return &ServerFlags{
-		DBFlags:       flags.NewPostgresDatabaseFlags(),
-		ModeFlags:     flags.NewModeFlags(),
-		TestGridFlags: flags.NewTestGridFlags(),
-		ListenAddr:    ":8080",
-		MetricsAddr:   ":2112",
+		DBFlags:     flags.NewPostgresDatabaseFlags(),
+		ModeFlags:   flags.NewModeFlags(),
+		ListenAddr:  ":8080",
+		MetricsAddr: ":2112",
 	}
 }
 
 func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.DBFlags.BindFlags(flagSet)
 	f.ModeFlags.BindFlags(flagSet)
-	f.TestGridFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
@@ -68,10 +65,6 @@ func init() {
 
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
-				f.TestGridFlags.TestGridLoadingConfig(),
-				f.TestGridFlags.RawJobResultsAnalysisConfig(),
-				f.TestGridFlags.DisplayDataConfig(),
-				f.TestGridFlags.TestGridDashboardCoordinates(),
 				f.ListenAddr,
 				f.ModeFlags.GetSyntheticTestManager(),
 				f.ModeFlags.GetVariantManager(),

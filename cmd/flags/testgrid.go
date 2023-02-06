@@ -32,17 +32,17 @@ func NewTestGridFlags() *TestGridFlags {
 }
 
 func (f *TestGridFlags) BindFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&f.JobFilter, "testgrid-job-filter", f.JobFilter, "Only analyze jobs that match this regex")
-	fs.StringVar(&f.LocalData, "testgrid-local-data", f.LocalData, "Path to testgrid data from local disk")
-	fs.IntVar(&f.StartDay, "testgrid-start-day", f.StartDay,
+	fs.StringVar(&f.JobFilter, "job-filter", f.JobFilter, "Only analyze jobs that match this regex")
+	fs.StringVar(&f.LocalData, "local-data", f.LocalData, "Path to testgrid data from local disk")
+	fs.IntVar(&f.StartDay, "start-day", f.StartDay,
 		"Most recent day to start processing testgrid results for (moving backward in time). (0 will start from now (default), -1 will start from whatever the most recent test results are) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
-	fs.IntVar(&f.NumDays, "testgrid-num-days", f.NumDays,
+	fs.IntVar(&f.NumDays, "num-days", f.NumDays,
 		"Number of days prior to --start-day to analyze testgrid results back to. (default 14 days) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
-	fs.Float64Var(&f.TestSuccessThreshold, "testgrid-test-success-threshold", f.TestSuccessThreshold,
+	fs.Float64Var(&f.TestSuccessThreshold, "test-success-threshold", f.TestSuccessThreshold,
 		"Filter results for tests that are more than this percent successful")
-	fs.IntVar(&f.MinTestRuns, "testgrid-min-test-runs", f.MinTestRuns, "Ignore tests with less than this number of runs")
-	fs.IntVar(&f.FailureClusterThreshold, "testgrid-failure-cluster-threshold", f.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
-	fs.StringArrayVar(&f.Dashboards, "testgrid-dashboard", f.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
+	fs.IntVar(&f.MinTestRuns, "min-test-runs", f.MinTestRuns, "Ignore tests with less than this number of runs")
+	fs.IntVar(&f.FailureClusterThreshold, "failure-cluster-threshold", f.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
+	fs.StringArrayVar(&f.Dashboards, "dashboard", f.Dashboards, "<display-name>=<comma-separated-list-of-dashboards>=<openshift-version>")
 }
 
 func (f *TestGridFlags) TestGridLoadingConfig() sippyserver.TestGridLoadingConfig {

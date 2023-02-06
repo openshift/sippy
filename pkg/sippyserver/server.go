@@ -36,10 +36,6 @@ const (
 
 func NewServer(
 	mode Mode,
-	testGridLoadingConfig TestGridLoadingConfig,
-	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
-	displayDataOptions DisplayDataConfig,
-	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
@@ -52,32 +48,22 @@ func NewServer(
 	server := &Server{
 		mode:                 mode,
 		listenAddr:           listenAddr,
-		dashboardCoordinates: dashboardCoordinates,
-
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
-		testReportGeneratorConfig: TestReportGeneratorConfig{
-			TestGridLoadingConfig:       testGridLoadingConfig,
-			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
-			DisplayDataConfig:           displayDataOptions,
-		},
-		sippyNG:        sippyNG,
-		static:         static,
-		db:             dbClient,
-		pinnedDateTime: pinnedDateTime,
+		sippyNG:              sippyNG,
+		static:               static,
+		db:                   dbClient,
+		pinnedDateTime:       pinnedDateTime,
 	}
 
 	return server
 }
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	dashboardCoordinates []TestGridDashboardCoordinates
-
+	mode                       Mode
+	listenAddr                 string
 	syntheticTestManager       synthetictests.SyntheticTestManager
 	variantManager             testidentification.VariantManager
-	testReportGeneratorConfig  TestReportGeneratorConfig
 	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
 	sippyNG                    fs.FS
 	static                     fs.FS
@@ -97,23 +83,6 @@ type TestGridDashboardCoordinates struct {
 
 func (s *Server) GetReportEnd() time.Time {
 	return util.GetReportEnd(s.pinnedDateTime)
-}
-
-func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
-	for _, dashboard := range s.dashboardCoordinates {
-		if dashboard.ReportName == reportName {
-			return dashboard, true
-		}
-	}
-	return TestGridDashboardCoordinates{}, false
-}
-
-func (s *Server) reportNames() []string {
-	ret := []string{}
-	for _, dashboard := range s.dashboardCoordinates {
-		ret = append(ret, dashboard.ReportName)
-	}
-	return ret
 }
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
