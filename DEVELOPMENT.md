@@ -161,6 +161,27 @@ See [Sippy front-end docs](sippy-ng/README.md]) for more details about developin
 cd sippy-ng && npm start
 ```
 
+## Run Sippy comment processing
+
+If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.
+See [Populating Data](DEVELOPMENT.md) in this document.  By default, comment processing dry run is set to true to prevent
+unintended commenting on PRs, the code will run the full path up until the point PRs are modified due to commenting.
+**Do Not** enable commenting unless you understand the PRs that will be affected and intend for that to happen.
+
+Additionally, you will need a GITHUB_TOKEN environment variable to be configured both when loading the data and running 
+the comment processing as described in [From GitHub](DEVELOPMENT.md) also within this document
+
+```
+./sippy --init-database \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json \
+  --mode=ocp \
+  --config ./config/openshift.yaml \
+  --daemon-server \
+  --comment-processing \
+  --include-repo-commenting=origin
+```
+
 ## Run E2E Tests
 
 Sippy has a currently basic/minimal set of e2e tests which run a temporary postgres container, load the database with an

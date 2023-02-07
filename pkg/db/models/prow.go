@@ -134,7 +134,7 @@ type TestAnalysisRow struct {
 
 // Bug represents a Jira bug.
 type Bug struct {
-	ID              uint           `json:"id" gorm:"primarykey"`
+	ID              uint           `json:"id" gorm:"primaryKey"`
 	Key             string         `json:"key" gorm:"index"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`

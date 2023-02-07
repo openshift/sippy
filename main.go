@@ -23,6 +23,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
@@ -45,8 +46,9 @@ var sippyNG embed.FS
 var static embed.FS
 
 const (
-	defaultLogLevel   = "info"
-	defaultDBLogLevel = "warn"
+	defaultLogLevel                = "info"
+	defaultDBLogLevel              = "warn"
+	commentProcessingDryRunDefault = true
 )
 
 type Options struct {
@@ -85,6 +87,12 @@ type Options struct {
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
 	PinnedDateTime                     string
+
+	DaemonServer            bool
+	CommentProcessing       bool
+	CommentProcessingDryRun bool
+	ExcludeReposCommenting  []string
+	IncludeReposCommenting  []string
 
 	CreateSnapshot  bool
 	SippyURL        string
@@ -162,6 +170,13 @@ func main() {
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
 
 	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use in a historical context with a fixed date / time value specified in RFC3339 format - 2006-01-02T15:04:05+00:00")
+
+	flags.BoolVar(&opt.DaemonServer, "daemon-server", opt.DaemonServer, "Run in daemon server mode (background work processing)")
+	// which ones do we include, this is likely temporary as we roll this out and may go away
+	flags.StringArrayVar(&opt.IncludeReposCommenting, "include-repo-commenting", opt.IncludeReposCommenting, "Which repos do we include for pr commenting (one repo per arg instance  org/repo or just repo if openshift org)")
+	flags.StringArrayVar(&opt.ExcludeReposCommenting, "exclude-repo-commenting", opt.ExcludeReposCommenting, "Which repos do we skip for pr commenting (one repo per arg instance  org/repo or just repo if openshift org)")
+	flags.BoolVar(&opt.CommentProcessing, "comment-processing", opt.CommentProcessing, "Enable comment processing for github repos")
+	flags.BoolVar(&opt.CommentProcessingDryRun, "comment-processing-dry-run", commentProcessingDryRunDefault, "Enable github comment interaction for comment processing, disabled by default")
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
@@ -251,8 +266,8 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
-	if (o.LoadDatabase || o.Server || o.CreateSnapshot) && o.DSN == "" {
-		return fmt.Errorf("must specify --database-dsn with --load-database, --server, and --create-snapshot")
+	if (o.LoadDatabase || o.Server || o.CreateSnapshot || o.CommentProcessing) && o.DSN == "" {
+		return fmt.Errorf("must specify --database-dsn with --load-database, --server, --comment-processing, and --create-snapshot")
 	}
 
 	if o.LoadGitHub && !o.LoadProw {
@@ -265,6 +280,32 @@ func (o *Options) Validate() error {
 
 	if o.LoadProw && o.Config == "" {
 		return fmt.Errorf("must specify --config with --load-prow")
+	}
+
+	if o.Server && o.DaemonServer {
+		return fmt.Errorf("cannot specify --server with --daemon-server")
+	}
+
+	if o.DaemonServer && o.LoadDatabase {
+		return fmt.Errorf("cannot specify --daemon-server with --load-database")
+	}
+
+	if o.DaemonServer && o.FetchData != "" {
+		return fmt.Errorf("cannot specify --daemon-server with --fetch-data")
+	}
+
+	if !o.DaemonServer && o.CommentProcessing {
+		return fmt.Errorf("cannot specify --comment-processing without --daemon-server")
+	}
+
+	// thought here is we may add other daemon process support and
+	// not have a direct dependency on comment-processing
+	if o.DaemonServer && !o.CommentProcessing {
+		return fmt.Errorf("cannot specify --daemon-server without specifying a daemon-process as well (e.g. --comment-processing)")
+	}
+
+	if o.CommentProcessing && o.Config == "" {
+		return fmt.Errorf("must specify --config with --comment-processing")
 	}
 
 	if o.CreateSnapshot {
@@ -479,11 +520,67 @@ func (o *Options) Run() error { //nolint:gocyclo
 		return nil
 	}
 
+	// if the daemon server is enabled
+	// then the regular server is not
+	// so return nil when done
+	if o.DaemonServer {
+		processes := make([]sippyserver.DaemonProcess, 0)
+
+		if o.CommentProcessing {
+			dbc, err := db.New(o.DSN, gormLogLevel)
+			if err != nil {
+				return err
+			}
+
+			githubClient := github.New(context.TODO())
+			ghCommenter, err := commenter.NewGitHubCommenter(githubClient, dbc, o.ExcludeReposCommenting, o.IncludeReposCommenting)
+
+			if err != nil {
+				log.WithError(err).Error("CRITICAL error initializing GitHub commenter which prevents PR commenting")
+				return nil
+			}
+
+			gcsClient, err := gcs.NewGCSClient(context.TODO(),
+				o.GoogleServiceAccountCredentialFile,
+				o.GoogleOAuthClientCredentialFile,
+			)
+			if err != nil {
+				log.WithError(err).Error("CRITICAL error getting GCS client which prevents PR commenting")
+				return nil
+			}
+
+			// we only process one comment every 5 seconds,
+			// 4 potential GitHub calls per comment gives us a safe buffer
+			// get comment data, get existing comments, possible delete existing, and adding the comment
+			// could  lower to 3 seconds if we need, most writes likely won't have to delete
+			processes = append(processes, sippyserver.NewWorkProcessor(dbc, gcsClient.Bucket("origin-ci-test"), 10, 5*time.Minute, 5*time.Second, ghCommenter, o.CommentProcessingDryRun))
+
+		}
+		o.runDaemonServer(processes)
+		return nil
+	}
+
 	if o.Server {
 		return o.runServerMode(pinnedTime, gormLogLevel)
 	}
 
 	return nil
+}
+
+func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
+
+	daemonServer := sippyserver.NewDaemonServer(processes)
+
+	// Serve our metrics endpoint for prometheus to scrape
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(o.MetricsAddr, nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	daemonServer.Serve()
 }
 
 func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
@@ -516,6 +613,13 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		githubClient = github.New(context.TODO())
 	}
 
+	ghCommenter, err := commenter.NewGitHubCommenter(githubClient, dbc, o.ExcludeReposCommenting, o.IncludeReposCommenting)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error initializing GitHub commenter which prevents importing prow jobs")
+		allErrs = append(allErrs, err)
+		return allErrs
+	}
+
 	prowLoader := prowloader.New(dbc,
 		gcsClient,
 		bigQueryClient,
@@ -524,7 +628,8 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		o.getVariantManager(),
 		o.getSyntheticTestManager(),
 		o.OpenshiftReleases,
-		&sippyConfig)
+		&sippyConfig,
+		ghCommenter)
 	errs := prowLoader.LoadProwJobsToDB()
 	allErrs = append(allErrs, errs...)
 	return allErrs

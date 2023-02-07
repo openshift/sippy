@@ -94,6 +94,28 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	}, res.Error
 }
 
+func FetchJobRun(dbc *db.DB, jobRunID int64, logger *log.Entry) (*models.ProwJobRun, int, error) {
+
+	jobRun := &models.ProwJobRun{}
+	// Load the ProwJobRun, ProwJob, and failed tests:
+	// TODO: we may want to expand to analyzing flakes here in the future
+	res := dbc.DB.Joins("ProwJob").
+		Preload("Tests", "status = 12").
+		Preload("Tests.Test").
+		Preload("Tests.Suite").First(jobRun, jobRunID)
+	if res.Error != nil {
+		return nil, -1, res.Error
+	}
+
+	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID)
+	if err != nil {
+		logger.WithError(err).Error("Error getting job run test count")
+		jobRunTestCount = -1
+	}
+
+	return jobRun, jobRunTestCount, nil
+}
+
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
 func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount int, logger *log.Entry) (apitype.ProwJobRunRiskAnalysis, error) {
