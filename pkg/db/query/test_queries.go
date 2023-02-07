@@ -222,12 +222,14 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 
 func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
 	results := make([]api.TestOutput, 0)
+
+	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
 	q := dbc.DB.Table("prow_job_run_test_outputs").
 		Joins("JOIN prow_job_run_tests ON prow_job_run_test_outputs.prow_job_run_test_id = prow_job_run_tests.id").
-		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
 		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
-		Where("tests.name = ?", test).
+		Where("prow_job_runs.timestamp > current_date - interval '14' day").
+		Where("prow_job_run_tests.test_id = (?)", testQuery).
 		Where("NOT 'aggregated' = any(prow_jobs.variants)").
 		Where("prow_jobs.release = ?", release)
 
@@ -256,12 +258,13 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 	rows := make([]testDuration, 0)
 	results := make(map[string]float64)
 
+	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
 	q := dbc.DB.Table("prow_job_run_tests").
 		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
 		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_job_runs.timestamp > current_date - interval '14' day").
-		Where("tests.name = ?", test).
+		Where("prow_job_run_tests.test_id = (?)", testQuery).
 		Where("prow_jobs.release = ?", release)
 
 	for _, variant := range includedVariants {
