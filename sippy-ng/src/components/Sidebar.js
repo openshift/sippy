@@ -173,7 +173,7 @@ export default function Sidebar(props) {
                   component={Link}
                   to={withSort(
                     pathForJobsWithFilter(release, {
-                      items: withoutUnstable(),
+                      items: [BOOKMARKS.RUN_7, ...withoutUnstable()],
                     }),
                     'net_improvement',
                     'asc'

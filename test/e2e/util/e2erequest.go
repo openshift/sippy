@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	// Release is the usually somewhat older release we're importing during e2e runs (as it has far less data)
-	// to then test sippy. Needs to match what we import in the e2e sh scripts.
-	Release = "4.7"
+	// Needs to match what we import in the e2e sh scripts and the
+	// config/e2e-openshift.yaml.
+	Release = "4.13"
 
 	// APIPort is the port e2e.sh launches the sippy API on. These values must be kept in sync.
 	APIPort = 18080

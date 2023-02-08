@@ -77,6 +77,11 @@ export const BOOKMARKS = {
     operatorValue: '=',
     value: '0',
   },
+  RUN_FEW: {
+    columnField: 'current_runs',
+    operatorValue: '<',
+    value: '7',
+  },
   RUN_1: {
     columnField: 'current_runs',
     operatorValue: '>=',
@@ -137,7 +142,7 @@ export const BOOKMARKS = {
     value: '.Overall',
   },
   UPGRADE: {
-    columnField: 'tags',
+    columnField: 'name',
     operatorValue: 'contains',
     value: 'upgrade',
   },

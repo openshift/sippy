@@ -25,7 +25,8 @@ import React, { Fragment, useEffect } from 'react'
 
 const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
-  { name: 'Runs > 10', model: [BOOKMARKS.RUN_10] },
+  { name: 'Low frequency jobs', model: [BOOKMARKS.RUN_FEW] },
+  { name: 'High frequency jobs', model: [BOOKMARKS.RUN_7] },
   { name: 'Upgrade related', model: [BOOKMARKS.UPGRADE] },
 ]
 
@@ -363,7 +364,15 @@ function JobTable(props) {
   }
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+    const currentFilters = filterModel.items.filter((item) => {
+      for (let i = 0; i < filter.length; i++) {
+        if (filter[i].columnField === item.columnField) {
+          return false
+        }
+      }
+
+      return item.value !== ''
+    })
 
     filter.forEach((item) => {
       if (item.value && item.value !== '') {

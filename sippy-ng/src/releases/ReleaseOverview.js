@@ -149,7 +149,7 @@ export default function ReleaseOverview(props) {
                   </Link>
                   <Tooltip
                     title={
-                      'Histogram of job pass rates. Bucketed by current period pass percentage. ' +
+                      'Histogram of job pass rates for frequently running jobs. Bucketed by current period pass percentage. ' +
                       'Tech preview and never-stable jobs are excluded. The solid line indicates the current ' +
                       "period's mean, and the dashed line is the previous period."
                     }
