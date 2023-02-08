@@ -9,7 +9,7 @@ NEVER_STABLE_TMP=$(mktemp)
 
 for release in $RELEASES
 do
-    URL="${SIPPY_URL}/api/jobs?release=$release&filter=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_pass_percentage%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%2C%7B%22columnField%22%3A%22previous_pass_percentage%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&period=default&sortField=current_runs&sort=desc"
+    URL="${SIPPY_URL}/api/jobs?release=${release}&filter=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22current_runs%22%2C%22operatorValue%22%3A%22%3E%3D%22%2C%22value%22%3A%227%22%7D%2C%7B%22columnField%22%3A%22current_pass_percentage%22%2C%22not%22%3Afalse%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%2C%7B%22columnField%22%3A%22previous_pass_percentage%22%2C%22operatorValue%22%3A%22%3D%22%2C%22value%22%3A%220%22%7D%5D%2C%22linkOperator%22%3A%22and%22%7D&period=default&sortField=current_runs&sort=desc"
     JOB_OUTPUT=$(curl -s "$URL")
     echo "$JOB_OUTPUT" | jq -r '.[].name'
 done | sort > "$NEVER_STABLE_TMP"
