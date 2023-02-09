@@ -278,10 +278,6 @@ func (cw *CommentWorker) Run() {
 		cw.commentUpdaterRateLimiter.Tick()
 		err := cw.writeComment(cw.ghCommenter, pc)
 
-		// any error from ghCommenter impacts our backoff
-		// if no errors then we reduce any current backoff
-		cw.commentUpdaterRateLimiter.UpdateRate(err != nil)
-
 		if err == nil {
 			// if we had an error writing the comment then keep the record
 			// we will attempt to process the record again and overwrite any previous comment for the same sha
@@ -293,9 +289,14 @@ func (cw *CommentWorker) Run() {
 				writeCommentErrorMetric.WithLabelValues(pc.org, pc.repo).Set(errCount)
 			}
 		} else {
+			log.WithError(err).Errorf("Error processing record %s/%s/%d - %s", pc.org, pc.repo, pc.number, pc.sha)
 			errCount++
 			writeCommentErrorMetric.WithLabelValues(pc.org, pc.repo).Set(errCount)
 		}
+
+		// any error from ghCommenter impacts our backoff
+		// if no errors then we reduce any current backoff
+		cw.commentUpdaterRateLimiter.UpdateRate(err != nil)
 
 		log.Debug("Pending comment processed")
 	}
