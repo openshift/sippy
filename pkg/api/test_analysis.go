@@ -12,6 +12,21 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
+type CountByDate struct {
+	Date string `json:"date"`
+
+	Variant string `json:"variant"`
+
+	PassPercentage  float64 `json:"pass_percentage"`
+	FlakePercentage float64 `json:"flake_percentage"`
+	FailPercentage  float64 `json:"fail_percentage"`
+
+	TotalRuns int `json:"total_runs"`
+	Passes    int `json:"passes"`
+	Flakes    int `json:"flakes"`
+	Failures  int `json:"failures"`
+}
+
 type counts struct {
 	Runs     int `json:"runs"`
 	Failures int `json:"failures"`
@@ -30,6 +45,52 @@ type apiTestByDayresults struct {
 	ByDay map[string]testResultDay `json:"by_day"`
 }
 
+func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) ([]CountByDate, error) {
+	var rows []CountByDate
+	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
+		Where("release = ?", release).
+		Where("test_name = ?", testName).
+		Where("date < ?", reportEnd).
+		Select(`date,
+			variant,
+			runs,
+			passes,
+			flakes,
+			failures,
+			passes * 100.0 / NULLIF(runs, 0) AS pass_percentage,
+			flakes * 100.0 / NULLIF(runs, 0) AS flake_percentage,
+			failures * 100.0 / NULLIF(runs, 0) AS fail_percentage`)
+
+	var allowedVariants, blockedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					blockedVariants = append(blockedVariants, f.Value)
+				} else {
+					allowedVariants = append(allowedVariants, f.Value)
+				}
+			}
+		}
+
+		if len(blockedVariants) > 0 {
+			vq = vq.Where("variant NOT IN ?", blockedVariants)
+		}
+
+		if len(allowedVariants) > 0 {
+			vq = vq.Where("variant IN ?", allowedVariants)
+		}
+	}
+
+	r := vq.Scan(&rows)
+	if r.Error != nil {
+		log.WithError(r.Error).Error("error querying test analysis by variant")
+		return nil, r.Error
+	}
+
+	return rows, nil
+}
+
 func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Request, release, testName string, reportEnd time.Time) error {
 	results := apiTestByDayresults{
 		ByDay: make(map[string]testResultDay),
@@ -46,11 +107,11 @@ func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Re
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
 		Where("release = ?", release).
 		Where("test_name = ?", testName).
-		Select(`test_id, 
+		Select(`test_id,
 	       test_name,
     	   date,
-	       release, 
-	       variant, 
+	       release,
+	       variant,
 	       runs,
 	       passes,
 	       flakes,
@@ -87,7 +148,7 @@ func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Re
 	// Reset analysis rows and now we query from the by job view
 	byJobAnalysisRows := []models.TestAnalysisRow{}
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
-		Select(`test_id, 
+		Select(`test_id,
 			test_name,
 			date,
 			prow_jobs.release,
