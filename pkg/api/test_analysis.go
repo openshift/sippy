@@ -45,13 +45,15 @@ type apiTestByDayresults struct {
 	ByDay map[string]testResultDay `json:"by_day"`
 }
 
-func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) ([]CountByDate, error) {
+func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
+	results := make(map[string][]CountByDate)
+
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
 		Where("release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date < ?", reportEnd).
-		Select(`date,
+		Select(`to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
 			variant,
 			runs,
 			passes,
@@ -59,7 +61,8 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 			failures,
 			passes * 100.0 / NULLIF(runs, 0) AS pass_percentage,
 			flakes * 100.0 / NULLIF(runs, 0) AS flake_percentage,
-			failures * 100.0 / NULLIF(runs, 0) AS fail_percentage`)
+			failures * 100.0 / NULLIF(runs, 0) AS fail_percentage`).
+		Order("date ASC")
 
 	var allowedVariants, blockedVariants []string
 	if filters != nil {
@@ -88,7 +91,11 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 		return nil, r.Error
 	}
 
-	return rows, nil
+	for _, row := range rows {
+		results[row.Variant] = append(results[row.Variant], row)
+	}
+
+	return results, nil
 }
 
 func PrintTestAnalysisJSONFromDB(dbc *db.DB, w http.ResponseWriter, req *http.Request, release, testName string, reportEnd time.Time) error {
