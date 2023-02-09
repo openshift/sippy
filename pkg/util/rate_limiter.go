@@ -46,6 +46,10 @@ func (rl *RateLimiter) UpdateRate(error bool) {
 	}
 
 	if update {
-		rl.ticker.Reset(rl.baseRate * time.Duration(rl.errorCount))
+		tickerRate := rl.baseRate
+		if rl.errorCount > 0 {
+			tickerRate = rl.baseRate * time.Duration(rl.errorCount)
+		}
+		rl.ticker.Reset(tickerRate)
 	}
 }
