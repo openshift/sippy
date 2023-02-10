@@ -13,18 +13,15 @@ import (
 )
 
 type CountByDate struct {
-	Date string `json:"date"`
-
-	Variant string `json:"variant"`
-
+	Date            string  `json:"date"`
+	Group           string  `json:"group"`
 	PassPercentage  float64 `json:"pass_percentage"`
 	FlakePercentage float64 `json:"flake_percentage"`
 	FailPercentage  float64 `json:"fail_percentage"`
-
-	TotalRuns int `json:"total_runs"`
-	Passes    int `json:"passes"`
-	Flakes    int `json:"flakes"`
-	Failures  int `json:"failures"`
+	TotalRuns       int     `json:"total_runs"`
+	Passes          int     `json:"passes"`
+	Flakes          int     `json:"flakes"`
+	Failures        int     `json:"failures"`
 }
 
 type counts struct {
@@ -45,6 +42,60 @@ type apiTestByDayresults struct {
 	ByDay map[string]testResultDay `json:"by_day"`
 }
 
+func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
+	var rows []CountByDate
+	results := make(map[string][]CountByDate)
+
+	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
+		Select(`test_id,
+			test_name,
+			date,
+			prow_jobs.release,
+			job_name as group,
+			runs,
+			passes,
+			flakes,
+			failures,
+			ARRAY_AGG(variants) as variants`).
+		Joins("INNER JOIN prow_jobs on prow_jobs.name = job_name").
+		Where("prow_jobs.release = ?", release).
+		Where("test_name = ?", testName)
+	//		Group("test_id, test_name, date, prow_jobs.release, job_name, runs, passes, flakes, failures")
+
+	var allowedVariants, blockedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					blockedVariants = append(blockedVariants, f.Value)
+				} else {
+					allowedVariants = append(allowedVariants, f.Value)
+				}
+			}
+		}
+	}
+
+	for _, bv := range blockedVariants {
+		jq = jq.Where("? != ANY(variants)", bv)
+	}
+
+	for _, av := range allowedVariants {
+		jq = jq.Where("? = ANY(variants)", av)
+	}
+
+	r := jq.Scan(&rows)
+	if r.Error != nil {
+		log.WithError(r.Error).Error("error querying test analysis by job")
+		return nil, r.Error
+	}
+
+	for _, row := range rows {
+		results[row.Group] = append(results[row.Group], row)
+	}
+
+	return results, nil
+}
+
 func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
 	results := make(map[string][]CountByDate)
@@ -54,7 +105,7 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 		Where("test_name = ?", testName).
 		Where("date < ?", reportEnd).
 		Select(`to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
-			variant,
+			variant as group,
 			runs,
 			passes,
 			flakes,
@@ -92,7 +143,7 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 	}
 
 	for _, row := range rows {
-		results[row.Variant] = append(results[row.Variant], row)
+		results[row.Group] = append(results[row.Group], row)
 	}
 
 	return results, nil
