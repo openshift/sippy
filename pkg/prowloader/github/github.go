@@ -311,20 +311,20 @@ func (c *Client) DeletePRComment(org, repo string, updateID int64) error {
 	return err
 }
 
-func (c *Client) FindCommentID(org, repo string, number int, commentKey, commentID string) (*int64, error) {
+func (c *Client) FindCommentID(org, repo string, number int, commentKey, commentID string) (*int64, *string, error) {
 	comments, err := c.prCommentsFetch(org, repo, number)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, cmt := range comments {
 
 		if c.isCommentIDMatch(*cmt.Body, commentKey, commentID) {
-			return cmt.ID, nil
+			return cmt.ID, cmt.Body, nil
 		}
 	}
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (c *Client) isCommentIDMatch(comment, commentKey, commentID string) bool {
