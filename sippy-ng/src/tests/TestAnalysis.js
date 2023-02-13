@@ -279,6 +279,14 @@ export function TestAnalysis(props) {
             test={testName}
             release={props.release}
             filterModel={filterModel}
+            grouping="jobs"
+          />
+
+          <TestPassRateCharts
+            test={testName}
+            release={props.release}
+            filterModel={filterModel}
+            grouping="variants"
           />
 
           <Grid item md={12}>

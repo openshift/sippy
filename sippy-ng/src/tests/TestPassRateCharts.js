@@ -73,11 +73,35 @@ export default function TestPassRateCharts(props) {
     .mode('lch')
     .colors(Object.keys(groupedData).length)
 
-  const chart = { datasets: [] }
+  let days = Array.from(
+    { length: 14 },
+    (_, x) => new Date(new Date() - 1000 * 60 * 60 * 24 * x)
+  )
+    .map((day) => day.toISOString().split('T')[0])
+    .reverse()
+
+  const chart = {
+    labels: days,
+    datasets: [],
+  }
+
   const options = {
     parsing: {
       xAxisKey: 'date',
       yAxisKey: 'pass_percentage',
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            let data = groupedData[context.dataset.label].find(
+              (element) => element.date === context.label
+            )
+
+            return `${context.dataset.label} ${data.pass_percentage}% (${data.passes} passed, ${data.failures} failed, ${data.flakes} flaked)`
+          },
+        },
+      },
     },
     scales: {
       y: {
@@ -92,15 +116,15 @@ export default function TestPassRateCharts(props) {
   }
 
   let index = 0
-  Object.keys(groupedData).forEach((variant) => {
+  Object.keys(groupedData).forEach((group) => {
     chart.datasets.push({
       type: 'line',
-      label: `${variant}`,
+      label: `${group}`,
       tension: 0.25,
       yAxisID: 'y',
       borderColor: colors[index],
       backgroundColor: colors[index],
-      data: groupedData[variant],
+      data: groupedData[group],
     })
     index++
   })

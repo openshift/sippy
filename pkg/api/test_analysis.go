@@ -18,7 +18,7 @@ type CountByDate struct {
 	PassPercentage  float64 `json:"pass_percentage"`
 	FlakePercentage float64 `json:"flake_percentage"`
 	FailPercentage  float64 `json:"fail_percentage"`
-	TotalRuns       int     `json:"total_runs"`
+	Runs            int     `json:"runs"`
 	Passes          int     `json:"passes"`
 	Flakes          int     `json:"flakes"`
 	Failures        int     `json:"failures"`
@@ -49,18 +49,21 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
 			test_name,
-			date,
+			to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
 			prow_jobs.release,
 			job_name as group,
 			runs,
 			passes,
 			flakes,
 			failures,
-			ARRAY_AGG(variants) as variants`).
+			variants,
+			passes * 100.0 / NULLIF(runs, 0) AS pass_percentage,
+			flakes * 100.0 / NULLIF(runs, 0) AS flake_percentage,
+			failures * 100.0 / NULLIF(runs, 0) AS fail_percentage`).
 		Joins("INNER JOIN prow_jobs on prow_jobs.name = job_name").
 		Where("prow_jobs.release = ?", release).
-		Where("test_name = ?", testName)
-	//		Group("test_id, test_name, date, prow_jobs.release, job_name, runs, passes, flakes, failures")
+		Where("test_name = ?", testName).
+		Order("date ASC")
 
 	var allowedVariants, blockedVariants []string
 	if filters != nil {

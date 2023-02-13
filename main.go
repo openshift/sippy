@@ -673,10 +673,10 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 	)
 
 	// Do an immediate metrics update
-	err = metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+	/*err = metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
-	}
+	}*/
 
 	// Refresh our metrics every 5 minutes:
 	ticker := time.NewTicker(5 * time.Minute)
