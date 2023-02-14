@@ -76,7 +76,11 @@ export function TestAnalysis(props) {
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests/bugs?test=${testName}&filter=${filter}`
+        `${
+          process.env.REACT_APP_API_URL
+        }/api/tests/bugs?test=${safeEncodeURIComponent(
+          testName
+        )}&filter=${filter}`
       ),
     ])
       .then(([test, bugs]) => {
