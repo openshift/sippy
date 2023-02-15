@@ -100,7 +100,9 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	if err != nil {
 		return nil, err
 	}
-	results["overall"] = overallResult
+	if len(overallResult) > 0 {
+		results["overall"] = overallResult
+	}
 
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
@@ -163,7 +165,9 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 	if err != nil {
 		return nil, err
 	}
-	results["overall"] = overallResult
+	if len(overallResult) > 0 {
+		results["overall"] = overallResult
+	}
 
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
 		Where("release = ?", release).
