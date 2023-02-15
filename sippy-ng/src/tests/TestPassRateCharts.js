@@ -73,12 +73,16 @@ export default function TestPassRateCharts(props) {
     .mode('lch')
     .colors(Object.keys(groupedData).length)
 
-  let days = Array.from(
-    { length: 14 },
-    (_, x) => new Date(new Date() - 1000 * 60 * 60 * 24 * x)
-  )
-    .map((day) => day.toISOString().split('T')[0])
-    .reverse()
+  // TODO: This is kind of awkward, but it's relatively fast. Need to create a list of all
+  // dates we'll chart, and have it sorted.
+  let daySet = new Set()
+  Object.keys(groupedData).forEach((key) => {
+    Object.keys(groupedData[key]).forEach((item) =>
+      daySet.add(groupedData[key][item].date)
+    )
+  })
+  let days = Array.from(daySet)
+  days.sort((a, b) => new Date(a) - new Date(b))
 
   const chart = {
     labels: days,
@@ -122,9 +126,10 @@ export default function TestPassRateCharts(props) {
       label: `${group}`,
       tension: 0.25,
       yAxisID: 'y',
-      borderColor: colors[index],
-      backgroundColor: colors[index],
+      borderColor: group === 'overall' ? 'black' : colors[index],
+      backgroundColor: group === 'overall' ? 'black' : colors[index],
       data: groupedData[group],
+      order: group === 'overall' ? 0 : 1,
     })
     index++
   })

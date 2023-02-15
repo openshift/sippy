@@ -42,9 +42,65 @@ type apiTestByDayresults struct {
 	ByDay map[string]testResultDay `json:"by_day"`
 }
 
+func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) ([]CountByDate, error) {
+	var rows []CountByDate
+	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
+		Select(`test_id,
+			test_name,
+			to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
+			'overall' as group,
+			SUM(runs) as runs,
+			SUM(passes) as passes,
+			SUM(flakes) as flakes,
+			SUM(failures) as failures,
+			SUM(passes) * 100.0 / NULLIF(SUM(runs), 0) AS pass_percentage,
+			SUM(flakes) * 100.0 / NULLIF(SUM(runs), 0) AS flake_percentage,
+			SUM(failures) * 100.0 / NULLIF(SUM(runs), 0) AS fail_percentage`).
+		Joins("JOIN prow_jobs on prow_jobs.name = job_name").
+		Where("prow_test_analysis_by_job_14d_matview.release = ?", release).
+		Where("test_name = ?", testName).
+		Order("date ASC").
+		Group("date, test_id, test_name, prow_test_analysis_by_job_14d_matview.release")
+
+	var allowedVariants, blockedVariants []string
+	if filters != nil {
+		for _, f := range filters.Items {
+			if f.Field == "variants" {
+				if f.Not {
+					blockedVariants = append(blockedVariants, f.Value)
+				} else {
+					allowedVariants = append(allowedVariants, f.Value)
+				}
+			}
+		}
+	}
+
+	for _, bv := range blockedVariants {
+		jq = jq.Where("? != ANY(prow_jobs.variants)", bv)
+	}
+
+	for _, av := range allowedVariants {
+		jq = jq.Where("? = ANY(prow_jobs.variants)", av)
+	}
+
+	r := jq.Scan(&rows)
+	if r.Error != nil {
+		log.WithError(r.Error).Error("error querying test analysis by job")
+		return nil, r.Error
+	}
+
+	return rows, nil
+}
+
 func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
 	results := make(map[string][]CountByDate)
+
+	overallResult, err := GetTestAnalysisOverallFromDB(dbc, filters, release, testName, reportEnd)
+	if err != nil {
+		return nil, err
+	}
+	results["overall"] = overallResult
 
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
@@ -102,6 +158,12 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
 	results := make(map[string][]CountByDate)
+
+	overallResult, err := GetTestAnalysisOverallFromDB(dbc, filters, release, testName, reportEnd)
+	if err != nil {
+		return nil, err
+	}
+	results["overall"] = overallResult
 
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
 		Where("release = ?", release).
