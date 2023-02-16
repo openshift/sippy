@@ -32,6 +32,7 @@ var (
 	compactRegex    = regexp.MustCompile(`(?i)-compact`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
 	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
+	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	// metal-assisted jobs do not have a trailing -version segment
 	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
@@ -75,6 +76,7 @@ var (
 		"ha",
 		"hypershift",
 		"heterogeneous",
+		"libvirt",
 		"metal-assisted",
 		"metal-ipi",
 		"metal-upi",
@@ -105,6 +107,7 @@ var (
 		"aws",
 		"azure",
 		"gcp",
+		"libvirt",
 		"metal-assisted",
 		"metal-ipi",
 		"metal-upi",
@@ -241,8 +244,8 @@ func determinePlatform(jobName, _ string) string {
 		return "azure"
 	} else if gcpRegex.MatchString(jobName) {
 		return "gcp"
-	} else if openstackRegex.MatchString(jobName) {
-		return "openstack"
+	} else if libvirtRegex.MatchString(jobName) {
+		return "libvirt"
 	} else if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
 		// Without support for negative lookbacks in the native
 		// regexp library, it's easiest to differentiate these
@@ -253,6 +256,8 @@ func determinePlatform(jobName, _ string) string {
 		return "metal-ipi"
 	} else if metalRegex.MatchString(jobName) {
 		return "metal-upi"
+	} else if openstackRegex.MatchString(jobName) {
+		return "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		return "ovirt"
 	} else if vsphereUPIRegex.MatchString(jobName) {
