@@ -2,6 +2,9 @@ package query
 
 import (
 	"fmt"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -12,11 +15,12 @@ import (
 // or twoDay), and returns a map containing keys for platform, and infra
 // success percentage for that period.
 func PlatformInfraSuccess(dbc *db.DB, platforms sets.String, period string) (map[string]float64, error) {
+	now := time.Now()
 	results := make(map[string]float64)
 
 	table := ""
 	switch period {
-	case "default":
+	case "current":
 		table = "prow_test_report_7d_matview"
 	case "twoDay":
 		table = "prow_test_report_2d_matview"
@@ -43,5 +47,9 @@ func PlatformInfraSuccess(dbc *db.DB, platforms sets.String, period string) (map
 		results[r.Variant] = r.PassPercentage
 	}
 
+	elapsed := time.Since(now)
+	log.WithFields(log.Fields{
+		"elapsed": elapsed,
+	}).Info("PlatformInfraSuccess completed")
 	return results, q.Error
 }
