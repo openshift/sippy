@@ -4,8 +4,11 @@ import "github.com/openshift/sippy/pkg/util/sets"
 
 // VariantManager identifies and describes different variants
 type VariantManager interface {
-	// allOpenshiftVariants returns a set of all known variants
+	// AllVariants returns a set of all known variants
 	AllVariants() sets.String
+
+	// AllPlatforms returns a set of all known platform variants
+	AllPlatforms() sets.String
 
 	// IdentifyVariants takes a job name and returns the list of variants that job belongs to.
 	IdentifyVariants(jobName string, release string) []string

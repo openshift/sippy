@@ -50,6 +50,10 @@ func (kubeVariants) AllVariants() sets.String {
 	return allKubeVariants
 }
 
+func (kubeVariants) AllPlatforms() sets.String {
+	return sets.String{}
+}
+
 func (v kubeVariants) IdentifyVariants(jobName, release string) []string {
 	variants := []string{}
 
