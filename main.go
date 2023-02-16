@@ -673,7 +673,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 	)
 
 	// Do an immediate metrics update
-	err = metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+	err = metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
@@ -686,7 +686,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 			select {
 			case <-ticker.C:
 				log.Info("tick")
-				err := metrics.RefreshMetricsDB(dbc, util.GetReportEnd(pinnedDateTime))
+				err := metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}

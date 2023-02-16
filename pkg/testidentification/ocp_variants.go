@@ -21,7 +21,8 @@ var openshiftJobsNeverStableRaw string
 var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
 var (
-	// variant regexes
+	// variant regexes - when adding a new one, please update both allOpenshiftVariants,
+	// and allPlatforms as appropriate.
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
 	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
@@ -98,6 +99,20 @@ var (
 		"vsphere-ipi",
 		"vsphere-upi",
 	)
+
+	allPlatforms = sets.NewString(
+		"alibaba",
+		"aws",
+		"azure",
+		"gcp",
+		"metal-assisted",
+		"metal-ipi",
+		"metal-upi",
+		"openstack",
+		"ovirt",
+		"vsphere-ipi",
+		"vsphere-upi",
+	)
 )
 
 type openshiftVariants struct{}
@@ -108,6 +123,9 @@ func NewOpenshiftVariantManager() VariantManager {
 
 func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
+}
+func (openshiftVariants) AllPlatforms() sets.String {
+	return allPlatforms
 }
 
 func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {

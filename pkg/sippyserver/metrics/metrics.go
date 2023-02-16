@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -31,6 +32,10 @@ var (
 		Name: "sippy_job_pass_ratio",
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
 	}, []string{"release", "period", "name", "silenced"})
+	infraSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_infra_success_ratio",
+		Help: "Ratio of successful infrastructure in a period (2 day, 7 day, etc)",
+	}, []string{"platform", "period"})
 	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_release_warnings",
 		Help: "Number of current warnings for a release, see overview page in UI for details",
@@ -59,7 +64,7 @@ var (
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
+func RefreshMetricsDB(dbc *db.DB, variantManager testidentification.VariantManager, reportEnd time.Time) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := query.ReleasesFromDB(dbc)
@@ -119,13 +124,31 @@ func RefreshMetricsDB(dbc *db.DB, reportEnd time.Time) error {
 	if err := refreshUpgradeSuccessMetrics(dbc); err != nil {
 		log.WithError(err).Error("error refreshing upgrade success metrics")
 	}
+	if err := refreshInfraMetrics(dbc, variantManager); err != nil {
+		log.WithError(err).Error("error refreshing infrastructure success metrics")
+	}
 	log.Infof("refresh metrics completed in %s", time.Since(start))
 
 	return nil
 }
 
+func refreshInfraMetrics(dbc *db.DB, variantManager testidentification.VariantManager) error {
+	for _, period := range []string{"current", "twoDay"} {
+		platforms, err := query.PlatformInfraSuccess(dbc, variantManager.AllPlatforms(), period)
+		if err != nil {
+			return err
+		}
+
+		for platform, percent := range platforms {
+			infraSuccessMetric.WithLabelValues(platform, period).Set(percent)
+		}
+	}
+
+	return nil
+}
+
 func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
-	for _, period := range []string{"default", "twoDay"} {
+	for _, period := range []string{"current", "twoDay"} {
 		start, boundary, end := util.PeriodToDates(period, reportEnd)
 		result, err := query.BuildClusterHealth(dbc, start, boundary, end)
 		if err != nil {
