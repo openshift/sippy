@@ -87,6 +87,14 @@ func New(
 	}
 }
 
+var jsonArtifactDateTimeName = regexp.MustCompile(`_(?P<DATE>.*)-(?P<TIME>.*).json`)
+
+type DateTimeName struct {
+	Name string
+	Date string
+	Time string
+}
+
 func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
 	prowJobCache := map[string]*models.ProwJob{}
 	var allJobs []*models.ProwJob
@@ -288,6 +296,121 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
+func (pl *ProwLoader) getClusterData(path string) models.ClusterData {
+	// get the variant cluster data for this job run
+	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, "")
+	matches := gcsJobRun.FindAllMatches(path, gcs.GetDefaultClusterDataFile())
+	cd := models.ClusterData{}
+
+	// return empty struct to pass along
+	match := findMostRecentDateTimeMatch(matches)
+	if match == "" {
+		return cd
+	}
+
+	bytes, err := gcsJobRun.GetContent(context.TODO(), match)
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get prow job variant data for: %s", match)
+	} else if bytes != nil {
+		err := json.Unmarshal(bytes, &cd)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to unmarshal prow cluster data for: %s", match)
+		}
+	}
+	return cd
+}
+
+func findMostRecentDateTimeMatch(names []string) string {
+	if len(names) < 1 {
+		return ""
+	}
+	if len(names) == 1 {
+		return names[0]
+	}
+
+	// get the times stamps and compare
+	currMatchDateTime := extractDateTimeName(names[0])
+	for _, m := range names[1:] {
+		nextMatchDateTime := extractDateTimeName(m)
+
+		if currMatchDateTime == nil {
+			currMatchDateTime = nextMatchDateTime
+			continue
+		}
+		if nextMatchDateTime != nil {
+			mostRecentMatchDateTime := mostRecentDateTimeName(*currMatchDateTime, *nextMatchDateTime)
+			currMatchDateTime = &mostRecentMatchDateTime
+		}
+	}
+
+	if currMatchDateTime == nil {
+		return ""
+	}
+	return currMatchDateTime.Name
+}
+
+func extractDateTimeName(name string) *DateTimeName {
+	if !jsonArtifactDateTimeName.MatchString(name) {
+		log.Errorf("Name did not match date time format: %s", name)
+		return nil
+	}
+
+	dateTimeName := &DateTimeName{Name: name}
+	subMatches := jsonArtifactDateTimeName.FindStringSubmatch(name)
+	subNames := jsonArtifactDateTimeName.SubexpNames()
+	for i, sName := range subNames {
+
+		switch sName {
+		case "DATE":
+			dateTimeName.Date = subMatches[i]
+		case "TIME":
+			dateTimeName.Time = subMatches[i]
+		}
+	}
+
+	if len(dateTimeName.Date) > 0 && len(dateTimeName.Time) > 0 {
+		return dateTimeName
+	}
+	return nil
+}
+
+func mostRecentDateTimeName(one, two DateTimeName) DateTimeName {
+	oneDate, err := strconv.ParseInt(one.Date, 10, 64)
+	if err != nil {
+		log.WithError(err).Errorf("Error parsing date for %s", one.Name)
+	}
+
+	twoDate, err := strconv.ParseInt(two.Date, 10, 64)
+	if err != nil {
+		log.WithError(err).Errorf("Error parsing date for %s", two.Name)
+	}
+
+	if oneDate > twoDate {
+		return one
+	}
+
+	if twoDate > oneDate {
+		return two
+	}
+
+	// they are the same so compare the times
+	oneTime, err := strconv.ParseInt(one.Time, 10, 64)
+	if err != nil {
+		log.WithError(err).Errorf("Error parsing time for %s", one.Name)
+	}
+
+	twoTime, err := strconv.ParseInt(two.Time, 10, 64)
+	if err != nil {
+		log.WithError(err).Errorf("Error parsing time for %s", two.Name)
+	}
+
+	if oneTime > twoTime {
+		return one
+	}
+
+	return two
+}
+
 func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRunsCtr *int, currentIndex, totalJobsToScan int) error {
 	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 		// Skip for now, only store runs in a terminal state
@@ -306,6 +429,19 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 		"progress": fmt.Sprintf("%d/%d", currentIndex, totalJobsToScan),
 	})
 
+	// this err validation has moved up
+	// and will exit before we save / update the ProwJob
+	// now, any concerns?
+	pjURL, err := url.Parse(pj.Status.URL)
+	if err != nil {
+		return err
+	}
+
+	parts := strings.Split(pjURL.Path, pl.bktName)
+	path := parts[1][1:]
+
+	clusterData := pl.getClusterData(path)
+
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
 		pjLog.Info("creating new ProwJob")
@@ -313,7 +449,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 			Name:        pj.Spec.Job,
 			Kind:        models.ProwKind(pj.Spec.Type),
 			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job, release),
+			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job, release, clusterData),
 			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
 		}
 		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
@@ -323,7 +459,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
 		saveDB := false
-		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release)
+		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release, clusterData)
 		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
@@ -340,19 +476,14 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 
 	if _, ok := pl.prowJobRunCache[uint(id)]; !ok {
 		pjLog.Info("creating new ProwJobRun")
-		pjURL, err := url.Parse(pj.Status.URL)
-		if err != nil {
-			return err
-		}
 
-		parts := strings.Split(pjURL.Path, pl.bktName)
 		if len(parts) == 2 {
-			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), parts[1][1:])
+			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), path)
 			if err != nil {
 				return err
 			}
 
-			pulls := pl.findOrAddPullRequests(pj.Spec.Refs, parts[1][1:])
+			pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
 
 			var duration time.Duration
 			if pj.Status.CompletionTime != nil {

@@ -16,9 +16,14 @@ import (
 )
 
 const TestFailureSummaryFilePrefix = "risk-analysis"
+const ClusterDataFilePrefix = "cluster-data_"
 
 func GetDefaultRiskAnalysisSummaryFile() *regexp.Regexp {
 	return regexp.MustCompile(fmt.Sprintf("%s.json", TestFailureSummaryFilePrefix))
+}
+
+func GetDefaultClusterDataFile() *regexp.Regexp {
+	return regexp.MustCompile(fmt.Sprintf("%s.*json", ClusterDataFilePrefix))
 }
 
 type GCSJobRun struct {
@@ -153,4 +158,24 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 	}
 
 	return nil
+}
+
+func (j *GCSJobRun) FindAllMatches(root string, filename *regexp.Regexp) []string {
+	matches := make([]string, 0)
+
+	it := j.bkt.Objects(context.Background(), &storage.Query{
+		Prefix: root,
+	})
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if filename.MatchString(attrs.Name) {
+			matches = append(matches, attrs.Name)
+		}
+	}
+
+	return matches
 }

@@ -196,18 +196,29 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 				},
 				LinkOperator: "and",
 			}
-			trs, _, err := BuildTestsResults(dbc, release, "default", false, false,
+			testResults, _, err := BuildTestsResults(dbc, release, "default", false, false,
 				fil)
 			if err != nil {
 				return nil, err
 			}
 			gosort.Strings(variants)
-			for _, tr := range trs {
+			for _, testResult := range testResults {
 				// this is a weird way to get the variant we want, but it allows re-use
 				// of the existing code.
-				gosort.Strings(tr.Variants)
-				if stringSlicesEqual(variants, tr.Variants) && tr.SuiteName == suite {
-					return &tr, nil
+				gosort.Strings(testResult.Variants)
+				if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+					return &testResult, nil
+				}
+			}
+
+			// otherwise, what is our best match...
+			// do something more expensive and check to see
+			// which testResult contains all the variants we have currently
+			for _, testResult := range testResults {
+				// we didn't find an exact variant match
+				// next best guess is the first variant list that contains all of our known variants
+				if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+					return &testResult, nil
 				}
 			}
 
@@ -243,9 +254,9 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 	// order matters, if we have 0 tests that ran && 0 tests that failed we
 	// want to compare that here before the 'no test failures' case
 	case jobRunTestCount < (int(float64(historicalRunTestCount) * .75)):
-		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
+		response.OverallRisk.Level = apitype.FailureRiskLevelIncompleteTests
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
-			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): High", jobRunTestCount, historicalRunTestCount))
+			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): IncompleteTests", jobRunTestCount, historicalRunTestCount))
 		return response, nil
 
 	// Return early if no tests failed in this run:
@@ -343,6 +354,32 @@ func stringSlicesEqual(a, b []string) bool {
 	}
 	for i, v := range a {
 		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSubSlicesEqual(a, b []string) bool {
+	// we are going to check if b contains all the values in a
+
+	// have to have something to match on
+	// and be less than or equal to b
+	if len(a) < 1 {
+		return false
+	}
+	if len(a) > len(b) {
+		return false
+	}
+	for _, v := range a {
+		found := false
+		for _, s := range b {
+			if v == s {
+				found = true
+			}
+		}
+
+		if !found {
 			return false
 		}
 	}

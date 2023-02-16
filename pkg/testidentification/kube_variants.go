@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -54,7 +55,7 @@ func (kubeVariants) AllPlatforms() sets.String {
 	return sets.String{}
 }
 
-func (v kubeVariants) IdentifyVariants(jobName, release string) []string {
+func (v kubeVariants) IdentifyVariants(jobName, release string, jobVariants models.ClusterData) []string {
 	variants := []string{}
 
 	defer func() {
