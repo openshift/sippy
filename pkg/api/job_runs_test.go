@@ -72,7 +72,7 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelLow,
 		},
 		{
-			name: "max test risk level unknown",
+			name: "max test risk level medium",
 			testPassRates: []apitype.Test{
 				{
 					Name:                  "test3",
@@ -86,6 +86,24 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedTestRisks: map[string]apitype.RiskLevel{
 				"test4": apitype.FailureRiskLevelUnknown,
 				"test3": apitype.FailureRiskLevelMedium,
+			},
+			expectedOverallRisk: apitype.FailureRiskLevelMedium,
+		},
+		{
+			name: "max test risk level unknown",
+			testPassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 50.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: -1, // hack to tell the setup to not return results for this test
+				},
+			},
+			expectedTestRisks: map[string]apitype.RiskLevel{
+				"test4": apitype.FailureRiskLevelUnknown,
+				"test3": apitype.FailureRiskLevelLow,
 			},
 			expectedOverallRisk: apitype.FailureRiskLevelUnknown,
 		},
@@ -146,7 +164,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				assert.Equal(t, expectedRisk, actualTestRisk.Risk.Level, "unexpected risk level for test: %s", testName)
 			}
 
-			assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level)
+			assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level, "unexpected overall risk for test: %s", tc.name)
 
 		})
 	}

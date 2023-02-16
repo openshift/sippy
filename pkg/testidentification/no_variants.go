@@ -1,6 +1,7 @@
 package testidentification
 
 import (
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -14,7 +15,7 @@ func (noVariants) AllVariants() sets.String {
 	return sets.String{}
 }
 
-func (v noVariants) IdentifyVariants(jobName, release string) []string {
+func (v noVariants) IdentifyVariants(jobName, release string, jobType models.JobType) []string {
 	return []string{}
 }
 func (noVariants) IsJobNeverStable(jobName string) bool {

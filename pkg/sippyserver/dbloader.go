@@ -109,7 +109,7 @@ func createOrUpdateJob(dbc *db.DB, reportName string,
 		dbProwJob := &models.ProwJob{
 			Name:        jr.JobName,
 			Release:     reportName,
-			Variants:    variantManager.IdentifyVariants(jr.JobName, reportName),
+			Variants:    variantManager.IdentifyVariants(jr.JobName, reportName, models.JobType{}),
 			TestGridURL: jr.TestGridJobURL,
 		}
 		err := dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
@@ -120,7 +120,7 @@ func createOrUpdateJob(dbc *db.DB, reportName string,
 	} else {
 		// Ensure the job is up to date, especially for variants.
 		dbProwJob := prowJobCache[jr.JobName]
-		dbProwJob.Variants = variantManager.IdentifyVariants(jr.JobName, reportName)
+		dbProwJob.Variants = variantManager.IdentifyVariants(jr.JobName, reportName, models.JobType{})
 		dbProwJob.TestGridURL = jr.TestGridJobURL
 		dbc.DB.Save(&dbProwJob)
 	}

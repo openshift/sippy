@@ -60,7 +60,8 @@ type ProwJobRun struct {
 	Duration      time.Duration
 	OverallResult v1.JobOverallResult `gorm:"index"`
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
-	TestCount int `gorm:"-"`
+	TestCount int     `gorm:"-"`
+	JobType   JobType `gorm:"-"`
 }
 
 type Test struct {
@@ -174,4 +175,13 @@ type ProwPullRequest struct {
 
 	// MergedAt contains the time retrieved from GitHub that this PR was merged.
 	MergedAt *time.Time `json:"merged_at,omitempty" gorm:"merged_at"`
+}
+
+type JobType struct {
+	Release      string
+	FromRelease  string
+	Platform     string
+	Architecture string
+	Network      string
+	Topology     string
 }

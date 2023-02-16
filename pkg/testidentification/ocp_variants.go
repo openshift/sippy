@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -110,7 +111,20 @@ func (openshiftVariants) AllVariants() sets.String {
 	return allOpenshiftVariants
 }
 
-func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
+func compareAndSelectVariant(jobNameVariant, jobTypeVariant, variantKey string) string {
+	val := jobNameVariant
+
+	if jobTypeVariant != "" {
+		if val != "" && jobTypeVariant != val {
+			log.Errorf("JobType %s: %s, does not match jobName %s: %s", variantKey, jobTypeVariant, variantKey, jobNameVariant)
+		}
+		val = jobTypeVariant
+	}
+
+	return val
+}
+
+func (v openshiftVariants) IdentifyVariants(jobName, release string, jobType models.JobType) []string {
 	variants := []string{}
 
 	defer func() {
@@ -139,24 +153,25 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
 	}
 
 	// Platform
-	platform := determinePlatform(jobName, release)
+	platform := compareAndSelectVariant(determinePlatform(jobName, release), jobType.Platform, "Platform")
 	if platform != "" {
 		variants = append(variants, platform)
 	}
 
 	// Architectures
-	arch := determineArchitecture(jobName, release)
+	arch := compareAndSelectVariant(determineArchitecture(jobName, release), jobType.Architecture, "Architecture")
 	if arch != "" {
 		variants = append(variants, arch)
 	}
 
 	// Network
-	network := determineNetwork(jobName, release)
+	network := compareAndSelectVariant(determineNetwork(jobName, release), jobType.Network, "Network")
 	if network != "" {
 		variants = append(variants, network)
 	}
 
 	// Upgrade
+	// TODO: consider adding jobType.FromRelease and jobType.Release comparisons for determining minor / micro, if desirable
 	if upgradeRegex.MatchString(jobName) {
 		variants = append(variants, "upgrade")
 		if upgradeMinorRegex.MatchString(jobName) {
@@ -167,10 +182,11 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string) []string {
 	}
 
 	// Topology
+	// external == hypershift hosted
 	if singleNodeRegex.MatchString(jobName) {
-		variants = append(variants, "single-node")
+		variants = append(variants, compareAndSelectVariant("single-node", jobType.Topology, "Topology"))
 	} else {
-		variants = append(variants, "ha")
+		variants = append(variants, compareAndSelectVariant("ha", jobType.Topology, "Topology"))
 	}
 
 	// Other

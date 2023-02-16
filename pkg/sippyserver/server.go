@@ -851,6 +851,11 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			return
 		}
 		jobRun.ProwJob = *job
+
+		// if the JobType is being passed in then use it to override the variants (agnostic case, etc)
+		if jobRun.JobType.Release != "" {
+			jobRun.ProwJob.Variants = s.variantManager.IdentifyVariants(jobRun.ProwJob.Name, jobRun.JobType.Release, jobRun.JobType)
+		}
 		logger = logger.WithField("jobRunID", jobRun.ID)
 	}
 

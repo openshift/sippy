@@ -756,6 +756,7 @@ type RiskLevel struct {
 
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
-var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 5}
-var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 7}
-var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 10}
+var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 25}
+var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 50}
+var FailureRiskLevelIncomplete = RiskLevel{Name: "Incomplete", Level: 75}
+var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 100}

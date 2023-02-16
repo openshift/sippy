@@ -211,6 +211,17 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 				}
 			}
 
+			// otherwise, what is our best match...
+			// do something more expensive and check to see
+			// which tr contains all the variants we have currently
+			for _, tr := range trs {
+				// we didn't find an exact variant match
+				// next best guess is the first variant list that contains all of our known variants
+				if stringSubSlicesEqual(variants, tr.Variants) && tr.SuiteName == suite {
+					return &tr, nil
+				}
+			}
+
 			return nil, nil
 		})
 }
@@ -243,9 +254,9 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 	// order matters, if we have 0 tests that ran && 0 tests that failed we
 	// want to compare that here before the 'no test failures' case
 	case jobRunTestCount < (int(float64(historicalRunTestCount) * .75)):
-		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
+		response.OverallRisk.Level = apitype.FailureRiskLevelIncomplete
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
-			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): High", jobRunTestCount, historicalRunTestCount))
+			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): Incomplete", jobRunTestCount, historicalRunTestCount))
 		return response, nil
 
 	// Return early if no tests failed in this run:
@@ -343,6 +354,26 @@ func stringSlicesEqual(a, b []string) bool {
 	}
 	for i, v := range a {
 		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSubSlicesEqual(a, b []string) bool {
+	// we are going to check if b contains all the values in a
+	if len(a) > len(b) {
+		return false
+	}
+	for _, v := range a {
+		found := false
+		for _, s := range b {
+			if v == s {
+				found = true
+			}
+		}
+
+		if !found {
 			return false
 		}
 	}

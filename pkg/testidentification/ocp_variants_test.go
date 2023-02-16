@@ -3,6 +3,8 @@ package testidentification
 import (
 	"reflect"
 	"testing"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
@@ -50,7 +52,7 @@ func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := openshiftVariants{}
-			if got := v.IdentifyVariants(tt.name, tt.release); !reflect.DeepEqual(got, tt.want) {
+			if got := v.IdentifyVariants(tt.name, tt.release, models.JobType{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("IdentifyVariants() = %v, want %v", got, tt.want)
 			}
 		})
