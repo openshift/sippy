@@ -127,6 +127,9 @@ type RiskAnalysisEntryList []RiskAnalysisEntry
 func (r RiskAnalysisEntryList) Len() int      { return len(r) }
 func (r RiskAnalysisEntryList) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 func (r RiskAnalysisEntryList) Less(i, j int) bool {
+	if r[i].Value.RiskLevel.Level == r[j].Value.RiskLevel.Level {
+		return r[i].Value.Name > r[j].Value.Name
+	}
 	return r[i].Value.RiskLevel.Level > r[j].Value.RiskLevel.Level
 }
 
@@ -276,14 +279,27 @@ func (cw *CommentWorker) Run() {
 	for pc := range cw.pendingComments {
 
 		cw.commentUpdaterRateLimiter.Tick()
-		err := cw.writeComment(cw.ghCommenter, pc)
+
+		commentReady, err := cw.ghCommenter.ValidateAndUpdatePendingRecordComment(pc.org, pc.repo, pc.number, pc.sha, models.CommentType(pc.commentType))
+
+		// if we had an error here this is different from errors with GitHub
+		// log them but don't include in the rate limiter
+		if err != nil {
+			log.WithError(err).Errorf("Error validating pending record %s/%s/%d - %s", pc.org, pc.repo, pc.number, pc.sha)
+			continue
+		}
+		if !commentReady {
+			log.Infof("Skipping pending record %s/%s/%d - %s", pc.org, pc.repo, pc.number, pc.sha)
+			continue
+		}
+
+		err = cw.writeComment(cw.ghCommenter, pc)
 
 		if err == nil {
 			// if we had an error writing the comment then keep the record
 			// we will attempt to process the record again and overwrite any previous comment for the same sha
 			// otherwise, clear the record
-
-			cw.ghCommenter.ClearPendingRecord(pc.org, pc.repo, pc.number, pc.sha, nil)
+			cw.ghCommenter.ClearPendingRecord(pc.org, pc.repo, pc.number, pc.sha, models.CommentType(pc.commentType), nil)
 			if errCount > 0 {
 				errCount--
 				writeCommentErrorMetric.WithLabelValues(pc.org, pc.repo).Set(errCount)
@@ -292,6 +308,10 @@ func (cw *CommentWorker) Run() {
 			log.WithError(err).Errorf("Error processing record %s/%s/%d - %s", pc.org, pc.repo, pc.number, pc.sha)
 			errCount++
 			writeCommentErrorMetric.WithLabelValues(pc.org, pc.repo).Set(errCount)
+			err = cw.ghCommenter.UpdatePendingRecordErrorCount(pc.org, pc.repo, pc.number, pc.sha, models.CommentType(pc.commentType))
+			if err != nil {
+				log.WithError(err).Errorf("Error updating error count for record %s/%s/%d - %s", pc.org, pc.repo, pc.number, pc.sha)
+			}
 		}
 
 		// any error from ghCommenter impacts our backoff
@@ -403,8 +423,10 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 		return nil
 	}
 
+	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commenter.TrtCommentIDKey, commentID, pendingComment.comment)
+
 	// is there an existing comment of our type that we should remove
-	existingCommentID, err := ghCommenter.FindExistingCommentID(pendingComment.org, pendingComment.repo, pendingComment.number, commenter.TrtCommentIDKey, commentID)
+	existingCommentID, commentBody, err := ghCommenter.FindExistingCommentID(pendingComment.org, pendingComment.repo, pendingComment.number, commenter.TrtCommentIDKey, commentID)
 
 	// for now, we return any errors when interacting with gitHub so that we backoff our processing rate
 	// to do, select which ones indicate a need to backoff
@@ -413,10 +435,14 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	}
 
 	if existingCommentID != nil {
-
+		// compare the current body against the pending body
+		// if they are the same then don't comment again
+		if commentBody != nil && strings.TrimSpace(*commentBody) == strings.TrimSpace(ghcomment) {
+			logger.Infof("Existing comment matches pending comment for id: %s", commentID)
+			return nil
+		}
 		// we delete the existing comment and add a new one so the comment will be at the end of the comment list
 		err = ghCommenter.DeleteComment(pendingComment.org, pendingComment.repo, *existingCommentID)
-
 		// if we had an error then return it, the record will remain, and we will attempt processing again later
 		if err != nil {
 			return err
@@ -424,7 +450,7 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	}
 
 	logger.Infof("Adding comment id: %s", commentID)
-	return ghCommenter.AddComment(pendingComment.org, pendingComment.repo, pendingComment.number, pendingComment.comment, commenter.TrtCommentIDKey, commentID)
+	return ghCommenter.AddComment(pendingComment.org, pendingComment.repo, pendingComment.number, ghcomment)
 }
 
 func (aw *AnalysisWorker) Run() {

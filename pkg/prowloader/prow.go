@@ -243,7 +243,7 @@ func (pl *ProwLoader) syncPRStatus() error {
 
 				for _, pc := range pendingComments {
 					pcp := pc
-					pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, &pcp)
+					pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
 				}
 			}
 		}

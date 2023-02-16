@@ -97,7 +97,7 @@ func (ghc *GitHubCommenter) GetCurrentState(org, repo string, number int) (*gith
 	return ghc.githubClient.PRFetch(org, repo, number)
 }
 
-func (ghc *GitHubCommenter) FindExistingCommentID(org, repo string, number int, commentKey, commentID string) (*int64, error) {
+func (ghc *GitHubCommenter) FindExistingCommentID(org, repo string, number int, commentKey, commentID string) (*int64, *string, error) {
 	return ghc.githubClient.FindCommentID(org, repo, number, commentKey, commentID)
 }
 
@@ -190,7 +190,7 @@ func (ghc *GitHubCommenter) UpdatePendingCommentRecords(org, repo string, number
 
 			// otherwise we either aren't the latest sha or we have merged so clear
 			clearRecord := cmtupdt
-			ghc.ClearPendingRecord(clearRecord.Org, clearRecord.Repo, clearRecord.PullNumber, clearRecord.SHA, &clearRecord)
+			ghc.ClearPendingRecord(clearRecord.Org, clearRecord.Repo, clearRecord.PullNumber, clearRecord.SHA, commentType, &clearRecord)
 		}
 	}
 
@@ -213,7 +213,66 @@ func (ghc *GitHubCommenter) UpdatePendingCommentRecords(org, repo string, number
 	}
 }
 
-func (ghc *GitHubCommenter) ClearPendingRecord(org, repo string, number int, sha string, record *models.PullRequestComment) {
+// check for this record in our table
+// check to see what the last time we attempted to write a comment was
+// if within threshold then skip
+// if not then update the last attempt time
+// return true if the record is valid for processing, false otherwise
+func (ghc *GitHubCommenter) ValidateAndUpdatePendingRecordComment(org, repo string, number int, sha string, commentType models.CommentType) (bool, error) {
+
+	pullRequestComment, err := ghc.getPendingRecord(org, repo, number, sha, commentType)
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	// default is wait 10 minutes but then increase the wait by the number of errors we have encountered for this record
+	waitMillis := int64(600000 * (pullRequestComment.FailedCommentAttempts + 1))
+
+	if (time.Now().UnixMilli() - pullRequestComment.LastCommentAttempt.UnixMilli()) < waitMillis {
+		return false, nil
+	}
+
+	res := ghc.dbc.DB.Model(&models.PullRequestComment{}).Where("org = ? AND repo = ? AND pull_number = ? AND sha = ? AND comment_type = ?  ", pullRequestComment.Org, pullRequestComment.Repo, pullRequestComment.PullNumber, pullRequestComment.SHA, pullRequestComment.CommentType).Update("last_comment_attempt", time.Now())
+	if res.Error != nil {
+		return false, res.Error
+	}
+
+	return true, nil
+}
+
+func (ghc *GitHubCommenter) UpdatePendingRecordErrorCount(org, repo string, number int, sha string, commentType models.CommentType) error {
+	pullRequestComment, err := ghc.getPendingRecord(org, repo, number, sha, commentType)
+
+	if err != nil {
+		return err
+	}
+
+	// this would be the tenth failure so just delete it
+	if pullRequestComment.FailedCommentAttempts > 8 {
+		res := ghc.dbc.DB.Delete(pullRequestComment)
+		if res.Error != nil {
+			return res.Error
+		}
+		log.WithField("org", org).
+			WithField("repo", repo).
+			WithField("number", number).
+			WithField("sha", sha).Warn("Exceeded failed attempts, deleted comment record.")
+		return nil
+	}
+
+	res := ghc.dbc.DB.Model(&models.PullRequestComment{}).Where("org = ? AND repo = ? AND pull_number = ? AND sha = ? AND comment_type = ?  ", pullRequestComment.Org, pullRequestComment.Repo, pullRequestComment.PullNumber, pullRequestComment.SHA, pullRequestComment.CommentType).Update("failed_comment_attempts", pullRequestComment.FailedCommentAttempts+1)
+	if res.Error != nil {
+		return res.Error
+	}
+	return nil
+}
+
+func (ghc *GitHubCommenter) ClearPendingRecord(org, repo string, number int, sha string, commentType models.CommentType, record *models.PullRequestComment) {
 	logger := log.WithField("org", org).
 		WithField("repo", repo).
 		WithField("number", number).
@@ -221,17 +280,17 @@ func (ghc *GitHubCommenter) ClearPendingRecord(org, repo string, number int, sha
 
 	logger.Debug("Call to clear pending record")
 
-	var pullRequestComment = &models.PullRequestComment{}
+	var pullRequestComment *models.PullRequestComment
+	var err error
 	if record == nil {
 
-		res := ghc.dbc.DB.Where("org = ? AND repo = ? AND pull_number = ? AND sha = ?", org, repo, number, sha).First(&pullRequestComment)
+		pullRequestComment, err = ghc.getPendingRecord(org, repo, number, sha, commentType)
 
-		if res.Error != nil {
-
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				logger.WithError(res.Error).Error("Attempted to delete a missing record, likely indicating duplicate processing of the record.")
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.WithError(err).Error("Attempted to delete a missing record, likely indicating duplicate processing of the record.")
 			} else {
-				logger.WithError(res.Error).Error("Failed to clear pending record")
+				logger.WithError(err).Error("Failed to clear pending record")
 			}
 			return
 		}
@@ -243,6 +302,16 @@ func (ghc *GitHubCommenter) ClearPendingRecord(org, repo string, number int, sha
 	if res.Error != nil {
 		logger.WithError(res.Error).Error("could not delete existing comment record")
 	}
+}
+
+func (ghc *GitHubCommenter) getPendingRecord(org, repo string, number int, sha string, commentType models.CommentType) (*models.PullRequestComment, error) {
+	var pullRequestComment = &models.PullRequestComment{}
+	res := ghc.dbc.DB.Where("org = ? AND repo = ? AND pull_number = ? AND sha = ? AND comment_type = ?", org, repo, number, sha, commentType).First(&pullRequestComment)
+
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return pullRequestComment, nil
 }
 
 func (ghc *GitHubCommenter) QueryPRPendingComments(org, repo string, number int, commentType models.CommentType) ([]models.PullRequestComment, error) {
@@ -275,16 +344,14 @@ func (ghc *GitHubCommenter) QueryPendingComments(commentType models.CommentType)
 	return pullRequestComments, nil
 }
 
-func (ghc *GitHubCommenter) AddComment(org, repo string, number int, comment, commentKey, commentID string) error {
+func (ghc *GitHubCommenter) AddComment(org, repo string, number int, comment string) error {
 	// could return error or log something but handle silently for now
 	// we shouldn't even get called in this case
 	if !ghc.IsRepoIncluded(org, repo) {
 		return nil
 	}
 
-	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commentKey, commentID, comment)
-
-	return ghc.githubClient.CreatePRComment(org, repo, number, ghcomment)
+	return ghc.githubClient.CreatePRComment(org, repo, number, comment)
 }
 
 func (ghc *GitHubCommenter) DeleteComment(org, repo string, updateID int64) error {
