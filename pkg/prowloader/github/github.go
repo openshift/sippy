@@ -285,7 +285,7 @@ func (c *Client) PRFetch(org, repo string, number int) (prEntry *PREntry, err er
 		prEntry = &PREntry{
 			MergedAt: pr.MergedAt,
 			Title:    pr.Title,
-			URL:      pr.URL,
+			URL:      pr.HTMLURL,
 			State:    pr.State,
 		}
 

@@ -37,8 +37,8 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 				Head: &gh.PullRequestBranch{
 					SHA: &mergedSha,
 				},
-				Title: &pr1Title,
-				URL:   &pr1URL,
+				Title:   &pr1Title,
+				HTMLURL: &pr1URL,
 			}, nil
 		} else if org == openshift && repo == kubernetes && number == 2 {
 			return &gh.PullRequest{}, nil
