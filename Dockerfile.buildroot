@@ -1,13 +1,13 @@
-# In order to use ubi:8 as a build root, we need
+# In order to use ubi:9 as a build root, we need
 # git pre-installed per the CI documentation[1].
 #
 # [1] https://docs.ci.openshift.org/docs/architecture/ci-operator/#build-root-image
 #
-FROM registry.access.redhat.com/ubi8/ubi:latest
+FROM registry.access.redhat.com/ubi9/ubi:latest
 ARG GOLANGCI_LINT_VERSION="1.45.0"
 RUN curl -Lso /tmp/golangci-lint.rpm \
           "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64.rpm" && \
-      dnf module enable nodejs:16 -y && \
+      dnf module enable nodejs:18 -y && \
       dnf install -y \
         git \
         go \

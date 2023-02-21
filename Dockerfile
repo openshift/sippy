@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/ubi8/ubi:latest AS builder
+FROM registry.access.redhat.com/ubi9/ubi:latest AS builder
 WORKDIR /go/src/sippy
 COPY . .
 ENV PATH="/go/bin:${PATH}"
 ENV GOPATH="/go"
-RUN dnf module enable nodejs:16 -y && dnf install -y go make npm && make build
+RUN dnf module enable nodejs:18 -y && dnf install -y go make npm && make build
 
-FROM registry.access.redhat.com/ubi8/ubi:latest AS base
+FROM registry.access.redhat.com/ubi9/ubi:latest AS base
 RUN mkdir -p /historical-data
 RUN mkdir -p /config
 COPY --from=builder /go/src/sippy/sippy /bin/sippy
