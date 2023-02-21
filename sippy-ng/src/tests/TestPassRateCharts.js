@@ -17,20 +17,11 @@ import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 
 export default function TestPassRateCharts(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [groupedData, setGroupedData] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
-  const [groupSelectionDialog, setGroupSelectionDialog] = React.useState(false)
-  const [selectionModel, setSelectionModel] = React.useState([
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-  ])
-  const [selectedGroups = [], setSelectedGroups] = useQueryParam(
-    props.grouping,
-    ArrayParam
-  )
   const fetchData = () => {
     const filter = safeEncodeURIComponent(JSON.stringify(props.filterModel))
 
@@ -170,58 +161,6 @@ export default function TestPassRateCharts(props) {
               props.grouping.substr(1).toLowerCase()}
           </Typography>
           <Line data={chart} options={options} height={80} />
-          <Button
-            style={{ marginTop: 20 }}
-            variant="contained"
-            color="secondary"
-            onClick={() => setGroupSelectionDialog(true)}
-          >
-            Select {props.grouping} to chart
-          </Button>
-          <Dialog
-            fullWidth={true}
-            maxWidth="lg"
-            onClose={() => setGroupSelectionDialog(false)}
-            open={groupSelectionDialog}
-          >
-            <Grid className="test-dialog">
-              <Typography
-                variant="h6"
-                style={{ marginTop: 20, marginBottom: 20 }}
-              >
-                Select {props.grouping} to chart
-              </Typography>
-              <DataGrid
-                components={{ Toolbar: GridToolbar }}
-                columns={columns}
-                rows={allTests}
-                pageSize={10}
-                rowHeight={60}
-                autoHeight={true}
-                selectionModel={selectionModel}
-                onSelectionModelChange={(m) => updateSelectionModel(m)}
-                checkboxSelection
-                componentsProps={{
-                  toolbar: {
-                    columns: columns,
-                    filterModel: testFilter,
-                    setFilterModel: setTestFilter,
-                    clearSearch: () => requestSearch(''),
-                    doSearch: requestSearch,
-                  },
-                }}
-              />
-
-              <Button
-                style={{ marginTop: 20 }}
-                variant="contained"
-                color="primary"
-                onClick={() => setGroupSelectionDialog(false)}
-              >
-                OK
-              </Button>
-            </Grid>
-          </Dialog>
         </Card>
       </Grid>
     </Fragment>
@@ -230,6 +169,7 @@ export default function TestPassRateCharts(props) {
 
 TestPassRateCharts.defaultProps = {
   grouping: 'variants',
+  filterModel: { items: [] },
 }
 
 TestPassRateCharts.propTypes = {
