@@ -65,7 +65,11 @@ export default function TestPassRateCharts(props) {
       <Fragment>
         <Grid item md={12}>
           <Card className="test-failure-card" elevation={5}>
-            <Typography variant="h5">Pass Rate By {props.grouping}</Typography>
+            <Typography variant="h5">
+              Pass Rate By{' '}
+              {props.grouping.charAt(0).toUpperCase() +
+                props.grouping.substr(1).toLowerCase()}
+            </Typography>
             <CircularProgress color="inherit" />
           </Card>
         </Grid>
@@ -169,7 +173,6 @@ export default function TestPassRateCharts(props) {
 
 TestPassRateCharts.defaultProps = {
   grouping: 'variants',
-  filterModel: { items: [] },
 }
 
 TestPassRateCharts.propTypes = {
