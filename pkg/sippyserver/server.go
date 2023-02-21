@@ -454,24 +454,6 @@ func (s *Server) jsonTestAnalysisByVariantFromDB(w http.ResponseWriter, req *htt
 	}
 }
 
-func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.Request) {
-	testName := req.URL.Query().Get("test")
-	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
-		return
-	}
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		err := api.PrintTestAnalysisJSONFromDB(s.db, w, req, release, testName, s.GetReportEnd())
-		if err != nil {
-			log.Errorf("error querying test analysis from db: %v", err)
-		}
-	}
-}
-
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
@@ -1038,7 +1020,6 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
 	serveMux.HandleFunc("/api/tests/analysis/variants", s.jsonTestAnalysisByVariantFromDB)
 	serveMux.HandleFunc("/api/tests/analysis/jobs", s.jsonTestAnalysisByJobFromDB)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
 	serveMux.HandleFunc("/api/tests/outputs", s.jsonTestOutputsFromDB)
 	serveMux.HandleFunc("/api/tests/durations", s.jsonTestDurationsFromDB)
