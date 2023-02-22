@@ -129,8 +129,7 @@ func TestReportExcludeVariants(
 
 	// Query and group by variant:
 	var testReport api.Test
-	q := `
-WITH results AS (
+	q := `WITH results AS (
     SELECT name,
            release,
            sum(current_runs)       AS current_runs,
@@ -144,15 +143,8 @@ WITH results AS (
     FROM prow_test_report_7d_matview
     WHERE release = @release AND name = @testname %s
     GROUP BY name, release
-)
-SELECT *,
-       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results;
-`
+) SELECT *, ` + QueryTestPercentages + ` FROM results;`
+
 	q = fmt.Sprintf(q, excludeVariantsQuery)
 	r := dbc.DB.Raw(q,
 		sql.Named("release", release),

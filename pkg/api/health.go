@@ -8,12 +8,9 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -52,7 +49,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
 
-	indicators := make(map[string]apitype.Indicator)
+	indicators := make(map[string]apitype.Test)
 
 	infraTestName := testidentification.InfrastructureTestName
 	installTestName := testidentification.InstallTestName
@@ -61,7 +58,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		installTestName = testidentification.NewInstallTestName
 	}
 	// Infrastructure
-	infraIndicator, err := getIndicatorForTest(dbc, release, infraTestName, excludedVariants)
+	infraIndicator, err := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -69,7 +66,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["infrastructure"] = infraIndicator
 
 	// Install Configuration
-	installConfigIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants)
+	installConfigIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -77,7 +74,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["installConfig"] = installConfigIndicator
 
 	// Bootstrap
-	bootstrapIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants)
+	bootstrapIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -85,7 +82,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["bootstrap"] = bootstrapIndicator
 
 	// Install Other
-	installOtherIndicator, err := getIndicatorForTest(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants)
+	installOtherIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -93,7 +90,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["installOther"] = installOtherIndicator
 
 	// Install
-	installIndicator, err := getIndicatorForTest(dbc, release, installTestName, excludedInstallVariants)
+	installIndicator, err := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -101,7 +98,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	indicators["install"] = installIndicator
 
 	// Upgrade
-	upgradeIndicator, err := getIndicatorForTest(dbc, release, testidentification.UpgradeTestName, excludedVariants)
+	upgradeIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -111,7 +108,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Tests
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	testsIndicator, err := getIndicatorForTest(dbc, release, testidentification.OpenShiftTestsName, excludedVariants)
+	testsIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.OpenShiftTestsName, excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("error querying test report")
 		return
@@ -152,34 +149,6 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		Previous:    prevStats,
 		Warnings:    warnings,
 	})
-}
-
-func getIndicatorForTest(dbc *db.DB, release, testName string, excludedVariants []string) (apitype.Indicator, error) {
-	testReport, err := query.TestReportExcludeVariants(dbc, release, testName, excludedVariants)
-	if err != nil {
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// This would likely mean we're in upstream kube mode. Returning an empty
-			// indicator will cause the UI to hide these panels.
-			return apitype.Indicator{}, nil
-		}
-
-		log.WithError(err).Error("error querying test report")
-		return apitype.Indicator{}, err
-	}
-
-	currentPassRate := sippyv1.PassRate{
-		Percentage: testreportconversion.ConvertNaNToZero(testReport.CurrentPassPercentage),
-		Runs:       testReport.CurrentRuns,
-	}
-	previousPassRate := sippyv1.PassRate{
-		Percentage: testreportconversion.ConvertNaNToZero(testReport.PreviousPassPercentage),
-		Runs:       testReport.PreviousRuns,
-	}
-	return apitype.Indicator{
-		Current:  currentPassRate,
-		Previous: previousPassRate,
-	}, nil
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {
