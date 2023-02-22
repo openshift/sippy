@@ -27,7 +27,9 @@ export default function SummaryCard(props) {
   const theme = useTheme()
 
   const percent =
-    (props.success / ((props.flakes || 0) + props.fail + props.success)) * 100
+    ((props.success + props.flakes) /
+      ((props.flakes || 0) + props.fail + props.success)) *
+    100
 
   const colors = scale([
     theme.palette.error.light,
@@ -41,15 +43,13 @@ export default function SummaryCard(props) {
 
   const bgColor = colors(percent).hex()
 
-  const labels = ['Pass', 'Fail']
-  const data = [props.success, props.fail]
-  const color = [theme.palette.success.dark, theme.palette.error.dark]
-
-  if (props.flakes) {
-    labels.push('Flakes')
-    data.push(props.flakes)
-    color.push(theme.palette.warning.dark)
-  }
+  const labels = ['Pass', 'Flake', 'Fail']
+  const data = [props.success, props.flakes, props.fail]
+  const color = [
+    theme.palette.success.dark,
+    theme.palette.warning.dark,
+    theme.palette.error.dark,
+  ]
 
   let card = (
     <Card
@@ -116,6 +116,7 @@ export default function SummaryCard(props) {
 SummaryCard.defaultProps = {
   success: 0,
   fail: 0,
+  flakes: 0,
   caption: '',
   tooltip: '',
   units: 'percent',

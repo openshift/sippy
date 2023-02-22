@@ -717,7 +717,7 @@ type Variants struct {
 }
 
 type Health struct {
-	Indicators  map[string]Indicator `json:"indicators"`
+	Indicators  map[string]Test      `json:"indicators"`
 	Variants    Variants             `json:"variants"`
 	LastUpdated time.Time            `json:"last_updated"`
 	Promotions  map[string]time.Time `json:"promotions"`
