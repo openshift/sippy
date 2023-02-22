@@ -14,21 +14,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
-
-	"github.com/openshift/sippy/pkg/db/models"
-
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/util"
-
 	log "github.com/sirupsen/logrus"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 
 	"github.com/openshift/sippy/pkg/api"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // Mode defines the server mode of operation, OpenShift or upstream Kubernetes.
@@ -1005,9 +1005,15 @@ func (s *Server) Serve() {
 	}
 
 	var handler http.Handler = serveMux
+
 	// wrap mux with our logger. this will
 	handler = logRequestHandler(handler)
-	// ... potentially add more middleware handlers
+
+	// Middleware for http metrics
+	metricsMiddleware := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{}),
+	})
+	handler = middlewarestd.Handler("", metricsMiddleware, handler)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
