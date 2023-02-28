@@ -296,10 +296,9 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
-func (pl *ProwLoader) getClusterData(path string) models.ClusterData {
+func (pl *ProwLoader) getClusterData(path string, matches []string) models.ClusterData {
 	// get the variant cluster data for this job run
-	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, "")
-	matches := gcsJobRun.FindAllMatches(path, gcs.GetDefaultClusterDataFile())
+	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	cd := models.ClusterData{}
 
 	// return empty struct to pass along
@@ -440,7 +439,20 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 	parts := strings.Split(pjURL.Path, pl.bktName)
 	path := parts[1][1:]
 
-	clusterData := pl.getClusterData(path)
+	// find all files here then pass to getClusterData
+	// and prowJobRunTestsFromGCS
+	// add more regexes if we require more
+	// results from scanning for file names
+	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile(), gcs.GetDefaultJunitFile()})
+	var clusterMatches []string
+	var junitMatches []string
+	if len(allMatches) > 0 {
+		clusterMatches = allMatches[0]
+		junitMatches = allMatches[1]
+	}
+
+	clusterData := pl.getClusterData(path, clusterMatches)
 
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
@@ -467,7 +479,9 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 		}
 		if len(dbProwJob.TestGridURL) == 0 {
 			dbProwJob.TestGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
-			saveDB = true
+			if len(dbProwJob.TestGridURL) > 0 {
+				saveDB = true
+			}
 		}
 		if saveDB {
 			pl.dbc.DB.Save(&dbProwJob)
@@ -478,7 +492,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 		pjLog.Info("creating new ProwJobRun")
 
 		if len(parts) == 2 {
-			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), path)
+			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), path, junitMatches)
 			if err != nil {
 				return err
 			}
@@ -644,10 +658,11 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 	return pl.suiteCache[name]
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	gcsJobRun.SetGCSJunitPaths(junitPaths)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
