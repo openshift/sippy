@@ -182,6 +182,7 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 		prevPercentages = append(prevPercentages, result.PreviousPassPercentage)
 	}
 
+	// Should we protect against NAN here?
 	data := stats.LoadRawData(currPercentages)
 	mean, _ := stats.Mean(data)
 	sd, _ := stats.StandardDeviation(data)
