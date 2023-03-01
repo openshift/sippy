@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
-	"strings"
 
 	"cloud.google.com/go/storage"
 	log "github.com/sirupsen/logrus"
@@ -16,9 +15,34 @@ import (
 )
 
 const TestFailureSummaryFilePrefix = "risk-analysis"
+const ClusterDataFilePrefix = "cluster-data_"
+const JunitRegExStr = "\\/junit.*xml"
+
+var (
+	defaultRiskAnalysisSummaryFileRegEx *regexp.Regexp
+	defaultClusterDataFileRegEx         *regexp.Regexp
+	defaultJunitFileRegEx               *regexp.Regexp
+)
 
 func GetDefaultRiskAnalysisSummaryFile() *regexp.Regexp {
-	return regexp.MustCompile(fmt.Sprintf("%s.json", TestFailureSummaryFilePrefix))
+	if defaultRiskAnalysisSummaryFileRegEx == nil {
+		defaultRiskAnalysisSummaryFileRegEx = regexp.MustCompile(fmt.Sprintf("%s.json", TestFailureSummaryFilePrefix))
+	}
+	return defaultRiskAnalysisSummaryFileRegEx
+}
+
+func GetDefaultClusterDataFile() *regexp.Regexp {
+	if defaultClusterDataFileRegEx == nil {
+		defaultClusterDataFileRegEx = regexp.MustCompile(fmt.Sprintf("%s.*json", ClusterDataFilePrefix))
+	}
+	return defaultClusterDataFileRegEx
+}
+
+func GetDefaultJunitFile() *regexp.Regexp {
+	if defaultJunitFileRegEx == nil {
+		defaultJunitFileRegEx = regexp.MustCompile(JunitRegExStr)
+	}
+	return defaultJunitFileRegEx
 }
 
 type GCSJobRun struct {
@@ -38,20 +62,16 @@ func NewGCSJobRun(bkt *storage.BucketHandle, path string) *GCSJobRun {
 	}
 }
 
+func (j *GCSJobRun) SetGCSJunitPaths(paths []string) {
+	j.gcsJunitPaths = paths
+}
+
 func (j *GCSJobRun) GetGCSJunitPaths() []string {
 	if len(j.gcsJunitPaths) == 0 {
-		it := j.bkt.Objects(context.Background(), &storage.Query{
-			Prefix: j.gcsProwJobPath,
-		})
-		for {
-			attrs, err := it.Next()
-			if err == iterator.Done {
-				break
-			}
+		matches := j.FindAllMatches([]*regexp.Regexp{GetDefaultJunitFile()})
 
-			if strings.HasSuffix(attrs.Name, "xml") && strings.Contains(attrs.Name, "/junit") {
-				j.gcsJunitPaths = append(j.gcsJunitPaths, attrs.Name)
-			}
+		if len(matches) > 0 {
+			j.gcsJunitPaths = matches[0]
 		}
 	}
 
@@ -153,4 +173,37 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 	}
 
 	return nil
+}
+
+// FindAllMatches takes an array of regexes
+// and compares the name of the object in gcs
+// with each regex for a match
+// each regex that matches will get the attribute name
+// in the returned matches with the index matching the regex
+func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) [][]string {
+	if len(filenames) < 1 {
+		return nil
+	}
+	matches := make([][]string, len(filenames))
+
+	it := j.bkt.Objects(context.Background(), &storage.Query{
+		Prefix: j.gcsProwJobPath,
+	})
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		for i, filename := range filenames {
+			if matches[i] == nil {
+				matches[i] = make([]string, 0)
+			}
+			if filename.MatchString(attrs.Name) {
+				matches[i] = append(matches[i], attrs.Name)
+			}
+		}
+	}
+
+	return matches
 }

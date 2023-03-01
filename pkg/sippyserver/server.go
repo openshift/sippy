@@ -828,7 +828,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			log.Warn("Invalid ProwJob provided for analysis, returning elevated risk")
 			result := apitype.ProwJobRunRiskAnalysis{
 				OverallRisk: apitype.FailureRisk{
-					Level:   apitype.FailureRiskLevelHigh,
+					Level:   apitype.FailureRiskLevelMissingData,
 					Reasons: []string{fmt.Sprintf("Invalid ProwJob provided for analysis: %s", detailReason)},
 				},
 			}
@@ -851,6 +851,11 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			return
 		}
 		jobRun.ProwJob = *job
+
+		// if the ClusterData is being passed in then use it to override the variants (agnostic case, etc)
+		if jobRun.ClusterData.Release != "" {
+			jobRun.ProwJob.Variants = s.variantManager.IdentifyVariants(jobRun.ProwJob.Name, jobRun.ClusterData.Release, jobRun.ClusterData)
+		}
 		logger = logger.WithField("jobRunID", jobRun.ID)
 	}
 

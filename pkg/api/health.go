@@ -182,35 +182,39 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 		prevPercentages = append(prevPercentages, result.PreviousPassPercentage)
 	}
 
-	data := stats.LoadRawData(currPercentages)
-	mean, _ := stats.Mean(data)
-	sd, _ := stats.StandardDeviation(data)
-	quartiles, _ := stats.Quartile(data)
-	p95, _ := stats.Percentile(data, 95)
+	if len(currPercentages) > 0 {
+		data := stats.LoadRawData(currPercentages)
+		mean, _ := stats.Mean(data)
+		sd, _ := stats.StandardDeviation(data)
+		quartiles, _ := stats.Quartile(data)
+		p95, _ := stats.Percentile(data, 95)
 
-	currStats.Mean = mean
-	currStats.StandardDeviation = sd
-	currStats.Quartiles = []float64{
-		testreportconversion.ConvertNaNToZero(quartiles.Q1),
-		testreportconversion.ConvertNaNToZero(quartiles.Q2),
-		testreportconversion.ConvertNaNToZero(quartiles.Q3),
+		currStats.Mean = mean
+		currStats.StandardDeviation = sd
+		currStats.Quartiles = []float64{
+			testreportconversion.ConvertNaNToZero(quartiles.Q1),
+			testreportconversion.ConvertNaNToZero(quartiles.Q2),
+			testreportconversion.ConvertNaNToZero(quartiles.Q3),
+		}
+		currStats.P95 = p95
 	}
-	currStats.P95 = p95
 
-	data = stats.LoadRawData(prevPercentages)
-	mean, _ = stats.Mean(data)
-	sd, _ = stats.StandardDeviation(data)
-	quartiles, _ = stats.Quartile(data)
-	p95, _ = stats.Percentile(data, 95)
+	if len(prevPercentages) > 0 {
+		data := stats.LoadRawData(prevPercentages)
+		mean, _ := stats.Mean(data)
+		sd, _ := stats.StandardDeviation(data)
+		quartiles, _ := stats.Quartile(data)
+		p95, _ := stats.Percentile(data, 95)
 
-	prevStats.Mean = mean
-	prevStats.StandardDeviation = sd
-	prevStats.Quartiles = []float64{
-		testreportconversion.ConvertNaNToZero(quartiles.Q1),
-		testreportconversion.ConvertNaNToZero(quartiles.Q2),
-		testreportconversion.ConvertNaNToZero(quartiles.Q3),
+		prevStats.Mean = mean
+		prevStats.StandardDeviation = sd
+		prevStats.Quartiles = []float64{
+			testreportconversion.ConvertNaNToZero(quartiles.Q1),
+			testreportconversion.ConvertNaNToZero(quartiles.Q2),
+			testreportconversion.ConvertNaNToZero(quartiles.Q3),
+		}
+		prevStats.P95 = p95
 	}
-	prevStats.P95 = p95
 
 	return currStats, prevStats
 }

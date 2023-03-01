@@ -72,7 +72,7 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelLow,
 		},
 		{
-			name: "max test risk level unknown",
+			name: "max test risk level medium",
 			testPassRates: []apitype.Test{
 				{
 					Name:                  "test3",
@@ -86,6 +86,24 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedTestRisks: map[string]apitype.RiskLevel{
 				"test4": apitype.FailureRiskLevelUnknown,
 				"test3": apitype.FailureRiskLevelMedium,
+			},
+			expectedOverallRisk: apitype.FailureRiskLevelMedium,
+		},
+		{
+			name: "max test risk level unknown",
+			testPassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 50.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: -1, // hack to tell the setup to not return results for this test
+				},
+			},
+			expectedTestRisks: map[string]apitype.RiskLevel{
+				"test4": apitype.FailureRiskLevelUnknown,
+				"test3": apitype.FailureRiskLevelLow,
 			},
 			expectedOverallRisk: apitype.FailureRiskLevelUnknown,
 		},
@@ -146,7 +164,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				assert.Equal(t, expectedRisk, actualTestRisk.Risk.Level, "unexpected risk level for test: %s", testName)
 			}
 
-			assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level)
+			assert.Equal(t, tc.expectedOverallRisk, result.OverallRisk.Level, "unexpected overall risk for test: %s", tc.name)
 
 		})
 	}
@@ -189,4 +207,63 @@ func getTestRisk(result apitype.ProwJobRunRiskAnalysis, testName string) *apityp
 	}
 	return nil
 
+}
+
+func TestSubSliceEqual(t *testing.T) {
+
+	tests := []struct {
+		name            string
+		variants        []string
+		testRunVariants []string
+
+		expectedMatch bool
+	}{
+		{
+			name:            "match azure",
+			variants:        []string{"ovn", "ha"},
+			testRunVariants: []string{"ha", "ovn", "azure"},
+			expectedMatch:   true,
+		},
+		{
+			name:            "match aws",
+			variants:        []string{"ovn", "ha"},
+			testRunVariants: []string{"ha", "ovn", "aws"},
+			expectedMatch:   true,
+		},
+		{
+			name:            "no match",
+			variants:        []string{"ovn", "ha"},
+			testRunVariants: []string{"ha", "sdn", "azure"},
+			expectedMatch:   false,
+		},
+		{
+			name:            "match",
+			variants:        []string{"ovn", "ha"},
+			testRunVariants: []string{"ha", "ovn", "azure"},
+			expectedMatch:   true,
+		},
+		{
+			name:            "smaller",
+			variants:        []string{"ovn", "ha"},
+			testRunVariants: []string{"ha"},
+			expectedMatch:   false,
+		},
+		{
+			name:          "missing test run",
+			variants:      []string{"ovn", "ha"},
+			expectedMatch: false,
+		},
+		{
+			name:            "missing variants",
+			testRunVariants: []string{"ha"},
+			expectedMatch:   false,
+		},
+	}
+
+	for _, tc := range tests {
+
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expectedMatch, stringSubSlicesEqual(tc.variants, tc.testRunVariants), "%s did not match expected", tc.name)
+		})
+	}
 }
