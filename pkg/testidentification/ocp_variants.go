@@ -138,8 +138,9 @@ func compareAndSelectVariant(jobNameVariant, clusterVariant, variantKey string) 
 	if clusterVariant != "" {
 		if val != "" && clusterVariant != val {
 			log.Errorf("ClusterData %s: %s, does not match jobName %s: %s", variantKey, clusterVariant, variantKey, jobNameVariant)
-		} else {
-			// defer to the jobNameVariant for now if they don't match as we have found conflicts
+		}
+		// defer to the clusterVariant if it is a known openshift variant
+		if allOpenshiftVariants.Has(clusterVariant) {
 			val = clusterVariant
 		}
 	}
