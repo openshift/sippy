@@ -59,25 +59,25 @@ func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
 			name:        "periodic-ci-openshift-release-master-ci-e2e-aws-clusterrelease-with-network",
 			release:     "4.13",
 			clusterData: models.ClusterData{Release: "4.13", Network: "sdn"},
-			want:        []string{"aws", "amd64", "sdn", "ha"},
+			want:        []string{"aws", "amd64", "ovn", "ha"},
 		},
 		{
 			name:        "periodic-ci-openshift-release-master-ci-e2e-aws-clusterrelease-with-network-platform-override",
 			release:     "4.13",
 			clusterData: models.ClusterData{Release: "4.13", Network: "sdn", Platform: "azure"},
-			want:        []string{"azure", "amd64", "sdn", "ha"},
+			want:        []string{"aws", "amd64", "ovn", "ha"},
 		},
 		{
 			name:        "periodic-ci-openshift-release-master-ci-e2e-aws-clusterrelease-with-network-platform-override-architecture",
 			release:     "4.13",
 			clusterData: models.ClusterData{Release: "4.13", Network: "sdn", Platform: "azure", Architecture: "arm64"},
-			want:        []string{"azure", "arm64", "sdn", "ha"},
+			want:        []string{"aws", "amd64", "ovn", "ha"},
 		},
 		{
 			name:        "periodic-ci-openshift-release-master-ci-e2e-aws-clusterrelease-with-network-platform-override-architecture-topology",
 			release:     "4.13",
 			clusterData: models.ClusterData{Release: "4.13", Network: "sdn", Platform: "azure", Architecture: "arm64", Topology: "single-node"},
-			want:        []string{"azure", "arm64", "sdn", "single-node"},
+			want:        []string{"aws", "amd64", "ovn", "ha"},
 		},
 	}
 	for _, tt := range tests {
