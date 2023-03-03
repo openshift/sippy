@@ -87,7 +87,7 @@ func New(
 	}
 }
 
-var jsonArtifactDateTimeName = regexp.MustCompile(`_(?P<DATE>.*)-(?P<TIME>.*).json`)
+var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
 
 type DateTimeName struct {
 	Name string
@@ -349,14 +349,14 @@ func findMostRecentDateTimeMatch(names []string) string {
 }
 
 func extractDateTimeName(name string) *DateTimeName {
-	if !jsonArtifactDateTimeName.MatchString(name) {
+	if !clusterDataDateTimeName.MatchString(name) {
 		log.Errorf("Name did not match date time format: %s", name)
 		return nil
 	}
 
 	dateTimeName := &DateTimeName{Name: name}
-	subMatches := jsonArtifactDateTimeName.FindStringSubmatch(name)
-	subNames := jsonArtifactDateTimeName.SubexpNames()
+	subMatches := clusterDataDateTimeName.FindStringSubmatch(name)
+	subNames := clusterDataDateTimeName.SubexpNames()
 	for i, sName := range subNames {
 
 		switch sName {
