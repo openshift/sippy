@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	gosort "sort"
 	"strconv"
 	"time"
@@ -55,11 +54,6 @@ func (jobs jobsAPIResult) limit(req *http.Request) jobsAPIResult {
 	}
 
 	return jobs
-}
-
-func briefName(job string) string {
-	briefName := regexp.MustCompile("periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-")
-	return briefName.ReplaceAllString(job, "")
 }
 
 // PrintVariantReportFromDB
