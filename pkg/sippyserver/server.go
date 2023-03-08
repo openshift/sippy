@@ -400,7 +400,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-func (s *Server) jsonTestAnalysisByJobFromDB(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -417,7 +417,7 @@ func (s *Server) jsonTestAnalysisByJobFromDB(w http.ResponseWriter, req *http.Re
 				"message": "couldn't parse filter opts " + err.Error()})
 			return
 		}
-		results, err := api.GetTestAnalysisByJobFromDB(s.db, filters, release, testName, s.GetReportEnd())
+		results, err := dbFN(s.db, filters, release, testName, s.GetReportEnd())
 		if err != nil {
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
 				"message": err.Error()})
@@ -427,31 +427,12 @@ func (s *Server) jsonTestAnalysisByJobFromDB(w http.ResponseWriter, req *http.Re
 	}
 }
 
+func (s *Server) jsonTestAnalysisByJobFromDB(w http.ResponseWriter, req *http.Request) {
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisByJobFromDB)
+}
+
 func (s *Server) jsonTestAnalysisByVariantFromDB(w http.ResponseWriter, req *http.Request) {
-	testName := req.URL.Query().Get("test")
-	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
-		return
-	}
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		filters, err := filter.ExtractFilters(req)
-		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse filter opts " + err.Error()})
-			return
-		}
-		results, err := api.GetTestAnalysisByVariantFromDB(s.db, filters, release, testName, s.GetReportEnd())
-		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": err.Error()})
-			return
-		}
-		api.RespondWithJSON(200, w, results)
-	}
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisByVariantFromDB)
 }
 
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
