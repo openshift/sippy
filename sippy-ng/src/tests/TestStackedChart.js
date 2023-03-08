@@ -75,7 +75,6 @@ export function TestStackedChart(props) {
   analysis.forEach((dt) => {
     daySet.add(dt.date)
   })
-  console.log(daySet)
   const resultChart = {
     labels: Array.from(daySet),
     datasets: [],

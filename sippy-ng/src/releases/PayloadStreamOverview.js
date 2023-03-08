@@ -61,8 +61,6 @@ function PayloadStreamOverview(props) {
             stream.architecture === props.arch &&
             stream.stream === props.stream
           ) {
-            console.log('Found our stream')
-            console.log(stream)
             setStreamHealth(stream)
           }
         }

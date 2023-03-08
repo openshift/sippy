@@ -215,6 +215,7 @@ export default function Sidebar(props) {
                       items: [
                         BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                         BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
