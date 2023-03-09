@@ -26,7 +26,7 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
 			test_name,
-			to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
+			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
 			'overall' as group,
 			SUM(runs) as runs,
 			SUM(passes) as passes,
@@ -86,7 +86,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
 			test_name,
-			to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
+			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
 			prow_jobs.release,
 			job_name as group,
 			runs,
@@ -100,6 +100,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 		Joins("INNER JOIN prow_jobs on prow_jobs.name = job_name").
 		Where("prow_jobs.release = ?", release).
 		Where("test_name = ?", testName).
+		Where("date <= ?", reportEnd).
 		Order("date ASC")
 
 	var allowedVariants, blockedVariants []string
@@ -151,8 +152,8 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
 		Where("release = ?", release).
 		Where("test_name = ?", testName).
-		Where("date < ?", reportEnd).
-		Select(`to_date(date::text, 'YYYY-MM-DD'::text)::text as date,
+		Where("date <= ?", reportEnd).
+		Select(`to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
 			variant as group,
 			runs,
 			passes,
