@@ -21,7 +21,7 @@ type CountByDate struct {
 	Failures        int     `json:"failures"`
 }
 
-func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) ([]CountByDate, error) {
+func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
 		Select(`test_id,
@@ -68,7 +68,9 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 		return nil, r.Error
 	}
 
-	return rows, nil
+	result := make(map[string][]CountByDate)
+	result["overall"] = rows
+	return result, nil
 }
 
 func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
@@ -79,8 +81,8 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	if err != nil {
 		return nil, err
 	}
-	if len(overallResult) > 0 {
-		results["overall"] = overallResult
+	if overall, ok := overallResult["overall"]; ok {
+		results["overall"] = overall
 	}
 
 	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
@@ -145,8 +147,8 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 	if err != nil {
 		return nil, err
 	}
-	if len(overallResult) > 0 {
-		results["overall"] = overallResult
+	if overall, ok := overallResult["overall"]; ok {
+		results["overall"] = overall
 	}
 
 	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").

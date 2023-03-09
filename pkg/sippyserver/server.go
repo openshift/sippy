@@ -435,6 +435,10 @@ func (s *Server) jsonTestAnalysisByVariantFromDB(w http.ResponseWriter, req *htt
 	s.jsonTestAnalysis(w, req, api.GetTestAnalysisByVariantFromDB)
 }
 
+func (s *Server) jsonTestAnalysisOverallFromDB(w http.ResponseWriter, req *http.Request) {
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisOverallFromDB)
+}
+
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
@@ -999,6 +1003,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
+	serveMux.HandleFunc("/api/tests/analysis/overall", s.jsonTestAnalysisOverallFromDB)
 	serveMux.HandleFunc("/api/tests/analysis/variants", s.jsonTestAnalysisByVariantFromDB)
 	serveMux.HandleFunc("/api/tests/analysis/jobs", s.jsonTestAnalysisByJobFromDB)
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
