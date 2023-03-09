@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom'
 import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
+import { TestStackedChart } from './TestStackedChart'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
 import BugTable from '../bugzilla/BugTable'
@@ -275,10 +276,24 @@ export function TestAnalysis(props) {
             </Card>
           </Grid>
 
+          <TestStackedChart
+            release={props.release}
+            test={testName}
+            filter={filterModel}
+          />
+
           <TestPassRateCharts
             test={testName}
             release={props.release}
             filterModel={filterModel}
+            grouping="jobs"
+          />
+
+          <TestPassRateCharts
+            test={testName}
+            release={props.release}
+            filterModel={filterModel}
+            grouping="variants"
           />
 
           <Grid item md={12}>

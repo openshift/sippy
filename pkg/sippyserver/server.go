@@ -400,7 +400,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -411,11 +411,32 @@ func (s *Server) jsonTestAnalysisReportFromDB(w http.ResponseWriter, req *http.R
 	}
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
-		err := api.PrintTestAnalysisJSONFromDB(s.db, w, req, release, testName, s.GetReportEnd())
+		filters, err := filter.ExtractFilters(req)
 		if err != nil {
-			log.Errorf("error querying test analysis from db: %v", err)
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": "couldn't parse filter opts " + err.Error()})
+			return
 		}
+		results, err := dbFN(s.db, filters, release, testName, s.GetReportEnd())
+		if err != nil {
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+				"message": err.Error()})
+			return
+		}
+		api.RespondWithJSON(200, w, results)
 	}
+}
+
+func (s *Server) jsonTestAnalysisByJobFromDB(w http.ResponseWriter, req *http.Request) {
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisByJobFromDB)
+}
+
+func (s *Server) jsonTestAnalysisByVariantFromDB(w http.ResponseWriter, req *http.Request) {
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisByVariantFromDB)
+}
+
+func (s *Server) jsonTestAnalysisOverallFromDB(w http.ResponseWriter, req *http.Request) {
+	s.jsonTestAnalysis(w, req, api.GetTestAnalysisOverallFromDB)
 }
 
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
@@ -982,7 +1003,9 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
 	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
-	serveMux.HandleFunc("/api/tests/analysis", s.jsonTestAnalysisReportFromDB)
+	serveMux.HandleFunc("/api/tests/analysis/overall", s.jsonTestAnalysisOverallFromDB)
+	serveMux.HandleFunc("/api/tests/analysis/variants", s.jsonTestAnalysisByVariantFromDB)
+	serveMux.HandleFunc("/api/tests/analysis/jobs", s.jsonTestAnalysisByJobFromDB)
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
 	serveMux.HandleFunc("/api/tests/outputs", s.jsonTestOutputsFromDB)
 	serveMux.HandleFunc("/api/tests/durations", s.jsonTestDurationsFromDB)
