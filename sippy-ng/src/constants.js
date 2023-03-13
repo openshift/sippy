@@ -108,6 +108,12 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'never-stable',
   },
+  NO_AGGREGATED: {
+    columnField: 'variants',
+    not: true,
+    operatorValue: 'contains',
+    value: 'aggregated',
+  },
   NO_STEP_GRAPH: {
     columnField: 'name',
     not: true,

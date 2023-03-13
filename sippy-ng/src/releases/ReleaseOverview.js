@@ -346,6 +346,7 @@ export default function ReleaseOverview(props) {
                   to={`/tests/${props.release}?${queryForBookmark(
                     BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH
                   )}&sortField=net_working_improvement&sort=asc`}
@@ -369,6 +370,7 @@ export default function ReleaseOverview(props) {
                       items: [
                         BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                       ],
@@ -390,6 +392,7 @@ export default function ReleaseOverview(props) {
                   }?period=twoDay&sortField=net_working_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_2,
                     BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH
                   )}`}
@@ -412,6 +415,7 @@ export default function ReleaseOverview(props) {
                       items: [
                         BOOKMARKS.RUN_2,
                         BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                       ],
@@ -432,6 +436,7 @@ export default function ReleaseOverview(props) {
                   to={`/tests/${props.release}/details?${queryForBookmark(
                     BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH,
                     BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
@@ -463,6 +468,7 @@ export default function ReleaseOverview(props) {
                       items: [
                         BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                         BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
@@ -484,6 +490,7 @@ export default function ReleaseOverview(props) {
                   to={`/tests/${props.release}?${queryForBookmark(
                     BOOKMARKS.RUN_7,
                     BOOKMARKS.NO_NEVER_STABLE,
+                    BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH
                   )}&sortField=current_working_percentage&sort=asc`}
@@ -507,6 +514,7 @@ export default function ReleaseOverview(props) {
                       items: [
                         BOOKMARKS.RUN_7,
                         BOOKMARKS.NO_NEVER_STABLE,
+                        BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
                       ],

@@ -82,6 +82,7 @@ export default function Tests(props) {
                           items: [
                             BOOKMARKS.RUN_7,
                             BOOKMARKS.NO_NEVER_STABLE,
+                            BOOKMARKS.NO_AGGREGATED,
                             BOOKMARKS.WATCHLIST,
                           ],
                           linkOperator: 'and',

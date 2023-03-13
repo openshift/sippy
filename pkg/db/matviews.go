@@ -258,7 +258,7 @@ FROM prow_job_run_tests
    LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-WHERE prow_job_runs.timestamp >= |||START||| AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
+WHERE prow_job_runs.timestamp >= |||START|||
 GROUP BY tests.id, tests.name, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
 `
 
@@ -328,7 +328,7 @@ FROM prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval) AND NOT ('aggregated'::text = ANY (prow_jobs.variants))
+WHERE prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY tests.name, tests.id, (date(prow_job_runs."timestamp")), prow_jobs.release, prow_jobs.name
 `
 

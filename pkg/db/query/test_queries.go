@@ -230,7 +230,6 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_job_runs.timestamp > current_date - interval '14' day").
 		Where("prow_job_run_tests.test_id = (?)", testQuery).
-		Where("NOT 'aggregated' = any(prow_jobs.variants)").
 		Where("prow_jobs.release = ?", release)
 
 	for _, variant := range includedVariants {
