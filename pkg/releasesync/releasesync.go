@@ -244,7 +244,7 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 	for _, c := range changeLogJSON.Components {
 		if c.Name == "Kubernetes" {
 			releaseChangeLogJSON.KubernetesVersion = c.Version
-		} else if c.Name == "Red Hat Enterprise Linux CoreOS" {
+		} else if strings.Contains(c.Name, "CoreOS") {
 			releaseChangeLogJSON.CurrentOSVersion = c.Version
 			releaseChangeLogJSON.CurrentOSURL = c.VersionURL
 			releaseChangeLogJSON.PreviousOSURL = c.FromURL

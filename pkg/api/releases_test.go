@@ -3,9 +3,10 @@ package api
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestScanReleaseHealthForRHCOSVersionMisMatches(t *testing.T) {
