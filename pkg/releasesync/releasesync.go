@@ -60,6 +60,7 @@ func (r *releaseSyncOptions) run() []error {
 					if mReleaseTag.Phase != tag.Phase {
 						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
 						mReleaseTag.Phase = tag.Phase
+						mReleaseTag.Forced = true
 						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
 							log.WithError(err).Errorf("error updating release tag")
 							errs = append(errs, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
