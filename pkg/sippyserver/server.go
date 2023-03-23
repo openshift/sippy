@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -892,6 +893,57 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonJobRunRiskAnalysis is an API to return the intervals origin builds for interesting things that occurred during
+// the test run.
+//
+// This API is used by the job run intervals chart in the UI.
+func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
+
+	logger := log.WithField("func", "jsonJobRunIntervals")
+
+	// Right now, we need the job run in our DB to fetch it's URL, so we can find the GCS
+	// bucket. This means until sippy imports the job, you will not be able to fetch
+	// its intervals.
+	// However long term we expect these to live in an external system, and the prow job ID
+	// should be all we need to look it up. At that point the limitation should be removed.
+	jobRun := &models.ProwJobRun{}
+	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	if jobRunIDStr == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code": http.StatusBadRequest, "message": "prow_job_run_id query parameter not specified"})
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "unable to parse prow_job_run_id: " + err.Error()})
+		return
+	}
+
+	logger = logger.WithField("jobRunID", jobRunID)
+
+	jobRun, _, err = api.FetchJobRun(s.db, jobRunID, logger)
+
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code": http.StatusBadRequest, "message": err.Error()})
+		return
+	}
+
+	logger.Debugf("job run = %+v", *jobRun)
+	result, err := jobrunintervals.JobRunIntervals(jobRun, logger.WithField("func", "JobRunRiskIntervals"))
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
 	if (jobRun == nil || jobRun == &models.ProwJobRun{} || &jobRun.ProwJob == &models.ProwJob{} || jobRun.ProwJob.Name == "") {
 
@@ -996,6 +1048,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
+	serveMux.HandleFunc("/api/jobs/runs/intervals", s.jsonJobRunIntervals)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
