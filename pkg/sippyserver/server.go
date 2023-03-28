@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -52,6 +53,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	gcsClient *storage.Client,
 	pinnedDateTime *time.Time,
 ) *Server {
 
@@ -71,6 +73,7 @@ func NewServer(
 		static:         static,
 		db:             dbClient,
 		pinnedDateTime: pinnedDateTime,
+		gcsClient:      gcsClient,
 	}
 
 	return server
@@ -102,6 +105,7 @@ type Server struct {
 	httpServer                 *http.Server
 	db                         *db.DB
 	pinnedDateTime             *time.Time
+	gcsClient                  *storage.Client
 }
 
 type TestGridDashboardCoordinates struct {
@@ -901,6 +905,13 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 
 	logger := log.WithField("func", "jsonJobRunIntervals")
 
+	if s.gcsClient == nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "server not configured for GCS, unable to use this API"})
+		return
+	}
+
 	// Right now, we need the job run in our DB to fetch it's URL, so we can find the GCS
 	// bucket. This means until sippy imports the job, you will not be able to fetch
 	// its intervals.
@@ -933,7 +944,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	}
 
 	logger.Debugf("job run = %+v", *jobRun)
-	result, err := jobrunintervals.JobRunIntervals(jobRun, logger.WithField("func", "JobRunRiskIntervals"))
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, jobRun, logger.WithField("func", "JobRunRiskIntervals"))
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
