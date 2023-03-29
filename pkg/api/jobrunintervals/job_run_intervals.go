@@ -10,7 +10,6 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +22,6 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, logg
 	// its intervals.
 	// However, long term we expect these to live in an external system, and the prow job ID
 	// should be all we need to look it up. At that point the limitation should be removed.
-	jobRun := &models.ProwJobRun{}
 	jobRun, _, err := api.FetchJobRun(dbc, jobRunID, logger)
 	if err != nil {
 		logger.WithError(err).Error("error querying job run")
