@@ -912,12 +912,6 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Right now, we need the job run in our DB to fetch it's URL, so we can find the GCS
-	// bucket. This means until sippy imports the job, you will not be able to fetch
-	// its intervals.
-	// However long term we expect these to live in an external system, and the prow job ID
-	// should be all we need to look it up. At that point the limitation should be removed.
-	jobRun := &models.ProwJobRun{}
 	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
 	if jobRunIDStr == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -932,19 +926,9 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 			"message": "unable to parse prow_job_run_id: " + err.Error()})
 		return
 	}
-
 	logger = logger.WithField("jobRunID", jobRunID)
 
-	jobRun, _, err = api.FetchJobRun(s.db, jobRunID, logger)
-
-	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code": http.StatusBadRequest, "message": err.Error()})
-		return
-	}
-
-	logger.Debugf("job run = %+v", *jobRun)
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, jobRun, logger.WithField("func", "JobRunRiskIntervals"))
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, logger.WithField("func", "JobRunRiskIntervals"))
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,

@@ -7,14 +7,28 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	log "github.com/sirupsen/logrus"
 )
 
 // JobRunIntervals fetches intervals for a given job run.
-func JobRunIntervals(gcsClient *storage.Client, jobRun *models.ProwJobRun, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, logger *log.Entry) (*apitype.EventIntervalList, error) {
+
+	// Right now, we need the job run in our DB to fetch its URL, so we can find the GCS
+	// bucket. This means until sippy imports the job, you will not be able to fetch
+	// its intervals.
+	// However, long term we expect these to live in an external system, and the prow job ID
+	// should be all we need to look it up. At that point the limitation should be removed.
+	jobRun := &models.ProwJobRun{}
+	jobRun, _, err := api.FetchJobRun(dbc, jobRunID, logger)
+	if err != nil {
+		logger.WithError(err).Error("error querying job run")
+		return nil, err
+	}
 
 	parts := strings.Split(jobRun.URL, gcs.OpenshiftGCSBucket)
 	path := parts[1][1:]
