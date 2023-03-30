@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -51,6 +53,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	gcsClient *storage.Client,
 	pinnedDateTime *time.Time,
 ) *Server {
 
@@ -70,6 +73,7 @@ func NewServer(
 		static:         static,
 		db:             dbClient,
 		pinnedDateTime: pinnedDateTime,
+		gcsClient:      gcsClient,
 	}
 
 	return server
@@ -101,6 +105,7 @@ type Server struct {
 	httpServer                 *http.Server
 	db                         *db.DB
 	pinnedDateTime             *time.Time
+	gcsClient                  *storage.Client
 }
 
 type TestGridDashboardCoordinates struct {
@@ -892,6 +897,48 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonJobRunRiskAnalysis is an API to return the intervals origin builds for interesting things that occurred during
+// the test run.
+//
+// This API is used by the job run intervals chart in the UI.
+func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
+
+	logger := log.WithField("func", "jsonJobRunIntervals")
+
+	if s.gcsClient == nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "server not configured for GCS, unable to use this API"})
+		return
+	}
+
+	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	if jobRunIDStr == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code": http.StatusBadRequest, "message": "prow_job_run_id query parameter not specified"})
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "unable to parse prow_job_run_id: " + err.Error()})
+		return
+	}
+	logger = logger.WithField("jobRunID", jobRunID)
+
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, logger.WithField("func", "JobRunRiskIntervals"))
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
 	if (jobRun == nil || jobRun == &models.ProwJobRun{} || &jobRun.ProwJob == &models.ProwJob{} || jobRun.ProwJob.Name == "") {
 
@@ -996,6 +1043,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
+	serveMux.HandleFunc("/api/jobs/runs/intervals", s.jsonJobRunIntervals)
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)

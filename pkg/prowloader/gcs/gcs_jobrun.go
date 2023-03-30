@@ -14,14 +14,18 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 )
 
+const OpenshiftGCSBucket = "origin-ci-test"
+
 const TestFailureSummaryFilePrefix = "risk-analysis"
 const ClusterDataFilePrefix = "cluster-data_"
 const JunitRegExStr = "\\/junit.*xml"
+const intervalFilesRegExStr = "\\/e2e-events.*json"
 
 var (
 	defaultRiskAnalysisSummaryFileRegEx *regexp.Regexp
 	defaultClusterDataFileRegEx         *regexp.Regexp
 	defaultJunitFileRegEx               *regexp.Regexp
+	intervalFilesRegex                  *regexp.Regexp
 )
 
 func GetDefaultRiskAnalysisSummaryFile() *regexp.Regexp {
@@ -43,6 +47,13 @@ func GetDefaultJunitFile() *regexp.Regexp {
 		defaultJunitFileRegEx = regexp.MustCompile(JunitRegExStr)
 	}
 	return defaultJunitFileRegEx
+}
+
+func GetIntervalFile() *regexp.Regexp {
+	if intervalFilesRegex == nil {
+		intervalFilesRegex = regexp.MustCompile(intervalFilesRegExStr)
+	}
+	return intervalFilesRegex
 }
 
 type GCSJobRun struct {

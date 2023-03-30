@@ -623,7 +623,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	prowLoader := prowloader.New(dbc,
 		gcsClient,
 		bigQueryClient,
-		"origin-ci-test",
+		gcs.OpenshiftGCSBucket,
 		githubClient,
 		o.getVariantManager(),
 		o.getSyntheticTestManager(),
@@ -657,6 +657,14 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		return err
 	}
 
+	gcsClient, err := gcs.NewGCSClient(context.TODO(),
+		o.GoogleServiceAccountCredentialFile,
+		o.GoogleOAuthClientCredentialFile,
+	)
+	if err != nil {
+		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
+	}
+
 	server := sippyserver.NewServer(
 		o.getServerMode(),
 		o.toTestGridLoadingConfig(),
@@ -669,6 +677,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		webRoot,
 		&static,
 		dbc,
+		gcsClient,
 		pinnedDateTime,
 	)
 
