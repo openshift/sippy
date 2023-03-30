@@ -116,6 +116,37 @@ export default function Sidebar(props) {
           }
         }}
       </CapabilitiesContext.Consumer>
+      <CapabilitiesContext.Consumer>
+        {(value) => {
+          if (value.includes('openshift_releases')) {
+            return (
+              <Fragment>
+                <Divider />
+                <List
+                  subheader={
+                    <ListSubheader component="div" id="Overall Components">
+                      Overall Components
+                    </ListSubheader>
+                  }
+                >
+                  <ListItem
+                    key={'release-health-'}
+                    component={Link}
+                    to={'/componentreadiness/' + '4.14'}
+                    button
+                    className={classes.nested}
+                  >
+                    <ListItemIcon>
+                      <InfoIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Component Readiness" />
+                  </ListItem>
+                </List>
+              </Fragment>
+            )
+          }
+        }}
+      </CapabilitiesContext.Consumer>
       <Divider />
       <List
         subheader={

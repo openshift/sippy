@@ -15,6 +15,7 @@ import BuildClusterOverview from './build_clusters/BuildClusterOverview'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
+import ComponentReadiness from './componentReadiness/ComponentReadiness'
 import Drawer from '@material-ui/core/Drawer'
 import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
@@ -380,6 +381,13 @@ export default function App(props) {
                         key={'upgrades-' + props.match.params.release}
                         release={props.match.params.release}
                       />
+                    )}
+                  />
+
+                  <Route
+                    path="/componentreadiness/:release"
+                    render={(props) => (
+                      <ComponentReadiness classes={classes} theme={theme} />
                     )}
                   />
 
