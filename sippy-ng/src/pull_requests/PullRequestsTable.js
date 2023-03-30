@@ -1,7 +1,15 @@
-import { Backdrop, Button, CircularProgress, Tooltip } from '@material-ui/core'
+import './PullRequestsTable.css'
+import {
+  Backdrop,
+  Button,
+  CircularProgress,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@material-ui/core'
 import { BOOKMARKS } from '../constants'
+import { CheckCircle, Error, GitHub, History } from '@material-ui/icons'
 import { DataGrid } from '@material-ui/data-grid'
-import { Error, GitHub } from '@material-ui/icons'
 import {
   getReportStartDate,
   relativeTime,
@@ -9,10 +17,10 @@ import {
   SafeJSONParam,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
-import { makeStyles } from '@material-ui/core/styles'
+import { Link, useLocation } from 'react-router-dom'
+import { makeStyles, useTheme } from '@material-ui/core/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { useLocation } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -39,6 +47,9 @@ const useStyles = makeStyles((theme) => ({
       lineHeight: '20px',
       whiteSpace: 'normal',
     },
+    '& .MuiDataGrid-row.Mui-even': {
+      backgroundColor: 'lightgrey',
+    },
     backdrop: {
       zIndex: 999999,
       color: '#fff',
@@ -49,6 +60,7 @@ const useStyles = makeStyles((theme) => ({
 export default function PullRequestsTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
+  const theme = useTheme()
   const location = useLocation().pathname
 
   const [fetchError, setFetchError] = React.useState('')
@@ -76,16 +88,12 @@ export default function PullRequestsTable(props) {
       sort: 'desc',
       fieldOrder: [
         {
-          field: 'org',
-          flex: 1,
-        },
-        {
           field: 'repo',
-          flex: 1,
+          flex: 0.9,
         },
         {
           field: 'title',
-          flex: 3,
+          flex: 1.5,
         },
         {
           field: 'author',
@@ -94,6 +102,15 @@ export default function PullRequestsTable(props) {
         {
           field: 'merged_at',
           flex: 1,
+        },
+        {
+          field: 'release_payload',
+          flex: 1.5,
+        },
+        {
+          field: 'history',
+          flex: 0.5,
+          hide: props.briefTable,
         },
         {
           field: 'link',
@@ -139,19 +156,24 @@ export default function PullRequestsTable(props) {
   }
 
   const columns = {
-    org: {
-      field: 'org',
-      headerName: 'Org',
-      autocomplete: 'orgs',
-    },
     repo: {
       field: 'repo',
       headerName: 'Repo',
       autocomplete: 'repos',
+      renderCell: (params) => {
+        return (
+          <Tooltip title={`${params.row.org}/${params.value}`}>
+            <p>{params.value}</p>
+          </Tooltip>
+        )
+      },
     },
     title: {
       field: 'title',
       headerName: 'Title',
+      renderCell: (params) => {
+        return <div className="pr-title">{params.value}</div>
+      },
     },
     author: {
       field: 'author',
@@ -161,6 +183,71 @@ export default function PullRequestsTable(props) {
     sha: {
       field: 'sha',
       headerName: 'SHA',
+    },
+    release_payload: {
+      field: 'release_payload',
+      headerName: 'First release payload',
+      renderCell: (params) => {
+        let result = []
+
+        if (
+          params.row.first_ci_payload !== undefined &&
+          params.row.first_ci_payload !== ''
+        ) {
+          result.push(
+            <Grid
+              justifyContent="space-between"
+              wrap="nowrap"
+              container
+              direction="row"
+              alignItems="center"
+            >
+              <Typography>
+                <Link
+                  to={`/release/${params.row.first_ci_payload_release}/tags/${params.row.first_ci_payload}`}
+                >
+                  {params.row.first_ci_payload}
+                </Link>
+              </Typography>
+              {params.row.first_ci_payload_phase === 'Accepted' ? (
+                <CheckCircle style={{ color: theme.palette.success.light }} />
+              ) : (
+                <Error style={{ color: theme.palette.error.light }} />
+              )}
+            </Grid>
+          )
+        }
+
+        if (
+          params.row.first_nightly_payload !== undefined &&
+          params.row.first_nightly_payload !== ''
+        ) {
+          result.push(
+            <Grid
+              wrap="nowrap"
+              container
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography>
+                <Link
+                  to={`/release/${params.row.first_nightly_payload_release}/tags/${params.row.first_nightly_payload}`}
+                >
+                  {params.row.first_nightly_payload}
+                </Link>
+              </Typography>
+              {params.row.first_nightly_payload_phase === 'Accepted' ? (
+                <CheckCircle style={{ color: theme.palette.success.light }} />
+              ) : (
+                <Error style={{ color: theme.palette.error.light }} />
+              )}
+            </Grid>
+          )
+        }
+
+        return <Grid>{result}</Grid>
+      },
     },
     merged_at: {
       type: 'date',
@@ -178,9 +265,25 @@ export default function PullRequestsTable(props) {
         )
       },
     },
+    history: {
+      field: 'history',
+      headerName: 'History',
+      renderCell: (params) => {
+        return (
+          <Tooltip title="View job run history">
+            <Button
+              style={{ justifyContent: 'center' }}
+              target="_blank"
+              startIcon={<History />}
+              href={`https://prow.ci.openshift.org/pr-history/?org=${params.row.org}&repo=${params.row.repo}&pr=${params.row.number}`}
+            />
+          </Tooltip>
+        )
+      },
+    },
     link: {
       field: 'link',
-      headerName: 'Link',
+      headerName: 'GitHub',
       renderCell: (params) => {
         if (params.value === undefined || params.value === '') {
           return ''
