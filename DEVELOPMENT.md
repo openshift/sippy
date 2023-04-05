@@ -155,7 +155,7 @@ If you are *not* loading a backup for your data, you will need to initialize and
 If you are developing on the front-end, you may start a development server which will update automatically when you edit
 files:
 
-See [Sippy front-end docs](sippy-ng/README.md]) for more details about developing on the front-end.
+See [Sippy front-end docs](sippy-ng/README.md) for more details about developing on the front-end.
 
 ```bash
 cd sippy-ng && npm start
