@@ -119,21 +119,6 @@ export default function PullRequestsTable(props) {
         },
       ],
     },
-    Unmerged: {
-      sortField: 'merged_at',
-      sort: 'desc',
-      fieldOrder: [
-        {
-          field: 'title',
-          flex: 3,
-        },
-        {
-          field: 'link',
-          flex: 0.6,
-          hide: props.briefTable,
-        },
-      ],
-    },
     Summary: {
       sortField: 'merged_at',
       sort: 'desc',
@@ -184,9 +169,19 @@ export default function PullRequestsTable(props) {
       field: 'sha',
       headerName: 'SHA',
     },
+    first_ci_payload: {
+      field: 'first_ci_payload',
+      headerName: 'First CI Payload',
+    },
+    first_nightly_payload: {
+      field: 'first_nightly_payload',
+      headerName: 'First Nightly Payload',
+    },
     release_payload: {
       field: 'release_payload',
       headerName: 'First release payload',
+      sortable: false,
+      filterable: false,
       renderCell: (params) => {
         let result = []
 
@@ -268,6 +263,8 @@ export default function PullRequestsTable(props) {
     history: {
       field: 'history',
       headerName: 'History',
+      sortable: false,
+      filterable: false,
       renderCell: (params) => {
         return (
           <Tooltip title="View job run history">
@@ -284,6 +281,8 @@ export default function PullRequestsTable(props) {
     link: {
       field: 'link',
       headerName: 'GitHub',
+      sortable: false,
+      filterable: false,
       renderCell: (params) => {
         if (params.value === undefined || params.value === '') {
           return ''
