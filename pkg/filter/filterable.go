@@ -62,6 +62,10 @@ type FilterItem struct {
 }
 
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
+	field := fmt.Sprintf("%q", f.Field)
+	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
+		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
+	}
 
 	switch f.Operator {
 	case OperatorContains:
@@ -69,144 +73,150 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		// 2) string contains a substring, so we need to know the field type.
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
-				return fmt.Sprintf("? != ALL(%s)", f.Field), f.Value
+				return fmt.Sprintf("? != ALL(%s)", field), f.Value
 			}
-			return fmt.Sprintf("? = ANY(%s)", f.Field), f.Value
+			return fmt.Sprintf("? = ANY(%s)", field), f.Value
 		}
 		if f.Not {
-			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value)
+			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
 		}
-		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value)
+		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
 	case OperatorEquals, OperatorArithmeticEquals:
+
 		if f.Not {
-			return fmt.Sprintf("%q != ?", f.Field), f.Value
+			return fmt.Sprintf("%s != ?", field), f.Value
 		}
-		return fmt.Sprintf("%q = ?", f.Field), f.Value
+		return fmt.Sprintf("%s = ?", field), f.Value
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			return fmt.Sprintf("%q <= ?", f.Field), f.Value
+			return fmt.Sprintf("%s <= ?", field), f.Value
 		}
-		return fmt.Sprintf("%q > ?", f.Field), f.Value
+		return fmt.Sprintf("%s > ?", field), f.Value
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%q < ?", f.Field), f.Value
+			return fmt.Sprintf("%s < ?", field), f.Value
 		}
-		return fmt.Sprintf("%q >= ?", f.Field), f.Value
+		return fmt.Sprintf("%s >= ?", field), f.Value
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			return fmt.Sprintf("%q >= ?", f.Field), f.Value
+			return fmt.Sprintf("%s >= ?", field), f.Value
 		}
-		return fmt.Sprintf("%q < ?", f.Field), f.Value
+		return fmt.Sprintf("%s < ?", field), f.Value
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%q > ?", f.Field), f.Value
+			return fmt.Sprintf("%s > ?", field), f.Value
 		}
-		return fmt.Sprintf("%q <= ?", f.Field), f.Value
+		return fmt.Sprintf("%s <= ?", field), f.Value
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			return fmt.Sprintf("%q = ?", f.Field), f.Value
+			return fmt.Sprintf("%s = ?", field), f.Value
 		}
-		return fmt.Sprintf("%q <> ?", f.Field), f.Value
+		return fmt.Sprintf("%s <> ?", field), f.Value
 	case OperatorStartsWith:
 		if f.Not {
-			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value)
+			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%s%%", f.Value)
 		}
-		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value)
+		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value)
 	case OperatorEndsWith:
 		if f.Not {
-			return fmt.Sprintf("%q NOT LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value)
+			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%%%s", f.Value)
 		}
-		return fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value)
+		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value)
 	case OperatorIsEmpty:
 		if f.Not {
-			return fmt.Sprintf("%q IS NOT NULL", f.Field), nil
+			return fmt.Sprintf("%s IS NOT NULL", field), nil
 		}
-		return fmt.Sprintf("%q IS NULL", f.Field), nil
+		return fmt.Sprintf("%s IS NULL", field), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
-			return fmt.Sprintf("%q IS NULL", f.Field), nil
+			return fmt.Sprintf("%s IS NULL", field), nil
 		}
-		return fmt.Sprintf("%q IS NOT NULL", f.Field), nil
+		return fmt.Sprintf("%s IS NOT NULL", field), nil
 	}
 
 	return "", nil
 }
 
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
+	field := fmt.Sprintf("%q", f.Field)
+	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
+		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
+	}
+
 	switch f.Operator {
 	case OperatorContains:
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
-				db = db.Not(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+				db = db.Not(fmt.Sprintf("? = ANY(%s)", field), f.Value)
 			} else {
-				db = db.Where(fmt.Sprintf("? = ANY(%s)", f.Field), f.Value)
+				db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
 			}
 		} else {
 			if f.Not {
-				db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+				db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
 			} else {
-				db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s%%", f.Value))
+				db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
 			}
 		}
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q = ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s = ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q = ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s = ?", field), f.Value)
 		}
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q > ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s > ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q > ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s > ?", field), f.Value)
 		}
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s >= ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q >= ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s >= ?", field), f.Value)
 		}
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q < ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s < ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q < ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s < ?", field), f.Value)
 		}
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s <= ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q <= ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s <= ?", field), f.Value)
 		}
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+			db = db.Not(fmt.Sprintf("%s <> ?", field), f.Value)
 		} else {
-			db = db.Where(fmt.Sprintf("%q <> ?", f.Field), f.Value)
+			db = db.Where(fmt.Sprintf("%s <> ?", field), f.Value)
 		}
 	case OperatorStartsWith:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+			db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value))
 		} else {
-			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%s%%", f.Value))
+			db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value))
 		}
 	case OperatorEndsWith:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+			db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value))
 		} else {
-			db = db.Where(fmt.Sprintf("%q LIKE ?", f.Field), fmt.Sprintf("%%%s", f.Value))
+			db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value))
 		}
 	case OperatorIsEmpty:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%q IS NULL", f.Field))
+			db = db.Not(fmt.Sprintf("%s IS NULL", field))
 		} else {
-			db = db.Where(fmt.Sprintf("%q IS NULL", f.Field))
+			db = db.Where(fmt.Sprintf("%s IS NULL", field))
 		}
 	case OperatorIsNotEmpty:
 		if f.Not {
-			db = db.Where(fmt.Sprintf("%q IS NULL", f.Field))
+			db = db.Where(fmt.Sprintf("%s IS NULL", field))
 		} else {
-			db = db.Not(fmt.Sprintf("%q IS NULL", f.Field))
+			db = db.Not(fmt.Sprintf("%s IS NULL", field))
 		}
 	}
 
