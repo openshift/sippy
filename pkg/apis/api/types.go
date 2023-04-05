@@ -19,6 +19,7 @@ const (
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
+	ColumnTypeTimestamp
 )
 
 type Sort string
@@ -146,7 +147,7 @@ func (pr PullRequest) GetFieldType(param string) ColumnType {
 	case "link":
 		return ColumnTypeString
 	case "merged_at":
-		return ColumnTypeNumerical
+		return ColumnTypeTimestamp
 	default:
 		return ColumnTypeNumerical
 	}
