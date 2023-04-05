@@ -82,7 +82,7 @@ export default function JobRunsTable(props) {
       renderCell: (params) => {
         return (
           <Tooltip title={relativeTime(new Date(params.value), startDate)}>
-            <p>{new Date(params.value).toLocaleString()}</p>
+            <p>{new Date(params.value).toISOString()}</p>
           </Tooltip>
         )
       },

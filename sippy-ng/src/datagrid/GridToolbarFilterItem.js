@@ -93,7 +93,7 @@ export default function GridToolbarFilterItem(props) {
                 disabled={disabled}
                 showTodayButton
                 disableFuture
-                label="Value"
+                label="Date"
                 format="yyyy-MM-dd HH:mm 'UTC'"
                 ampm={false}
                 value={
