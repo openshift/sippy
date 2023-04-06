@@ -39,6 +39,9 @@ Formatting requirements are enforce on the order of imports (alphabetically) and
 sippy/sippy-ng: $ npx prettier -w src/
 ```
 
+For VScode, users install the [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) plugin; when the you see errors tagged with `prettier/prettier`, use the CMD/CTRL + Shift + P keys
+followed by "Format Document" to quickly fix them.
+
 Imports must be sorted alphabetically.  If using a multi-line import (also sorted alphabetically) then the first entry in that import determines the sort order relative to the other import statements.
 ```
 import { Link } from 'react-router-dom'
