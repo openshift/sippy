@@ -3,15 +3,16 @@ package metrics
 import (
 	"math"
 
-	api "github.com/openshift/sippy/pkg/api"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -39,16 +40,16 @@ var (
 // refreshInstallSuccessMetrics publishes metrics for the install success test for specific variants we care about.
 func refreshInstallSuccessMetrics(dbc *db.DB) error {
 	return refreshTestSuccessMetrics(dbc,
-		testidentification.NewInstallTestName, installSuccessMetric, installSuccessDeltaToPrevWeekMetric)
+		testidentification.NewInstallTestName, installSuccessMetric, installSuccessDeltaToPrevWeekMetric, append(testidentification.DefaultExcludedVariants, "upgrade-minor"))
 }
 
 // refreshUpgradeSuccessMetrics publishes metrics for the install success test for specific variants we care about.
 func refreshUpgradeSuccessMetrics(dbc *db.DB) error {
 	return refreshTestSuccessMetrics(dbc,
-		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric)
+		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric, testidentification.DefaultExcludedVariants)
 }
 
-func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec) error {
+func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec, excludedVariants []string) error {
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		return err
@@ -56,7 +57,7 @@ func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, succe
 	for _, release := range releases {
 		for _, reportType := range []v1.ReportType{v1.CurrentReport, v1.TwoDayReport} {
 			_, testToVariantToResults, err := api.VariantTestsReport(dbc, release.Release, reportType,
-				sets.NewString(testName), sets.NewString(), sets.NewString())
+				sets.NewString(testName), sets.NewString(), sets.NewString(), excludedVariants)
 			if err != nil {
 				return err
 			}

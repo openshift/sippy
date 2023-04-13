@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	log "github.com/sirupsen/logrus"
+
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
-	log "github.com/sirupsen/logrus"
 )
 
 // PrintUpgradeJSONReportFromDB reports on the success/fail of operator upgrades.
@@ -29,7 +30,7 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 	)
 
 	variantColumns, tests, err := VariantTestsReport(dbc, release, v1.CurrentReport,
-		exactTestNames, testPrefixes, testSubStrings)
+		exactTestNames, testPrefixes, testSubStrings, testidentification.DefaultExcludedVariants)
 	if err != nil {
 		log.WithError(err).Error("could not generate upgrade report")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})

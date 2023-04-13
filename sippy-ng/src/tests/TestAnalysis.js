@@ -53,7 +53,6 @@ export function TestAnalysis(props) {
         filterFor('name', 'equals', testName),
         not(filterFor('variants', 'contains', 'aggregated')),
         not(filterFor('variants', 'contains', 'never-stable')),
-        filterFor('current_runs', '>', '0'),
       ],
     },
     setFilterModel,

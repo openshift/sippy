@@ -44,6 +44,9 @@ const (
 )
 
 var (
+	// DefaultExcludedVariants is used to exclude particular variants in reporting
+	DefaultExcludedVariants = []string{"aggregated", "never-stable"}
+
 	// TODO: add [sig-sippy] here as well so we can more clearly identify and substring search
 	// OperatorInstallPrefix is used when sippy adds synthetic tests to report if each operator installed correct.
 	OperatorInstallPrefix = "operator install "

@@ -1,6 +1,6 @@
 import './TestByVariantTable.css'
 import { Link } from 'react-router-dom'
-import { pathForExactTest } from '../helpers'
+import { pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
@@ -121,7 +121,15 @@ function Row(props) {
     <TableCell className={'cell-name'} key={testName}>
       <Tooltip title={testName}>
         <Typography className="cell-name">
-          <Link to={pathForExactTest(props.release, testName)}>{testName}</Link>
+          <Link
+            to={pathForExactTestAnalysis(
+              props.release,
+              testName,
+              props.excludedVariants
+            )}
+          >
+            {testName}
+          </Link>
         </Typography>
       </Tooltip>
     </TableCell>
@@ -149,6 +157,7 @@ function Row(props) {
 
 Row.propTypes = {
   briefTable: PropTypes.bool,
+  excludedVariants: PropTypes.array,
   results: PropTypes.object,
   columnNames: PropTypes.array.isRequired,
   testName: PropTypes.string.isRequired,
@@ -239,6 +248,7 @@ export default function TestByVariantTable(props) {
                 showFull={showFull}
                 key={test}
                 testName={test}
+                excludedVariants={props.excludedVariants}
                 columnNames={props.data.column_names}
                 results={props.data.tests[test]}
                 release={props.release}
@@ -254,10 +264,12 @@ export default function TestByVariantTable(props) {
 TestByVariantTable.defaultProps = {
   briefTable: false,
   colorScale: [60, 100],
+  excludedVariants: ['never-stable', 'aggregated'],
 }
 
 TestByVariantTable.propTypes = {
   briefTable: PropTypes.bool,
+  excludedVariants: PropTypes.array,
   columnNames: PropTypes.array,
   current: PropTypes.number,
   data: PropTypes.object,
