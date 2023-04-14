@@ -762,6 +762,72 @@ type RiskLevel struct {
 	Level int
 }
 
+/*type ComponentTestIdentification struct {
+	TestName     string `json:"test_name,omitempty"`
+	Network      string `json:"network"`
+	Upgrade      string `json:"upgrade"`
+	Arch         string `json:"arch,omitempty"`
+	Platform     string `json:"platform,omitempty"`
+	TestID       string `json:"test_id,omitempty"`
+}*/
+
+type ComponentTestStats struct {
+	TotalCount   int `json:"total_count"`
+	SuccessCount int `json:"success_count"`
+	FlakeCount   int `json:"flake_count"`
+}
+
+type ComponentTestStatus struct {
+	TestName     string `bigquery:"test_name"`
+	TestID       string `bigquery:"test_id"`
+	Network      string `bigquery:"network"`
+	Upgrade      string `bigquery:"upgrade"`
+	Arch         string `bigquery:"arch"`
+	Platform     string `bigquery:"platform"`
+	Variant      string `bigquery:"variant"`
+	TotalCount   int    `bigquery:"total_count"`
+	SuccessCount int    `bigquery:"success_count"`
+	FlakeCount   int    `bigquery:"flake_count"`
+}
+
+type ComponentReport struct {
+	Rows []ComponentReportRow `json:"rows,omitempty"`
+}
+
+type ComponentReportRowIdentification struct {
+	Component  string `json:"component"`
+	Capability string `json:"capability,omitempty"`
+	TestName   string `json:"test_name,omitempty"`
+	TestID     string `json:"test_id,omitempty"`
+}
+
+type ComponentReportRow struct {
+	ComponentReportRowIdentification
+	Columns []ComponentReportColumn `json:"columns,omitempty"`
+}
+
+type ComponentReportColumnIdentification struct {
+	Network  string `json:"network,omitempty"`
+	Upgrade  string `json:"upgrade,omitempty"`
+	Arch     string `json:"arch,omitempty"`
+	Platform string `json:"platform,omitempty"`
+	Variant  string `json:"variant,omitempty"`
+}
+
+type ComponentReportColumn struct {
+	ComponentReportColumnIdentification
+	Status ComponentReportStatus `json:"status"`
+}
+
+type ComponentReportStatus int
+
+const (
+	ComponentGreen ComponentReportStatus = 0
+	ComponentRed   ComponentReportStatus = 10
+)
+
+type ComponentReportResponse []ComponentReportRow
+
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
 var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 25}

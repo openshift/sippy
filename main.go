@@ -665,6 +665,12 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
+	bigQueryClient, err := bigquery.NewClient(context.Background(), "openshift-gce-devel",
+		option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+		return err
+	}
 	server := sippyserver.NewServer(
 		o.getServerMode(),
 		o.toTestGridLoadingConfig(),
@@ -678,6 +684,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		&static,
 		dbc,
 		gcsClient,
+		bigQueryClient,
 		pinnedDateTime,
 	)
 
