@@ -1,3 +1,4 @@
+import * as D3 from 'd3'
 import { Backdrop, Button, CircularProgress, Tooltip } from '@material-ui/core'
 import { BOOKMARKS } from '../constants'
 import { Error } from '@material-ui/icons'
@@ -5,11 +6,12 @@ import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+import TimelinesChart from 'timelines-chart'
 
 export default function ProwJobRun(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
-  const [rows, setRows] = React.useState([])
+  const [eventIntervals, setEventIntervals] = React.useState([])
 
   const fetchData = () => {
     let queryString = ''
@@ -29,9 +31,9 @@ export default function ProwJobRun(props) {
       })
       .then((json) => {
         if (json != null) {
-          setRows(json)
+          setEventIntervals(json.items)
         } else {
-          setRows([])
+          setEventIntervals([])
         }
         setLoaded(true)
       })
@@ -57,7 +59,9 @@ export default function ProwJobRun(props) {
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
-      <p>Hello world! You should see some intervals here soon.</p>
+      <p>Loaded {eventIntervals.length} intervals</p>
+
+      <div id="chart"></div>
     </Fragment>
   )
 }
