@@ -113,6 +113,392 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
+function renderChart() {
+  let isSet = false
+  /*
+  let positiveSelectionRows = new Map()
+  let negativeSelectionRows = new Map()
+  for (let i = 0; i < numPositiveSelectors; i++) {
+    var not = $('#not_' + i).is(':checked')
+    var category = $('#category_' + i).val()
+    var lodash = $('#lodash_' + i).val()
+    var ns = $('#namespace_' + i).val()
+    var regexStr = $('#filterInput_' + i).val()
+    var currIsSet =
+      regexStr.length != 0 ||
+      lodash.length != 0 ||
+      ns.length != 0 ||
+      category.length != 0
+    console.log('value of not ' + not)
+    if (not) {
+      negativeSelectionRows.set(i, {
+        isSet: currIsSet,
+        lodash: lodash,
+        regexStr: regexStr,
+        regex: new RegExp(regexStr),
+        namespace: ns,
+        category: category,
+      })
+    } else {
+      positiveSelectionRows.set(i, {
+        isSet: currIsSet,
+        lodash: lodash,
+        regexStr: regexStr,
+        regex: new RegExp(regexStr),
+        namespace: ns,
+        category: category,
+      })
+    }
+
+    if (currIsSet) {
+      isSet = true
+    }
+  }
+   */
+
+  var filteredEvents
+  // if none of the inputs are set, nothing to filter so don't waste time looping through everything
+  if (!isSet) {
+    filteredEvents = eventIntervals.items
+  } else {
+    // At least one of the inputs had a value, test any inputs that had values
+    // This currently does an OR operation of the input fields
+    filteredEvents = _.filter(eventIntervals.items, function (eventInterval) {
+      // Go ahead and filter out uncategorized events
+      if (eventInterval.categories.uncategorized) {
+        return false
+      }
+
+      let eventMatches = false
+
+      // TODO: remove this temp hack
+      if (eventInterval.categories.alerts) {
+        return true
+      }
+
+      /*
+      for (let [key, positiveSelectionRow] of positiveSelectionRows) {
+        if (positiveSelectionRow.isSet) {
+          matchRegex =
+            positiveSelectionRow.regexStr.length == 0 ||
+            positiveSelectionRow.regex.test(eventInterval.locator)
+          matchNS =
+            positiveSelectionRow.namespace.length == 0 ||
+            (eventInterval.locatorObj.ns &&
+              eventInterval.locatorObj.ns.includes(
+                positiveSelectionRow.namespace
+              ))
+          matchCategory =
+            positiveSelectionRow.category.length == 0 ||
+            eventInterval.categories[positiveSelectionRow.category]
+          matchLodash = true
+          if (positiveSelectionRow.lodash.length > 0) {
+            lodashMatches = _.filter(
+              [eventInterval],
+              _.matches(JSON.parse(positiveSelectionRow.lodash))
+            )
+            matchLodash = lodashMatches.length > 0
+          }
+          matchesPositive =
+            matchRegex && matchLodash && matchNS && matchCategory
+
+          if (matchesPositive) {
+            console.log('matched positive ' + negativeSelectionRows.size)
+            var exclude = false
+            for (let [key, negativeSelectionRow] of negativeSelectionRows) {
+              if (negativeSelectionRow.isSet) {
+                console.log('checking negative')
+                matchRegex =
+                  negativeSelectionRow.regexStr.length == 0 ||
+                  negativeSelectionRow.regex.test(eventInterval.locator)
+                matchNS =
+                  negativeSelectionRow.namespace.length == 0 ||
+                  (eventInterval.locatorObj.ns &&
+                    eventInterval.locatorObj.ns.includes(
+                      negativeSelectionRow.namespace
+                    ))
+                matchCategory =
+                  negativeSelectionRow.category.length == 0 ||
+                  eventInterval.categories[negativeSelectionRow.category]
+                matchLodash = true
+                if (negativeSelectionRow.lodash.length > 0) {
+                  lodashMatches = _.filter(
+                    [eventInterval],
+                    _.matches(JSON.parse(negativeSelectionRow.lodash))
+                  )
+                  matchLodash = lodashMatches.length > 0
+                }
+                matchesNegative =
+                  matchRegex && matchLodash && matchNS && matchCategory
+
+                if (matchesNegative) {
+                  exclude = true
+                  break
+                }
+              }
+            }
+
+
+            if (exclude) {
+            } else {
+              eventMatches = true
+              break
+            }
+          }
+        }
+      }
+       */
+
+      return eventMatches
+    })
+  }
+
+  let timelineGroups = []
+  timelineGroups.push({ group: 'operator-unavailable', data: [] })
+  createTimelineData(
+    'OperatorUnavailable',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'operator_unavailable'
+  )
+
+  timelineGroups.push({ group: 'operator-degraded', data: [] })
+  createTimelineData(
+    'OperatorDegraded',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'operator_degraded'
+  )
+
+  timelineGroups.push({ group: 'operator-progressing', data: [] })
+  createTimelineData(
+    'OperatorProgressing',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'operator_progressing'
+  )
+
+  timelineGroups.push({ group: 'pods', data: [] })
+  createTimelineData(
+    podStateValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'pods'
+  )
+  timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
+    // I think I really want ordering by time in each of a few categories
+    return e1.label < e2.label ? -1 : e1.label > e2.label
+  })
+
+  timelineGroups.push({ group: 'pod-logs', data: [] })
+  createTimelineData(
+    podLogs,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'pod_logs'
+  )
+
+  timelineGroups.push({ group: 'alerts', data: [] })
+  createTimelineData(
+    alertSeverity,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'alerts'
+  )
+  // leaving this for posterity so future me (or someone else) can try it, but I think ordering by name makes the
+  // patterns shown by timing hide and timing appears more relevant to my eyes.
+  // sort alerts alphabetically for display purposes, but keep the json itself ordered by time.
+  // timelineGroups[timelineGroups.length - 1].data.sort(function (e1 ,e2){
+  //     if (e1.label.includes("alert") && e2.label.includes("alert")) {
+  //         return e1.label < e2.label ? -1 : e1.label > e2.label;
+  //     }
+  //     return 0
+  // })
+
+  timelineGroups.push({ group: 'node-state', data: [] })
+  createTimelineData(
+    nodeStateValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'node_state'
+  )
+  timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
+    if (e1.label.includes('master') && e2.label.includes('worker')) {
+      return -1
+    }
+    return 0
+  })
+
+  timelineGroups.push({ group: 'endpoint-availability', data: [] })
+  createTimelineData(
+    disruptionValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'endpoint_availability'
+  )
+
+  timelineGroups.push({ group: 'e2e-test-failed', data: [] })
+  createTimelineData(
+    'Failed',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'e2e_test_failed'
+  )
+
+  timelineGroups.push({ group: 'e2e-test-flaked', data: [] })
+  createTimelineData(
+    'Flaked',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'e2e_test_flaked'
+  )
+
+  timelineGroups.push({ group: 'e2e-test-passed', data: [] })
+  createTimelineData(
+    'Passed',
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'e2e_test_passed'
+  )
+
+  timelineGroups.push({ group: 'interesting-events', data: [] })
+  createTimelineData(
+    interestingEvents,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredEvents,
+    'interesting_events'
+  )
+
+  let segmentFunc = function (segment) {
+    // for (var i in data) {
+    //     if (data[i].group == segment.group) {
+    //         var groupdata = data[i].data
+    //         for (var j in groupdata) {
+    //             if (groupdata[j].label == segment.label) {
+    //                 labeldata = groupdata[j].data
+    //                 for (var k in labeldata) {
+    //                     var startDate = new Date(labeldata[k].timeRange[0])
+    //                     var endDate = new Date(labeldata[k].timeRange[1])
+    //                     if (startDate.getTime() == segment.timeRange[0].getTime() &&
+    //                         endDate.getTime() == segment.timeRange[1].getTime()) {
+    //                         $('#myModalContent').text(labeldata[k].extended)
+    //                         $('#myModal').modal()
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+  }
+
+  const el = document.querySelector('#chart')
+  const myChart = TimelinesChart()
+  let ordinalScale = d3
+    .scaleOrdinal()
+    .domain([
+      'InterestingEvent',
+      'PathologicalKnown',
+      'PathologicalNew', // interesting and pathological events
+      'AlertInfo',
+      'AlertPending',
+      'AlertWarning',
+      'AlertCritical', // alerts
+      'OperatorUnavailable',
+      'OperatorDegraded',
+      'OperatorProgressing', // operators
+      'Update',
+      'Drain',
+      'Reboot',
+      'OperatingSystemUpdate',
+      'NodeNotReady', // nodes
+      'Passed',
+      'Skipped',
+      'Flaked',
+      'Failed', // tests
+      'PodCreated',
+      'PodScheduled',
+      'PodTerminating',
+      'ContainerWait',
+      'ContainerStart',
+      'ContainerNotReady',
+      'ContainerReady',
+      'ContainerReadinessFailed',
+      'ContainerReadinessErrored',
+      'StartupProbeFailed', // pods
+      'CIClusterDisruption',
+      'Disruption', // disruption
+      'Degraded',
+      'Upgradeable',
+      'False',
+      'Unknown',
+      'PodLogInfo',
+      'PodLogWarning',
+      'PodLogError',
+    ])
+    .range([
+      '#6E6E6E',
+      '#0000ff',
+      '#d0312d', // pathological and interesting events
+      '#fada5e',
+      '#fada5e',
+      '#ffa500',
+      '#d0312d', // alerts
+      '#d0312d',
+      '#ffa500',
+      '#fada5e', // operators
+      '#1e7bd9',
+      '#4294e6',
+      '#6aaef2',
+      '#96cbff',
+      '#fada5e', // nodes
+      '#3cb043',
+      '#ceba76',
+      '#ffa500',
+      '#d0312d', // tests
+      '#96cbff',
+      '#1e7bd9',
+      '#ffa500',
+      '#ca8dfd',
+      '#9300ff',
+      '#fada5e',
+      '#3cb043',
+      '#d0312d',
+      '#d0312d',
+      '#c90076', // pods
+      '#96cbff',
+      '#d0312d', // disruption
+      '#b65049',
+      '#32b8b6',
+      '#ffffff',
+      '#bbbbbb',
+      '#96cbff',
+      '#fada5e',
+      '#d0312d',
+    ])
+  myChart
+    .data(timelineGroups)
+    .useUtc(true)
+    .zQualitative(true)
+    .enableAnimations(false)
+    .leftMargin(240)
+    .rightMargin(1550)
+    .maxLineHeight(20)
+    .maxHeight(10000)
+    .zColorScale(ordinalScale)
+    .zoomX([
+      new Date(eventIntervals.items[0].from),
+      new Date(eventIntervals.items[eventIntervals.items.length - 1].to),
+    ])
+    .onSegmentClick(segmentFunc)(el)
+
+  // force a minimum width for smaller devices (which otherwise get an unusable display)
+  setTimeout(() => {
+    if (myChart.width() < 3100) {
+      myChart.width(3100)
+    }
+  }, 1)
+}
+
 function isOperatorAvailable(eventInterval) {
   if (
     eventInterval.locator.startsWith('clusteroperator/') &&
