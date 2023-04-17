@@ -107,6 +107,7 @@ export default function ProwJobRun(props) {
         Loaded {eventIntervals.length} intervals. After filtering:{' '}
         {filteredIntervals.length}. Chart data: {chartData.length}
       </p>
+      <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
     </Fragment>
   )
 }
