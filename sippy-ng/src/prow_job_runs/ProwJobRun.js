@@ -97,15 +97,15 @@ export default function ProwJobRun(props) {
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
   })
 
-  let filteredEvents = filterEvents(eventIntervals)
-  let chartData = groupIntervals(filteredEvents)
+  let filteredIntervals = filterIntervals(eventIntervals)
+  let chartData = groupIntervals(filteredIntervals)
 
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
       <p>
         Loaded {eventIntervals.length} intervals. After filtering:{' '}
-        {filteredEvents.length}. Chart data: {chartData.length}
+        {filteredIntervals.length}. Chart data: {chartData.length}
       </p>
     </Fragment>
   )
@@ -118,7 +118,7 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
-function filterEvents(eventIntervals) {
+function filterIntervals(eventIntervals) {
   let isSet = false
   /*
   let positiveSelectionRows = new Map()
@@ -162,11 +162,11 @@ function filterEvents(eventIntervals) {
    */
 
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
-  let filteredEvents = eventIntervals
+  let filteredIntervals = eventIntervals
 
   // TODO: remove temp hack
   if (!isSet) {
-    filteredEvents = _.filter(eventIntervals, function (eventInterval) {
+    filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
       // Go ahead and filter out uncategorized events
       if (eventInterval.categories.alerts) {
         return true
@@ -177,7 +177,7 @@ function filterEvents(eventIntervals) {
   if (isSet) {
     // At least one of the inputs had a value, test any inputs that had values
     // This currently does an OR operation of the input fields
-    filteredEvents = _.filter(eventIntervals, function (eventInterval) {
+    filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
       // Go ahead and filter out uncategorized events
       if (eventInterval.categories.uncategorized) {
         return false
@@ -262,16 +262,16 @@ function filterEvents(eventIntervals) {
     })
   }
 
-  return filteredEvents
+  return filteredIntervals
 }
 
-function groupIntervals(filteredEvents) {
+function groupIntervals(filteredIntervals) {
   let timelineGroups = []
   timelineGroups.push({ group: 'operator-unavailable', data: [] })
   createTimelineData(
     'OperatorUnavailable',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'operator_unavailable'
   )
 
@@ -279,7 +279,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     'OperatorDegraded',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'operator_degraded'
   )
 
@@ -287,7 +287,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     'OperatorProgressing',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'operator_progressing'
   )
 
@@ -295,7 +295,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     podStateValue,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'pods'
   )
   timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
@@ -307,7 +307,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     podLogs,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'pod_logs'
   )
 
@@ -315,7 +315,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     alertSeverity,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'alerts'
   )
   // leaving this for posterity so future me (or someone else) can try it, but I think ordering by name makes the
@@ -332,7 +332,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     nodeStateValue,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'node_state'
   )
   timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
@@ -346,7 +346,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     disruptionValue,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'endpoint_availability'
   )
 
@@ -354,7 +354,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     'Failed',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'e2e_test_failed'
   )
 
@@ -362,7 +362,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     'Flaked',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'e2e_test_flaked'
   )
 
@@ -370,7 +370,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     'Passed',
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'e2e_test_passed'
   )
 
@@ -378,7 +378,7 @@ function groupIntervals(filteredEvents) {
   createTimelineData(
     interestingEvents,
     timelineGroups[timelineGroups.length - 1].data,
-    filteredEvents,
+    filteredIntervals,
     'interesting_events'
   )
   return timelineGroups
