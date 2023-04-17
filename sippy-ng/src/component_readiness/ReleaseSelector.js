@@ -1,5 +1,6 @@
 import { FormControl, InputLabel, MenuItem, Select } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -15,10 +16,42 @@ const useStyles = makeStyles((theme) => ({
 
 function ReleaseSelector(props) {
   const classes = useStyles()
-  const { label, version, versions, onChange } = props
+  const [versions, setVersions] = React.useState([])
+  const { label, version, onChange } = props
+
+  const fetchData = () => {
+    const useLocal = false
+    if (useLocal) {
+      console.log('quick mode...')
+      const data = { releases: ['4.10', '4.11', '4.12', '4.13', '4.14'] }
+      setVersions(data.releases)
+    } else {
+      console.log('fetching ...')
+      fetch('https://sippy.dptools.openshift.org/api/releases')
+        .then((response) => response.json())
+        .then((data) => {
+          setVersions(
+            data.releases.filter((aVersion) => {
+              // We won't process Presubmits or 3.11
+              return aVersion !== 'Presubmits' && aVersion != '3.11'
+            })
+          )
+        })
+        .catch((error) => console.error(error))
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   const handleChange = (event) => {
     onChange(event.target.value)
+  }
+
+  // Ensure that versions has a list of versions before trying to display the Form
+  if (versions.length === 0) {
+    return <p>Loading Releases...</p>
   }
 
   return (
@@ -44,7 +77,6 @@ ReleaseSelector.propTypes = {
 
 ReleaseSelector.defaultProps = {
   label: 'Version',
-  versions: ['4.10', '4.11', '4.12', '4.13', '4.14'],
 }
 
 export default ReleaseSelector

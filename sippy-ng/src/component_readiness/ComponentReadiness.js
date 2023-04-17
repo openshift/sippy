@@ -11,6 +11,7 @@ import {
 import { Fragment, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
@@ -32,6 +33,7 @@ import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
 function SeverityIcon(props) {
+  const theme = useTheme()
   const status = props.status
 
   let icon = ''
@@ -41,7 +43,7 @@ function SeverityIcon(props) {
       <EmojiEmotionsOutlinedIcon
         data-icon="EmojiEmotionsOutlinedIcon"
         fontSize="large"
-        style={{ color: 'green' }}
+        style={{ color: theme.palette.success.main }}
       />
     )
   } else if (status > 5) {
@@ -50,7 +52,7 @@ function SeverityIcon(props) {
         data-icon="FireplaceIcon"
         fontSize="small"
         style={{
-          color: 'yellow',
+          color: theme.palette.error.main,
         }}
       />
     )
@@ -59,7 +61,7 @@ function SeverityIcon(props) {
       <FireplaceIcon
         data-icon="FireplaceIcon"
         fontSize="large"
-        style={{ color: 'red' }}
+        style={{ color: theme.palette.error.main }}
       />
     )
   }
@@ -95,7 +97,7 @@ function Cell(props) {
         className="cell-result"
         style={{
           textAlign: 'center',
-          backgroundColor: 'gray',
+          backgroundColor: 'white',
         }}
       >
         <SeverityIcon status={status} />
@@ -167,6 +169,9 @@ Row.propTypes = {
 }
 
 export default function ComponentReadiness(props) {
+  const classes = useStyles()
+  const theme = useTheme()
+
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -182,6 +187,7 @@ export default function ComponentReadiness(props) {
     'Network',
   ])
 
+  // TODO: Get these from single place.
   const excludeCloudsList = [
     'aws',
     'gcp',
@@ -198,6 +204,7 @@ export default function ComponentReadiness(props) {
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(excludeCloudsList)
 
+  // TODO: Get these from single place.
   const excludeArchesList = ['amd64', 'arm64', 'ppc64le', 's390x', 'multi']
 
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
@@ -208,8 +215,8 @@ export default function ComponentReadiness(props) {
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
     React.useState(excludeNetworksList)
 
-  const [historicalRelease, setHistoricalRelease] = React.useState('4.14')
-  const [sampleRelease, setSampleRelease] = React.useState('4.13')
+  const [historicalRelease, setHistoricalRelease] = React.useState('4.13')
+  const [sampleRelease, setSampleRelease] = React.useState('4.14')
 
   const initialTime = new Date()
   const fromTime = new Date(initialTime.getTime() - 72 * 60 * 60 * 1000)
@@ -257,7 +264,7 @@ export default function ComponentReadiness(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Component Readiness for {historicalRelease}
+      Component Readiness for {sampleRelease}
     </Typography>
   )
 
@@ -379,24 +386,24 @@ export default function ComponentReadiness(props) {
                     onClick={handleDrawerOpen}
                     edge="start"
                     className={clsx(
-                      props.classes.menuButton,
-                      drawerOpen && props.classes.hide
+                      classes.menuButton,
+                      drawerOpen && classes.hide
                     )}
                   >
                     <MenuIcon />
                   </IconButton>
                   <Drawer
-                    className={props.classes.drawer}
+                    className={classes.drawer}
                     variant="persistent"
                     anchor="left"
                     open={drawerOpen}
                     classes={{
-                      paper: props.classes.drawerPaper,
+                      paper: classes.drawerPaper,
                     }}
                   >
-                    <div className={props.classes.drawerHeader}>
+                    <div className={classes.drawerHeader}>
                       <IconButton onClick={handleDrawerClose}>
-                        {props.theme.direction === 'ltr' ? (
+                        {theme.direction === 'ltr' ? (
                           <ChevronLeftIcon />
                         ) : (
                           <ChevronRightIcon />
@@ -414,6 +421,43 @@ export default function ComponentReadiness(props) {
                       </Button>
                     </div>
                     <br></br>
+                    <div className="release-sample">
+                      <ReleaseSelector
+                        label="Current Release"
+                        version={sampleRelease}
+                        onChange={setSampleRelease}
+                      ></ReleaseSelector>
+                      <MuiPickersUtilsProvider
+                        utils={GridToolbarFilterDateUtils}
+                      >
+                        <DateTimePicker
+                          showTodayButton
+                          disableFuture
+                          label="From"
+                          format="yyyy-MM-dd HH:mm"
+                          ampm={false}
+                          value={sampleReleaseFrom}
+                          onChange={(e) => {
+                            setSampleReleaseFrom(e.getTime())
+                          }}
+                        />
+                      </MuiPickersUtilsProvider>
+                      <MuiPickersUtilsProvider
+                        utils={GridToolbarFilterDateUtils}
+                      >
+                        <DateTimePicker
+                          showTodayButton
+                          disableFuture
+                          label="To"
+                          format="yyyy-MM-dd HH:mm"
+                          ampm={false}
+                          value={sampleReleaseTo}
+                          onChange={(e) => {
+                            setSampleReleaseTo(e.getTime())
+                          }}
+                        />
+                      </MuiPickersUtilsProvider>
+                    </div>
                     <div className="release-historical">
                       <ReleaseSelector
                         version={historicalRelease}
@@ -451,43 +495,7 @@ export default function ComponentReadiness(props) {
                         />
                       </MuiPickersUtilsProvider>
                     </div>
-                    <div className="release-sample">
-                      <ReleaseSelector
-                        label="Sample Release"
-                        version={sampleRelease}
-                        onChange={setSampleRelease}
-                      ></ReleaseSelector>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="From"
-                          format="yyyy-MM-dd HH:mm"
-                          ampm={false}
-                          value={sampleReleaseFrom}
-                          onChange={(e) => {
-                            setSampleReleaseFrom(e.getTime())
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="To"
-                          format="yyyy-MM-dd HH:mm"
-                          ampm={false}
-                          value={sampleReleaseTo}
-                          onChange={(e) => {
-                            setSampleReleaseTo(e.getTime())
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                    </div>
+
                     <div>
                       <CheckBoxList
                         headerName="Group By"
@@ -588,9 +596,4 @@ export default function ComponentReadiness(props) {
       />
     </Fragment>
   )
-}
-
-ComponentReadiness.propTypes = {
-  classes: PropTypes.object.isRequired,
-  theme: PropTypes.object.isRequired,
 }

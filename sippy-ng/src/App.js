@@ -15,7 +15,7 @@ import BuildClusterOverview from './build_clusters/BuildClusterOverview'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
-import ComponentReadiness from './componentReadiness/ComponentReadiness'
+import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@material-ui/core/Drawer'
 import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
@@ -40,7 +40,7 @@ import VariantStatus from './jobs/VariantStatus'
 
 const drawerWidth = 240
 
-const useStyles = makeStyles((theme) => ({
+export const useStyles = makeStyles((theme) => ({
   root: {
     display: 'flex',
     flexGrow: 1,
@@ -386,9 +386,7 @@ export default function App(props) {
 
                   <Route
                     path="/componentreadiness/:release"
-                    render={(props) => (
-                      <ComponentReadiness classes={classes} theme={theme} />
-                    )}
+                    render={(props) => <ComponentReadiness />}
                   />
 
                   <Route
