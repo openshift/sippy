@@ -163,6 +163,17 @@ function filterEvents(eventIntervals) {
 
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
   let filteredEvents = eventIntervals
+
+  // TODO: remove temp hack
+  if (!isSet) {
+    filteredEvents = _.filter(eventIntervals, function (eventInterval) {
+      // Go ahead and filter out uncategorized events
+      if (eventInterval.categories.alerts) {
+        return true
+      }
+    })
+  }
+
   if (isSet) {
     // At least one of the inputs had a value, test any inputs that had values
     // This currently does an OR operation of the input fields
