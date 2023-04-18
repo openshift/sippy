@@ -122,10 +122,11 @@ export default function TimelineChart({ eventIntervals, data }) {
         .useUtc(true)
         .zQualitative(true)
         .enableAnimations(false)
-        .leftMargin(240)
-        .rightMargin(1550)
+        .leftMargin(20)
+        .rightMargin(750)
         .maxLineHeight(20)
         .maxHeight(10000)
+        .width(3000)
         .zColorScale(ordinalScale)
         .zoomX([
           new Date(eventIntervals[0].from),
