@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
 import { Alert, TabContext } from '@material-ui/lab'
+import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import {
   Drawer,
@@ -17,9 +18,9 @@ import {
   Route,
   Switch,
   useHistory,
+  useLocation,
   useRouteMatch,
 } from 'react-router-dom'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
@@ -181,6 +182,10 @@ export default function ComponentReadiness(props) {
   const classes = useStyles()
   const theme = useTheme()
 
+  // Extract the url and get the parameters from it
+  const location = useLocation()
+  const groupByParameters = new URLSearchParams(location.search)
+
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -191,10 +196,18 @@ export default function ComponentReadiness(props) {
   }
 
   const groupByList = ['Platform', 'Arch', 'Network', 'Upgrade', 'Variant']
-  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState([
-    'Platform',
-    'Network',
-  ])
+
+  let tmp = groupByParameters.get('group_by')
+  let initGroupBy = []
+  if (tmp !== null) {
+    initGroupBy = tmp.split(',')
+  }
+  console.log('initGroupBy: ', initGroupBy)
+  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
+    // Extract the 'group_by=platform,arch,network' from the url to be the initial
+    // groupBy array of checked values.
+    initGroupBy
+  )
 
   // TODO: Get these from single place.
   const excludeCloudsList = [
@@ -209,9 +222,20 @@ export default function ComponentReadiness(props) {
     'Alibaba',
     'Unknown',
   ]
-
+  tmp = groupByParameters.get('excluded_platforms')
+  let initExcludeCloudsList = []
+  if (tmp !== null) {
+    initExcludeCloudsList = groupByParameters
+      .get('excluded_platforms')
+      .split(',')
+  }
+  console.log('initExcludeCloudsList: ', initExcludeCloudsList)
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(excludeCloudsList)
+    React.useState(
+      // Extract the 'excluded_platforms=aws' from the url to be the initial
+      // Exclude Clouds array of checked values.
+      initExcludeCloudsList
+    )
 
   // TODO: Get these from single place.
   const excludeArchesList = ['amd64', 'arm64', 'ppc64le', 's390x', 'multi']
@@ -644,12 +668,12 @@ export default function ComponentReadiness(props) {
 // Take the list of default values and create a string of parameters.
 export function getCompReadDefaultUrlPart() {
   const days = 24 * 60 * 60 * 1000
+  const dateFormat = 'yyyy-MM-dd:HH:mm'
   const initialTime = new Date()
   const initialFromTime = new Date(initialTime.getTime() - 30 * days)
   const initialToTime = new Date(initialTime.getTime())
 
-  const dateFormat = 'yyyy-MM-dd:HH:mm'
-  const fields = {
+  const releaseAndDates = {
     sampleRelease: '4.14',
     historicalRelease: '4.13',
     sampleReleaseFrom: format(initialFromTime, dateFormat),
@@ -658,17 +682,17 @@ export function getCompReadDefaultUrlPart() {
     historicalReleaseTo: format(initialToTime, dateFormat),
   }
 
-  // Turn my map into a list of key/value pairs
-  const fieldList = Object.entries(fields)
-
   let retVal = '?'
+
+  retVal = retVal + 'group_by=Platform,Arch,Network'
+  retVal = retVal + '&excluded_platforms='
+
+  // Turn my map into a list of key/value pairs so we can use map() on it.
+  const fieldList = Object.entries(releaseAndDates)
   fieldList.map(([key, value]) => {
-    let amper = '&'
-    if (key === 'sampleRelease') {
-      amper = ''
-    }
-    retVal = retVal + amper + key + '=' + value
+    retVal = retVal + '&' + key + '=' + value
   })
 
+  console.log('filter: ', retVal)
   return retVal
 }

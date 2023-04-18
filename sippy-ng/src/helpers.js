@@ -1,5 +1,6 @@
 // Compute relative times -- Intl.RelativeTimeFormat is new-ish,
 // and not supported in all browsers, and it's not in node yet.
+import { format } from 'date-fns'
 import React from 'react'
 
 export const SafeJSONParam = {
