@@ -27,6 +27,9 @@ export default function ProwJobRun(props) {
       ['endpoint_availability', 'Disruption'],
     ])
   )
+  const [selectedCategories, setSelectedCategories] = useState([
+    allCategories.keys(),
+  ])
 
   const fetchData = () => {
     let queryString = ''
@@ -118,6 +121,21 @@ export default function ProwJobRun(props) {
   let filteredIntervals = filterIntervals(eventIntervals)
   let chartData = groupIntervals(filteredIntervals)
 
+  function handleCategoryClick(buttonValue) {
+    console.log('got category button click: ' + buttonValue)
+    const newSelectedCategories = [...selectedCategories]
+    const selectedIndex = selectedCategories.indexOf(buttonValue)
+
+    if (selectedIndex === -1) {
+      newSelectedCategories.push(buttonValue)
+    } else {
+      newSelectedCategories.splice(selectedIndex, 1)
+    }
+
+    console.log('new selected categories: ' + newSelectedCategories)
+    setSelectedCategories(newSelectedCategories)
+  }
+
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
@@ -129,7 +147,15 @@ export default function ProwJobRun(props) {
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
           {[...allCategories.entries()].map(([key, value]) => (
-            <Button key={key}>{value}</Button>
+            <Button
+              key={key}
+              onClick={() => handleCategoryClick(key)}
+              variant={
+                selectedCategories.includes(key) ? 'contained' : 'outlined'
+              }
+            >
+              {value}
+            </Button>
           ))}
           <Button variant="contained">One</Button>
           <Button variant="outlined">Two</Button>
