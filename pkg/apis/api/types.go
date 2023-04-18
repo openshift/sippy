@@ -762,19 +762,20 @@ type RiskLevel struct {
 	Level int
 }
 
-/*type ComponentTestIdentification struct {
-	TestName     string `json:"test_name,omitempty"`
-	Network      string `json:"network"`
-	Upgrade      string `json:"upgrade"`
-	Arch         string `json:"arch,omitempty"`
-	Platform     string `json:"platform,omitempty"`
-	TestID       string `json:"test_id,omitempty"`
-}*/
-
 type ComponentTestStats struct {
-	TotalCount   int `json:"total_count"`
-	SuccessCount int `json:"success_count"`
-	FlakeCount   int `json:"flake_count"`
+	TotalCount   int
+	SuccessCount int
+	FlakeCount   int
+}
+
+type ComponentTestIdentification struct {
+	TestName string
+	TestID   string
+	Network  string
+	Upgrade  string
+	Arch     string
+	Platform string
+	Variant  string
 }
 
 type ComponentTestStatus struct {
@@ -822,8 +823,22 @@ type ComponentReportColumn struct {
 type ComponentReportStatus int
 
 const (
-	ComponentGreen ComponentReportStatus = 0
-	ComponentRed   ComponentReportStatus = 10
+	// ExtremeRegression shows regression with >15% pass rate change
+	ExtremeRegression ComponentReportStatus = -3
+	// SignificantRegression shows significant regression
+	SignificantRegression ComponentReportStatus = -2
+	// MissingSample indicates sample data missing
+	MissingSample ComponentReportStatus = -1
+	// NotSignificant indicates no significant difference
+	NotSignificant ComponentReportStatus = 0
+	// MissingBasis indicates basis data missing
+	MissingBasis ComponentReportStatus = 1
+	// MissingBasisAndSample indicates basis and sample data missing
+	MissingBasisAndSample ComponentReportStatus = 2
+	// SignificantImprovement indicates improved sample rate
+	SignificantImprovement ComponentReportStatus = 3
+	ComponentGreen         ComponentReportStatus = 0
+	ComponentRed           ComponentReportStatus = 10
 )
 
 type ComponentReportResponse []ComponentReportRow
