@@ -1,14 +1,32 @@
 import * as lodash from 'lodash'
+import { Button, ButtonGroup } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
 
 export default function ProwJobRun(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
+
+  const [allCategories, setAllCategories] = useState(
+    new Map([
+      ['operator_unavailable', 'Operator Unavailable'],
+      ['operator_progressing', 'Operator Progressing'],
+      ['operator_degraded', 'Operator Degraded'],
+      ['pods', 'Pods'],
+      ['pod_logs', 'Pod Logs'],
+      ['interesting_events', 'Interesting Events'],
+      ['alerts', 'Alerts'],
+      ['node_state', 'Node State'],
+      ['e2e_test_failed', 'E2E Failed'],
+      ['e2e_test_flaked', 'E2E Flaked'],
+      ['e2e_test_passed', 'E2E Passed'],
+      ['endpoint_availability', 'Disruption'],
+    ])
+  )
 
   const fetchData = () => {
     let queryString = ''
@@ -106,6 +124,24 @@ export default function ProwJobRun(props) {
       <p>
         Loaded {eventIntervals.length} intervals. After filtering:{' '}
         {filteredIntervals.length}. Chart data: {chartData.length}
+      </p>
+      <p>
+        Categories:
+        <ButtonGroup size="small" aria-label="Categories">
+          {[...allCategories.entries()].map(([key, value]) => (
+            <Button key={key}>{value}</Button>
+          ))}
+          <Button variant="contained">One</Button>
+          <Button variant="outlined">Two</Button>
+          <Button variant="contained">Three</Button>
+        </ButtonGroup>
+      </p>
+      <p>
+        Files:
+        <ButtonGroup size="small" aria-label="Categories">
+          <Button variant="contained">e2e-events_20230321-180323.json</Button>
+          <Button variant="contained">e2e-events_20230321-200757.json</Button>
+        </ButtonGroup>
       </p>
       <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
     </Fragment>
