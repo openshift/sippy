@@ -8,9 +8,18 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
+import { format } from 'date-fns'
 import { Fragment, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
-import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import {
+  Link,
+  Redirect,
+  Route,
+  Switch,
+  useHistory,
+  useRouteMatch,
+} from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
@@ -215,8 +224,14 @@ export default function ComponentReadiness(props) {
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
     React.useState(excludeNetworksList)
 
-  const [historicalRelease, setHistoricalRelease] = React.useState('4.13')
-  const [sampleRelease, setSampleRelease] = React.useState('4.14')
+  const [historicalRelease = '4.13', setHistoricalRelease] = useQueryParam(
+    'historicalRelease',
+    StringParam
+  )
+  const [sampleRelease = '4.14', setSampleRelease] = useQueryParam(
+    'sampleRelease',
+    StringParam
+  )
 
   const initialTime = new Date()
   const fromTime = new Date(initialTime.getTime() - 72 * 60 * 60 * 1000)
@@ -349,6 +364,27 @@ export default function ComponentReadiness(props) {
       </Typography>
     )
   }
+
+  //const handleClick = (e) => {
+  //  //console.log('historicalReleaseFrom', historicalReleaseFrom)
+  //  //console.log('historicalReleaseTo', historicalReleaseTo)
+  //  //console.log('sampleReleaseFrom', sampleReleaseFrom)
+  //  //console.log('sampleReleaseTo', sampleReleaseTo)
+  //  //console.log('groupBy: ', groupByCheckedItems)
+  //  //console.log('excludeClouds: ', excludeCloudsCheckedItems)
+  //  //console.log('excludeArches', excludeArchesCheckedItems)
+  //  //console.log('excludeNetworks', excludeNetworksCheckedItems)
+  //  //console.log('excludeUpgrades', excludeUpgradesCheckedItems)
+  //  //console.log('excludeVariants', excludeVariantsCheckedItems)
+  //  //console.log('historicalRelease', historicalRelease)
+  //  //console.log('sampleRelease', sampleRelease)
+
+  //  const history = useHistory()
+  //  console.log('here')
+  //  history.pushState(
+  //    'componentreadiness/?basis_release=4.14&basis_start_dt=2023-04-10:00:00&basis_end_dt=2023-04-13:00:00basis_release=4.14&basis_start_dt=2023-04-10:00:00&basis_end_dt=2023-04-13:00:00'
+  //  )
+  //}
   const handleClick = () => {
     console.log('historicalReleaseFrom', historicalReleaseFrom)
     console.log('historicalReleaseTo', historicalReleaseTo)
@@ -434,11 +470,13 @@ export default function ComponentReadiness(props) {
                           showTodayButton
                           disableFuture
                           label="From"
-                          format="yyyy-MM-dd HH:mm"
+                          format="yyyy-MM-dd-HH:mm"
                           ampm={false}
                           value={sampleReleaseFrom}
                           onChange={(e) => {
-                            setSampleReleaseFrom(e.getTime())
+                            const formattedTime = format(e, 'yyyy-MM-dd:HH:mm')
+                            console.log('sample text: ', formattedTime)
+                            setSampleReleaseFrom(formattedTime)
                           }}
                         />
                       </MuiPickersUtilsProvider>
@@ -449,7 +487,7 @@ export default function ComponentReadiness(props) {
                           showTodayButton
                           disableFuture
                           label="To"
-                          format="yyyy-MM-dd HH:mm"
+                          format="yyyy-MM-dd-HH:mm"
                           ampm={false}
                           value={sampleReleaseTo}
                           onChange={(e) => {
@@ -471,7 +509,7 @@ export default function ComponentReadiness(props) {
                           showTodayButton
                           disableFuture
                           label="From"
-                          format="yyyy-MM-dd HH:mm"
+                          format="yyyy-MM-dd-HH:mm"
                           ampm={false}
                           value={historicalReleaseFrom}
                           onChange={(e) => {
@@ -486,7 +524,7 @@ export default function ComponentReadiness(props) {
                           showTodayButton
                           disableFuture
                           label="To"
-                          format="yyyy-MM-dd HH:mm"
+                          format="yyyy-MM-dd-HH:mm"
                           ampm={false}
                           value={historicalReleaseTo}
                           onChange={(e) => {
@@ -589,7 +627,6 @@ export default function ComponentReadiness(props) {
                   </TableContainer>
                 </div>
               </Route>
-              <Redirect from="/" to={url} />
             </Switch>
           </TabContext>
         )}

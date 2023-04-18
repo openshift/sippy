@@ -385,7 +385,7 @@ export default function App(props) {
                   />
 
                   <Route
-                    path="/componentreadiness/:release"
+                    path="/componentreadiness/report"
                     render={(props) => <ComponentReadiness />}
                   />
 
