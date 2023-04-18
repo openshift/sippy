@@ -233,21 +233,27 @@ export default function ComponentReadiness(props) {
     StringParam
   )
 
+  const days = 24 * 60 * 60 * 1000
   const initialTime = new Date()
-  const fromTime = new Date(initialTime.getTime() - 72 * 60 * 60 * 1000)
+  const initialFromTime = new Date(initialTime.getTime() - 30 * days)
+  const initialToTime = new Date(initialTime.getTime())
 
-  const [historicalReleaseFrom, setHistoricalReleaseFrom] = React.useState(
-    fromTime.toString()
+  const [sampleReleaseFrom, setSampleReleaseFrom] = useQueryParam(
+    'sampleReleaseFrom',
+    StringParam
   )
-  const [historicalReleaseTo, setHistoricalReleaseTo] = React.useState(
-    new Date(fromTime.getTime() + 3 * 60 * 60 * 1000)
+  const [sampleReleaseTo, setSampleReleaseTo] = useQueryParam(
+    'sampleReleaseTo',
+    StringParam
   )
 
-  const [sampleReleaseFrom, setSampleReleaseFrom] = React.useState(
-    fromTime.toString()
+  const [historicalReleaseFrom, setHistoricalReleaseFrom] = useQueryParam(
+    'historicalReleaseFrom',
+    StringParam
   )
-  const [sampleReleaseTo, setSampleReleaseTo] = React.useState(
-    new Date(fromTime.getTime() + 3 * 60 * 60 * 1000)
+  const [historicalReleaseTo, setHistoricalReleaseTo] = useQueryParam(
+    'historicalReleaseTo',
+    StringParam
   )
 
   const excludeUpgradesList = [
@@ -386,8 +392,10 @@ export default function ComponentReadiness(props) {
   //  )
   //}
   const handleClick = () => {
+    console.log('historicalRelease', historicalRelease)
     console.log('historicalReleaseFrom', historicalReleaseFrom)
     console.log('historicalReleaseTo', historicalReleaseTo)
+    console.log('sampleRelease', sampleRelease)
     console.log('sampleReleaseFrom', sampleReleaseFrom)
     console.log('sampleReleaseTo', sampleReleaseTo)
     console.log('groupBy: ', groupByCheckedItems)
@@ -396,8 +404,6 @@ export default function ComponentReadiness(props) {
     console.log('excludeNetworks', excludeNetworksCheckedItems)
     console.log('excludeUpgrades', excludeUpgradesCheckedItems)
     console.log('excludeVariants', excludeVariantsCheckedItems)
-    console.log('historicalRelease', historicalRelease)
-    console.log('sampleRelease', sampleRelease)
   }
 
   return (
@@ -633,4 +639,36 @@ export default function ComponentReadiness(props) {
       />
     </Fragment>
   )
+}
+
+// Take the list of default values and create a string of parameters.
+export function getCompReadDefaultUrlPart() {
+  const days = 24 * 60 * 60 * 1000
+  const initialTime = new Date()
+  const initialFromTime = new Date(initialTime.getTime() - 30 * days)
+  const initialToTime = new Date(initialTime.getTime())
+
+  const dateFormat = 'yyyy-MM-dd:HH:mm'
+  const fields = {
+    sampleRelease: '4.14',
+    historicalRelease: '4.13',
+    sampleReleaseFrom: format(initialFromTime, dateFormat),
+    sampleReleaseTo: format(initialToTime, dateFormat),
+    historicalReleaseFrom: format(initialFromTime, dateFormat),
+    historicalReleaseTo: format(initialToTime, dateFormat),
+  }
+
+  // Turn my map into a list of key/value pairs
+  const fieldList = Object.entries(fields)
+
+  let retVal = '?'
+  fieldList.map(([key, value]) => {
+    let amper = '&'
+    if (key === 'sampleRelease') {
+      amper = ''
+    }
+    retVal = retVal + amper + key + '=' + value
+  })
+
+  return retVal
 }

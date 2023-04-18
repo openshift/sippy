@@ -10,6 +10,7 @@ import {
   Restore,
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
+import { getCompReadDefaultUrlPart } from '../component_readiness/ComponentReadiness'
 import { Link, useLocation } from 'react-router-dom'
 import { ListSubheader, useTheme } from '@material-ui/core'
 import {
@@ -133,7 +134,7 @@ export default function Sidebar(props) {
                     key={'release-health-'}
                     component={Link}
                     to={
-                      '/componentreadiness/report?historicalRelease=4.13&sampleRelease=4.14'
+                      '/componentreadiness/report' + getCompReadDefaultUrlPart()
                     }
                     button
                     className={classes.nested}
