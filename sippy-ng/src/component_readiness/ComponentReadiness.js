@@ -186,6 +186,12 @@ export default function ComponentReadiness(props) {
   const location = useLocation()
   const groupByParameters = new URLSearchParams(location.search)
 
+  const params = {}
+  groupByParameters.forEach((value, key) => {
+    params[key] = value
+  })
+  console.log('params from url: ', JSON.stringify(params))
+
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -240,13 +246,26 @@ export default function ComponentReadiness(props) {
   // TODO: Get these from single place.
   const excludeArchesList = ['amd64', 'arm64', 'ppc64le', 's390x', 'multi']
 
+  tmp = groupByParameters.get('excluded_arches')
+  let initExcludeArchesList = []
+  if (tmp !== null) {
+    initExcludeArchesList = groupByParameters.tmp.split(',')
+  }
+  console.log('initExcludeArchesList: ', initExcludeArchesList)
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(excludeArchesList)
+    React.useState(initExcludeArchesList)
+
+  tmp = groupByParameters.get('excluded_networks')
+  let initExcludeNetworksList = []
+  if (tmp !== null) {
+    initExcludeNetworksList = groupByParameters.tmp.split(',')
+  }
+  console.log('initExcludeNetworksList: ', initExcludeNetworksList)
 
   const excludeNetworksList = ['ovn', 'sdn']
 
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(excludeNetworksList)
+    React.useState(initExcludeNetworksList)
 
   const [historicalRelease = '4.13', setHistoricalRelease] = useQueryParam(
     'historicalRelease',
@@ -286,8 +305,14 @@ export default function ComponentReadiness(props) {
     'Z-Stream Upgrade',
   ]
 
+  tmp = groupByParameters.get('excluded_upgrades')
+  let initExcludeUpgradesList = []
+  if (tmp !== null) {
+    initExcludeUpgradesList = groupByParameters.tmp.split(',')
+  }
+  console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(excludeUpgradesList)
+    React.useState(initExcludeUpgradesList)
 
   const excludeVariantsList = [
     'Standard',
@@ -304,8 +329,15 @@ export default function ComponentReadiness(props) {
     'Single Node',
   ]
 
+  tmp = groupByParameters.get('excluded_variants')
+  let initExcludeVariantsList = []
+  if (tmp !== null) {
+    initExcludeVariantsList = groupByParameters.tmp.split(',')
+  }
+  console.log('initExcludeVariantsList: ', initExcludeVariantsList)
+
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(excludeVariantsList)
+    React.useState(initExcludeVariantsList)
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
@@ -665,8 +697,25 @@ export default function ComponentReadiness(props) {
   )
 }
 
-// Take the list of default values and create a string of parameters.
+// Take the list of default values and create a string of parameters that we
+// use from the Sidebar when calling the ComponentReadiness component.
 export function getCompReadDefaultUrlPart() {
+  // This is here as an example of what the POC UI used for API calls
+  const sample = {
+    group_by: ['cloud', 'arch', 'network'],
+    sample_release: '4.14',
+    basis_release: '4.14',
+    sample_start_dt: '2023-04-16:00:00',
+    sample_end_dt: '2023-04-18:00:00',
+    basis_start_dt: '2023-04-13:00:00',
+    basis_end_dt: '2023-04-16:00:00',
+    exclude_platforms: ['aws'],
+    exclude_arches: ['amd64'],
+    exclude_networks: ['ovn'],
+    exclude_upgrades: ['micro'],
+    exclude_variants: ['techpreview'],
+  }
+
   const days = 24 * 60 * 60 * 1000
   const dateFormat = 'yyyy-MM-dd:HH:mm'
   const initialTime = new Date()
@@ -686,6 +735,10 @@ export function getCompReadDefaultUrlPart() {
 
   retVal = retVal + 'group_by=Platform,Arch,Network'
   retVal = retVal + '&excluded_platforms='
+  retVal = retVal + '&exclude_arches='
+  retVal = retVal + '&exclude_networks='
+  retVal = retVal + '&exclude_upgrades='
+  retVal = retVal + '&exclude_variants='
 
   // Turn my map into a list of key/value pairs so we can use map() on it.
   const fieldList = Object.entries(releaseAndDates)
