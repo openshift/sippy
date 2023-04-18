@@ -378,7 +378,7 @@ export default function ComponentReadiness(props) {
               className="view"
             ></Grid>
             <Switch>
-              <Route path={path + '/toplevel'}>
+              <Route path={path}>
                 <div className="view" width="100%">
                   <IconButton
                     color="inherit"
@@ -589,7 +589,7 @@ export default function ComponentReadiness(props) {
                   </TableContainer>
                 </div>
               </Route>
-              <Redirect from="/" to={url + '/toplevel'} />
+              <Redirect from="/" to={url} />
             </Switch>
           </TabContext>
         )}
