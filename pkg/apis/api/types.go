@@ -837,8 +837,6 @@ const (
 	MissingBasisAndSample ComponentReportStatus = 2
 	// SignificantImprovement indicates improved sample rate
 	SignificantImprovement ComponentReportStatus = 3
-	ComponentGreen         ComponentReportStatus = 0
-	ComponentRed           ComponentReportStatus = 10
 )
 
 type ComponentReportResponse []ComponentReportRow

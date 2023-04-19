@@ -542,7 +542,7 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonComponentsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	baseRelease := req.URL.Query().Get("baseRelease")
 	sampleRelease := req.URL.Query().Get("sampleRelease")
 	if baseRelease == "" ||
@@ -602,7 +602,123 @@ func (s *Server) jsonComponentsFromBigQuery(w http.ResponseWriter, req *http.Req
 
 	groupBy := req.URL.Query().Get("group_by")
 
-	outputs, errs := api.GetComponentReportFromBigQuery(s.bigQueryClient, baseRelease, sampleRelease, component, capability, platform, upgrade, arch, network, testId, groupBy, baseStartTime, baseEndTime, sampleStartTime, sampleEndTime)
+	excludePlatforms := req.URL.Query().Get("exclude_clouds")
+	excludeArches := req.URL.Query().Get("exclude_arches")
+	excludeNetworks := req.URL.Query().Get("exclude_networks")
+	excludeUpgrades := req.URL.Query().Get("exclude_upgrades")
+	excludeVariants := req.URL.Query().Get("exclude_variants")
+
+	confidence := 95
+	confidence_str := req.URL.Query().Get("confidence")
+	if confidence_str != "" {
+		confidence, err = strconv.Atoi(confidence_str)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "confidence is not a number",
+			})
+			return
+		}
+		if confidence < 0 || confidence > 100 {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "confidence is not in the correct range",
+			})
+			return
+		}
+	}
+
+	pity := 5
+	pityStr := req.URL.Query().Get("pity")
+	if pityStr != "" {
+		pity, err = strconv.Atoi(pityStr)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "pity factor is not a number",
+			})
+			return
+		}
+		if pity < 0 || pity > 100 {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "pity factor is not in the correct range",
+			})
+			return
+		}
+	}
+
+	minFail := 3
+	minFailStr := req.URL.Query().Get("min_fail")
+	if minFailStr != "" {
+		minFail, err = strconv.Atoi(minFailStr)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "min_fail is not a number",
+			})
+			return
+		}
+		if pity < 0 {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "min_fail is not in the correct range",
+			})
+			return
+		}
+	}
+
+	ignoreMissing := false
+	ignoreMissingStr := req.URL.Query().Get("missing")
+	if ignoreMissingStr != "" {
+		if ignoreMissingStr != "ok" {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "missing is in the wrong format",
+			})
+			return
+		}
+		ignoreMissing = true
+	}
+
+	ignoreDisruption := false
+	ignoreDisruptionsStr := req.URL.Query().Get("disruption")
+	if ignoreDisruptionsStr != "" {
+		if ignoreDisruptionsStr != "ok" {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "ignore disruption is in the wrong format",
+			})
+			return
+		}
+		ignoreDisruption = true
+	}
+
+	outputs, errs := api.GetComponentReportFromBigQuery(s.bigQueryClient,
+		baseRelease,
+		sampleRelease,
+		component,
+		capability,
+		platform,
+		upgrade,
+		arch,
+		network,
+		testId,
+		groupBy,
+		excludePlatforms,
+		excludeArches,
+		excludeNetworks,
+		excludeUpgrades,
+		excludeVariants,
+		baseStartTime,
+		baseEndTime,
+		sampleStartTime,
+		sampleEndTime,
+		confidence,
+		minFail,
+		pity,
+		ignoreMissing,
+		ignoreDisruption)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
 		for _, err := range errs {
@@ -1145,7 +1261,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	serveMux.HandleFunc("/api/components", s.jsonComponentsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
