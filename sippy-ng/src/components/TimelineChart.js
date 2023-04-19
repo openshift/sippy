@@ -129,10 +129,12 @@ export default function TimelineChart({ eventIntervals, data }) {
         .maxHeight(10000)
         .width(3000)
         .zColorScale(ordinalScale)
-        .zoomX([
+      if (eventIntervals.length > 0) {
+        chart.zoomX([
           new Date(eventIntervals[0].from),
           new Date(eventIntervals[eventIntervals.length - 1].to),
         ])
+      }
       //.onSegmentClick(segmentFunc)(el)
       // force a minimum width for smaller devices (which otherwise get an unusable display)
       //setTimeout(() => { if (myChart.width() < 3100) { myChart.width(3100) }}, 1)

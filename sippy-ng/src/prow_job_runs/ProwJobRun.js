@@ -118,7 +118,7 @@ export default function ProwJobRun(props) {
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
   })
 
-  let filteredIntervals = filterIntervals(eventIntervals)
+  let filteredIntervals = filterIntervals(eventIntervals, selectedCategories)
   let chartData = groupIntervals(filteredIntervals)
 
   function handleCategoryClick(buttonValue) {
@@ -157,9 +157,6 @@ export default function ProwJobRun(props) {
               {value}
             </Button>
           ))}
-          <Button variant="contained">One</Button>
-          <Button variant="outlined">Two</Button>
-          <Button variant="contained">Three</Button>
         </ButtonGroup>
       </p>
       <p>
@@ -181,7 +178,7 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
-function filterIntervals(eventIntervals) {
+function filterIntervals(eventIntervals, selectedCategories) {
   let isSet = false
   /*
   let positiveSelectionRows = new Map()
@@ -225,107 +222,112 @@ function filterIntervals(eventIntervals) {
    */
 
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
-  let filteredIntervals = eventIntervals
+  //let filteredIntervals = eventIntervals
 
-  // TODO: remove temp hack
-  if (!isSet) {
-    filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
-      // Go ahead and filter out uncategorized events
-      if (eventInterval.categories.alerts) {
-        return true
+  // TODO: adjust, temporary hack, may be removing the other filtering soon
+  let i = 0
+  console.log('selected categories:' + selectedCategories)
+  let filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
+    let shouldInclude = false
+    // Go ahead and filter out uncategorized events
+    Object.keys(eventInterval.categories).forEach(function (cat) {
+      if (eventInterval.categories[cat] && selectedCategories.includes(cat)) {
+        shouldInclude = true
       }
     })
+    return shouldInclude
+  })
+
+  console.log('intervals after filtering:' + filteredIntervals.length)
+  return filteredIntervals
+
+  /*
+if (isSet) {
+// At least one of the inputs had a value, test any inputs that had values
+// This currently does an OR operation of the input fields
+filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
+  // Go ahead and filter out uncategorized events
+  if (eventInterval.categories.uncategorized) {
+    return false
   }
 
-  if (isSet) {
-    // At least one of the inputs had a value, test any inputs that had values
-    // This currently does an OR operation of the input fields
-    filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
-      // Go ahead and filter out uncategorized events
-      if (eventInterval.categories.uncategorized) {
-        return false
+  let eventMatches = false
+
+  for (let [key, positiveSelectionRow] of positiveSelectionRows) {
+    if (positiveSelectionRow.isSet) {
+      matchRegex =
+        positiveSelectionRow.regexStr.length == 0 ||
+        positiveSelectionRow.regex.test(eventInterval.locator)
+      matchNS =
+        positiveSelectionRow.namespace.length == 0 ||
+        (eventInterval.locatorObj.ns &&
+          eventInterval.locatorObj.ns.includes(
+            positiveSelectionRow.namespace
+          ))
+      matchCategory =
+        positiveSelectionRow.category.length == 0 ||
+        eventInterval.categories[positiveSelectionRow.category]
+      matchLodash = true
+      if (positiveSelectionRow.lodash.length > 0) {
+        lodashMatches = _.filter(
+          [eventInterval],
+          _.matches(JSON.parse(positiveSelectionRow.lodash))
+        )
+        matchLodash = lodashMatches.length > 0
       }
+      matchesPositive =
+        matchRegex && matchLodash && matchNS && matchCategory
 
-      let eventMatches = false
-
-      /*
-      for (let [key, positiveSelectionRow] of positiveSelectionRows) {
-        if (positiveSelectionRow.isSet) {
-          matchRegex =
-            positiveSelectionRow.regexStr.length == 0 ||
-            positiveSelectionRow.regex.test(eventInterval.locator)
-          matchNS =
-            positiveSelectionRow.namespace.length == 0 ||
-            (eventInterval.locatorObj.ns &&
-              eventInterval.locatorObj.ns.includes(
-                positiveSelectionRow.namespace
-              ))
-          matchCategory =
-            positiveSelectionRow.category.length == 0 ||
-            eventInterval.categories[positiveSelectionRow.category]
-          matchLodash = true
-          if (positiveSelectionRow.lodash.length > 0) {
-            lodashMatches = _.filter(
-              [eventInterval],
-              _.matches(JSON.parse(positiveSelectionRow.lodash))
-            )
-            matchLodash = lodashMatches.length > 0
-          }
-          matchesPositive =
-            matchRegex && matchLodash && matchNS && matchCategory
-
-          if (matchesPositive) {
-            console.log('matched positive ' + negativeSelectionRows.size)
-            var exclude = false
-            for (let [key, negativeSelectionRow] of negativeSelectionRows) {
-              if (negativeSelectionRow.isSet) {
-                console.log('checking negative')
-                matchRegex =
-                  negativeSelectionRow.regexStr.length == 0 ||
-                  negativeSelectionRow.regex.test(eventInterval.locator)
-                matchNS =
-                  negativeSelectionRow.namespace.length == 0 ||
-                  (eventInterval.locatorObj.ns &&
-                    eventInterval.locatorObj.ns.includes(
-                      negativeSelectionRow.namespace
-                    ))
-                matchCategory =
-                  negativeSelectionRow.category.length == 0 ||
-                  eventInterval.categories[negativeSelectionRow.category]
-                matchLodash = true
-                if (negativeSelectionRow.lodash.length > 0) {
-                  lodashMatches = _.filter(
-                    [eventInterval],
-                    _.matches(JSON.parse(negativeSelectionRow.lodash))
-                  )
-                  matchLodash = lodashMatches.length > 0
-                }
-                matchesNegative =
-                  matchRegex && matchLodash && matchNS && matchCategory
-
-                if (matchesNegative) {
-                  exclude = true
-                  break
-                }
-              }
+      if (matchesPositive) {
+        console.log('matched positive ' + negativeSelectionRows.size)
+        var exclude = false
+        for (let [key, negativeSelectionRow] of negativeSelectionRows) {
+          if (negativeSelectionRow.isSet) {
+            console.log('checking negative')
+            matchRegex =
+              negativeSelectionRow.regexStr.length == 0 ||
+              negativeSelectionRow.regex.test(eventInterval.locator)
+            matchNS =
+              negativeSelectionRow.namespace.length == 0 ||
+              (eventInterval.locatorObj.ns &&
+                eventInterval.locatorObj.ns.includes(
+                  negativeSelectionRow.namespace
+                ))
+            matchCategory =
+              negativeSelectionRow.category.length == 0 ||
+              eventInterval.categories[negativeSelectionRow.category]
+            matchLodash = true
+            if (negativeSelectionRow.lodash.length > 0) {
+              lodashMatches = _.filter(
+                [eventInterval],
+                _.matches(JSON.parse(negativeSelectionRow.lodash))
+              )
+              matchLodash = lodashMatches.length > 0
             }
+            matchesNegative =
+              matchRegex && matchLodash && matchNS && matchCategory
 
-
-            if (exclude) {
-            } else {
-              eventMatches = true
+            if (matchesNegative) {
+              exclude = true
               break
             }
           }
         }
+
+
+        if (exclude) {
+        } else {
+          eventMatches = true
+          break
+        }
       }
-       */
+    }
+  }
 
       return eventMatches
     })
   }
-
-  return filteredIntervals
+   */
 }
 
 function groupIntervals(filteredIntervals) {
