@@ -14,10 +14,8 @@ import { Fragment, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import {
   Link,
-  Redirect,
   Route,
   Switch,
-  useHistory,
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
@@ -29,12 +27,9 @@ import CheckBoxList from './CheckboxList'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
-import EmojiEmotionsOutlinedIcon from '@material-ui/icons/EmojiEmotionsOutlined'
-import FireplaceIcon from '@material-ui/icons/Fireplace'
-import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
+import CompReadyRow from './CompReadyRow'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
-import PropTypes from 'prop-types'
 import React from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Table from '@material-ui/core/Table'
@@ -43,142 +38,8 @@ import TableCell from '@material-ui/core/TableCell'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
-function SeverityIcon(props) {
-  const theme = useTheme()
-  const status = props.status
-
-  let icon = ''
-
-  if (status > 8) {
-    icon = (
-      <EmojiEmotionsOutlinedIcon
-        data-icon="EmojiEmotionsOutlinedIcon"
-        fontSize="large"
-        style={{ color: theme.palette.success.main }}
-      />
-    )
-  } else if (status > 5) {
-    icon = (
-      <FireplaceIcon
-        data-icon="FireplaceIcon"
-        fontSize="small"
-        style={{
-          color: theme.palette.error.main,
-        }}
-      />
-    )
-  } else {
-    icon = (
-      <FireplaceIcon
-        data-icon="FireplaceIcon"
-        fontSize="large"
-        style={{ color: theme.palette.error.main }}
-      />
-    )
-  }
-
-  return <Tooltip title={status}>{icon}</Tooltip>
-}
-
-SeverityIcon.propTypes = {
-  status: PropTypes.number,
-}
-
-function Cell(props) {
-  const status = props.status
-  const theme = useTheme()
-
-  if (status === undefined) {
-    return (
-      <Tooltip title="No data">
-        <TableCell
-          className="cell-result"
-          style={{
-            textAlign: 'center',
-            backgroundColor: theme.palette.text.disabled,
-          }}
-        >
-          <HelpOutlineIcon style={{ color: theme.palette.text.disabled }} />
-        </TableCell>
-      </Tooltip>
-    )
-  } else {
-    return (
-      <TableCell
-        className="cell-result"
-        style={{
-          textAlign: 'center',
-          backgroundColor: 'white',
-        }}
-      >
-        <SeverityIcon status={status} />
-      </TableCell>
-    )
-  }
-}
-
-Cell.propTypes = {
-  status: PropTypes.number,
-}
-
 function groupByReport(columnName, release) {
   return `/tests/${release}?columnName=` + safeEncodeURIComponent(columnName)
-}
-
-function componentReport(componentName, release) {
-  return (
-    `/tests/${release}?componentName=$` + safeEncodeURIComponent(componentName)
-  )
-}
-function Row(props) {
-  const { columnNames, componentName, results, release } = props
-
-  // columnNames includes the "Name" column
-  // componentName will be the name of the component and be under the "Name" column
-  // results will contain the status value per columnName
-
-  // Put the component name on the left side with a link to a component specific
-  // report.
-  const componentNameColumn = (
-    <TableCell className={'component-name'} key={componentName}>
-      <Tooltip title={'Specific report for' + componentName}>
-        <Typography className="cell-name">
-          <Link to={componentReport(componentName, { release })}>
-            {componentName}
-          </Link>
-        </Typography>
-      </Tooltip>
-    </TableCell>
-  )
-
-  return (
-    <Fragment>
-      <TableRow>
-        {componentNameColumn}
-        {columnNames.map((column, idx) => {
-          // We already printed the componentName earlier so skip it here.
-          if (column !== 'Name') {
-            return (
-              <Cell
-                key={'testName-' + idx}
-                status={results[column]}
-                release={release}
-                variant={column}
-                testName={componentName}
-              />
-            )
-          }
-        })}
-      </TableRow>
-    </Fragment>
-  )
-}
-
-Row.propTypes = {
-  results: PropTypes.object,
-  columnNames: PropTypes.array.isRequired,
-  componentName: PropTypes.string.isRequired,
-  release: PropTypes.string.isRequired,
 }
 
 export default function ComponentReadiness(props) {
@@ -679,7 +540,7 @@ export default function ComponentReadiness(props) {
                       </TableHead>
                       <TableBody>
                         {Object.keys(data.tests).map((test) => (
-                          <Row
+                          <CompReadyRow
                             key={test}
                             componentName={test}
                             columnNames={data.column_names}
