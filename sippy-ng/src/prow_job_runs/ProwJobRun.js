@@ -40,7 +40,15 @@ export default function ProwJobRun(props) {
     'endpoint_availability',
   ])
 
+  const [intervalFiles, setIntervalFiles] = useState([])
+
   const fetchData = () => {
+    if (isLoaded) {
+      console.log(
+        'fetchData called due to UI update but intervals already loaded, re-using intervals'
+      )
+      return
+    }
     let queryString = ''
     console.log('hello world we got the prow job run id of ' + props.jobRunID)
 
@@ -58,7 +66,29 @@ export default function ProwJobRun(props) {
       })
       .then((json) => {
         if (json != null) {
-          setEventIntervals(json.items)
+          // Process and filter our intervals
+          let tmpIntervals = json.items
+          mutateIntervals(tmpIntervals)
+          let filteredIntervals = filterIntervals(
+            tmpIntervals,
+            selectedCategories
+          )
+          setEventIntervals(filteredIntervals)
+          console.log(
+            'total intervals loaded from GCS: ' +
+              tmpIntervals.length +
+              ', filtered down to: ' +
+              filteredIntervals.length
+          )
+
+          let newEventIntervalFiles = []
+          lodash.forEach(tmpIntervals, function (eventInterval) {
+            if (!newEventIntervalFiles.includes(eventInterval.filename)) {
+              newEventIntervalFiles.push(eventInterval.filename)
+            }
+          })
+          console.log('newEventIntervalFiles = ' + newEventIntervalFiles)
+          setIntervalFiles(newEventIntervalFiles)
         } else {
           setEventIntervals([])
         }
@@ -83,52 +113,7 @@ export default function ProwJobRun(props) {
     return <p>Loading intervals for job run {props.jobRunID}...</p>
   }
 
-  // Structure the locator data and then categorize the event
-  lodash.forEach(eventIntervals, function (eventInterval) {
-    // break the locator apart into an object for better filtering
-    eventInterval.locatorObj = {}
-    if (eventInterval.locator.startsWith('e2e-test/')) {
-      eventInterval.locatorObj.e2e_test = eventInterval.locator.slice(
-        eventInterval.locator.indexOf('/') + 1
-      )
-    } else {
-      let locatorChunks = eventInterval.locator.split(' ')
-      _.forEach(locatorChunks, function (chunk) {
-        let key = chunk.slice(0, chunk.indexOf('/'))
-        eventInterval.locatorObj[key] = chunk.slice(chunk.indexOf('/') + 1)
-      })
-    }
-
-    // TODO Wasn't clear if an event is only supposed to be in one category or if it can show up in multiple, with the existing implementation
-    // it can show up more than once if it passes more than one of the category checks. If it is meant to only be one category this
-    // could be something simpler like eventInterval.category = "operator-degraded" instead.
-    // Not hypthetical, found events that passed isPodLogs also passed isPods.
-
-    // Categorizing the events once on page load will save time on filtering later
-    eventInterval.categories = {}
-    let categorized = false
-    eventInterval.categories.operator_unavailable =
-      isOperatorAvailable(eventInterval)
-    eventInterval.categories.operator_progressing =
-      isOperatorProgressing(eventInterval)
-    eventInterval.categories.operator_degraded =
-      isOperatorDegraded(eventInterval)
-    eventInterval.categories.pods = isPod(eventInterval)
-    eventInterval.categories.pod_logs = isPodLog(eventInterval)
-    eventInterval.categories.interesting_events =
-      isInterestingOrPathological(eventInterval)
-    eventInterval.categories.alerts = isAlert(eventInterval)
-    eventInterval.categories.node_state = isNodeState(eventInterval)
-    eventInterval.categories.e2e_test_failed = isE2EFailed(eventInterval)
-    eventInterval.categories.e2e_test_flaked = isE2EFlaked(eventInterval)
-    eventInterval.categories.e2e_test_passed = isE2EPassed(eventInterval)
-    eventInterval.categories.endpoint_availability =
-      isEndpointConnectivity(eventInterval)
-    eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
-  })
-
-  let filteredIntervals = filterIntervals(eventIntervals, selectedCategories)
-  let chartData = groupIntervals(filteredIntervals)
+  let chartData = groupIntervals(eventIntervals)
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
@@ -148,10 +133,6 @@ export default function ProwJobRun(props) {
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
-      <p>
-        Loaded {eventIntervals.length} intervals. After filtering:{' '}
-        {filteredIntervals.length}. Chart data: {chartData.length}
-      </p>
       <p>
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
@@ -175,7 +156,7 @@ export default function ProwJobRun(props) {
           <Button variant="contained">e2e-events_20230321-200757.json</Button>
         </ButtonGroup>
       </p>
-      <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
+      <TimelineChart data={chartData} eventIntervals={eventIntervals} />
     </Fragment>
   )
 }
@@ -247,7 +228,6 @@ function filterIntervals(eventIntervals, selectedCategories) {
     return shouldInclude
   })
 
-  console.log('intervals after filtering:' + filteredIntervals.length)
   return filteredIntervals
 
   /*
@@ -337,6 +317,52 @@ filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
     })
   }
    */
+}
+
+function mutateIntervals(eventIntervals) {
+  // Structure the locator data and then categorize the event
+  lodash.forEach(eventIntervals, function (eventInterval) {
+    // break the locator apart into an object for better filtering
+    eventInterval.locatorObj = {}
+    if (eventInterval.locator.startsWith('e2e-test/')) {
+      eventInterval.locatorObj.e2e_test = eventInterval.locator.slice(
+        eventInterval.locator.indexOf('/') + 1
+      )
+    } else {
+      let locatorChunks = eventInterval.locator.split(' ')
+      _.forEach(locatorChunks, function (chunk) {
+        let key = chunk.slice(0, chunk.indexOf('/'))
+        eventInterval.locatorObj[key] = chunk.slice(chunk.indexOf('/') + 1)
+      })
+    }
+
+    // TODO Wasn't clear if an event is only supposed to be in one category or if it can show up in multiple, with the existing implementation
+    // it can show up more than once if it passes more than one of the category checks. If it is meant to only be one category this
+    // could be something simpler like eventInterval.category = "operator-degraded" instead.
+    // Not hypthetical, found events that passed isPodLogs also passed isPods.
+
+    // Categorizing the events once on page load will save time on filtering later
+    eventInterval.categories = {}
+    let categorized = false
+    eventInterval.categories.operator_unavailable =
+      isOperatorAvailable(eventInterval)
+    eventInterval.categories.operator_progressing =
+      isOperatorProgressing(eventInterval)
+    eventInterval.categories.operator_degraded =
+      isOperatorDegraded(eventInterval)
+    eventInterval.categories.pods = isPod(eventInterval)
+    eventInterval.categories.pod_logs = isPodLog(eventInterval)
+    eventInterval.categories.interesting_events =
+      isInterestingOrPathological(eventInterval)
+    eventInterval.categories.alerts = isAlert(eventInterval)
+    eventInterval.categories.node_state = isNodeState(eventInterval)
+    eventInterval.categories.e2e_test_failed = isE2EFailed(eventInterval)
+    eventInterval.categories.e2e_test_flaked = isE2EFlaked(eventInterval)
+    eventInterval.categories.e2e_test_passed = isE2EPassed(eventInterval)
+    eventInterval.categories.endpoint_availability =
+      isEndpointConnectivity(eventInterval)
+    eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
+  })
 }
 
 function groupIntervals(filteredIntervals) {
