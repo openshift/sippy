@@ -21,6 +21,7 @@ import {
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
@@ -121,11 +122,13 @@ Cell.propTypes = {
 }
 
 function groupByReport(columnName, release) {
-  return `/tests/${release}?columnName=${columnName}`
+  return `/tests/${release}?columnName=` + safeEncodeURIComponent(columnName)
 }
 
 function componentReport(componentName, release) {
-  return `/tests/${release}?componentName=${componentName}`
+  return (
+    `/tests/${release}?componentName=$` + safeEncodeURIComponent(componentName)
+  )
 }
 function Row(props) {
   const { columnNames, componentName, results, release } = props

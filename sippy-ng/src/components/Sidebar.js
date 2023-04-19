@@ -133,9 +133,7 @@ export default function Sidebar(props) {
                   <ListItem
                     key={'release-health-'}
                     component={Link}
-                    to={
-                      '/componentreadiness/report' + getCompReadDefaultUrlPart()
-                    }
+                    to={'/componentreadiness/' + getCompReadDefaultUrlPart()}
                     button
                     className={classes.nested}
                   >
