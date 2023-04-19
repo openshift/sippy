@@ -26,7 +26,6 @@ function ReleaseSelector(props) {
       const data = { releases: ['4.10', '4.11', '4.12', '4.13', '4.14'] }
       setVersions(data.releases)
     } else {
-      console.log('fetching ...')
       fetch('https://sippy.dptools.openshift.org/api/releases')
         .then((response) => response.json())
         .then((data) => {

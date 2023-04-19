@@ -43,6 +43,7 @@ function groupByReport(columnName, release) {
 }
 
 export default function ComponentReadiness(props) {
+  console.log('ComponentReadiness start')
   const classes = useStyles()
   const theme = useTheme()
 
@@ -66,18 +67,18 @@ export default function ComponentReadiness(props) {
   }
 
   const groupByList = ['Platform', 'Arch', 'Network', 'Upgrade', 'Variant']
-
   let tmp = groupByParameters.get('group_by')
   let initGroupBy = []
   if (tmp !== null) {
     initGroupBy = tmp.split(',')
   }
-  console.log('initGroupBy: ', initGroupBy)
   const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
     // Extract the 'group_by=platform,arch,network' from the url to be the initial
     // groupBy array of checked values.
     initGroupBy
   )
+  console.log('initGroupBy: ', initGroupBy)
+  console.log('groupByCheckedItems: ', groupByCheckedItems)
 
   // TODO: Get these from single place.
   const excludeCloudsList = [
@@ -94,42 +95,40 @@ export default function ComponentReadiness(props) {
   ]
   tmp = groupByParameters.get('excluded_platforms')
   let initExcludeCloudsList = []
-  if (tmp !== null) {
-    initExcludeCloudsList = groupByParameters
-      .get('excluded_platforms')
-      .split(',')
+  if (tmp !== null && tmp !== '') {
+    initExcludeCloudsList = tmp.split(',')
   }
-  console.log('initExcludeCloudsList: ', initExcludeCloudsList)
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(
       // Extract the 'excluded_platforms=aws' from the url to be the initial
       // Exclude Clouds array of checked values.
       initExcludeCloudsList
     )
+  console.log('initExcludeCloudsList: ', initExcludeCloudsList)
+  console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
 
   // TODO: Get these from single place.
   const excludeArchesList = ['amd64', 'arm64', 'ppc64le', 's390x', 'multi']
-
   tmp = groupByParameters.get('excluded_arches')
   let initExcludeArchesList = []
   if (tmp !== null) {
-    initExcludeArchesList = groupByParameters.tmp.split(',')
+    initExcludeArchesList = tmp.split(',')
   }
-  console.log('initExcludeArchesList: ', initExcludeArchesList)
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
     React.useState(initExcludeArchesList)
+  console.log('initExcludeArchesList: ', initExcludeArchesList)
+  console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
 
+  const excludeNetworksList = ['ovn', 'sdn']
   tmp = groupByParameters.get('excluded_networks')
   let initExcludeNetworksList = []
   if (tmp !== null) {
-    initExcludeNetworksList = groupByParameters.tmp.split(',')
+    initExcludeNetworksList = tmp.split(',')
   }
-  console.log('initExcludeNetworksList: ', initExcludeNetworksList)
-
-  const excludeNetworksList = ['ovn', 'sdn']
-
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
     React.useState(initExcludeNetworksList)
+  console.log('initExcludeNetworksList: ', initExcludeNetworksList)
+  console.log('excludeNetworksCheckedItems: ', excludeNetworksCheckedItems)
 
   const [historicalRelease = '4.13', setHistoricalRelease] = useQueryParam(
     'historicalRelease',
@@ -174,9 +173,10 @@ export default function ComponentReadiness(props) {
   if (tmp !== null) {
     initExcludeUpgradesList = groupByParameters.tmp.split(',')
   }
-  console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
     React.useState(initExcludeUpgradesList)
+  console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
+  console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
 
   const excludeVariantsList = [
     'Standard',
@@ -192,16 +192,15 @@ export default function ComponentReadiness(props) {
     'Proxy',
     'Single Node',
   ]
-
   tmp = groupByParameters.get('excluded_variants')
   let initExcludeVariantsList = []
   if (tmp !== null) {
     initExcludeVariantsList = groupByParameters.tmp.split(',')
   }
-  console.log('initExcludeVariantsList: ', initExcludeVariantsList)
-
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(initExcludeVariantsList)
+  console.log('initExcludeVariantsList: ', initExcludeVariantsList)
+  console.log('excludeVariantsCheckedItems: ', excludeVariantsCheckedItems)
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
@@ -217,47 +216,59 @@ export default function ComponentReadiness(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
-  const fetchData = () => {
-    const fromFile = true
-    if (fromFile) {
-      //const json = require('./output.json')
-      //const json = require('./5-rows-map.json')
-      //const json = require('./5-rows-map2.json')
-      const json = require('./5-rows-comp.json')
-      setData(json)
-      console.log('json:', json)
-      setLoaded(true)
-    } else {
-      fetch(
-        // This will call the new API for component readiness
-        process.env.REACT_APP_API_URL +
-          '/api/upgrade?release=' +
-          { historicalRelease }
-      )
-        .then((response) => {
-          if (response.status !== 200) {
-            throw new Error('server returned ' + response.status)
-          }
-          return response.json()
-        })
-        .then((json) => {
-          setData(json)
-          setLoaded(true)
-        })
-        .catch((error) => {
-          setFetchError(
-            'Could not retrieve component readiness data' + ', ' + error
-          )
-        })
-    }
-  }
-
+  //const fetchData = () => {
+  //  const fromFile = true
+  //  if (fromFile) {
+  //    //const json = require('./output.json')
+  //    //const json = require('./5-rows-map.json')
+  //    //const json = require('./5-rows-map2.json')
+  //    const json = require('./5-rows-comp.json')
+  //    setData(json)
+  //    console.log('json:', json)
+  //    setLoaded(true)
+  //  } else {
+  //    fetch(
+  //      // This will call the new API for component readiness
+  //      process.env.REACT_APP_API_URL +
+  //        '/api/upgrade?release=' +
+  //        { historicalRelease }
+  //    )
+  //      .then((response) => {
+  //        if (response.status !== 200) {
+  //          throw new Error('server returned ' + response.status)
+  //        }
+  //        return response.json()
+  //      })
+  //      .then((json) => {
+  //        setData(json)
+  //        setLoaded(true)
+  //      })
+  //      .catch((error) => {
+  //        setFetchError(
+  //          'Could not retrieve component readiness data' + ', ' + error
+  //        )
+  //      })
+  //  }
+  //}
+  //useEffect(() => {
+  //  document.title = `Sippy > Component Readiness`
+  //  fetchData()
+  //}, [])
   useEffect(() => {
     document.title = `Sippy > Component Readiness`
-    console.log('useEffect called')
-    fetchData()
+    setData({
+      column_names: ['Name', 'Empty'],
+      tests: {
+        Empty: {
+          Empty: 10,
+          Name: 1,
+        },
+      },
+    })
+    setLoaded(true)
   }, [])
 
+  document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return (
       <Alert severity="error">
@@ -270,7 +281,8 @@ export default function ComponentReadiness(props) {
     return <p>Loading component readiness data ...</p>
   }
 
-  if (data === undefined || data.tests.length === 0) {
+  console.log('data: ', data)
+  if (Object.keys(data).length === 0 || data.tests.length === 0) {
     return <p>No data.</p>
   }
 
@@ -311,7 +323,8 @@ export default function ComponentReadiness(props) {
   //    'componentreadiness/?basis_release=4.14&basis_start_dt=2023-04-10:00:00&basis_end_dt=2023-04-13:00:00basis_release=4.14&basis_start_dt=2023-04-10:00:00&basis_end_dt=2023-04-13:00:00'
   //  )
   //}
-  const handleClick = () => {
+  const handleGenerateReport = () => {
+    console.log('--------------- handleGenerateReport ------------------')
     console.log('historicalRelease', historicalRelease)
     console.log('historicalReleaseFrom', historicalReleaseFrom)
     console.log('historicalReleaseTo', historicalReleaseTo)
@@ -324,8 +337,81 @@ export default function ComponentReadiness(props) {
     console.log('excludeNetworks', excludeNetworksCheckedItems)
     console.log('excludeUpgrades', excludeUpgradesCheckedItems)
     console.log('excludeVariants', excludeVariantsCheckedItems)
+
+    const apiCallStr =
+      process.env.REACT_APP_API_URL +
+      '/api/comp_read' +
+      getUpdatedUrlParts(
+        historicalRelease,
+        historicalReleaseFrom,
+        historicalReleaseTo,
+        sampleRelease,
+        sampleReleaseFrom,
+        sampleReleaseTo,
+        groupByCheckedItems,
+        excludeCloudsCheckedItems,
+        excludeArchesCheckedItems,
+        excludeNetworksCheckedItems,
+        excludeUpgradesCheckedItems,
+        excludeVariantsCheckedItems
+      )
+    const params = new URLSearchParams(apiCallStr.split('?')[1])
+
+    console.log('*** API Call: ')
+    params.forEach((value, key) => {
+      console.log(`${key}: ${value}`)
+    })
+    const fromFile = true
+    if (fromFile) {
+      //const json = require('./output.json')
+      //const json = require('./5-rows-map.json')
+      //const json = require('./5-rows-map2.json')
+      const json = require('./5-rows-comp.json')
+      setData(json)
+      console.log('json:', json)
+      setLoaded(true)
+    } else {
+      fetch(
+        // This will call the new API for component readiness
+        process.env.REACT_APP_API_URL +
+          '/api/upgrade?release=' +
+          { historicalRelease }
+      )
+        .then((response) => {
+          if (response.status !== 200) {
+            throw new Error('server returned ' + response.status)
+          }
+          return response.json()
+        })
+        .then((json) => {
+          setData(json)
+          setLoaded(true)
+        })
+        .catch((error) => {
+          setFetchError(
+            'Could not retrieve component readiness data' + ', ' + error
+          )
+        })
+    }
   }
 
+  //'/componentreadiness/' +
+  //getUpdatedUrlParts(
+  //  historicalRelease,
+  //  historicalReleaseFrom,
+  //  historicalReleaseTo,
+  //  sampleRelease,
+  //  sampleReleaseFrom,
+  //  sampleReleaseTo,
+  //  groupByCheckedItems,
+  //  excludeCloudsCheckedItems,
+  //  excludeArchesCheckedItems,
+  //  excludeNetworksCheckedItems,
+  //  excludeUpgradesCheckedItems,
+  //  excludeVariantsCheckedItems
+  //)
+
+  console.log('ComponentReadiness end')
   return (
     <Fragment>
       <Route
@@ -377,7 +463,7 @@ export default function ComponentReadiness(props) {
                         size="large"
                         variant="contained"
                         color="primary"
-                        onClick={handleClick}
+                        onClick={handleGenerateReport}
                       >
                         Generate Report
                       </Button>
@@ -611,5 +697,47 @@ export function getCompReadDefaultUrlPart() {
   })
 
   console.log('filter: ', retVal)
+  return retVal
+}
+
+export function getUpdatedUrlParts(
+  historicalRelease,
+  historicalReleaseFrom,
+  historicalReleaseTo,
+  sampleRelease,
+  sampleReleaseFrom,
+  sampleReleaseTo,
+  groupByCheckedItems,
+  excludeCloudsCheckedItems,
+  excludeArchesCheckedItems,
+  excludeNetworksCheckedItems,
+  excludeUpgradesCheckedItems,
+  excludeVariantsCheckedItems
+) {
+  const filtersMap = {
+    group_by: groupByCheckedItems,
+    basis_release: historicalRelease,
+    basis_start_dt: historicalReleaseFrom,
+    basis_end_dt: historicalReleaseTo,
+    sample_release: sampleRelease,
+    sample_start_dt: sampleReleaseFrom,
+    sample_end_dt: sampleReleaseTo,
+    exclude_platforms: excludeCloudsCheckedItems,
+    exclude_arches: excludeArchesCheckedItems,
+    exclude_networks: excludeNetworksCheckedItems,
+    exclude_upgrades: excludeUpgradesCheckedItems,
+    exclude_variants: excludeVariantsCheckedItems,
+  }
+  let retVal = '/?'
+  const fieldList = Object.entries(filtersMap)
+  fieldList.map(([key, value]) => {
+    let amper = '&'
+    if (key === 'group_by') {
+      amper = ''
+    }
+    console.log('key: ')
+    retVal = retVal + amper + key + '=' + value
+  })
+  console.log('retVal: ', retVal)
   return retVal
 }
