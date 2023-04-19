@@ -107,9 +107,11 @@ func VariantTestsReport(dbc *db.DB, release string, reportType v1.ReportType,
 	for testName := range tests {
 		allReport, err := query.TestReportExcludeVariants(dbc, release, testName, excludedVariants)
 		if err != nil {
-			return variantColumns, tests, err
+			// log the error and keep going
+			log.WithError(err).Errorf("Failed to query test report for: %s", testName)
+		} else {
+			tests[testName]["All"] = allReport
 		}
-		tests[testName]["All"] = allReport
 	}
 
 	return variantColumns, tests, nil
