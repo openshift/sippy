@@ -16,7 +16,7 @@ export default function ProwJobRun(props) {
       ['operator_unavailable', 'Operator Unavailable'],
       ['operator_progressing', 'Operator Progressing'],
       ['operator_degraded', 'Operator Degraded'],
-      ['pods', 'Pods'],
+      ['pods', 'Pods (careful)'],
       ['pod_logs', 'Pod Logs'],
       ['interesting_events', 'Interesting Events'],
       ['alerts', 'Alerts'],
@@ -28,7 +28,16 @@ export default function ProwJobRun(props) {
     ])
   )
   const [selectedCategories, setSelectedCategories] = useState([
-    allCategories.keys(),
+    // Initial set of pre-selected categories for debugging and performance. Must match above.
+    'operator_unavailable',
+    'operator_progressing',
+    'operator_degraded',
+    'pod_logs',
+    'interesting_events',
+    'alerts',
+    'node_state',
+    'e2e_test_failed',
+    'endpoint_availability',
   ])
 
   const fetchData = () => {
