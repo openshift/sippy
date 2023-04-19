@@ -64,7 +64,7 @@ func VariantTestsReport(dbc *db.DB, release string, reportType v1.ReportType,
 	testSearchStrings.Insert(testPrefixes.List()...)
 	testSearchStrings.Insert(testSubStrings.List()...)
 
-	testReports, err := query.TestReportsByVariant(dbc, release, reportType, testSearchStrings.List())
+	testReports, err := query.TestReportsByVariant(dbc, release, reportType, testSearchStrings.List(), excludedVariants)
 	if err != nil {
 		return sets.NewString(), map[string]map[string]apitype.Test{}, err
 	}
