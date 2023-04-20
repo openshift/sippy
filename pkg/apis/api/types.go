@@ -841,6 +841,14 @@ const (
 
 type ComponentReportResponse []ComponentReportRow
 
+type ComponentReportTestVariants struct {
+	Network  []string `json:"network,omitempty"`
+	Upgrade  []string `json:"upgrade,omitempty"`
+	Arch     []string `json:"arch,omitempty"`
+	Platform []string `json:"platform,omitempty"`
+	Variant  []string `json:"variant,omitempty"`
+}
+
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
 var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 25}

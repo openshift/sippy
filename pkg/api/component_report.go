@@ -17,6 +17,84 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+func getSingleColumnResultToSlice(query *bigquery.Query, names *[]string) error {
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("error querying test status from bigquery")
+		return err
+	}
+
+	for {
+		row := struct{ Name string }{}
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing component from bigquery")
+			return err
+		}
+		*names = append(*names, row.Name)
+	}
+	return nil
+}
+
+func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.ComponentReportTestVariants, []error) {
+	result := apitype.ComponentReportTestVariants{}
+	errs := []error{}
+	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
+	query := client.Query(queryString)
+	err := getSingleColumnResultToSlice(query, &result.Platform)
+	if err != nil {
+		log.WithError(err).Error("error querying platforms from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
+	query = client.Query(queryString)
+	err = getSingleColumnResultToSlice(query, &result.Network)
+	if err != nil {
+		log.WithError(err).Error("error querying networks from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
+	query = client.Query(queryString)
+	err = getSingleColumnResultToSlice(query, &result.Arch)
+	if err != nil {
+		log.WithError(err).Error("error querying arches from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
+	query = client.Query(queryString)
+	err = getSingleColumnResultToSlice(query, &result.Upgrade)
+	if err != nil {
+		log.WithError(err).Error("error querying upgrades from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT flat_variants as name FROM ci_analysis_us.junit ORDER BY name`
+	query = client.Query(queryString)
+	flatVariants := []string{}
+	err = getSingleColumnResultToSlice(query, &flatVariants)
+	if err != nil {
+		log.WithError(err).Error("error querying platforms from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	uniqueVariants := sets.String{}
+	for _, flatVariant := range flatVariants {
+		variants := strings.Split(flatVariant, ",")
+		for _, variant := range variants {
+			uniqueVariants.Insert(variant)
+		}
+	}
+	result.Variant = uniqueVariants.List()
+
+	return result, errs
+}
+
 func GetComponentReportFromBigQuery(client *bigquery.Client,
 	baseRelease, sampleRelease, component, capability, platform, upgrade, arch, network, testId, groupBy string,
 	excludePlatforms, excludeArches, excludeNetworks, excludeUpgrades, excludeVariants string,
@@ -178,11 +256,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.baseEndTime,
 		},
 	}
-	now := time.Now()
 	baseStatus := c.fetchTestStatus(query, errs)
-	delta := time.Now().Sub(now)
-	fmt.Printf("---- query took %+v\n", delta)
-	now = time.Now()
 
 	sampleString := queryString + ` AND branch = "` + c.sampleRelease + `"`
 	query = c.client.Query(sampleString + groupString)
@@ -197,7 +271,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		},
 	}
 	sampleStatus := c.fetchTestStatus(query, errs)
-	fmt.Printf("---- sample query took %+v\n", delta)
 	return baseStatus, sampleStatus, errs
 }
 
@@ -276,7 +349,6 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 	if groups.Has("variant") {
 		column.Variant = test.Variant
 	}
-	fmt.Printf("----- groupBy %+v\n", c.groupBy)
 
 	return rows, column
 }
@@ -358,11 +430,9 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[apitype.ComponentReportRowIdentification]struct{}{}
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
-	now := time.Now()
 	for testIdentification, baseStats := range baseStatus {
-		fmt.Printf("----- categorizing test %+v\n", testIdentification)
-		fmt.Printf("----- base stats %+v\n", baseStats)
 		reportStatus := apitype.NotSignificant
+		fmt.Printf("------ analyzing %+v\n", testIdentification)
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
 			reportStatus = apitype.MissingSample
@@ -374,9 +444,6 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(&testIdentification)
 		updateStatus(rowIdentifications, columnIdentification, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
-	delta := time.Now().Sub(now)
-	fmt.Printf("--------- Calculating fischer for %d items for %+v\n", len(baseStatus), delta)
-	fmt.Printf("----- agg status %+v\n", aggregatedStatus)
 	// Those sample ones are missing base stats
 	for testIdentification, _ := range sampleStatus {
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(&testIdentification)
@@ -406,7 +473,6 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			sortedColumns[i].Upgrade < sortedColumns[j].Upgrade ||
 			sortedColumns[i].Variant < sortedColumns[j].Variant
 	})
-	fmt.Printf("--------- sorting columns for %+v\n", time.Now().Sub(now))
 
 	// Now build the report
 	for _, rowID := range sortedRows {
@@ -426,13 +492,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 				} else {
 					reportColumn.Status = status
 				}
-				fmt.Printf("----- adding row %+v, column %+v\n", reportRow, reportColumn)
 				reportRow.Columns = append(reportRow.Columns, reportColumn)
 			}
 			report.Rows = append(report.Rows, reportRow)
 		}
 	}
-	fmt.Printf("--------- building report for %+v\n", time.Now().Sub(now))
 
 	return report
 }
@@ -455,17 +519,13 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 				samplePassPercentage := float64(sampleStats.SuccessCount+sampleStats.FlakeCount) / float64(sampleStats.TotalCount)
 				significant := false
 				improved := samplePassPercentage >= basisPassPercentage
-				fmt.Printf("---- base is %v, sample is %v\n", baseStats, sampleStats)
-				fmt.Printf("---- basesi p is %v, sample p %v, improved %v\n", basisPassPercentage, samplePassPercentage, improved)
 				if improved {
 					_, _, r, _ := fischer.FisherExactTest(baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
 						baseStats.SuccessCount+baseStats.FlakeCount,
 						sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
 						sampleStats.SuccessCount+sampleStats.FlakeCount)
 					significant = r < 1-float64(c.confidence)/100
-					fmt.Printf("--- improved n1: %v, n2: %v, n3: %v, n4: %v, r: %v, sig: %v, confidence: %+v\n", baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-						baseStats.SuccessCount+baseStats.FlakeCount, sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-						sampleStats.SuccessCount+sampleStats.FlakeCount, r, significant, c.confidence)
+					fmt.Printf("-------- imporved, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
 
 				} else {
 					if basisPassPercentage-samplePassPercentage > float64(c.pityFactor)/100 {
@@ -474,9 +534,7 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 							baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
 							baseStats.SuccessCount+baseStats.FlakeCount)
 						significant = r < 1-float64(c.confidence)/100
-						fmt.Printf("--- regressed n1: %v, n2: %v, n3: %v, n4: %v, r: %v, sig: %v, pity: %v\n", sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-							sampleStats.SuccessCount+sampleStats.FlakeCount, baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-							baseStats.SuccessCount+baseStats.FlakeCount, r, significant, c.pityFactor)
+						fmt.Printf("-------- regressed, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
 					}
 				}
 				if significant {

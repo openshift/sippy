@@ -542,6 +542,22 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient)
+	if len(errs) > 0 {
+		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
+		for _, err := range errs {
+			log.Error(err.Error())
+		}
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": "error querying test variants from big query",
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	baseRelease := req.URL.Query().Get("baseRelease")
 	sampleRelease := req.URL.Query().Get("sampleRelease")
@@ -1262,6 +1278,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
 	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)

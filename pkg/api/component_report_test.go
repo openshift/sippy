@@ -76,7 +76,7 @@ func TestGenerateComponentReport(t *testing.T) {
 				}: {
 					TotalCount:   100,
 					FlakeCount:   1,
-					SuccessCount: 90,
+					SuccessCount: 85,
 				},
 				apitype.ComponentTestIdentification{
 					TestName: "test 2",
@@ -142,7 +142,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "first page test extreme",
+			name: "first page test with both improvement and regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     95,
@@ -359,7 +359,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "second page test extreme",
+			name: "second page test with both improvement and regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
@@ -462,6 +462,505 @@ func TestGenerateComponentReport(t *testing.T) {
 									Network:  "sdn",
 								},
 								Status: apitype.SignificantImprovement,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "third page test no significant and missing data",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				component:      "component 2",
+				capability:     "cap22",
+				confidence:     95,
+				pityFactor:     5,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 950,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 90,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component:  "component 2",
+							Capability: "cap22",
+							TestName:   "test 2",
+							TestID:     "2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.NotSignificant,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "third page test with both improvement and regression",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				component:      "component 2",
+				capability:     "cap22",
+				confidence:     95,
+				pityFactor:     5,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 500,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   10,
+					SuccessCount: 50,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component:  "component 2",
+							Capability: "cap22",
+							TestName:   "test 2",
+							TestID:     "2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.SignificantImprovement,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "first page test confidence 90 result in regression",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				confidence:     90,
+				pityFactor:     5,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 950,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 85,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 1",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.SignificantRegression,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+						},
+					},
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.NotSignificant,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "first page test confidence 90 pity 10 result in no regression",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				confidence:     90,
+				pityFactor:     10,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 950,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 85,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 1",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.NotSignificant,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+						},
+					},
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.NotSignificant,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "first page test minimum failure no regression",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				confidence:     90,
+				pityFactor:     10,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 950,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+				}: {
+					TotalCount:   3,
+					FlakeCount:   0,
+					SuccessCount: 1,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 1",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.NotSignificant,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+						},
+					},
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component: "component 2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+								},
+								Status: apitype.NotSignificant,
 							},
 						},
 					},
