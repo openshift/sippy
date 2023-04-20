@@ -19,17 +19,20 @@ function capabilitiesReport(componentName, release) {
 }
 
 export default function CompReadyRow(props) {
+  // results is an array of columns
   const { columnNames, componentName, results, release } = props
 
+  console.log('results: ', results)
+  console.log('componentName: ', componentName)
   // columnNames includes the "Name" column
   // componentName will be the name of the component and be under the "Name" column
   // results will contain the status value per columnName
 
   // Put the component name on the left side with a link to a component specific
-  // report.
+  // capabilities report.
   const componentNameColumn = (
     <TableCell className={'component-name'} key={componentName}>
-      <Tooltip title={'Capabilities report for' + componentName}>
+      <Tooltip title={'Capabilities report for ' + componentName}>
         <Typography className="cell-name">
           <Link to={capabilitiesReport(componentName, { release })}>
             {componentName}
@@ -43,20 +46,15 @@ export default function CompReadyRow(props) {
     <Fragment>
       <TableRow>
         {componentNameColumn}
-        {columnNames.map((column, idx) => {
-          // We already printed the componentName earlier so skip it here.
-          if (column !== 'Name') {
-            return (
-              <CompReadyCell
-                key={'testName-' + idx}
-                status={results[column]}
-                release={release}
-                variant={column}
-                testName={componentName}
-              />
-            )
-          }
-        })}
+        {results.map((columnVal, idx) => (
+          <CompReadyCell
+            key={'testName-' + idx}
+            status={columnVal.status}
+            release={release}
+            variant={columnVal}
+            testName={componentName}
+          />
+        ))}
       </TableRow>
     </Fragment>
   )

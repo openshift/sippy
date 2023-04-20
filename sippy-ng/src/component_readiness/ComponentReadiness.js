@@ -38,8 +38,27 @@ import TableCell from '@material-ui/core/TableCell'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
+// Given the data pulled from the API server, calculate an array
+// of columns using the first row.  Assumption: the columns are
+// all the same.
+function getColumns(data) {
+  const row0Columns = data.rows[0].columns
+
+  let retVal = []
+  row0Columns.forEach((column) => {
+    let columnName = ''
+    for (const key in column) {
+      if (key !== 'status') {
+        columnName = columnName + ' ' + column[key]
+      }
+    }
+    retVal.push(columnName.trimStart())
+  })
+  return retVal
+}
+
 // This is used when the user clicks on one of the columns at the top of the table
-function topSideReport(columnName) {
+function singleRowReport(columnName) {
   return '/componentreadiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
@@ -258,13 +277,17 @@ export default function ComponentReadiness(props) {
   useEffect(() => {
     document.title = `Sippy > Component Readiness`
     setData({
-      column_names: ['Name', 'Empty'],
-      tests: {
-        Empty: {
-          Empty: 10,
-          Name: 1,
+      rows: [
+        {
+          component: 'None',
+          columns: [
+            {
+              empty: 'None',
+              status: 10,
+            },
+          ],
         },
-      },
+      ],
     })
     setLoaded(true)
   }, [])
@@ -283,7 +306,7 @@ export default function ComponentReadiness(props) {
   }
 
   console.log('data: ', data)
-  if (Object.keys(data).length === 0 || data.tests.length === 0) {
+  if (Object.keys(data).length === 0 || data.rows.length === 0) {
     return <p>No data.</p>
   }
 
@@ -296,7 +319,7 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  if (data.column_names.length === 0) {
+  if (data.length === 0) {
     return (
       <Typography variant="h6" style={{ marginTop: 50 }}>
         No per-variant data found.
@@ -364,10 +387,8 @@ export default function ComponentReadiness(props) {
     })
     const fromFile = true
     if (fromFile) {
-      //const json = require('./output.json')
-      //const json = require('./5-rows-map.json')
-      //const json = require('./5-rows-map2.json')
-      const json = require('./5-rows-comp.json')
+      //const json = require('./5-rows-comp.json')
+      const json = require('./api_page1.json')
       setData(json)
       console.log('json:', json)
       setLoaded(true)
@@ -599,7 +620,7 @@ export default function ComponentReadiness(props) {
                               </Typography>
                             </TableCell>
                           }
-                          {data.column_names.map((column, idx) => {
+                          {getColumns(data).map((column, idx) => {
                             if (column !== 'Name') {
                               return (
                                 <TableCell
@@ -607,10 +628,10 @@ export default function ComponentReadiness(props) {
                                   key={'column' + '-' + idx}
                                 >
                                   <Tooltip
-                                    title={'Topside report for ' + column}
+                                    title={'Single row report for ' + column}
                                   >
                                     <Typography className="cell-name">
-                                      <Link to={topSideReport(column)}>
+                                      <Link to={singleRowReport(column)}>
                                         {column}
                                       </Link>
                                     </Typography>
@@ -622,12 +643,12 @@ export default function ComponentReadiness(props) {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {Object.keys(data.tests).map((test) => (
+                        {Object.keys(data.rows).map((componentIndex) => (
                           <CompReadyRow
-                            key={test}
-                            componentName={test}
-                            columnNames={data.column_names}
-                            results={data.tests[test]}
+                            key={componentIndex}
+                            componentName={data.rows[componentIndex].component}
+                            columnNames={getColumns(data)}
+                            results={data.rows[componentIndex].columns}
                             release={historicalRelease}
                           />
                         ))}
