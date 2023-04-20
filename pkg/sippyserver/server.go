@@ -79,6 +79,9 @@ func NewServer(
 		gcsClient:      gcsClient,
 	}
 
+	// Fill cache
+	go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
+
 	return server
 }
 

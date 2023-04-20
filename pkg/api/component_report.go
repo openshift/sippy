@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -39,9 +40,21 @@ func getSingleColumnResultToSlice(query *bigquery.Query, names *[]string) error 
 	return nil
 }
 
+var (
+	cacheLock     = new(sync.RWMutex)
+	cacheVariants *apitype.ComponentReportTestVariants
+)
+
 func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.ComponentReportTestVariants, []error) {
-	result := apitype.ComponentReportTestVariants{}
 	errs := []error{}
+	result := apitype.ComponentReportTestVariants{}
+	cacheLock.RLock()
+	if cacheVariants != nil {
+		result = *cacheVariants
+		cacheLock.RUnlock()
+		return result, errs
+	}
+	cacheLock.RUnlock()
 	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
 	query := client.Query(queryString)
 	err := getSingleColumnResultToSlice(query, &result.Platform)
@@ -91,6 +104,10 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		}
 	}
 	result.Variant = uniqueVariants.List()
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+	cacheVariants = &apitype.ComponentReportTestVariants{}
+	*cacheVariants = result
 
 	return result, errs
 }
