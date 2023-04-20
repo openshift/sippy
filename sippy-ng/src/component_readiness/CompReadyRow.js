@@ -19,14 +19,10 @@ function capabilitiesReport(componentName, release) {
 }
 
 export default function CompReadyRow(props) {
-  // results is an array of columns
-  const { columnNames, componentName, results, release } = props
-
-  console.log('results: ', results)
-  console.log('componentName: ', componentName)
-  // columnNames includes the "Name" column
-  // componentName will be the name of the component and be under the "Name" column
-  // results will contain the status value per columnName
+  // componentName is the name of the component
+  // results is an array of columns and contains the status value per columnName
+  // release is the release (not sure if we need it)
+  const { componentName, results, release } = props
 
   // Put the component name on the left side with a link to a component specific
   // capabilities report.
@@ -61,8 +57,7 @@ export default function CompReadyRow(props) {
 }
 
 CompReadyRow.propTypes = {
-  results: PropTypes.object,
-  columnNames: PropTypes.array.isRequired,
+  results: PropTypes.array.isRequired,
   componentName: PropTypes.string.isRequired,
   release: PropTypes.string.isRequired,
 }
