@@ -40,6 +40,14 @@ import VariantStatus from './jobs/VariantStatus'
 
 const drawerWidth = 240
 
+// Just try this out for now to prepare for these other pages
+function Capabilities() {
+  return <h1>Capabilities page</h1>
+}
+function Testpage() {
+  return <h1>Test page</h1>
+}
+
 export const useStyles = makeStyles((theme) => ({
   root: {
     display: 'flex',
@@ -384,6 +392,14 @@ export default function App(props) {
                     )}
                   />
 
+                  <Route
+                    path="/componentreadiness/:component/capabilities"
+                    render={({ location }) => <Capabilities />}
+                  />
+                  <Route
+                    path="/componentreadiness/:columnName/tests"
+                    render={({ location }) => <Testpage />}
+                  />
                   <Route
                     path="/componentreadiness"
                     render={(props) => <ComponentReadiness />}

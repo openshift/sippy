@@ -9,9 +9,12 @@ import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
-function componentReport(componentName, release) {
+// This is used when a user clicks on a component on the left side of the table
+function capabilitiesReport(componentName, release) {
   return (
-    `/tests/${release}?componentName=$` + safeEncodeURIComponent(componentName)
+    '/componentreadiness/' +
+    safeEncodeURIComponent(componentName) +
+    '/capabilities'
   )
 }
 
@@ -26,9 +29,9 @@ export default function CompReadyRow(props) {
   // report.
   const componentNameColumn = (
     <TableCell className={'component-name'} key={componentName}>
-      <Tooltip title={'Specific report for' + componentName}>
+      <Tooltip title={'Capabilities report for' + componentName}>
         <Typography className="cell-name">
-          <Link to={componentReport(componentName, { release })}>
+          <Link to={capabilitiesReport(componentName, { release })}>
             {componentName}
           </Link>
         </Typography>

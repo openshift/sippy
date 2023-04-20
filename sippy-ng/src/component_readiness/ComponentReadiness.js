@@ -38,8 +38,9 @@ import TableCell from '@material-ui/core/TableCell'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
-function groupByReport(columnName, release) {
-  return `/tests/${release}?columnName=` + safeEncodeURIComponent(columnName)
+// This is used when the user clicks on one of the columns at the top of the table
+function topSideReport(columnName) {
+  return '/componentreadiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
 export default function ComponentReadiness(props) {
@@ -606,14 +607,10 @@ export default function ComponentReadiness(props) {
                                   key={'column' + '-' + idx}
                                 >
                                   <Tooltip
-                                    title={'Specific report for ' + column}
+                                    title={'Topside report for ' + column}
                                   >
                                     <Typography className="cell-name">
-                                      <Link
-                                        to={groupByReport(column, {
-                                          historicalRelease,
-                                        })}
-                                      >
+                                      <Link to={topSideReport(column)}>
                                         {column}
                                       </Link>
                                     </Typography>
@@ -683,7 +680,7 @@ export function getCompReadDefaultUrlPart() {
 
   let retVal = '?'
 
-  retVal = retVal + 'group_by=Platform,Arch,Network'
+  retVal = retVal + 'group_by=Platform,Network'
   retVal = retVal + '&excluded_platforms='
   retVal = retVal + '&exclude_arches='
   retVal = retVal + '&exclude_networks='
