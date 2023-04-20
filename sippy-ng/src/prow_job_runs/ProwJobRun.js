@@ -189,7 +189,7 @@ export default function ProwJobRun(props) {
           ))}
         </ButtonGroup>
       </p>
-      <TimelineChart data={chartData} eventIntervals={eventIntervals} />
+      <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
     </Fragment>
   )
 }
@@ -875,6 +875,7 @@ function defaultToolTip(item) {
     )
   )
 }
+
 function createTimelineData(
   timelineVal,
   timelineData,

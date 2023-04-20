@@ -127,7 +127,6 @@ export default function TimelineChart({ eventIntervals, data }) {
         .rightMargin(750)
         .maxLineHeight(20)
         .maxHeight(10000)
-        .width(3000)
         .zColorScale(ordinalScale)
       if (eventIntervals.length > 0) {
         chart.zoomX([
