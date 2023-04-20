@@ -12,10 +12,12 @@ import Alert from '@material-ui/lab/Alert'
 import AppBar from '@material-ui/core/AppBar'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
+import Capabilities from './component_readiness/Capabilities'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
+import CompReadyTest from './component_readiness/CompReadyTest'
 import Drawer from '@material-ui/core/Drawer'
 import IconButton from '@material-ui/core/IconButton'
 import Install from './releases/Install'
@@ -39,14 +41,6 @@ import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
 
 const drawerWidth = 240
-
-// Just try this out for now to prepare for these other pages
-function Capabilities() {
-  return <h1>Capabilities page</h1>
-}
-function Testpage() {
-  return <h1>Test page</h1>
-}
 
 export const useStyles = makeStyles((theme) => ({
   root: {
@@ -394,11 +388,24 @@ export default function App(props) {
 
                   <Route
                     path="/componentreadiness/:component/capabilities"
-                    render={({ location }) => <Capabilities />}
+                    render={(props) => (
+                      <Capabilities
+                        key="capabilities"
+                        component={props.match.params.component}
+                      />
+                    )}
                   />
                   <Route
                     path="/componentreadiness/:columnName/tests"
-                    render={({ location }) => <Testpage />}
+                    render={(props) => {
+                      console.log('match: ', props.match.params.columnName)
+                      return (
+                        <CompReadyTest
+                          key="tests"
+                          columnName={props.match.params.columnName}
+                        />
+                      )
+                    }}
                   />
                   <Route
                     path="/componentreadiness"
