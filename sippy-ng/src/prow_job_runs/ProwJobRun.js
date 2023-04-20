@@ -41,6 +41,7 @@ export default function ProwJobRun(props) {
   ])
 
   const [intervalFiles, setIntervalFiles] = useState([])
+  const [selectedIntervalFiles, setSelectedIntervalFiles] = useState([])
 
   const fetchData = () => {
     if (isLoaded) {
@@ -69,17 +70,7 @@ export default function ProwJobRun(props) {
           // Process and filter our intervals
           let tmpIntervals = json.items
           mutateIntervals(tmpIntervals)
-          let filteredIntervals = filterIntervals(
-            tmpIntervals,
-            selectedCategories
-          )
-          setEventIntervals(filteredIntervals)
-          console.log(
-            'total intervals loaded from GCS: ' +
-              tmpIntervals.length +
-              ', filtered down to: ' +
-              filteredIntervals.length
-          )
+          setEventIntervals(tmpIntervals)
 
           let newEventIntervalFiles = []
           lodash.forEach(tmpIntervals, function (eventInterval) {
@@ -88,7 +79,11 @@ export default function ProwJobRun(props) {
             }
           })
           console.log('newEventIntervalFiles = ' + newEventIntervalFiles)
+          newEventIntervalFiles.sort()
           setIntervalFiles(newEventIntervalFiles)
+
+          // On initial load, use the first file as the selected interval file:
+          setSelectedIntervalFiles([newEventIntervalFiles[0]])
         } else {
           setEventIntervals([])
         }
@@ -113,7 +108,13 @@ export default function ProwJobRun(props) {
     return <p>Loading intervals for job run {props.jobRunID}...</p>
   }
 
-  let chartData = groupIntervals(eventIntervals)
+  let filteredIntervals = filterIntervals(
+    eventIntervals,
+    selectedCategories,
+    selectedIntervalFiles
+  )
+
+  let chartData = groupIntervals(filteredIntervals)
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
@@ -130,9 +131,30 @@ export default function ProwJobRun(props) {
     setSelectedCategories(newSelectedCategories)
   }
 
+  function handleIntervalFileClick(buttonValue) {
+    console.log('got interval file button click: ' + buttonValue)
+    const newSelectedIntervalFiles = [...selectedIntervalFiles]
+    const selectedIndex = selectedIntervalFiles.indexOf(buttonValue)
+
+    if (selectedIndex === -1) {
+      console.log(buttonValue + ' is now selected')
+      newSelectedIntervalFiles.push(buttonValue)
+    } else {
+      console.log(buttonValue + ' is no longer selected')
+      newSelectedIntervalFiles.splice(selectedIndex, 1)
+    }
+
+    console.log('new selected interval files: ' + newSelectedIntervalFiles)
+    setSelectedIntervalFiles(newSelectedIntervalFiles)
+  }
+
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
+      <p>
+        Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
+        {filteredIntervals.length}.
+      </p>
       <p>
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
@@ -152,8 +174,19 @@ export default function ProwJobRun(props) {
       <p>
         Files:
         <ButtonGroup size="small" aria-label="Categories">
-          <Button variant="contained">e2e-events_20230321-180323.json</Button>
-          <Button variant="contained">e2e-events_20230321-200757.json</Button>
+          {intervalFiles.map((intervalFile) => (
+            <Button
+              key={intervalFile}
+              onClick={() => handleIntervalFileClick(intervalFile)}
+              variant={
+                selectedIntervalFiles.includes(intervalFile)
+                  ? 'contained'
+                  : 'outlined'
+              }
+            >
+              {intervalFile}
+            </Button>
+          ))}
         </ButtonGroup>
       </p>
       <TimelineChart data={chartData} eventIntervals={eventIntervals} />
@@ -168,7 +201,11 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
-function filterIntervals(eventIntervals, selectedCategories) {
+function filterIntervals(
+  eventIntervals,
+  selectedCategories,
+  selectedIntervalFiles
+) {
   let isSet = false
   /*
   let positiveSelectionRows = new Map()
@@ -216,8 +253,11 @@ function filterIntervals(eventIntervals, selectedCategories) {
 
   // TODO: adjust, temporary hack, may be removing the other filtering soon
   let i = 0
-  console.log('selected categories:' + selectedCategories)
-  let filteredIntervals = _.filter(eventIntervals, function (eventInterval) {
+
+  return _.filter(eventIntervals, function (eventInterval) {
+    if (!selectedIntervalFiles.includes(eventInterval.filename)) {
+      return false
+    }
     let shouldInclude = false
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
@@ -227,8 +267,6 @@ function filterIntervals(eventIntervals, selectedCategories) {
     })
     return shouldInclude
   })
-
-  return filteredIntervals
 
   /*
 if (isSet) {
