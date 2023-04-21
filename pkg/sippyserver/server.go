@@ -1,7 +1,6 @@
 package sippyserver
 
 import (
-	"cloud.google.com/go/bigquery"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/prometheus/client_golang/prometheus"
@@ -612,7 +612,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 
 	component := req.URL.Query().Get("component")
 	capability := req.URL.Query().Get("capability")
-	testId := req.URL.Query().Get("test_id")
+	testID := req.URL.Query().Get("test_id")
 
 	platform := req.URL.Query().Get("platform")
 	upgrade := req.URL.Query().Get("upgrade")
@@ -628,9 +628,9 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	excludeVariants := req.URL.Query().Get("exclude_variants")
 
 	confidence := 95
-	confidence_str := req.URL.Query().Get("confidence")
-	if confidence_str != "" {
-		confidence, err = strconv.Atoi(confidence_str)
+	confidenceStr := req.URL.Query().Get("confidence")
+	if confidenceStr != "" {
+		confidence, err = strconv.Atoi(confidenceStr)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -722,7 +722,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		upgrade,
 		arch,
 		network,
-		testId,
+		testID,
 		groupBy,
 		excludePlatforms,
 		excludeArches,
