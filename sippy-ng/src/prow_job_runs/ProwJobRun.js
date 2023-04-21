@@ -274,6 +274,7 @@ export default function ProwJobRun(props) {
           label="Regex Filter"
           variant="outlined"
           onChange={handleFilterChange}
+          defaultValue={filterText}
         />
       </p>
       <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
