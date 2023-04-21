@@ -116,16 +116,19 @@ export default function ComponentReadiness(props) {
 
   // TODO: Get these from single place.
   const excludeCloudsList = [
+    'alibaba',
     'aws',
-    'gcp',
     'azure',
+    'gcp',
+    'ibmcloud',
     'libvirt',
+    'metal-assisted',
+    'metal-ipi',
+    'openstack',
     'ovirt',
+    'unknown',
     'vsphere',
-    'metal',
-    'IBM Cloud',
-    'Alibaba',
-    'Unknown',
+    'vsphere-upi',
   ]
   tmp = groupByParameters.get('excluded_platforms')
   let initExcludeCloudsList = []
@@ -142,7 +145,13 @@ export default function ComponentReadiness(props) {
   console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
 
   // TODO: Get these from single place.
-  const excludeArchesList = ['amd64', 'arm64', 'ppc64le', 's390x', 'multi']
+  const excludeArchesList = [
+    'amd64',
+    'arm64',
+    'ppc64le',
+    's390x',
+    'heterogeneous',
+  ]
   tmp = groupByParameters.get('excluded_arches')
   let initExcludeArchesList = []
   if (tmp !== null) {
@@ -197,9 +206,10 @@ export default function ComponentReadiness(props) {
   )
 
   const excludeUpgradesList = [
-    'No Upgrade',
-    'Y-Stream Upgrade',
-    'Z-Stream Upgrade',
+    'no-upgrade',
+    'none',
+    'upgrade-micro',
+    'upgrade-minor',
   ]
 
   tmp = groupByParameters.get('excluded_upgrades')
@@ -213,18 +223,18 @@ export default function ComponentReadiness(props) {
   console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
 
   const excludeVariantsList = [
-    'Standard',
-    'Assisted',
-    'FIPs',
-    'MicroShift',
-    'Serial',
-    'Real-Time',
-    'Tech Preview',
-    'Compact',
-    'Hypershift',
-    'OSD',
-    'Proxy',
-    'Single Node',
+    'assisted',
+    'compact',
+    'fips',
+    'hypershift',
+    'microshift',
+    'osd',
+    'proxy',
+    'rt',
+    'serial',
+    'single-node',
+    'standard',
+    'techpreview',
   ]
   tmp = groupByParameters.get('excluded_variants')
   let initExcludeVariantsList = []
@@ -312,8 +322,9 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  // This runs when someone pushes the "Generate Report" button.
-  const handleGenerateReport = () => {
+  // Show the current state of the filter variables and the url.
+  // Create API call string and return it.
+  const showValuesForReport = () => {
     console.log('--------------- handleGenerateReport ------------------')
     console.log('historicalRelease', historicalRelease)
     console.log('historicalReleaseFrom', historicalReleaseFrom)
@@ -345,15 +356,21 @@ export default function ComponentReadiness(props) {
         excludeUpgradesCheckedItems,
         excludeVariantsCheckedItems
       )
-    const formattedApiCallStr = makeRFC3339Time(apiCallStr)
-    console.log('formatted api call: ', formattedApiCallStr)
-
     const params = new URLSearchParams(apiCallStr.split('?')[1])
 
     console.log('*** API Call: ')
     params.forEach((value, key) => {
       console.log(`${key}: ${value}`)
     })
+    const formattedApiCallStr = makeRFC3339Time(apiCallStr)
+    console.log('formatted api call: ', formattedApiCallStr)
+    return formattedApiCallStr
+  }
+
+  // This runs when someone pushes the "Generate Report" button.
+  // We form an api string and then call the api.
+  const handleGenerateReport = () => {
+    const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
     const fromFile = false
@@ -438,6 +455,16 @@ export default function ComponentReadiness(props) {
                         onClick={handleGenerateReport}
                       >
                         Generate Report
+                      </Button>
+                    </div>
+                    <div>
+                      <Button
+                        size="large"
+                        variant="contained"
+                        color="primary"
+                        onClick={showValuesForReport}
+                      >
+                        Debug
                       </Button>
                     </div>
                     <br></br>
@@ -617,22 +644,6 @@ export default function ComponentReadiness(props) {
 // Take the list of default values and create a string of parameters that we
 // use from the Sidebar when calling the ComponentReadiness component.
 export function getDefaultUrlParts() {
-  // This is here as an example of what the POC UI used for API calls
-  const sample = {
-    group_by: ['cloud', 'arch', 'network'],
-    sample_release: '4.14',
-    basis_release: '4.14',
-    sample_start_dt: '2023-04-16:00:00',
-    sample_end_dt: '2023-04-18:00:00',
-    basis_start_dt: '2023-04-13:00:00',
-    basis_end_dt: '2023-04-16:00:00',
-    exclude_platforms: ['aws'],
-    exclude_arches: ['amd64'],
-    exclude_networks: ['ovn'],
-    exclude_upgrades: ['micro'],
-    exclude_variants: ['techpreview'],
-  }
-
   const days = 24 * 60 * 60 * 1000
   const initialTime = new Date()
   const initialFromTime = new Date(initialTime.getTime() - 30 * days)
@@ -697,21 +708,6 @@ export function getUpdatedUrlParts(
     group_by: groupByCheckedItems,
   }
 
-  //const filtersMap = {
-  //  group_by: groupByCheckedItems,
-  //  basis_release: historicalRelease,
-  //  basis_start_dt: historicalReleaseFrom,
-  //  basis_end_dt: historicalReleaseTo,
-  //  sample_release: sampleRelease,
-  //  sample_start_dt: sampleReleaseFrom,
-  //  sample_end_dt: sampleReleaseTo,
-  //  exclude_platforms: excludeCloudsCheckedItems,
-  //  exclude_arches: excludeArchesCheckedItems,
-  //  exclude_networks: excludeNetworksCheckedItems,
-  //  exclude_upgrades: excludeUpgradesCheckedItems,
-  //  exclude_variants: excludeVariantsCheckedItems,
-  //}
-
   // Render the plain values first.
   let retVal = '?'
   let fieldList1 = Object.entries(valuesMap)
@@ -723,9 +719,7 @@ export function getUpdatedUrlParts(
     retVal = retVal + amper + key + '=' + value
   })
 
-  //console.log('retVal: ', retVal)
   const fieldList = Object.entries(arraysMap)
-  //console.log('fieldList: ', fieldList)
   fieldList.map(([key, value]) => {
     retVal = retVal + '&' + key + '='
     let first = true
