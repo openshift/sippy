@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -113,7 +112,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 }
 
 func GetComponentReportFromBigQuery(client *bigquery.Client,
-	baseRelease, sampleRelease, component, capability, platform, upgrade, arch, network, testId, groupBy string,
+	baseRelease, sampleRelease, component, capability, platform, upgrade, arch, network, testID, groupBy string,
 	excludePlatforms, excludeArches, excludeNetworks, excludeUpgrades, excludeVariants string,
 	baseStartTime, baseEndTime, sampleStartTime, sampleEndTime time.Time,
 	confidence, minFailure, pityFactor int, ignoreMissing, ignoreDisruption bool) (apitype.ComponentReport, []error) {
@@ -127,7 +126,7 @@ func GetComponentReportFromBigQuery(client *bigquery.Client,
 		upgrade:          upgrade,
 		arch:             arch,
 		network:          network,
-		testId:           testId,
+		testID:           testID,
 		groupBy:          groupBy,
 		excludePlatforms: excludePlatforms,
 		excludeArches:    excludeArches,
@@ -157,7 +156,7 @@ type componentReportGenerator struct {
 	upgrade          string
 	arch             string
 	network          string
-	testId           string
+	testID           string
 	variant          string
 	groupBy          string
 	excludePlatforms string
@@ -182,14 +181,14 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		return apitype.ComponentReport{}, errs
 	}
 	var report apitype.ComponentReport
-	if c.testId != "" &&
+	if c.testID != "" &&
 		c.platform != "" &&
 		c.network != "" &&
 		c.upgrade != "" &&
 		c.arch != "" &&
 		c.variant != "" {
 		// This request is for a particular test details
-
+		_ = c.generateComponentTestReport(baseStatus, sampleStatus)
 	} else {
 		report = c.generateComponentTestReport(baseStatus, sampleStatus)
 	}
@@ -220,71 +219,71 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 
 	commonParams := []bigquery.QueryParameter{}
 	if c.upgrade != "" {
-		queryString = queryString + ` AND upgrade = @Upgrade`
+		queryString += ` AND upgrade = @Upgrade`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Upgrade",
 			Value: c.upgrade,
 		})
 	}
 	if c.arch != "" {
-		queryString = queryString + ` AND arch = @Arch`
+		queryString += ` AND arch = @Arch`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Arch",
 			Value: c.arch,
 		})
 	}
 	if c.network != "" {
-		queryString = queryString + ` AND network = @Network`
+		queryString += ` AND network = @Network`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Network",
 			Value: c.network,
 		})
 	}
 	if c.platform != "" {
-		queryString = queryString + ` AND platform = @Platform`
+		queryString += ` AND platform = @Platform`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Platform",
 			Value: c.platform,
 		})
 	}
-	if c.testId != "" {
-		queryString = queryString + ` AND test_id = @TestId`
+	if c.testID != "" {
+		queryString += ` AND test_id = @TestId`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "TestId",
-			Value: c.testId,
+			Value: c.testID,
 		})
 	}
 
 	if c.excludePlatforms != "" {
-		queryString = queryString + ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
+		queryString += ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExcludePlatforms",
 			Value: strings.Split(c.excludePlatforms, ","),
 		})
 	}
 	if c.excludeArches != "" {
-		queryString = queryString + ` AND arch NOT IN UNNEST(@ExcludeArches)`
+		queryString += ` AND arch NOT IN UNNEST(@ExcludeArches)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExcludeArches",
 			Value: strings.Split(c.excludeArches, ","),
 		})
 	}
 	if c.excludeNetworks != "" {
-		queryString = queryString + ` AND network NOT IN UNNEST(@ExcludeNetworks)`
+		queryString += ` AND network NOT IN UNNEST(@ExcludeNetworks)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExcludeNetworks",
 			Value: strings.Split(c.excludeNetworks, ","),
 		})
 	}
 	if c.excludeUpgrades != "" {
-		queryString = queryString + ` AND upgrade NOT IN UNNEST(@ExcludeUpgrades)`
+		queryString += ` AND upgrade NOT IN UNNEST(@ExcludeUpgrades)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExcludeUpgrades",
 			Value: strings.Split(c.excludeUpgrades, ","),
 		})
 	}
 	if c.excludeVariants != "" {
-		queryString = queryString + ` AND variant NOT IN UNNEST(@ExcludeVariants)`
+		queryString += ` AND variant NOT IN UNNEST(@ExcludeVariants)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExcludeVariants",
 			Value: strings.Split(c.excludeVariants, ","),
@@ -300,7 +299,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		test_id `
 
 	baseString := queryString + ` AND branch = @BaseRelease`
-	//baseString := queryString + ` AND branch = "` + c.baseRelease + `"`
 	query := c.client.Query(baseString + groupString)
 	query.Parameters = append(commonParams, []bigquery.QueryParameter{
 		{
@@ -316,8 +314,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.baseRelease,
 		},
 	}...)
-	fmt.Printf("------ query string %v\n", query.Q)
-	baseStatus := c.fetchTestStatus(query, errs)
+	baseStatus := c.fetchTestStatus(query, &errs)
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
 	query = c.client.Query(sampleString + groupString)
@@ -335,15 +332,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.sampleRelease,
 		},
 	}...)
-	sampleStatus := c.fetchTestStatus(query, errs)
+	sampleStatus := c.fetchTestStatus(query, &errs)
 	return baseStatus, sampleStatus, errs
 }
 
 var componentAndCapabilityGetter func(string) (string, []string)
 
 func testToComponentAndCapability(name string) (string, []string) {
-	component := "other"
-	capability := "other"
+	component := "other_component"
+	capability := "other_capability"
 	r := regexp.MustCompile(`.*(?P<component>\[sig-[A-Za-z]*\]).*(?P<feature>\[Feature:[A-Za-z]*\]).*`)
 	subMatches := r.FindStringSubmatch(name)
 	if len(subMatches) >= 2 {
@@ -370,7 +367,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 		rows = append(rows, apitype.ComponentReportRowIdentification{Component: component})
 	} else if c.component == component {
 		// Exact test match
-		if c.testId != "" {
+		if c.testID != "" {
 			row := apitype.ComponentReportRowIdentification{
 				Component: component,
 				TestID:    test.TestID,
@@ -402,8 +399,8 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 	}
 	column := apitype.ComponentReportColumnIdentification{}
 	groups := sets.NewString(strings.Split(c.groupBy, ",")...)
-	if c.testId != "" {
-		// When testId is specified, ignore groupBy to disambiguate the test
+	if c.testID != "" {
+		// When testID is specified, ignore groupBy to disambiguate the test
 		column.Platform = test.Platform
 		column.Network = test.Network
 		column.Arch = test.Arch
@@ -430,12 +427,12 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 	return rows, column
 }
 
-func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs []error) map[apitype.ComponentTestIdentification]apitype.ComponentTestStats {
+func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs *[]error) map[apitype.ComponentTestIdentification]apitype.ComponentTestStats {
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
-		errs = append(errs, err)
+		*errs = append(*errs, err)
 		return status
 	}
 
@@ -447,7 +444,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs [
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing component from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
+			*errs = append(*errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
 			continue
 		}
 		testIdentification := apitype.ComponentTestIdentification{
@@ -508,13 +505,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	allRows := map[apitype.ComponentReportRowIdentification]struct{}{}
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
 	for testIdentification, baseStats := range baseStatus {
-		reportStatus := apitype.NotSignificant
-		//fmt.Printf("------ analyzing %+v\n", testIdentification)
+		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
 			reportStatus = apitype.MissingSample
 		} else {
-			reportStatus = c.categorizeComponentStatus(&sampleStats, &baseStats)
+			reportStatus = c.categorizeComponentStatus(sampleStats, baseStats)
 		}
 		delete(sampleStatus, testIdentification)
 
@@ -522,7 +518,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		updateStatus(rowIdentifications, columnIdentification, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
-	for testIdentification, _ := range sampleStatus {
+	for testIdentification := range sampleStatus {
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(&testIdentification)
 		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
@@ -578,7 +574,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	return report
 }
 
-func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apitype.ComponentTestStats, baseStats *apitype.ComponentTestStats) apitype.ComponentReportStatus {
+func (c *componentReportGenerator) categorizeComponentStatus(sampleStats, baseStats apitype.ComponentTestStats) apitype.ComponentReportStatus {
 	ret := apitype.MissingBasis
 	if baseStats.TotalCount != 0 {
 		if sampleStats.TotalCount == 0 {
@@ -591,42 +587,36 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 		} else {
 			if c.minimumFailure != 0 && (sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount) < c.minimumFailure {
 				return apitype.NotSignificant
-			} else {
-				basisPassPercentage := float64(baseStats.SuccessCount+baseStats.FlakeCount) / float64(baseStats.TotalCount)
-				samplePassPercentage := float64(sampleStats.SuccessCount+sampleStats.FlakeCount) / float64(sampleStats.TotalCount)
-				significant := false
-				improved := samplePassPercentage >= basisPassPercentage
+			}
+			basisPassPercentage := float64(baseStats.SuccessCount+baseStats.FlakeCount) / float64(baseStats.TotalCount)
+			samplePassPercentage := float64(sampleStats.SuccessCount+sampleStats.FlakeCount) / float64(sampleStats.TotalCount)
+			significant := false
+			improved := samplePassPercentage >= basisPassPercentage
+			if improved {
+				_, _, r, _ := fischer.FisherExactTest(baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
+					baseStats.SuccessCount+baseStats.FlakeCount,
+					sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
+					sampleStats.SuccessCount+sampleStats.FlakeCount)
+				significant = r < 1-float64(c.confidence)/100
+			} else if basisPassPercentage-samplePassPercentage > float64(c.pityFactor)/100 {
+				_, _, r, _ := fischer.FisherExactTest(sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
+					sampleStats.SuccessCount+sampleStats.FlakeCount,
+					baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
+					baseStats.SuccessCount+baseStats.FlakeCount)
+				significant = r < 1-float64(c.confidence)/100
+			}
+			if significant {
 				if improved {
-					_, _, r, _ := fischer.FisherExactTest(baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-						baseStats.SuccessCount+baseStats.FlakeCount,
-						sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-						sampleStats.SuccessCount+sampleStats.FlakeCount)
-					significant = r < 1-float64(c.confidence)/100
-					//fmt.Printf("-------- imporved, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
-
+					ret = apitype.SignificantImprovement
 				} else {
-					if basisPassPercentage-samplePassPercentage > float64(c.pityFactor)/100 {
-						_, _, r, _ := fischer.FisherExactTest(sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-							sampleStats.SuccessCount+sampleStats.FlakeCount,
-							baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-							baseStats.SuccessCount+baseStats.FlakeCount)
-						significant = r < 1-float64(c.confidence)/100
-						//fmt.Printf("-------- regressed, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
-					}
-				}
-				if significant {
-					if improved {
-						ret = apitype.SignificantImprovement
+					if (basisPassPercentage - samplePassPercentage) > 0.15 {
+						ret = apitype.ExtremeRegression
 					} else {
-						if (basisPassPercentage - samplePassPercentage) > 0.15 {
-							ret = apitype.ExtremeRegression
-						} else {
-							ret = apitype.SignificantRegression
-						}
+						ret = apitype.SignificantRegression
 					}
-				} else {
-					ret = apitype.NotSignificant
 				}
+			} else {
+				ret = apitype.NotSignificant
 			}
 		}
 	}

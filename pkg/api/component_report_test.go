@@ -1,3 +1,4 @@
+// nolint
 package api
 
 import (
@@ -652,7 +653,7 @@ func TestGenerateComponentReport(t *testing.T) {
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
 				capability:     "cap22",
-				testId:         "2",
+				testID:         "2",
 				confidence:     95,
 				pityFactor:     5,
 				minimumFailure: 3,
@@ -754,7 +755,7 @@ func TestGenerateComponentReport(t *testing.T) {
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
 				capability:     "cap22",
-				testId:         "2",
+				testID:         "2",
 				confidence:     95,
 				pityFactor:     5,
 				minimumFailure: 3,
@@ -850,7 +851,6 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			name: "top page test confidence 90 result in regression",
 			generator: componentReportGenerator{
