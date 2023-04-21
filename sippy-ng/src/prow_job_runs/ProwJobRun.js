@@ -13,6 +13,7 @@ export default function ProwJobRun(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
+  const [filteredIntervals, setFilteredIntervals] = React.useState([])
 
   // TODO: Not sure this needs to be a useState param, really just need a constant map but
   // wasn't working.
@@ -147,8 +148,22 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
+    updateFiltering()
+  }, [categoryButtonState, history, selectedIntervalFiles])
 
-    // Update the URL query params whenever button state changes:
+  useEffect(() => {
+    // Delayed processing of the filter text input to allow the user to finish typing before
+    // we update our filtering:
+    const timer = setTimeout(() => {
+      console.log('Filter text updated:', filterText)
+      updateFiltering()
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [filterText])
+
+  function updateFiltering() {
+    console.log('updating filtering')
     const queryParams = new URLSearchParams()
     let categories = []
     Object.keys(categoryButtonState).forEach(function (button) {
@@ -159,15 +174,6 @@ export default function ProwJobRun(props) {
     queryParams.set('categories', categories.join(','))
 
     queryParams.set('intervalFiles', selectedIntervalFiles.join(','))
-
-    // Delayed processing of the filter text input to allow the user to finish typing before
-    // we execute a search/filter:
-    const timer = setTimeout(() => {
-      console.log('Filter text updated:', filterText)
-      // TODO: do something with the input
-      // TODO: the delay is not working, we trigger filtering immediately when typing I think
-      // because the filterIntervals call is outside any useEffect.
-    }, 1000)
     if (!(filterText === '')) {
       queryParams.set('filter', filterText)
     }
@@ -179,8 +185,14 @@ export default function ProwJobRun(props) {
       search: queryParams.toString(),
     })
 
-    return () => clearTimeout(timer)
-  }, [categoryButtonState, history, selectedIntervalFiles, filterText])
+    let filteredIntervals = filterIntervals(
+      eventIntervals,
+      categoryButtonState,
+      selectedIntervalFiles,
+      filterText
+    )
+    setFilteredIntervals(filteredIntervals)
+  }
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -189,13 +201,6 @@ export default function ProwJobRun(props) {
   if (isLoaded === false) {
     return <p>Loading intervals for job run {props.jobRunID}...</p>
   }
-
-  let filteredIntervals = filterIntervals(
-    eventIntervals,
-    categoryButtonState,
-    selectedIntervalFiles,
-    filterText
-  )
 
   let chartData = groupIntervals(filteredIntervals)
 
