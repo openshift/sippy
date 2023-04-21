@@ -14,6 +14,8 @@ export default function ProwJobRun(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
 
+  // TODO: Not sure this needs to be a useState param, really just need a constant map but
+  // wasn't working.
   const [allCategories, setAllCategories] = useState(
     new Map([
       ['operator_unavailable', 'Operator Unavailable'],
@@ -27,18 +29,26 @@ export default function ProwJobRun(props) {
       ['e2e_test_failed', 'E2E Failed'],
       ['e2e_test_flaked', 'E2E Flaked'],
       ['e2e_test_passed', 'E2E Passed'],
-      ['endpoint_availability', 'Disruption'],
+      ['disruption', 'Disruption'],
     ])
   )
 
   const [categoryButtonState, setCategoryButtonState] = useState(() => {
     const params = new URLSearchParams(window.location.search)
+
+    let categories = []
+    let categoriesParam = params.get('categories')
+    if (categoriesParam) {
+      categories = categories.split(',')
+    }
+
     const initialState = {}
     let atLeastOneCategorySelected = false
     allCategories.forEach((value, key, map) => {
-      initialState[key] = params.get(key) === 'true'
-      atLeastOneCategorySelected =
-        atLeastOneCategorySelected || params.get(key) === 'true'
+      initialState[key] = categories.includes(key)
+      if (categories.includes(key)) {
+        atLeastOneCategorySelected = true
+      }
     })
 
     if (!atLeastOneCategorySelected) {
@@ -51,28 +61,15 @@ export default function ProwJobRun(props) {
       initialState['alerts'] = true
       initialState['node_state'] = true
       initialState['e2e_test_failed'] = true
-      initialState['endpoint_availability'] = true
+      initialState['disruption'] = true
     }
 
-    // If no buttons were selected, you're not going to see anything, and this likely implies you are fresh
-    // loading the page. Select the default set.
+    // If no buttons were selected, you're not going to see anything, and this likely implies
+    // you are fresh loading the page. Select the default set.
     console.log('calculated initial category button state:')
     console.log(initialState)
     return initialState
   })
-
-  const [selectedCategories, setSelectedCategories] = useState([
-    // Initial set of pre-selected categories for debugging and performance. Must match above.
-    'operator_unavailable',
-    'operator_progressing',
-    'operator_degraded',
-    'pod_logs',
-    'interesting_events',
-    'alerts',
-    'node_state',
-    'e2e_test_failed',
-    'endpoint_availability',
-  ])
 
   const [intervalFiles, setIntervalFiles] = useState([])
   const [selectedIntervalFiles, setSelectedIntervalFiles] = useState([])
@@ -135,9 +132,14 @@ export default function ProwJobRun(props) {
 
     // Update the URL query params whenever button state changes:
     const queryParams = new URLSearchParams()
-    Object.keys(categoryButtonState).forEach((button) =>
-      queryParams.set(button, categoryButtonState[button])
-    )
+    let categories = []
+    Object.keys(categoryButtonState).forEach(function (button) {
+      if (categoryButtonState[button]) {
+        categories.push(button)
+      }
+    })
+    queryParams.set('categories', categories.join(','))
+
     console.log('origin: ' + window.location.origin)
     console.log('pathname: ' + window.location.pathname)
     console.log('params: ' + queryParams.toString())
@@ -435,8 +437,7 @@ function mutateIntervals(eventIntervals) {
     eventInterval.categories.e2e_test_failed = isE2EFailed(eventInterval)
     eventInterval.categories.e2e_test_flaked = isE2EFlaked(eventInterval)
     eventInterval.categories.e2e_test_passed = isE2EPassed(eventInterval)
-    eventInterval.categories.endpoint_availability =
-      isEndpointConnectivity(eventInterval)
+    eventInterval.categories.disruption = isEndpointConnectivity(eventInterval)
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
   })
 }
@@ -518,12 +519,12 @@ function groupIntervals(filteredIntervals) {
     return 0
   })
 
-  timelineGroups.push({ group: 'endpoint-availability', data: [] })
+  timelineGroups.push({ group: 'disruption', data: [] })
   createTimelineData(
     disruptionValue,
     timelineGroups[timelineGroups.length - 1].data,
     filteredIntervals,
-    'endpoint_availability'
+    'disruption'
   )
 
   timelineGroups.push({ group: 'e2e-test-failed', data: [] })
