@@ -82,7 +82,13 @@ export default function ProwJobRun(props) {
     return tempFiles
   })
 
-  const [filterText, setFilterText] = useState('')
+  const [filterText, setFilterText] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('filter')) {
+      return params.get('filter')
+    }
+    return ''
+  })
 
   const fetchData = () => {
     if (isLoaded) {
@@ -154,24 +160,27 @@ export default function ProwJobRun(props) {
 
     queryParams.set('intervalFiles', selectedIntervalFiles.join(','))
 
+    // Delayed processing of the filter text input to allow the user to finish typing before
+    // we execute a search/filter:
+    const timer = setTimeout(() => {
+      console.log('Filter text updated:', filterText)
+      // TODO: do something with the input
+      // TODO: the delay is not working, we trigger filtering immediately when typing I think
+      // because the filterIntervals call is outside any useEffect.
+    }, 1000)
+    if (!(filterText === '')) {
+      queryParams.set('filter', filterText)
+    }
+
     console.log('origin: ' + window.location.origin)
     console.log('pathname: ' + window.location.pathname)
     console.log('params: ' + queryParams.toString())
     history.replace({
       search: queryParams.toString(),
     })
-  }, [categoryButtonState, history, selectedIntervalFiles])
-
-  // Delayed processing of the filter text input to allow the user to finish typing before
-  // we execute a search/filter:
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('Filter text updated:', filterText)
-      // do something with the user input here
-    }, 500)
 
     return () => clearTimeout(timer)
-  }, [filterText])
+  }, [categoryButtonState, history, selectedIntervalFiles, filterText])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -184,7 +193,8 @@ export default function ProwJobRun(props) {
   let filteredIntervals = filterIntervals(
     eventIntervals,
     categoryButtonState,
-    selectedIntervalFiles
+    selectedIntervalFiles,
+    filterText
   )
 
   let chartData = groupIntervals(filteredIntervals)
@@ -261,7 +271,7 @@ export default function ProwJobRun(props) {
       <p>
         <TextField
           id="filter"
-          label="Filter"
+          label="Regex Filter"
           variant="outlined"
           onChange={handleFilterChange}
         />
@@ -281,7 +291,8 @@ ProwJobRun.propTypes = {
 function filterIntervals(
   eventIntervals,
   categoryButtonState,
-  selectedIntervalFiles
+  selectedIntervalFiles,
+  filterText
 ) {
   let isSet = false
   /*
@@ -328,8 +339,10 @@ function filterIntervals(
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
   //let filteredIntervals = eventIntervals
 
-  // TODO: adjust, temporary hack, may be removing the other filtering soon
-  let i = 0
+  let re = null
+  if (filterText) {
+    re = new RegExp(filterText)
+  }
 
   return _.filter(eventIntervals, function (eventInterval) {
     if (!selectedIntervalFiles.includes(eventInterval.filename)) {
@@ -339,7 +352,16 @@ function filterIntervals(
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
       if (eventInterval.categories[cat] && categoryButtonState[cat]) {
-        shouldInclude = true
+        if (re) {
+          if (
+            re.test(eventInterval.message) ||
+            re.test(eventInterval.locator)
+          ) {
+            shouldInclude = true
+          }
+        } else {
+          shouldInclude = true
+        }
       }
     })
     return shouldInclude
