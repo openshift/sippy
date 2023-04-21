@@ -1,5 +1,5 @@
 import * as lodash from 'lodash'
-import { Button, ButtonGroup } from '@material-ui/core'
+import { Button, ButtonGroup, TextField } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
 import { useHistory } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
@@ -82,6 +82,8 @@ export default function ProwJobRun(props) {
     return tempFiles
   })
 
+  const [filterText, setFilterText] = useState('')
+
   const fetchData = () => {
     if (isLoaded) {
       console.log(
@@ -160,6 +162,17 @@ export default function ProwJobRun(props) {
     })
   }, [categoryButtonState, history, selectedIntervalFiles])
 
+  // Delayed processing of the filter text input to allow the user to finish typing before
+  // we execute a search/filter:
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('Filter text updated:', filterText)
+      // do something with the user input here
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [filterText])
+
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
   }
@@ -202,6 +215,10 @@ export default function ProwJobRun(props) {
     setSelectedIntervalFiles(newSelectedIntervalFiles)
   }
 
+  const handleFilterChange = (event) => {
+    setFilterText(event.target.value)
+  }
+
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
@@ -240,6 +257,14 @@ export default function ProwJobRun(props) {
             </Button>
           ))}
         </ButtonGroup>
+      </p>
+      <p>
+        <TextField
+          id="filter"
+          label="Filter"
+          variant="outlined"
+          onChange={handleFilterChange}
+        />
       </p>
       <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
     </Fragment>
