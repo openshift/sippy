@@ -85,11 +85,11 @@ export default function ComponentReadiness(props) {
   const location = useLocation()
   const groupByParameters = new URLSearchParams(location.search)
 
-  const params = {}
-  groupByParameters.forEach((value, key) => {
-    params[key] = value
-  })
-  console.log('params from url: ', JSON.stringify(params))
+  //const params = {}
+  //groupByParameters.forEach((value, key) => {
+  //  params[key] = value
+  //})
+  //console.log('params from url: ', JSON.stringify(params))
 
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
@@ -111,7 +111,7 @@ export default function ComponentReadiness(props) {
     // groupBy array of checked values.
     initGroupBy
   )
-  console.log('initGroupBy: ', initGroupBy)
+  //console.log('initGroupBy: ', initGroupBy)
   console.log('groupByCheckedItems: ', groupByCheckedItems)
 
   // TODO: Get these from single place.
@@ -130,18 +130,18 @@ export default function ComponentReadiness(props) {
     'vsphere',
     'vsphere-upi',
   ]
-  tmp = groupByParameters.get('excluded_platforms')
+  tmp = groupByParameters.get('exclude_clouds')
   let initExcludeCloudsList = []
   if (tmp !== null && tmp !== '') {
     initExcludeCloudsList = tmp.split(',')
   }
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(
-      // Extract the 'excluded_platforms=aws' from the url to be the initial
+      // Extract the 'exclude_clouds=aws' from the url to be the initial
       // Exclude Clouds array of checked values.
       initExcludeCloudsList
     )
-  console.log('initExcludeCloudsList: ', initExcludeCloudsList)
+  //console.log('initExcludeCloudsList: ', initExcludeCloudsList)
   console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
 
   // TODO: Get these from single place.
@@ -152,58 +152,75 @@ export default function ComponentReadiness(props) {
     's390x',
     'heterogeneous',
   ]
-  tmp = groupByParameters.get('excluded_arches')
+  tmp = groupByParameters.get('exclude_arches')
   let initExcludeArchesList = []
-  if (tmp !== null) {
+  if (tmp !== null && tmp !== '') {
     initExcludeArchesList = tmp.split(',')
   }
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
     React.useState(initExcludeArchesList)
-  console.log('initExcludeArchesList: ', initExcludeArchesList)
+  //console.log('initExcludeArchesList: ', initExcludeArchesList)
   console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
 
   const excludeNetworksList = ['ovn', 'sdn']
-  tmp = groupByParameters.get('excluded_networks')
+  tmp = groupByParameters.get('exclude_networks')
+  console.log('url networks:', tmp)
   let initExcludeNetworksList = []
-  if (tmp !== null) {
+  if (tmp !== null && tmp !== '') {
     initExcludeNetworksList = tmp.split(',')
   }
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
     React.useState(initExcludeNetworksList)
-  console.log('initExcludeNetworksList: ', initExcludeNetworksList)
+  //console.log('initExcludeNetworksList: ', initExcludeNetworksList)
   console.log('excludeNetworksCheckedItems: ', excludeNetworksCheckedItems)
 
-  const [historicalRelease = '4.13', setHistoricalRelease] = useQueryParam(
-    'historicalRelease',
-    StringParam
-  )
-  const [sampleRelease = '4.14', setSampleRelease] = useQueryParam(
-    'sampleRelease',
-    StringParam
-  )
+  tmp = groupByParameters.get('baseRelease')
+  let initBaseRelease = '4.14'
+  if (tmp != null) {
+    initBaseRelease = tmp
+  }
+  const [baseRelease, setBaseRelease] = React.useState(initBaseRelease)
+
+  tmp = groupByParameters.get('sampleRelease')
+  let initSampleRelease = '4.13'
+  if (tmp != null) {
+    initSampleRelease = tmp
+  }
+  const [sampleRelease, setSampleRelease] = React.useState(initSampleRelease)
 
   const days = 24 * 60 * 60 * 1000
   const initialTime = new Date()
   const initialFromTime = new Date(initialTime.getTime() - 30 * days)
   const initialToTime = new Date(initialTime.getTime())
 
-  const [sampleReleaseFrom, setSampleReleaseFrom] = useQueryParam(
-    'sampleReleaseFrom',
-    StringParam
-  )
-  const [sampleReleaseTo, setSampleReleaseTo] = useQueryParam(
-    'sampleReleaseTo',
-    StringParam
-  )
+  tmp = groupByParameters.get('sampleStartTime')
+  let initSampleStartTime = initialTime
+  if (tmp != null) {
+    initSampleStartTime = tmp
+  }
+  const [sampleStartTime, setSampleStartTime] =
+    React.useState(initSampleStartTime)
 
-  const [historicalReleaseFrom, setHistoricalReleaseFrom] = useQueryParam(
-    'historicalReleaseFrom',
-    StringParam
-  )
-  const [historicalReleaseTo, setHistoricalReleaseTo] = useQueryParam(
-    'historicalReleaseTo',
-    StringParam
-  )
+  tmp = groupByParameters.get('sampleEndTime')
+  let initSampleEndTime = initialTime
+  if (tmp != null) {
+    initSampleEndTime = tmp
+  }
+  const [sampleEndTime, setSampleEndTime] = React.useState(initSampleEndTime)
+
+  tmp = groupByParameters.get('baseStartTime')
+  let initBaseStartTime = initialTime
+  if (tmp != null) {
+    initBaseStartTime = tmp
+  }
+  const [baseStartTime, setBaseStartTime] = React.useState(initBaseStartTime)
+
+  tmp = groupByParameters.get('baseEndTime')
+  let initBaseEndTime = initialTime
+  if (tmp != null) {
+    initBaseEndTime = tmp
+  }
+  const [baseEndTime, setBaseEndTime] = React.useState(initBaseEndTime)
 
   const excludeUpgradesList = [
     'no-upgrade',
@@ -212,14 +229,15 @@ export default function ComponentReadiness(props) {
     'upgrade-minor',
   ]
 
-  tmp = groupByParameters.get('excluded_upgrades')
+  tmp = groupByParameters.get('exclude_upgrades')
+  console.log('exclude_upgrades tmp: ', tmp)
   let initExcludeUpgradesList = []
-  if (tmp !== null) {
-    initExcludeUpgradesList = groupByParameters.tmp.split(',')
+  if (tmp !== null && tmp !== '') {
+    initExcludeUpgradesList = tmp.split(',')
   }
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
     React.useState(initExcludeUpgradesList)
-  console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
+  //console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
   console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
 
   const excludeVariantsList = [
@@ -236,14 +254,14 @@ export default function ComponentReadiness(props) {
     'standard',
     'techpreview',
   ]
-  tmp = groupByParameters.get('excluded_variants')
+  tmp = groupByParameters.get('exclude_variants')
   let initExcludeVariantsList = []
-  if (tmp !== null) {
-    initExcludeVariantsList = groupByParameters.tmp.split(',')
+  if (tmp !== null && tmp !== '') {
+    initExcludeVariantsList = tmp.split(',')
   }
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(initExcludeVariantsList)
-  console.log('initExcludeVariantsList: ', initExcludeVariantsList)
+  //console.log('initExcludeVariantsList: ', initExcludeVariantsList)
   console.log('excludeVariantsCheckedItems: ', excludeVariantsCheckedItems)
 
   const pageTitle = (
@@ -254,8 +272,6 @@ export default function ComponentReadiness(props) {
 
   const { path, url } = useRouteMatch()
 
-  console.count('path: ' + path)
-  console.log('url: ', url)
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
@@ -264,7 +280,20 @@ export default function ComponentReadiness(props) {
   const initialPageTable = {
     rows: [
       {
-        component: 'None',
+        component: 'Please select and Click for data',
+        columns: [
+          {
+            empty: 'None',
+            status: 3, // Let's start with success
+          },
+        ],
+      },
+    ],
+  }
+  const noDataTable = {
+    rows: [
+      {
+        component: 'No Data found',
         columns: [
           {
             empty: 'None',
@@ -326,12 +355,12 @@ export default function ComponentReadiness(props) {
   // Create API call string and return it.
   const showValuesForReport = () => {
     console.log('--------------- handleGenerateReport ------------------')
-    console.log('historicalRelease', historicalRelease)
-    console.log('historicalReleaseFrom', historicalReleaseFrom)
-    console.log('historicalReleaseTo', historicalReleaseTo)
+    console.log('baseRelease', baseRelease)
+    console.log('baseStartTime', baseStartTime)
+    console.log('baseEndTime', baseEndTime)
     console.log('sampleRelease', sampleRelease)
-    console.log('sampleReleaseFrom', sampleReleaseFrom)
-    console.log('sampleReleaseTo', sampleReleaseTo)
+    console.log('sampleStartTime', sampleStartTime)
+    console.log('sampleEndTime', sampleEndTime)
     console.log('groupBy: ', groupByCheckedItems)
     console.log('excludeClouds: ', excludeCloudsCheckedItems)
     console.log('excludeArches', excludeArchesCheckedItems)
@@ -343,12 +372,12 @@ export default function ComponentReadiness(props) {
     const apiCallStr =
       'http://localhost:8080/api/component_readiness' +
       getUpdatedUrlParts(
-        historicalRelease,
-        historicalReleaseFrom,
-        historicalReleaseTo,
+        baseRelease,
+        baseStartTime,
+        baseEndTime,
         sampleRelease,
-        sampleReleaseFrom,
-        sampleReleaseTo,
+        sampleStartTime,
+        sampleEndTime,
         groupByCheckedItems,
         excludeCloudsCheckedItems,
         excludeArchesCheckedItems,
@@ -356,14 +385,20 @@ export default function ComponentReadiness(props) {
         excludeUpgradesCheckedItems,
         excludeVariantsCheckedItems
       )
-    const params = new URLSearchParams(apiCallStr.split('?')[1])
+    //const params = new URLSearchParams(apiCallStr.split('?')[1])
 
-    console.log('*** API Call: ')
-    params.forEach((value, key) => {
-      console.log(`${key}: ${value}`)
-    })
+    //console.log('*** API Call: ')
+    //params.forEach((value, key) => {
+    //  console.log(`${key}: ${value}`)
+    //})
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
-    console.log('formatted api call: ', formattedApiCallStr)
+    console.log('formatted api call: ')
+    formattedApiCallStr
+      .split('?')[1]
+      .split('&')
+      .map((item) => {
+        console.log('   ', item)
+      })
     return formattedApiCallStr
   }
 
@@ -388,7 +423,13 @@ export default function ComponentReadiness(props) {
           return response.json()
         })
         .then((json) => {
-          setData(json)
+          console.log(json)
+          if (Object.keys(json).length === 0 || json.rows.length === 0) {
+            // The api call returned 200 OK but the data was empty
+            setData(noDataTable)
+          } else {
+            setData(json)
+          }
         })
         .catch((error) => {
           setFetchError(`API call failed: ${formattedApiCallStr}` + error)
@@ -400,7 +441,7 @@ export default function ComponentReadiness(props) {
     }
   }
 
-  console.log('ComponentReadiness end')
+  console.log('ComponentReadiness end: ', sampleRelease)
   return (
     <Fragment>
       <Route
@@ -452,6 +493,24 @@ export default function ComponentReadiness(props) {
                         size="large"
                         variant="contained"
                         color="primary"
+                        component={Link}
+                        to={
+                          '/componentreadiness/' +
+                          getUpdatedUrlParts(
+                            baseRelease,
+                            baseStartTime,
+                            baseEndTime,
+                            sampleRelease,
+                            sampleStartTime,
+                            sampleEndTime,
+                            groupByCheckedItems,
+                            excludeCloudsCheckedItems,
+                            excludeArchesCheckedItems,
+                            excludeNetworksCheckedItems,
+                            excludeUpgradesCheckedItems,
+                            excludeVariantsCheckedItems
+                          )
+                        }
                         onClick={handleGenerateReport}
                       >
                         Generate Report
@@ -462,15 +521,71 @@ export default function ComponentReadiness(props) {
                         size="large"
                         variant="contained"
                         color="primary"
+                        component={Link}
+                        to={
+                          '/componentreadiness/' +
+                          getUpdatedUrlParts(
+                            baseRelease,
+                            baseStartTime,
+                            baseEndTime,
+                            sampleRelease,
+                            sampleStartTime,
+                            sampleEndTime,
+                            groupByCheckedItems,
+                            excludeCloudsCheckedItems,
+                            excludeArchesCheckedItems,
+                            excludeNetworksCheckedItems,
+                            excludeUpgradesCheckedItems,
+                            excludeVariantsCheckedItems
+                          )
+                        }
                         onClick={showValuesForReport}
                       >
-                        Debug
+                        Debug1
                       </Button>
                     </div>
                     <br></br>
+
+                    <div className="release-historical">
+                      <ReleaseSelector
+                        version={baseRelease}
+                        label="Bistorical"
+                        onChange={setBaseRelease}
+                      ></ReleaseSelector>
+                      <MuiPickersUtilsProvider
+                        utils={GridToolbarFilterDateUtils}
+                      >
+                        <DateTimePicker
+                          showTodayButton
+                          disableFuture
+                          label="From"
+                          format={dateFormat}
+                          ampm={false}
+                          value={baseStartTime}
+                          onChange={(e) => {
+                            setBaseStartTime(e.getTime())
+                          }}
+                        />
+                      </MuiPickersUtilsProvider>
+                      <MuiPickersUtilsProvider
+                        utils={GridToolbarFilterDateUtils}
+                      >
+                        <DateTimePicker
+                          showTodayButton
+                          disableFuture
+                          label="To"
+                          format={dateFormat}
+                          ampm={false}
+                          value={baseEndTime}
+                          onChange={(e) => {
+                            setBaseEndTime(e.getTime())
+                          }}
+                        />
+                      </MuiPickersUtilsProvider>
+                    </div>
                     <div className="release-sample">
                       <ReleaseSelector
-                        label="Current Release"
+                        label="Sample Release"
                         version={sampleRelease}
                         onChange={setSampleRelease}
                       ></ReleaseSelector>
@@ -483,11 +598,11 @@ export default function ComponentReadiness(props) {
                           label="From"
                           format={dateFormat}
                           ampm={false}
-                          value={sampleReleaseFrom}
+                          value={sampleStartTime}
                           onChange={(e) => {
                             const formattedTime = format(e, dateFormat)
                             console.log('sample text: ', formattedTime)
-                            setSampleReleaseFrom(formattedTime)
+                            setSampleStartTime(formattedTime)
                           }}
                         />
                       </MuiPickersUtilsProvider>
@@ -500,51 +615,13 @@ export default function ComponentReadiness(props) {
                           label="To"
                           format={dateFormat}
                           ampm={false}
-                          value={sampleReleaseTo}
+                          value={sampleEndTime}
                           onChange={(e) => {
-                            setSampleReleaseTo(e.getTime())
+                            setSampleEndTime(e.getTime())
                           }}
                         />
                       </MuiPickersUtilsProvider>
                     </div>
-                    <div className="release-historical">
-                      <ReleaseSelector
-                        version={historicalRelease}
-                        label="Historical Release"
-                        onChange={setHistoricalRelease}
-                      ></ReleaseSelector>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="From"
-                          format={dateFormat}
-                          ampm={false}
-                          value={historicalReleaseFrom}
-                          onChange={(e) => {
-                            setHistoricalReleaseFrom(e.getTime())
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="To"
-                          format={dateFormat}
-                          ampm={false}
-                          value={historicalReleaseTo}
-                          onChange={(e) => {
-                            setHistoricalReleaseTo(e.getTime())
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                    </div>
-
                     <div>
                       <CheckBoxList
                         headerName="Group By"
@@ -625,7 +702,7 @@ export default function ComponentReadiness(props) {
                             key={componentIndex}
                             componentName={data.rows[componentIndex].component}
                             results={data.rows[componentIndex].columns}
-                            release={historicalRelease}
+                            release={baseRelease}
                           />
                         ))}
                       </TableBody>
@@ -644,24 +721,25 @@ export default function ComponentReadiness(props) {
 // Take the list of default values and create a string of parameters that we
 // use from the Sidebar when calling the ComponentReadiness component.
 export function getDefaultUrlParts() {
+  console.log('INITIALIZED ********')
   const days = 24 * 60 * 60 * 1000
   const initialTime = new Date()
   const initialFromTime = new Date(initialTime.getTime() - 30 * days)
   const initialToTime = new Date(initialTime.getTime())
 
   const releaseAndDates = {
-    sampleRelease: '4.14',
-    historicalRelease: '4.13',
-    sampleReleaseFrom: format(initialFromTime, dateFormat),
-    sampleReleaseTo: format(initialToTime, dateFormat),
-    historicalReleaseFrom: format(initialFromTime, dateFormat),
-    historicalReleaseTo: format(initialToTime, dateFormat),
+    sampleRelease: '4.13',
+    baseRelease: '4.14',
+    sampleStartTime: format(initialFromTime, dateFormat),
+    sampleEndTime: format(initialToTime, dateFormat),
+    baseStartTime: format(initialFromTime, dateFormat),
+    baseEndTime: format(initialToTime, dateFormat),
   }
 
   let retVal = '?'
 
   retVal = retVal + 'group_by=cloud,network'
-  retVal = retVal + '&excluded_platforms='
+  retVal = retVal + '&exclude_clouds='
   retVal = retVal + '&exclude_arches='
   retVal = retVal + '&exclude_networks='
   retVal = retVal + '&exclude_upgrades='
@@ -677,12 +755,12 @@ export function getDefaultUrlParts() {
 }
 
 export function getUpdatedUrlParts(
-  historicalRelease,
-  historicalReleaseFrom,
-  historicalReleaseTo,
+  baseRelease,
+  baseStartTime,
+  baseEndTime,
   sampleRelease,
-  sampleReleaseFrom,
-  sampleReleaseTo,
+  sampleStartTime,
+  sampleEndTime,
   groupByCheckedItems,
   excludeCloudsCheckedItems,
   excludeArchesCheckedItems,
@@ -690,17 +768,18 @@ export function getUpdatedUrlParts(
   excludeUpgradesCheckedItems,
   excludeVariantsCheckedItems
 ) {
+  console.log('getUpdatedUrlParts()')
   const valuesMap = {
-    baseRelease: historicalRelease,
-    baseStartTime: historicalReleaseFrom,
-    baseEndTime: historicalReleaseTo,
+    baseRelease: baseRelease,
+    baseStartTime: baseStartTime,
+    baseEndTime: baseEndTime,
     sampleRelease: sampleRelease,
-    sampleStartTime: sampleReleaseFrom,
-    sampleEndTime: sampleReleaseTo,
+    sampleStartTime: sampleStartTime,
+    sampleEndTime: sampleEndTime,
   }
 
   const arraysMap = {
-    exclude_platforms: excludeCloudsCheckedItems,
+    exclude_clouds: excludeCloudsCheckedItems,
     exclude_arches: excludeArchesCheckedItems,
     exclude_networks: excludeNetworksCheckedItems,
     exclude_upgrades: excludeUpgradesCheckedItems,
@@ -723,14 +802,19 @@ export function getUpdatedUrlParts(
   fieldList.map(([key, value]) => {
     retVal = retVal + '&' + key + '='
     let first = true
-    value.map((item) => {
-      let comma = ','
-      if (first) {
-        comma = ''
-        first = false
-      }
-      retVal = retVal + comma + item
-    })
+
+    // Account for the case where value is undefined
+    // because the url said something like exclude_clouds=, ...
+    if (value) {
+      value.map((item) => {
+        let comma = ','
+        if (first) {
+          comma = ''
+          first = false
+        }
+        retVal = retVal + comma + item
+      })
+    }
   })
   return retVal
 }
