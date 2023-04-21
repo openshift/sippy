@@ -10,7 +10,7 @@ import {
   Restore,
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
-import { getDefaultUrlParts } from '../component_readiness/ComponentReadiness'
+import { getInitialUrlParts } from '../component_readiness/ComponentReadiness'
 import { Link, useLocation } from 'react-router-dom'
 import { ListSubheader, useTheme } from '@material-ui/core'
 import {
@@ -133,7 +133,7 @@ export default function Sidebar(props) {
                   <ListItem
                     key={'release-health-'}
                     component={Link}
-                    to={'/componentreadiness/'}
+                    to={'/componentreadiness/' + getInitialUrlParts()}
                     button
                     className={classes.nested}
                   >

@@ -40,6 +40,12 @@ import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
 const dateFormat = 'yyyy-MM-dd HH:mm:ss'
+const days = 24 * 60 * 60 * 1000
+const initialTime = new Date()
+const initialStartTime = new Date(initialTime.getTime() - 30 * days)
+const initialEndTime = new Date(initialTime.getTime())
+const initialPrevStartTime = new Date(initialTime.getTime() - 30 * days)
+const initialPrevEndTime = new Date(initialTime.getTime())
 
 // The API likes RFC3339 times and the date pickers don't.  So we use this
 // function to convert for when we call the API.
@@ -187,13 +193,6 @@ export default function ComponentReadiness(props) {
     initSampleRelease = tmp
   }
   const [sampleRelease, setSampleRelease] = React.useState(initSampleRelease)
-
-  const days = 24 * 60 * 60 * 1000
-  const initialTime = new Date()
-  const initialStartTime = new Date(initialTime.getTime() - 30 * days)
-  const initialEndTime = new Date(initialTime.getTime())
-  const initialPrevStartTime = new Date(initialTime.getTime() - 90 * days)
-  const initialPrevEndTime = new Date(initialTime.getTime() - 60 * days)
 
   tmp = groupByParameters.get('baseStartTime')
   let initBaseStartTime = initialStartTime
@@ -564,7 +563,8 @@ export default function ComponentReadiness(props) {
                           ampm={false}
                           value={baseStartTime}
                           onChange={(e) => {
-                            setBaseStartTime(e.getTime())
+                            const formattedTime = format(e, dateFormat)
+                            setBaseStartTime(formattedTime)
                           }}
                         />
                       </MuiPickersUtilsProvider>
@@ -579,7 +579,8 @@ export default function ComponentReadiness(props) {
                           ampm={false}
                           value={baseEndTime}
                           onChange={(e) => {
-                            setBaseEndTime(e.getTime())
+                            const formattedTime = format(e, dateFormat)
+                            setBaseEndTime(formattedTime)
                           }}
                         />
                       </MuiPickersUtilsProvider>
@@ -602,7 +603,6 @@ export default function ComponentReadiness(props) {
                           value={sampleStartTime}
                           onChange={(e) => {
                             const formattedTime = format(e, dateFormat)
-                            console.log('sample text: ', formattedTime)
                             setSampleStartTime(formattedTime)
                           }}
                         />
@@ -618,7 +618,8 @@ export default function ComponentReadiness(props) {
                           ampm={false}
                           value={sampleEndTime}
                           onChange={(e) => {
-                            setSampleEndTime(e.getTime())
+                            const formattedTime = format(e, dateFormat)
+                            setSampleEndTime(formattedTime)
                           }}
                         />
                       </MuiPickersUtilsProvider>
@@ -719,25 +720,19 @@ export default function ComponentReadiness(props) {
   )
 }
 
-// Take the list of default values and create a string of parameters that we
-// use from the Sidebar when calling the ComponentReadiness component.
-// This is now obsolete but we'll delete it after some testing.
-// All initialization happens in the main component where initial values are
-// pulled from the url parameters.
-export function getDefaultUrlParts() {
+// Create a set of initial values when accessing ComponentReadiness component
+// from the SideBar.  This provides an initial URL where the ComponentReadiness
+// will pull these values from the URL.
+export function getInitialUrlParts() {
   console.log('INITIALIZED ********')
-  const days = 24 * 60 * 60 * 1000
-  const initialTime = new Date()
-  const initialFromTime = new Date(initialTime.getTime() - 30 * days)
-  const initialToTime = new Date(initialTime.getTime())
 
   const releaseAndDates = {
     sampleRelease: '4.13',
     baseRelease: '4.14',
-    sampleStartTime: format(initialFromTime, dateFormat),
-    sampleEndTime: format(initialToTime, dateFormat),
-    baseStartTime: format(initialFromTime, dateFormat),
-    baseEndTime: format(initialToTime, dateFormat),
+    baseStartTime: format(initialStartTime, dateFormat),
+    baseEndTime: format(initialEndTime, dateFormat),
+    sampleStartTime: format(initialPrevStartTime, dateFormat),
+    sampleEndTime: format(initialPrevEndTime, dateFormat),
   }
 
   let retVal = '?'
@@ -755,7 +750,7 @@ export function getDefaultUrlParts() {
     retVal = retVal + '&' + key + '=' + value
   })
 
-  return ''
+  return retVal
 }
 
 export function getUpdatedUrlParts(
