@@ -158,6 +158,7 @@ type componentReportGenerator struct {
 	arch             string
 	network          string
 	testId           string
+	variant          string
 	groupBy          string
 	excludePlatforms string
 	excludeArches    string
@@ -180,7 +181,18 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	report := c.generateComponentTestReport(baseStatus, sampleStatus)
+	var report apitype.ComponentReport
+	if c.testId != "" &&
+		c.platform != "" &&
+		c.network != "" &&
+		c.upgrade != "" &&
+		c.arch != "" &&
+		c.variant != "" {
+		// This request is for a particular test details
+
+	} else {
+		report = c.generateComponentTestReport(baseStatus, sampleStatus)
+	}
 	return report, nil
 }
 
@@ -206,51 +218,77 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		"FROM `ci_analysis_us.junit` " +
 		`WHERE TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To `
 
+	commonParams := []bigquery.QueryParameter{}
 	if c.upgrade != "" {
-		queryString = queryString + ` AND upgrade = "` + c.upgrade + `"`
+		queryString = queryString + ` AND upgrade = @Upgrade`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Upgrade",
+			Value: c.upgrade,
+		})
 	}
 	if c.arch != "" {
-		queryString = queryString + ` AND arch = "` + c.arch + `"`
+		queryString = queryString + ` AND arch = @Arch`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Arch",
+			Value: c.arch,
+		})
 	}
 	if c.network != "" {
-		queryString = queryString + ` AND network = "` + c.network + `"`
+		queryString = queryString + ` AND network = @Network`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Network",
+			Value: c.network,
+		})
 	}
 	if c.platform != "" {
-		queryString = queryString + ` AND platform = "` + c.platform + `"`
+		queryString = queryString + ` AND platform = @Platform`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Platform",
+			Value: c.platform,
+		})
 	}
 	if c.testId != "" {
-		queryString = queryString + ` AND test_id = "` + c.testId + `"`
+		queryString = queryString + ` AND test_id = @TestId`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "TestId",
+			Value: c.testId,
+		})
 	}
 
 	if c.excludePlatforms != "" {
-		excludePlatforms := sets.NewString(strings.Split(c.excludePlatforms, ",")...)
-		for platform := range excludePlatforms {
-			queryString = queryString + ` AND platform != "` + platform + `"`
-		}
+		queryString = queryString + ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExcludePlatforms",
+			Value: strings.Split(c.excludePlatforms, ","),
+		})
 	}
 	if c.excludeArches != "" {
-		excludeArches := sets.NewString(strings.Split(c.excludeArches, ",")...)
-		for arch := range excludeArches {
-			queryString = queryString + ` AND arch != "` + arch + `"`
-		}
+		queryString = queryString + ` AND arch NOT IN UNNEST(@ExcludeArches)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExcludeArches",
+			Value: strings.Split(c.excludeArches, ","),
+		})
 	}
 	if c.excludeNetworks != "" {
-		excludeNetworks := sets.NewString(strings.Split(c.excludeNetworks, ",")...)
-		for network := range excludeNetworks {
-			queryString = queryString + ` AND network != "` + network + `"`
-		}
+		queryString = queryString + ` AND network NOT IN UNNEST(@ExcludeNetworks)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExcludeNetworks",
+			Value: strings.Split(c.excludeNetworks, ","),
+		})
 	}
 	if c.excludeUpgrades != "" {
-		excludeUpgrades := sets.NewString(strings.Split(c.excludeUpgrades, ",")...)
-		for upgrade := range excludeUpgrades {
-			queryString = queryString + ` AND upgrade != "` + upgrade + `"`
-		}
+		queryString = queryString + ` AND upgrade NOT IN UNNEST(@ExcludeUpgrades)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExcludeUpgrades",
+			Value: strings.Split(c.excludeUpgrades, ","),
+		})
 	}
 	if c.excludeVariants != "" {
-		excludeVariants := sets.NewString(strings.Split(c.excludeVariants, ",")...)
-		for variant := range excludeVariants {
-			queryString = queryString + ` AND variant != "` + variant + `"`
-		}
+		queryString = queryString + ` AND variant NOT IN UNNEST(@ExcludeVariants)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExcludeVariants",
+			Value: strings.Split(c.excludeVariants, ","),
+		})
 	}
 
 	groupString := `
@@ -261,9 +299,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		platform,
 		test_id `
 
-	baseString := queryString + ` AND branch = "` + c.baseRelease + `"`
+	baseString := queryString + ` AND branch = @BaseRelease`
+	//baseString := queryString + ` AND branch = "` + c.baseRelease + `"`
 	query := c.client.Query(baseString + groupString)
-	query.Parameters = []bigquery.QueryParameter{
+	query.Parameters = append(commonParams, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.baseStartTime,
@@ -272,12 +311,17 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Name:  "To",
 			Value: c.baseEndTime,
 		},
-	}
+		{
+			Name:  "BaseRelease",
+			Value: c.baseRelease,
+		},
+	}...)
+	fmt.Printf("------ query string %v\n", query.Q)
 	baseStatus := c.fetchTestStatus(query, errs)
 
-	sampleString := queryString + ` AND branch = "` + c.sampleRelease + `"`
+	sampleString := queryString + ` AND branch = @SampleRelease`
 	query = c.client.Query(sampleString + groupString)
-	query.Parameters = []bigquery.QueryParameter{
+	query.Parameters = append(commonParams, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.sampleStartTime,
@@ -286,12 +330,16 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Name:  "To",
 			Value: c.sampleEndTime,
 		},
-	}
+		{
+			Name:  "SampleRelease",
+			Value: c.sampleRelease,
+		},
+	}...)
 	sampleStatus := c.fetchTestStatus(query, errs)
 	return baseStatus, sampleStatus, errs
 }
 
-var comonentAndCapabilityGetter func(string) (string, []string)
+var componentAndCapabilityGetter func(string) (string, []string)
 
 func testToComponentAndCapability(name string) (string, []string) {
 	component := "other"
@@ -315,7 +363,7 @@ func testToComponentAndCapability(name string) (string, []string) {
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the groupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.ComponentTestIdentification) ([]apitype.ComponentReportRowIdentification, apitype.ComponentReportColumnIdentification) {
-	component, capabilities := comonentAndCapabilityGetter(test.TestName)
+	component, capabilities := componentAndCapabilityGetter(test.TestName)
 	rows := []apitype.ComponentReportRowIdentification{}
 	// First Page with no component requested
 	if c.component == "" {
@@ -327,6 +375,9 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 				Component: component,
 				TestID:    test.TestID,
 				TestName:  test.TestName,
+			}
+			if c.capability != "" {
+				row.Capability = c.capability
 			}
 			rows = append(rows, row)
 		} else {
@@ -351,20 +402,29 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 	}
 	column := apitype.ComponentReportColumnIdentification{}
 	groups := sets.NewString(strings.Split(c.groupBy, ",")...)
-	if groups.Has("cloud") {
+	if c.testId != "" {
+		// When testId is specified, ignore groupBy to disambiguate the test
 		column.Platform = test.Platform
-	}
-	if groups.Has("network") {
 		column.Network = test.Network
-	}
-	if groups.Has("arch") {
 		column.Arch = test.Arch
-	}
-	if groups.Has("upgrade") {
 		column.Upgrade = test.Upgrade
-	}
-	if groups.Has("variant") {
 		column.Variant = test.Variant
+	} else {
+		if groups.Has("cloud") {
+			column.Platform = test.Platform
+		}
+		if groups.Has("network") {
+			column.Network = test.Network
+		}
+		if groups.Has("arch") {
+			column.Arch = test.Arch
+		}
+		if groups.Has("upgrade") {
+			column.Upgrade = test.Upgrade
+		}
+		if groups.Has("variant") {
+			column.Variant = test.Variant
+		}
 	}
 
 	return rows, column
@@ -449,7 +509,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
 	for testIdentification, baseStats := range baseStatus {
 		reportStatus := apitype.NotSignificant
-		fmt.Printf("------ analyzing %+v\n", testIdentification)
+		//fmt.Printf("------ analyzing %+v\n", testIdentification)
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
 			reportStatus = apitype.MissingSample
@@ -542,7 +602,7 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 						sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
 						sampleStats.SuccessCount+sampleStats.FlakeCount)
 					significant = r < 1-float64(c.confidence)/100
-					fmt.Printf("-------- imporved, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
+					//fmt.Printf("-------- imporved, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
 
 				} else {
 					if basisPassPercentage-samplePassPercentage > float64(c.pityFactor)/100 {
@@ -551,7 +611,7 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 							baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
 							baseStats.SuccessCount+baseStats.FlakeCount)
 						significant = r < 1-float64(c.confidence)/100
-						fmt.Printf("-------- regressed, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
+						//fmt.Printf("-------- regressed, base p %v, sample p %v, r: %v\n", basisPassPercentage, samplePassPercentage, r)
 					}
 				}
 				if significant {
@@ -574,5 +634,5 @@ func (c *componentReportGenerator) categorizeComponentStatus(sampleStats *apityp
 }
 
 func init() {
-	comonentAndCapabilityGetter = testToComponentAndCapability
+	componentAndCapabilityGetter = testToComponentAndCapability
 }

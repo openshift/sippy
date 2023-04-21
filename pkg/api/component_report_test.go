@@ -35,7 +35,7 @@ func TestGenerateComponentReport(t *testing.T) {
 		expectedReport apitype.ComponentReport
 	}{
 		{
-			name: "first page test no significant and missing data",
+			name: "top page test no significant and missing data",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     95,
@@ -142,7 +142,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "first page test with both improvement and regression",
+			name: "top page test with both improvement and regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     95,
@@ -249,7 +249,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "second page test no significant and missing data",
+			name: "component page test no significant and missing data",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
@@ -359,7 +359,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "second page test with both improvement and regression",
+			name: "component page test with both improvement and regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
@@ -469,7 +469,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "third page test no significant and missing data",
+			name: "capability page test no significant and missing data",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
@@ -558,7 +558,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "third page test with both improvement and regression",
+			name: "capability page test with both improvement and regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				component:      "component 2",
@@ -647,7 +647,212 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "first page test confidence 90 result in regression",
+			name: "test page test no significant and missing data",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				component:      "component 2",
+				capability:     "cap22",
+				testId:         "2",
+				confidence:     95,
+				pityFactor:     5,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 950,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 90,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component:  "component 2",
+							Capability: "cap22",
+							TestName:   "test 2",
+							TestID:     "2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+									Upgrade:  "upgrade-micro",
+									Variant:  "standard",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+									Upgrade:  "upgrade-micro",
+									Variant:  "standard",
+								},
+								Status: apitype.NotSignificant,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "test page test with both improvement and regression",
+			generator: componentReportGenerator{
+				groupBy:        "cloud,arch,network",
+				component:      "component 2",
+				capability:     "cap22",
+				testId:         "2",
+				confidence:     95,
+				pityFactor:     5,
+				minimumFailure: 3,
+			},
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 900,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   1000,
+					FlakeCount:   10,
+					SuccessCount: 500,
+				},
+			},
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{
+				apitype.ComponentTestIdentification{
+					TestName: "test 1",
+					TestID:   "1",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "ovn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   10,
+					SuccessCount: 50,
+				},
+				apitype.ComponentTestIdentification{
+					TestName: "test 2",
+					TestID:   "2",
+					Platform: "aws",
+					Arch:     "amd64",
+					Network:  "sdn",
+					Upgrade:  "upgrade-micro",
+					Variant:  "standard",
+				}: {
+					TotalCount:   100,
+					FlakeCount:   1,
+					SuccessCount: 95,
+				},
+			},
+			expectedReport: apitype.ComponentReport{
+				Rows: []apitype.ComponentReportRow{
+					{
+						ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+							Component:  "component 2",
+							Capability: "cap22",
+							TestName:   "test 2",
+							TestID:     "2",
+						},
+						Columns: []apitype.ComponentReportColumn{
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "ovn",
+									Upgrade:  "upgrade-micro",
+									Variant:  "standard",
+								},
+								Status: apitype.MissingBasisAndSample,
+							},
+							{
+								ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+									Platform: "aws",
+									Arch:     "amd64",
+									Network:  "sdn",
+									Upgrade:  "upgrade-micro",
+									Variant:  "standard",
+								},
+								Status: apitype.SignificantImprovement,
+							},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "top page test confidence 90 result in regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     90,
@@ -754,7 +959,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "first page test confidence 90 pity 10 result in no regression",
+			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     90,
@@ -861,7 +1066,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name: "first page test minimum failure no regression",
+			name: "top page test minimum failure no regression",
 			generator: componentReportGenerator{
 				groupBy:        "cloud,arch,network",
 				confidence:     90,
@@ -968,7 +1173,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 	}
-	comonentAndCapabilityGetter = fakeComponentAndCapabilityGetter
+	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			report := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus)
