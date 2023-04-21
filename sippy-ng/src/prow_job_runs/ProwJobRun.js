@@ -39,7 +39,7 @@ export default function ProwJobRun(props) {
     let categories = []
     let categoriesParam = params.get('categories')
     if (categoriesParam) {
-      categories = categories.split(',')
+      categories = categoriesParam.split(',')
     }
 
     const initialState = {}
@@ -72,7 +72,15 @@ export default function ProwJobRun(props) {
   })
 
   const [intervalFiles, setIntervalFiles] = useState([])
-  const [selectedIntervalFiles, setSelectedIntervalFiles] = useState([])
+  const [selectedIntervalFiles, setSelectedIntervalFiles] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    let tempFiles = []
+    let p = params.get('intervalFiles')
+    if (p) {
+      tempFiles = p.split(',')
+    }
+    return tempFiles
+  })
 
   const fetchData = () => {
     if (isLoaded) {
@@ -114,7 +122,9 @@ export default function ProwJobRun(props) {
           setIntervalFiles(newEventIntervalFiles)
 
           // On initial load, use the first file as the selected interval file:
-          setSelectedIntervalFiles([newEventIntervalFiles[0]])
+          if (selectedIntervalFiles.length === 0) {
+            setSelectedIntervalFiles([newEventIntervalFiles[0]])
+          }
         } else {
           setEventIntervals([])
         }
@@ -140,13 +150,15 @@ export default function ProwJobRun(props) {
     })
     queryParams.set('categories', categories.join(','))
 
+    queryParams.set('intervalFiles', selectedIntervalFiles.join(','))
+
     console.log('origin: ' + window.location.origin)
     console.log('pathname: ' + window.location.pathname)
     console.log('params: ' + queryParams.toString())
     history.replace({
       search: queryParams.toString(),
     })
-  }, [categoryButtonState, history])
+  }, [categoryButtonState, history, selectedIntervalFiles])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
