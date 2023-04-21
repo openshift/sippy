@@ -1,12 +1,15 @@
 import * as lodash from 'lodash'
 import { Button, ButtonGroup } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
+import { useHistory } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
 
 export default function ProwJobRun(props) {
+  const history = useHistory()
+
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
@@ -27,6 +30,37 @@ export default function ProwJobRun(props) {
       ['endpoint_availability', 'Disruption'],
     ])
   )
+
+  const [categoryButtonState, setCategoryButtonState] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const initialState = {}
+    let atLeastOneCategorySelected = false
+    allCategories.forEach((value, key, map) => {
+      initialState[key] = params.get(key) === 'true'
+      atLeastOneCategorySelected =
+        atLeastOneCategorySelected || params.get(key) === 'true'
+    })
+
+    if (!atLeastOneCategorySelected) {
+      console.log('no category was selected, enabling the default set')
+      initialState['operator_unavailable'] = true
+      initialState['operator_progressing'] = true
+      initialState['operator_degraded'] = true
+      initialState['pod_logs'] = true
+      initialState['interesting_events'] = true
+      initialState['alerts'] = true
+      initialState['node_state'] = true
+      initialState['e2e_test_failed'] = true
+      initialState['endpoint_availability'] = true
+    }
+
+    // If no buttons were selected, you're not going to see anything, and this likely implies you are fresh
+    // loading the page. Select the default set.
+    console.log('calculated initial category button state:')
+    console.log(initialState)
+    return initialState
+  })
+
   const [selectedCategories, setSelectedCategories] = useState([
     // Initial set of pre-selected categories for debugging and performance. Must match above.
     'operator_unavailable',
@@ -98,7 +132,19 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+
+    // Update the URL query params whenever button state changes:
+    const queryParams = new URLSearchParams()
+    Object.keys(categoryButtonState).forEach((button) =>
+      queryParams.set(button, categoryButtonState[button])
+    )
+    console.log('origin: ' + window.location.origin)
+    console.log('pathname: ' + window.location.pathname)
+    console.log('params: ' + queryParams.toString())
+    history.replace({
+      search: queryParams.toString(),
+    })
+  }, [categoryButtonState, history])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -110,7 +156,7 @@ export default function ProwJobRun(props) {
 
   let filteredIntervals = filterIntervals(
     eventIntervals,
-    selectedCategories,
+    categoryButtonState,
     selectedIntervalFiles
   )
 
@@ -118,17 +164,11 @@ export default function ProwJobRun(props) {
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
-    const newSelectedCategories = [...selectedCategories]
-    const selectedIndex = selectedCategories.indexOf(buttonValue)
-
-    if (selectedIndex === -1) {
-      newSelectedCategories.push(buttonValue)
-    } else {
-      newSelectedCategories.splice(selectedIndex, 1)
-    }
-
-    console.log('new selected categories: ' + newSelectedCategories)
-    setSelectedCategories(newSelectedCategories)
+    setCategoryButtonState((prevState) => ({
+      ...prevState,
+      [buttonValue]: !prevState[buttonValue],
+    }))
+    console.log(categoryButtonState)
   }
 
   function handleIntervalFileClick(buttonValue) {
@@ -162,9 +202,7 @@ export default function ProwJobRun(props) {
             <Button
               key={key}
               onClick={() => handleCategoryClick(key)}
-              variant={
-                selectedCategories.includes(key) ? 'contained' : 'outlined'
-              }
+              variant={categoryButtonState[key] ? 'contained' : 'outlined'}
             >
               {value}
             </Button>
@@ -203,7 +241,7 @@ ProwJobRun.propTypes = {
 
 function filterIntervals(
   eventIntervals,
-  selectedCategories,
+  categoryButtonState,
   selectedIntervalFiles
 ) {
   let isSet = false
@@ -261,7 +299,7 @@ function filterIntervals(
     let shouldInclude = false
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
-      if (eventInterval.categories[cat] && selectedCategories.includes(cat)) {
+      if (eventInterval.categories[cat] && categoryButtonState[cat]) {
         shouldInclude = true
       }
     })
