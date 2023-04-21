@@ -47,6 +47,13 @@ const initialEndTime = new Date(initialTime.getTime())
 const initialPrevStartTime = new Date(initialTime.getTime() - 30 * days)
 const initialPrevEndTime = new Date(initialTime.getTime())
 
+// Big query requests take a while so give the user the option to
+// abort in case they inadvertently requested a huge dataset.
+let abortController = new AbortController()
+const cancelFetch = () => {
+  abortController.abort()
+}
+
 // The API likes RFC3339 times and the date pickers don't.  So we use this
 // function to convert for when we call the API.
 // 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in
@@ -323,8 +330,21 @@ export default function ComponentReadiness(props) {
   if (!isLoaded) {
     return (
       <Fragment>
-        <p>Loading component readiness data ...</p>
+        <p>
+          Loading component readiness data ... If you asked for a huge dataset,
+          it may take minutes.
+        </p>
         <CircularProgress />
+        <div>
+          <Button
+            size="medium"
+            variant="contained"
+            color="secondary"
+            onClick={cancelFetch}
+          >
+            Cancel
+          </Button>
+        </div>
       </Fragment>
     )
   }
@@ -415,7 +435,7 @@ export default function ComponentReadiness(props) {
       console.log('json:', json)
       setIsLoaded(true)
     } else {
-      fetch(formattedApiCallStr)
+      fetch(formattedApiCallStr, { signal: abortController.signal })
         .then((response) => {
           if (response.status !== 200) {
             throw new Error('API server returned ' + response.status)
@@ -432,7 +452,14 @@ export default function ComponentReadiness(props) {
           }
         })
         .catch((error) => {
-          setFetchError(`API call failed: ${formattedApiCallStr}` + error)
+          if (error.name === 'AbortError') {
+            console.log('Request was cancelled')
+
+            // Once this fired, we need a new one for the next button click.
+            abortController = new AbortController()
+          } else {
+            setFetchError(`API call failed: ${formattedApiCallStr}` + error)
+          }
         })
         .finally(() => {
           // Mark the attempt as finished whether successful or not.
