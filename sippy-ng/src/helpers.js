@@ -120,6 +120,21 @@ export function pathForExactJobAnalysis(release, job) {
   return `/jobs/${release}/analysis?${single(filterFor('name', 'equals', job))}`
 }
 
+export function pathForExactTestAnalysis(release, test, excludedVariants) {
+  console.log(excludedVariants)
+
+  let filters = [filterFor('name', 'equals', test)]
+  if (Array.isArray(excludedVariants)) {
+    excludedVariants.forEach((variant) => {
+      filters.push(not(filterFor('variants', 'contains', variant)))
+    })
+  }
+
+  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
+    test
+  )}&${multiple(...filters)}`
+}
+
 export function pathForExactTest(release, test) {
   return `/tests/${release}?${single(filterFor('name', 'equals', test))}`
 }

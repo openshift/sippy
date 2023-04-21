@@ -1,5 +1,5 @@
 import { Card, Container, Grid, Typography } from '@material-ui/core'
-import { filterFor, getReportStartDate } from '../helpers'
+import { filterFor, getReportStartDate, not } from '../helpers'
 import { JobStackedChart } from '../jobs/JobStackedChart'
 import { ReportEndContext } from '../App'
 import JobRunsTable from '../jobs/JobRunsTable'
@@ -13,13 +13,16 @@ export default function BuildClusterDetails(props) {
       <Grid container spacing={3} alignItems="stretch">
         <Grid item md={12} sm={12}>
           <Card elevation={5} style={{ padding: 20, height: '100%' }}>
-            <Typography variant="h6">Job Runs On {props.cluster}</Typography>
+            <Typography variant="h6">
+              Periodic Job Runs On {props.cluster}
+            </Typography>
             <JobRunsTable
               pageSize={10}
               hideControls={true}
               filterModel={{
                 items: [
                   filterFor('cluster', 'equals', props.cluster),
+                  not(filterFor('name', 'starts with', 'pull-ci')),
                   filterFor(
                     'timestamp',
                     '>',

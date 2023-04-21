@@ -1,6 +1,6 @@
 # Sippy React Frontend
 
-Sippy's frontend is written in React and Material-UI. This project was
+Sippy's frontend is written in React and [Material-UI](https://v4.mui.com/). This project was
 bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 In development, you can start Sippy as usual, and then run `npm start`
@@ -12,12 +12,35 @@ When developing on the UI, it's better to run the API and UI separately
 for quicker feedback (Sippy will listen on `:8080`, and when run with
 `npm start`, the UI defaults to `:3000`)
 
+You can browse to your local UI at http://localhost:3000/sippy-ng.
+
+If you are just working on the UI, you can have the UI connect to the production Sippy API server.
+To do this, change the [sippy-ng/.env.development](.env.development) file to contain:
+
+```
+REACT_APP_API_URL="https://sippy.dptools.openshift.org"
+```
+
+If you are running tests and want to use the production Sippy API server, modify this line in [`setupTests.js`](src/setupTests.js):
+
+```
+process.env.REACT_APP_API_URL = 'http://localhost:8080'
+```
+
+to be:
+
+```
+process.env.REACT_APP_API_URL = 'https://sippy.dptools.openshift.org'
+```
 ## Formattting requirements
 
 Formatting requirements are enforce on the order of imports (alphabetically) and [prettier](https://prettier.io/docs/en/options.html).  The [prettier config](prettier.config.js) can be modified to change the formatting standards.  From the command line prettier formatting can be applied via
 ```
 sippy/sippy-ng: $ npx prettier -w src/
 ```
+
+For VScode, users install the [Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) plugin; when the you see errors tagged with `prettier/prettier`, use the CMD/CTRL + Shift + P keys
+followed by "Format Document" to quickly fix them.
 
 Imports must be sorted alphabetically.  If using a multi-line import (also sorted alphabetically) then the first entry in that import determines the sort order relative to the other import statements.
 ```

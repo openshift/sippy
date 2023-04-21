@@ -1,0 +1,12 @@
+.pr-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+
+    line-height: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: break-spaces;
+    word-wrap: break-word;
+}
+

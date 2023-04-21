@@ -62,8 +62,14 @@ func TestReportsByVariant(
 	release string,
 	reportType v1.ReportType, // defaults to "current" or last 7 days vs prev 7 days
 	testSubStrings []string,
+	excludeVariants []string,
 ) ([]api.Test, error) {
 	now := time.Now()
+
+	excludeVariantsQuery := ""
+	for _, ev := range excludeVariants {
+		excludeVariantsQuery += fmt.Sprintf(" AND NOT ('%s'=any(variants))", ev)
+	}
 
 	testSubstringFilter := strings.Join(testSubStrings, "|")
 	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "[", "\\[")
@@ -85,7 +91,7 @@ WITH results AS (
            sum(previous_flakes)    AS previous_flakes,
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
-	WHERE release = @release AND name ~* @testsubstrings
+	WHERE release = @release AND name ~* @testsubstrings %s
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -96,6 +102,9 @@ SELECT *,
        (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results;
 `
+
+	q = fmt.Sprintf(q, excludeVariantsQuery)
+
 	if reportType == v1.TwoDayReport {
 		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
 	}

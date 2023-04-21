@@ -19,6 +19,7 @@ const (
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
+	ColumnTypeTimestamp
 )
 
 type Sort string
@@ -116,6 +117,13 @@ type PullRequest struct {
 	SHA      string     `json:"sha"`
 	Link     string     `json:"link"`
 	MergedAt *time.Time `json:"merged_at"`
+
+	FirstCiPayload             string `json:"first_ci_payload"`
+	FirstCiPayloadPhase        string `json:"first_ci_payload_phase"`
+	FirstCiPayloadRelease      string `json:"first_ci_payload_release"`
+	FirstNightlyPayload        string `json:"first_nightly_payload"`
+	FirstNightlyPayloadPhase   string `json:"first_nightly_payload_phase"`
+	FirstNightlyPayloadRelease string `json:"first_nightly_payload_release"`
 }
 
 func (pr PullRequest) GetFieldType(param string) ColumnType {
@@ -139,7 +147,7 @@ func (pr PullRequest) GetFieldType(param string) ColumnType {
 	case "link":
 		return ColumnTypeString
 	case "merged_at":
-		return ColumnTypeNumerical
+		return ColumnTypeTimestamp
 	default:
 		return ColumnTypeNumerical
 	}

@@ -109,6 +109,11 @@ export default function Install(props) {
                     release={props.release}
                     colorScale={[90, 100]}
                     data={data}
+                    excludedVariants={[
+                      'upgrade-minor',
+                      'aggregated',
+                      'never-stable',
+                    ]}
                   />
                 </Route>
                 <Redirect from="/" to={url + '/operators'} />

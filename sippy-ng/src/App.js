@@ -23,6 +23,7 @@ import MenuIcon from '@material-ui/icons/Menu'
 import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
 import ProwJobRun from './prow_job_runs/ProwJobRun'
+import PullRequests from './pull_requests/PullRequests'
 import PullRequestsTable from './pull_requests/PullRequestsTable'
 import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
@@ -429,7 +430,7 @@ export default function App(props) {
                   <Route
                     path="/pull_requests/:release"
                     render={(props) => (
-                      <PullRequestsTable
+                      <PullRequests
                         key={'pr-' + props.match.params.release}
                         release={props.match.params.release}
                       />

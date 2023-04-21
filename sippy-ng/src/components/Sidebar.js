@@ -148,26 +148,30 @@ export default function Sidebar(props) {
                   </ListItemIcon>
                   <ListItemText primary="Overview" />
                 </ListItem>
-                <CapabilitiesContext.Consumer>
-                  {(value) => {
-                    if (value.includes('openshift_releases')) {
-                      return (
-                        <ListItem
-                          key={'release-tags-' + index}
-                          component={Link}
-                          to={`/release/${release}/streams`}
-                          button
-                          className={classes.nested}
-                        >
-                          <ListItemIcon>
-                            <FileCopyOutlined />
-                          </ListItemIcon>
-                          <ListItemText primary="Payload Streams" />
-                        </ListItem>
-                      )
-                    }
-                  }}
-                </CapabilitiesContext.Consumer>
+                {release !== 'Presubmits' ? (
+                  <CapabilitiesContext.Consumer>
+                    {(value) => {
+                      if (value.includes('openshift_releases')) {
+                        return (
+                          <ListItem
+                            key={'release-tags-' + index}
+                            component={Link}
+                            to={`/release/${release}/streams`}
+                            button
+                            className={classes.nested}
+                          >
+                            <ListItemIcon>
+                              <FileCopyOutlined />
+                            </ListItemIcon>
+                            <ListItemText primary="Payload Streams" />
+                          </ListItem>
+                        )
+                      }
+                    }}
+                  </CapabilitiesContext.Consumer>
+                ) : (
+                  ''
+                )}
                 <ListItem
                   key={'release-jobs-' + index}
                   component={Link}
@@ -190,18 +194,32 @@ export default function Sidebar(props) {
                 {
                   // FIXME: Base this on something like a per-release capabilities feature instead.
                   release === 'Presubmits' ? (
-                    <ListItem
-                      key={'release-repositories-' + index}
-                      component={Link}
-                      to={`/repositories/${release}`}
-                      button
-                      className={classes.nested}
-                    >
-                      <ListItemIcon>
-                        <Code />
-                      </ListItemIcon>
-                      <ListItemText primary="Repositories" />
-                    </ListItem>
+                    <Fragment>
+                      <ListItem
+                        key={'release-pull-requests-' + index}
+                        component={Link}
+                        to={`/pull_requests/${release}`}
+                        button
+                        className={classes.nested}
+                      >
+                        <ListItemIcon>
+                          <GitHub />
+                        </ListItemIcon>
+                        <ListItemText primary="Pull Requests" />
+                      </ListItem>
+                      <ListItem
+                        key={'release-repositories-' + index}
+                        component={Link}
+                        to={`/repositories/${release}`}
+                        button
+                        className={classes.nested}
+                      >
+                        <ListItemIcon>
+                          <Code />
+                        </ListItemIcon>
+                        <ListItemText primary="Repositories" />
+                      </ListItem>
+                    </Fragment>
                   ) : (
                     ''
                   )

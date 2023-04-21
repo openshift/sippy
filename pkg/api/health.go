@@ -45,9 +45,9 @@ func useNewInstallTest(release string) bool {
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
-	excludedVariants := []string{"never-stable"}
+	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
-	excludedInstallVariants := append(excludedVariants, "upgrade-minor")
+	excludedInstallVariants := append(testidentification.DefaultExcludedVariants, "upgrade-minor")
 
 	indicators := make(map[string]apitype.Test)
 
