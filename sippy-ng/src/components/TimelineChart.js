@@ -8,28 +8,6 @@ import TimelinesChart from 'timelines-chart'
 export default function TimelineChart({ eventIntervals, data }) {
   const ref = useRef(null)
 
-  let segmentFunc = function (segment) {
-    // for (var i in data) {
-    //     if (data[i].group == segment.group) {
-    //         var groupdata = data[i].data
-    //         for (var j in groupdata) {
-    //             if (groupdata[j].label == segment.label) {
-    //                 labeldata = groupdata[j].data
-    //                 for (var k in labeldata) {
-    //                     var startDate = new Date(labeldata[k].timeRange[0])
-    //                     var endDate = new Date(labeldata[k].timeRange[1])
-    //                     if (startDate.getTime() == segment.timeRange[0].getTime() &&
-    //                         endDate.getTime() == segment.timeRange[1].getTime()) {
-    //                         $('#myModalContent').text(labeldata[k].extended)
-    //                         $('#myModal').modal()
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-  }
-
   useEffect(() => {
     let chart = null
     const node = ref.current
@@ -134,16 +112,6 @@ export default function TimelineChart({ eventIntervals, data }) {
           new Date(eventIntervals[eventIntervals.length - 1].to),
         ])
       }
-      //.onSegmentClick(segmentFunc)(el)
-      // force a minimum width for smaller devices (which otherwise get an unusable display)
-      //setTimeout(() => { if (myChart.width() < 3100) { myChart.width(3100) }}, 1)
-      /*
-      chart = TimelinesChart()(node)
-          // .zScaleLabel('My Scale Units')
-          // .zQualitative(true)
-          .data(data)
-          
-       */
     }
     return () => {
       if (node) {
