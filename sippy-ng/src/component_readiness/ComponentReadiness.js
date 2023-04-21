@@ -102,8 +102,8 @@ export default function ComponentReadiness(props) {
 
   const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variant']
   let tmp = groupByParameters.get('group_by')
-  let initGroupBy = []
-  if (tmp !== null) {
+  let initGroupBy = ['cloud', 'arch', 'network']
+  if (tmp !== null && tmp !== '') {
     initGroupBy = tmp.split(',')
   }
   const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
@@ -190,11 +190,27 @@ export default function ComponentReadiness(props) {
 
   const days = 24 * 60 * 60 * 1000
   const initialTime = new Date()
-  const initialFromTime = new Date(initialTime.getTime() - 30 * days)
-  const initialToTime = new Date(initialTime.getTime())
+  const initialStartTime = new Date(initialTime.getTime() - 30 * days)
+  const initialEndTime = new Date(initialTime.getTime())
+  const initialPrevStartTime = new Date(initialTime.getTime() - 90 * days)
+  const initialPrevEndTime = new Date(initialTime.getTime() - 60 * days)
+
+  tmp = groupByParameters.get('baseStartTime')
+  let initBaseStartTime = initialStartTime
+  if (tmp != null) {
+    initBaseStartTime = tmp
+  }
+  const [baseStartTime, setBaseStartTime] = React.useState(initBaseStartTime)
+
+  tmp = groupByParameters.get('baseEndTime')
+  let initBaseEndTime = initialEndTime
+  if (tmp != null) {
+    initBaseEndTime = tmp
+  }
+  const [baseEndTime, setBaseEndTime] = React.useState(initBaseEndTime)
 
   tmp = groupByParameters.get('sampleStartTime')
-  let initSampleStartTime = initialTime
+  let initSampleStartTime = initialPrevStartTime
   if (tmp != null) {
     initSampleStartTime = tmp
   }
@@ -202,25 +218,11 @@ export default function ComponentReadiness(props) {
     React.useState(initSampleStartTime)
 
   tmp = groupByParameters.get('sampleEndTime')
-  let initSampleEndTime = initialTime
+  let initSampleEndTime = initialPrevEndTime
   if (tmp != null) {
     initSampleEndTime = tmp
   }
   const [sampleEndTime, setSampleEndTime] = React.useState(initSampleEndTime)
-
-  tmp = groupByParameters.get('baseStartTime')
-  let initBaseStartTime = initialTime
-  if (tmp != null) {
-    initBaseStartTime = tmp
-  }
-  const [baseStartTime, setBaseStartTime] = React.useState(initBaseStartTime)
-
-  tmp = groupByParameters.get('baseEndTime')
-  let initBaseEndTime = initialTime
-  if (tmp != null) {
-    initBaseEndTime = tmp
-  }
-  const [baseEndTime, setBaseEndTime] = React.useState(initBaseEndTime)
 
   const excludeUpgradesList = [
     'no-upgrade',
@@ -230,7 +232,6 @@ export default function ComponentReadiness(props) {
   ]
 
   tmp = groupByParameters.get('exclude_upgrades')
-  console.log('exclude_upgrades tmp: ', tmp)
   let initExcludeUpgradesList = []
   if (tmp !== null && tmp !== '') {
     initExcludeUpgradesList = tmp.split(',')
@@ -266,7 +267,7 @@ export default function ComponentReadiness(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Component Readiness for {sampleRelease}
+      Component Readiness for {baseRelease}
     </Typography>
   )
 
@@ -280,7 +281,7 @@ export default function ComponentReadiness(props) {
   const initialPageTable = {
     rows: [
       {
-        component: 'Please select and Click for data',
+        component: 'Select Filters and Click for data',
         columns: [
           {
             empty: 'None',
@@ -720,6 +721,9 @@ export default function ComponentReadiness(props) {
 
 // Take the list of default values and create a string of parameters that we
 // use from the Sidebar when calling the ComponentReadiness component.
+// This is now obsolete but we'll delete it after some testing.
+// All initialization happens in the main component where initial values are
+// pulled from the url parameters.
 export function getDefaultUrlParts() {
   console.log('INITIALIZED ********')
   const days = 24 * 60 * 60 * 1000
@@ -751,7 +755,7 @@ export function getDefaultUrlParts() {
     retVal = retVal + '&' + key + '=' + value
   })
 
-  return retVal
+  return ''
 }
 
 export function getUpdatedUrlParts(
