@@ -287,7 +287,7 @@ export default function ComponentReadiness(props) {
   const initialPageTable = {
     rows: [
       {
-        component: 'Select Filters and Click for data',
+        component: 'None',
         columns: [
           {
             empty: 'None',
@@ -428,7 +428,7 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = false
+    const fromFile = true
     if (fromFile) {
       const json = require('./api_page1.json')
       setData(json)
@@ -468,6 +468,7 @@ export default function ComponentReadiness(props) {
     }
   }
 
+  const columnNames = getColumns(data)
   console.log('ComponentReadiness end: ', sampleRelease)
   return (
     <Fragment>
@@ -703,7 +704,7 @@ export default function ComponentReadiness(props) {
                               </Typography>
                             </TableCell>
                           }
-                          {getColumns(data).map((column, idx) => {
+                          {columnNames.map((column, idx) => {
                             if (column !== 'Name') {
                               return (
                                 <TableCell
@@ -731,7 +732,21 @@ export default function ComponentReadiness(props) {
                             key={componentIndex}
                             componentName={data.rows[componentIndex].component}
                             results={data.rows[componentIndex].columns}
-                            release={baseRelease}
+                            columnNames={columnNames}
+                            filterVals={getUpdatedUrlParts(
+                              baseRelease,
+                              baseStartTime,
+                              baseEndTime,
+                              sampleRelease,
+                              sampleStartTime,
+                              sampleEndTime,
+                              groupByCheckedItems,
+                              excludeCloudsCheckedItems,
+                              excludeArchesCheckedItems,
+                              excludeNetworksCheckedItems,
+                              excludeUpgradesCheckedItems,
+                              excludeVariantsCheckedItems
+                            )}
                           />
                         ))}
                       </TableBody>

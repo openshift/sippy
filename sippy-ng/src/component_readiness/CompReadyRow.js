@@ -10,7 +10,7 @@ import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
 // This is used when a user clicks on a component on the left side of the table
-function capabilitiesReport(componentName, release) {
+function capabilitiesReport(componentName) {
   return (
     '/componentreadiness/' +
     safeEncodeURIComponent(componentName) +
@@ -21,8 +21,9 @@ function capabilitiesReport(componentName, release) {
 export default function CompReadyRow(props) {
   // componentName is the name of the component
   // results is an array of columns and contains the status value per columnName
+  // columnNames is the calculated array of columns
   // release is the release (not sure if we need it)
-  const { componentName, results, release } = props
+  const { componentName, results, columnNames, filterVals } = props
 
   // Put the component name on the left side with a link to a component specific
   // capabilities report.
@@ -30,9 +31,7 @@ export default function CompReadyRow(props) {
     <TableCell className={'component-name'} key={componentName}>
       <Tooltip title={'Capabilities report for ' + componentName}>
         <Typography className="cell-name">
-          <Link to={capabilitiesReport(componentName, { release })}>
-            {componentName}
-          </Link>
+          <Link to={capabilitiesReport(componentName)}>{componentName}</Link>
         </Typography>
       </Tooltip>
     </TableCell>
@@ -46,9 +45,9 @@ export default function CompReadyRow(props) {
           <CompReadyCell
             key={'testName-' + idx}
             status={columnVal.status}
-            release={release}
-            variant={columnVal}
-            testName={componentName}
+            columnVal={columnNames[idx]}
+            componentName={componentName}
+            filterVals={filterVals}
           />
         ))}
       </TableRow>
@@ -57,7 +56,8 @@ export default function CompReadyRow(props) {
 }
 
 CompReadyRow.propTypes = {
-  results: PropTypes.array.isRequired,
   componentName: PropTypes.string.isRequired,
-  release: PropTypes.string.isRequired,
+  results: PropTypes.array.isRequired,
+  columnNames: PropTypes.array.isRequired,
+  filterVals: PropTypes.string.isRequired,
 }
