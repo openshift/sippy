@@ -187,6 +187,7 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		c.upgrade != "" &&
 		c.arch != "" &&
 		c.variant != "" {
+		// TODO
 		// This request is for a particular test details
 		_ = c.generateComponentTestReport(baseStatus, sampleStatus)
 	} else {
@@ -299,8 +300,8 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		test_id `
 
 	baseString := queryString + ` AND branch = @BaseRelease`
-	query := c.client.Query(baseString + groupString)
-	query.Parameters = append(commonParams, []bigquery.QueryParameter{
+	baseQuery := c.client.Query(baseString + groupString)
+	baseQuery.Parameters = append(commonParams, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.baseStartTime,
@@ -314,11 +315,19 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.baseRelease,
 		},
 	}...)
-	baseStatus := c.fetchTestStatus(query, &errs)
+
+	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStats
+	var baseErrs, sampleErrs []error
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		baseStatus, baseErrs = c.fetchTestStatus(baseQuery)
+	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
-	query = c.client.Query(sampleString + groupString)
-	query.Parameters = append(commonParams, []bigquery.QueryParameter{
+	sampleQuery := c.client.Query(sampleString + groupString)
+	sampleQuery.Parameters = append(commonParams, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.sampleStartTime,
@@ -332,7 +341,16 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.sampleRelease,
 		},
 	}...)
-	sampleStatus := c.fetchTestStatus(query, &errs)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sampleStatus, sampleErrs = c.fetchTestStatus(sampleQuery)
+	}()
+	wg.Wait()
+	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
+		errs = append(errs, baseErrs...)
+		errs = append(errs, sampleErrs...)
+	}
 	return baseStatus, sampleStatus, errs
 }
 
@@ -427,13 +445,14 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 	return rows, column
 }
 
-func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs *[]error) map[apitype.ComponentTestIdentification]apitype.ComponentTestStats {
+func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStats, []error) {
+	errs := []error{}
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
-		*errs = append(*errs, err)
-		return status
+		errs = append(errs, err)
+		return status, errs
 	}
 
 	for {
@@ -444,7 +463,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs *
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing component from bigquery")
-			*errs = append(*errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
+			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
 			continue
 		}
 		testIdentification := apitype.ComponentTestIdentification{
@@ -462,7 +481,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query, errs *
 			SuccessCount: testStatus.SuccessCount,
 		}
 	}
-	return status
+	return status, errs
 }
 
 func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
