@@ -223,7 +223,7 @@ function ReleasePayloadTable(props) {
       flex: 3,
       renderCell: (params) => {
         if (params.value !== '') {
-          return <a href={params.row.previous_os_version}>{params.value}</a>
+          return <a href={params.row.previous_os_url}>{params.value}</a>
         }
       },
       hide: props.briefTable,
