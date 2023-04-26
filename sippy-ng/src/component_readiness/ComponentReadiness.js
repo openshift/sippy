@@ -642,14 +642,6 @@ export default function ComponentReadiness(props) {
                         checkedItems={excludeNetworksCheckedItems}
                         setCheckedItems={setExcludeNetworksCheckedItems}
                       ></CheckBoxList>
-                    </div>
-                    <div>
-                      <CheckBoxList
-                        headerName="Exclude Variants"
-                        displayList={excludeVariantsList}
-                        checkedItems={excludeVariantsCheckedItems}
-                        setCheckedItems={setExcludeVariantsCheckedItems}
-                      ></CheckBoxList>
                       <CheckBoxList
                         headerName="Exclude Clouds"
                         displayList={excludeCloudsList}
@@ -661,6 +653,12 @@ export default function ComponentReadiness(props) {
                         displayList={excludeUpgradesList}
                         checkedItems={excludeUpgradesCheckedItems}
                         setCheckedItems={setExcludeUpgradesCheckedItems}
+                      ></CheckBoxList>
+                      <CheckBoxList
+                        headerName="Exclude Variants"
+                        displayList={excludeVariantsList}
+                        checkedItems={excludeVariantsCheckedItems}
+                        setCheckedItems={setExcludeVariantsCheckedItems}
                       ></CheckBoxList>
                     </div>
                   </Drawer>

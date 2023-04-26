@@ -1,10 +1,14 @@
 import './CheckboxList.css'
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Checkbox,
   FormControl,
   FormControlLabel,
   FormGroup,
 } from '@material-ui/core'
+import { ExpandMore } from '@material-ui/icons'
 import { makeStyles } from '@material-ui/core/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
@@ -19,8 +23,15 @@ export default function CheckBoxList(props) {
     selectEmpty: {
       marginTop: theme.spacing(2),
     },
-    headerContainer: {
+    headerName: {
       width: '220px',
+      padding: '0px',
+      margin: '0px',
+    },
+    summary: {
+      backgroundColor: 'rgb(0, 153, 255)',
+      margin: '0px !important',
+      padding: '0px',
     },
   }))
 
@@ -41,26 +52,33 @@ export default function CheckBoxList(props) {
 
   return (
     <FormControl className={classes.formControl} component="fieldset">
-      <div className={classes.headerContainer}>
-        <Typography className="checkboxlist-label">
-          {props.headerName}
-        </Typography>
-      </div>
-      <FormGroup>
-        {props.displayList.map((item) => (
-          <FormControlLabel
-            key={item}
-            control={
-              <Checkbox
-                checked={checkedItems.includes(item)}
-                onChange={handleChange}
-                name={item}
+      <Accordion className={classes.headerName}>
+        <AccordionSummary
+          className={classes.summary}
+          expandIcon={<ExpandMore />}
+        >
+          <Typography className="checkboxlist-label">
+            {props.headerName}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <FormGroup>
+            {props.displayList.map((item) => (
+              <FormControlLabel
+                key={item}
+                control={
+                  <Checkbox
+                    checked={checkedItems.includes(item)}
+                    onChange={handleChange}
+                    name={item}
+                  />
+                }
+                label={item}
               />
-            }
-            label={item}
-          />
-        ))}
-      </FormGroup>
+            ))}
+          </FormGroup>
+        </AccordionDetails>
+      </Accordion>
     </FormControl>
   )
 }
