@@ -38,7 +38,7 @@ export default function CompReadyCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className="cell-result"
+          className="cr-cell-result"
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -51,7 +51,7 @@ export default function CompReadyCell(props) {
   } else {
     return (
       <TableCell
-        className="cell-result"
+        className="cr-cell-result"
         style={{
           textAlign: 'center',
           backgroundColor: 'white',

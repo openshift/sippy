@@ -1,88 +1,67 @@
-.release-historical {
+.cr-release-historical {
   text-align: center;
-  margin-bottom: '50px';
+  margin-bottom: 50px;
   font-weight: bold;
   background-color: rgb(199, 215, 241);
   padding: 5px;
 }
 
-.release-sample {
+.cr-release-sample {
   text-align: center;
-  margin-bottom: '50px';
+  margin-bottom: 50px;
   font-weight: bold;
   background-color: rgb(208, 213, 217);
   padding: 5px;
 }
 
-.wrapper {
-  position: relative;
-  overflow: auto;
-  white-space: nowrap;
+.cr-report-button {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
 }
 
-.view {
+.cr-wrapper {
+}
+
+.cr-view {
   margin: auto;
-  width: '100%';
 }
 
-.table-container {
+.cr-table-container {
   overflow-y: scroll;
-  width: '100%';
-  max-width: '100%';
 }
 
-.comp-read-table {
+.cr-comp-read-table {
+  width: auto !important;
   margin-top: 0.5em;
-  border: none;
+  border: 1px solid #EEE;
   table-layout: fixed;
 }
 
-.col-name {
-  width: 600px;
-  min-width: 600px;
-  max-width: 600px;
+.cr-col-name {
 }
 
-.cell-name {
-  display: block;
-  line-height: normal;
-  white-space: break-spaces;
-  word-wrap: break-word;
+.cr-cell-name {
+    font-size: 11px !important;
 }
 
-.col-result {
-  opacity: 1;
-  border-left: 1px solid black;
-  border-right: 1px solid black;
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
-  word-wrap: break-word;
-  white-space: break-spaces;
-  display: block;
+.cr-col-result {
+    hyphens: auto;
 }
 
-.col-result-full {
-  opacity: 1;
-  border-left: 1px solid black;
-  border-right: 1px solid black;
-  width: 175px;
-  min-width: 175px;
-  max-width: 175px;
+.cr-col-result-full {
 }
 
-.component-name {
-  border: 3px solid gray;
-  opacity: 1;
-  border-left: 1px solid black;
-  border-right: 1px solid black;
-  width: 175px;
-  min-width: 175px;
-  max-width: 175px;
+.cr-component-name {
+    width: 175px;
+    min-width: 175px;
+    max-width: 175px;
 }
 
-.cell-result {
-  border: 3px solid gray;
-  text-align: center;
-  z-index: 9999;
+.cr-cell-result {
+    height: 50px;
+    width: 50px;
+    padding: 5px !important;
+    line-height: 13px !important;
+    border: 1px solid #EEE;
 }

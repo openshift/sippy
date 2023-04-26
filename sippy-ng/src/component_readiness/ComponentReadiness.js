@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { Alert, TabContext } from '@material-ui/lab'
 import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import { CircularProgress } from '@material-ui/core'
+import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import {
   Drawer,
@@ -22,7 +23,6 @@ import {
 } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
-import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -481,11 +481,11 @@ export default function ComponentReadiness(props) {
               container
               justifyContent="center"
               size="xl"
-              className="view"
+              className="cr-view"
             ></Grid>
             <Switch>
               <Route path={path}>
-                <div className="view" width="100%">
+                <div className="cr-view">
                   <IconButton
                     color="inherit"
                     aria-label="open drawer"
@@ -516,7 +516,7 @@ export default function ComponentReadiness(props) {
                         )}
                       </IconButton>
                     </div>
-                    <div>
+                    <div className="cr-report-button">
                       <Button
                         size="large"
                         variant="contained"
@@ -544,37 +544,8 @@ export default function ComponentReadiness(props) {
                         Generate Report
                       </Button>
                     </div>
-                    <div>
-                      <Button
-                        size="large"
-                        variant="contained"
-                        color="primary"
-                        component={Link}
-                        to={
-                          '/componentreadiness/' +
-                          getUpdatedUrlParts(
-                            baseRelease,
-                            baseStartTime,
-                            baseEndTime,
-                            sampleRelease,
-                            sampleStartTime,
-                            sampleEndTime,
-                            groupByCheckedItems,
-                            excludeCloudsCheckedItems,
-                            excludeArchesCheckedItems,
-                            excludeNetworksCheckedItems,
-                            excludeUpgradesCheckedItems,
-                            excludeVariantsCheckedItems
-                          )
-                        }
-                        onClick={showValuesForReport}
-                      >
-                        Debug1
-                      </Button>
-                    </div>
-                    <br></br>
 
-                    <div className="release-historical">
+                    <div className="cr-release-historical">
                       <ReleaseSelector
                         version={baseRelease}
                         label="Bistorical"
@@ -613,7 +584,7 @@ export default function ComponentReadiness(props) {
                         />
                       </MuiPickersUtilsProvider>
                     </div>
-                    <div className="release-sample">
+                    <div className="cr-release-sample">
                       <ReleaseSelector
                         label="Sample Release"
                         version={sampleRelease}
@@ -693,13 +664,13 @@ export default function ComponentReadiness(props) {
                       ></CheckBoxList>
                     </div>
                   </Drawer>
-                  <TableContainer component="div" className="wrapper">
-                    <Table className="comp-read-table">
+                  <TableContainer component="div" className="cr-wrapper">
+                    <Table className="cr-comp-read-table">
                       <TableHead>
                         <TableRow>
                           {
-                            <TableCell className={'col-result-full'}>
-                              <Typography className="cell-name">
+                            <TableCell className={'cr-col-result-full'}>
+                              <Typography className="cr-cell-name">
                                 Name
                               </Typography>
                             </TableCell>
@@ -708,13 +679,13 @@ export default function ComponentReadiness(props) {
                             if (column !== 'Name') {
                               return (
                                 <TableCell
-                                  className={'col-result'}
+                                  className={'cr-col-result'}
                                   key={'column' + '-' + idx}
                                 >
                                   <Tooltip
                                     title={'Single row report for ' + column}
                                   >
-                                    <Typography className="cell-name">
+                                    <Typography className="cr-cell-name">
                                       <Link to={singleRowReport(column)}>
                                         {column}
                                       </Link>

@@ -12,6 +12,10 @@ const useStyles = makeStyles((theme) => ({
   selectEmpty: {
     marginTop: theme.spacing(5),
   },
+  label: {
+    display: 'flex',
+    whiteSpace: 'nowrap',
+  },
 }))
 
 function ReleaseSelector(props) {
@@ -55,7 +59,7 @@ function ReleaseSelector(props) {
 
   return (
     <FormControl className={classes.formControl}>
-      <InputLabel>{label}</InputLabel>
+      <InputLabel className={classes.label}>{label}</InputLabel>
       <Select value={version} onChange={handleChange}>
         {versions.map((v) => (
           <MenuItem key={v} value={v}>

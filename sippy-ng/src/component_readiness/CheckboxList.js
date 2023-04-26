@@ -19,6 +19,9 @@ export default function CheckBoxList(props) {
     selectEmpty: {
       marginTop: theme.spacing(2),
     },
+    headerContainer: {
+      width: '220px',
+    },
   }))
 
   const classes = useStyles()
@@ -38,7 +41,11 @@ export default function CheckBoxList(props) {
 
   return (
     <FormControl className={classes.formControl} component="fieldset">
-      <Typography className="checkboxlist-label">{props.headerName}</Typography>
+      <div className={classes.headerContainer}>
+        <Typography className="checkboxlist-label">
+          {props.headerName}
+        </Typography>
+      </div>
       <FormGroup>
         {props.displayList.map((item) => (
           <FormControlLabel
