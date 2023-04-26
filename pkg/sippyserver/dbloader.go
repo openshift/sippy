@@ -465,7 +465,7 @@ func LoadBugs(dbc *db.DB) []error {
 
 	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
 	if err != nil {
-		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.")
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing jobs, some job failures may have associated bugs that are not listed below.")
 		err = errors.Wrap(err, "error querying bugs for jobs")
 		errs = append(errs, err)
 	}
