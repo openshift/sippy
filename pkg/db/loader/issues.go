@@ -13,6 +13,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const batchSize = 25
+
 var (
 	// VariantSearchRegex defines the search regex for search.ci
 	VariantSearchRegex = "sippy-link=\\[variants=(\\S+)\\]"
@@ -91,7 +93,7 @@ func findBugsForSearchStrings(isRegex bool, searchFor ...string) (map[string][]j
 
 		// continue building our batch until we have a largish set to check
 		onLastItem := (i + 1) == len(searchFor)
-		if !onLastItem && len(batchSearchStrs) <= 50 {
+		if !onLastItem && len(batchSearchStrs) <= batchSize {
 			continue
 		}
 
@@ -128,7 +130,12 @@ func findBugs(isRegex bool, testNames []string) (map[string][]jira.Issue, error)
 	bzQueryStart := time.Now()
 	searchURL := "https://search.ci.openshift.org/v2/search"
 
-	resp, err := http.PostForm(searchURL, v)
+	// Set the timeout to something other than 0, which is the default and means no timeout.
+	// This prevents waiting for too long in case search.ci is responding slower than usual.
+	client := &http.Client{
+		Timeout: time.Second * 30,
+	}
+	resp, err := client.PostForm(searchURL, v)
 	if err != nil {
 		e := fmt.Errorf("error during bug search against %s: %w", searchURL, err)
 		log.WithError(err).Errorf("error during bug search against %s", searchURL)
@@ -142,6 +149,7 @@ func findBugs(isRegex bool, testNames []string) (map[string][]jira.Issue, error)
 
 	search := Search{}
 
+	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
 		e := fmt.Errorf("could not decode bug search results: %w", err)
 		log.WithError(err).Errorf("error decoding bug search results")
