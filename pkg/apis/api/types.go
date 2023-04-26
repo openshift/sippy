@@ -762,6 +762,43 @@ type RiskLevel struct {
 	Level int
 }
 
+type ComponentReportRequestReleaseOptions struct {
+	Release string
+	Start   time.Time
+	End     time.Time
+}
+
+type ComponentReportRequestTestIdentificationOptions struct {
+	Component  string
+	Capability string
+	TestID     string
+}
+
+type ComponentReportRequestExcludeOptions struct {
+	ExcludePlatforms string
+	ExcludeArches    string
+	ExcludeNetworks  string
+	ExcludeUpgrades  string
+	ExcludeVariants  string
+}
+
+type ComponentReportRequestVariantOptions struct {
+	GroupBy  string
+	Platform string
+	Upgrade  string
+	Arch     string
+	Network  string
+	Variant  string
+}
+
+type ComponentReportRequestAdvancedOptions struct {
+	MinimumFailure   int
+	Confidence       int
+	PityFactor       int
+	IgnoreMissing    bool
+	IgnoreDisruption bool
+}
+
 type ComponentTestStats struct {
 	TotalCount   int
 	SuccessCount int

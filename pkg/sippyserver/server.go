@@ -562,10 +562,17 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease := req.URL.Query().Get("baseRelease")
-	sampleRelease := req.URL.Query().Get("sampleRelease")
-	if baseRelease == "" ||
-		sampleRelease == "" {
+	var baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions
+	var testIDOption apitype.ComponentReportRequestTestIdentificationOptions
+	var variantOption apitype.ComponentReportRequestVariantOptions
+	var excludeOption apitype.ComponentReportRequestExcludeOptions
+	var advancedOption apitype.ComponentReportRequestAdvancedOptions
+
+	var err error
+	baseRelease.Release = req.URL.Query().Get("baseRelease")
+	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
+	if baseRelease.Release == "" ||
+		sampleRelease.Release == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
 			"message": "missing required parameters.",
@@ -574,7 +581,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")
-	baseStartTime, err := time.Parse(time.RFC3339, timeStr)
+	baseRelease.Start, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -583,7 +590,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 	timeStr = req.URL.Query().Get("baseEndTime")
-	baseEndTime, err := time.Parse(time.RFC3339, timeStr)
+	baseRelease.End, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -592,7 +599,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleStartTime, err := time.Parse(time.RFC3339, timeStr)
+	sampleRelease.Start, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -601,7 +608,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleEndTime, err := time.Parse(time.RFC3339, timeStr)
+	sampleRelease.End, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -610,27 +617,26 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	component := req.URL.Query().Get("component")
-	capability := req.URL.Query().Get("capability")
-	testID := req.URL.Query().Get("test_id")
+	testIDOption.Component = req.URL.Query().Get("component")
+	testIDOption.Capability = req.URL.Query().Get("capability")
+	testIDOption.TestID = req.URL.Query().Get("test_id")
 
-	platform := req.URL.Query().Get("platform")
-	upgrade := req.URL.Query().Get("upgrade")
-	arch := req.URL.Query().Get("arch")
-	network := req.URL.Query().Get("network")
+	variantOption.GroupBy = req.URL.Query().Get("group_by")
+	variantOption.Platform = req.URL.Query().Get("platform")
+	variantOption.Upgrade = req.URL.Query().Get("upgrade")
+	variantOption.Arch = req.URL.Query().Get("arch")
+	variantOption.Network = req.URL.Query().Get("network")
 
-	groupBy := req.URL.Query().Get("group_by")
+	excludeOption.ExcludePlatforms = req.URL.Query().Get("exclude_clouds")
+	excludeOption.ExcludeArches = req.URL.Query().Get("exclude_arches")
+	excludeOption.ExcludeNetworks = req.URL.Query().Get("exclude_networks")
+	excludeOption.ExcludeUpgrades = req.URL.Query().Get("exclude_upgrades")
+	excludeOption.ExcludeVariants = req.URL.Query().Get("exclude_variants")
 
-	excludePlatforms := req.URL.Query().Get("exclude_clouds")
-	excludeArches := req.URL.Query().Get("exclude_arches")
-	excludeNetworks := req.URL.Query().Get("exclude_networks")
-	excludeUpgrades := req.URL.Query().Get("exclude_upgrades")
-	excludeVariants := req.URL.Query().Get("exclude_variants")
-
-	confidence := 95
+	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")
 	if confidenceStr != "" {
-		confidence, err = strconv.Atoi(confidenceStr)
+		advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -638,7 +644,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			})
 			return
 		}
-		if confidence < 0 || confidence > 100 {
+		if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
 				"message": "confidence is not in the correct range",
@@ -647,10 +653,10 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		}
 	}
 
-	pity := 5
+	advancedOption.PityFactor = 5
 	pityStr := req.URL.Query().Get("pity")
 	if pityStr != "" {
-		pity, err = strconv.Atoi(pityStr)
+		advancedOption.PityFactor, err = strconv.Atoi(pityStr)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -658,7 +664,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			})
 			return
 		}
-		if pity < 0 || pity > 100 {
+		if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
 				"message": "pity factor is not in the correct range",
@@ -667,10 +673,10 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		}
 	}
 
-	minFail := 3
+	advancedOption.MinimumFailure = 3
 	minFailStr := req.URL.Query().Get("min_fail")
 	if minFailStr != "" {
-		minFail, err = strconv.Atoi(minFailStr)
+		advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -678,7 +684,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			})
 			return
 		}
-		if pity < 0 {
+		if advancedOption.MinimumFailure < 0 {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
 				"message": "min_fail is not in the correct range",
@@ -687,7 +693,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		}
 	}
 
-	ignoreMissing := false
+	advancedOption.IgnoreMissing = false
 	ignoreMissingStr := req.URL.Query().Get("missing")
 	if ignoreMissingStr != "" {
 		if ignoreMissingStr != "ok" {
@@ -697,10 +703,10 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			})
 			return
 		}
-		ignoreMissing = true
+		advancedOption.IgnoreMissing = true
 	}
 
-	ignoreDisruption := false
+	advancedOption.IgnoreDisruption = false
 	ignoreDisruptionsStr := req.URL.Query().Get("disruption")
 	if ignoreDisruptionsStr != "" {
 		if ignoreDisruptionsStr != "ok" {
@@ -710,34 +716,17 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			})
 			return
 		}
-		ignoreDisruption = true
+		advancedOption.IgnoreDisruption = true
 	}
 
-	outputs, errs := api.GetComponentReportFromBigQuery(s.bigQueryClient,
+	outputs, errs := api.GetComponentReportFromBigQuery(
+		s.bigQueryClient,
 		baseRelease,
 		sampleRelease,
-		component,
-		capability,
-		platform,
-		upgrade,
-		arch,
-		network,
-		testID,
-		groupBy,
-		excludePlatforms,
-		excludeArches,
-		excludeNetworks,
-		excludeUpgrades,
-		excludeVariants,
-		baseStartTime,
-		baseEndTime,
-		sampleStartTime,
-		sampleEndTime,
-		confidence,
-		minFail,
-		pity,
-		ignoreMissing,
-		ignoreDisruption)
+		testIDOption,
+		variantOption,
+		excludeOption,
+		advancedOption)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
 		for _, err := range errs {
