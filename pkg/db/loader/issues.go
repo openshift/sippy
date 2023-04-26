@@ -102,10 +102,11 @@ func findBugsForSearchStrings(isRegex bool, searchFor ...string) (map[string][]j
 		}
 		if err != nil {
 			lastUpdateError = err
+			log.Warnf("findBugsForSearchStrings got error in findBugs '%v' after %d requests", err, queryCtr)
 		}
 		batchSearchStrs = []string{}
 	}
-	log.Debugf("findBugsForSearchStrings made %d search.ci requests", queryCtr)
+	log.Infof("findBugsForSearchStrings made %d search.ci requests", queryCtr)
 
 	return ret, lastUpdateError
 }
