@@ -119,7 +119,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     updateFiltering()
-  }, [categories, history, intervalFiles])
+  }, [categories, history, intervalFiles, eventIntervals])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -134,7 +134,6 @@ export default function ProwJobRun(props) {
 
   function updateFiltering() {
     console.log('updating filtering')
-    const queryParams = new URLSearchParams()
 
     let queryString = encodeQueryParams(
       {
@@ -145,13 +144,6 @@ export default function ProwJobRun(props) {
       { categories, intervalFiles, filterText }
     )
     console.log('queryString = ' + stringify(queryString))
-
-    /*
-    queryParams.set('intervalFiles', intervalFiles.join(','))
-    if (!(filterText === '')) {
-      queryParams.set('filter', filterText)
-    }
-     */
 
     history.replace({
       search: stringify(queryString),
