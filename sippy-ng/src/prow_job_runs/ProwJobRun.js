@@ -1,6 +1,13 @@
 import * as lodash from 'lodash'
+import {
+  ArrayParam,
+  encodeQueryParams,
+  StringParam,
+  useQueryParam,
+} from 'use-query-params'
 import { Button, ButtonGroup, TextField } from '@material-ui/core'
 import { Error } from '@material-ui/icons'
+import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
@@ -14,6 +21,13 @@ export default function ProwJobRun(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
   const [filteredIntervals, setFilteredIntervals] = React.useState([])
+
+  // categories is the set of selected categories to display. It is controlled by a combination
+  // of default props, the categories query param, and the buttons the user can modify with.
+  const [categories = props.categories, setCategories] = useQueryParam(
+    'categories',
+    ArrayParam
+  )
 
   const allCategories = {
     operator_unavailable: 'Operator Unavailable',
@@ -29,44 +43,6 @@ export default function ProwJobRun(props) {
     e2e_test_passed: 'E2E Passed',
     disruption: 'Disruption',
   }
-
-  const [categoryButtonState, setCategoryButtonState] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-
-    let categories = []
-    let categoriesParam = params.get('categories')
-    if (categoriesParam) {
-      categories = categoriesParam.split(',')
-    }
-
-    const initialState = {}
-    let atLeastOneCategorySelected = false
-    Object.keys(allCategories).forEach(function (key) {
-      initialState[key] = categories.includes(key)
-      if (categories.includes(key)) {
-        atLeastOneCategorySelected = true
-      }
-    })
-
-    if (!atLeastOneCategorySelected) {
-      console.log('no category was selected, enabling the default set')
-      initialState['operator_unavailable'] = true
-      initialState['operator_progressing'] = true
-      initialState['operator_degraded'] = true
-      initialState['pod_logs'] = true
-      initialState['interesting_events'] = true
-      initialState['alerts'] = true
-      initialState['node_state'] = true
-      initialState['e2e_test_failed'] = true
-      initialState['disruption'] = true
-    }
-
-    // If no buttons were selected, you're not going to see anything, and this likely implies
-    // you are fresh loading the page. Select the default set.
-    console.log('calculated initial category button state:')
-    console.log(initialState)
-    return initialState
-  })
 
   const [intervalFiles, setIntervalFiles] = useState([])
   const [selectedIntervalFiles, setSelectedIntervalFiles] = useState(() => {
@@ -144,8 +120,11 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
+  }, [])
+
+  useEffect(() => {
     updateFiltering()
-  }, [categoryButtonState, history, selectedIntervalFiles])
+  }, [categories, history, selectedIntervalFiles])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -161,29 +140,31 @@ export default function ProwJobRun(props) {
   function updateFiltering() {
     console.log('updating filtering')
     const queryParams = new URLSearchParams()
-    let categories = []
-    Object.keys(categoryButtonState).forEach(function (button) {
-      if (categoryButtonState[button]) {
-        categories.push(button)
-      }
-    })
-    queryParams.set('categories', categories.join(','))
 
+    let queryString = encodeQueryParams(
+      {
+        categories: ArrayParam,
+        intervalFiles: ArrayParam,
+        filter: StringParam,
+      },
+      { categories, selectedIntervalFiles, filterText }
+    )
+    console.log('queryString = ' + stringify(queryString))
+
+    /*
     queryParams.set('intervalFiles', selectedIntervalFiles.join(','))
     if (!(filterText === '')) {
       queryParams.set('filter', filterText)
     }
+     */
 
-    console.log('origin: ' + window.location.origin)
-    console.log('pathname: ' + window.location.pathname)
-    console.log('params: ' + queryParams.toString())
     history.replace({
-      search: queryParams.toString(),
+      search: stringify(queryString),
     })
 
     let filteredIntervals = filterIntervals(
       eventIntervals,
-      categoryButtonState,
+      categories,
       selectedIntervalFiles,
       filterText
     )
@@ -202,11 +183,19 @@ export default function ProwJobRun(props) {
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
-    setCategoryButtonState((prevState) => ({
-      ...prevState,
-      [buttonValue]: !prevState[buttonValue],
-    }))
-    console.log(categoryButtonState)
+    const newCategories = [...categories]
+    const selectedIndex = categories.indexOf(buttonValue)
+
+    if (selectedIndex === -1) {
+      console.log(buttonValue + ' is now selected')
+      newCategories.push(buttonValue)
+    } else {
+      console.log(buttonValue + ' is no longer selected')
+      newCategories.splice(selectedIndex, 1)
+    }
+
+    console.log('new categories: ' + newCategories)
+    setCategories(newCategories)
   }
 
   function handleIntervalFileClick(buttonValue) {
@@ -244,7 +233,7 @@ export default function ProwJobRun(props) {
             <Button
               key={key}
               onClick={() => handleCategoryClick(key)}
-              variant={categoryButtonState[key] ? 'contained' : 'outlined'}
+              variant={categories.includes(key) ? 'contained' : 'outlined'}
             >
               {allCategories[key]}
             </Button>
@@ -285,6 +274,24 @@ export default function ProwJobRun(props) {
 
 ProwJobRun.defaultProps = {}
 
+ProwJobRun.defaultProps = {
+  categories: [
+    'operator_unavailable',
+    'operator_progressing',
+    'operator_degraded',
+    'pod_logs',
+    'interesting_events',
+    'alerts',
+    'node_state',
+    'e2e_test_failed',
+    'disruption',
+  ],
+}
+
+ProwJobRun.propTypes = {
+  categories: PropTypes.array,
+}
+
 ProwJobRun.propTypes = {
   jobRunID: PropTypes.string.isRequired,
   filterModel: PropTypes.object,
@@ -292,7 +299,7 @@ ProwJobRun.propTypes = {
 
 function filterIntervals(
   eventIntervals,
-  categoryButtonState,
+  categories,
   selectedIntervalFiles,
   filterText
 ) {
@@ -311,7 +318,7 @@ function filterIntervals(
     let shouldInclude = false
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
-      if (eventInterval.categories[cat] && categoryButtonState[cat]) {
+      if (eventInterval.categories[cat] && categories.includes(cat)) {
         if (re) {
           if (
             re.test(eventInterval.message) ||
