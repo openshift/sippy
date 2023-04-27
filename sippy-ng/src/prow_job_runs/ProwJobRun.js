@@ -15,24 +15,20 @@ export default function ProwJobRun(props) {
   const [eventIntervals, setEventIntervals] = React.useState([])
   const [filteredIntervals, setFilteredIntervals] = React.useState([])
 
-  // TODO: Not sure this needs to be a useState param, really just need a constant map but
-  // wasn't working.
-  const [allCategories, setAllCategories] = useState(
-    new Map([
-      ['operator_unavailable', 'Operator Unavailable'],
-      ['operator_progressing', 'Operator Progressing'],
-      ['operator_degraded', 'Operator Degraded'],
-      ['pods', 'Pods (careful)'],
-      ['pod_logs', 'Pod Logs'],
-      ['interesting_events', 'Interesting Events'],
-      ['alerts', 'Alerts'],
-      ['node_state', 'Node State'],
-      ['e2e_test_failed', 'E2E Failed'],
-      ['e2e_test_flaked', 'E2E Flaked'],
-      ['e2e_test_passed', 'E2E Passed'],
-      ['disruption', 'Disruption'],
-    ])
-  )
+  const allCategories = {
+    operator_unavailable: 'Operator Unavailable',
+    operator_progressing: 'Operator Progressing',
+    operator_degraded: 'Operator Degraded',
+    pods: 'Pods (careful)',
+    pod_logs: 'Pod Logs',
+    interesting_events: 'Interesting Events',
+    alerts: 'Alerts',
+    node_state: 'Node State',
+    e2e_test_failed: 'E2E Failed',
+    e2e_test_flaked: 'E2E Flaked',
+    e2e_test_passed: 'E2E Passed',
+    disruption: 'Disruption',
+  }
 
   const [categoryButtonState, setCategoryButtonState] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -45,7 +41,7 @@ export default function ProwJobRun(props) {
 
     const initialState = {}
     let atLeastOneCategorySelected = false
-    allCategories.forEach((value, key, map) => {
+    Object.keys(allCategories).forEach(function (key) {
       initialState[key] = categories.includes(key)
       if (categories.includes(key)) {
         atLeastOneCategorySelected = true
@@ -244,13 +240,13 @@ export default function ProwJobRun(props) {
       <p>
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
-          {[...allCategories.entries()].map(([key, value]) => (
+          {Object.keys(allCategories).map((key) => (
             <Button
               key={key}
               onClick={() => handleCategoryClick(key)}
               variant={categoryButtonState[key] ? 'contained' : 'outlined'}
             >
-              {value}
+              {allCategories[key]}
             </Button>
           ))}
         </ButtonGroup>
