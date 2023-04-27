@@ -59,12 +59,6 @@ export default function ProwJobRun(props) {
   })
 
   const fetchData = () => {
-    if (isLoaded) {
-      console.log(
-        'fetchData called due to UI update but intervals already loaded, re-using intervals'
-      )
-      return
-    }
     let queryString = ''
     console.log('hello world we got the prow job run id of ' + props.jobRunID)
 
