@@ -44,16 +44,11 @@ export default function ProwJobRun(props) {
     disruption: 'Disruption',
   }
 
-  const [intervalFiles, setIntervalFiles] = useState([])
-  const [selectedIntervalFiles, setSelectedIntervalFiles] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
-    let tempFiles = []
-    let p = params.get('intervalFiles')
-    if (p) {
-      tempFiles = p.split(',')
-    }
-    return tempFiles
-  })
+  const [allIntervalFiles, setAllIntervalFiles] = useState([])
+  const [intervalFiles = props.intervalFiles, setIntervalFiles] = useQueryParam(
+    'intervalFiles',
+    ArrayParam
+  )
 
   const [filterText, setFilterText] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -100,11 +95,11 @@ export default function ProwJobRun(props) {
           })
           console.log('newEventIntervalFiles = ' + newEventIntervalFiles)
           newEventIntervalFiles.sort()
-          setIntervalFiles(newEventIntervalFiles)
+          setAllIntervalFiles(newEventIntervalFiles)
 
           // On initial load, use the first file as the selected interval file:
-          if (selectedIntervalFiles.length === 0) {
-            setSelectedIntervalFiles([newEventIntervalFiles[0]])
+          if (intervalFiles.length === 0) {
+            setIntervalFiles([newEventIntervalFiles[0]])
           }
         } else {
           setEventIntervals([])
@@ -124,7 +119,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     updateFiltering()
-  }, [categories, history, selectedIntervalFiles])
+  }, [categories, history, intervalFiles])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -147,12 +142,12 @@ export default function ProwJobRun(props) {
         intervalFiles: ArrayParam,
         filter: StringParam,
       },
-      { categories, selectedIntervalFiles, filterText }
+      { categories, intervalFiles, filterText }
     )
     console.log('queryString = ' + stringify(queryString))
 
     /*
-    queryParams.set('intervalFiles', selectedIntervalFiles.join(','))
+    queryParams.set('intervalFiles', intervalFiles.join(','))
     if (!(filterText === '')) {
       queryParams.set('filter', filterText)
     }
@@ -165,7 +160,7 @@ export default function ProwJobRun(props) {
     let filteredIntervals = filterIntervals(
       eventIntervals,
       categories,
-      selectedIntervalFiles,
+      intervalFiles,
       filterText
     )
     setFilteredIntervals(filteredIntervals)
@@ -200,8 +195,8 @@ export default function ProwJobRun(props) {
 
   function handleIntervalFileClick(buttonValue) {
     console.log('got interval file button click: ' + buttonValue)
-    const newSelectedIntervalFiles = [...selectedIntervalFiles]
-    const selectedIndex = selectedIntervalFiles.indexOf(buttonValue)
+    const newSelectedIntervalFiles = [...intervalFiles]
+    const selectedIndex = intervalFiles.indexOf(buttonValue)
 
     if (selectedIndex === -1) {
       console.log(buttonValue + ' is now selected')
@@ -212,7 +207,7 @@ export default function ProwJobRun(props) {
     }
 
     console.log('new selected interval files: ' + newSelectedIntervalFiles)
-    setSelectedIntervalFiles(newSelectedIntervalFiles)
+    setIntervalFiles(newSelectedIntervalFiles)
   }
 
   const handleFilterChange = (event) => {
@@ -243,14 +238,12 @@ export default function ProwJobRun(props) {
       <p>
         Files:
         <ButtonGroup size="small" aria-label="Categories">
-          {intervalFiles.map((intervalFile) => (
+          {allIntervalFiles.map((intervalFile) => (
             <Button
               key={intervalFile}
               onClick={() => handleIntervalFileClick(intervalFile)}
               variant={
-                selectedIntervalFiles.includes(intervalFile)
-                  ? 'contained'
-                  : 'outlined'
+                intervalFiles.includes(intervalFile) ? 'contained' : 'outlined'
               }
             >
               {intervalFile}
@@ -286,10 +279,12 @@ ProwJobRun.defaultProps = {
     'e2e_test_failed',
     'disruption',
   ],
+  intervalFiles: [],
 }
 
 ProwJobRun.propTypes = {
   categories: PropTypes.array,
+  intervalFiles: PropTypes.array,
 }
 
 ProwJobRun.propTypes = {
@@ -300,7 +295,7 @@ ProwJobRun.propTypes = {
 function filterIntervals(
   eventIntervals,
   categories,
-  selectedIntervalFiles,
+  intervalFiles,
   filterText
 ) {
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
@@ -312,7 +307,7 @@ function filterIntervals(
   }
 
   return _.filter(eventIntervals, function (eventInterval) {
-    if (!selectedIntervalFiles.includes(eventInterval.filename)) {
+    if (!intervalFiles.includes(eventInterval.filename)) {
       return false
     }
     let shouldInclude = false
