@@ -273,7 +273,7 @@ export default function ComponentReadiness(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Component Readiness for {baseRelease}
+      Component Readiness for {baseRelease} vs. {sampleRelease}
     </Typography>
   )
 
@@ -311,7 +311,6 @@ export default function ComponentReadiness(props) {
     ],
   }
   useEffect(() => {
-    document.title = `Sippy > Component Readiness`
     setData(initialPageTable)
     setIsLoaded(true)
   }, [])
@@ -575,7 +574,7 @@ export default function ComponentReadiness(props) {
                     <div className="cr-release-historical">
                       <ReleaseSelector
                         version={baseRelease}
-                        label="Bistorical"
+                        label="Historical"
                         onChange={setBaseRelease}
                       ></ReleaseSelector>
                       <MuiPickersUtilsProvider
@@ -806,6 +805,7 @@ export function getUpdatedUrlParts(
   excludeVariantsCheckedItems
 ) {
   console.log('getUpdatedUrlParts()')
+  console.log('getUpdatedUrlParts, baseStartTime: ', baseStartTime)
   const valuesMap = {
     baseRelease: baseRelease,
     baseStartTime: baseStartTime,
@@ -832,6 +832,13 @@ export function getUpdatedUrlParts(
     if (key === 'baseRelease') {
       amper = ''
     }
+    let formattedValue = value
+    if (key.includes('Time')) {
+      console.log('time value:', value)
+      //formattedValue = format(value, dateFormat)
+      console.log('includes Time, using', key, formattedValue)
+    }
+    console.log('arraysMap key/value: ', key, value)
     retVal = retVal + amper + key + '=' + value
   })
 
