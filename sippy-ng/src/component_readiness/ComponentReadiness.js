@@ -544,7 +544,34 @@ export default function ComponentReadiness(props) {
                         Generate Report
                       </Button>
                     </div>
-
+                    <div className="cr-report-button">
+                      <Button
+                        size="large"
+                        variant="contained"
+                        color="primary"
+                        component={Link}
+                        to={
+                          '/componentreadiness/' +
+                          getUpdatedUrlParts(
+                            baseRelease,
+                            baseStartTime,
+                            baseEndTime,
+                            sampleRelease,
+                            sampleStartTime,
+                            sampleEndTime,
+                            groupByCheckedItems,
+                            excludeCloudsCheckedItems,
+                            excludeArchesCheckedItems,
+                            excludeNetworksCheckedItems,
+                            excludeUpgradesCheckedItems,
+                            excludeVariantsCheckedItems
+                          )
+                        }
+                        onClick={handleGenerateReport}
+                      >
+                        Debug
+                      </Button>
+                    </div>
                     <div className="cr-release-historical">
                       <ReleaseSelector
                         version={baseRelease}
