@@ -396,15 +396,9 @@ export default function App(props) {
                     )}
                   />
                   <Route
-                    path="/componentreadiness/:columnName/tests"
+                    path="/componentreadiness/tests"
                     render={(props) => {
-                      console.log('match: ', props.match.params.columnName)
-                      return (
-                        <CompReadyTest
-                          key="tests"
-                          columnName={props.match.params.columnName}
-                        />
-                      )
+                      return <CompReadyTest />
                     }}
                   />
                   <Route

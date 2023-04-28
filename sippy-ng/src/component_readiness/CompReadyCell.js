@@ -11,23 +11,32 @@ import TableCell from '@material-ui/core/TableCell'
 
 // TODO: put this somewhere common.
 function makeRFC3339Time(anUrlStr) {
+  // Translate all the %20 and %3a into spaces and colons so that the regex can work.
+  const decodedStr = decodeURIComponent(anUrlStr)
+
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
-  return anUrlStr.replace(regex, replaceStr)
+  return decodedStr.replace(regex, replaceStr)
 }
 
 // Construct an URL with all existing filters plus component and environment.
 function componentReport(componentName, columnVal, filterVals) {
   const retUrl =
-    '/component_readiness' +
+    '/componentreadiness/tests' +
     filterVals +
     '&component=' +
     safeEncodeURIComponent(componentName) +
-    '&environement=' +
+    '&environment=' +
     safeEncodeURIComponent(columnVal)
 
-  const apiCallStr = 'http://localhost:8080/api' + makeRFC3339Time(retUrl)
-  console.log('apiCallStr: ', apiCallStr)
+  const apiCallStr = makeRFC3339Time(
+    'http://localhost:8080/api' +
+      makeRFC3339Time(retUrl).replace(
+        'componentreadiness',
+        'component_readiness'
+      )
+  )
+  console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 export default function CompReadyCell(props) {

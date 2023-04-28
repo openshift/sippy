@@ -1,0 +1,115 @@
+{
+    "rows": [
+      {
+        "component": "[sig-arch]",
+        "capability": "[Feature:ClusterUpgrade]",
+        "columns": [
+          {
+            "network": "ovn",
+            "platform": "alibaba",
+            "status": 2
+          },
+          {
+            "network": "ovn",
+            "platform": "aws",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "azure",
+            "status": -3
+          },
+          {
+            "network": "sdn",
+            "platform": "aws",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "gcp",
+            "status": -2
+          },
+          {
+            "network": "ovn",
+            "platform": "ibmcloud",
+            "status": 2
+          },
+          {
+            "network": "ovn",
+            "platform": "libvirt",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "metal-assisted",
+            "status": 2
+          },
+          {
+            "network": "ovn",
+            "platform": "metal-ipi",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "openstack",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "ovirt",
+            "status": 2
+          },
+          {
+            "network": "ovn",
+            "platform": "unknown",
+            "status": 2
+          },
+          {
+            "network": "ovn",
+            "platform": "vsphere",
+            "status": -1
+          },
+          {
+            "network": "ovn",
+            "platform": "vsphere-upi",
+            "status": 2
+          },
+          {
+            "network": "sdn",
+            "platform": "azure",
+            "status": -2
+          },
+          {
+            "network": "sdn",
+            "platform": "gcp",
+            "status": -1
+          },
+          {
+            "network": "sdn",
+            "platform": "metal-ipi",
+            "status": -1
+          },
+          {
+            "network": "sdn",
+            "platform": "openstack",
+            "status": 2
+          },
+          {
+            "network": "sdn",
+            "platform": "ovirt",
+            "status": -1
+          },
+          {
+            "network": "sdn",
+            "platform": "unknown",
+            "status": 2
+          },
+          {
+            "network": "sdn",
+            "platform": "vsphere",
+            "status": 2
+          }
+        ]
+      }
+    ]
+  }

@@ -47,6 +47,14 @@ const initialEndTime = new Date(initialTime.getTime())
 const initialPrevStartTime = new Date(initialTime.getTime() - 30 * days)
 const initialPrevEndTime = new Date(initialTime.getTime())
 
+// Return a formatted date given a long form date from the date picker.
+function formatLongDate(aLongDateStr) {
+  const dateObj = new Date(aLongDateStr)
+  const ret = format(dateObj, dateFormat)
+  //console.log('formatLongDate: ', ret)
+  return ret
+}
+
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
@@ -126,6 +134,14 @@ export default function ComponentReadiness(props) {
   )
   //console.log('initGroupBy: ', initGroupBy)
   console.log('groupByCheckedItems: ', groupByCheckedItems)
+
+  tmp = groupByParameters.get('component')
+  const [component, setComponent] = React.useState(tmp)
+
+  tmp = groupByParameters.get('environment')
+  const [environment, setEnvironment] = React.useState(tmp)
+
+  console.log('component, environment: ', component, ', ', environment)
 
   // TODO: Get these from single place.
   const excludeCloudsList = [
@@ -386,6 +402,8 @@ export default function ComponentReadiness(props) {
     console.log('excludeNetworks', excludeNetworksCheckedItems)
     console.log('excludeUpgrades', excludeUpgradesCheckedItems)
     console.log('excludeVariants', excludeVariantsCheckedItems)
+    console.log('component', component)
+    console.log('enviornment', environment)
 
     // process.env.REACT_APP_API_URL +
     const apiCallStr =
@@ -402,7 +420,9 @@ export default function ComponentReadiness(props) {
         excludeArchesCheckedItems,
         excludeNetworksCheckedItems,
         excludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems
+        excludeVariantsCheckedItems,
+        component,
+        environment
       )
     //const params = new URLSearchParams(apiCallStr.split('?')[1])
 
@@ -469,10 +489,34 @@ export default function ComponentReadiness(props) {
 
   const columnNames = getColumns(data)
   console.log('ComponentReadiness end: ', sampleRelease)
+
+  const myPath = '/componentreadiness'
+  // const myPath =
+  //   '/componentreadiness' +
+  //   (initialized
+  //     ? getUpdatedUrlParts(
+  //         baseRelease,
+  //         baseStartTime,
+  //         baseEndTime,
+  //         sampleRelease,
+  //         sampleStartTime,
+  //         sampleEndTime,
+  //         groupByCheckedItems,
+  //         excludeCloudsCheckedItems,
+  //         excludeArchesCheckedItems,
+  //         excludeNetworksCheckedItems,
+  //         excludeUpgradesCheckedItems,
+  //         excludeVariantsCheckedItems,
+  //         component,
+  //         environment
+  //       )
+  //     : getInitialUrlParts())
+
+  console.log('myPath:', myPath)
   return (
     <Fragment>
       <Route
-        path="/"
+        path={myPath}
         render={({ location }) => (
           <TabContext value={path}>
             {pageTitle}
@@ -535,7 +579,9 @@ export default function ComponentReadiness(props) {
                             excludeArchesCheckedItems,
                             excludeNetworksCheckedItems,
                             excludeUpgradesCheckedItems,
-                            excludeVariantsCheckedItems
+                            excludeVariantsCheckedItems,
+                            component,
+                            environment
                           )
                         }
                         onClick={handleGenerateReport}
@@ -563,7 +609,9 @@ export default function ComponentReadiness(props) {
                             excludeArchesCheckedItems,
                             excludeNetworksCheckedItems,
                             excludeUpgradesCheckedItems,
-                            excludeVariantsCheckedItems
+                            excludeVariantsCheckedItems,
+                            component,
+                            environment
                           )
                         }
                         onClick={handleGenerateReport}
@@ -740,7 +788,9 @@ export default function ComponentReadiness(props) {
                               excludeArchesCheckedItems,
                               excludeNetworksCheckedItems,
                               excludeUpgradesCheckedItems,
-                              excludeVariantsCheckedItems
+                              excludeVariantsCheckedItems,
+                              component,
+                              environment
                             )}
                           />
                         ))}
@@ -760,35 +810,35 @@ export default function ComponentReadiness(props) {
 // Create a set of initial values when accessing ComponentReadiness component
 // from the SideBar.  This provides an initial URL where the ComponentReadiness
 // will pull these values from the URL.
-export function getInitialUrlParts() {
-  console.log('INITIALIZED ********')
+// export function getInitialUrlParts() {
+//   const releaseAndDates = {
+//     sampleRelease: '4.13',
+//     baseRelease: '4.14',
+//     baseStartTime: format(initialStartTime, dateFormat),
+//     baseEndTime: format(initialEndTime, dateFormat),
+//     sampleStartTime: format(initialPrevStartTime, dateFormat),
+//     sampleEndTime: format(initialPrevEndTime, dateFormat),
+//   }
 
-  const releaseAndDates = {
-    sampleRelease: '4.13',
-    baseRelease: '4.14',
-    baseStartTime: format(initialStartTime, dateFormat),
-    baseEndTime: format(initialEndTime, dateFormat),
-    sampleStartTime: format(initialPrevStartTime, dateFormat),
-    sampleEndTime: format(initialPrevEndTime, dateFormat),
-  }
+//   let retVal = '?'
 
-  let retVal = '?'
+//   retVal = retVal + 'group_by=cloud,network'
+//   retVal = retVal + '&exclude_clouds='
+//   retVal = retVal + '&exclude_arches='
+//   retVal = retVal + '&exclude_networks='
+//   retVal = retVal + '&exclude_upgrades='
+//   retVal = retVal + '&exclude_variants='
 
-  retVal = retVal + 'group_by=cloud,network'
-  retVal = retVal + '&exclude_clouds='
-  retVal = retVal + '&exclude_arches='
-  retVal = retVal + '&exclude_networks='
-  retVal = retVal + '&exclude_upgrades='
-  retVal = retVal + '&exclude_variants='
+//   // Turn my map into a list of key/value pairs so we can use map() on it.
+//   const fieldList = Object.entries(releaseAndDates)
+//   fieldList.map(([key, value]) => {
+//     retVal = retVal + '&' + key + '=' + value
+//   })
 
-  // Turn my map into a list of key/value pairs so we can use map() on it.
-  const fieldList = Object.entries(releaseAndDates)
-  fieldList.map(([key, value]) => {
-    retVal = retVal + '&' + key + '=' + value
-  })
-
-  return retVal
-}
+//   console.log('*** INITIALIZED ***')
+//   initialized = true
+//   return retVal
+// }
 
 export function getUpdatedUrlParts(
   baseRelease,
@@ -802,17 +852,19 @@ export function getUpdatedUrlParts(
   excludeArchesCheckedItems,
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
-  excludeVariantsCheckedItems
+  excludeVariantsCheckedItems,
+  component,
+  environment
 ) {
   console.log('getUpdatedUrlParts()')
-  console.log('getUpdatedUrlParts, baseStartTime: ', baseStartTime)
   const valuesMap = {
     baseRelease: baseRelease,
-    baseStartTime: baseStartTime,
-    baseEndTime: baseEndTime,
+    baseStartTime: formatLongDate(baseStartTime),
+    baseEndTime: formatLongDate(baseEndTime),
     sampleRelease: sampleRelease,
-    sampleStartTime: sampleStartTime,
-    sampleEndTime: sampleEndTime,
+    sampleStartTime: formatLongDate(sampleStartTime),
+    sampleEndTime: formatLongDate(sampleEndTime),
+    component: component,
   }
 
   const arraysMap = {
@@ -832,14 +884,7 @@ export function getUpdatedUrlParts(
     if (key === 'baseRelease') {
       amper = ''
     }
-    let formattedValue = value
-    if (key.includes('Time')) {
-      console.log('time value:', value)
-      //formattedValue = format(value, dateFormat)
-      console.log('includes Time, using', key, formattedValue)
-    }
-    console.log('arraysMap key/value: ', key, value)
-    retVal = retVal + amper + key + '=' + value
+    retVal = retVal + amper + key + '=' + safeEncodeURIComponent(value)
   })
 
   const fieldList = Object.entries(arraysMap)
