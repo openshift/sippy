@@ -532,7 +532,26 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/componentreadiness/tests"
                 render={(props) => {
-                  return <CompReadyTest />
+                  return (
+                    <CompReadyTest
+                      filterVals={getUpdatedUrlParts(
+                        baseRelease,
+                        baseStartTime,
+                        baseEndTime,
+                        sampleRelease,
+                        sampleStartTime,
+                        sampleEndTime,
+                        groupByCheckedItems,
+                        excludeCloudsCheckedItems,
+                        excludeArchesCheckedItems,
+                        excludeNetworksCheckedItems,
+                        excludeUpgradesCheckedItems,
+                        excludeVariantsCheckedItems,
+                        component,
+                        environment
+                      )}
+                    ></CompReadyTest>
+                  )
                 }}
               />
               <Route path={path}>
@@ -797,8 +816,8 @@ export default function ComponentReadiness(props) {
                               excludeNetworksCheckedItems,
                               excludeUpgradesCheckedItems,
                               excludeVariantsCheckedItems,
-                              component,
-                              environment
+                              data.rows[componentIndex].component,
+                              columnNames
                             )}
                           />
                         ))}
