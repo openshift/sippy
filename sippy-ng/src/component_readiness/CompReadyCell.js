@@ -36,7 +36,7 @@ function componentReport(componentName, columnVal, filterVals) {
         'component_readiness'
       )
   )
-  console.log('apiCallStrR: ', apiCallStr)
+  //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 export default function CompReadyCell(props) {

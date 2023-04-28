@@ -29,6 +29,7 @@ import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import CompReadyRow from './CompReadyRow'
+import CompReadyTest from './CompReadyTest'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
 import React from 'react'
@@ -513,6 +514,7 @@ export default function ComponentReadiness(props) {
   //     : getInitialUrlParts())
 
   console.log('myPath:', myPath)
+  console.log('path:', path)
   return (
     <Fragment>
       <Route
@@ -527,6 +529,12 @@ export default function ComponentReadiness(props) {
               className="cr-view"
             ></Grid>
             <Switch>
+              <Route
+                path="/componentreadiness/tests"
+                render={(props) => {
+                  return <CompReadyTest />
+                }}
+              />
               <Route path={path}>
                 <div className="cr-view">
                   <IconButton

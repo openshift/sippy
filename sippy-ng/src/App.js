@@ -396,12 +396,6 @@ export default function App(props) {
                     )}
                   />
                   <Route
-                    path="/componentreadiness/tests"
-                    render={(props) => {
-                      return <CompReadyTest />
-                    }}
-                  />
-                  <Route
                     path="/componentreadiness"
                     render={(props) => <ComponentReadiness />}
                   />
