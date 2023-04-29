@@ -12,7 +12,6 @@ import Alert from '@material-ui/lab/Alert'
 import AppBar from '@material-ui/core/AppBar'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
-import Capabilities from './component_readiness/Capabilities'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
@@ -386,15 +385,6 @@ export default function App(props) {
                     )}
                   />
 
-                  <Route
-                    path="/componentreadiness/:component/capabilities"
-                    render={(props) => (
-                      <Capabilities
-                        key="capabilities"
-                        component={props.match.params.component}
-                      />
-                    )}
-                  />
                   <Route
                     path="/componentreadiness"
                     render={(props) => <ComponentReadiness />}

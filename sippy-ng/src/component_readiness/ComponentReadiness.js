@@ -24,6 +24,7 @@ import {
 import { makeRFC3339Time, safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
 import Button from '@material-ui/core/Button'
+import Capabilities from './Capabilities'
 import CheckBoxList from './CheckboxList'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
@@ -503,7 +504,17 @@ export default function ComponentReadiness(props) {
               size="xl"
               className="cr-view"
             ></Grid>
+            {/* eslint-disable react/prop-types */}
             <Switch>
+              <Route
+                path="/componentreadiness/:component/capabilities"
+                render={(props) => (
+                  <Capabilities
+                    key="capabilities"
+                    component={props.match.params.component}
+                  ></Capabilities>
+                )}
+              />
               <Route
                 path="/componentreadiness/tests"
                 render={(props) => {
