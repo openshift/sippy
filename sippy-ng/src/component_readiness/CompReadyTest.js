@@ -23,6 +23,12 @@ export default function CompReadyTest(props) {
   const env = urlParams.get('environment')
   console.log('filterVals T: ', filterVals)
   const t = makeRFC3339Time(filterVals)
+
+  let envStr = '&environment=' + env
+  if (filterVals.includes('environment')) {
+    let envStr = ''
+  }
+  const apiCallStr = getAPIUrl() + makeRFC3339Time(filterVals + envStr)
   console.log('filterVals T decoded: ', t)
   return (
     <Fragment>
@@ -31,7 +37,7 @@ export default function CompReadyTest(props) {
       </h1>
       <br></br>
       <h2>
-        <a href={getAPIUrl() + makeRFC3339Time(filterVals)}>apiCall</a>
+        <a href={apiCallStr}>{apiCallStr}</a>
       </h2>
     </Fragment>
   )
