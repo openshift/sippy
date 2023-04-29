@@ -1,6 +1,6 @@
 import './ComponentReadiness.css'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
+import { makeRFC3339Time, safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
@@ -8,16 +8,6 @@ import PropTypes from 'prop-types'
 import React from 'react'
 import SeverityIcon from './SeverityIcon'
 import TableCell from '@material-ui/core/TableCell'
-
-// TODO: put this somewhere common.
-function makeRFC3339Time(anUrlStr) {
-  // Translate all the %20 and %3a into spaces and colons so that the regex can work.
-  const decodedStr = decodeURIComponent(anUrlStr)
-
-  const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
-  const replaceStr = '$1T$2Z'
-  return decodedStr.replace(regex, replaceStr)
-}
 
 // Construct an URL with all existing filters plus component and environment.
 function componentReport(componentName, columnVal, filterVals) {

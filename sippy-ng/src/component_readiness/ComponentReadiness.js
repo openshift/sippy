@@ -21,7 +21,7 @@ import {
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
+import { makeRFC3339Time, safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
@@ -68,11 +68,6 @@ const cancelFetch = () => {
 // 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in
 // a group so we can refer to them as $1 and $2 respectively.
 // We add a 'T' in the middle and a 'Z' on the end.
-function makeRFC3339Time(anUrlStr) {
-  const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
-  const replaceStr = '$1T$2Z'
-  return anUrlStr.replace(regex, replaceStr)
-}
 
 // Given the data pulled from the API server, calculate an array
 // of columns using the first row.  Assumption: the number of columns
@@ -492,26 +487,6 @@ export default function ComponentReadiness(props) {
   console.log('ComponentReadiness end: ', sampleRelease)
 
   const myPath = '/componentreadiness'
-  // const myPath =
-  //   '/componentreadiness' +
-  //   (initialized
-  //     ? getUpdatedUrlParts(
-  //         baseRelease,
-  //         baseStartTime,
-  //         baseEndTime,
-  //         sampleRelease,
-  //         sampleStartTime,
-  //         sampleEndTime,
-  //         groupByCheckedItems,
-  //         excludeCloudsCheckedItems,
-  //         excludeArchesCheckedItems,
-  //         excludeNetworksCheckedItems,
-  //         excludeUpgradesCheckedItems,
-  //         excludeVariantsCheckedItems,
-  //         component,
-  //         environment
-  //       )
-  //     : getInitialUrlParts())
 
   console.log('myPath:', myPath)
   console.log('path:', path)
