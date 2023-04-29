@@ -8,7 +8,7 @@ export function getAPIUrl() {
   const mainUrl = window.location.host.split(':')[0]
 
   //console.log('mainUrl: ', mainUrl)
-  return mainUrl + ':8080/api/component_readiness'
+  return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
 // The API likes RFC3339 times and the date pickers don't.  So we use this
@@ -25,12 +25,16 @@ export function makeRFC3339Time(aUrlStr) {
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
   retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=$1')
+
+  // The api thinks that the null component is real and will filter accordingly
+  // so omit it.
+  retVal = retVal.replace(/&component=null/g, '')
   //console.log('rfc retVal: ', retVal)
   return retVal
 }
 
 // Return a formatted date given a long form date from the date picker.
-function formatLongDate(aLongDateStr) {
+export function formatLongDate(aLongDateStr) {
   const dateObj = new Date(aLongDateStr)
   const ret = format(dateObj, dateFormat)
   //console.log('formatLongDate: ', ret)

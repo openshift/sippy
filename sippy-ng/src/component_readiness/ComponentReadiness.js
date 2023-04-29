@@ -8,12 +8,13 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { Fragment, useEffect } from 'react'
 import {
+  formatLongDate,
   getAPIUrl,
   getUpdatedUrlParts,
   makeRFC3339Time,
 } from './CompReadyUtils'
+import { Fragment, useEffect } from 'react'
 import {
   Link,
   Route,
@@ -429,13 +430,14 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = true
+    const fromFile = false
     if (fromFile) {
       const json = require('./api_page1.json')
       setData(json)
       console.log('json:', json)
       setIsLoaded(true)
     } else {
+      console.log('about to fetch: ', formattedApiCallStr)
       fetch(formattedApiCallStr, { signal: abortController.signal })
         .then((response) => {
           if (response.status !== 200) {
@@ -559,11 +561,11 @@ export default function ComponentReadiness(props) {
                     </div>
                     <CompReadyMainInputs
                       baseRelease={baseRelease}
-                      baseStartTime={baseStartTime}
-                      baseEndTime={baseEndTime}
+                      baseStartTime={formatLongDate(baseStartTime)}
+                      baseEndTime={formatLongDate(baseEndTime)}
                       sampleRelease={sampleRelease}
-                      sampleStartTime={sampleStartTime}
-                      sampleEndTime={sampleEndTime}
+                      sampleStartTime={formatLongDate(sampleStartTime)}
+                      sampleEndTime={formatLongDate(sampleEndTime)}
                       groupByCheckedItems={groupByCheckedItems}
                       excludeCloudsCheckedItems={excludeCloudsCheckedItems}
                       excludeArchesCheckedItems={excludeArchesCheckedItems}
