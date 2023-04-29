@@ -1,3 +1,4 @@
+import './ComponentReadiness.css'
 import { CircularProgress } from '@material-ui/core'
 import {
   Drawer,
@@ -30,7 +31,6 @@ const cancelFetch = () => {
   console.log('Aborting page2')
   abortController.abort()
 }
-
 export default function CompReadyCapabilities(props) {
   const { filterVals } = props
 
@@ -109,10 +109,17 @@ export default function CompReadyCapabilities(props) {
     }
   }, [])
 
+  const pageTitle = (
+    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
+      Capabilities report for environment {env}, component {comp}
+    </Typography>
+  )
+
   console.log('isLoaded page2: ', isLoaded)
   if (!isLoaded) {
     return (
       <Fragment>
+        {pageTitle}
         Loading component readiness data ... If you asked for a huge dataset, it
         may take minutes.
         <br />
@@ -141,9 +148,7 @@ export default function CompReadyCapabilities(props) {
 
   return (
     <Fragment>
-      <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-        Capabilities report for environment {env}, component {comp}
-      </Typography>
+      {pageTitle}
       <h2>
         <Link to="/component_readiness">/</Link> {env} &gt; {comp}
       </h2>
@@ -153,7 +158,7 @@ export default function CompReadyCapabilities(props) {
           <TableHead>
             <TableRow>
               <TableCell className={'cr-col-result-full'}>
-                <Typography className="cr-cell-name">Name</Typography>
+                <Typography className="cr-cell-capab-col">Name</Typography>
               </TableCell>
               {columnNames.map((column, idx) => {
                 if (column !== 'Name') {

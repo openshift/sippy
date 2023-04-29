@@ -13,7 +13,7 @@ import TableCell from '@material-ui/core/TableCell'
 // Construct an URL with all existing filters plus component and environment.
 function componentReport(componentName, columnVal, filterVals) {
   const retUrl =
-    '/component_readiness/tests' +
+    '/component_readiness/capabilities' +
     filterVals +
     '&component=' +
     safeEncodeURIComponent(componentName) +

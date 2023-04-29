@@ -45,6 +45,11 @@
     font-size: 11px !important;
 }
 
+.cr-cell-capab-col {
+    font-size: 11px !important;
+    width: 300px;
+}
+
 .cr-col-result {
     hyphens: auto;
 }

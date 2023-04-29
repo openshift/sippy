@@ -11,8 +11,10 @@ import {
 import {
   formatLongDate,
   getAPIUrl,
+  getColumns,
   getUpdatedUrlParts,
   makeRFC3339Time,
+  singleRowReport,
 } from './CompReadyUtils'
 import { Fragment, useEffect } from 'react'
 import {
@@ -30,9 +32,9 @@ import Capabilities from './Capabilities'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
+import CompReadyCapabilities from './CompReadyCapabilities'
 import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyRow from './CompReadyRow'
-import CompReadyTest from './CompReadyTest'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
 import React from 'react'
@@ -54,36 +56,6 @@ const initialPrevEndTime = new Date(initialTime.getTime())
 let abortController = new AbortController()
 const cancelFetch = () => {
   abortController.abort()
-}
-
-// The API likes RFC3339 times and the date pickers don't.  So we use this
-// function to convert for when we call the API.
-// 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in
-// a group so we can refer to them as $1 and $2 respectively.
-// We add a 'T' in the middle and a 'Z' on the end.
-
-// Given the data pulled from the API server, calculate an array
-// of columns using the first row.  Assumption: the number of columns
-// is the same across all rows.
-function getColumns(data) {
-  const row0Columns = data.rows[0].columns
-
-  let retVal = []
-  row0Columns.forEach((column) => {
-    let columnName = ''
-    for (const key in column) {
-      if (key !== 'status') {
-        columnName = columnName + ' ' + column[key]
-      }
-    }
-    retVal.push(columnName.trimStart())
-  })
-  return retVal
-}
-
-// This is used when the user clicks on one of the columns at the top of the table
-function singleRowReport(columnName) {
-  return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
 export default function ComponentReadiness(props) {
@@ -430,9 +402,10 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = false
+    const fromFile = true
     if (fromFile) {
-      const json = require('./api_page1.json')
+      //const json = require('./api_page1.json')
+      const json = require('./api_page1-big.json')
       setData(json)
       console.log('json:', json)
       setIsLoaded(true)
@@ -484,7 +457,6 @@ export default function ComponentReadiness(props) {
         path={myPath}
         render={({ location }) => (
           <TabContext value={path}>
-            {pageTitle}
             <Grid
               container
               justifyContent="center"
@@ -494,7 +466,7 @@ export default function ComponentReadiness(props) {
             {/* eslint-disable react/prop-types */}
             <Switch>
               <Route
-                path="/component_readiness/:component/capabilities"
+                path="/component_readiness/:component/tests"
                 render={(props) => (
                   <Capabilities
                     key="capabilities"
@@ -503,10 +475,10 @@ export default function ComponentReadiness(props) {
                 )}
               />
               <Route
-                path="/component_readiness/tests"
+                path="/component_readiness/capabilities"
                 render={(props) => {
                   return (
-                    <CompReadyTest
+                    <CompReadyCapabilities
                       filterVals={getUpdatedUrlParts(
                         baseRelease,
                         baseStartTime,
@@ -523,7 +495,7 @@ export default function ComponentReadiness(props) {
                         component,
                         environment
                       )}
-                    ></CompReadyTest>
+                    ></CompReadyCapabilities>
                   )
                 }}
               />
@@ -606,6 +578,7 @@ export default function ComponentReadiness(props) {
                       showValuesForReport={showValuesForReport}
                     ></CompReadyMainInputs>
                   </Drawer>
+                  {pageTitle}
                   <TableContainer component="div" className="cr-wrapper">
                     <Table className="cr-comp-read-table">
                       <TableHead>

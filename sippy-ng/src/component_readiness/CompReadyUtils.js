@@ -11,6 +11,31 @@ export function getAPIUrl() {
   return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
+// This is used when the user clicks on one of the columns at the top of the table
+// Not quite used just yet.
+export function singleRowReport(columnName) {
+  return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
+}
+
+// Given the data pulled from the API server, calculate an array
+// of columns using the first row.  Assumption: the number of columns
+// is the same across all rows.
+export function getColumns(data) {
+  const row0Columns = data.rows[0].columns
+
+  let retVal = []
+  row0Columns.forEach((column) => {
+    let columnName = ''
+    for (const key in column) {
+      if (key !== 'status') {
+        columnName = columnName + ' ' + column[key]
+      }
+    }
+    retVal.push(columnName.trimStart())
+  })
+  return retVal
+}
+
 // The API likes RFC3339 times and the date pickers don't.  So we use this
 // function to convert for when we call the API.
 // 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in
@@ -24,7 +49,10 @@ export function makeRFC3339Time(aUrlStr) {
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
-  retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=$1')
+
+  // curl doesn't like the brackets (you need to escape them).
+  // TODO see if the api is ok with them.
+  //retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=\\[$1\\]')
 
   // The api thinks that the null component is real and will filter accordingly
   // so omit it.

@@ -1,0 +1,2614 @@
+{
+  "rows": [
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:APISelfSubjectReview]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:Authentication]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": -1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:BoundServiceAccountTokenVolume]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 2
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:HTPasswdAuth]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 3
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:LDAP]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 3
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:NodeAuthenticator]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 2
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:NodeAuthorizer]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:OAuthServer]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": -3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 3
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": -1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:OpenShiftAuthorization]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": -2
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:PodSecurity]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:ProjectAPI]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:RoleBindingRestrictions]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": -2
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:SCC]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:SecurityContextConstraints]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": -3
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": -2
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    },
+    {
+      "component": "[sig-auth]",
+      "capability": "[Feature:UserAPI]",
+      "columns": [
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "alibaba",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "gcp",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "arm64",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "arm64",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "aws",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "heterogeneous",
+          "platform": "azure",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ibmcloud",
+          "status": 1
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-assisted",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "metal-ipi",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "s390x",
+          "platform": "libvirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "openstack",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "ovirt",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "unknown",
+          "status": 2
+        },
+        {
+          "network": "ovn",
+          "arch": "ppc64le",
+          "platform": "unknown",
+          "status": 0
+        },
+        {
+          "network": "sdn",
+          "arch": "amd64",
+          "platform": "vsphere",
+          "status": 0
+        },
+        {
+          "network": "ovn",
+          "arch": "amd64",
+          "platform": "vsphere-upi",
+          "status": 0
+        }
+      ]
+    }
+  ]
+}
