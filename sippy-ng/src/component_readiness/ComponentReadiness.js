@@ -3,6 +3,12 @@ import { Alert, TabContext } from '@material-ui/lab'
 import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import { CircularProgress } from '@material-ui/core'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
+import {
+  dateFormat,
+  getAPIUrl,
+  getUpdatedUrlParts,
+  makeRFC3339Time,
+} from './CompReadyUtils'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import {
   Drawer,
@@ -13,7 +19,6 @@ import {
 } from '@material-ui/core'
 import { format } from 'date-fns'
 import { Fragment, useEffect } from 'react'
-import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import {
   Link,
@@ -42,21 +47,12 @@ import TableCell from '@material-ui/core/TableCell'
 import TableHead from '@material-ui/core/TableHead'
 import TableRow from '@material-ui/core/TableRow'
 
-const dateFormat = 'yyyy-MM-dd HH:mm:ss'
 const days = 24 * 60 * 60 * 1000
 const initialTime = new Date()
 const initialStartTime = new Date(initialTime.getTime() - 30 * days)
 const initialEndTime = new Date(initialTime.getTime())
 const initialPrevStartTime = new Date(initialTime.getTime() - 30 * days)
 const initialPrevEndTime = new Date(initialTime.getTime())
-
-// Return a formatted date given a long form date from the date picker.
-function formatLongDate(aLongDateStr) {
-  const dateObj = new Date(aLongDateStr)
-  const ret = format(dateObj, dateFormat)
-  //console.log('formatLongDate: ', ret)
-  return ret
-}
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -855,70 +851,3 @@ export default function ComponentReadiness(props) {
 // }
 
 //
-export function getUpdatedUrlParts(
-  baseRelease,
-  baseStartTime,
-  baseEndTime,
-  sampleRelease,
-  sampleStartTime,
-  sampleEndTime,
-  groupByCheckedItems,
-  excludeCloudsCheckedItems,
-  excludeArchesCheckedItems,
-  excludeNetworksCheckedItems,
-  excludeUpgradesCheckedItems,
-  excludeVariantsCheckedItems,
-  component,
-  environment
-) {
-  console.log('getUpdatedUrlParts()')
-  const valuesMap = {
-    baseRelease: baseRelease,
-    baseStartTime: formatLongDate(baseStartTime),
-    baseEndTime: formatLongDate(baseEndTime),
-    sampleRelease: sampleRelease,
-    sampleStartTime: formatLongDate(sampleStartTime),
-    sampleEndTime: formatLongDate(sampleEndTime),
-    component: component,
-  }
-
-  const arraysMap = {
-    exclude_clouds: excludeCloudsCheckedItems,
-    exclude_arches: excludeArchesCheckedItems,
-    exclude_networks: excludeNetworksCheckedItems,
-    exclude_upgrades: excludeUpgradesCheckedItems,
-    exclude_variants: excludeVariantsCheckedItems,
-    group_by: groupByCheckedItems,
-  }
-
-  // Render the plain values first.
-  let retVal = '?'
-  let fieldList1 = Object.entries(valuesMap)
-  fieldList1.map(([key, value]) => {
-    let amper = '&'
-    if (key === 'baseRelease') {
-      amper = ''
-    }
-    retVal = retVal + amper + key + '=' + safeEncodeURIComponent(value)
-  })
-
-  const fieldList = Object.entries(arraysMap)
-  fieldList.map(([key, value]) => {
-    retVal = retVal + '&' + key + '='
-    let first = true
-
-    // Account for the case where value is undefined
-    // because the url said something like exclude_clouds=, ...
-    if (value) {
-      value.map((item) => {
-        let comma = ','
-        if (first) {
-          comma = ''
-          first = false
-        }
-        retVal = retVal + comma + item
-      })
-    }
-  })
-  return retVal
-}

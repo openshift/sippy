@@ -1,3 +1,8 @@
+import { format } from 'date-fns'
+import { safeEncodeURIComponent } from '../helpers'
+
+export const dateFormat = 'yyyy-MM-dd HH:mm:ss'
+
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
   const mainUrl = window.location.host.split(':')[0]
@@ -21,5 +26,81 @@ export function makeRFC3339Time(aUrlStr) {
   let retVal = decodedStr.replace(regex, replaceStr)
   retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=$1')
   console.log('rfc retVal: ', retVal)
+  return retVal
+}
+
+// Return a formatted date given a long form date from the date picker.
+function formatLongDate(aLongDateStr) {
+  const dateObj = new Date(aLongDateStr)
+  const ret = format(dateObj, dateFormat)
+  //console.log('formatLongDate: ', ret)
+  return ret
+}
+
+export function getUpdatedUrlParts(
+  baseRelease,
+  baseStartTime,
+  baseEndTime,
+  sampleRelease,
+  sampleStartTime,
+  sampleEndTime,
+  groupByCheckedItems,
+  excludeCloudsCheckedItems,
+  excludeArchesCheckedItems,
+  excludeNetworksCheckedItems,
+  excludeUpgradesCheckedItems,
+  excludeVariantsCheckedItems,
+  component,
+  environment
+) {
+  console.log('getUpdatedUrlParts()')
+  const valuesMap = {
+    baseRelease: baseRelease,
+    baseStartTime: formatLongDate(baseStartTime),
+    baseEndTime: formatLongDate(baseEndTime),
+    sampleRelease: sampleRelease,
+    sampleStartTime: formatLongDate(sampleStartTime),
+    sampleEndTime: formatLongDate(sampleEndTime),
+    component: component,
+  }
+
+  const arraysMap = {
+    exclude_clouds: excludeCloudsCheckedItems,
+    exclude_arches: excludeArchesCheckedItems,
+    exclude_networks: excludeNetworksCheckedItems,
+    exclude_upgrades: excludeUpgradesCheckedItems,
+    exclude_variants: excludeVariantsCheckedItems,
+    group_by: groupByCheckedItems,
+  }
+
+  // Render the plain values first.
+  let retVal = '?'
+  let fieldList1 = Object.entries(valuesMap)
+  fieldList1.map(([key, value]) => {
+    let amper = '&'
+    if (key === 'baseRelease') {
+      amper = ''
+    }
+    retVal = retVal + amper + key + '=' + safeEncodeURIComponent(value)
+  })
+
+  const fieldList = Object.entries(arraysMap)
+  fieldList.map(([key, value]) => {
+    retVal = retVal + '&' + key + '='
+    let first = true
+
+    // Account for the case where value is undefined
+    // because the url said something like exclude_clouds=, ...
+    if (value) {
+      value.map((item) => {
+        let comma = ','
+        if (first) {
+          comma = ''
+          first = false
+        }
+        retVal = retVal + comma + item
+      })
+    }
+  })
   return retVal
 }
