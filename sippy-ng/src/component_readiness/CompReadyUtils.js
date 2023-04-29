@@ -7,7 +7,7 @@ export const dateFormat = 'yyyy-MM-dd HH:mm:ss'
 export function getAPIUrl() {
   const mainUrl = window.location.host.split(':')[0]
 
-  console.log('mainUrl: ', mainUrl)
+  //console.log('mainUrl: ', mainUrl)
   return mainUrl + ':8080/api/component_readiness'
 }
 
@@ -18,14 +18,14 @@ export function getAPIUrl() {
 // We add a 'T' in the middle and a 'Z' on the end.
 export function makeRFC3339Time(aUrlStr) {
   // Translate all the %20 and %3a into spaces and colons so that the regex can work.
-  console.log('rfc anUrlStr: ', aUrlStr)
+  //console.log('rfc anUrlStr: ', aUrlStr)
   const decodedStr = decodeURIComponent(aUrlStr)
-  console.log('decodedStr:', decodedStr)
+  //console.log('decodedStr:', decodedStr)
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
   retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=$1')
-  console.log('rfc retVal: ', retVal)
+  //console.log('rfc retVal: ', retVal)
   return retVal
 }
 
@@ -53,7 +53,7 @@ export function getUpdatedUrlParts(
   component,
   environment
 ) {
-  console.log('getUpdatedUrlParts()')
+  //console.log('getUpdatedUrlParts()')
   const valuesMap = {
     baseRelease: baseRelease,
     baseStartTime: formatLongDate(baseStartTime),

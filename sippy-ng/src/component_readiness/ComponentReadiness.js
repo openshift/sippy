@@ -1,15 +1,6 @@
 import './ComponentReadiness.css'
 import { Alert, TabContext } from '@material-ui/lab'
-import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import { CircularProgress } from '@material-ui/core'
-import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
-import {
-  dateFormat,
-  getAPIUrl,
-  getUpdatedUrlParts,
-  makeRFC3339Time,
-} from './CompReadyUtils'
-import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import {
   Drawer,
   Grid,
@@ -17,9 +8,12 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { format } from 'date-fns'
 import { Fragment, useEffect } from 'react'
-import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
+import {
+  getAPIUrl,
+  getUpdatedUrlParts,
+  makeRFC3339Time,
+} from './CompReadyUtils'
 import {
   Link,
   Route,
@@ -29,18 +23,18 @@ import {
 } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
+import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
 import Capabilities from './Capabilities'
-import CheckBoxList from './CheckboxList'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
+import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTest from './CompReadyTest'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
 import React from 'react'
-import ReleaseSelector from './ReleaseSelector'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -418,12 +412,6 @@ export default function ComponentReadiness(props) {
         component,
         environment
       )
-    //const params = new URLSearchParams(apiCallStr.split('?')[1])
-
-    //console.log('*** API Call: ')
-    //params.forEach((value, key) => {
-    //  console.log(`${key}: ${value}`)
-    //})
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     console.log('formatted api call: ')
     formattedApiCallStr
@@ -569,182 +557,52 @@ export default function ComponentReadiness(props) {
                         )}
                       </IconButton>
                     </div>
-                    <div className="cr-report-button">
-                      <Button
-                        size="large"
-                        variant="contained"
-                        color="primary"
-                        component={Link}
-                        to={
-                          '/component_readiness/' +
-                          getUpdatedUrlParts(
-                            baseRelease,
-                            baseStartTime,
-                            baseEndTime,
-                            sampleRelease,
-                            sampleStartTime,
-                            sampleEndTime,
-                            groupByCheckedItems,
-                            excludeCloudsCheckedItems,
-                            excludeArchesCheckedItems,
-                            excludeNetworksCheckedItems,
-                            excludeUpgradesCheckedItems,
-                            excludeVariantsCheckedItems,
-                            component,
-                            environment
-                          )
-                        }
-                        onClick={handleGenerateReport}
-                      >
-                        Generate Report
-                      </Button>
-                    </div>
-                    <div className="cr-report-button">
-                      <Button
-                        size="large"
-                        variant="contained"
-                        color="primary"
-                        component={Link}
-                        to={
-                          '/component_readiness/' +
-                          getUpdatedUrlParts(
-                            baseRelease,
-                            baseStartTime,
-                            baseEndTime,
-                            sampleRelease,
-                            sampleStartTime,
-                            sampleEndTime,
-                            groupByCheckedItems,
-                            excludeCloudsCheckedItems,
-                            excludeArchesCheckedItems,
-                            excludeNetworksCheckedItems,
-                            excludeUpgradesCheckedItems,
-                            excludeVariantsCheckedItems,
-                            component,
-                            environment
-                          )
-                        }
-                        onClick={handleGenerateReport}
-                      >
-                        Debug
-                      </Button>
-                    </div>
-                    <div className="cr-release-historical">
-                      <ReleaseSelector
-                        version={baseRelease}
-                        label="Historical"
-                        onChange={setBaseRelease}
-                      ></ReleaseSelector>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="From"
-                          format={dateFormat}
-                          ampm={false}
-                          value={baseStartTime}
-                          onChange={(e) => {
-                            const formattedTime = format(e, dateFormat)
-                            setBaseStartTime(formattedTime)
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="To"
-                          format={dateFormat}
-                          ampm={false}
-                          value={baseEndTime}
-                          onChange={(e) => {
-                            const formattedTime = format(e, dateFormat)
-                            setBaseEndTime(formattedTime)
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                    </div>
-                    <div className="cr-release-sample">
-                      <ReleaseSelector
-                        label="Sample Release"
-                        version={sampleRelease}
-                        onChange={setSampleRelease}
-                      ></ReleaseSelector>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="From"
-                          format={dateFormat}
-                          ampm={false}
-                          value={sampleStartTime}
-                          onChange={(e) => {
-                            const formattedTime = format(e, dateFormat)
-                            setSampleStartTime(formattedTime)
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                      <MuiPickersUtilsProvider
-                        utils={GridToolbarFilterDateUtils}
-                      >
-                        <DateTimePicker
-                          showTodayButton
-                          disableFuture
-                          label="To"
-                          format={dateFormat}
-                          ampm={false}
-                          value={sampleEndTime}
-                          onChange={(e) => {
-                            const formattedTime = format(e, dateFormat)
-                            setSampleEndTime(formattedTime)
-                          }}
-                        />
-                      </MuiPickersUtilsProvider>
-                    </div>
-                    <div>
-                      <CheckBoxList
-                        headerName="Group By"
-                        displayList={groupByList}
-                        checkedItems={groupByCheckedItems}
-                        setCheckedItems={setGroupByCheckedItems}
-                      ></CheckBoxList>
-                      <CheckBoxList
-                        headerName="Exclude Arches"
-                        displayList={excludeArchesList}
-                        checkedItems={excludeArchesCheckedItems}
-                        setCheckedItems={setExcludeArchesCheckedItems}
-                      ></CheckBoxList>
-                      <CheckBoxList
-                        headerName="Exclude Networks"
-                        displayList={excludeNetworksList}
-                        checkedItems={excludeNetworksCheckedItems}
-                        setCheckedItems={setExcludeNetworksCheckedItems}
-                      ></CheckBoxList>
-                      <CheckBoxList
-                        headerName="Exclude Clouds"
-                        displayList={excludeCloudsList}
-                        checkedItems={excludeCloudsCheckedItems}
-                        setCheckedItems={setExcludeCloudsCheckedItems}
-                      ></CheckBoxList>
-                      <CheckBoxList
-                        headerName="Exclude Upgrades"
-                        displayList={excludeUpgradesList}
-                        checkedItems={excludeUpgradesCheckedItems}
-                        setCheckedItems={setExcludeUpgradesCheckedItems}
-                      ></CheckBoxList>
-                      <CheckBoxList
-                        headerName="Exclude Variants"
-                        displayList={excludeVariantsList}
-                        checkedItems={excludeVariantsCheckedItems}
-                        setCheckedItems={setExcludeVariantsCheckedItems}
-                      ></CheckBoxList>
-                    </div>
+                    <CompReadyMainInputs
+                      baseRelease={baseRelease}
+                      baseStartTime={baseStartTime}
+                      baseEndTime={baseEndTime}
+                      sampleRelease={sampleRelease}
+                      sampleStartTime={sampleStartTime}
+                      sampleEndTime={sampleEndTime}
+                      groupByCheckedItems={groupByCheckedItems}
+                      excludeCloudsCheckedItems={excludeCloudsCheckedItems}
+                      excludeArchesCheckedItems={excludeArchesCheckedItems}
+                      excludeNetworksCheckedItems={excludeNetworksCheckedItems}
+                      excludeUpgradesCheckedItems={excludeUpgradesCheckedItems}
+                      excludeVariantsCheckedItems={excludeVariantsCheckedItems}
+                      component={component}
+                      environment={environment}
+                      setBaseRelease={setBaseRelease}
+                      setSampleRelease={setSampleRelease}
+                      setBaseStartTime={setBaseStartTime}
+                      setBaseEndTime={setBaseEndTime}
+                      setSampleStartTime={setSampleStartTime}
+                      setSampleEndTime={setSampleEndTime}
+                      setGroupByCheckedItems={setGroupByCheckedItems}
+                      setExcludeArchesCheckedItems={
+                        setExcludeArchesCheckedItems
+                      }
+                      setExcludeNetworksCheckedItems={
+                        setExcludeNetworksCheckedItems
+                      }
+                      setExcludeCloudsCheckedItems={
+                        setExcludeCloudsCheckedItems
+                      }
+                      setExcludeUpgradesCheckedItems={
+                        setExcludeUpgradesCheckedItems
+                      }
+                      setExcludeVariantsCheckedItems={
+                        setExcludeVariantsCheckedItems
+                      }
+                      groupByList={groupByList}
+                      excludeArchesList={excludeArchesList}
+                      excludeNetworksList={excludeNetworksList}
+                      excludeCloudsList={excludeCloudsList}
+                      excludeUpgradesList={excludeUpgradesList}
+                      excludeVariantsList={excludeVariantsList}
+                      handleGenerateReport={handleGenerateReport}
+                      showValuesForReport={showValuesForReport}
+                    ></CompReadyMainInputs>
                   </Drawer>
                   <TableContainer component="div" className="cr-wrapper">
                     <Table className="cr-comp-read-table">
@@ -816,38 +674,3 @@ export default function ComponentReadiness(props) {
     </Fragment>
   )
 }
-
-// Create a set of initial values when accessing ComponentReadiness component
-// from the SideBar.  This provides an initial URL where the ComponentReadiness
-// will pull these values from the URL.
-// export function getInitialUrlParts() {
-//   const releaseAndDates = {
-//     sampleRelease: '4.13',
-//     baseRelease: '4.14',
-//     baseStartTime: format(initialStartTime, dateFormat),
-//     baseEndTime: format(initialEndTime, dateFormat),
-//     sampleStartTime: format(initialPrevStartTime, dateFormat),
-//     sampleEndTime: format(initialPrevEndTime, dateFormat),
-//   }
-
-//   let retVal = '?'
-
-//   retVal = retVal + 'group_by=cloud,network'
-//   retVal = retVal + '&exclude_clouds='
-//   retVal = retVal + '&exclude_arches='
-//   retVal = retVal + '&exclude_networks='
-//   retVal = retVal + '&exclude_upgrades='
-//   retVal = retVal + '&exclude_variants='
-
-//   // Turn my map into a list of key/value pairs so we can use map() on it.
-//   const fieldList = Object.entries(releaseAndDates)
-//   fieldList.map(([key, value]) => {
-//     retVal = retVal + '&' + key + '=' + value
-//   })
-
-//   console.log('*** INITIALIZED ***')
-//   initialized = true
-//   return retVal
-// }
-
-//
