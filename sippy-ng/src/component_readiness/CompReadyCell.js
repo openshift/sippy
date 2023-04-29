@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
+import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { makeRFC3339Time, safeEncodeURIComponent } from '../helpers'
+import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
@@ -12,20 +13,14 @@ import TableCell from '@material-ui/core/TableCell'
 // Construct an URL with all existing filters plus component and environment.
 function componentReport(componentName, columnVal, filterVals) {
   const retUrl =
-    '/componentreadiness/tests' +
+    '/component_readiness/tests' +
     filterVals +
     '&component=' +
     safeEncodeURIComponent(componentName) +
     '&environment=' +
     safeEncodeURIComponent(columnVal)
 
-  const apiCallStr = makeRFC3339Time(
-    'http://localhost:8080/api' +
-      makeRFC3339Time(retUrl).replace(
-        'componentreadiness',
-        'component_readiness'
-      )
-  )
+  const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
   //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }

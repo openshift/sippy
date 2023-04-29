@@ -13,6 +13,7 @@ import {
 } from '@material-ui/core'
 import { format } from 'date-fns'
 import { Fragment, useEffect } from 'react'
+import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import {
   Link,
@@ -21,7 +22,7 @@ import {
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
-import { makeRFC3339Time, safeEncodeURIComponent } from '../helpers'
+import { safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
 import Button from '@material-ui/core/Button'
 import Capabilities from './Capabilities'
@@ -91,7 +92,7 @@ function getColumns(data) {
 
 // This is used when the user clicks on one of the columns at the top of the table
 function singleRowReport(columnName) {
-  return '/componentreadiness/' + safeEncodeURIComponent(columnName) + '/tests'
+  return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
 export default function ComponentReadiness(props) {
@@ -404,7 +405,7 @@ export default function ComponentReadiness(props) {
 
     // process.env.REACT_APP_API_URL +
     const apiCallStr =
-      'http://localhost:8080/api/component_readiness' +
+      getAPIUrl() +
       getUpdatedUrlParts(
         baseRelease,
         baseStartTime,
@@ -487,7 +488,7 @@ export default function ComponentReadiness(props) {
   const columnNames = getColumns(data)
   console.log('ComponentReadiness end: ', sampleRelease)
 
-  const myPath = '/componentreadiness'
+  const myPath = '/component_readiness'
 
   console.log('myPath:', myPath)
   console.log('path:', path)
@@ -507,7 +508,7 @@ export default function ComponentReadiness(props) {
             {/* eslint-disable react/prop-types */}
             <Switch>
               <Route
-                path="/componentreadiness/:component/capabilities"
+                path="/component_readiness/:component/capabilities"
                 render={(props) => (
                   <Capabilities
                     key="capabilities"
@@ -516,7 +517,7 @@ export default function ComponentReadiness(props) {
                 )}
               />
               <Route
-                path="/componentreadiness/tests"
+                path="/component_readiness/tests"
                 render={(props) => {
                   return (
                     <CompReadyTest
@@ -579,7 +580,7 @@ export default function ComponentReadiness(props) {
                         color="primary"
                         component={Link}
                         to={
-                          '/componentreadiness/' +
+                          '/component_readiness/' +
                           getUpdatedUrlParts(
                             baseRelease,
                             baseStartTime,
@@ -609,7 +610,7 @@ export default function ComponentReadiness(props) {
                         color="primary"
                         component={Link}
                         to={
-                          '/componentreadiness/' +
+                          '/component_readiness/' +
                           getUpdatedUrlParts(
                             baseRelease,
                             baseStartTime,
@@ -853,6 +854,7 @@ export default function ComponentReadiness(props) {
 //   return retVal
 // }
 
+//
 export function getUpdatedUrlParts(
   baseRelease,
   baseStartTime,

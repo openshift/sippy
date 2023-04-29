@@ -283,21 +283,3 @@ export function getReportStartDate(reportDate) {
   }
   return startDate
 }
-
-// The API likes RFC3339 times and the date pickers don't.  So we use this
-// function to convert for when we call the API.
-// 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in
-// a group so we can refer to them as $1 and $2 respectively.
-// We add a 'T' in the middle and a 'Z' on the end.
-export function makeRFC3339Time(aUrlStr) {
-  // Translate all the %20 and %3a into spaces and colons so that the regex can work.
-  console.log('rfc anUrlStr: ', aUrlStr)
-  const decodedStr = decodeURIComponent(aUrlStr)
-  console.log('decodedStr:', decodedStr)
-  const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
-  const replaceStr = '$1T$2Z'
-  let retVal = decodedStr.replace(regex, replaceStr)
-  retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=$1')
-  console.log('rfc retVal: ', retVal)
-  return retVal
-}

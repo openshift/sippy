@@ -12,7 +12,7 @@ import TableRow from '@material-ui/core/TableRow'
 // This is used when a user clicks on a component on the left side of the table
 function capabilitiesReport(componentName) {
   return (
-    '/componentreadiness/' +
+    '/component_readiness/' +
     safeEncodeURIComponent(componentName) +
     '/capabilities'
   )
