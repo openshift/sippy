@@ -30,7 +30,14 @@ export function singleRowReport(columnName) {
 //         "status": 0
 //       },
 export function getColumns(data) {
-  const row0Columns = data.rows[0].columns
+  let row0Columns
+  try {
+    // If the data was not read (e.g., via Cancel), we'll cover here
+    row0Columns = data.rows[0].columns
+  } catch (error) {
+    console.log(`Operation was cancelled, ${error}`)
+    return ['Cancelled']
+  }
 
   let retVal = []
   row0Columns.forEach((column) => {

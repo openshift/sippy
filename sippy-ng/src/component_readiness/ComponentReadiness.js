@@ -88,7 +88,7 @@ export default function ComponentReadiness(props) {
     initGroupBy
   )
   //console.log('initGroupBy: ', initGroupBy)
-  console.log('groupByCheckedItems: ', groupByCheckedItems)
+  //console.log('groupByCheckedItems: ', groupByCheckedItems)
 
   tmp = groupByParameters.get('component')
   const [component, setComponent] = React.useState(tmp)
@@ -96,7 +96,7 @@ export default function ComponentReadiness(props) {
   tmp = groupByParameters.get('environment')
   const [environment, setEnvironment] = React.useState(tmp)
 
-  console.log('component, environment: ', component, ', ', environment)
+  //console.log('component, environment: ', component, ', ', environment)
 
   // TODO: Get these from single place.
   const excludeCloudsList = [
@@ -126,7 +126,7 @@ export default function ComponentReadiness(props) {
       initExcludeCloudsList
     )
   //console.log('initExcludeCloudsList: ', initExcludeCloudsList)
-  console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
+  //console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
 
   // TODO: Get these from single place.
   const excludeArchesList = [
@@ -144,11 +144,11 @@ export default function ComponentReadiness(props) {
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
     React.useState(initExcludeArchesList)
   //console.log('initExcludeArchesList: ', initExcludeArchesList)
-  console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
+  //console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
 
   const excludeNetworksList = ['ovn', 'sdn']
   tmp = groupByParameters.get('exclude_networks')
-  console.log('url networks:', tmp)
+  //console.log('url excludedNetworks:', tmp)
   let initExcludeNetworksList = []
   if (tmp !== null && tmp !== '') {
     initExcludeNetworksList = tmp.split(',')
@@ -156,7 +156,7 @@ export default function ComponentReadiness(props) {
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
     React.useState(initExcludeNetworksList)
   //console.log('initExcludeNetworksList: ', initExcludeNetworksList)
-  console.log('excludeNetworksCheckedItems: ', excludeNetworksCheckedItems)
+  //console.log('excludeNetworksCheckedItems: ', excludeNetworksCheckedItems)
 
   tmp = groupByParameters.get('baseRelease')
   let initBaseRelease = '4.14'
@@ -216,7 +216,7 @@ export default function ComponentReadiness(props) {
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
     React.useState(initExcludeUpgradesList)
   //console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
-  console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
+  //console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
 
   const excludeVariantsList = [
     'assisted',
@@ -240,7 +240,7 @@ export default function ComponentReadiness(props) {
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(initExcludeVariantsList)
   //console.log('initExcludeVariantsList: ', initExcludeVariantsList)
-  console.log('excludeVariantsCheckedItems: ', excludeVariantsCheckedItems)
+  //console.log('excludeVariantsCheckedItems: ', excludeVariantsCheckedItems)
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
@@ -375,7 +375,6 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  console.log('data: ', data)
   if (Object.keys(data).length === 0 || data.rows.length === 0) {
     return <p>No data.</p>
   }
@@ -448,14 +447,10 @@ export default function ComponentReadiness(props) {
   const columnNames = getColumns(data)
   console.log('ComponentReadiness end: ', sampleRelease)
 
-  const myPath = '/component_readiness'
-
-  console.log('myPath:', myPath)
-  console.log('path:', path)
   return (
     <Fragment>
       <Route
-        path={myPath}
+        path={path}
         render={({ location }) => (
           <TabContext value={path}>
             <Grid
@@ -634,7 +629,7 @@ export default function ComponentReadiness(props) {
                               excludeUpgradesCheckedItems,
                               excludeVariantsCheckedItems,
                               data.rows[componentIndex].component,
-                              columnNames
+                              null
                             )}
                           />
                         ))}

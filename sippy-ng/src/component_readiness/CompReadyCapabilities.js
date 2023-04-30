@@ -14,6 +14,7 @@ import {
   singleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import Button from '@material-ui/core/Button'
 import CompReadyRow from './CompReadyRow'
 import PropTypes from 'prop-types'
@@ -43,7 +44,6 @@ export default function CompReadyCapabilities(props) {
   const urlParams = new URLSearchParams(location.search)
   const comp = urlParams.get('component')
   const env = urlParams.get('environment')
-  console.log('filterVals T: ', filterVals)
 
   let envStr = '&environment=' + env
   if (filterVals.includes('environment')) {
@@ -84,7 +84,6 @@ export default function CompReadyCapabilities(props) {
           return response.json()
         })
         .then((json) => {
-          console.log('Got good page2 json', json)
           if (Object.keys(json).length === 0 || json.rows.length === 0) {
             // The api call returned 200 OK but the data was empty
             setData(noDataTable)
@@ -115,7 +114,6 @@ export default function CompReadyCapabilities(props) {
     </Typography>
   )
 
-  console.log('isLoaded page2: ', isLoaded)
   if (!isLoaded) {
     return (
       <Fragment>
@@ -142,9 +140,21 @@ export default function CompReadyCapabilities(props) {
       </Fragment>
     )
   }
-  console.log('came here: ', data.rows.length, data.rows)
+
+  const history = useHistory()
+
+  const handleClick = () => {
+    history.push('/component_readiness')
+  }
   const columnNames = getColumns(data)
-  console.log('columnNames page2:', columnNames)
+  if (columnNames[0] === 'Cancelled') {
+    return (
+      <Fragment>
+        <p>Operation cancelled</p>
+        <button onClick={handleClick}>Start Over</button>
+      </Fragment>
+    )
+  }
 
   return (
     <Fragment>
