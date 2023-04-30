@@ -119,6 +119,8 @@ var (
 	)
 )
 
+const NeverStable = "never-stable"
+
 type openshiftVariants struct{}
 
 func NewOpenshiftVariantManager() VariantManager {
@@ -161,7 +163,7 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 
 	// Terminal variants -- these are excluded from other possible variant aggregations
 	if v.IsJobNeverStable(jobName) {
-		return []string{"never-stable"}
+		return []string{NeverStable}
 	}
 	if promoteRegex.MatchString(jobName) {
 		variants = append(variants, "promote")

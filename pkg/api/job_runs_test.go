@@ -143,7 +143,7 @@ func TestRunJobAnalysis(t *testing.T) {
 			}
 
 			// Fake test results lookup func:
-			testResultsLookupFunc := func(testName, release, suite string, variants []string) (*apitype.Test, error) {
+			testResultsLookupFunc := func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
 				for _, tpr := range tc.testPassRates {
 					if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
 						tpr.CurrentRuns = 100
@@ -153,7 +153,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				return nil, nil
 			}
 
-			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, log.WithField("jobRunID", "test"), testResultsLookupFunc)
+			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, false, nil, log.WithField("jobRunID", "test"), testResultsLookupFunc)
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {
