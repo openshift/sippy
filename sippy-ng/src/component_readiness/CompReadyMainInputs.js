@@ -1,7 +1,10 @@
 import './ComponentReadiness.css'
-import { dateFormat, getUpdatedUrlParts } from './CompReadyUtils'
+import {
+  dateFormat,
+  formatLongDate,
+  getUpdatedUrlParts,
+} from './CompReadyUtils'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { format } from 'date-fns'
 import { Fragment, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import { Link } from 'react-router-dom'
@@ -126,7 +129,7 @@ export default function CompReadyMainInputs(props) {
             ampm={false}
             value={baseStartTime}
             onChange={(e) => {
-              const formattedTime = format(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormat)
               setBaseStartTime(formattedTime)
             }}
           />
@@ -140,7 +143,7 @@ export default function CompReadyMainInputs(props) {
             ampm={false}
             value={baseEndTime}
             onChange={(e) => {
-              const formattedTime = format(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormat)
               setBaseEndTime(formattedTime)
             }}
           />
@@ -161,7 +164,7 @@ export default function CompReadyMainInputs(props) {
             ampm={false}
             value={sampleStartTime}
             onChange={(e) => {
-              const formattedTime = format(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormat)
               setSampleStartTime(formattedTime)
             }}
           />
@@ -175,7 +178,7 @@ export default function CompReadyMainInputs(props) {
             ampm={false}
             value={sampleEndTime}
             onChange={(e) => {
-              const formattedTime = format(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormat)
               setSampleEndTime(formattedTime)
             }}
           />
@@ -222,6 +225,8 @@ export default function CompReadyMainInputs(props) {
     </Fragment>
   )
 }
+
+// component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
   baseRelease: PropTypes.string.isRequired,
   baseStartTime: PropTypes.string.isRequired,

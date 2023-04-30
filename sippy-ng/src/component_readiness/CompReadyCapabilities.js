@@ -40,7 +40,7 @@ export default function CompReadyCapabilities(props) {
 
   // Set the browser tab title
   document.title = `CompRead Test`
-  const urlParams = new URLSearchParams(decodeURIComponent(location.search))
+  const urlParams = new URLSearchParams(location.search)
   const comp = urlParams.get('component')
   const env = urlParams.get('environment')
   console.log('filterVals T: ', filterVals)

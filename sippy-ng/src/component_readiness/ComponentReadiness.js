@@ -67,12 +67,6 @@ export default function ComponentReadiness(props) {
   const location = useLocation()
   const groupByParameters = new URLSearchParams(location.search)
 
-  //const params = {}
-  //groupByParameters.forEach((value, key) => {
-  //  params[key] = value
-  //})
-  //console.log('params from url: ', JSON.stringify(params))
-
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -303,13 +297,69 @@ export default function ComponentReadiness(props) {
     )
   }
 
+  // Show the current state of the filter variables and the url.
+  // Create API call string and return it.
+  const showValuesForReport = () => {
+    console.log('--------------- handleGenerateReport ------------------')
+    console.log('baseRelease', baseRelease)
+    console.log('baseStartTime', baseStartTime)
+    console.log('baseEndTime', baseEndTime)
+    console.log('sampleRelease', sampleRelease)
+    console.log('sampleStartTime', sampleStartTime)
+    console.log('sampleEndTime', sampleEndTime)
+    console.log('groupBy: ', groupByCheckedItems)
+    console.log('excludeClouds: ', excludeCloudsCheckedItems)
+    console.log('excludeArches', excludeArchesCheckedItems)
+    console.log('excludeNetworks', excludeNetworksCheckedItems)
+    console.log('excludeUpgrades', excludeUpgradesCheckedItems)
+    console.log('excludeVariants', excludeVariantsCheckedItems)
+    console.log('component', component)
+    console.log('environment', environment)
+
+    // process.env.REACT_APP_API_URL +
+    const apiCallStr =
+      getAPIUrl() +
+      getUpdatedUrlParts(
+        baseRelease,
+        baseStartTime,
+        baseEndTime,
+        sampleRelease,
+        sampleStartTime,
+        sampleEndTime,
+        groupByCheckedItems,
+        excludeCloudsCheckedItems,
+        excludeArchesCheckedItems,
+        excludeNetworksCheckedItems,
+        excludeUpgradesCheckedItems,
+        excludeVariantsCheckedItems,
+        component,
+        environment
+      )
+    const formattedApiCallStr = makeRFC3339Time(apiCallStr)
+    console.log('formatted api call: ')
+    formattedApiCallStr
+      .split('?')[1]
+      .split('&')
+      .map((item) => {
+        console.log('   ', item)
+      })
+    return formattedApiCallStr
+  }
+
   if (!isLoaded) {
+    const formattedApiCallStr = showValuesForReport()
     return (
       <Fragment>
         <p>
           Loading component readiness data ... If you asked for a huge dataset,
           it may take minutes.
         </p>
+        <br />
+        Here is the API call in case you are interested:
+        <br />
+        <h3>
+          <a href={formattedApiCallStr}>{formattedApiCallStr}</a>
+        </h3>
         <CircularProgress />
         <div>
           <Button
@@ -347,62 +397,13 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  // Show the current state of the filter variables and the url.
-  // Create API call string and return it.
-  const showValuesForReport = () => {
-    console.log('--------------- handleGenerateReport ------------------')
-    console.log('baseRelease', baseRelease)
-    console.log('baseStartTime', baseStartTime)
-    console.log('baseEndTime', baseEndTime)
-    console.log('sampleRelease', sampleRelease)
-    console.log('sampleStartTime', sampleStartTime)
-    console.log('sampleEndTime', sampleEndTime)
-    console.log('groupBy: ', groupByCheckedItems)
-    console.log('excludeClouds: ', excludeCloudsCheckedItems)
-    console.log('excludeArches', excludeArchesCheckedItems)
-    console.log('excludeNetworks', excludeNetworksCheckedItems)
-    console.log('excludeUpgrades', excludeUpgradesCheckedItems)
-    console.log('excludeVariants', excludeVariantsCheckedItems)
-    console.log('component', component)
-    console.log('enviornment', environment)
-
-    // process.env.REACT_APP_API_URL +
-    const apiCallStr =
-      getAPIUrl() +
-      getUpdatedUrlParts(
-        baseRelease,
-        baseStartTime,
-        baseEndTime,
-        sampleRelease,
-        sampleStartTime,
-        sampleEndTime,
-        groupByCheckedItems,
-        excludeCloudsCheckedItems,
-        excludeArchesCheckedItems,
-        excludeNetworksCheckedItems,
-        excludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems,
-        component,
-        environment
-      )
-    const formattedApiCallStr = makeRFC3339Time(apiCallStr)
-    console.log('formatted api call: ')
-    formattedApiCallStr
-      .split('?')[1]
-      .split('&')
-      .map((item) => {
-        console.log('   ', item)
-      })
-    return formattedApiCallStr
-  }
-
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = () => {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = true
+    const fromFile = false
     if (fromFile) {
       //const json = require('./api_page1.json')
       const json = require('./api_page1-big.json')

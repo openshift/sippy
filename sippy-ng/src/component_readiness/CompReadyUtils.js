@@ -1,7 +1,8 @@
 import { format } from 'date-fns'
 import { safeEncodeURIComponent } from '../helpers'
 
-export const dateFormat = 'yyyy-MM-dd HH:mm:ss'
+// Make the HH:mm:ss as zeros to be more conducive to caching query caching.
+export const dateFormat = 'yyyy-MM-dd 00:00:00'
 
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
@@ -20,6 +21,14 @@ export function singleRowReport(columnName) {
 // Given the data pulled from the API server, calculate an array
 // of columns using the first row.  Assumption: the number of columns
 // is the same across all rows.
+// A column looks like this and we concatenate all fields except status:
+//   "columns": [
+//       {
+//         "network": "ovn",
+//         "arch": "amd64",
+//         "platform": "alibaba",
+//         "status": 0
+//       },
 export function getColumns(data) {
   const row0Columns = data.rows[0].columns
 
@@ -45,7 +54,6 @@ export function makeRFC3339Time(aUrlStr) {
   // Translate all the %20 and %3a into spaces and colons so that the regex can work.
   //console.log('rfc anUrlStr: ', aUrlStr)
   const decodedStr = decodeURIComponent(aUrlStr)
-  //console.log('decodedStr:', decodedStr)
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
