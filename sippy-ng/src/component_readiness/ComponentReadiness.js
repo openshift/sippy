@@ -1,5 +1,16 @@
 import './ComponentReadiness.css'
 import { Alert, TabContext } from '@material-ui/lab'
+import {
+  cancelledDataTable,
+  formatLongDate,
+  getAPIUrl,
+  getColumns,
+  getUpdatedUrlParts,
+  initialPageTable,
+  makeRFC3339Time,
+  noDataTable,
+  singleRowReport,
+} from './CompReadyUtils'
 import { CircularProgress } from '@material-ui/core'
 import {
   Drawer,
@@ -8,14 +19,6 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import {
-  formatLongDate,
-  getAPIUrl,
-  getColumns,
-  getUpdatedUrlParts,
-  makeRFC3339Time,
-  singleRowReport,
-} from './CompReadyUtils'
 import { Fragment, useEffect } from 'react'
 import {
   Link,
@@ -207,33 +210,6 @@ export default function ComponentReadiness(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
-  // This is the table we use when the first page is initially rendered.
-  const initialPageTable = {
-    rows: [
-      {
-        component: 'None',
-        columns: [
-          {
-            empty: 'None',
-            status: 3, // Let's start with success
-          },
-        ],
-      },
-    ],
-  }
-  const noDataTable = {
-    rows: [
-      {
-        component: 'No Data found',
-        columns: [
-          {
-            empty: 'None',
-            status: 3, // Let's start with success
-          },
-        ],
-      },
-    ],
-  }
   useEffect(() => {
     setData(initialPageTable)
     setIsLoaded(true)
@@ -313,10 +289,10 @@ export default function ComponentReadiness(props) {
     window.location.href = '/component_readiness'
   }
   const columnNames = getColumns(data)
-  if (columnNames[0] === 'Cancelled') {
+  if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
     return (
       <Fragment>
-        <p>Operation cancelled</p>
+        <p>Operation cancelled or no data</p>
         <button onClick={handleClick}>Start Over</button>
       </Fragment>
     )
@@ -377,7 +353,7 @@ export default function ComponentReadiness(props) {
         .catch((error) => {
           if (error.name === 'AbortError') {
             console.log('Request was cancelled')
-            setData({})
+            setData(cancelledDataTable)
 
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()

@@ -12,6 +12,7 @@ import {
   getAPIUrl,
   getColumns,
   makeRFC3339Time,
+  noDataTable,
   singleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
@@ -58,15 +59,6 @@ export default function CompReadyCapabilities(props) {
     comp +
     expandEnvironment(env)
 
-  const noDataTable = {
-    rows: [
-      {
-        component: 'No Data found',
-        capability: 'Not setup to get data',
-      },
-    ],
-  }
-
   useEffect(() => {
     setIsLoaded(false)
     const fromFile = false
@@ -102,6 +94,7 @@ export default function CompReadyCapabilities(props) {
         .catch((error) => {
           if (error.name === 'AbortError') {
             console.log('Request was cancelled')
+            setData(cancelledDataTable)
 
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()
@@ -137,10 +130,10 @@ export default function CompReadyCapabilities(props) {
     history.push('/component_readiness')
   }
   const columnNames = getColumns(data)
-  if (columnNames[0] === 'Cancelled') {
+  if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
     return (
       <Fragment>
-        <p>Operation cancelled</p>
+        <p>Operation cancelled or no data</p>
         <button onClick={handleClick}>Start Over</button>
       </Fragment>
     )

@@ -4,6 +4,46 @@ import { safeEncodeURIComponent } from '../helpers'
 // Make the HH:mm:ss as zeros to be more conducive to caching query caching.
 export const dateFormat = 'yyyy-MM-dd 00:00:00'
 
+// This is the table we use when the first page is initially rendered.
+export const initialPageTable = {
+  rows: [
+    {
+      component: 'None',
+      columns: [
+        {
+          empty: 'None',
+          status: 3, // Let's start with success
+        },
+      ],
+    },
+  ],
+}
+export const noDataTable = {
+  rows: [
+    {
+      component: 'No Data found',
+      columns: [
+        {
+          empty: 'None',
+          status: 3, // Let's start with success
+        },
+      ],
+    },
+  ],
+}
+export const cancelledDataTable = {
+  rows: [
+    {
+      component: 'Cancelled',
+      columns: [
+        {
+          empty: 'None',
+          status: 3, // Let's start with success
+        },
+      ],
+    },
+  ],
+}
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
   const mainUrl = window.location.host.split(':')[0]
@@ -29,17 +69,35 @@ export function singleRowReport(columnName) {
 //         "platform": "alibaba",
 //         "status": 0
 //       },
+// Do our best to handle empty data or the a "cancelled" condition.
 export function getColumns(data) {
-  let row0Columns
-  try {
-    // If the data was not read (e.g., via Cancel), we'll cover here
-    row0Columns = data.rows[0].columns
-  } catch (error) {
-    console.log(`Operation was cancelled, ${error}`)
-    return ['Cancelled']
+  let isBad = false
+  if (!data) {
+    isBad = true
+    console.log('data is undefined')
+  } else if (!data.rows) {
+    isBad = true
+    console.log('data has no rows')
+  } else if (!data.rows[0]) {
+    isBad = true
+    console.log('data has no rows[0]')
   }
-
-  let retVal = []
+  if (isBad) {
+    // If we get here, something was misused.
+    console.log('got bad')
+    return ['Bad data']
+  }
+  if (data.rows[0].component === 'Cancelled') {
+    console.log('got cancelled')
+    return ['Cancelled']
+  } else if (data.rows[0].component == 'None') {
+    console.log('got no data')
+    return ['No data']
+  } else if (!data.rows[0].columns) {
+    return ['No data']
+  }
+  const row0Columns = data.rows[0].columns
+  let columnNames = []
   row0Columns.forEach((column) => {
     let columnName = ''
     for (const key in column) {
@@ -47,9 +105,9 @@ export function getColumns(data) {
         columnName = columnName + ' ' + column[key]
       }
     }
-    retVal.push(columnName.trimStart())
+    columnNames.push(columnName.trimStart())
   })
-  return retVal
+  return columnNames
 }
 
 // The API likes RFC3339 times and the date pickers don't.  So we use this
@@ -64,10 +122,6 @@ export function makeRFC3339Time(aUrlStr) {
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
-
-  // curl doesn't like the brackets (you need to escape them).
-  // TODO see if the api is ok with them.
-  //retVal = retVal.replace(/component=\[(.*?)\]/g, 'component=\\[$1\\]')
 
   // The api thinks that the null component is real and will filter accordingly
   // so omit it.
