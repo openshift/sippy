@@ -139,9 +139,12 @@ export const excludeVariantsList = [
 ]
 
 // Take a string that is an "environment" (environment is a list of strings that describe
-// an items in one of more of the lists above) and split it up so that it can be used in
+// an items in one or more of the lists above) and split it up so that it can be used in
 // an api call.
 export function expandEnvironment(str) {
+  if (str == null) {
+    return ''
+  }
   const items = str.split(' ')
   const params = {}
   items.forEach((item) => {
@@ -156,14 +159,13 @@ export function expandEnvironment(str) {
     } else if (excludeVariantsList.includes(item)) {
       params.variant = item
     } else {
-      console.log(`Item '${item}' not found in lists`)
+      //console.log(`Item '${item}' not found in lists`)
     }
   })
   const paramStrings = Object.entries(params).map(
     ([key, value]) => `${key}=${value}`
   )
-  const retVal = paramStrings.join('&')
-  console.log('expandEnvironment: ', retVal)
+  const retVal = '&' + paramStrings.join('&')
   return retVal
 }
 

@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
@@ -9,13 +10,14 @@ import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
-// This is used when a user clicks on a component on the left side of the table
-function capabilitiesReport(componentName) {
-  return (
-    '/component_readiness/' +
-    safeEncodeURIComponent(componentName) +
-    '/capabilities'
-  )
+// This is used when a user clicks on a component on the left side of the table.
+// The component name is already in the url.
+function capabilitiesReport(componentName, filterVals) {
+  const retUrl = '/component_readiness/capabilities' + filterVals
+
+  const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
+  //console.log('apiCallStrR: ', apiCallStr)
+  return retUrl
 }
 
 export default function CompReadyRow(props) {
@@ -31,7 +33,9 @@ export default function CompReadyRow(props) {
     <TableCell className={'cr-component-name'} key={componentName}>
       <Tooltip title={'Capabilities report for ' + componentName}>
         <Typography className="cr-cell-name">
-          <Link to={capabilitiesReport(componentName)}>{componentName}</Link>
+          <Link to={capabilitiesReport(componentName, filterVals)}>
+            {componentName}
+          </Link>
         </Typography>
       </Tooltip>
     </TableCell>

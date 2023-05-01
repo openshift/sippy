@@ -55,7 +55,6 @@ export default function CompReadyCapabilities(props) {
     makeRFC3339Time(filterVals + envStr) +
     '&component=' +
     comp +
-    '&' +
     expandEnvironment(env)
 
   const noDataTable = {
@@ -115,9 +114,14 @@ export default function CompReadyCapabilities(props) {
     }
   }, [])
 
+  let envDisplay = ''
+
+  if (env != null) {
+    envDisplay = ` ${env}`
+  }
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for environment {env}, component {comp}
+      Capabilities report for{envDisplay} component {comp}
     </Typography>
   )
 
@@ -167,7 +171,7 @@ export default function CompReadyCapabilities(props) {
     <Fragment>
       {pageTitle}
       <h2>
-        <Link to="/component_readiness">/</Link> {env} &gt; {comp}
+        <Link to="/component_readiness">/</Link> {envDisplay} &gt; {comp}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">

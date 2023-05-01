@@ -19,7 +19,6 @@ function componentReport(componentName, columnVal, filterVals) {
     safeEncodeURIComponent(componentName) +
     '&environment=' +
     safeEncodeURIComponent(columnVal) +
-    '&' +
     expandEnvironment(columnVal)
 
   const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
