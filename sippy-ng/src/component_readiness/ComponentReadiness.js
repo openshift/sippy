@@ -328,6 +328,19 @@ export default function ComponentReadiness(props) {
     )
   }
 
+  const handleClick = () => {
+    window.location.href = '/component_readiness'
+  }
+  const columnNames = getColumns(data)
+  if (columnNames[0] === 'Cancelled') {
+    return (
+      <Fragment>
+        <p>Operation cancelled</p>
+        <button onClick={handleClick}>Start Over</button>
+      </Fragment>
+    )
+  }
+
   if (Object.keys(data).length === 0 || data.rows.length === 0) {
     return <p>No data.</p>
   }
@@ -355,7 +368,7 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = true
+    const fromFile = false
     if (fromFile) {
       //const json = require('./api_page1.json')
       const json = require('./api_page1-big.json')
@@ -383,6 +396,7 @@ export default function ComponentReadiness(props) {
         .catch((error) => {
           if (error.name === 'AbortError') {
             console.log('Request was cancelled')
+            setData({})
 
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()
@@ -397,7 +411,6 @@ export default function ComponentReadiness(props) {
     }
   }
 
-  const columnNames = getColumns(data)
   console.log('ComponentReadiness end: ', sampleRelease)
 
   return (
