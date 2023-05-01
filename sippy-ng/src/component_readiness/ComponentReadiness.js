@@ -24,7 +24,6 @@ import {
   useLocation,
   useRouteMatch,
 } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
 import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
@@ -76,7 +75,6 @@ export default function ComponentReadiness(props) {
     setDrawerOpen(false)
   }
 
-  const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variant']
   let tmp = groupByParameters.get('group_by')
   let initGroupBy = ['cloud', 'arch', 'network']
   if (tmp !== null && tmp !== '') {
@@ -98,22 +96,6 @@ export default function ComponentReadiness(props) {
 
   //console.log('component, environment: ', component, ', ', environment)
 
-  // TODO: Get these from single place.
-  const excludeCloudsList = [
-    'alibaba',
-    'aws',
-    'azure',
-    'gcp',
-    'ibmcloud',
-    'libvirt',
-    'metal-assisted',
-    'metal-ipi',
-    'openstack',
-    'ovirt',
-    'unknown',
-    'vsphere',
-    'vsphere-upi',
-  ]
   tmp = groupByParameters.get('exclude_clouds')
   let initExcludeCloudsList = []
   if (tmp !== null && tmp !== '') {
@@ -128,14 +110,6 @@ export default function ComponentReadiness(props) {
   //console.log('initExcludeCloudsList: ', initExcludeCloudsList)
   //console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
 
-  // TODO: Get these from single place.
-  const excludeArchesList = [
-    'amd64',
-    'arm64',
-    'ppc64le',
-    's390x',
-    'heterogeneous',
-  ]
   tmp = groupByParameters.get('exclude_arches')
   let initExcludeArchesList = []
   if (tmp !== null && tmp !== '') {
@@ -146,7 +120,6 @@ export default function ComponentReadiness(props) {
   //console.log('initExcludeArchesList: ', initExcludeArchesList)
   //console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
 
-  const excludeNetworksList = ['ovn', 'sdn']
   tmp = groupByParameters.get('exclude_networks')
   //console.log('url excludedNetworks:', tmp)
   let initExcludeNetworksList = []
@@ -201,13 +174,6 @@ export default function ComponentReadiness(props) {
   }
   const [sampleEndTime, setSampleEndTime] = React.useState(initSampleEndTime)
 
-  const excludeUpgradesList = [
-    'no-upgrade',
-    'none',
-    'upgrade-micro',
-    'upgrade-minor',
-  ]
-
   tmp = groupByParameters.get('exclude_upgrades')
   let initExcludeUpgradesList = []
   if (tmp !== null && tmp !== '') {
@@ -218,20 +184,6 @@ export default function ComponentReadiness(props) {
   //console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
   //console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
 
-  const excludeVariantsList = [
-    'assisted',
-    'compact',
-    'fips',
-    'hypershift',
-    'microshift',
-    'osd',
-    'proxy',
-    'rt',
-    'serial',
-    'single-node',
-    'standard',
-    'techpreview',
-  ]
   tmp = groupByParameters.get('exclude_variants')
   let initExcludeVariantsList = []
   if (tmp !== null && tmp !== '') {
@@ -300,7 +252,7 @@ export default function ComponentReadiness(props) {
   // Show the current state of the filter variables and the url.
   // Create API call string and return it.
   const showValuesForReport = () => {
-    console.log('--------------- handleGenerateReport ------------------')
+    console.log('--------------- showValuesForReport ------------------')
     console.log('baseRelease', baseRelease)
     console.log('baseStartTime', baseStartTime)
     console.log('baseEndTime', baseEndTime)
@@ -343,6 +295,7 @@ export default function ComponentReadiness(props) {
       .map((item) => {
         console.log('   ', item)
       })
+    console.log('apiurl: ', formattedApiCallStr)
     return formattedApiCallStr
   }
 
@@ -564,12 +517,6 @@ export default function ComponentReadiness(props) {
                       setExcludeVariantsCheckedItems={
                         setExcludeVariantsCheckedItems
                       }
-                      groupByList={groupByList}
-                      excludeArchesList={excludeArchesList}
-                      excludeNetworksList={excludeNetworksList}
-                      excludeCloudsList={excludeCloudsList}
-                      excludeUpgradesList={excludeUpgradesList}
-                      excludeVariantsList={excludeVariantsList}
                       handleGenerateReport={handleGenerateReport}
                       showValuesForReport={showValuesForReport}
                     ></CompReadyMainInputs>

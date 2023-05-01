@@ -42,15 +42,61 @@ export default function CompReadyMainInputs(props) {
     setExcludeCloudsCheckedItems,
     setExcludeUpgradesCheckedItems,
     setExcludeVariantsCheckedItems,
-    groupByList,
-    excludeArchesList,
-    excludeNetworksList,
-    excludeCloudsList,
-    excludeUpgradesList,
-    excludeVariantsList,
     handleGenerateReport,
     showValuesForReport,
   } = props
+
+  const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
+
+  // TODO: Get these from single place.
+  const excludeCloudsList = [
+    'alibaba',
+    'aws',
+    'azure',
+    'gcp',
+    'ibmcloud',
+    'libvirt',
+    'metal-assisted',
+    'metal-ipi',
+    'openstack',
+    'ovirt',
+    'unknown',
+    'vsphere',
+    'vsphere-upi',
+  ]
+
+  // TODO: Get these from single place.
+  const excludeArchesList = [
+    'amd64',
+    'arm64',
+    'ppc64le',
+    's390x',
+    'heterogeneous',
+  ]
+
+  const excludeNetworksList = ['ovn', 'sdn']
+
+  const excludeUpgradesList = [
+    'no-upgrade',
+    'none',
+    'upgrade-micro',
+    'upgrade-minor',
+  ]
+
+  const excludeVariantsList = [
+    'assisted',
+    'compact',
+    'fips',
+    'hypershift',
+    'microshift',
+    'osd',
+    'proxy',
+    'rt',
+    'serial',
+    'single-node',
+    'standard',
+    'techpreview',
+  ]
 
   return (
     <Fragment>
@@ -254,12 +300,6 @@ CompReadyMainInputs.propTypes = {
   setExcludeCloudsCheckedItems: PropTypes.func.isRequired,
   setExcludeUpgradesCheckedItems: PropTypes.func.isRequired,
   setExcludeVariantsCheckedItems: PropTypes.func.isRequired,
-  groupByList: PropTypes.array.isRequired,
-  excludeArchesList: PropTypes.array.isRequired,
-  excludeNetworksList: PropTypes.array.isRequired,
-  excludeCloudsList: PropTypes.array.isRequired,
-  excludeUpgradesList: PropTypes.array.isRequired,
-  excludeVariantsList: PropTypes.array.isRequired,
   handleGenerateReport: PropTypes.func.isRequired,
   showValuesForReport: PropTypes.func.isRequired,
 }
