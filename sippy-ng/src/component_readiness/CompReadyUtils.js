@@ -84,6 +84,89 @@ export function formatLongDate(aLongDateStr) {
   return ret
 }
 
+// These next set of variables are used for CompReadyMainInputs
+
+export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
+
+// TODO: Get these from single place.
+export const excludeCloudsList = [
+  'alibaba',
+  'aws',
+  'azure',
+  'gcp',
+  'ibmcloud',
+  'libvirt',
+  'metal-assisted',
+  'metal-ipi',
+  'openstack',
+  'ovirt',
+  'unknown',
+  'vsphere',
+  'vsphere-upi',
+]
+
+// TODO: Get these from single place.
+export const excludeArchesList = [
+  'amd64',
+  'arm64',
+  'ppc64le',
+  's390x',
+  'heterogeneous',
+]
+
+export const excludeNetworksList = ['ovn', 'sdn']
+
+export const excludeUpgradesList = [
+  'no-upgrade',
+  'none',
+  'upgrade-micro',
+  'upgrade-minor',
+]
+
+export const excludeVariantsList = [
+  'assisted',
+  'compact',
+  'fips',
+  'hypershift',
+  'microshift',
+  'osd',
+  'proxy',
+  'rt',
+  'serial',
+  'single-node',
+  'standard',
+  'techpreview',
+]
+
+// Take a string that is an "environment" (environment is a list of strings that describe
+// an items in one of more of the lists above) and split it up so that it can be used in
+// an api call.
+export function expandEnvironment(str) {
+  const items = str.split(' ')
+  const params = {}
+  items.forEach((item) => {
+    if (excludeCloudsList.includes(item)) {
+      params.platform = item
+    } else if (excludeArchesList.includes(item)) {
+      params.arch = item
+    } else if (excludeNetworksList.includes(item)) {
+      params.network = item
+    } else if (excludeUpgradesList.includes(item)) {
+      params.upgrade = item
+    } else if (excludeVariantsList.includes(item)) {
+      params.variant = item
+    } else {
+      console.log(`Item '${item}' not found in lists`)
+    }
+  })
+  const paramStrings = Object.entries(params).map(
+    ([key, value]) => `${key}=${value}`
+  )
+  const retVal = paramStrings.join('&')
+  console.log('expandEnvironment: ', retVal)
+  return retVal
+}
+
 export function getUpdatedUrlParts(
   baseRelease,
   baseStartTime,

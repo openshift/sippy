@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
+import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@material-ui/core'
@@ -18,7 +18,9 @@ function componentReport(componentName, columnVal, filterVals) {
     '&component=' +
     safeEncodeURIComponent(componentName) +
     '&environment=' +
-    safeEncodeURIComponent(columnVal)
+    safeEncodeURIComponent(columnVal) +
+    '&' +
+    expandEnvironment(columnVal)
 
   const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
   //console.log('apiCallStrR: ', apiCallStr)

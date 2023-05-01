@@ -1,8 +1,14 @@
 import './ComponentReadiness.css'
 import {
   dateFormat,
+  excludeArchesList,
+  excludeCloudsList,
+  excludeNetworksList,
+  excludeUpgradesList,
+  excludeVariantsList,
   formatLongDate,
   getUpdatedUrlParts,
+  groupByList,
 } from './CompReadyUtils'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { Fragment, useEffect } from 'react'
@@ -45,58 +51,6 @@ export default function CompReadyMainInputs(props) {
     handleGenerateReport,
     showValuesForReport,
   } = props
-
-  const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
-
-  // TODO: Get these from single place.
-  const excludeCloudsList = [
-    'alibaba',
-    'aws',
-    'azure',
-    'gcp',
-    'ibmcloud',
-    'libvirt',
-    'metal-assisted',
-    'metal-ipi',
-    'openstack',
-    'ovirt',
-    'unknown',
-    'vsphere',
-    'vsphere-upi',
-  ]
-
-  // TODO: Get these from single place.
-  const excludeArchesList = [
-    'amd64',
-    'arm64',
-    'ppc64le',
-    's390x',
-    'heterogeneous',
-  ]
-
-  const excludeNetworksList = ['ovn', 'sdn']
-
-  const excludeUpgradesList = [
-    'no-upgrade',
-    'none',
-    'upgrade-micro',
-    'upgrade-minor',
-  ]
-
-  const excludeVariantsList = [
-    'assisted',
-    'compact',
-    'fips',
-    'hypershift',
-    'microshift',
-    'osd',
-    'proxy',
-    'rt',
-    'serial',
-    'single-node',
-    'standard',
-    'techpreview',
-  ]
 
   return (
     <Fragment>

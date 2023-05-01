@@ -355,7 +355,7 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = false
+    const fromFile = true
     if (fromFile) {
       //const json = require('./api_page1.json')
       const json = require('./api_page1-big.json')

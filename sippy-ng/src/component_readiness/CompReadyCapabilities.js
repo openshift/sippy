@@ -8,6 +8,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import {
+  expandEnvironment,
   getAPIUrl,
   getColumns,
   makeRFC3339Time,
@@ -49,7 +50,13 @@ export default function CompReadyCapabilities(props) {
   if (filterVals.includes('environment')) {
     let envStr = ''
   }
-  const apiCallStr = getAPIUrl() + makeRFC3339Time(filterVals + envStr)
+  const apiCallStr =
+    getAPIUrl() +
+    makeRFC3339Time(filterVals + envStr) +
+    '&component=' +
+    comp +
+    '&' +
+    expandEnvironment(env)
 
   const noDataTable = {
     rows: [
