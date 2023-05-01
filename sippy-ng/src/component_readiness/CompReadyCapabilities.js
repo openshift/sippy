@@ -17,6 +17,7 @@ import {
 import { Link } from 'react-router-dom'
 import { useHistory } from 'react-router-dom'
 import Button from '@material-ui/core/Button'
+import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -48,7 +49,7 @@ export default function CompReadyCapabilities(props) {
 
   let envStr = '&environment=' + env
   if (filterVals.includes('environment')) {
-    let envStr = ''
+    envStr = ''
   }
   const apiCallStr =
     getAPIUrl() +
@@ -93,6 +94,7 @@ export default function CompReadyCapabilities(props) {
           if (Object.keys(json).length === 0 || json.rows.length === 0) {
             // The api call returned 200 OK but the data was empty
             setData(noDataTable)
+            console.log('got empty page2', json)
           } else {
             setData(json)
           }
@@ -126,30 +128,7 @@ export default function CompReadyCapabilities(props) {
   )
 
   if (!isLoaded) {
-    return (
-      <Fragment>
-        {pageTitle}
-        Loading component readiness data ... If you asked for a huge dataset, it
-        may take minutes.
-        <br />
-        Here is the API call in case you are interested:
-        <br />
-        <h3>
-          <a href={apiCallStr}>{apiCallStr}</a>
-        </h3>
-        <CircularProgress />
-        <div>
-          <Button
-            size="medium"
-            variant="contained"
-            color="secondary"
-            onClick={cancelFetch}
-          >
-            Cancel
-          </Button>
-        </div>
-      </Fragment>
-    )
+    return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
   }
 
   const history = useHistory()

@@ -33,6 +33,7 @@ import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import CompReadyCapabilities from './CompReadyCapabilities'
 import CompReadyMainInputs from './CompReadyMainInputs'
+import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
@@ -300,31 +301,11 @@ export default function ComponentReadiness(props) {
   }
 
   if (!isLoaded) {
-    const formattedApiCallStr = showValuesForReport()
     return (
-      <Fragment>
-        <p>
-          Loading component readiness data ... If you asked for a huge dataset,
-          it may take minutes.
-        </p>
-        <br />
-        Here is the API call in case you are interested:
-        <br />
-        <h3>
-          <a href={formattedApiCallStr}>{formattedApiCallStr}</a>
-        </h3>
-        <CircularProgress />
-        <div>
-          <Button
-            size="medium"
-            variant="contained"
-            color="secondary"
-            onClick={cancelFetch}
-          >
-            Cancel
-          </Button>
-        </div>
-      </Fragment>
+      <CompReadyProgress
+        apiLink={showValuesForReport()}
+        cancelFunc={cancelFetch}
+      />
     )
   }
 
