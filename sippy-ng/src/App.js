@@ -22,6 +22,7 @@ import Jobs from './jobs/Jobs'
 import MenuIcon from '@material-ui/icons/Menu'
 import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
+import ProwJobRun from './prow_job_runs/ProwJobRun'
 import PullRequests from './pull_requests/PullRequests'
 import PullRequestsTable from './pull_requests/PullRequestsTable'
 import React, { useEffect } from 'react'
@@ -433,6 +434,13 @@ export default function App(props) {
                         key={'pr-' + props.match.params.release}
                         release={props.match.params.release}
                       />
+                    )}
+                  />
+
+                  <Route
+                    path="/job_runs/:jobrunid/intervals"
+                    render={(props) => (
+                      <ProwJobRun jobRunID={props.match.params.jobrunid} />
                     )}
                   />
 
