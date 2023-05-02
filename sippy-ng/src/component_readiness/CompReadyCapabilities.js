@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
 import { Alert } from '@material-ui/lab'
+import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   expandEnvironment,
   getAPIUrl,
@@ -39,19 +40,20 @@ export default function CompReadyCapabilities(props) {
 
   // Set the browser tab title
   document.title = `CompRead Test`
-  const urlParams = new URLSearchParams(location.search)
-  const comp = urlParams.get('component')
-  const env = urlParams.get('environment')
 
-  let envStr = '&environment=' + env
+  const [componentParam] = useQueryParam('component', StringParam)
+  const [environmentParam] = useQueryParam('environment', StringParam)
+  const comp = componentParam || ''
+  let env = environmentParam || ''
+
   if (filterVals.includes('environment')) {
-    envStr = ''
+    env = ''
   }
+  console.log('comp: ', comp)
   const apiCallStr =
     getAPIUrl() +
-    makeRFC3339Time(filterVals + envStr) +
-    '&component=' +
-    comp +
+    makeRFC3339Time(filterVals) +
+    `&component=${comp}` +
     expandEnvironment(env)
 
   useEffect(() => {

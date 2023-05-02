@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
 import { Alert } from '@material-ui/lab'
+import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
   formatLongDate,
@@ -64,10 +65,6 @@ export default function ComponentReadiness(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  // Extract the url and get the parameters from it
-  const location = useLocation()
-  const groupByParameters = new URLSearchParams(location.search)
-
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -77,124 +74,98 @@ export default function ComponentReadiness(props) {
     setDrawerOpen(false)
   }
 
-  let tmp = groupByParameters.get('group_by')
-  let initGroupBy = ['cloud', 'arch', 'network']
-  if (tmp !== null && tmp !== '') {
-    initGroupBy = tmp.split(',')
-  }
-  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
-    // Extract the 'group_by=cloud,arch,network' from the url to be the initial
-    // groupBy array of checked values.
-    initGroupBy
+  const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
+    'baseRelese',
+    StringParam
   )
-  //console.log('initGroupBy: ', initGroupBy)
-  //console.log('groupByCheckedItems: ', groupByCheckedItems)
+  const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
+    'baseStartTime',
+    StringParam
+  )
+  const [baseEndTimeParam, setBaseEndTimeParam] = useQueryParam(
+    'baseEndTime',
+    StringParam
+  )
+  const [sampleReleaseParam, setSampleReleaseParam] = useQueryParam(
+    'sampleRelease',
+    StringParam
+  )
+  const [sampleStartTimeParam, setSampleStartTimeParam] = useQueryParam(
+    'sampleStartTime',
+    StringParam
+  )
+  const [sampleEndTimeParam, setSampleEndTimeParam] = useQueryParam(
+    'sampleEndTime',
+    StringParam
+  )
+  const [groupByCheckedItemsParam, setGroupByCheckedItemsParam] = useQueryParam(
+    'group_by',
+    ArrayParam
+  )
+  const [excludeCloudsCheckedItemsParam, setExcludeCloudsCheckedItemsParam] =
+    useQueryParam('exclude_clouds', ArrayParam)
+  const [excludeArchesCheckedItemsParam, setExcludeArchesCheckedItemsParam] =
+    useQueryParam('exclude_arches', ArrayParam)
+  const [
+    excludeNetworksCheckedItemsParam,
+    setExcludeNetworksCheckedItemsParam,
+  ] = useQueryParam('exclude_networks', ArrayParam)
+  const [
+    excludeUpgradesCheckedItemsParam,
+    setExcludeUpgradesCheckedItemsParam,
+  ] = useQueryParam('exclude_upgrades', ArrayParam)
+  const [
+    excludeVariantsCheckedItemsParam,
+    setExcludeVariantsCheckedItemsParam,
+  ] = useQueryParam('exclude_variants', ArrayParam)
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
 
-  tmp = groupByParameters.get('component')
-  const [component, setComponent] = React.useState(tmp)
-
-  tmp = groupByParameters.get('environment')
-  const [environment, setEnvironment] = React.useState(tmp)
-
-  //console.log('component, environment: ', component, ', ', environment)
-
-  tmp = groupByParameters.get('exclude_clouds')
-  let initExcludeCloudsList = []
-  if (tmp !== null && tmp !== '') {
-    initExcludeCloudsList = tmp.split(',')
-  }
+  // Initialize input parameters with those from the url
+  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
+    groupByCheckedItemsParam || ['cloud', 'arch', 'network']
+  )
+  const [component, setComponent] = React.useState(componentParam || '')
+  const [environment, setEnvironment] = React.useState(environmentParam || '')
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(
-      // Extract the 'exclude_clouds=aws' from the url to be the initial
-      // Exclude Clouds array of checked values.
-      initExcludeCloudsList
-    )
-  //console.log('initExcludeCloudsList: ', initExcludeCloudsList)
-  //console.log('excludeCloudsCheckedItems: ', excludeCloudsCheckedItems)
-
-  tmp = groupByParameters.get('exclude_arches')
-  let initExcludeArchesList = []
-  if (tmp !== null && tmp !== '') {
-    initExcludeArchesList = tmp.split(',')
-  }
+    React.useState(excludeCloudsCheckedItemsParam || [])
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(initExcludeArchesList)
-  //console.log('initExcludeArchesList: ', initExcludeArchesList)
-  //console.log('excludeArchesCheckedItems: ', excludeArchesCheckedItems)
-
-  tmp = groupByParameters.get('exclude_networks')
-  //console.log('url excludedNetworks:', tmp)
-  let initExcludeNetworksList = []
-  if (tmp !== null && tmp !== '') {
-    initExcludeNetworksList = tmp.split(',')
-  }
+    React.useState(excludeArchesCheckedItemsParam || [])
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(initExcludeNetworksList)
-  //console.log('initExcludeNetworksList: ', initExcludeNetworksList)
-  //console.log('excludeNetworksCheckedItems: ', excludeNetworksCheckedItems)
+    React.useState(excludeNetworksCheckedItemsParam || [])
 
-  tmp = groupByParameters.get('baseRelease')
-  let initBaseRelease = '4.14'
-  if (tmp != null) {
-    initBaseRelease = tmp
-  }
-  const [baseRelease, setBaseRelease] = React.useState(initBaseRelease)
+  const [baseRelease, setBaseRelease] = React.useState(
+    baseReleaseParam || '4.14'
+  )
 
-  tmp = groupByParameters.get('sampleRelease')
-  let initSampleRelease = '4.13'
-  if (tmp != null) {
-    initSampleRelease = tmp
-  }
-  const [sampleRelease, setSampleRelease] = React.useState(initSampleRelease)
+  const [sampleRelease, setSampleRelease] = React.useState(
+    sampleReleaseParam || '4.13'
+  )
 
-  tmp = groupByParameters.get('baseStartTime')
-  let initBaseStartTime = initialStartTime
-  if (tmp != null) {
-    initBaseStartTime = tmp
-  }
-  const [baseStartTime, setBaseStartTime] = React.useState(initBaseStartTime)
+  const [baseStartTime, setBaseStartTime] = React.useState(
+    baseStartTimeParam || formatLongDate(initialStartTime)
+  )
 
-  tmp = groupByParameters.get('baseEndTime')
-  let initBaseEndTime = initialEndTime
-  if (tmp != null) {
-    initBaseEndTime = tmp
-  }
-  const [baseEndTime, setBaseEndTime] = React.useState(initBaseEndTime)
+  const [baseEndTime, setBaseEndTime] = React.useState(
+    baseEndTimeParam || formatLongDate(initialEndTime)
+  )
 
-  tmp = groupByParameters.get('sampleStartTime')
-  let initSampleStartTime = initialPrevStartTime
-  if (tmp != null) {
-    initSampleStartTime = tmp
-  }
-  const [sampleStartTime, setSampleStartTime] =
-    React.useState(initSampleStartTime)
-
-  tmp = groupByParameters.get('sampleEndTime')
-  let initSampleEndTime = initialPrevEndTime
-  if (tmp != null) {
-    initSampleEndTime = tmp
-  }
-  const [sampleEndTime, setSampleEndTime] = React.useState(initSampleEndTime)
-
-  tmp = groupByParameters.get('exclude_upgrades')
-  let initExcludeUpgradesList = []
-  if (tmp !== null && tmp !== '') {
-    initExcludeUpgradesList = tmp.split(',')
-  }
+  const [sampleStartTime, setSampleStartTime] = React.useState(
+    sampleStartTimeParam || formatLongDate(initialPrevStartTime)
+  )
+  const [sampleEndTime, setSampleEndTime] = React.useState(
+    sampleEndTimeParam || formatLongDate(initialPrevEndTime)
+  )
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(initExcludeUpgradesList)
-  //console.log('initExcludeUpgradesList: ', initExcludeUpgradesList)
-  //console.log('excludeUpgradesCheckedItems: ', excludeUpgradesCheckedItems)
-
-  tmp = groupByParameters.get('exclude_variants')
-  let initExcludeVariantsList = []
-  if (tmp !== null && tmp !== '') {
-    initExcludeVariantsList = tmp.split(',')
-  }
+    React.useState(excludeUpgradesCheckedItemsParam || [])
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(initExcludeVariantsList)
-  //console.log('initExcludeVariantsList: ', initExcludeVariantsList)
-  //console.log('excludeVariantsCheckedItems: ', excludeVariantsCheckedItems)
+    React.useState(excludeVariantsCheckedItemsParam || [])
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
@@ -213,6 +184,42 @@ export default function ComponentReadiness(props) {
     setIsLoaded(true)
   }, [])
 
+  useEffect(() => {
+    setBaseRelease(baseReleaseParam || '4.14')
+    setBaseStartTime(baseStartTimeParam || formatLongDate(initialStartTime))
+    setBaseEndTime(baseEndTimeParam || formatLongDate(initialEndTime))
+    setSampleRelease(sampleReleaseParam || '4.13')
+    setSampleStartTime(
+      sampleStartTimeParam || formatLongDate(initialPrevStartTime)
+    )
+    setSampleEndTime(sampleEndTimeParam || formatLongDate(initialPrevEndTime))
+
+    setGroupByCheckedItems(
+      groupByCheckedItemsParam || ['cloud', 'arch', 'network']
+    )
+    setExcludeCloudsCheckedItems(excludeCloudsCheckedItemsParam || [])
+    setExcludeArchesCheckedItems(excludeArchesCheckedItemsParam || [])
+    setExcludeNetworksCheckedItems(excludeNetworksCheckedItemsParam || [])
+    setExcludeUpgradesCheckedItems(excludeUpgradesCheckedItemsParam || [])
+    setExcludeVariantsCheckedItems(excludeVariantsCheckedItemsParam || [])
+    setComponent(componentParam || '')
+    setEnvironment(environmentParam || '')
+  }, [
+    baseReleaseParam,
+    baseStartTimeParam,
+    baseEndTimeParam,
+    sampleReleaseParam,
+    sampleStartTimeParam,
+    sampleEndTimeParam,
+    groupByCheckedItemsParam,
+    excludeCloudsCheckedItemsParam,
+    excludeArchesCheckedItemsParam,
+    excludeNetworksCheckedItemsParam,
+    excludeUpgradesCheckedItemsParam,
+    excludeVariantsCheckedItemsParam,
+    componentParam,
+    environmentParam,
+  ])
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return (
@@ -318,11 +325,27 @@ export default function ComponentReadiness(props) {
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
-  const handleGenerateReport = () => {
+  const handleGenerateReport = (event) => {
+    event.preventDefault()
+    setBaseReleaseParam(baseRelease)
+    setBaseStartTimeParam(formatLongDate(baseStartTime))
+    setBaseEndTimeParam(formatLongDate(baseEndTime))
+    setSampleReleaseParam(sampleRelease)
+    setSampleStartTimeParam(formatLongDate(sampleStartTime))
+    setSampleEndTimeParam(formatLongDate(sampleEndTime))
+    setGroupByCheckedItemsParam(groupByCheckedItems)
+    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
+    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
+    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
+    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
+    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
+    setComponentParam(component)
+    setEnvironmentParam(environment)
+
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = true
+    const fromFile = false
     if (fromFile) {
       //const json = require('./api_page1.json')
       const json = require('./api_page1-big.json')

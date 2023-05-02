@@ -248,7 +248,7 @@ export function getUpdatedUrlParts(
     sampleRelease: sampleRelease,
     sampleStartTime: formatLongDate(sampleStartTime),
     sampleEndTime: formatLongDate(sampleEndTime),
-    component: component,
+    //component: component,
   }
 
   const arraysMap = {

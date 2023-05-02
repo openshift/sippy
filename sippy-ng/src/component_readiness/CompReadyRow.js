@@ -10,10 +10,11 @@ import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
 // This is used when a user clicks on a component on the left side of the table.
-// The component name is already in the url since it was put there when CompReadyRow
-// was called.
-function capabilitiesReport(filterVals) {
-  const retUrl = '/component_readiness/capabilities' + filterVals
+function capabilitiesReport(filterVals, componentName) {
+  const retUrl =
+    '/component_readiness/capabilities' +
+    filterVals +
+    `&component=${componentName}`
 
   const apiCallStr = getAPIUrl() + makeRFC3339Time(retUrl)
   //console.log('apiCallStrR: ', apiCallStr)
@@ -33,7 +34,9 @@ export default function CompReadyRow(props) {
     <TableCell className={'cr-component-name'} key={componentName}>
       <Tooltip title={'Capabilities report for ' + componentName}>
         <Typography className="cr-cell-name">
-          <Link to={capabilitiesReport(filterVals)}>{componentName}</Link>
+          <Link to={capabilitiesReport(filterVals, componentName)}>
+            {componentName}
+          </Link>
         </Typography>
       </Tooltip>
     </TableCell>
