@@ -259,8 +259,7 @@ export default function ComponentReadiness(props) {
         excludeNetworksCheckedItems,
         excludeUpgradesCheckedItems,
         excludeVariantsCheckedItems,
-        component,
-        environment
+        component
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     console.log('formatted api call: ')
@@ -409,8 +408,7 @@ export default function ComponentReadiness(props) {
                         excludeNetworksCheckedItems,
                         excludeUpgradesCheckedItems,
                         excludeVariantsCheckedItems,
-                        component,
-                        environment
+                        component
                       )}
                     ></CompReadyCapabilities>
                   )
@@ -543,8 +541,7 @@ export default function ComponentReadiness(props) {
                               excludeNetworksCheckedItems,
                               excludeUpgradesCheckedItems,
                               excludeVariantsCheckedItems,
-                              data.rows[componentIndex].component,
-                              null
+                              data.rows[componentIndex].component
                             )}
                           />
                         ))}

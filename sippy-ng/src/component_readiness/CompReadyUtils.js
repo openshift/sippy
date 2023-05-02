@@ -223,6 +223,8 @@ export function expandEnvironment(str) {
   return retVal
 }
 
+// Take the values needed to make an api call and return a string that can be used to
+// make that call.
 export function getUpdatedUrlParts(
   baseRelease,
   baseStartTime,
@@ -236,8 +238,7 @@ export function getUpdatedUrlParts(
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
   excludeVariantsCheckedItems,
-  component,
-  environment
+  component
 ) {
   //console.log('getUpdatedUrlParts()')
   const valuesMap = {
