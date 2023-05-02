@@ -11,6 +11,8 @@ import SeverityIcon from './SeverityIcon'
 import TableCell from '@material-ui/core/TableCell'
 
 // Construct an URL with all existing filters plus component and environment.
+// This is the url used when you click inside a TableCell.
+// Note that we are keeping the environment value so we can use it later for displays.
 function componentReport(componentName, columnVal, filterVals) {
   const retUrl =
     '/component_readiness/capabilities' +
@@ -21,7 +23,7 @@ function componentReport(componentName, columnVal, filterVals) {
     safeEncodeURIComponent(columnVal) +
     expandEnvironment(columnVal)
 
-  const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
+  //const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
   //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }

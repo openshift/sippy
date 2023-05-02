@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { Alert, TabContext } from '@material-ui/lab'
+import { Alert } from '@material-ui/lab'
 import {
   cancelledDataTable,
   formatLongDate,
@@ -11,7 +11,6 @@ import {
   noDataTable,
   singleRowReport,
 } from './CompReadyUtils'
-import { CircularProgress } from '@material-ui/core'
 import {
   Drawer,
   Grid,
@@ -29,7 +28,6 @@ import {
 } from 'react-router-dom'
 import { useStyles } from '../App'
 import { useTheme } from '@material-ui/core/styles'
-import Button from '@material-ui/core/Button'
 import Capabilities from './Capabilities'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
@@ -375,7 +373,7 @@ export default function ComponentReadiness(props) {
       <Route
         path={path}
         render={({ location }) => (
-          <TabContext value={path}>
+          <Fragment>
             <Grid
               container
               justifyContent="center"
@@ -556,7 +554,7 @@ export default function ComponentReadiness(props) {
                 </div>
               </Route>
             </Switch>
-          </TabContext>
+          </Fragment>
         )}
       />
     </Fragment>

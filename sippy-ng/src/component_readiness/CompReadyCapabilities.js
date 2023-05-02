@@ -1,12 +1,5 @@
 import './ComponentReadiness.css'
-import { CircularProgress } from '@material-ui/core'
-import {
-  Drawer,
-  Grid,
-  TableContainer,
-  Tooltip,
-  Typography,
-} from '@material-ui/core'
+import { Alert } from '@material-ui/lab'
 import {
   expandEnvironment,
   getAPIUrl,
@@ -16,10 +9,10 @@ import {
   singleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
-import Button from '@material-ui/core/Button'
+import CompCapRow from './CompCapRow'
 import CompReadyProgress from './CompReadyProgress'
-import CompReadyRow from './CompReadyRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import Table from '@material-ui/core/Table'
@@ -35,8 +28,10 @@ const cancelFetch = () => {
   console.log('Aborting page2')
   abortController.abort()
 }
+
+// This component runs when we see /component_readiness/capabilities
 export default function CompReadyCapabilities(props) {
-  const { filterVals } = props
+  const filterVals = props.filterVals
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -109,6 +104,16 @@ export default function CompReadyCapabilities(props) {
     }
   }, [])
 
+  if (fetchError !== '') {
+    return (
+      <Alert severity="error">
+        <h2>Failed to load component readiness data</h2>
+        <h3>{fetchError}.</h3>
+        <h3>Check, and possibly fix api server, then reload page to retry</h3>
+      </Alert>
+    )
+  }
+
   let envDisplay = ''
 
   if (env != null) {
@@ -173,12 +178,11 @@ export default function CompReadyCapabilities(props) {
           </TableHead>
           <TableBody>
             {Object.keys(data.rows).map((componentIndex) => (
-              <CompReadyRow
+              <CompCapRow
                 key={componentIndex}
                 componentName={data.rows[componentIndex].capability}
                 results={data.rows[componentIndex].columns}
                 columnNames={columnNames}
-                filterVals="none"
               />
             ))}
           </TableBody>
