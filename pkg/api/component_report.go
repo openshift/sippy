@@ -1,18 +1,20 @@
 package api
 
 import (
-	"cloud.google.com/go/bigquery"
 	"context"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"regexp"
-	"sort"
-	"strings"
-	"sync"
 )
 
 func getSingleColumnResultToSlice(query *bigquery.Query, names *[]string) error {
@@ -84,7 +86,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		errs = append(errs, err)
 		return result, errs
 	}
-	queryString = `SELECT DISTINCT variant as name FROM analysis_us.junit, UNNEST(variants) variant`
+	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
 	query = client.Query(queryString)
 	err = getSingleColumnResultToSlice(query, &result.Variant)
 	if err != nil {
@@ -127,13 +129,16 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
 	apitype.ComponentReportRequestAdvancedOptions
+	schema bigquery.Schema
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
+	before := time.Now()
 	baseStatus, sampleStatus, errs := c.getTestStatusFromBigQuery()
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
+	fmt.Printf("----- total query took %+v\n", time.Since(before))
 	var report apitype.ComponentReport
 	if c.TestID != "" &&
 		c.Platform != "" &&
@@ -145,9 +150,39 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		// This request is for a particular test details
 		_ = c.generateComponentTestReport(baseStatus, sampleStatus)
 	} else {
+		before = time.Now()
 		report = c.generateComponentTestReport(baseStatus, sampleStatus)
+		fmt.Printf("----- generate report took %+v\n", time.Since(before))
 	}
 	return report, nil
+}
+
+// fetchQuerySchema is used to get the schema of the query we are going to use
+// to fetch base and sample status
+// But this seems to be adding 3s query time
+func (c *componentReportGenerator) fetchQuerySchema(queryString string) {
+	queryString += `LIMIT 1`
+	query := c.client.Query(queryString)
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("error querying test status from bigquery")
+		return
+	}
+
+	for {
+		testStatus := apitype.ComponentTestStatus{}
+		err := it.Next(&testStatus)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing component from bigquery")
+			continue
+		}
+
+		c.schema = it.Schema
+		break
+	}
 }
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (
@@ -156,22 +191,43 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
-	// as the default UTC correctly.
-	// Annotations and labels can be queried here if we need them.
-	queryString := `SELECT
-			network,
-			upgrade,
-			arch,
-			platform,
-			test_id,
-            ANY_VALUE(test_name) AS test_name,
-            COUNT(test_id) AS total_count,
-			SUM(success_val) AS success_count,
-			SUM(flake_count) AS flake_count ` +
-		"FROM `ci_analysis_us.junit` " +
-		`WHERE TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To `
+	queryString := `WITH latest_component_mapping AS (
+    					SELECT *
+    					FROM ci_analysis_us.component_mapping cm
+    					WHERE created_at = (
+								SELECT MAX(created_at)
+								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+					SELECT
+						ANY_VALUE(test_name) AS test_name,
+						test_id,
+						network,
+						upgrade,
+						arch,
+						platform,
+						ANY_VALUE(flat_variants) AS variant,
+						COUNT(test_id) AS total_count,
+						SUM(success_val) AS success_count,
+						SUM(flake_count) AS flake_count,
+						ANY_VALUE(cm.component) AS component,
+						ANY_VALUE(cm.capabilities) AS capabilities
+					FROM ci_analysis_us.junit
+						INNER JOIN latest_component_mapping cm ON testsuite = cm.suite
+							AND test_name = cm.name `
 
+	groupString := `
+					GROUP BY
+						network,
+						upgrade,
+						arch,
+						platform,
+						test_id `
+
+	if c.schema == nil {
+		b := time.Now()
+		c.fetchQuerySchema(queryString + groupString)
+		fmt.Printf("----- schema query took %+v\n", time.Since(b))
+	}
+	queryString += `WHERE TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To `
 	commonParams := []bigquery.QueryParameter{}
 	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
@@ -245,14 +301,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		})
 	}
 
-	groupString := `
-		GROUP BY
-		network,
-		upgrade,
-		arch,
-		platform,
-		test_id `
-
 	baseString := queryString + ` AND branch = @BaseRelease`
 	baseQuery := c.client.Query(baseString + groupString)
 	baseQuery.Parameters = append(commonParams, []bigquery.QueryParameter{
@@ -276,7 +324,9 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		before := time.Now()
 		baseStatus, baseErrs = c.fetchTestStatus(baseQuery)
+		fmt.Printf("----- base query took %+v\n", time.Since(before))
 	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
@@ -298,7 +348,9 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		before := time.Now()
 		sampleStatus, sampleErrs = c.fetchTestStatus(sampleQuery)
+		fmt.Printf("----- sample query took %+v\n", time.Since(before))
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -308,9 +360,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	return baseStatus, sampleStatus, errs
 }
 
-var componentAndCapabilityGetter func(string) (string, []string)
+var componentAndCapabilityGetter func(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) (string, []string)
 
-func testToComponentAndCapability(name string) (string, []string) {
+/*
+func testToComponentAndCapabilityUseRegex(test *apitype.ComponentTestIdentification, stats *apitype.ComponentTestStats) (string, []string) {
+	name := test.TestName
 	component := "other_component"
 	capability := "other_capability"
 	r := regexp.MustCompile(`.*(?P<component>\[sig-[A-Za-z]*\]).*(?P<feature>\[Feature:[A-Za-z]*\]).*`)
@@ -327,12 +381,16 @@ func testToComponentAndCapability(name string) (string, []string) {
 		}
 	}
 	return component, []string{capability}
+}*/
+
+func testToComponentAndCapability(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) (string, []string) {
+	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the groupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.ComponentTestIdentification) ([]apitype.ComponentReportRowIdentification, apitype.ComponentReportColumnIdentification) {
-	component, capabilities := componentAndCapabilityGetter(test.TestName)
+func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) ([]apitype.ComponentReportRowIdentification, apitype.ComponentReportColumnIdentification) {
+	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []apitype.ComponentReportRowIdentification{}
 	// First Page with no component requested
 	if c.Component == "" {
@@ -402,6 +460,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test *apitype.Com
 func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStats, []error) {
 	errs := []error{}
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{}
+
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
@@ -411,6 +470,24 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 
 	for {
 		testStatus := apitype.ComponentTestStatus{}
+		if it.Schema == nil {
+			// There seems to be a bug with bigquery storage API
+			// Without this schema, data is not marshalled properly into
+			// ComponentTestStatus
+			// We work around this by running one query and get
+			// the schema set. Our last resort is to infer the schema
+			// from the structure.
+			it.Schema = c.schema
+			if it.Schema == nil {
+				schema, err := bigquery.InferSchema(testStatus)
+				if err != nil {
+					log.WithError(err).Error("error inferring schema")
+					errs = append(errs, errors.Wrap(err, "error inferring schema"))
+				} else {
+					it.Schema = schema
+				}
+			}
+		}
 		err := it.Next(&testStatus)
 		if err == iterator.Done {
 			break
@@ -430,6 +507,8 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			Variant:  testStatus.Variant,
 		}
 		status[testIdentification] = apitype.ComponentTestStats{
+			Component:    testStatus.Component,
+			Capabilities: testStatus.Capabilities,
 			TotalCount:   testStatus.TotalCount,
 			FlakeCount:   testStatus.FlakeCount,
 			SuccessCount: testStatus.SuccessCount,
@@ -487,12 +566,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		}
 		delete(sampleStatus, testIdentification)
 
-		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(&testIdentification)
+		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, baseStats)
 		updateStatus(rowIdentifications, columnIdentification, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
-	for testIdentification := range sampleStatus {
-		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(&testIdentification)
+	for testIdentification, sampleStats := range sampleStatus {
+		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
 	// Sort the row identifications

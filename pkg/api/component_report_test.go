@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-func fakeComponentAndCapabilityGetter(name string) (string, []string) {
+func fakeComponentAndCapabilityGetter(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) (string, []string) {
+	name := test.TestName
 	known := map[string]struct {
 		component    string
 		capabilities []string

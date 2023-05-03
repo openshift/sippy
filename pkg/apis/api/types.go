@@ -800,6 +800,8 @@ type ComponentReportRequestAdvancedOptions struct {
 }
 
 type ComponentTestStats struct {
+	Component    string
+	Capabilities []string
 	TotalCount   int
 	SuccessCount int
 	FlakeCount   int
@@ -816,16 +818,18 @@ type ComponentTestIdentification struct {
 }
 
 type ComponentTestStatus struct {
-	TestName     string `bigquery:"test_name"`
-	TestID       string `bigquery:"test_id"`
-	Network      string `bigquery:"network"`
-	Upgrade      string `bigquery:"upgrade"`
-	Arch         string `bigquery:"arch"`
-	Platform     string `bigquery:"platform"`
-	Variant      string `bigquery:"variant"`
-	TotalCount   int    `bigquery:"total_count"`
-	SuccessCount int    `bigquery:"success_count"`
-	FlakeCount   int    `bigquery:"flake_count"`
+	TestName     string   `bigquery:"test_name"`
+	TestID       string   `bigquery:"test_id"`
+	Network      string   `bigquery:"network"`
+	Upgrade      string   `bigquery:"upgrade"`
+	Arch         string   `bigquery:"arch"`
+	Platform     string   `bigquery:"platform"`
+	Variant      string   `bigquery:"variant"`
+	TotalCount   int      `bigquery:"total_count"`
+	SuccessCount int      `bigquery:"success_count"`
+	FlakeCount   int      `bigquery:"flake_count"`
+	Component    string   `bigquery:"component"`
+	Capabilities []string `bigquery:"capabilities"`
 }
 
 type ComponentReport struct {
