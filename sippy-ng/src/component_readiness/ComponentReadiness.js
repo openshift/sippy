@@ -74,48 +74,53 @@ export default function ComponentReadiness(props) {
     setDrawerOpen(false)
   }
 
-  const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
+  // Create the variables for the URL and set any initial values.
+  const [baseReleaseParam = '4.13', setBaseReleaseParam] = useQueryParam(
     'baseRelease',
     StringParam
   )
-  const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
-    'baseStartTime',
-    StringParam
-  )
-  const [baseEndTimeParam, setBaseEndTimeParam] = useQueryParam(
-    'baseEndTime',
-    StringParam
-  )
-  const [sampleReleaseParam, setSampleReleaseParam] = useQueryParam(
+  const [
+    baseStartTimeParam = formatLongDate(initialStartTime),
+    setBaseStartTimeParam,
+  ] = useQueryParam('baseStartTime', StringParam)
+  const [
+    baseEndTimeParam = formatLongDate(initialEndTime),
+    setBaseEndTimeParam,
+  ] = useQueryParam('baseEndTime', StringParam)
+  const [sampleReleaseParam = '4.14', setSampleReleaseParam] = useQueryParam(
     'sampleRelease',
     StringParam
   )
-  const [sampleStartTimeParam, setSampleStartTimeParam] = useQueryParam(
-    'sampleStartTime',
-    StringParam
-  )
-  const [sampleEndTimeParam, setSampleEndTimeParam] = useQueryParam(
-    'sampleEndTime',
-    StringParam
-  )
-  const [groupByCheckedItemsParam, setGroupByCheckedItemsParam] = useQueryParam(
-    'group_by',
-    ArrayParam
-  )
-  const [excludeCloudsCheckedItemsParam, setExcludeCloudsCheckedItemsParam] =
-    useQueryParam('exclude_clouds', ArrayParam)
-  const [excludeArchesCheckedItemsParam, setExcludeArchesCheckedItemsParam] =
-    useQueryParam('exclude_arches', ArrayParam)
   const [
-    excludeNetworksCheckedItemsParam,
+    sampleStartTimeParam = formatLongDate(initialPrevStartTime),
+    setSampleStartTimeParam,
+  ] = useQueryParam('sampleStartTime', StringParam)
+  const [
+    sampleEndTimeParam = formatLongDate(initialPrevEndTime),
+    setSampleEndTimeParam,
+  ] = useQueryParam('sampleEndTime', StringParam)
+  const [
+    groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
+    setGroupByCheckedItemsParam,
+  ] = useQueryParam('group_by', ArrayParam)
+  const [
+    excludeCloudsCheckedItemsParam = [],
+    setExcludeCloudsCheckedItemsParam,
+  ] = useQueryParam('exclude_clouds', ArrayParam)
+  const [
+    excludeArchesCheckedItemsParam = [],
+    setExcludeArchesCheckedItemsParam,
+  ] = useQueryParam('exclude_arches', ArrayParam)
+  const [
+    excludeNetworksCheckedItemsParam = [],
     setExcludeNetworksCheckedItemsParam,
   ] = useQueryParam('exclude_networks', ArrayParam)
   const [
-    excludeUpgradesCheckedItemsParam,
+    excludeUpgradesCheckedItemsParam = [],
     setExcludeUpgradesCheckedItemsParam,
   ] = useQueryParam('exclude_upgrades', ArrayParam)
   const [
-    excludeVariantsCheckedItemsParam,
+    excludeVariantsCheckedItemsParam = [],
     setExcludeVariantsCheckedItemsParam,
   ] = useQueryParam('exclude_variants', ArrayParam)
   const [componentParam, setComponentParam] = useQueryParam(
@@ -127,45 +132,35 @@ export default function ComponentReadiness(props) {
     StringParam
   )
 
-  // Initialize input parameters with those from the url
+  // Create the variables to be used for api calls; these are initilized to the
+  // value of the variables that got their values from the URL.
   const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
-    groupByCheckedItemsParam || ['cloud', 'arch', 'network']
+    groupByCheckedItemsParam
   )
-  const [component, setComponent] = React.useState(componentParam || '')
-  const [environment, setEnvironment] = React.useState(environmentParam || '')
+  const [component, setComponent] = React.useState(componentParam)
+  const [environment, setEnvironment] = React.useState(environmentParam)
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(excludeCloudsCheckedItemsParam || [])
+    React.useState(excludeCloudsCheckedItemsParam)
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(excludeArchesCheckedItemsParam || [])
+    React.useState(excludeArchesCheckedItemsParam)
   const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(excludeNetworksCheckedItemsParam || [])
+    React.useState(excludeNetworksCheckedItemsParam)
 
-  const [baseRelease, setBaseRelease] = React.useState(
-    baseReleaseParam || '4.14'
-  )
+  const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
 
-  const [sampleRelease, setSampleRelease] = React.useState(
-    sampleReleaseParam || '4.13'
-  )
+  const [sampleRelease, setSampleRelease] = React.useState(sampleReleaseParam)
 
-  const [baseStartTime, setBaseStartTime] = React.useState(
-    baseStartTimeParam || formatLongDate(initialStartTime)
-  )
+  const [baseStartTime, setBaseStartTime] = React.useState(baseStartTimeParam)
 
-  const [baseEndTime, setBaseEndTime] = React.useState(
-    baseEndTimeParam || formatLongDate(initialEndTime)
-  )
+  const [baseEndTime, setBaseEndTime] = React.useState(baseEndTimeParam)
 
-  const [sampleStartTime, setSampleStartTime] = React.useState(
-    sampleStartTimeParam || formatLongDate(initialPrevStartTime)
-  )
-  const [sampleEndTime, setSampleEndTime] = React.useState(
-    sampleEndTimeParam || formatLongDate(initialPrevEndTime)
-  )
+  const [sampleStartTime, setSampleStartTime] =
+    React.useState(sampleStartTimeParam)
+  const [sampleEndTime, setSampleEndTime] = React.useState(sampleEndTimeParam)
   const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(excludeUpgradesCheckedItemsParam || [])
+    React.useState(excludeUpgradesCheckedItemsParam)
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(excludeVariantsCheckedItemsParam || [])
+    React.useState(excludeVariantsCheckedItemsParam)
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
@@ -184,42 +179,6 @@ export default function ComponentReadiness(props) {
     setIsLoaded(true)
   }, [])
 
-  useEffect(() => {
-    setBaseRelease(baseReleaseParam || '4.14')
-    setBaseStartTime(baseStartTimeParam || formatLongDate(initialStartTime))
-    setBaseEndTime(baseEndTimeParam || formatLongDate(initialEndTime))
-    setSampleRelease(sampleReleaseParam || '4.13')
-    setSampleStartTime(
-      sampleStartTimeParam || formatLongDate(initialPrevStartTime)
-    )
-    setSampleEndTime(sampleEndTimeParam || formatLongDate(initialPrevEndTime))
-
-    setGroupByCheckedItems(
-      groupByCheckedItemsParam || ['cloud', 'arch', 'network']
-    )
-    setExcludeCloudsCheckedItems(excludeCloudsCheckedItemsParam || [])
-    setExcludeArchesCheckedItems(excludeArchesCheckedItemsParam || [])
-    setExcludeNetworksCheckedItems(excludeNetworksCheckedItemsParam || [])
-    setExcludeUpgradesCheckedItems(excludeUpgradesCheckedItemsParam || [])
-    setExcludeVariantsCheckedItems(excludeVariantsCheckedItemsParam || [])
-    setComponent(componentParam || '')
-    setEnvironment(environmentParam || '')
-  }, [
-    baseReleaseParam,
-    baseStartTimeParam,
-    baseEndTimeParam,
-    sampleReleaseParam,
-    sampleStartTimeParam,
-    sampleEndTimeParam,
-    groupByCheckedItemsParam,
-    excludeCloudsCheckedItemsParam,
-    excludeArchesCheckedItemsParam,
-    excludeNetworksCheckedItemsParam,
-    excludeUpgradesCheckedItemsParam,
-    excludeVariantsCheckedItemsParam,
-    componentParam,
-    environmentParam,
-  ])
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return gotFetchError(fetchError)
