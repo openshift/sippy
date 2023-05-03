@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
 import {
+  cancelledDataTable,
   expandEnvironment,
   getAPIUrl,
   getColumns,
@@ -172,14 +173,24 @@ export default function CompReadyCapabilities(props) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {Object.keys(data.rows).map((componentIndex) => (
-              <CompCapRow
-                key={componentIndex}
-                componentName={data.rows[componentIndex].capability}
-                results={data.rows[componentIndex].columns}
-                columnNames={columnNames}
-              />
-            ))}
+            {/* Ensure we have data before trying to map on it; we need data and rows */}
+            {data && data.rows && Object.keys(data.rows).length > 0 ? (
+              Object.keys(data.rows).map((componentIndex) => {
+                return (
+                  <CompCapRow
+                    key={componentIndex}
+                    componentName={data.rows[componentIndex].capability}
+                    results={data.rows[componentIndex].columns}
+                    columnNames={columnNames}
+                  />
+                )
+              })
+            ) : (
+              <TableRow>
+                {/* No data to render (possible due to a Cancel */}
+                <TableCell align="center">No data ; reload to retry</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>

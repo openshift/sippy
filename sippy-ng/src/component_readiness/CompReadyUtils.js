@@ -104,9 +104,8 @@ export function getColumns(data) {
     console.log('data has no rows[0]')
   }
   if (isBad) {
-    // If we get here, something was misused.
-    console.log('got bad')
-    return ['Bad data']
+    console.log('No way to generate columns')
+    return ['No column']
   }
   if (data.rows[0].component === 'Cancelled') {
     console.log('got cancelled')

@@ -1,5 +1,10 @@
 import './ComponentReadiness.css'
-import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
+import {
+  ArrayParam,
+  SafeStringParam,
+  StringParam,
+  useQueryParam,
+} from 'use-query-params'
 import {
   cancelledDataTable,
   formatLongDate,
@@ -125,7 +130,7 @@ export default function ComponentReadiness(props) {
   ] = useQueryParam('exclude_variants', ArrayParam)
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
-    StringParam
+    SafeStringParam
   )
   const [environmentParam, setEnvironmentParam] = useQueryParam(
     'environment',
