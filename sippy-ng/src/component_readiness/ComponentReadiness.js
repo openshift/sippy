@@ -281,6 +281,26 @@ export default function ComponentReadiness(props) {
     )
   }
 
+  let fromFile = false
+
+  const handleGenerateReportDebug = (event) => {
+    fromFile = true
+    setBaseRelease('4.13')
+    setBaseStartTime(formatLongDate('2023-03-01 00:00:00'))
+    setBaseEndTime(formatLongDate('2023-03-31 00:00:00'))
+    setSampleRelease('4.14')
+    setSampleStartTime(formatLongDate('2023-03-01 00:00:00'))
+    setSampleEndTime(formatLongDate('2023-03-31 00:00:00'))
+    setGroupByCheckedItems(['cloud', 'arch', 'network'])
+    setExcludeCloudsCheckedItems([])
+    setExcludeArchesCheckedItems([])
+    setExcludeNetworksCheckedItems([])
+    setExcludeUpgradesCheckedItems([])
+    setExcludeVariantsCheckedItems([])
+    setComponent('')
+    handleGenerateReport(event)
+  }
+
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
@@ -303,10 +323,10 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    const fromFile = false
     if (fromFile) {
-      //const json = require('./api_page1.json')
-      const json = require('./api_page1-big.json')
+      //const json = require('./api_page1-big-mar2023.json')
+      const json = require('./api_page1-big-mar2023-compNames.json')
+      //const json = require('./api_page1-big.json')
       setData(json)
       console.log('json:', json)
       setIsLoaded(true)
@@ -465,7 +485,7 @@ export default function ComponentReadiness(props) {
                         setExcludeVariantsCheckedItems
                       }
                       handleGenerateReport={handleGenerateReport}
-                      showValuesForReport={showValuesForReport}
+                      handleGenerateReportDebug={handleGenerateReportDebug}
                     ></CompReadyMainInputs>
                   </Drawer>
                   {pageTitle}

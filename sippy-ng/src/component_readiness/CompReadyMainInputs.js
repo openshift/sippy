@@ -49,7 +49,7 @@ export default function CompReadyMainInputs(props) {
     setExcludeUpgradesCheckedItems,
     setExcludeVariantsCheckedItems,
     handleGenerateReport,
-    showValuesForReport,
+    handleGenerateReportDebug,
   } = props
 
   return (
@@ -107,9 +107,9 @@ export default function CompReadyMainInputs(props) {
               component
             )
           }
-          onClick={showValuesForReport}
+          onClick={handleGenerateReportDebug}
         >
-          Debug
+          Generate From File
         </Button>
       </div>
       <div className="cr-release-historical">
@@ -253,5 +253,5 @@ CompReadyMainInputs.propTypes = {
   setExcludeUpgradesCheckedItems: PropTypes.func.isRequired,
   setExcludeVariantsCheckedItems: PropTypes.func.isRequired,
   handleGenerateReport: PropTypes.func.isRequired,
-  showValuesForReport: PropTypes.func.isRequired,
+  handleGenerateReportDebug: PropTypes.func.isRequired,
 }

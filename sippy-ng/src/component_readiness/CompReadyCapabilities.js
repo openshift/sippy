@@ -96,7 +96,7 @@ export default function CompReadyCapabilities(props) {
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()
           } else {
-            setFetchError(`API call failed: ${formattedApiCallStr}\n${error}`)
+            setFetchError(`API call failed: ${apiCallStr}\n${error}`)
           }
         })
         .finally(() => {
