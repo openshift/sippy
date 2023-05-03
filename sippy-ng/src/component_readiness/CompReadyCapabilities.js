@@ -1,15 +1,15 @@
 import './ComponentReadiness.css'
-import { Alert } from '@material-ui/lab'
-import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   expandEnvironment,
   getAPIUrl,
   getColumns,
+  gotFetchError,
   makeRFC3339Time,
   noDataTable,
   singleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
 import CompCapRow from './CompCapRow'
@@ -49,7 +49,6 @@ export default function CompReadyCapabilities(props) {
   if (filterVals.includes('environment')) {
     env = ''
   }
-  console.log('comp: ', comp)
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
@@ -96,7 +95,7 @@ export default function CompReadyCapabilities(props) {
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()
           } else {
-            setFetchError(`API call failed: ${formattedApiCallStr}` + error)
+            setFetchError(`API call failed: ${formattedApiCallStr}\n${error}`)
           }
         })
         .finally(() => {
@@ -107,13 +106,7 @@ export default function CompReadyCapabilities(props) {
   }, [])
 
   if (fetchError !== '') {
-    return (
-      <Alert severity="error">
-        <h2>Failed to load component readiness data</h2>
-        <h3>{fetchError}.</h3>
-        <h3>Check, and possibly fix api server, then reload page to retry</h3>
-      </Alert>
-    )
+    return gotFetchError(fetchError)
   }
 
   let envDisplay = ''

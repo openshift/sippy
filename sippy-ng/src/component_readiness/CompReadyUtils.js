@@ -1,5 +1,7 @@
+import { Alert } from '@material-ui/lab'
 import { format } from 'date-fns'
 import { safeEncodeURIComponent } from '../helpers'
+import React from 'react'
 
 // Make the HH:mm:ss as zeros to be more conducive to caching query caching.
 export const dateFormat = 'yyyy-MM-dd 00:00:00'
@@ -58,6 +60,25 @@ export function singleRowReport(columnName) {
   return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
+// When we get a fetch error, this will print a standard message.
+export function gotFetchError(fetchError) {
+  return (
+    <Alert severity="error">
+      <h2>Failed to load component readiness data</h2>
+      <h3>
+        {fetchError.split('\n').map((item) => (
+          <>
+            <hr />
+            {item}
+          </>
+        ))}
+      </h3>
+      <hr />
+      <h3>Check, and possibly fix api server, then reload page to retry</h3>
+    </Alert>
+  )
+}
+
 // Given the data pulled from the API server, calculate an array
 // of columns using the first row.  Assumption: the number of columns
 // is the same across all rows.
@@ -91,7 +112,7 @@ export function getColumns(data) {
     console.log('got cancelled')
     return ['Cancelled']
   } else if (data.rows[0].component == 'None') {
-    console.log('got no data')
+    //console.log('got no data')
     return ['No data']
   } else if (!data.rows[0].columns) {
     return ['No data']

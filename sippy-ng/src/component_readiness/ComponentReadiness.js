@@ -1,5 +1,4 @@
 import './ComponentReadiness.css'
-import { Alert } from '@material-ui/lab'
 import { ArrayParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
@@ -7,6 +6,7 @@ import {
   getAPIUrl,
   getColumns,
   getUpdatedUrlParts,
+  gotFetchError,
   initialPageTable,
   makeRFC3339Time,
   noDataTable,
@@ -75,7 +75,7 @@ export default function ComponentReadiness(props) {
   }
 
   const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
-    'baseRelese',
+    'baseRelease',
     StringParam
   )
   const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
@@ -222,13 +222,7 @@ export default function ComponentReadiness(props) {
   ])
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
-    return (
-      <Alert severity="error">
-        <h2>Failed to load component readiness data</h2>
-        <h3>{fetchError}.</h3>
-        <h3>Check, and possibly fix api server, then reload page to retry</h3>
-      </Alert>
-    )
+    return gotFetchError(fetchError)
   }
 
   // Show the current state of the filter variables and the url.
@@ -378,7 +372,7 @@ export default function ComponentReadiness(props) {
             // Once this fired, we need a new one for the next button click.
             abortController = new AbortController()
           } else {
-            setFetchError(`API call failed: ${formattedApiCallStr}` + error)
+            setFetchError(`API call failed: ${formattedApiCallStr}\n${error}`)
           }
         })
         .finally(() => {
