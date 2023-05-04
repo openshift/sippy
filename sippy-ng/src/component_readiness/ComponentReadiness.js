@@ -15,7 +15,7 @@ import {
   initialPageTable,
   makeRFC3339Time,
   noDataTable,
-  singleRowReport,
+  unusedSingleRowReport,
 } from './CompReadyUtils'
 import {
   Drawer,
@@ -204,6 +204,10 @@ export default function ComponentReadiness(props) {
     'environment',
     StringParam
   )
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
@@ -212,6 +216,7 @@ export default function ComponentReadiness(props) {
   )
   const [component, setComponent] = React.useState(componentParam)
   const [environment, setEnvironment] = React.useState(environmentParam)
+  const [capability, setCapability] = React.useState(capabilityParam)
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(excludeCloudsCheckedItemsParam)
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
@@ -387,6 +392,7 @@ export default function ComponentReadiness(props) {
     setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
     setComponentParam(component)
     setEnvironmentParam(environment)
+    setCapabilityParam(capability)
 
     const formattedApiCallStr = showValuesForReport()
 
@@ -451,13 +457,36 @@ export default function ComponentReadiness(props) {
             {/* eslint-disable react/prop-types */}
             <Switch>
               <Route
-                path="/component_readiness/:component/tests"
-                render={(props) => (
-                  <Capabilities
-                    key="capabilities"
-                    component={props.match.params.component}
-                  ></Capabilities>
-                )}
+                path="/component_readiness/capability"
+                render={(props) => {
+                  // We need the component and capability from url
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
+                  setEnvironmentParam(environment)
+                  setCapabilityParam(capability)
+                  return (
+                    <Capabilities
+                      key="capabilities"
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                      environment={environment}
+                    ></Capabilities>
+                  )
+                }}
               />
               <Route
                 path="/component_readiness/capabilities"
@@ -579,7 +608,7 @@ export default function ComponentReadiness(props) {
                                     title={'Single row report for ' + column}
                                   >
                                     <Typography className="cr-cell-name">
-                                      <Link to={singleRowReport(column)}>
+                                      <Link to={unusedSingleRowReport(column)}>
                                         {column}
                                       </Link>
                                     </Typography>

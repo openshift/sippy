@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCell from './CompReadyCell'
 import PropTypes from 'prop-types'
@@ -11,10 +12,11 @@ import TableRow from '@material-ui/core/TableRow'
 
 // This is used when a user clicks on a component on the left side of the table.
 function capabilitiesReport(filterVals, componentName) {
+  const safeComponentName = safeEncodeURIComponent(componentName)
   const retUrl =
     '/component_readiness/capabilities' +
     filterVals +
-    `&component=${componentName}`
+    `&component=${safeComponentName}`
 
   const apiCallStr = getAPIUrl() + makeRFC3339Time(retUrl)
   //console.log('apiCallStrR: ', apiCallStr)
@@ -32,7 +34,7 @@ export default function CompReadyRow(props) {
   // capabilities report.
   const componentNameColumn = (
     <TableCell className={'cr-component-name'} key={componentName}>
-      <Tooltip title={'Capabilities report for ' + componentName}>
+      <Tooltip title={'Component report for ' + componentName}>
         <Typography className="cr-cell-name">
           <Link to={capabilitiesReport(filterVals, componentName)}>
             {componentName}

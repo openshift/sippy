@@ -7,7 +7,7 @@ import {
   gotFetchError,
   makeRFC3339Time,
   noDataTable,
-  singleRowReport,
+  unusedSingleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -32,6 +32,7 @@ const cancelFetch = () => {
 }
 
 // This component runs when we see /component_readiness/capabilities
+// This is page 2 which runs when you click a cell in the center of page 1.
 export default function CompReadyCapabilities(props) {
   const filterVals = props.filterVals
 
@@ -55,6 +56,9 @@ export default function CompReadyCapabilities(props) {
     makeRFC3339Time(filterVals) +
     `&component=${comp}` +
     expandEnvironment(env)
+
+  const newFilterVals =
+    filterVals + `&component=${comp}` + expandEnvironment(env)
 
   useEffect(() => {
     setIsLoaded(false)
@@ -163,7 +167,9 @@ export default function CompReadyCapabilities(props) {
                     >
                       <Tooltip title={'Single row report for ' + column}>
                         <Typography className="cr-cell-name">
-                          <Link to={singleRowReport(column)}>{column}</Link>
+                          <Link to={unusedSingleRowReport(column)}>
+                            {column}
+                          </Link>
                         </Typography>
                       </Tooltip>
                     </TableCell>
@@ -179,9 +185,10 @@ export default function CompReadyCapabilities(props) {
                 return (
                   <CompCapRow
                     key={componentIndex}
-                    componentName={data.rows[componentIndex].capability}
+                    capabilityName={data.rows[componentIndex].capability}
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
+                    filterVals={newFilterVals}
                   />
                 )
               })

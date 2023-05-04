@@ -56,7 +56,7 @@ export function getAPIUrl() {
 
 // This is used when the user clicks on one of the columns at the top of the table
 // Not quite used just yet.
-export function singleRowReport(columnName) {
+export function unusedSingleRowReport(columnName) {
   return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
 }
 
@@ -216,7 +216,7 @@ export const excludeVariantsList = [
 // an items in one or more of the lists above) and split it up so that it can be used in
 // an api call.
 export function expandEnvironment(str) {
-  if (str == null) {
+  if (str == null || str == '') {
     return ''
   }
   const items = str.split(' ')
