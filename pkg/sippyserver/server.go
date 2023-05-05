@@ -626,6 +626,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	variantOption.Upgrade = req.URL.Query().Get("upgrade")
 	variantOption.Arch = req.URL.Query().Get("arch")
 	variantOption.Network = req.URL.Query().Get("network")
+	variantOption.Variant = req.URL.Query().Get("variant")
 
 	excludeOption.ExcludePlatforms = req.URL.Query().Get("exclude_clouds")
 	excludeOption.ExcludeArches = req.URL.Query().Get("exclude_arches")

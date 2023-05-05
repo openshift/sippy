@@ -17,7 +17,7 @@ func TestDetailTestsFromDB(dbc *db.DB, release string, testSubstrings []string) 
 		variants.Insert(sets.StringKeySet(byVariant).UnsortedList()...)
 	}
 
-	return dataForTestsByVariant.getTableJSON("Details for Tests", "Test Details by Variant",
+	return dataForTestsByVariant.getTableJSON("Details for Tests", "Test Details by Variants",
 		variants.List(), noChange), nil
 
 }

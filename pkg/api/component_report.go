@@ -170,7 +170,7 @@ func (c *componentReportGenerator) fetchQuerySchema(queryString string) {
 	}
 
 	for {
-		testStatus := apitype.ComponentTestStatus{}
+		testStatus := apitype.ComponentTestStatusRow{}
 		err := it.Next(&testStatus)
 		if err == iterator.Done {
 			break
@@ -186,8 +186,8 @@ func (c *componentReportGenerator) fetchQuerySchema(queryString string) {
 }
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (
-	map[apitype.ComponentTestIdentification]apitype.ComponentTestStats,
-	map[apitype.ComponentTestIdentification]apitype.ComponentTestStats,
+	map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
+	map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
 	[]error,
 ) {
 	errs := []error{}
@@ -204,7 +204,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						upgrade,
 						arch,
 						platform,
-						ANY_VALUE(flat_variants) AS variant,
+						ANY_VALUE(variants) AS variants,
 						COUNT(test_id) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
@@ -265,6 +265,14 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		})
 	}
 
+	if c.Variant != "" {
+		queryString += ` AND @Variant IN UNNEST(variants)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Variant",
+			Value: c.Variant,
+		})
+	}
+
 	if c.ExcludePlatforms != "" {
 		queryString += ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -294,16 +302,22 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		})
 	}
 	if c.ExcludeVariants != "" {
-		queryString += ` AND variant NOT IN UNNEST(@ExcludeVariants)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "ExcludeVariants",
-			Value: strings.Split(c.ExcludeVariants, ","),
-		})
+		variants := strings.Split(c.ExcludeVariants, ",")
+		for i, variant := range variants {
+			paramName := fmt.Sprintf("ExcludeVariant%d", i)
+			queryString += ` AND @` + paramName + ` NOT IN UNNEST(variants)`
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: variant,
+			})
+		}
 	}
 
 	baseString := queryString + ` AND branch = @BaseRelease`
 	baseQuery := c.client.Query(baseString + groupString)
-	baseQuery.Parameters = append(commonParams, []bigquery.QueryParameter{
+
+	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
+	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.baseRelease.Start,
@@ -318,7 +332,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		},
 	}...)
 
-	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStats
+	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -331,7 +345,8 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
 	sampleQuery := c.client.Query(sampleString + groupString)
-	sampleQuery.Parameters = append(commonParams, []bigquery.QueryParameter{
+	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
 			Value: c.sampleRelease.Start,
@@ -360,10 +375,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	return baseStatus, sampleStatus, errs
 }
 
-var componentAndCapabilityGetter func(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) (string, []string)
+var componentAndCapabilityGetter func(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string)
 
 /*
-func testToComponentAndCapabilityUseRegex(test *apitype.ComponentTestIdentification, stats *apitype.ComponentTestStats) (string, []string) {
+func testToComponentAndCapabilityUseRegex(test *apitype.ComponentTestIdentification, stats *apitype.ComponentTestStatus) (string, []string) {
 	name := test.TestName
 	component := "other_component"
 	capability := "other_capability"
@@ -383,13 +398,13 @@ func testToComponentAndCapabilityUseRegex(test *apitype.ComponentTestIdentificat
 	return component, []string{capability}
 }*/
 
-func testToComponentAndCapability(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) (string, []string) {
+func testToComponentAndCapability(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the groupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStats) ([]apitype.ComponentReportRowIdentification, apitype.ComponentReportColumnIdentification) {
+func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ComponentReportColumnIdentification) {
 	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []apitype.ComponentReportRowIdentification{}
 	// First Page with no component requested
@@ -427,39 +442,67 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 			}
 		}
 	}
-	column := apitype.ComponentReportColumnIdentification{}
-	groups := sets.NewString(strings.Split(c.GroupBy, ",")...)
+	columns := []apitype.ComponentReportColumnIdentification{}
 	if c.TestID != "" {
 		// When testID is specified, ignore groupBy to disambiguate the test
-		column.Platform = test.Platform
-		column.Network = test.Network
-		column.Arch = test.Arch
-		column.Upgrade = test.Upgrade
-		column.Variant = test.Variant
+		index := 0
+		for {
+			column := apitype.ComponentReportColumnIdentification{}
+			column.Platform = stats.Platform
+			column.Network = stats.Network
+			column.Arch = stats.Arch
+			column.Upgrade = stats.Upgrade
+			if len(stats.Variants) == 0 {
+				columns = append(columns, column)
+				break
+			}
+			if index < len(stats.Variants) {
+				column.Variant = stats.Variants[index]
+				columns = append(columns, column)
+			}
+			index++
+			if index >= len(stats.Variants) {
+				break
+			}
+		}
 	} else {
-		if groups.Has("cloud") {
-			column.Platform = test.Platform
-		}
-		if groups.Has("network") {
-			column.Network = test.Network
-		}
-		if groups.Has("arch") {
-			column.Arch = test.Arch
-		}
-		if groups.Has("upgrade") {
-			column.Upgrade = test.Upgrade
-		}
-		if groups.Has("variant") {
-			column.Variant = test.Variant
+		groups := sets.NewString(strings.Split(c.GroupBy, ",")...)
+		index := 0
+		for {
+			column := apitype.ComponentReportColumnIdentification{}
+			if groups.Has("cloud") {
+				column.Platform = stats.Platform
+			}
+			if groups.Has("network") {
+				column.Network = stats.Network
+			}
+			if groups.Has("arch") {
+				column.Arch = stats.Arch
+			}
+			if groups.Has("upgrade") {
+				column.Upgrade = stats.Upgrade
+			}
+			if !groups.Has("variant") || len(stats.Variants) == 0 {
+				columns = append(columns, column)
+				break
+			}
+			if index < len(stats.Variants) {
+				column.Variant = stats.Variants[index]
+				columns = append(columns, column)
+			}
+			index++
+			if index >= len(stats.Variants) {
+				break
+			}
 		}
 	}
 
-	return rows, column
+	return rows, columns
 }
 
-func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStats, []error) {
+func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	errs := []error{}
-	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStats{}
+	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{}
 
 	it, err := query.Read(context.TODO())
 	if err != nil {
@@ -469,11 +512,11 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 	}
 
 	for {
-		testStatus := apitype.ComponentTestStatus{}
+		testStatus := apitype.ComponentTestStatusRow{}
 		if it.Schema == nil {
 			// There seems to be a bug with bigquery storage API
 			// Without this schema, data is not marshalled properly into
-			// ComponentTestStatus
+			// ComponentTestStatusRow
 			// We work around this by running one query and get
 			// the schema set. Our last resort is to infer the schema
 			// from the structure.
@@ -500,15 +543,15 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 		testIdentification := apitype.ComponentTestIdentification{
 			TestName: testStatus.TestName,
 			TestID:   testStatus.TestID,
-			Network:  testStatus.Network,
-			Upgrade:  testStatus.Upgrade,
-			Arch:     testStatus.Arch,
-			Platform: testStatus.Platform,
-			Variant:  testStatus.Variant,
 		}
-		status[testIdentification] = apitype.ComponentTestStats{
+		status[testIdentification] = apitype.ComponentTestStatus{
 			Component:    testStatus.Component,
 			Capabilities: testStatus.Capabilities,
+			Network:      testStatus.Network,
+			Upgrade:      testStatus.Upgrade,
+			Arch:         testStatus.Arch,
+			Platform:     testStatus.Platform,
+			Variants:     testStatus.Variants,
 			TotalCount:   testStatus.TotalCount,
 			FlakeCount:   testStatus.FlakeCount,
 			SuccessCount: testStatus.SuccessCount,
@@ -518,13 +561,15 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 }
 
 func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
-	columnIdentification apitype.ComponentReportColumnIdentification,
+	columnIdentifications []apitype.ComponentReportColumnIdentification,
 	reportStatus apitype.ComponentReportStatus,
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
-	if _, ok := allColumns[columnIdentification]; !ok {
-		allColumns[columnIdentification] = struct{}{}
+	for _, columnIdentification := range columnIdentifications {
+		if _, ok := allColumns[columnIdentification]; !ok {
+			allColumns[columnIdentification] = struct{}{}
+		}
 	}
 	for _, rowIdentification := range rowIdentifications {
 		if _, ok := allRows[rowIdentification]; !ok {
@@ -533,23 +578,27 @@ func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 		row, ok := status[rowIdentification]
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
-			row[columnIdentification] = reportStatus
-			status[rowIdentification] = row
+			for _, columnIdentification := range columnIdentifications {
+				row[columnIdentification] = reportStatus
+				status[rowIdentification] = row
+			}
 		} else {
-			existing, ok := row[columnIdentification]
-			if !ok {
-				row[columnIdentification] = reportStatus
-			} else if (reportStatus < apitype.NotSignificant && reportStatus < existing) ||
-				(existing == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
-				// We want to show the significant improvement if assessment is not regression
-				row[columnIdentification] = reportStatus
+			for _, columnIdentification := range columnIdentifications {
+				existing, ok := row[columnIdentification]
+				if !ok {
+					row[columnIdentification] = reportStatus
+				} else if (reportStatus < apitype.NotSignificant && reportStatus < existing) ||
+					(existing == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
+					// We want to show the significant improvement if assessment is not regression
+					row[columnIdentification] = reportStatus
+				}
 			}
 		}
 	}
 }
 
-func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStats,
-	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStats) apitype.ComponentReport {
+func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
+	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
 	report := apitype.ComponentReport{}
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
@@ -566,8 +615,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		}
 		delete(sampleStatus, testIdentification)
 
-		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateStatus(rowIdentifications, columnIdentification, reportStatus, aggregatedStatus, allRows, allColumns)
+		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
+		updateStatus(rowIdentifications, columnIdentifications, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
@@ -626,7 +675,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	return report
 }
 
-func (c *componentReportGenerator) categorizeComponentStatus(sampleStats, baseStats apitype.ComponentTestStats) apitype.ComponentReportStatus {
+func (c *componentReportGenerator) categorizeComponentStatus(sampleStats, baseStats apitype.ComponentTestStatus) apitype.ComponentReportStatus {
 	ret := apitype.MissingBasis
 	if baseStats.TotalCount != 0 {
 		if sampleStats.TotalCount == 0 {

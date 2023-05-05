@@ -799,10 +799,15 @@ type ComponentReportRequestAdvancedOptions struct {
 	IgnoreDisruption bool
 }
 
-type ComponentTestStats struct {
+type ComponentTestStatus struct {
 	Component    string
 	Capabilities []string
-	TotalCount   int
+	Network  string
+	Upgrade  string
+	Arch     string
+	Platform   string
+	Variants   []string
+	TotalCount int
 	SuccessCount int
 	FlakeCount   int
 }
@@ -810,22 +815,17 @@ type ComponentTestStats struct {
 type ComponentTestIdentification struct {
 	TestName string
 	TestID   string
-	Network  string
-	Upgrade  string
-	Arch     string
-	Platform string
-	Variant  string
 }
 
-type ComponentTestStatus struct {
+type ComponentTestStatusRow struct {
 	TestName     string   `bigquery:"test_name"`
 	TestID       string   `bigquery:"test_id"`
 	Network      string   `bigquery:"network"`
 	Upgrade      string   `bigquery:"upgrade"`
 	Arch         string   `bigquery:"arch"`
-	Platform     string   `bigquery:"platform"`
-	Variant      string   `bigquery:"variant"`
-	TotalCount   int      `bigquery:"total_count"`
+	Platform   string `bigquery:"platform"`
+	Variants   []string `bigquery:"variants"`
+	TotalCount int    `bigquery:"total_count"`
 	SuccessCount int      `bigquery:"success_count"`
 	FlakeCount   int      `bigquery:"flake_count"`
 	Component    string   `bigquery:"component"`
