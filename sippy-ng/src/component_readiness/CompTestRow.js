@@ -23,7 +23,7 @@ export default function CompTestRow(props) {
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography className="cr-cell-name">
-          <Link to="/component_rediness">{testName}</Link>
+          <Link to="/component_readiness">{testName}</Link>
         </Typography>
       </Tooltip>
     </TableCell>

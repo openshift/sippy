@@ -1,15 +1,13 @@
 import './ComponentReadiness.css'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
-import EmojiEmotionsOutlinedIcon from '@material-ui/icons/EmojiEmotionsOutlined'
-import FireplaceIcon from '@material-ui/icons/Fireplace'
 import green from './green-3.png'
+import green_missing_data from './green_no_data.png'
 import heart from './green-heart.png'
 import PropTypes from 'prop-types'
-import question from './red-question-mark.png'
 import React from 'react'
 import red from './red-3.png'
-import RemoveIcon from '@material-ui/icons/Remove'
+import red_3d from './red-3d.png'
 
 export default function SeverityIcon(props) {
   const theme = useTheme()
@@ -36,20 +34,20 @@ export default function SeverityIcon(props) {
       'MissingBasisAndSample indicates basis and sample data missing'
     icon = (
       <img
-        src={question}
+        src={green_missing_data}
         alt="MissingBasisAndSample"
-        width="20px"
-        height="20px"
+        width="15px"
+        height="15px"
       />
     )
   } else if (status == 1) {
     statusStr = statusStr + 'MissingBasis indicates basis data missing'
     icon = (
       <img
-        src={question}
+        src={green_missing_data}
         alt="MissingBasisAndSample"
-        width="20px"
-        height="20px"
+        width="15px"
+        height="15px"
       />
     )
   } else if (status == 0) {
@@ -59,10 +57,10 @@ export default function SeverityIcon(props) {
     statusStr = statusStr + 'MissingSample indicates sample data missing'
     icon = (
       <img
-        src={question}
+        src={green_missing_data}
         alt="MissingBasisAndSample"
-        width="20px"
-        height="20px"
+        width="15px"
+        height="15px"
       />
     )
   } else if (status == -2) {
@@ -72,13 +70,7 @@ export default function SeverityIcon(props) {
     statusStr =
       statusStr +
       'ExtremeRegression shows regression with >15% pass rate change'
-    icon = (
-      <FireplaceIcon
-        data-icon="FireplaceIcon"
-        fontSize="large"
-        style={{ color: theme.palette.error.main }}
-      />
-    )
+    icon = <img src={red_3d} alt="ExtremRegressio >15%n" />
   }
 
   return <Tooltip title={statusStr}>{icon}</Tooltip>
