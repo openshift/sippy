@@ -40,6 +40,7 @@ import clsx from 'clsx'
 import CompReadyCapabilities from './CompReadyCapabilities'
 import CompReadyCapability from './CompReadyCapability'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
+import CompReadyEnvCapability from './CompReadyEnvCapability'
 import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
@@ -476,7 +477,6 @@ export default function ComponentReadiness(props) {
                     excludeVariantsCheckedItems
                   )
                   setComponentParam(component)
-                  //setEnvironmentParam(environment)
                   setCapabilityParam(capability)
                   return (
                     <CompReadyCapability
@@ -484,8 +484,39 @@ export default function ComponentReadiness(props) {
                       filterVals={filterVals}
                       component={component}
                       capability={capability}
-                      environment={environment}
                     ></CompReadyCapability>
+                  )
+                }}
+              />
+              <Route
+                path="/component_readiness/env_capability"
+                render={(props) => {
+                  // We need the component and capability from url
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
+                  setEnvironmentParam(environment)
+                  setCapabilityParam(capability)
+                  return (
+                    <CompReadyEnvCapability
+                      key="capabilities"
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                      environment={environment}
+                    ></CompReadyEnvCapability>
                   )
                 }}
               />

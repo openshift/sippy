@@ -32,13 +32,13 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/capability
-// This is page 3 which runs when you click a capability cell on the left in page 2 or 2a
-export default function CompReadyCapability(props) {
-  const { filterVals, component, capability } = props
+// This component runs when we see /component_readiness/env_capability
+// This is page 3a which runs when you click a status cell under an environment on the right in page 2 or 2a
+export default function CompReadyEnvCapability(props) {
+  const { filterVals, component, capability, environment } = props
   document.title = `Capabilities`
 
-  console.log('four', filterVals, component, capability)
+  console.log('four', filterVals, component, capability, environment)
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
@@ -53,7 +53,8 @@ export default function CompReadyCapability(props) {
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    `&capability=${safeCapability}`
+    `&capability=${safeCapability}` +
+    expandEnvironment(environment)
 
   useEffect(() => {
     setIsLoaded(false)
@@ -113,7 +114,7 @@ export default function CompReadyCapability(props) {
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
       Capabilities report for component={component} capability={capability} page
-      3
+      3a
     </Typography>
   )
 
@@ -195,8 +196,9 @@ export default function CompReadyCapability(props) {
   )
 }
 
-CompReadyCapability.propTypes = {
+CompReadyEnvCapability.propTypes = {
   filterVals: PropTypes.string,
   component: PropTypes.string,
   capability: PropTypes.string,
+  environment: PropTypes.string,
 }
