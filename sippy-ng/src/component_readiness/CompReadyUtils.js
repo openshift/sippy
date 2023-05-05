@@ -239,7 +239,12 @@ export function expandEnvironment(str) {
   const paramStrings = Object.entries(params).map(
     ([key, value]) => `${key}=${value}`
   )
-  const retVal = '&' + paramStrings.join('&')
+
+  // We keep the environment along with the expanded environment for other components that
+  // may use it.
+  const safeEnvironment = safeEncodeURIComponent(str)
+  const retVal =
+    `&environment=${safeEnvironment}` + '&' + paramStrings.join('&')
   return retVal
 }
 
