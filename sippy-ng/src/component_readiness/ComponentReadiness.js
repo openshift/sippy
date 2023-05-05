@@ -34,11 +34,12 @@ import {
 } from 'react-router-dom'
 
 import { makeStyles, useTheme } from '@material-ui/core/styles'
-import Capabilities from './Capabilities'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import CompReadyCapabilities from './CompReadyCapabilities'
+import CompReadyCapability from './CompReadyCapability'
+import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
 import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
@@ -475,16 +476,16 @@ export default function ComponentReadiness(props) {
                     excludeVariantsCheckedItems
                   )
                   setComponentParam(component)
-                  setEnvironmentParam(environment)
+                  //setEnvironmentParam(environment)
                   setCapabilityParam(capability)
                   return (
-                    <Capabilities
+                    <CompReadyCapability
                       key="capabilities"
                       filterVals={filterVals}
                       component={component}
                       capability={capability}
                       environment={environment}
-                    ></Capabilities>
+                    ></CompReadyCapability>
                   )
                 }}
               />
@@ -509,6 +510,30 @@ export default function ComponentReadiness(props) {
                         component
                       )}
                     ></CompReadyCapabilities>
+                  )
+                }}
+              />
+              <Route
+                path="/component_readiness/env_capabilities"
+                render={(props) => {
+                  return (
+                    <CompReadyEnvCapabilities
+                      filterVals={getUpdatedUrlParts(
+                        baseRelease,
+                        baseStartTime,
+                        baseEndTime,
+                        sampleRelease,
+                        sampleStartTime,
+                        sampleEndTime,
+                        groupByCheckedItems,
+                        excludeCloudsCheckedItems,
+                        excludeArchesCheckedItems,
+                        excludeNetworksCheckedItems,
+                        excludeUpgradesCheckedItems,
+                        excludeVariantsCheckedItems,
+                        component
+                      )}
+                    ></CompReadyEnvCapabilities>
                   )
                 }}
               />

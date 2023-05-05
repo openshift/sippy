@@ -15,7 +15,7 @@ import TableCell from '@material-ui/core/TableCell'
 // Note that we are keeping the environment value so we can use it later for displays.
 function componentReport(componentName, columnVal, filterVals) {
   const retUrl =
-    '/component_readiness/capabilities' +
+    '/component_readiness/env_capabilities' +
     filterVals +
     '&component=' +
     safeEncodeURIComponent(componentName) +

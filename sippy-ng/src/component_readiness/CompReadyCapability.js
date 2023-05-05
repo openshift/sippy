@@ -10,11 +10,12 @@ import {
   unusedSingleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
-import CompCapRow from './CompCapRow'
 import CompReadyProgress from './CompReadyProgress'
+import CompTestRow from './CompTestRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import Table from '@material-ui/core/Table'
@@ -27,38 +28,33 @@ import TableRow from '@material-ui/core/TableRow'
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
 const cancelFetch = () => {
-  console.log('Aborting page2')
+  console.log('Aborting page3')
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/capabilities
-// This is page 2 which runs when you click a component cell on the left of page 1.
-export default function CompReadyCapabilities(props) {
-  const filterVals = props.filterVals
+// This component runs when we see /component_readiness/capability
+// This is page 3 which runs when you click a capability cell on the left in page 2 or 2a
+export default function CompReadyCapability(props) {
+  const { filterVals, component, capability, environment } = props
+  document.title = `Capabilities`
 
+  console.log('four', filterVals, component, capability, environment)
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `CompRead Test`
+  document.title = `Capabilities`
 
-  const [componentParam] = useQueryParam('component', StringParam)
-  const [environmentParam] = useQueryParam('environment', StringParam)
-  const comp = componentParam || ''
-  let env = environmentParam || ''
+  const safeComponent = safeEncodeURIComponent(component)
+  const safeCapability = safeEncodeURIComponent(capability)
 
-  if (filterVals.includes('environment')) {
-    env = ''
-  }
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
-    `&component=${comp}` +
-    expandEnvironment(env)
-
-  const newFilterVals =
-    filterVals + `&component=${comp}` + expandEnvironment(env)
+    `&component=${safeComponent}` +
+    `&capability=${safeCapability}`
+  // + expandEnvironment(environment)
 
   useEffect(() => {
     setIsLoaded(false)
@@ -89,6 +85,7 @@ export default function CompReadyCapabilities(props) {
             setData(noDataTable)
             console.log('got empty page2', json)
           } else {
+            console.log(data)
             setData(json)
           }
         })
@@ -114,15 +111,10 @@ export default function CompReadyCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
-  let envDisplay = ''
-
-  if (env != null) {
-    envDisplay = ` ${env}`
-  }
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for no environment {envDisplay} component {comp} page
-      2
+      Capabilities report for component={component} capability={capability} page
+      3
     </Typography>
   )
 
@@ -149,7 +141,7 @@ export default function CompReadyCapabilities(props) {
     <Fragment>
       {pageTitle}
       <h2>
-        <Link to="/component_readiness">/</Link> {envDisplay} &gt; {comp}
+        <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">
@@ -168,9 +160,7 @@ export default function CompReadyCapabilities(props) {
                     >
                       <Tooltip title={'Single row report for ' + column}>
                         <Typography className="cr-cell-name">
-                          <Link to={unusedSingleRowReport(column)}>
-                            {column}
-                          </Link>
+                          {column}
                         </Typography>
                       </Tooltip>
                     </TableCell>
@@ -184,12 +174,12 @@ export default function CompReadyCapabilities(props) {
             {data && data.rows && Object.keys(data.rows).length > 0 ? (
               Object.keys(data.rows).map((componentIndex) => {
                 return (
-                  <CompCapRow
+                  <CompTestRow
                     key={componentIndex}
-                    capabilityName={data.rows[componentIndex].capability}
+                    testName={data.rows[componentIndex].test_name}
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
-                    filterVals={newFilterVals}
+                    filterVals={filterVals}
                   />
                 )
               })
@@ -206,6 +196,9 @@ export default function CompReadyCapabilities(props) {
   )
 }
 
-CompReadyCapabilities.propTypes = {
-  filterVals: PropTypes.string.isRequired,
+CompReadyCapability.propTypes = {
+  filterVals: PropTypes.string,
+  component: PropTypes.string,
+  capability: PropTypes.string,
+  environment: PropTypes.string,
 }
