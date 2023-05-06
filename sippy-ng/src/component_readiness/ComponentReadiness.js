@@ -46,6 +46,7 @@ import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
+import NotYetImplemented from './NotYetImplemented'
 import React from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -458,6 +459,18 @@ export default function ComponentReadiness(props) {
             ></Grid>
             {/* eslint-disable react/prop-types */}
             <Switch>
+              <Route
+                path="/component_readiness/test"
+                render={(props) => {
+                  return <NotYetImplemented path={path}></NotYetImplemented>
+                }}
+              />
+              <Route
+                path="/component_readiness/env_test"
+                render={(props) => {
+                  return <NotYetImplemented path={path}></NotYetImplemented>
+                }}
+              />
               <Route
                 path="/component_readiness/capability"
                 render={(props) => {
