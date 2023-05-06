@@ -4,10 +4,10 @@ import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import PropTypes from 'prop-types'
 import React from 'react'
-import SeverityIcon from './SeverityIcon'
 import TableCell from '@material-ui/core/TableCell'
 
 // Construct a URL with all existing filters plus testName and environment.
@@ -50,7 +50,7 @@ export default function CompReadyCapCell(props) {
         }}
       >
         <Link to={testReport(testName, columnVal, filterVals)}>
-          <SeverityIcon status={status} />
+          <CompSeverityIcon status={status} />
         </Link>
       </TableCell>
     )

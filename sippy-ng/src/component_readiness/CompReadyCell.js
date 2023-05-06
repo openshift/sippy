@@ -4,10 +4,10 @@ import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import PropTypes from 'prop-types'
 import React from 'react'
-import SeverityIcon from './SeverityIcon'
 import TableCell from '@material-ui/core/TableCell'
 
 // Construct an URL with all existing filters plus component and environment.
@@ -53,7 +53,7 @@ export default function CompReadyCell(props) {
         }}
       >
         <Link to={componentReport(componentName, columnVal, filterVals)}>
-          <SeverityIcon status={status} />
+          <CompSeverityIcon status={status} />
         </Link>
       </TableCell>
     )

@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import green from './green-3.png'
+import green_half_data from './green-half-data.png'
 import green_missing_data from './green_no_data.png'
 import heart from './green-heart.png'
 import PropTypes from 'prop-types'
@@ -9,7 +10,7 @@ import React from 'react'
 import red from './red-3.png'
 import red_3d from './red-3d.png'
 
-export default function SeverityIcon(props) {
+export default function CompSeverityIcon(props) {
   const theme = useTheme()
   const status = props.status
 
@@ -44,8 +45,8 @@ export default function SeverityIcon(props) {
     statusStr = statusStr + 'MissingBasis indicates basis data missing'
     icon = (
       <img
-        src={green_missing_data}
-        alt="MissingBasisAndSample"
+        src={green_half_data}
+        alt="MissingBasis"
         width="15px"
         height="15px"
       />
@@ -76,6 +77,6 @@ export default function SeverityIcon(props) {
   return <Tooltip title={statusStr}>{icon}</Tooltip>
 }
 
-SeverityIcon.propTypes = {
+CompSeverityIcon.propTypes = {
   status: PropTypes.number,
 }
