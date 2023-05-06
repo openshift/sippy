@@ -2,7 +2,7 @@ import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { Tooltip, Typography } from '@material-ui/core'
-import CompReadyCell from './CompReadyCell'
+import CompReadyCapsCell from './CompReadyCapsCell'
 import PropTypes from 'prop-types'
 import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
@@ -47,12 +47,12 @@ export default function CompCapRow(props) {
       <TableRow>
         {capabilityNameColumn}
         {results.map((columnVal, idx) => (
-          <CompReadyCell
+          <CompReadyCapsCell
             key={'testName-' + idx}
             status={columnVal.status}
             columnVal={columnNames[idx]}
-            componentName={capabilityName}
-            filterVals=""
+            capabilityName={capabilityName}
+            filterVals={filterVals}
           />
         ))}
       </TableRow>
