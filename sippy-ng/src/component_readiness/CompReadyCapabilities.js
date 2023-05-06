@@ -114,15 +114,9 @@ export default function CompReadyCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
-  let envDisplay = ''
-
-  if (env != null) {
-    envDisplay = ` ${env}`
-  }
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for no environment {envDisplay} component {comp} page
-      2
+      Capabilities report for component ({comp}) page 2
     </Typography>
   )
 
@@ -149,7 +143,7 @@ export default function CompReadyCapabilities(props) {
     <Fragment>
       {pageTitle}
       <h2>
-        <Link to="/component_readiness">/</Link> {envDisplay} &gt; {comp}
+        <Link to="/component_readiness">/</Link> {comp}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">

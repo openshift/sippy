@@ -112,8 +112,7 @@ export default function CompReadyCapability(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for component={component} capability={capability} page
-      3
+      Test report for component ({component}) capability ({capability}) page 3
     </Typography>
   )
 
