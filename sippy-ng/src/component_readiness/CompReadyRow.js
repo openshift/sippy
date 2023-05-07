@@ -17,9 +17,6 @@ function capabilitiesReport(filterVals, componentName) {
     '/component_readiness/capabilities' +
     filterVals +
     `&component=${safeComponentName}`
-
-  const apiCallStr = getAPIUrl() + makeRFC3339Time(retUrl)
-  //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 
@@ -30,7 +27,7 @@ export default function CompReadyRow(props) {
   // filterVals: the parts of the url containing input values
   const { componentName, results, columnNames, filterVals } = props
 
-  // Put the component name on the left side with a link to a component specific
+  // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
     <TableCell className={'cr-component-name'} key={componentName}>

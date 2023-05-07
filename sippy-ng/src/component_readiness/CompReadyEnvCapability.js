@@ -164,6 +164,7 @@ export default function CompReadyEnvCapability(props) {
                   <CompTestRow
                     key={componentIndex}
                     testName={data.rows[componentIndex].test_name}
+                    testId={data.rows[componentIndex].test_id}
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
                     filterVals={filterVals}

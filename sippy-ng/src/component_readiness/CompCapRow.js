@@ -15,7 +15,6 @@ function capabilityLink(filterVals, capabilityName) {
     '/component_readiness/capability' +
     filterVals +
     `&capability=${capabilityName}`
-
   return retVal
 }
 
@@ -28,8 +27,8 @@ export default function CompCapRow(props) {
   // filterVals: the parts of the url containing input values
   const { capabilityName, results, columnNames, filterVals } = props
 
-  // Put the capability name on the left side with a link to a capability specific
-  // capabilities report.  The left side link will go back to the main page.
+  // Put the capabilityName on the left side with a link to a capability specific
+  // capabilities report.
   const capabilityNameColumn = (
     <TableCell className={'cr-component-name'} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>

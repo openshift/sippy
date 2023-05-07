@@ -10,20 +10,20 @@ import PropTypes from 'prop-types'
 import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 
-// Construct a URL with all existing filters plus testName and environment.
+// Construct a URL with all existing filters plus testId and environment.
 // This is the url used when you click inside a TableCell.
-function testReport(testName, columnVal, filterVals) {
+function testReport(testId, columnVal, filterVals) {
   const retUrl =
     '/component_readiness/env_test' +
     filterVals +
-    '&test_name=' +
-    safeEncodeURIComponent(testName) +
+    '&test_id=' +
+    safeEncodeURIComponent(testId) +
     expandEnvironment(columnVal)
 
   return retUrl
 }
 export default function CompReadyCapCell(props) {
-  const { status, columnVal, testName, filterVals } = props
+  const { status, columnVal, testId, filterVals } = props
   const theme = useTheme()
 
   if (status === undefined) {
@@ -49,7 +49,7 @@ export default function CompReadyCapCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link to={testReport(testName, columnVal, filterVals)}>
+        <Link to={testReport(testId, columnVal, filterVals)}>
           <CompSeverityIcon status={status} />
         </Link>
       </TableCell>
@@ -60,6 +60,6 @@ export default function CompReadyCapCell(props) {
 CompReadyCapCell.propTypes = {
   status: PropTypes.number.isRequired,
   columnVal: PropTypes.string.isRequired,
-  testName: PropTypes.string.isRequired,
+  testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
 }

@@ -8,22 +8,30 @@ import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
+// After clicking a testName on page 3 or 3a, we add that test_id (that corresponds
+// to that testName) to the api call along with all the other parts we already have.
+function testLink(filterVals, testId) {
+  const retVal = '/component_readiness/test' + filterVals + `&test_id=${testId}`
+  return retVal
+}
+
 // Represents a row when you clicked a capability on page2
 // We display tests on the left and results on the right.
 export default function CompTestRow(props) {
   // testName is the name of the test (called test_name)
+  // testId is the unique test ID that maps to the testName
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  const { testName, results, columnNames, filterVals } = props
+  const { testName, testId, results, columnNames, filterVals } = props
 
-  // Put the capability name on the left side with a link to a capability specific
-  // capabilities report.  The left side link will go back to the main page.
+  // Put the testName on the left side with a link to a test specific
+  // test report.
   const testNameColumn = (
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography className="cr-cell-name">
-          <Link to="/component_readiness/test">{testName}</Link>
+          <Link to={testLink(filterVals, testId)}>{testName}</Link>
         </Typography>
       </Tooltip>
     </TableCell>
@@ -38,7 +46,7 @@ export default function CompTestRow(props) {
             key={'testName-' + idx}
             status={columnVal.status}
             columnVal={columnNames[idx]}
-            testName={testName}
+            testId={testId}
             filterVals={filterVals}
           />
         ))}
@@ -49,6 +57,7 @@ export default function CompTestRow(props) {
 
 CompTestRow.propTypes = {
   testName: PropTypes.string.isRequired,
+  testId: PropTypes.string.isRequired,
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
