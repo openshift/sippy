@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import {
   cancelledDataTable,
-  expandEnvironment,
   getAPIUrl,
   getColumns,
   gotFetchError,
@@ -9,7 +8,7 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { StringParam, useQueryParam } from 'use-query-params'
+import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
 import CompCapRow from './CompCapRow'
@@ -33,7 +32,7 @@ const cancelFetch = () => {
 // This component runs when we see /component_readiness/capabilities
 // This is page 2 which runs when you click a component cell on the left of page 1.
 export default function CompReadyCapabilities(props) {
-  const filterVals = props.filterVals
+  const { filterVals, component } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -42,37 +41,18 @@ export default function CompReadyCapabilities(props) {
   // Set the browser tab title
   document.title = `Capabilities`
 
-  const [componentParam] = useQueryParam('component', StringParam)
-  const [environmentParam] = useQueryParam('environment', StringParam)
-  const comp = componentParam || ''
-  let env = environmentParam || ''
+  const safeComponent = safeEncodeURIComponent(component)
 
-  if (filterVals.includes('environment')) {
-    env = ''
-  }
   const apiCallStr =
-    getAPIUrl() +
-    makeRFC3339Time(filterVals) +
-    `&component=${comp}` +
-    expandEnvironment(env)
+    getAPIUrl() + makeRFC3339Time(filterVals) + `&component=${safeComponent}`
 
-  const newFilterVals =
-    filterVals + `&component=${comp}` + expandEnvironment(env)
+  const newFilterVals = filterVals + `&component=${safeComponent}`
 
   useEffect(() => {
     setIsLoaded(false)
     const fromFile = false
     if (fromFile) {
       console.log('FILE')
-      if (!(comp === '[sig-auth]' && env == 'ovn amd64 aws')) {
-        console.log('no data for', comp, env)
-        setData(noDataTable)
-      } else {
-        const json = require('./api_page2-sig-auth-ovn-amd-aws.json')
-        setData(json)
-        console.log('json (page2):', json)
-      }
-      setIsLoaded(true)
     } else {
       console.log('about to fetch page2: ', apiCallStr)
       fetch(apiCallStr, { signal: abortController.signal })
@@ -115,7 +95,7 @@ export default function CompReadyCapabilities(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for component ({comp}) page 2
+      Capabilities report for component ({component}) page 2
     </Typography>
   )
 
@@ -142,7 +122,7 @@ export default function CompReadyCapabilities(props) {
     <Fragment>
       {pageTitle}
       <h2>
-        <Link to="/component_readiness">/</Link> {comp}
+        <Link to="/component_readiness">/</Link> {component}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">
@@ -199,4 +179,5 @@ export default function CompReadyCapabilities(props) {
 
 CompReadyCapabilities.propTypes = {
   filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
 }

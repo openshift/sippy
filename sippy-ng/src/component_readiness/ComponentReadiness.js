@@ -502,7 +502,7 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/env_capability"
                 render={(props) => {
-                  // We need the component and capability from url
+                  // We need the component and capability and environment from url
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
                     baseStartTime,
@@ -518,8 +518,8 @@ export default function ComponentReadiness(props) {
                     excludeVariantsCheckedItems
                   )
                   setComponentParam(component)
-                  setEnvironmentParam(environment)
                   setCapabilityParam(capability)
+                  setEnvironmentParam(environment)
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
@@ -534,22 +534,25 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/capabilities"
                 render={(props) => {
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
                   return (
                     <CompReadyCapabilities
-                      filterVals={getUpdatedUrlParts(
-                        baseRelease,
-                        baseStartTime,
-                        baseEndTime,
-                        sampleRelease,
-                        sampleStartTime,
-                        sampleEndTime,
-                        groupByCheckedItems,
-                        excludeCloudsCheckedItems,
-                        excludeArchesCheckedItems,
-                        excludeNetworksCheckedItems,
-                        excludeUpgradesCheckedItems,
-                        excludeVariantsCheckedItems
-                      )}
+                      filterVals={filterVals}
+                      component={component}
                     ></CompReadyCapabilities>
                   )
                 }}
@@ -557,22 +560,26 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/env_capabilities"
                 render={(props) => {
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
+                  // We normally would get the environment and pass it but it doesn't work
                   return (
                     <CompReadyEnvCapabilities
-                      filterVals={getUpdatedUrlParts(
-                        baseRelease,
-                        baseStartTime,
-                        baseEndTime,
-                        sampleRelease,
-                        sampleStartTime,
-                        sampleEndTime,
-                        groupByCheckedItems,
-                        excludeCloudsCheckedItems,
-                        excludeArchesCheckedItems,
-                        excludeNetworksCheckedItems,
-                        excludeUpgradesCheckedItems,
-                        excludeVariantsCheckedItems
-                      )}
+                      filterVals={filterVals}
+                      component={component}
                     ></CompReadyEnvCapabilities>
                   )
                 }}

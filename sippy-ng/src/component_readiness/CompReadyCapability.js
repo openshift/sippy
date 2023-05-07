@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import {
   cancelledDataTable,
-  expandEnvironment,
   getAPIUrl,
   getColumns,
   gotFetchError,
@@ -10,7 +9,6 @@ import {
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
 import CompReadyProgress from './CompReadyProgress'

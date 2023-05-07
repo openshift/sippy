@@ -9,6 +9,7 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
@@ -33,7 +34,7 @@ const cancelFetch = () => {
 // This component runs when we see /component_readiness/cap_environment
 // This is page 2a which runs when you click a component cell under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
-  const filterVals = props.filterVals
+  const { filterVals, component } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -42,22 +43,21 @@ export default function CompReadyEnvCapabilities(props) {
   // Set the browser tab title
   document.title = `EnvCapabilities`
 
-  const [componentParam] = useQueryParam('component', StringParam)
-  const [environmentParam] = useQueryParam('environment', StringParam)
-  const comp = componentParam || ''
-  let env = environmentParam || ''
+  const safeComponent = safeEncodeURIComponent(component)
 
-  if (filterVals.includes('environment')) {
-    env = ''
-  }
+  // We need to get the environment from the current URL because it is not present
+  // when we try to get it from our caller.
+  const [environmentParam] = useQueryParam('environment', StringParam)
+  const environment = environmentParam
+
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
-    `&component=${comp}` +
-    expandEnvironment(env)
+    `&component=${safeComponent}` +
+    expandEnvironment(environment)
 
   const newFilterVals =
-    filterVals + `&component=${comp}` + expandEnvironment(env)
+    filterVals + `&component=${safeComponent}` + expandEnvironment(environment)
 
   useEffect(() => {
     setIsLoaded(false)
@@ -104,15 +104,10 @@ export default function CompReadyEnvCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
-  let envDisplay = ''
-
-  if (env != null) {
-    envDisplay = ` ${env}`
-  }
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for environment ({envDisplay}) component ({comp}) page
-      2a
+      Capabilities report for environment ({environment}) component ({component}
+      ) page 2a
     </Typography>
   )
 
@@ -139,7 +134,7 @@ export default function CompReadyEnvCapabilities(props) {
     <Fragment>
       {pageTitle}
       <h2>
-        <Link to="/component_readiness">/</Link> {envDisplay} &gt; {comp}
+        <Link to="/component_readiness">/</Link> {environment} &gt; {component}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">
@@ -196,4 +191,5 @@ export default function CompReadyEnvCapabilities(props) {
 
 CompReadyEnvCapabilities.propTypes = {
   filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
 }
