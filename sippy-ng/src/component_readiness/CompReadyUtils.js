@@ -256,8 +256,7 @@ export function getUpdatedUrlParts(
   excludeArchesCheckedItems,
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
-  excludeVariantsCheckedItems,
-  component
+  excludeVariantsCheckedItems
 ) {
   //console.log('getUpdatedUrlParts()')
   const valuesMap = {

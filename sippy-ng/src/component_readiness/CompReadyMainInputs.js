@@ -74,8 +74,7 @@ export default function CompReadyMainInputs(props) {
               excludeArchesCheckedItems,
               excludeNetworksCheckedItems,
               excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems,
-              component
+              excludeVariantsCheckedItems
             )
           }
           onClick={handleGenerateReport}
@@ -103,8 +102,7 @@ export default function CompReadyMainInputs(props) {
               excludeArchesCheckedItems,
               excludeNetworksCheckedItems,
               excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems,
-              component
+              excludeVariantsCheckedItems
             )
           }
           onClick={handleGenerateReportDebug}

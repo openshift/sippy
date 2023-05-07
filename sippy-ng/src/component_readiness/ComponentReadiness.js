@@ -298,8 +298,7 @@ export default function ComponentReadiness(props) {
         excludeArchesCheckedItems,
         excludeNetworksCheckedItems,
         excludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems,
-        component
+        excludeVariantsCheckedItems
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     console.log('formatted api call: ')
@@ -549,8 +548,7 @@ export default function ComponentReadiness(props) {
                         excludeArchesCheckedItems,
                         excludeNetworksCheckedItems,
                         excludeUpgradesCheckedItems,
-                        excludeVariantsCheckedItems,
-                        component
+                        excludeVariantsCheckedItems
                       )}
                     ></CompReadyCapabilities>
                   )
@@ -573,8 +571,7 @@ export default function ComponentReadiness(props) {
                         excludeArchesCheckedItems,
                         excludeNetworksCheckedItems,
                         excludeUpgradesCheckedItems,
-                        excludeVariantsCheckedItems,
-                        component
+                        excludeVariantsCheckedItems
                       )}
                     ></CompReadyEnvCapabilities>
                   )
@@ -704,8 +701,7 @@ export default function ComponentReadiness(props) {
                               excludeArchesCheckedItems,
                               excludeNetworksCheckedItems,
                               excludeUpgradesCheckedItems,
-                              excludeVariantsCheckedItems,
-                              data.rows[componentIndex].component
+                              excludeVariantsCheckedItems
                             )}
                           />
                         ))}

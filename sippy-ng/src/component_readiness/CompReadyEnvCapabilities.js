@@ -40,7 +40,7 @@ export default function CompReadyEnvCapabilities(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `CompReadEnv Test`
+  document.title = `EnvCapabilities`
 
   const [componentParam] = useQueryParam('component', StringParam)
   const [environmentParam] = useQueryParam('environment', StringParam)
@@ -64,17 +64,8 @@ export default function CompReadyEnvCapabilities(props) {
     const fromFile = false
     if (fromFile) {
       console.log('FILE')
-      if (!(comp === '[sig-auth]' && env == 'ovn amd64 aws')) {
-        console.log('no data for', comp, env)
-        setData(noDataTable)
-      } else {
-        const json = require('./api_page2-sig-auth-ovn-amd-aws.json')
-        setData(json)
-        console.log('json (page2):', json)
-      }
-      setIsLoaded(true)
     } else {
-      console.log('about to fetch page2: ', apiCallStr)
+      console.log('about to fetch page2a: ', apiCallStr)
       fetch(apiCallStr, { signal: abortController.signal })
         .then((response) => {
           if (response.status !== 200) {

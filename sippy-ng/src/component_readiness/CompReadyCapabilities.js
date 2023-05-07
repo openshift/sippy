@@ -40,7 +40,7 @@ export default function CompReadyCapabilities(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `CompRead Test`
+  document.title = `Capabilities`
 
   const [componentParam] = useQueryParam('component', StringParam)
   const [environmentParam] = useQueryParam('environment', StringParam)

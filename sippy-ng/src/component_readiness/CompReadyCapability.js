@@ -35,15 +35,13 @@ const cancelFetch = () => {
 // This is page 3 which runs when you click a capability cell on the left in page 2 or 2a
 export default function CompReadyCapability(props) {
   const { filterVals, component, capability } = props
-  document.title = `Capabilities`
 
-  console.log('four', filterVals, component, capability)
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `Capabilities`
+  document.title = `Capability`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
@@ -59,17 +57,8 @@ export default function CompReadyCapability(props) {
     const fromFile = false
     if (fromFile) {
       console.log('FILE')
-      if (!(comp === '[sig-auth]' && env == 'ovn amd64 aws')) {
-        console.log('no data for', comp, env)
-        setData(noDataTable)
-      } else {
-        const json = require('./api_page2-sig-auth-ovn-amd-aws.json')
-        setData(json)
-        console.log('json (page2):', json)
-      }
-      setIsLoaded(true)
     } else {
-      console.log('about to fetch page2: ', apiCallStr)
+      console.log('about to fetch page3: ', apiCallStr)
       fetch(apiCallStr, { signal: abortController.signal })
         .then((response) => {
           if (response.status !== 200) {
@@ -83,7 +72,6 @@ export default function CompReadyCapability(props) {
             setData(noDataTable)
             console.log('got empty page2', json)
           } else {
-            console.log(data)
             setData(json)
           }
         })

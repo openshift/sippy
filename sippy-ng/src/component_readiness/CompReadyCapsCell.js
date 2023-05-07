@@ -18,8 +18,8 @@ function capabilityReport(capabilityName, columnVal, filterVals) {
     '/component_readiness/env_capability' +
     filterVals +
     '&capability=' +
-    safeEncodeURIComponent(capabilityName)
-  // + expandEnvironment(columnVal)
+    safeEncodeURIComponent(capabilityName) +
+    expandEnvironment(columnVal)
 
   //const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
   //console.log('apiCallStrR: ', apiCallStr)
