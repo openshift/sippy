@@ -458,13 +458,17 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/test"
                 render={(props) => {
-                  return <NotYetImplemented path={path}></NotYetImplemented>
+                  return (
+                    <NotYetImplemented path="/component_readiness/test"></NotYetImplemented>
+                  )
                 }}
               />
               <Route
                 path="/component_readiness/env_test"
                 render={(props) => {
-                  return <NotYetImplemented path={path}></NotYetImplemented>
+                  return (
+                    <NotYetImplemented path="/component_readiness/env_test"></NotYetImplemented>
+                  )
                 }}
               />
               <Route
