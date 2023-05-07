@@ -10,8 +10,8 @@ import {
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
-import { useHistory } from 'react-router-dom'
 import CompCapRow from './CompCapRow'
+import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -103,19 +103,9 @@ export default function CompReadyCapabilities(props) {
     return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
   }
 
-  const history = useHistory()
-
-  const handleClick = () => {
-    history.push('/component_readiness')
-  }
   const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
-    return (
-      <Fragment>
-        <p>Operation cancelled or no data</p>
-        <button onClick={handleClick}>Start Over</button>
-      </Fragment>
-    )
+    return <CompReadyCancelled />
   }
 
   return (
