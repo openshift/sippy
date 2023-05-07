@@ -7,7 +7,6 @@ import {
   gotFetchError,
   makeRFC3339Time,
   noDataTable,
-  unusedSingleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'

@@ -7,7 +7,6 @@ import {
   gotFetchError,
   makeRFC3339Time,
   noDataTable,
-  unusedSingleRowReport,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -162,9 +161,7 @@ export default function CompReadyCapabilities(props) {
                     >
                       <Tooltip title={'Single row report for ' + column}>
                         <Typography className="cr-cell-name">
-                          <Link to={unusedSingleRowReport(column)}>
-                            {column}
-                          </Link>
+                          {column}
                         </Typography>
                       </Tooltip>
                     </TableCell>

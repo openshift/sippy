@@ -15,7 +15,6 @@ import {
   initialPageTable,
   makeRFC3339Time,
   noDataTable,
-  unusedSingleRowReport,
 } from './CompReadyUtils'
 import {
   Drawer,
@@ -677,9 +676,7 @@ export default function ComponentReadiness(props) {
                                     title={'Single row report for ' + column}
                                   >
                                     <Typography className="cr-cell-name">
-                                      <Link to={unusedSingleRowReport(column)}>
-                                        {column}
-                                      </Link>
+                                      {column}
                                     </Typography>
                                   </Tooltip>
                                 </TableCell>

@@ -54,12 +54,6 @@ export function getAPIUrl() {
   return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
-// This is used when the user clicks on one of the columns at the top of the table
-// Not quite used just yet.
-export function unusedSingleRowReport(columnName) {
-  return '/component_readiness/' + safeEncodeURIComponent(columnName) + '/tests'
-}
-
 // When we get a fetch error, this will print a standard message.
 export function gotFetchError(fetchError) {
   return (
