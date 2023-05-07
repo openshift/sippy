@@ -399,9 +399,7 @@ export default function ComponentReadiness(props) {
 
     setIsLoaded(false)
     if (fromFile) {
-      //const json = require('./api_page1-big-mar2023.json')
       const json = require('./api_page1-big-mar2023-compNames.json')
-      //const json = require('./api_page1-big.json')
       setData(json)
       console.log('json:', json)
       setIsLoaded(true)
