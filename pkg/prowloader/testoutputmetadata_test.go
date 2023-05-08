@@ -171,6 +171,21 @@ body:
 			},
 		},
 		{
+			name:     "pathological events single with namespaced test name",
+			testName: "[sig-arch] events should not repeat pathologically in e2e namespaces for namespace openshift-dns",
+			testOutput: `{  1 events happened too frequently
+
+event happened 25 times, something is wrong: ns/openshift-dns service/dns-default hmsg/ade328ddf3 - pathological/true reason/TopologyAwareHintsDisabled Unable to allocate minimum required endpoints to each zone without exceeding overload threshold (5 endpoints, 3 zones), addressType: IPv4 
+body: 
+}`,
+			expectedTags: []map[string]string{
+				{
+					"reason": "TopologyAwareHintsDisabled",
+					"ns":     "openshift-dns",
+				},
+			},
+		},
+		{
 			// It would in the real world but I want to make sure the regex handles it
 			name:     "pathological events single without ns",
 			testName: "[sig-arch] events should not repeat pathologically",

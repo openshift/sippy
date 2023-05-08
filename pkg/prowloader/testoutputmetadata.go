@@ -1,6 +1,7 @@
 package prowloader
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -20,10 +21,24 @@ func GetTestOutputMetadataExtractors() map[string]TestOutputMetadataExtractorFun
 	return map[string]TestOutputMetadataExtractorFunc{
 		"Cluster upgrade.[sig-arch] Check if alerts are firing during or after upgrade success":                                                                                      alertMetadataExtractor,
 		"[sig-instrumentation][Late] Alerts shouldn't report any unexpected alerts in firing or pending state [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]": alertMetadataExtractor,
-		"[sig-arch] events should not repeat pathologically":                                                                                                                         pathologicalEventsMetadataExtractor,
-		"[sig-arch] events should not repeat pathologically in e2e namespaces":                                                                                                       pathologicalEventsMetadataExtractor,
 		"[sig-arch][Late] operators should not create watch channels very often [apigroup:config.openshift.io] [Suite:openshift/conformance/parallel]":                               watchRequestsMetadataExtractor,
 	}
+}
+
+var pathologicalTestNameMatch = regexp.MustCompile(`events should not repeat pathologically`)
+
+// testNameToMetadataExtractor takes a test name and returns an TestOutputMetadataExtractorFunc
+// via looking for the testname in the map or using a regex to match on the testName.
+func testNameToMetadataExtractor(testName string) (TestOutputMetadataExtractorFunc, error) {
+
+	extractorFunc, ok := GetTestOutputMetadataExtractors()[testName]
+	if ok {
+		return extractorFunc, nil
+	}
+	if pathologicalTestNameMatch.MatchString(testName) {
+		return pathologicalEventsMetadataExtractor, nil
+	}
+	return nil, fmt.Errorf("extractor function not found for %s", testName)
 }
 
 type TestOutputMetadataExtractorFunc func(testOutput string) []map[string]string
@@ -54,9 +69,8 @@ type TestFailureMetadataExtractor struct {
 // Resulting slice of key values will eventually be serialized into the database as generic json.
 func (te *TestFailureMetadataExtractor) ExtractMetadata(testName, testOutput string) []map[string]string {
 	allMetadata := []map[string]string{}
-	testNameToMetadataExtractorFunc := GetTestOutputMetadataExtractors()
-	extractorFunc, ok := testNameToMetadataExtractorFunc[testName]
-	if !ok {
+	extractorFunc, err := testNameToMetadataExtractor(testName)
+	if err != nil {
 		// We have no regexes for this test:
 		return allMetadata
 	}
