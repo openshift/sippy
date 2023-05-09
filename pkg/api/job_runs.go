@@ -118,6 +118,18 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, logger *log.Entry) (*models.ProwJob
 	return jobRun, jobRunTestCount, nil
 }
 
+// findReleaseMatchJobNames looks for the first matches with a common root job name specific to the
+// compareRelease and the prowJob variants, starting with the full name.  When no match is found it will iterate while
+// removing the leading 'string-'
+// and try to find a match until successful or no matches are found.
+//
+// The use case is for pull request jobs that we want to find a matching periodic that is running the
+// same root job.  We use the periodic as the 'standard' to compare test rates.
+// e.g.
+//                   pull-ci-openshift-origin-master- e2e-vsphere-ovn-etcd-scaling
+// periodic-ci-openshift-release-master-nightly-4.14- e2e-vsphere-ovn-etcd-scaling
+// our common root is e2e-vsphere-ovn-etcd-scaling and our compareRelease is 4.14
+// if we don't have enough data from the current compareRelease we fall back to include the previous release as well
 func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry) ([]string, int, error) {
 	segments := strings.Split(jobRun.ProwJob.Name, "-")
 
@@ -125,6 +137,15 @@ func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRele
 	// and see if it has enough, think about cutover to a new release, etc.
 
 	for i := 0; i < len(segments); i++ {
+
+		// pull-ci-openshift-origin-master-e2e-vsphere-ovn-etcd-scaling
+		// ci-openshift-origin-master-e2e-vsphere-ovn-etcd-scaling
+		// openshift-origin-master-e2e-vsphere-ovn-etcd-scaling
+		// origin-master-e2e-vsphere-ovn-etcd-scaling
+		// master-e2e-vsphere-ovn-etcd-scaling
+		// e2e-vsphere-ovn-etcd-scaling
+		// matches periodic-ci-openshift-release-master-nightly-4.14-e2e-vsphere-ovn-etcd-scaling
+		// when we specify the 4.14 release
 		name := joinSegments(segments, i, "-")
 
 		if len(name) > 0 {
@@ -234,7 +255,7 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 		}
 	}
 
-	// we want to get a count of jobRunIds and fall back to include prior release if needed,
+	// we want to get a list of job names and a count of jobRunIds and fall back to include prior release if needed,
 	// variants don't cover all of our cases, like etcd-scaling so we want to
 	// find a job match against releases and analyze the pass rates
 	jobNames, totalJobRuns, err := findReleaseMatchJobNames(dbc, jobRun, compareRelease, logger)
@@ -298,11 +319,11 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 }
 
 // testResultsFunc is used for injecting db responses in unit tests.
-type testResultsFunc func(testName string, release, suite string, variants []string, jobNames []string) (*apitype.Test, error)
+type testResultsFunc func(testName string, jobNames []string) (*apitype.Test, error)
 
 // jobNamesTestResultFunc looks to match job runs based on the jobnames
 func jobNamesTestResultFunc(dbc *db.DB) testResultsFunc {
-	return func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
+	return func(testName string, jobNames []string) (*apitype.Test, error) {
 		sql := fmt.Sprintf(query.QueryTestAnalysis, testName, strings.Join(jobNames, ","))
 		testReport := apitype.Test{}
 		q := dbc.DB.Raw(sql)
@@ -313,56 +334,7 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsFunc {
 
 		q.First(&testReport)
 		testReport.Name = testName
-		// hack for now
-		// cleanup the message if we convert
-		testReport.Variants = jobNames
 		return &testReport, nil
-	}
-}
-
-// variantsTestResultFunc looks to match job runs based on variant matches
-// this may be deprecated in favor of the jobnames match, need to verify
-func variantsTestResultFunc(dbc *db.DB) testResultsFunc {
-	return func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
-
-		fil := &filter.Filter{
-			Items: []filter.FilterItem{
-				{
-					Field:    "name",
-					Not:      false,
-					Operator: filter.OperatorEquals,
-					Value:    testName,
-				},
-			},
-			LinkOperator: "and",
-		}
-		testResults, _, err := BuildTestsResults(dbc, release, "default", false, false,
-			fil)
-		if err != nil {
-			return nil, err
-		}
-		gosort.Strings(variants)
-		for _, testResult := range testResults {
-			// this is a weird way to get the variant we want, but it allows re-use
-			// of the existing code.
-			gosort.Strings(testResult.Variants)
-			if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				return &testResult, nil
-			}
-		}
-
-		// otherwise, what is our best match...
-		// do something more expensive and check to see
-		// which testResult contains all the variants we have currently
-		for _, testResult := range testResults {
-			// we didn't find an exact variant match
-			// next best guess is the first variant list that contains all of our known variants
-			if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				return &testResult, nil
-			}
-		}
-
-		return nil, nil
 	}
 }
 
@@ -433,7 +405,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		}).Debug("failed test")
 
 		testResult, err := testResultsFunc(
-			ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants, jobNames)
+			ft.Test.Name, jobNames)
 		if err != nil {
 			return response, err
 		}
@@ -449,8 +421,8 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 				Risk: apitype.FailureRisk{
 					Level: testRiskLvl,
 					Reasons: []string{
-						fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
-							testResult.CurrentPassPercentage, testResult.CurrentRuns, compareRelease, testResult.Variants),
+						fmt.Sprintf("This test has passed %.2f%% of %d runs on jobs %v in the last 14 days.",
+							testResult.CurrentPassPercentage, testResult.CurrentRuns, jobNames),
 					},
 				},
 				OpenBugs: ft.Test.Bugs,

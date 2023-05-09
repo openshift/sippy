@@ -143,7 +143,7 @@ func TestRunJobAnalysis(t *testing.T) {
 			}
 
 			// Fake test results lookup func:
-			testResultsLookupFunc := func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
+			testResultsLookupFunc := func(testName string, jobNames []string) (*apitype.Test, error) {
 				for _, tpr := range tc.testPassRates {
 					if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
 						tpr.CurrentRuns = 100
