@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION pg_temp.weekly_test_results_by_job(test_substring TEX
     current_flakes BIGINT,
     current_failures BIGINT,
     current_runs BIGINT,
-    current_working_percentage NUMERIC
+    current_working_percentage NUMERIC(5,2)
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -43,10 +43,12 @@ BEGIN
         GROUP BY
             tests.name,
             week_start
+        ORDER BY
+            week_start, tests.name ASC
     )
     SELECT
         *,
-        (results.current_successes + results.current_flakes) * 100.0 / NULLIF(results.current_runs, 0) AS current_working_percentage
+        ROUND((results.current_successes + results.current_flakes) * 100.0 / NULLIF(results.current_runs, 0), 2) AS current_working_percentage
     FROM
         results;
 END;
