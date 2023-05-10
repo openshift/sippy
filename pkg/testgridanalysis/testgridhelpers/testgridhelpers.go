@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	gourl "net/url"
@@ -13,9 +12,10 @@ import (
 	"regexp"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/util"
-	log "github.com/sirupsen/logrus"
 )
 
 func DownloadData(dashboards []string, filter, storagePath string) {
@@ -90,7 +90,7 @@ func loadJobDetails(dashboard, jobName, storagePath string) (testgridv1.JobDetai
 
 	var buf *bytes.Buffer
 	filename := storagePath + "/" + normalizeURL(url.String())
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return details, fmt.Errorf("could not read local data file %s: %v", filename, err)
 	}
@@ -110,7 +110,7 @@ func loadJobSummaries(dashboard, storagePath string) (map[string]testgridv1.JobS
 
 	var buf *bytes.Buffer
 	filename := storagePath + "/" + normalizeURL(url.String())
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return jobs, time.Time{}, fmt.Errorf("could not read local data file %s (holds %s): %v", filename, url.String(), err)
 	}

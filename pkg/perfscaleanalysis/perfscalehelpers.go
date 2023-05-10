@@ -5,16 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	es7 "github.com/elastic/go-elasticsearch/v7"
-	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
+
+	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 )
 
 const (
@@ -89,7 +91,7 @@ func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 		return err
 	}
 
-	bb, err := ioutil.ReadAll(res.Body)
+	bb, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error reading elasticsearch response")
 	}
@@ -120,7 +122,7 @@ func DownloadPerfScaleData(storagePath string, reportEnd time.Time) error {
 	if err != nil {
 		return errors.Wrap(err, "error marshalling scale jobs")
 	}
-	err = ioutil.WriteFile(filepath.Join(storagePath, ScaleJobsFilename), file, 0o600)
+	err = os.WriteFile(filepath.Join(storagePath, ScaleJobsFilename), file, 0o600)
 	if err != nil {
 		return errors.Wrap(err, "error writing scalejobs.json")
 	}

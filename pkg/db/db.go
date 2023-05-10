@@ -155,10 +155,11 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 // wins problems with concurrent development.
 //
 // desiredSchema should be the full SQL command we would issue to create the resource fresh. It will be hashed and
-//   compared to a pre-existing value in the db of the given name and type, if any exists. If none exists, or the hashes
-//   have changed, the resource will be recreated.
+// compared to a pre-existing value in the db of the given name and type, if any exists. If none exists, or the hashes
+// have changed, the resource will be recreated.
+//
 // dropSQL is the full SQL command we will run if we detect that the resource needs updating. It should include
-//   "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
+// "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
 //
 // This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
 // not be recreated until you also delete the corresponding row from schema_hashes.

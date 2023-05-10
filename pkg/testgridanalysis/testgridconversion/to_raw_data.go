@@ -138,6 +138,7 @@ func cleanTestName(testName string) string {
 }
 
 // processTestToJobRunResults adds the tests to the provided JobResult and returns the passed, failed, flaked for the test
+//
 //nolint:gocyclo // TODO: Break this function up, see: https://github.com/fzipp/gocyclo
 func processTestToJobRunResults(jobResult *v1.RawJobResult, job testgridv1.JobDetails, test testgridv1.Test, startCol, endCol int) (passed, failed, flaked int) {
 	col := 0

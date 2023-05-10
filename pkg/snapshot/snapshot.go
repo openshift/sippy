@@ -3,7 +3,7 @@ package snapshot
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/jackc/pgtype"
@@ -122,7 +122,7 @@ func get(url string, data interface{}) (pgtype.JSONB, error) {
 		return pgtype.JSONB{}, err
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return pgtype.JSONB{}, err
 	}
