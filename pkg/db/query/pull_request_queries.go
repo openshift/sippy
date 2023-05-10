@@ -11,24 +11,24 @@ import (
 )
 
 func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release string) ([]api.PullRequest, error) {
-	firstCIPayload := dbc.DB.Table("release_pull_requests pr").
-		Joins("join release_tag_pull_requests rtpr on rtpr.release_pull_request_id = pr.id").
-		Joins("inner join release_tags rt on rt.id = rtpr.release_tag_id").Select("release, release_tag, url, phase").
-		Where("stream = ?", "ci").Where("architecture = ?", "amd64")
-
-	firstNightlyPayload := dbc.DB.Table("release_pull_requests pr").
-		Joins("join release_tag_pull_requests rtpr on rtpr.release_pull_request_id = pr.id").
-		Joins("inner join release_tags rt on rt.id = rtpr.release_tag_id").Select("release, release_tag, url, phase").
-		Where("stream = ?", "nightly").Where("architecture = ?", "amd64")
+	// This finds each PR's first payload for each stream/arch combo, we use it below to join on so we can
+	// find the first ci and nightly for each payload.
+	firstPayloadsByStreamAndArch := dbc.DB.Table("release_pull_requests").
+		Select("url, release_tags.stream, release_tags.architecture, MIN(release_tags.release_time) AS min_release_time, release_tags.release_tag, release_tags.phase, release_tags.release").
+		Joins("JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id").
+		Joins("INNER JOIN release_tags ON release_tags.id = release_tag_pull_requests.release_tag_id").
+		Group("url, release_tags.stream, release_tags.architecture, release_tags.release_tag, release_tags.phase, release_tags.release")
 
 	prs := dbc.DB.Table("prow_pull_requests").
-		Joins("LEFT JOIN (?) ci_payload ON ci_payload.url = prow_pull_requests.link", firstCIPayload).
-		Joins("LEFT JOIN (?) nightly_payload ON nightly_payload.url = prow_pull_requests.link", firstNightlyPayload).
+		Joins("LEFT JOIN (?) ci ON ci.url = prow_pull_requests.link",
+			dbc.DB.Table("(?) as ci", firstPayloadsByStreamAndArch).Where("ci.stream = 'ci' AND architecture = 'amd64'")).
+		Joins("LEFT JOIN (?) nightly ON nightly.url = prow_pull_requests.link",
+			dbc.DB.Table("(?) as nightly", firstPayloadsByStreamAndArch).Where("nightly.stream = 'nightly' AND nightly.architecture = 'amd64'")).
 		Joins("INNER JOIN prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id").
 		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.release = ?", release).
-		Select("DISTINCT ON(prow_pull_requests.link) prow_pull_requests.*, ci_payload.release_tag AS first_ci_payload, ci_payload.phase AS first_ci_payload_phase, ci_payload.release as first_ci_payload_release, nightly_payload.release_tag as first_nightly_payload, nightly_payload.phase as first_nightly_payload_phase, nightly_payload.release as first_nightly_payload_release")
+		Select("DISTINCT ON(prow_pull_requests.link) prow_pull_requests.*, ci.release_tag AS first_ci_payload, ci.phase AS first_ci_payload_phase, ci.release as first_ci_payload_release, nightly.release_tag as first_nightly_payload, nightly.phase as first_nightly_payload_phase, nightly.release as first_nightly_payload_release")
 
 	results := make([]api.PullRequest, 0)
 	q, err := filter.FilterableDBResult(dbc.DB.Table("(?) as prs", prs), filterOpts, api.PullRequest{})
