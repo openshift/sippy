@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"regexp"
 
 	"cloud.google.com/go/storage"
@@ -148,7 +148,7 @@ func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error)
 	}
 	defer gcsReader.Close()
 
-	return ioutil.ReadAll(gcsReader)
+	return io.ReadAll(gcsReader)
 }
 
 func (j *GCSJobRun) ContentExists(ctx context.Context, path string) bool {

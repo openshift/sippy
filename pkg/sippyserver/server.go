@@ -12,10 +12,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
+
+	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -1087,8 +1088,9 @@ func (s *Server) Serve() {
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
-		Addr:    s.listenAddr,
-		Handler: handler,
+		Addr:              s.listenAddr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	log.Infof("Serving reports on %s ", s.listenAddr)

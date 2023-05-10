@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -22,7 +21,7 @@ func NewGCSClient(ctx context.Context, googleServiceAccountCredentialFile, googl
 		)
 	}
 
-	b, err := ioutil.ReadFile(googleOAuthClientCredentialFile)
+	b, err := os.ReadFile(googleOAuthClientCredentialFile)
 	if err != nil {
 		return nil, err
 	}

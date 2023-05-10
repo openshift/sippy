@@ -44,7 +44,7 @@ type TestSuite struct {
 	TestCases []*TestCase `xml:"testcase"`
 
 	// Children holds nested test suites
-	Children []*TestSuite `xml:"testsuite"`
+	Children []*TestSuite `xml:"testsuite"` //nolint
 }
 
 // TestSuiteProperty contains a mapping of a property name to a value

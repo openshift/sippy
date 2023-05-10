@@ -20,6 +20,6 @@ else
   $DOCKER run --rm \
     --volume "${PWD}:/go/src/github.com/openshift/sippy:z" \
     --workdir /go/src/github.com/openshift/sippy \
-    docker.io/golangci/golangci-lint:v1.45 \
+    docker.io/golangci/golangci-lint:v1.49 \
     golangci-lint "${@}"
 fi

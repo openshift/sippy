@@ -2,7 +2,7 @@ package releasesync
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -173,7 +173,7 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 
 func TestChangeLog(t *testing.T) {
 
-	data, err := ioutil.ReadFile(`OCPCRT-74-pr-test.json`)
+	data, err := os.ReadFile(`OCPCRT-74-pr-test.json`)
 	if err != nil {
 		t.Fatal("Failed to read test file")
 	}

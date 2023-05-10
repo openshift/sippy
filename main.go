@@ -574,7 +574,7 @@ func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
 	// Serve our metrics endpoint for prometheus to scrape
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(o.MetricsAddr, nil)
+		err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
 		if err != nil {
 			panic(err)
 		}
@@ -709,7 +709,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 	// Serve our metrics endpoint for prometheus to scrape
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(o.MetricsAddr, nil)
+		err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
 		if err != nil {
 			panic(err)
 		}
