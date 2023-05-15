@@ -17,6 +17,7 @@ import {
   filterFor,
   not,
   pathForExactJobAnalysis,
+  pathForExactTestAnalysisWithFilter,
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
@@ -376,12 +377,11 @@ function TestTable(props) {
           <div className="test-name">
             <Tooltip title={params.value}>
               <Link
-                to={
-                  '/tests/' +
-                  props.release +
-                  '/analysis?test=' +
-                  safeEncodeURIComponent(params.row.name)
-                }
+                to={pathForExactTestAnalysisWithFilter(
+                  props.release,
+                  params.row.name,
+                  filterModel
+                )}
               >
                 {params.value}
               </Link>

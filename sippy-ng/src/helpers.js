@@ -135,6 +135,22 @@ export function pathForExactTestAnalysis(release, test, excludedVariants) {
   )}&${multiple(...filters)}`
 }
 
+export function pathForExactTestAnalysisWithFilter(release, test, filter) {
+  console.log(filter)
+
+  let filters = [filterFor('name', 'equals', test)]
+  if (filter && filter.items) {
+    filter.items.forEach((item) => {
+      if (item.columnField === 'variants') {
+        filters.push(item)
+      }
+    })
+  }
+  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
+    test
+  )}&${multiple(...filters)}`
+}
+
 export function pathForExactTest(release, test) {
   return `/tests/${release}?${single(filterFor('name', 'equals', test))}`
 }
