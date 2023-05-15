@@ -571,11 +571,18 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	var err error
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
-	if baseRelease.Release == "" ||
-		sampleRelease.Release == "" {
+	if baseRelease.Release == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
-			"message": "missing required parameters.",
+			"message": "missing base_release",
+		})
+		return
+	}
+
+	if sampleRelease.Release == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "missing sample_release",
 		})
 		return
 	}
@@ -735,7 +742,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		}
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying component from big query",
+			"message": fmt.Sprintf("error querying component from big query: %v", errs),
 		})
 		return
 	}

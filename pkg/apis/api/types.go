@@ -771,9 +771,13 @@ type ComponentReportRequestReleaseOptions struct {
 type ComponentReportRequestTestIdentificationOptions struct {
 	Component  string
 	Capability string
-	TestID     string
+	// TestID is a unique identification for the test defined in the DB.
+	// It matches the test_id in the bigquery ci_analysis_us.junit table.
+	TestID string
 }
 
+// ComponentReportRequestExcludeOptions group all the exclude options passed in the request.
+// Each of the variable is a comma separated string.
 type ComponentReportRequestExcludeOptions struct {
 	ExcludePlatforms string
 	ExcludeArches    string
@@ -802,12 +806,12 @@ type ComponentReportRequestAdvancedOptions struct {
 type ComponentTestStatus struct {
 	Component    string
 	Capabilities []string
-	Network  string
-	Upgrade  string
-	Arch     string
-	Platform   string
-	Variants   []string
-	TotalCount int
+	Network      string
+	Upgrade      string
+	Arch         string
+	Platform     string
+	Variants     []string
+	TotalCount   int
 	SuccessCount int
 	FlakeCount   int
 }
@@ -823,9 +827,9 @@ type ComponentTestStatusRow struct {
 	Network      string   `bigquery:"network"`
 	Upgrade      string   `bigquery:"upgrade"`
 	Arch         string   `bigquery:"arch"`
-	Platform   string `bigquery:"platform"`
-	Variants   []string `bigquery:"variants"`
-	TotalCount int    `bigquery:"total_count"`
+	Platform     string   `bigquery:"platform"`
+	Variants     []string `bigquery:"variants"`
+	TotalCount   int      `bigquery:"total_count"`
 	SuccessCount int      `bigquery:"success_count"`
 	FlakeCount   int      `bigquery:"flake_count"`
 	Component    string   `bigquery:"component"`
