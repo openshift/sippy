@@ -12,18 +12,27 @@ import TableCell from '@material-ui/core/TableCell'
 
 // Construct a URL with all existing filters plus testId and environment.
 // This is the url used when you click inside a TableCell.
-function testReport(testId, columnVal, filterVals) {
+function testReport(
+  testId,
+  columnVal,
+  filterVals,
+  componentName,
+  capabilityName
+) {
+  const safeComponentName = safeEncodeURIComponent(componentName)
   const retUrl =
     '/component_readiness/env_test' +
     filterVals +
     '&test_id=' +
     safeEncodeURIComponent(testId) +
-    expandEnvironment(columnVal)
+    expandEnvironment(columnVal) +
+    `&component=${safeComponentName}` +
+    `&capability=${capabilityName}`
 
   return retUrl
 }
 export default function CompReadyCapCell(props) {
-  const { status, columnVal, testId, filterVals } = props
+  const { status, columnVal, testId, filterVals, component, capability } = props
   const theme = useTheme()
 
   if (status === undefined) {
@@ -49,7 +58,9 @@ export default function CompReadyCapCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link to={testReport(testId, columnVal, filterVals)}>
+        <Link
+          to={testReport(testId, columnVal, filterVals, component, capability)}
+        >
           <CompSeverityIcon status={status} />
         </Link>
       </TableCell>
@@ -62,4 +73,6 @@ CompReadyCapCell.propTypes = {
   columnVal: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
+  capability: PropTypes.string.isRequired,
 }

@@ -38,14 +38,15 @@ import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import CompReadyCapabilities from './CompReadyCapabilities'
 import CompReadyCapability from './CompReadyCapability'
+import CompReadyCapabilityTest from './CompReadyCapabilityTest'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
 import CompReadyEnvCapability from './CompReadyEnvCapability'
+import CompReadyEnvCapabilityTest from './CompReadyEnvCapabilityTest'
 import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
-import NotYetImplemented from './NotYetImplemented'
 import React from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
@@ -210,6 +211,7 @@ export default function ComponentReadiness(props) {
     'capability',
     StringParam
   )
+  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
@@ -219,6 +221,8 @@ export default function ComponentReadiness(props) {
   const [component, setComponent] = React.useState(componentParam)
   const [environment, setEnvironment] = React.useState(environmentParam)
   const [capability, setCapability] = React.useState(capabilityParam)
+  const [testId, setTestId] = React.useState(testIdParam)
+
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(excludeCloudsCheckedItemsParam)
   const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
@@ -282,6 +286,7 @@ export default function ComponentReadiness(props) {
     console.log('excludeVariants', excludeVariantsCheckedItems)
     console.log('component', component)
     console.log('environment', environment)
+    console.log('testId', testId)
 
     // process.env.REACT_APP_API_URL +
     const apiCallStr =
@@ -458,16 +463,66 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/test"
                 render={(props) => {
+                  // We need to pass the testId
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
+                  setCapabilityParam(capability)
+                  setTestIdParam(testId)
                   return (
-                    <NotYetImplemented path="/component_readiness/test"></NotYetImplemented>
+                    <CompReadyCapabilityTest
+                      key="capabilitytest"
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                      testId={testId}
+                    ></CompReadyCapabilityTest>
                   )
                 }}
               />
               <Route
                 path="/component_readiness/env_test"
                 render={(props) => {
+                  // We need to pass the environment and testId
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems
+                  )
+                  setComponentParam(component)
+                  setCapabilityParam(capability)
+                  setEnvironmentParam(environment)
+                  setTestIdParam(testId)
                   return (
-                    <NotYetImplemented path="/component_readiness/env_test"></NotYetImplemented>
+                    <CompReadyEnvCapabilityTest
+                      key="capabilitytest"
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                      testId={testId}
+                      environment={environment}
+                    ></CompReadyEnvCapabilityTest>
                   )
                 }}
               />

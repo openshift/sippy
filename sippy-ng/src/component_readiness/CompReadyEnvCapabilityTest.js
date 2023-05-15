@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import {
   cancelledDataTable,
+  expandEnvironment,
   getAPIUrl,
   getColumns,
   gotFetchError,
@@ -25,30 +26,32 @@ import TableRow from '@material-ui/core/TableRow'
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
 const cancelFetch = () => {
-  console.log('Aborting page3')
+  console.log('Aborting page4')
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/capability
-// This is page 3 which runs when you click a capability cell on the left in page 2 or 2a
-export default function CompReadyCapability(props) {
-  const { filterVals, component, capability } = props
+// This component runs when we see /component_readiness/test
+// This is page 4 which runs when you click a capability cell on the left in page 3 or 3a
+export default function CompReadyEnvCapabilityTest(props) {
+  const { filterVals, component, capability, testId, environment } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `Capability`
+  document.title = `CapabilityEnvTest`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
+  const safeTestId = safeEncodeURIComponent(testId)
 
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    `&capability=${safeCapability}`
+    `&capability=${safeCapability}` +
+    expandEnvironment(environment)
 
   useEffect(() => {
     setIsLoaded(false)
@@ -56,7 +59,7 @@ export default function CompReadyCapability(props) {
     if (fromFile) {
       console.log('FILE')
     } else {
-      console.log('about to fetch page3: ', apiCallStr)
+      console.log('about to fetch page4a: ', apiCallStr)
       fetch(apiCallStr, { signal: abortController.signal })
         .then((response) => {
           if (response.status !== 200) {
@@ -68,7 +71,7 @@ export default function CompReadyCapability(props) {
           if (Object.keys(json).length === 0 || json.rows.length === 0) {
             // The api call returned 200 OK but the data was empty
             setData(noDataTable)
-            console.log('got empty page2', json)
+            console.log('got empty page4a', json)
           } else {
             setData(json)
           }
@@ -97,7 +100,8 @@ export default function CompReadyCapability(props) {
 
   const pageTitle = (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Test report for component ({component}) capability ({capability}) page 3
+      Test report for component ({component}) capability ({capability}) testId (
+      {testId}) environment ({environment}) page 4a
     </Typography>
   )
 
@@ -154,8 +158,6 @@ export default function CompReadyCapability(props) {
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
                     filterVals={filterVals}
-                    component={safeComponent}
-                    capability={safeCapability}
                   />
                 )
               })
@@ -172,8 +174,10 @@ export default function CompReadyCapability(props) {
   )
 }
 
-CompReadyCapability.propTypes = {
+CompReadyEnvCapabilityTest.propTypes = {
   filterVals: PropTypes.string,
   component: PropTypes.string,
   capability: PropTypes.string,
+  testId: PropTypes.string,
+  environment: PropTypes.string,
 }

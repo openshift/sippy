@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCapCell from './CompReadyCapCell'
 import PropTypes from 'prop-types'
@@ -10,8 +11,14 @@ import TableRow from '@material-ui/core/TableRow'
 
 // After clicking a testName on page 3 or 3a, we add that test_id (that corresponds
 // to that testName) to the api call along with all the other parts we already have.
-function testLink(filterVals, testId) {
-  const retVal = '/component_readiness/test' + filterVals + `&test_id=${testId}`
+function testLink(filterVals, componentName, capabilityName, testId) {
+  const safeComponentName = safeEncodeURIComponent(componentName)
+  const retVal =
+    '/component_readiness/test' +
+    filterVals +
+    `&component=${safeComponentName}` +
+    `&capability=${capabilityName}` +
+    `&test_id=${testId}`
   return retVal
 }
 
@@ -23,7 +30,16 @@ export default function CompTestRow(props) {
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  const { testName, testId, results, columnNames, filterVals } = props
+  // component, capability: these are passed because we need them in the /test endpoint
+  const {
+    testName,
+    testId,
+    results,
+    columnNames,
+    filterVals,
+    component,
+    capability,
+  } = props
 
   // Put the testName on the left side with a link to a test specific
   // test report.
@@ -31,7 +47,9 @@ export default function CompTestRow(props) {
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography className="cr-cell-name">
-          <Link to={testLink(filterVals, testId)}>{testName}</Link>
+          <Link to={testLink(filterVals, component, capability, testId)}>
+            {testName}
+          </Link>
         </Typography>
       </Tooltip>
     </TableCell>
@@ -48,6 +66,8 @@ export default function CompTestRow(props) {
             columnVal={columnNames[idx]}
             testId={testId}
             filterVals={filterVals}
+            component={component}
+            capability={capability}
           />
         ))}
       </TableRow>
@@ -61,4 +81,6 @@ CompTestRow.propTypes = {
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
+  capability: PropTypes.string.isRequired,
 }
