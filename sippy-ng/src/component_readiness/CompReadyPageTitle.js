@@ -17,6 +17,6 @@ export default function CompReadyPageTitle(props) {
 }
 
 CompReadyPageTitle.propTypes = {
-  pageTitle: PropTypes.string.isRequired,
+  pageTitle: PropTypes.object.isRequired,
   apiCallStr: PropTypes.string.isRequired,
 }
