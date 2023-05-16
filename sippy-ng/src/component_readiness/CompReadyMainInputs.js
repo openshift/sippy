@@ -14,6 +14,7 @@ import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { Fragment, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import { Link } from 'react-router-dom'
+import AdvancedOptions from './AdvancedOptions'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
@@ -217,6 +218,11 @@ export default function CompReadyMainInputs(props) {
           checkedItems={excludeVariantsCheckedItems}
           setCheckedItems={setExcludeVariantsCheckedItems}
         ></CheckBoxList>
+        <AdvancedOptions headerName={'Advanced'}>
+          displayList={excludeArchesList}
+          checkedItems={excludeArchesCheckedItems}
+          setCheckedItems={setExcludeArchesCheckedItems}
+        </AdvancedOptions>
       </div>
     </Fragment>
   )
