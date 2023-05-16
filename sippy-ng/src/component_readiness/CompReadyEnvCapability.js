@@ -13,6 +13,7 @@ import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import CompReadyCancelled from './CompReadyCancelled'
+import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
 import PropTypes from 'prop-types'
@@ -111,12 +112,14 @@ export default function CompReadyEnvCapability(props) {
 
   const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
-    return <CompReadyCancelled />
+    return (
+      <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
+    )
   }
 
   return (
     <Fragment>
-      {pageTitle}
+      <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>
