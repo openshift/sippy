@@ -52,6 +52,7 @@ export default function CompReadyEnvCapabilityTest(props) {
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
+    `&test_id=${safeTestId}` +
     expandEnvironment(environment)
 
   useEffect(() => {

@@ -50,7 +50,8 @@ export default function CompReadyCapabilityTest(props) {
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    `&capability=${safeCapability}`
+    `&capability=${safeCapability}` +
+    `&test_id=${safeTestId}`
 
   useEffect(() => {
     setIsLoaded(false)
