@@ -5,6 +5,7 @@ import {
   getAPIUrl,
   getColumns,
   gotFetchError,
+  makePageTitle,
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
@@ -50,16 +51,16 @@ export default function CompReadyEnvCapabilities(props) {
   // if the values remain the same for all testing, we can remove this.
   // We need to get the environment from the current URL because it is not present
   // when we try to get it from our caller.
-  const [environmentParam] = useQueryParam('environment', StringParam)
-  const environment1 = environmentParam
+  //const [environmentParam] = useQueryParam('environment', StringParam)
+  //const environment1 = environmentParam
 
-  console.log('environment1 page2a: ', environment1)
-  console.log('environment page2a: ', environment)
+  //console.log('environment1 page2a: ', environment1)
+  //console.log('environment page2a: ', environment)
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    expandEnvironment(environment1)
+    expandEnvironment(environment)
 
   const newFilterVals =
     filterVals + `&component=${safeComponent}` + expandEnvironment(environment)
@@ -109,11 +110,10 @@ export default function CompReadyEnvCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
-  const pageTitle = (
-    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for environment ({environment}) component ({component}
-      ) page 2a
-    </Typography>
+  const pageTitle = makePageTitle(
+    'Capabilities report (page 2a)',
+    `environment: ${environment}`,
+    `component: ${component}`
   )
 
   if (!isLoaded) {

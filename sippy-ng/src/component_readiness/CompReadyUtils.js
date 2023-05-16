@@ -1,6 +1,7 @@
 import { Alert } from '@material-ui/lab'
 import { format } from 'date-fns'
 import { safeEncodeURIComponent } from '../helpers'
+import { Typography } from '@material-ui/core'
 import React from 'react'
 
 // Make the HH:mm:ss as zeros to be more conducive to caching query caching.
@@ -308,4 +309,22 @@ export function getUpdatedUrlParts(
     }
   })
   return retVal
+}
+
+// Single place to make titles so they look consistent as well as capture the
+// key attributes.
+export function makePageTitle(title, ...args) {
+  return (
+    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
+      <div>{title}</div>
+      {args.map((item, index) => (
+        <div key={index}>
+          <Typography variant="body2" component="div" key={index}>
+            {item}
+          </Typography>
+        </div>
+      ))}
+      <hr />
+    </Typography>
+  )
 }

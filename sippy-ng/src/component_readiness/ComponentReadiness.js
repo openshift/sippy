@@ -13,6 +13,7 @@ import {
   getUpdatedUrlParts,
   gotFetchError,
   initialPageTable,
+  makePageTitle,
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
@@ -246,10 +247,8 @@ export default function ComponentReadiness(props) {
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(excludeVariantsCheckedItemsParam)
 
-  const pageTitle = (
-    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Component Readiness for {baseRelease} vs. {sampleRelease}
-    </Typography>
+  const pageTitle = makePageTitle(
+    `Component Readiness for ${baseRelease} vs. ${sampleRelease}`
   )
 
   const { path, url } = useRouteMatch()

@@ -4,6 +4,7 @@ import {
   getAPIUrl,
   getColumns,
   gotFetchError,
+  makePageTitle,
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
@@ -94,10 +95,9 @@ export default function CompReadyCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
-  const pageTitle = (
-    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Capabilities report for component ({component}) page 2
-    </Typography>
+  const pageTitle = makePageTitle(
+    'Capabilities report (page 2)',
+    `component: ${component}`
   )
 
   if (!isLoaded) {

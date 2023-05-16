@@ -5,6 +5,7 @@ import {
   getAPIUrl,
   getColumns,
   gotFetchError,
+  makePageTitle,
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
@@ -99,11 +100,11 @@ export default function CompReadyEnvCapability(props) {
     return gotFetchError(fetchError)
   }
 
-  const pageTitle = (
-    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      Test report for environment ({environment}) component ({component})
-      capability ({capability}) page 3a
-    </Typography>
+  const pageTitle = makePageTitle(
+    'Test report (page 3a)',
+    `environment ${environment}`,
+    `component: ${component}`,
+    `capability: ${capability}`
   )
 
   if (!isLoaded) {
