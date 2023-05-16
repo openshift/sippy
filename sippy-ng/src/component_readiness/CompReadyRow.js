@@ -3,6 +3,7 @@ import { Fragment } from 'react'
 import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCell from './CompReadyCell'
 import PropTypes from 'prop-types'
@@ -27,13 +28,27 @@ export default function CompReadyRow(props) {
   // filterVals: the parts of the url containing input values
   const { componentName, results, columnNames, filterVals } = props
 
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setComponentParam(componentName)
+    window.location.href = capabilitiesReport(filterVals, componentName)
+  }
+
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
     <TableCell className={'cr-component-name'} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
         <Typography className="cr-cell-name">
-          <Link to={capabilitiesReport(filterVals, componentName)}>
+          <Link
+            to={capabilitiesReport(filterVals, componentName)}
+            onClick={handleClick}
+          >
             {componentName}
           </Link>
         </Typography>

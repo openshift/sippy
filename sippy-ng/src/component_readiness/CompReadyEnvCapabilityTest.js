@@ -162,6 +162,8 @@ export default function CompReadyEnvCapabilityTest(props) {
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
                     filterVals={filterVals}
+                    component={safeComponent}
+                    capability={safeCapability}
                   />
                 )
               })

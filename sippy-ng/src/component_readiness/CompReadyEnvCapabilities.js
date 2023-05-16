@@ -32,10 +32,9 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/cap_environment
 // This is page 2a which runs when you click a component cell under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
-  const { filterVals, component } = props
+  const { filterVals, component, environment } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -46,16 +45,21 @@ export default function CompReadyEnvCapabilities(props) {
 
   const safeComponent = safeEncodeURIComponent(component)
 
+  // This may be obsolete by now since we're now pushing the values to the url.
+  // Continue to use the old working method -- but put out both values in the console;
+  // if the values remain the same for all testing, we can remove this.
   // We need to get the environment from the current URL because it is not present
   // when we try to get it from our caller.
   const [environmentParam] = useQueryParam('environment', StringParam)
-  const environment = environmentParam
+  const environment1 = environmentParam
 
+  console.log('environment1 page2a: ', environment1)
+  console.log('environment page2a: ', environment)
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    expandEnvironment(environment)
+    expandEnvironment(environment1)
 
   const newFilterVals =
     filterVals + `&component=${safeComponent}` + expandEnvironment(environment)
@@ -185,4 +189,5 @@ export default function CompReadyEnvCapabilities(props) {
 CompReadyEnvCapabilities.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
+  environment: PropTypes.string.isRequired,
 }

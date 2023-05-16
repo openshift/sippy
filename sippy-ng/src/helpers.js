@@ -30,9 +30,13 @@ export const SafeStringParam = {
 
 // safeEncodeURIComponent wraps the library function, and additionally encodes
 // square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
-// others mishandle them.
+// others mishandle them.  The encodeURIComponent function will double encode
+// a %20 (space) as %25%20 -- so we back out its double encode.
 export function safeEncodeURIComponent(value) {
-  return encodeURIComponent(value).replace('[', '%5B').replace(']', '%5D')
+  return encodeURIComponent(value)
+    .replace(/%25([0-9A-Fa-f]{2})/g, '%$1')
+    .replace('[', '%5B')
+    .replace(']', '%5D')
 }
 
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".

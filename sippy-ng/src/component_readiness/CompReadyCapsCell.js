@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -29,6 +30,25 @@ export default function CompReadyCapsCell(props) {
   const { status, columnVal, capabilityName, filterVals } = props
   const theme = useTheme()
 
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setCapabilityParam(capabilityName)
+    setEnvironmentParam(columnVal)
+    window.location.href = capabilityReport(
+      capabilityName,
+      columnVal,
+      filterVals
+    )
+  }
   if (status === undefined) {
     return (
       <Tooltip title="No data">
@@ -52,7 +72,10 @@ export default function CompReadyCapsCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link to={capabilityReport(capabilityName, columnVal, filterVals)}>
+        <Link
+          to={capabilityReport(capabilityName, columnVal, filterVals)}
+          onClick={handleClick}
+        >
           <CompSeverityIcon status={status} />
         </Link>
       </TableCell>

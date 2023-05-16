@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -29,6 +30,22 @@ export default function CompReadyCell(props) {
   const { status, columnVal, componentName, filterVals } = props
   const theme = useTheme()
 
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setComponentParam(componentName)
+    setEnvironmentParam(columnVal)
+    window.location.href = componentReport(componentName, columnVal, filterVals)
+  }
+
   if (status === undefined) {
     return (
       <Tooltip title="No data">
@@ -52,7 +69,10 @@ export default function CompReadyCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link to={componentReport(componentName, columnVal, filterVals)}>
+        <Link
+          to={componentReport(componentName, columnVal, filterVals)}
+          onClick={handleClick}
+        >
           <CompSeverityIcon status={status} />
         </Link>
       </TableCell>

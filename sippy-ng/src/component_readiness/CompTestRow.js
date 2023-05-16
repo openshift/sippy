@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCapCell from './CompReadyCapCell'
 import PropTypes from 'prop-types'
@@ -41,13 +42,34 @@ export default function CompTestRow(props) {
     capability,
   } = props
 
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setComponentParam(component)
+    setCapabilityParam(capability)
+    setTestIdParam(testId)
+    window.location.href = testLink(filterVals, component, capability, testId)
+  }
+
   // Put the testName on the left side with a link to a test specific
   // test report.
   const testNameColumn = (
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography className="cr-cell-name">
-          <Link to={testLink(filterVals, component, capability, testId)}>
+          <Link
+            to={testLink(filterVals, component, capability, testId)}
+            onClick={handleClick}
+          >
             {testName}
           </Link>
         </Typography>

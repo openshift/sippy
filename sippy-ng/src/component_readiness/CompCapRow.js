@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCapsCell from './CompReadyCapsCell'
 import PropTypes from 'prop-types'
@@ -27,13 +28,27 @@ export default function CompCapRow(props) {
   // filterVals: the parts of the url containing input values
   const { capabilityName, results, columnNames, filterVals } = props
 
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setCapabilityParam(capabilityName)
+    window.location.href = capabilityLink(filterVals, capabilityName)
+  }
+
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
   const capabilityNameColumn = (
     <TableCell className={'cr-component-name'} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
         <Typography className="cr-cell-name">
-          <Link to={capabilityLink(filterVals, capabilityName)}>
+          <Link
+            to={capabilityLink(filterVals, capabilityName)}
+            onClick={handleClick}
+          >
             {capabilityName}
           </Link>
         </Typography>

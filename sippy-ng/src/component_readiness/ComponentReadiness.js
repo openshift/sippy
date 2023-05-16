@@ -632,11 +632,13 @@ export default function ComponentReadiness(props) {
                     excludeVariantsCheckedItems
                   )
                   setComponentParam(component)
+                  setEnvironmentParam(environment)
                   // We normally would get the environment and pass it but it doesn't work
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}
                       component={component}
+                      environment={environment}
                     ></CompReadyEnvCapabilities>
                   )
                 }}

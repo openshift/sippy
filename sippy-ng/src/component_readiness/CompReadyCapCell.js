@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -35,6 +36,35 @@ export default function CompReadyCapCell(props) {
   const { status, columnVal, testId, filterVals, component, capability } = props
   const theme = useTheme()
 
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
+  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+
+  const handleClick = (event) => {
+    event.preventDefault()
+    setComponentParam(component)
+    setCapabilityParam(capability)
+    setTestIdParam(testId)
+    setEnvironmentParam(columnVal)
+    window.location.href = testReport(
+      testId,
+      columnVal,
+      filterVals,
+      component,
+      capability
+    )
+  }
+
   if (status === undefined) {
     return (
       <Tooltip title="No data">
@@ -60,6 +90,7 @@ export default function CompReadyCapCell(props) {
       >
         <Link
           to={testReport(testId, columnVal, filterVals, component, capability)}
+          onClick={handleClick}
         >
           <CompSeverityIcon status={status} />
         </Link>
