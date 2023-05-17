@@ -14,12 +14,14 @@ import TableRow from '@material-ui/core/TableRow'
 // to that testName) to the api call along with all the other parts we already have.
 function testLink(filterVals, componentName, capabilityName, testId) {
   const safeComponentName = safeEncodeURIComponent(componentName)
+  const safeCapability = safeEncodeURIComponent(capabilityName)
+  const safeTestId = safeEncodeURIComponent(testId)
   const retVal =
     '/component_readiness/test' +
     filterVals +
     `&component=${safeComponentName}` +
-    `&capability=${capabilityName}` +
-    `&test_id=${testId}`
+    `&capability=${safeCapability}` +
+    `&test_id=${safeTestId}`
   return retVal
 }
 

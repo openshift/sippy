@@ -158,8 +158,8 @@ export default function CompReadyCapability(props) {
                     results={data.rows[componentIndex].columns}
                     columnNames={columnNames}
                     filterVals={filterVals}
-                    component={safeComponent}
-                    capability={safeCapability}
+                    component={component}
+                    capability={capability}
                   />
                 )
               })
