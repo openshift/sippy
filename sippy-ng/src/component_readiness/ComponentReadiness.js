@@ -247,10 +247,6 @@ export default function ComponentReadiness(props) {
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(excludeVariantsCheckedItemsParam)
 
-  const pageTitle = makePageTitle(
-    `Component Readiness for ${baseRelease} vs. ${sampleRelease}`
-  )
-
   const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -444,6 +440,15 @@ export default function ComponentReadiness(props) {
   }
 
   console.log('ComponentReadiness end')
+
+  const pageTitle = makePageTitle(
+    `Component Readiness for ${baseRelease} vs. ${sampleRelease}`,
+    `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
+      data && data.rows && data.rows[0] && data.rows[0].columns
+        ? data.rows[0].columns.length
+        : 0
+    }`
+  )
 
   return (
     <Fragment>

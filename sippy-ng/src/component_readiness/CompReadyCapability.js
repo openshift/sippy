@@ -100,7 +100,12 @@ export default function CompReadyCapability(props) {
   const pageTitle = makePageTitle(
     'Test report for component (page3)',
     `component: ${component}`,
-    `capability: ${capability}`
+    `capability: ${capability}`,
+    `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
+      data && data.rows && data.rows[0] && data.rows[0].columns
+        ? data.rows[0].columns.length
+        : 0
+    }`
   )
 
   if (!isLoaded) {

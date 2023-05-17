@@ -104,7 +104,12 @@ export default function CompReadyEnvCapability(props) {
     'Test report (page 3a)',
     `environment ${environment}`,
     `component: ${component}`,
-    `capability: ${capability}`
+    `capability: ${capability}`,
+    `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
+      data && data.rows && data.rows[0] && data.rows[0].columns
+        ? data.rows[0].columns.length
+        : 0
+    }`
   )
 
   if (!isLoaded) {
