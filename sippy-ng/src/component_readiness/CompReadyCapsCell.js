@@ -14,20 +14,20 @@ import TableCell from '@material-ui/core/TableCell'
 // Construct an URL with all existing filters plus capability and environment
 // (environment seems to already be there because of where this is called from)
 // This is the url used when you click inside a TableCell on the right.
-function capabilityReport(capabilityName, columnVal, filterVals) {
+function capabilityReport(capabilityName, environmentVal, filterVals) {
   const retUrl =
     '/component_readiness/env_capability' +
     filterVals +
     '&capability=' +
     safeEncodeURIComponent(capabilityName) +
-    expandEnvironment(columnVal)
+    expandEnvironment(environmentVal)
 
   //const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
   //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 export default function CompReadyCapsCell(props) {
-  const { status, columnVal, capabilityName, filterVals } = props
+  const { status, environment, capabilityName, filterVals } = props
   const theme = useTheme()
 
   const [capabilityParam, setCapabilityParam] = useQueryParam(
@@ -42,10 +42,10 @@ export default function CompReadyCapsCell(props) {
   const handleClick = (event) => {
     event.preventDefault()
     setCapabilityParam(capabilityName)
-    setEnvironmentParam(columnVal)
+    setEnvironmentParam(environment)
     window.location.href = capabilityReport(
       capabilityName,
-      columnVal,
+      environment,
       filterVals
     )
   }
@@ -73,7 +73,7 @@ export default function CompReadyCapsCell(props) {
         }}
       >
         <Link
-          to={capabilityReport(capabilityName, columnVal, filterVals)}
+          to={capabilityReport(capabilityName, environment, filterVals)}
           onClick={handleClick}
         >
           <CompSeverityIcon status={status} />
@@ -85,7 +85,7 @@ export default function CompReadyCapsCell(props) {
 
 CompReadyCapsCell.propTypes = {
   status: PropTypes.number.isRequired,
-  columnVal: PropTypes.string.isRequired,
+  environment: PropTypes.string.isRequired,
   capabilityName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
 }

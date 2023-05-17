@@ -64,7 +64,7 @@ export default function CompCapRow(props) {
           <CompReadyCapsCell
             key={'testName-' + idx}
             status={columnVal.status}
-            columnVal={columnNames[idx]}
+            environment={columnNames[idx]}
             capabilityName={capabilityName}
             filterVals={filterVals}
           />

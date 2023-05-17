@@ -85,7 +85,7 @@ export default function CompTestRow(props) {
           <CompReadyCapCell
             key={'testName-' + idx}
             status={columnVal.status}
-            columnVal={columnNames[idx]}
+            environment={columnNames[idx]}
             testId={testId}
             filterVals={filterVals}
             component={component}

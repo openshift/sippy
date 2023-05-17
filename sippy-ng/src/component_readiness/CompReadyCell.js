@@ -14,20 +14,18 @@ import TableCell from '@material-ui/core/TableCell'
 // Construct an URL with all existing filters plus component and environment.
 // This is the url used when you click inside a TableCell.
 // Note that we are keeping the environment value so we can use it later for displays.
-function componentReport(componentName, columnVal, filterVals) {
+function componentReport(componentName, environmentVal, filterVals) {
   const retUrl =
     '/component_readiness/env_capabilities' +
     filterVals +
     '&component=' +
     safeEncodeURIComponent(componentName) +
-    expandEnvironment(columnVal)
+    expandEnvironment(environmentVal)
 
-  //const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
-  //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 export default function CompReadyCell(props) {
-  const { status, columnVal, componentName, filterVals } = props
+  const { status, environment, componentName, filterVals } = props
   const theme = useTheme()
 
   const [componentParam, setComponentParam] = useQueryParam(
@@ -42,8 +40,12 @@ export default function CompReadyCell(props) {
   const handleClick = (event) => {
     event.preventDefault()
     setComponentParam(componentName)
-    setEnvironmentParam(columnVal)
-    window.location.href = componentReport(componentName, columnVal, filterVals)
+    setEnvironmentParam(environment)
+    window.location.href = componentReport(
+      componentName,
+      environment,
+      filterVals
+    )
   }
 
   if (status === undefined) {
@@ -70,7 +72,7 @@ export default function CompReadyCell(props) {
         }}
       >
         <Link
-          to={componentReport(componentName, columnVal, filterVals)}
+          to={componentReport(componentName, environment, filterVals)}
           onClick={handleClick}
         >
           <CompSeverityIcon status={status} />
@@ -82,7 +84,7 @@ export default function CompReadyCell(props) {
 
 CompReadyCell.propTypes = {
   status: PropTypes.number.isRequired,
-  columnVal: PropTypes.string.isRequired,
+  environment: PropTypes.string.isRequired,
   componentName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
 }

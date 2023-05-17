@@ -15,25 +15,26 @@ import TableCell from '@material-ui/core/TableCell'
 // This is the url used when you click inside a TableCell.
 function testReport(
   testId,
-  columnVal,
+  environmentVal,
   filterVals,
   componentName,
   capabilityName
 ) {
   const safeComponentName = safeEncodeURIComponent(componentName)
+  const safeTestId = safeEncodeURIComponent(testId)
   const retUrl =
     '/component_readiness/env_test' +
     filterVals +
-    '&test_id=' +
-    safeEncodeURIComponent(testId) +
-    expandEnvironment(columnVal) +
+    `&test_id=${safeTestId}` +
+    expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${capabilityName}`
 
   return retUrl
 }
 export default function CompReadyCapCell(props) {
-  const { status, columnVal, testId, filterVals, component, capability } = props
+  const { status, environment, testId, filterVals, component, capability } =
+    props
   const theme = useTheme()
 
   const [componentParam, setComponentParam] = useQueryParam(
@@ -55,10 +56,10 @@ export default function CompReadyCapCell(props) {
     setComponentParam(component)
     setCapabilityParam(capability)
     setTestIdParam(testId)
-    setEnvironmentParam(columnVal)
+    setEnvironmentParam(environment)
     window.location.href = testReport(
       testId,
-      columnVal,
+      environment,
       filterVals,
       component,
       capability
@@ -89,7 +90,13 @@ export default function CompReadyCapCell(props) {
         }}
       >
         <Link
-          to={testReport(testId, columnVal, filterVals, component, capability)}
+          to={testReport(
+            testId,
+            environment,
+            filterVals,
+            component,
+            capability
+          )}
           onClick={handleClick}
         >
           <CompSeverityIcon status={status} />
@@ -101,7 +108,7 @@ export default function CompReadyCapCell(props) {
 
 CompReadyCapCell.propTypes = {
   status: PropTypes.number.isRequired,
-  columnVal: PropTypes.string.isRequired,
+  environment: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,

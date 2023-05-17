@@ -64,7 +64,7 @@ export default function CompReadyRow(props) {
           <CompReadyCell
             key={'testName-' + idx}
             status={columnVal.status}
-            columnVal={columnNames[idx]}
+            environment={columnNames[idx]}
             componentName={componentName}
             filterVals={filterVals}
           />

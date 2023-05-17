@@ -210,11 +210,11 @@ export const excludeVariantsList = [
 // Take a string that is an "environment" (environment is a list of strings that describe
 // an items in one or more of the lists above) and split it up so that it can be used in
 // an api call.
-export function expandEnvironment(str) {
-  if (str == null || str == '') {
+export function expandEnvironment(environmentStr) {
+  if (environmentStr == null || environmentStr == '') {
     return ''
   }
-  const items = str.split(' ')
+  const items = environmentStr.split(' ')
   const params = {}
   items.forEach((item) => {
     if (excludeCloudsList.includes(item)) {
@@ -237,7 +237,7 @@ export function expandEnvironment(str) {
 
   // We keep the environment along with the expanded environment for other components that
   // may use it.
-  const safeEnvironment = safeEncodeURIComponent(str)
+  const safeEnvironment = safeEncodeURIComponent(environmentStr)
   const retVal =
     `&environment=${safeEnvironment}` + '&' + paramStrings.join('&')
   return retVal
