@@ -2,14 +2,13 @@ import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import React from 'react'
 
+const handleOnClick = () => {
+  window.location.href = '/component_readiness'
+  //window.history.back()
+}
 export default function CompReadyCancelled(props) {
   const { message, apiCallStr } = props
   const outStr = apiCallStr.split('&')
-  outStr.map((item) => {
-    if (!item.endsWith('=')) {
-      console.log('item: ', item)
-    }
-  })
   return (
     <div>
       <p>
@@ -26,9 +25,7 @@ export default function CompReadyCancelled(props) {
           }
         })}
       </ul>
-      <button>
-        <Link to="/component_readiness">Start Over</Link>
-      </button>
+      <button onClick={handleOnClick}>Start Over</button>
     </div>
   )
 }

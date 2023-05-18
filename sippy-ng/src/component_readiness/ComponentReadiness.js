@@ -39,6 +39,7 @@ import { makeStyles, useTheme } from '@material-ui/core/styles'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
+import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyCapabilities from './CompReadyCapabilities'
 import CompReadyCapability from './CompReadyCapability'
 import CompReadyCapabilityTest from './CompReadyCapabilityTest'
@@ -367,12 +368,33 @@ export default function ComponentReadiness(props) {
     window.location.href = '/component_readiness'
   }
   const columnNames = getColumns(data)
-  if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
+  if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
+    const apiCallStr =
+      getAPIUrl() +
+      getUpdatedUrlParts(
+        baseRelease,
+        baseStartTime,
+        baseEndTime,
+        sampleRelease,
+        sampleStartTime,
+        sampleEndTime,
+        groupByCheckedItems,
+        excludeCloudsCheckedItems,
+        excludeArchesCheckedItems,
+        excludeNetworksCheckedItems,
+        excludeUpgradesCheckedItems,
+        excludeVariantsCheckedItems,
+        confidence,
+        pity,
+        minFail,
+        ignoreDisruption,
+        ignoreMissing
+      )
     return (
-      <Fragment>
-        <p>Operation cancelled or no data</p>
-        <button onClick={handleClick}>Start Over</button>
-      </Fragment>
+      <CompReadyCancelled
+        message={columnNames[0]}
+        apiCallStr={makeRFC3339Time(apiCallStr)}
+      />
     )
   }
 

@@ -131,7 +131,7 @@ AdvancedOptions.propTypes = {
   confidence: PropTypes.number.isRequired,
   pity: PropTypes.number.isRequired,
   minFail: PropTypes.number.isRequired,
-  ignoreMissing: PropTypes.string.isRequired,
+  ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
