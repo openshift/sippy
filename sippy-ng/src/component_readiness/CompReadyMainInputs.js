@@ -35,6 +35,11 @@ export default function CompReadyMainInputs(props) {
     excludeNetworksCheckedItems,
     excludeUpgradesCheckedItems,
     excludeVariantsCheckedItems,
+    confidence,
+    pity,
+    minFail,
+    ignoreMissing,
+    ignoreDisruption,
     component,
     environment,
     setBaseRelease,
@@ -51,6 +56,11 @@ export default function CompReadyMainInputs(props) {
     setExcludeVariantsCheckedItems,
     handleGenerateReport,
     handleGenerateReportDebug,
+    setConfidence,
+    setPity,
+    setMinFail,
+    setIgnoreMissing,
+    setIgnoreDisruption,
   } = props
 
   return (
@@ -75,7 +85,12 @@ export default function CompReadyMainInputs(props) {
               excludeArchesCheckedItems,
               excludeNetworksCheckedItems,
               excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems
+              excludeVariantsCheckedItems,
+              confidence,
+              pity,
+              minFail,
+              ignoreDisruption,
+              ignoreMissing
             )
           }
           onClick={handleGenerateReport}
@@ -103,7 +118,12 @@ export default function CompReadyMainInputs(props) {
               excludeArchesCheckedItems,
               excludeNetworksCheckedItems,
               excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems
+              excludeVariantsCheckedItems,
+              confidence,
+              pity,
+              minFail,
+              ignoreDisruption,
+              ignoreMissing
             )
           }
           onClick={handleGenerateReportDebug}
@@ -218,11 +238,19 @@ export default function CompReadyMainInputs(props) {
           checkedItems={excludeVariantsCheckedItems}
           setCheckedItems={setExcludeVariantsCheckedItems}
         ></CheckBoxList>
-        <AdvancedOptions headerName={'Advanced'}>
-          displayList={excludeArchesList}
-          checkedItems={excludeArchesCheckedItems}
-          setCheckedItems={setExcludeArchesCheckedItems}
-        </AdvancedOptions>
+        <AdvancedOptions
+          headerName="Advanced"
+          confidence={confidence}
+          pity={pity}
+          minFail={minFail}
+          ignoreMissing={ignoreMissing}
+          ignoreDisruption={ignoreDisruption}
+          setConfidence={setConfidence}
+          setPity={setPity}
+          setMinFail={setMinFail}
+          setIgnoreMissing={setIgnoreMissing}
+          setIgnoreDisruption={setIgnoreDisruption}
+        ></AdvancedOptions>
       </div>
     </Fragment>
   )
@@ -242,6 +270,11 @@ CompReadyMainInputs.propTypes = {
   excludeNetworksCheckedItems: PropTypes.array.isRequired,
   excludeUpgradesCheckedItems: PropTypes.array.isRequired,
   excludeVariantsCheckedItems: PropTypes.array.isRequired,
+  confidence: PropTypes.number.isRequired,
+  pity: PropTypes.number.isRequired,
+  minFail: PropTypes.number.isRequired,
+  ignoreMissing: PropTypes.bool.isRequired,
+  ignoreDisruption: PropTypes.bool.isRequired,
   component: PropTypes.string,
   environment: PropTypes.string,
   setBaseRelease: PropTypes.func.isRequired,
@@ -258,4 +291,9 @@ CompReadyMainInputs.propTypes = {
   setExcludeVariantsCheckedItems: PropTypes.func.isRequired,
   handleGenerateReport: PropTypes.func.isRequired,
   handleGenerateReportDebug: PropTypes.func.isRequired,
+  setConfidence: PropTypes.func.isRequired,
+  setPity: PropTypes.func.isRequired,
+  setMinFail: PropTypes.func.isRequired,
+  setIgnoreMissing: PropTypes.func.isRequired,
+  setIgnoreDisruption: PropTypes.func.isRequired,
 }

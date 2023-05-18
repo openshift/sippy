@@ -257,9 +257,13 @@ export function getUpdatedUrlParts(
   excludeArchesCheckedItems,
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
-  excludeVariantsCheckedItems
+  excludeVariantsCheckedItems,
+  confidence,
+  pity,
+  minFail,
+  ignoreDisruption,
+  ignoreMissing
 ) {
-  //console.log('getUpdatedUrlParts()')
   const valuesMap = {
     baseRelease: baseRelease,
     baseStartTime: formatLongDate(baseStartTime),
@@ -267,6 +271,11 @@ export function getUpdatedUrlParts(
     sampleRelease: sampleRelease,
     sampleStartTime: formatLongDate(sampleStartTime),
     sampleEndTime: formatLongDate(sampleEndTime),
+    confidence: confidence,
+    pity: pity,
+    minFail: minFail,
+    ignoreDisruption: ignoreDisruption,
+    ignoreMissing: ignoreMissing,
     //component: component,
   }
 

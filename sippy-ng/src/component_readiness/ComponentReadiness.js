@@ -1,6 +1,8 @@
 import './ComponentReadiness.css'
 import {
   ArrayParam,
+  BooleanParam,
+  NumberParam,
   SafeStringParam,
   StringParam,
   useQueryParam,
@@ -24,7 +26,7 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import {
   Link,
   Route,
@@ -200,6 +202,23 @@ export default function ComponentReadiness(props) {
     excludeVariantsCheckedItemsParam = [],
     setExcludeVariantsCheckedItemsParam,
   ] = useQueryParam('exclude_variants', ArrayParam)
+
+  const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
+    'confidence',
+    NumberParam
+  )
+  const [pityParam = 0, setPityParam] = useQueryParam('pity', NumberParam)
+  const [minFailParam = 3, setMinFailParam] = useQueryParam(
+    'minFail',
+    NumberParam
+  )
+  const [ignoreMissingParam = false, setIgnoreMissingParam] = useQueryParam(
+    'ignoreMissing',
+    BooleanParam
+  )
+  const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
+    useQueryParam('ignoreDisruption', BooleanParam)
+
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
     SafeStringParam
@@ -247,6 +266,19 @@ export default function ComponentReadiness(props) {
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(excludeVariantsCheckedItemsParam)
 
+  const [confidence, setConfidence] = React.useState(confidenceParam)
+  const [pity, setPity] = React.useState(pityParam)
+  const [minFail, setMinFail] = React.useState(minFailParam)
+
+  // for the two boolean values here, we need the || false because otherwise
+  // the value will be null.
+  const [ignoreMissing, setIgnoreMissing] = React.useState(
+    ignoreMissingParam || false
+  )
+  const [ignoreDisruption, setIgnoreDisruption] = React.useState(
+    ignoreDisruptionParam || false
+  )
+
   const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -279,6 +311,11 @@ export default function ComponentReadiness(props) {
     console.log('excludeNetworks', excludeNetworksCheckedItems)
     console.log('excludeUpgrades', excludeUpgradesCheckedItems)
     console.log('excludeVariants', excludeVariantsCheckedItems)
+    console.log('confidence:', confidence)
+    console.log('pity:', pity)
+    console.log('minFail:', minFail)
+    console.log('ignoreDisruption:', ignoreDisruption)
+    console.log('ignoreMissing:', ignoreMissing)
     console.log('component', component)
     console.log('environment', environment)
     console.log('testId', testId)
@@ -298,7 +335,12 @@ export default function ComponentReadiness(props) {
         excludeArchesCheckedItems,
         excludeNetworksCheckedItems,
         excludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems
+        excludeVariantsCheckedItems,
+        confidence,
+        pity,
+        minFail,
+        ignoreDisruption,
+        ignoreMissing
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     console.log('formatted api call: ')
@@ -391,6 +433,11 @@ export default function ComponentReadiness(props) {
     setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
     setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
     setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
+    setConfidenceParam(confidence)
+    setPityParam(pity)
+    setMinFailParam(minFail)
+    setIgnoreDisruptionParam(ignoreDisruption)
+    setIgnoreMissingParam(ignoreMissing)
     setComponentParam(component)
     setEnvironmentParam(environment)
     setCapabilityParam(capability)
@@ -480,7 +527,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   setCapabilityParam(capability)
@@ -512,7 +564,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   setCapabilityParam(capability)
@@ -546,7 +603,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   setCapabilityParam(capability)
@@ -576,7 +638,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   setCapabilityParam(capability)
@@ -607,7 +674,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   return (
@@ -633,7 +705,12 @@ export default function ComponentReadiness(props) {
                     excludeArchesCheckedItems,
                     excludeNetworksCheckedItems,
                     excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
                   )
                   setComponentParam(component)
                   setEnvironmentParam(environment)
@@ -692,6 +769,11 @@ export default function ComponentReadiness(props) {
                       excludeNetworksCheckedItems={excludeNetworksCheckedItems}
                       excludeUpgradesCheckedItems={excludeUpgradesCheckedItems}
                       excludeVariantsCheckedItems={excludeVariantsCheckedItems}
+                      confidence={confidence}
+                      pity={pity}
+                      minFail={minFail}
+                      ignoreMissing={ignoreMissing}
+                      ignoreDisruption={ignoreDisruption}
                       component={component}
                       environment={environment}
                       setBaseRelease={setBaseRelease}
@@ -718,6 +800,11 @@ export default function ComponentReadiness(props) {
                       }
                       handleGenerateReport={handleGenerateReport}
                       handleGenerateReportDebug={handleGenerateReportDebug}
+                      setConfidence={setConfidence}
+                      setPity={setPity}
+                      setMinFail={setMinFail}
+                      setIgnoreMissing={setIgnoreMissing}
+                      setIgnoreDisruption={setIgnoreDisruption}
                     ></CompReadyMainInputs>
                   </Drawer>
                   {pageTitle}
@@ -771,7 +858,12 @@ export default function ComponentReadiness(props) {
                               excludeArchesCheckedItems,
                               excludeNetworksCheckedItems,
                               excludeUpgradesCheckedItems,
-                              excludeVariantsCheckedItems
+                              excludeVariantsCheckedItems,
+                              confidence,
+                              pity,
+                              minFail,
+                              ignoreDisruption,
+                              ignoreMissing
                             )}
                           />
                         ))}

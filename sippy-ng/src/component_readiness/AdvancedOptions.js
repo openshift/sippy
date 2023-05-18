@@ -4,7 +4,6 @@ import {
   AccordionDetails,
   AccordionSummary,
   FormControl,
-  FormControlLabel,
   FormGroup,
 } from '@material-ui/core'
 import { ExpandMore } from '@material-ui/icons'
@@ -13,10 +12,24 @@ import { makeStyles } from '@material-ui/core/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Slider from '@material-ui/core/Slider'
+import Switch from '@material-ui/core/Switch'
 import Typography from '@material-ui/core/Typography'
 
 export default function AdvancedOptions(props) {
-  const { displayList, checkedItems, setCheckedItems } = props
+  const {
+    headerName,
+    confidence,
+    pity,
+    minFail,
+    ignoreMissing,
+    ignoreDisruption,
+    setConfidence,
+    setPity,
+    setMinFail,
+    setIgnoreMissing,
+    setIgnoreDisruption,
+  } = props
+
   const useStyles = makeStyles((theme) => ({
     formControl: {
       margin: theme.spacing(1),
@@ -39,12 +52,6 @@ export default function AdvancedOptions(props) {
 
   const classes = useStyles()
 
-  const [confidence, setConfidence] = useState(95)
-  const [pity, setPity] = useState(5)
-  const [minFail, setMinFail] = useState(3)
-  const [ignoreMissing, setIgnoreMissing] = useState(0)
-  const [ignoreDisruption, setIgnoreDisrupiton] = useState(0)
-
   const handleChangeConfidence = (event, newValue) => {
     setConfidence(newValue)
   }
@@ -58,7 +65,7 @@ export default function AdvancedOptions(props) {
     setIgnoreMissing(newValue)
   }
   const handleChangeIgnoreDisruption = (event, newValue) => {
-    setIgnoreDisrupiton(newValue)
+    setIgnoreDisruption(newValue)
   }
 
   return (
@@ -99,20 +106,18 @@ export default function AdvancedOptions(props) {
               max={3}
             />
             <p>Missing: {ignoreMissing ? 'ignore' : 'keep'}</p>
-            <Slider
-              value={ignoreMissing}
+            <Switch
+              checked={ignoreMissing}
               onChange={handleChangeIgnoreMissing}
-              aria-labelledby="my-slider"
-              min={0}
-              max={1}
+              name="ignoreMissing"
+              color="primary"
             />
             <p>Disruption: {ignoreDisruption ? 'ignore' : 'keep'}</p>
-            <Slider
-              value={ignoreDisruption}
+            <Switch
+              checked={ignoreDisruption}
               onChange={handleChangeIgnoreDisruption}
-              aria-labelledby="my-slider"
-              min={0}
-              max={1}
+              name="ignoreDisruption"
+              color="primary"
             />
           </FormGroup>
         </AccordionDetails>
@@ -122,8 +127,15 @@ export default function AdvancedOptions(props) {
 }
 
 AdvancedOptions.propTypes = {
-  headerName: PropTypes.string,
-  displayList: PropTypes.array,
-  checkedItems: PropTypes.array,
-  setCheckedItems: PropTypes.func,
+  headerName: PropTypes.string.isRequired,
+  confidence: PropTypes.number.isRequired,
+  pity: PropTypes.number.isRequired,
+  minFail: PropTypes.number.isRequired,
+  ignoreMissing: PropTypes.string.isRequired,
+  ignoreDisruption: PropTypes.bool.isRequired,
+  setConfidence: PropTypes.func.isRequired,
+  setPity: PropTypes.func.isRequired,
+  setMinFail: PropTypes.func.isRequired,
+  setIgnoreMissing: PropTypes.func.isRequired,
+  setIgnoreDisruption: PropTypes.func.isRequired,
 }
