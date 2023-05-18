@@ -36,7 +36,8 @@ export default function CompReadyRow(props) {
   const handleClick = (event) => {
     event.preventDefault()
     setComponentParam(componentName)
-    window.location.href = capabilitiesReport(filterVals, componentName)
+    window.location.href =
+      '/sippy-ng' + capabilitiesReport(filterVals, componentName)
   }
 
   // Put the componentName on the left side with a link to a component specific

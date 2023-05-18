@@ -57,13 +57,9 @@ export default function CompReadyCapCell(props) {
     setCapabilityParam(capability)
     setTestIdParam(testId)
     setEnvironmentParam(environment)
-    window.location.href = testReport(
-      testId,
-      environment,
-      filterVals,
-      component,
-      capability
-    )
+    window.location.href =
+      '/sippy-ng' +
+      testReport(testId, environment, filterVals, component, capability)
   }
 
   if (status === undefined) {

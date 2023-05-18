@@ -43,11 +43,8 @@ export default function CompReadyCapsCell(props) {
     event.preventDefault()
     setCapabilityParam(capabilityName)
     setEnvironmentParam(environment)
-    window.location.href = capabilityReport(
-      capabilityName,
-      environment,
-      filterVals
-    )
+    window.location.href =
+      '/sippy-ng' + capabilityReport(capabilityName, environment, filterVals)
   }
   if (status === undefined) {
     return (
