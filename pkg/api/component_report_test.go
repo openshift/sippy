@@ -35,11 +35,11 @@ func TestGenerateComponentReport(t *testing.T) {
 		MinimumFailure: 3,
 	}
 	defaultComponentReportGenerator := componentReportGenerator{
-		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	groupByVariantComponentReportGenerator := componentReportGenerator{
-		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network,variant"},
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network,variant"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	componentPageGenerator := componentReportGenerator{
@@ -75,116 +75,80 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNTest := apitype.ComponentTestIdentification{
 		TestName: "test 1",
 		TestID:   "1",
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
+		Upgrade:  "upgrade-micro",
 	}
 	awsAMD64SDNTest := apitype.ComponentTestIdentification{
 		TestName: "test 2",
 		TestID:   "2",
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "sdn",
+		Upgrade:  "upgrade-micro",
 	}
 	awsAMD64OVNBaseTestStats90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64OVNBaseTestStats50Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 500,
 	}
 	awsAMD64OVNBaseTestStatsVariants90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard", "fips"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64OVNSampleTestStats90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 90,
 	}
 	awsAMD64OVNSampleTestStats85Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 85,
 	}
 	awsAMD64OVNSampleTestStats50Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 50,
 	}
 	awsAMD64OVNSampleTestStatsTiny := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   3,
 		FlakeCount:   0,
 		SuccessCount: 1,
 	}
 	awsAMD64OVNSampleTestStatsVariants90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "ovn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard", "fips"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 90,
 	}
 	awsAMD64SDNBaseTestStats90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "sdn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64SDNBaseTestStats50Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "sdn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 500,
 	}
 	awsAMD64SDNSampleTestStats90Percent := apitype.ComponentTestStatus{
-		Platform:     "aws",
-		Arch:         "amd64",
-		Network:      "sdn",
-		Upgrade:      "upgrade-micro",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,

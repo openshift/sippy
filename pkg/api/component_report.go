@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -121,6 +122,24 @@ func GetComponentReportFromBigQuery(client *bigquery.Client,
 	return generator.GenerateReport()
 }
 
+func GetComponentReportTestDetailsFromBigQuery(client *bigquery.Client,
+	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
+	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
+	variantOption apitype.ComponentReportRequestVariantOptions,
+	excludeOption apitype.ComponentReportRequestExcludeOptions,
+	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
+	generator := componentReportGenerator{
+		client:        client,
+		baseRelease:   baseRelease,
+		sampleRelease: sampleRelease,
+		ComponentReportRequestTestIdentificationOptions: testIDOption,
+		ComponentReportRequestVariantOptions:            variantOption,
+		ComponentReportRequestExcludeOptions:            excludeOption,
+		ComponentReportRequestAdvancedOptions:           advancedOption,
+	}
+	return generator.GenerateTestDetailsReport()
+}
+
 type componentReportGenerator struct {
 	client        *bigquery.Client
 	baseRelease   apitype.ComponentReportRequestReleaseOptions
@@ -138,22 +157,31 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	fmt.Printf("----- total query took %+v\n", time.Since(before))
+	fmt.Printf("----- total query took %+v base count %v, sample count %v\n", time.Since(before), len(baseStatus), len(sampleStatus))
 	var report apitype.ComponentReport
-	if c.TestID != "" &&
-		c.Platform != "" &&
-		c.Network != "" &&
-		c.Upgrade != "" &&
-		c.Arch != "" &&
-		c.Variant != "" {
-		// TODO
-		// This request is for a particular test details
-		_ = c.generateComponentTestReport(baseStatus, sampleStatus)
-	} else {
-		before = time.Now()
-		report = c.generateComponentTestReport(baseStatus, sampleStatus)
-		fmt.Printf("----- generate report took %+v\n", time.Since(before))
+
+	before = time.Now()
+	report = c.generateComponentTestReport(baseStatus, sampleStatus)
+	fmt.Printf("----- generate report took %+v\n", time.Since(before))
+	return report, nil
+}
+
+func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.ComponentReportTestDetails, []error) {
+	if c.TestID == "" ||
+		c.Platform == "" ||
+		c.Network == "" ||
+		c.Upgrade == "" ||
+		c.Arch == "" ||
+		c.Variant == "" {
+		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all parameters have to be defined for test details: test_id, platform, network, upgrade, arch, variant")}
 	}
+	before := time.Now()
+	baseStatus, sampleStatus, errs := c.getJobRunTestStatusFromBigQuery()
+	if len(errs) > 0 {
+		return apitype.ComponentReportTestDetails{}, errs
+	}
+	fmt.Printf("----- total query took %+v\n", time.Since(before))
+	report := c.generateComponentTestDetailsReport(baseStatus, sampleStatus)
 	return report, nil
 }
 
@@ -183,6 +211,130 @@ func (c *componentReportGenerator) fetchQuerySchema(queryString string) {
 		c.schema = it.Schema
 		break
 	}
+}
+
+func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
+	map[string][]apitype.ComponentJobRunTestStatusRow,
+	map[string][]apitype.ComponentJobRunTestStatusRow,
+	[]error,
+) {
+	errs := []error{}
+	queryString := `SELECT
+						ANY_VALUE(test_name) AS test_name,
+						file_path,
+						ANY_VALUE(prowjob_name) AS prowjob_name,
+						COUNT(*) AS total_count,
+						SUM(success_val) AS success_count,
+						SUM(flake_count) AS flake_count,
+					FROM ci_analysis_us.junit `
+	groupString := `
+					GROUP BY
+						file_path,
+						modified_time
+					ORDER BY
+						modified_time `
+	if c.schema == nil {
+		b := time.Now()
+		c.fetchQuerySchema(queryString + groupString)
+		fmt.Printf("----- schema query took %+v\n", time.Since(b))
+	}
+	queryString += `
+					WHERE
+						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
+						AND upgrade = @Upgrade
+						AND arch = @Arch
+						AND network = @Network
+						AND platform = @Platform
+						AND @Variant IN UNNEST(variants)
+						AND test_id = @TestId `
+	commonParams := []bigquery.QueryParameter{
+		{
+			Name:  "Upgrade",
+			Value: c.Upgrade,
+		},
+		{
+			Name:  "Arch",
+			Value: c.Arch,
+		},
+		{
+			Name:  "Network",
+			Value: c.Network,
+		},
+		{
+			Name:  "Platform",
+			Value: c.Platform,
+		},
+		{
+			Name:  "TestId",
+			Value: c.TestID,
+		},
+		{
+			Name:  "Variant",
+			Value: c.Variant,
+		},
+	}
+
+	baseString := queryString + ` AND branch = @BaseRelease`
+	baseQuery := c.client.Query(baseString + groupString)
+
+	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
+	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: c.baseRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: c.baseRelease.End,
+		},
+		{
+			Name:  "BaseRelease",
+			Value: c.baseRelease.Release,
+		},
+	}...)
+
+	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
+	var baseErrs, sampleErrs []error
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		before := time.Now()
+		baseStatus, baseErrs = c.fetchJobRunTestStatus(baseQuery)
+		fmt.Printf("----- base query took %+v\n", time.Since(before))
+	}()
+
+	sampleString := queryString + ` AND branch = @SampleRelease`
+	sampleQuery := c.client.Query(sampleString + groupString)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: c.sampleRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: c.sampleRelease.End,
+		},
+		{
+			Name:  "SampleRelease",
+			Value: c.sampleRelease.Release,
+		},
+	}...)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		before := time.Now()
+		sampleStatus, sampleErrs = c.fetchJobRunTestStatus(sampleQuery)
+		fmt.Printf("----- sample query took %+v\n", time.Since(before))
+	}()
+	wg.Wait()
+	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
+		errs = append(errs, baseErrs...)
+		errs = append(errs, sampleErrs...)
+	}
+
+	return baseStatus, sampleStatus, errs
 }
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (
@@ -448,10 +600,10 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 		index := 0
 		for {
 			column := apitype.ComponentReportColumnIdentification{}
-			column.Platform = stats.Platform
-			column.Network = stats.Network
-			column.Arch = stats.Arch
-			column.Upgrade = stats.Upgrade
+			column.Platform = test.Platform
+			column.Network = test.Network
+			column.Arch = test.Arch
+			column.Upgrade = test.Upgrade
 			if len(stats.Variants) == 0 {
 				columns = append(columns, column)
 				break
@@ -471,16 +623,16 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 		for {
 			column := apitype.ComponentReportColumnIdentification{}
 			if groups.Has("cloud") {
-				column.Platform = stats.Platform
+				column.Platform = test.Platform
 			}
 			if groups.Has("network") {
-				column.Network = stats.Network
+				column.Network = test.Network
 			}
 			if groups.Has("arch") {
-				column.Arch = stats.Arch
+				column.Arch = test.Arch
 			}
 			if groups.Has("upgrade") {
-				column.Upgrade = stats.Upgrade
+				column.Upgrade = test.Upgrade
 			}
 			if !groups.Has("variant") || len(stats.Variants) == 0 {
 				columns = append(columns, column)
@@ -543,18 +695,94 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 		testIdentification := apitype.ComponentTestIdentification{
 			TestName: testStatus.TestName,
 			TestID:   testStatus.TestID,
+			Network:  testStatus.Network,
+			Upgrade:  testStatus.Upgrade,
+			Arch:     testStatus.Arch,
+			Platform: testStatus.Platform,
 		}
 		status[testIdentification] = apitype.ComponentTestStatus{
 			Component:    testStatus.Component,
 			Capabilities: testStatus.Capabilities,
-			Network:      testStatus.Network,
-			Upgrade:      testStatus.Upgrade,
-			Arch:         testStatus.Arch,
-			Platform:     testStatus.Platform,
 			Variants:     testStatus.Variants,
 			TotalCount:   testStatus.TotalCount,
 			FlakeCount:   testStatus.FlakeCount,
 			SuccessCount: testStatus.SuccessCount,
+		}
+	}
+	return status, errs
+}
+
+func getMajor(in string) (int, error) {
+	major, err := strconv.ParseInt(strings.Split(in, ".")[0], 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return int(major), err
+}
+
+func getMinor(in string) (int, error) {
+	minor, err := strconv.ParseInt(strings.Split(in, ".")[1], 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return int(minor), err
+}
+
+func previousRelease(release string) (string, error) {
+	prev := release
+	var err error
+	var major, minor int
+	if major, err = getMajor(release); err == nil {
+		if minor, err = getMinor(release); err == nil && minor > 0 {
+			prev = fmt.Sprintf("%d.%d", major, minor-1)
+		}
+	}
+
+	return prev, err
+}
+
+func (c *componentReportGenerator) normalizeProwJobName(prowName string) string {
+	name := prowName
+	name = strings.ReplaceAll(name, c.baseRelease.Release, "X.X")
+	if prev, err := previousRelease(c.baseRelease.Release); err == nil {
+		name = strings.ReplaceAll(name, prev, "X.X")
+	}
+	name = strings.ReplaceAll(name, c.sampleRelease.Release, "X.X")
+	if prev, err := previousRelease(c.sampleRelease.Release); err == nil {
+		name = strings.ReplaceAll(name, prev, "X.X")
+	}
+	return name
+}
+
+func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) (map[string][]apitype.ComponentJobRunTestStatusRow, []error) {
+	errs := []error{}
+	status := map[string][]apitype.ComponentJobRunTestStatusRow{}
+
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("error querying job run test status from bigquery")
+		errs = append(errs, err)
+		return status, errs
+	}
+
+	for {
+		testStatus := apitype.ComponentJobRunTestStatusRow{}
+		err := it.Next(&testStatus)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing component from bigquery")
+			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
+			continue
+		}
+		prowName := c.normalizeProwJobName(testStatus.ProwJob)
+		rows, ok := status[prowName]
+		if !ok {
+			status[prowName] = []apitype.ComponentJobRunTestStatusRow{testStatus}
+		} else {
+			rows = append(rows, testStatus)
+			status[prowName] = rows
 		}
 	}
 	return status, errs
@@ -611,7 +839,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		if !ok {
 			reportStatus = apitype.MissingSample
 		} else {
-			reportStatus = c.categorizeComponentStatus(sampleStats, baseStats)
+			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount)
 		}
 		delete(sampleStatus, testIdentification)
 
@@ -675,53 +903,210 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	return report
 }
 
-func (c *componentReportGenerator) categorizeComponentStatus(sampleStats, baseStats apitype.ComponentTestStatus) apitype.ComponentReportStatus {
-	ret := apitype.MissingBasis
-	if baseStats.TotalCount != 0 {
-		if sampleStats.TotalCount == 0 {
+func getFailureCount(status apitype.ComponentJobRunTestStatusRow) int {
+	failure := status.TotalCount - status.SuccessCount - status.FlakeCount
+	if failure < 0 {
+		failure = 0
+	}
+	return failure
+}
+
+func getSuccessRate(success, failure, flake int) float64 {
+	total := success + failure + flake
+	if total == 0 {
+		return 0.0
+	}
+	return float64(success) / float64(total)
+}
+
+const prowJobPrefix = "https://prow.ci.openshift.org/view/gs/origin-ci-test/"
+
+func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetailsJobRunStats {
+	failure := getFailureCount(stats)
+	url := prowJobPrefix
+	subs := strings.Split(stats.FilePath, "/artifacts/")
+	if len(subs) > 1 {
+		url += subs[0]
+	}
+	jobRunStats := apitype.ComponentReportTestDetailsJobRunStats{
+		TestStats: apitype.ComponentReportTestDetailsTestStats{
+			SuccessRate:  getSuccessRate(stats.SuccessCount, failure, stats.FlakeCount),
+			SuccessCount: stats.SuccessCount,
+			FailureCount: failure,
+			FlakeCount:   stats.FlakeCount,
+		},
+		JobURL: url,
+	}
+	return jobRunStats
+}
+
+func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus map[string][]apitype.ComponentJobRunTestStatusRow,
+	sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetails {
+	result := apitype.ComponentReportTestDetails{
+		ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+			Component:  c.Component,
+			Capability: c.Capability,
+			TestID:     c.TestID,
+		},
+		ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+			Platform: c.Platform,
+			Upgrade:  c.Upgrade,
+			Arch:     c.Arch,
+			Network:  c.Network,
+			Variant:  c.Variant,
+		},
+	}
+	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
+	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
+	for prowJob, baseStatsList := range baseStatus {
+		jobStats := apitype.ComponentReportTestDetailsJobStats{
+			JobName: prowJob,
+		}
+		perJobBaseFailure = 0
+		perJobBaseSuccess = 0
+		perJobBaseFlake = 0
+		perJobSampleFailure = 0
+		perJobSampleSuccess = 0
+		perJobSampleFlake = 0
+		for _, baseStats := range baseStatsList {
+			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, getJobRunStats(baseStats))
+			perJobBaseSuccess += baseStats.SuccessCount
+			perJobBaseFlake += baseStats.FlakeCount
+			perJobBaseFailure += getFailureCount(baseStats)
+		}
+		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
+			for _, sampleStats := range sampleStatsList {
+				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats))
+				perJobSampleSuccess += sampleStats.SuccessCount
+				perJobSampleFlake += sampleStats.FlakeCount
+				perJobSampleFailure += getFailureCount(sampleStats)
+			}
+			delete(sampleStatus, prowJob)
+		}
+		jobStats.BaseStats.SuccessCount = perJobBaseSuccess
+		jobStats.BaseStats.FlakeCount = perJobBaseFlake
+		jobStats.BaseStats.FailureCount = perJobBaseFailure
+		jobStats.BaseStats.SuccessRate = getSuccessRate(perJobBaseSuccess, perJobBaseFailure, perJobBaseFlake)
+		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
+		jobStats.SampleStats.FlakeCount = perJobSampleFlake
+		jobStats.SampleStats.FailureCount = perJobSampleFailure
+		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
+		_, _, r, _ := fischer.FisherExactTest(perJobSampleFailure,
+			perJobSampleSuccess,
+			perJobBaseFailure,
+			perJobSampleSuccess)
+		jobStats.Significant = r < 1-float64(c.Confidence)/100
+
+		result.JobStats = append(result.JobStats, jobStats)
+
+		totalBaseFailure += perJobBaseFailure
+		totalBaseSuccess += perJobBaseSuccess
+		totalBaseFlake += perJobBaseFlake
+		totalSampleFailure += perJobSampleFailure
+		totalSampleSuccess += perJobSampleSuccess
+		totalSampleFlake += perJobSampleFlake
+	}
+	for prowJob, sampleStatsList := range sampleStatus {
+		jobStats := apitype.ComponentReportTestDetailsJobStats{
+			JobName: prowJob,
+		}
+		perJobSampleFailure = 0
+		perJobSampleSuccess = 0
+		perJobSampleFlake = 0
+		for _, sampleStats := range sampleStatsList {
+			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats))
+			perJobSampleSuccess += sampleStats.SuccessCount
+			perJobSampleFlake += sampleStats.FlakeCount
+			perJobSampleFailure += getFailureCount(sampleStats)
+		}
+		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
+		jobStats.SampleStats.FlakeCount = perJobSampleFlake
+		jobStats.SampleStats.FailureCount = perJobSampleFailure
+		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
+		result.JobStats = append(result.JobStats, jobStats)
+		_, _, r, _ := fischer.FisherExactTest(perJobSampleFailure,
+			perJobSampleSuccess+perJobSampleFlake,
+			0,
+			0)
+		jobStats.Significant = r < 1-float64(c.Confidence)/100
+
+		totalSampleFailure += perJobSampleFailure
+		totalSampleSuccess += perJobSampleSuccess
+		totalSampleFlake += perJobSampleFlake
+	}
+	result.BaseStats.Release = c.baseRelease.Release
+	result.BaseStats.SuccessCount = totalBaseSuccess
+	result.BaseStats.FailureCount = totalBaseFailure
+	result.BaseStats.FlakeCount = totalBaseFlake
+	result.BaseStats.SuccessRate = getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake)
+	result.SampleStats.Release = c.sampleRelease.Release
+	result.SampleStats.SuccessCount = totalSampleSuccess
+	result.SampleStats.FailureCount = totalSampleFailure
+	result.SampleStats.FlakeCount = totalSampleFlake
+	result.SampleStats.SuccessRate = getSuccessRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake)
+	result.ReportStatus, result.FisherExact = c.assessComponentStatus(
+		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
+		totalSampleFailure,
+		totalSampleFlake,
+		totalBaseSuccess+totalBaseFailure+totalBaseFlake,
+		totalBaseFailure,
+		totalBaseFlake)
+	sort.Slice(result.JobStats, func(i, j int) bool {
+		return result.JobStats[i].JobName < result.JobStats[j].JobName
+	})
+	return result
+}
+
+func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (apitype.ComponentReportStatus, float64) {
+	status := apitype.MissingBasis
+	fischerExact := 0.0
+	if baseTotal != 0 {
+		if sampleTotal == 0 {
 			if c.IgnoreMissing {
-				ret = apitype.NotSignificant
+				status = apitype.NotSignificant
 
 			} else {
-				ret = apitype.MissingSample
+				status = apitype.MissingSample
 			}
 		} else {
-			if c.MinimumFailure != 0 && (sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount) < c.MinimumFailure {
-				return apitype.NotSignificant
+			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
+				return apitype.NotSignificant, fischerExact
 			}
-			basisPassPercentage := float64(baseStats.SuccessCount+baseStats.FlakeCount) / float64(baseStats.TotalCount)
-			samplePassPercentage := float64(sampleStats.SuccessCount+sampleStats.FlakeCount) / float64(sampleStats.TotalCount)
+			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
+			samplePassPercentage := float64(sampleSuccess+sampleFlake) / float64(sampleTotal)
 			significant := false
 			improved := samplePassPercentage >= basisPassPercentage
 			if improved {
-				_, _, r, _ := fischer.FisherExactTest(baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-					baseStats.SuccessCount+baseStats.FlakeCount,
-					sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-					sampleStats.SuccessCount+sampleStats.FlakeCount)
+				_, _, r, _ := fischer.FisherExactTest(baseTotal-baseSuccess-baseFlake,
+					baseSuccess+baseFlake,
+					sampleTotal-sampleSuccess-sampleFlake,
+					sampleSuccess+sampleFlake)
 				significant = r < 1-float64(c.Confidence)/100
+				fischerExact = r
 			} else if basisPassPercentage-samplePassPercentage > float64(c.PityFactor)/100 {
-				_, _, r, _ := fischer.FisherExactTest(sampleStats.TotalCount-sampleStats.SuccessCount-sampleStats.FlakeCount,
-					sampleStats.SuccessCount+sampleStats.FlakeCount,
-					baseStats.TotalCount-baseStats.SuccessCount-baseStats.FlakeCount,
-					baseStats.SuccessCount+baseStats.FlakeCount)
+				_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess-sampleFlake,
+					sampleSuccess+sampleFlake,
+					baseTotal-baseSuccess-baseFlake,
+					baseSuccess+baseFlake)
 				significant = r < 1-float64(c.Confidence)/100
+				fischerExact = r
 			}
 			if significant {
 				if improved {
-					ret = apitype.SignificantImprovement
+					status = apitype.SignificantImprovement
 				} else {
 					if (basisPassPercentage - samplePassPercentage) > 0.15 {
-						ret = apitype.ExtremeRegression
+						status = apitype.ExtremeRegression
 					} else {
-						ret = apitype.SignificantRegression
+						status = apitype.SignificantRegression
 					}
 				}
 			} else {
-				ret = apitype.NotSignificant
+				status = apitype.NotSignificant
 			}
 		}
 	}
-	return ret
+	return status, fischerExact
 }
 
 func init() {

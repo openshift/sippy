@@ -806,10 +806,6 @@ type ComponentReportRequestAdvancedOptions struct {
 type ComponentTestStatus struct {
 	Component    string
 	Capabilities []string
-	Network      string
-	Upgrade      string
-	Arch         string
-	Platform     string
 	Variants     []string
 	TotalCount   int
 	SuccessCount int
@@ -819,6 +815,10 @@ type ComponentTestStatus struct {
 type ComponentTestIdentification struct {
 	TestName string
 	TestID   string
+	Network  string
+	Upgrade  string
+	Arch     string
+	Platform string
 }
 
 type ComponentTestStatusRow struct {
@@ -840,6 +840,11 @@ type ComponentReport struct {
 	Rows []ComponentReportRow `json:"rows,omitempty"`
 }
 
+type ComponentReportRow struct {
+	ComponentReportRowIdentification
+	Columns []ComponentReportColumn `json:"columns,omitempty"`
+}
+
 type ComponentReportRowIdentification struct {
 	Component  string `json:"component"`
 	Capability string `json:"capability,omitempty"`
@@ -847,9 +852,9 @@ type ComponentReportRowIdentification struct {
 	TestID     string `json:"test_id,omitempty"`
 }
 
-type ComponentReportRow struct {
-	ComponentReportRowIdentification
-	Columns []ComponentReportColumn `json:"columns,omitempty"`
+type ComponentReportColumn struct {
+	ComponentReportColumnIdentification
+	Status ComponentReportStatus `json:"status"`
 }
 
 type ComponentReportColumnIdentification struct {
@@ -860,12 +865,75 @@ type ComponentReportColumnIdentification struct {
 	Variant  string `json:"variant,omitempty"`
 }
 
-type ComponentReportColumn struct {
+type ComponentReportStatus int
+
+type ComponentReportTestDetails struct {
+	ComponentReportRowIdentification
 	ComponentReportColumnIdentification
-	Status ComponentReportStatus `json:"status"`
+	SampleStats  ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
+	BaseStats    ComponentReportTestDetailsReleaseStats `json:"base_stats"`
+	FisherExact  float64                                `json:"fisher_exact"`
+	ReportStatus ComponentReportStatus                  `json:"report_status"`
+	JobStats     []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
 }
 
-type ComponentReportStatus int
+type ComponentReportTestDetailsReleaseStats struct {
+	Release string `json:"release"`
+	ComponentReportTestDetailsTestStats
+}
+
+type ComponentReportTestDetailsTestStats struct {
+	SuccessRate  float64 `json:"success_rate"`
+	SuccessCount int     `json:"success_count"`
+	FailureCount int     `json:"failure_count"`
+	FlakeCount   int     `json:"flake_count"`
+}
+
+type ComponentReportTestDetailsJobStats struct {
+	JobName           string                                  `json:"job_name"`
+	SampleStats       ComponentReportTestDetailsTestStats     `json:"sample_stats"`
+	BaseStats         ComponentReportTestDetailsTestStats     `json:"base_stats"`
+	SampleJobRunStats []ComponentReportTestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
+	BaseJobRunStats   []ComponentReportTestDetailsJobRunStats `json:"base_job_run_stats,omitempty"`
+	Significant       bool                                    `json:"significant"`
+}
+
+type ComponentReportTestDetailsJobRunStats struct {
+	JobURL string `json:"job_url"`
+	// TestStats is the test stats from one particular job run.
+	// For the majority of the tests, there is only one junit. But
+	// there are cases multiple junits are generated for the same test.
+	TestStats ComponentReportTestDetailsTestStats `json:"test_stats"`
+}
+
+type ComponentJobRunTestStatus struct {
+	Component    string
+	Capabilities []string
+	Network      string
+	Upgrade      string
+	Arch         string
+	Platform     string
+	Variants     []string
+	TotalCount   int
+	SuccessCount int
+	FlakeCount   int
+}
+
+type ComponentJobRunTestIdentification struct {
+	TestName string
+	TestID   string
+	FilePath string
+}
+
+type ComponentJobRunTestStatusRow struct {
+	ProwJob      string `bigquery:"prowjob_name"`
+	TestID       string `bigquery:"test_id"`
+	TestName     string `bigquery:"test_name"`
+	FilePath     string `bigquery:"file_path"`
+	TotalCount   int    `bigquery:"total_count"`
+	SuccessCount int    `bigquery:"success_count"`
+	FlakeCount   int    `bigquery:"flake_count"`
+}
 
 const (
 	// ExtremeRegression shows regression with >15% pass rate change
