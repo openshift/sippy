@@ -141,7 +141,7 @@ const cancelFetch = () => {
 }
 
 export default function ComponentReadiness(props) {
-  console.log('ComponentReadiness start')
+  //console.log('ComponentReadiness start')
   const classes = useStyles()
   const theme = useTheme()
 
@@ -436,7 +436,7 @@ export default function ComponentReadiness(props) {
       })
   }
 
-  console.log('ComponentReadiness end')
+  //console.log('ComponentReadiness end')
 
   const pageTitle = makePageTitle(
     `Component Readiness for ${baseRelease} vs. ${sampleRelease}`,

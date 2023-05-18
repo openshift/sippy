@@ -4,6 +4,9 @@ import Button from '@material-ui/core/Button'
 import PropTypes from 'prop-types'
 import React from 'react'
 
+// Dump out the api call in a nice format to help debug and give
+// the user what we're asking for in case they can spot something
+// wrong.
 export default function CompReadyProgress(props) {
   const { apiLink, cancelFunc } = props
   const currentTitle = document.title
@@ -20,9 +23,19 @@ export default function CompReadyProgress(props) {
       <br />
       Here is the API call in case you are interested:
       <br />
-      <h3>
-        <a href={apiLink}>{apiLink}</a>
-      </h3>
+      <a href={apiLink}>
+        {
+          <ul>
+            {apiLink.split('&').map((item, index) => {
+              if (!item.endsWith('=')) {
+                return <li key={index}>{item}</li>
+              } else {
+                return null
+              }
+            })}
+          </ul>
+        }
+      </a>
       <CircularProgress />
       <div>
         <Button
