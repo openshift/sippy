@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import React from 'react'
 
 const handleOnClick = () => {
-  window.location.href = '/component_readiness'
+  window.location.href = '/sippy-ng/component_readiness'
   //window.history.back()
 }
 export default function CompReadyCancelled(props) {
