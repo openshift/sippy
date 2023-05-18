@@ -226,6 +226,7 @@ export function JobStackedChart(props) {
         },
       },
       y: {
+        suggestedMin: 0,
         grid: {
           z: 1,
         },
