@@ -55,7 +55,6 @@ export default function CompReadyMainInputs(props) {
     setExcludeUpgradesCheckedItems,
     setExcludeVariantsCheckedItems,
     handleGenerateReport,
-    handleGenerateReportDebug,
     setConfidence,
     setPity,
     setMinFail,
@@ -96,39 +95,6 @@ export default function CompReadyMainInputs(props) {
           onClick={handleGenerateReport}
         >
           Generate Report
-        </Button>
-      </div>
-      <div className="cr-report-button">
-        <Button
-          size="large"
-          variant="contained"
-          color="primary"
-          component={Link}
-          to={
-            '/component_readiness/' +
-            getUpdatedUrlParts(
-              baseRelease,
-              baseStartTime,
-              baseEndTime,
-              sampleRelease,
-              sampleStartTime,
-              sampleEndTime,
-              groupByCheckedItems,
-              excludeCloudsCheckedItems,
-              excludeArchesCheckedItems,
-              excludeNetworksCheckedItems,
-              excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems,
-              confidence,
-              pity,
-              minFail,
-              ignoreDisruption,
-              ignoreMissing
-            )
-          }
-          onClick={handleGenerateReportDebug}
-        >
-          Generate From File
         </Button>
       </div>
       <div className="cr-release-historical">
@@ -290,7 +256,6 @@ CompReadyMainInputs.propTypes = {
   setExcludeUpgradesCheckedItems: PropTypes.func.isRequired,
   setExcludeVariantsCheckedItems: PropTypes.func.isRequired,
   handleGenerateReport: PropTypes.func.isRequired,
-  handleGenerateReportDebug: PropTypes.func.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,

@@ -56,43 +56,38 @@ export default function CompReadyCapabilityTest(props) {
 
   useEffect(() => {
     setIsLoaded(false)
-    const fromFile = false
-    if (fromFile) {
-      console.log('FILE')
-    } else {
-      console.log('about to fetch page4: ', apiCallStr)
-      fetch(apiCallStr, { signal: abortController.signal })
-        .then((response) => {
-          if (response.status !== 200) {
-            throw new Error('API server returned ' + response.status)
-          }
-          return response.json()
-        })
-        .then((json) => {
-          if (Object.keys(json).length === 0 || json.rows.length === 0) {
-            // The api call returned 200 OK but the data was empty
-            setData(noDataTable)
-            console.log('got empty page4', json)
-          } else {
-            setData(json)
-          }
-        })
-        .catch((error) => {
-          if (error.name === 'AbortError') {
-            console.log('Request was cancelled')
-            setData(cancelledDataTable)
+    console.log('about to fetch page4: ', apiCallStr)
+    fetch(apiCallStr, { signal: abortController.signal })
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
+        }
+        return response.json()
+      })
+      .then((json) => {
+        if (Object.keys(json).length === 0 || json.rows.length === 0) {
+          // The api call returned 200 OK but the data was empty
+          setData(noDataTable)
+          console.log('got empty page4', json)
+        } else {
+          setData(json)
+        }
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled')
+          setData(cancelledDataTable)
 
-            // Once this fired, we need a new one for the next button click.
-            abortController = new AbortController()
-          } else {
-            setFetchError(`API call failed: ${apiCallStr}\n${error}`)
-          }
-        })
-        .finally(() => {
-          // Mark the attempt as finished whether successful or not.
-          setIsLoaded(true)
-        })
-    }
+          // Once this fired, we need a new one for the next button click.
+          abortController = new AbortController()
+        } else {
+          setFetchError(`API call failed: ${apiCallStr}\n${error}`)
+        }
+      })
+      .finally(() => {
+        // Mark the attempt as finished whether successful or not.
+        setIsLoaded(true)
+      })
   }, [])
 
   if (fetchError !== '') {

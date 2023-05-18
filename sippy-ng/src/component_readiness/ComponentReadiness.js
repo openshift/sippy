@@ -398,47 +398,6 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  if (Object.keys(data).length === 0 || data.rows.length === 0) {
-    return <p>No data.</p>
-  }
-
-  if (data.tests && Object.keys(data.tests).length === 0) {
-    return (
-      <Fragment>
-        {pageTitle}
-        <p>No Results.</p>
-      </Fragment>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <Typography variant="h6" style={{ marginTop: 50 }}>
-        No per-variant data found.
-      </Typography>
-    )
-  }
-
-  let fromFile = false
-
-  const handleGenerateReportDebug = (event) => {
-    fromFile = true
-    setBaseRelease('4.13')
-    setBaseStartTime(formatLongDate('2023-03-01 00:00:00'))
-    setBaseEndTime(formatLongDate('2023-03-31 00:00:00'))
-    setSampleRelease('4.14')
-    setSampleStartTime(formatLongDate('2023-03-01 00:00:00'))
-    setSampleEndTime(formatLongDate('2023-03-31 00:00:00'))
-    setGroupByCheckedItems(['cloud', 'arch', 'network'])
-    setExcludeCloudsCheckedItems([])
-    setExcludeArchesCheckedItems([])
-    setExcludeNetworksCheckedItems([])
-    setExcludeUpgradesCheckedItems([])
-    setExcludeVariantsCheckedItems([])
-    setComponent('')
-    handleGenerateReport(event)
-  }
-
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
@@ -467,45 +426,38 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    if (fromFile) {
-      const json = require('./api_page1-big-mar2023-compNames.json')
-      setData(json)
-      console.log('json:', json)
-      setIsLoaded(true)
-    } else {
-      console.log('about to fetch: ', formattedApiCallStr)
-      fetch(formattedApiCallStr, { signal: abortController.signal })
-        .then((response) => {
-          if (response.status !== 200) {
-            throw new Error('API server returned ' + response.status)
-          }
-          return response.json()
-        })
-        .then((json) => {
-          console.log(json)
-          if (Object.keys(json).length === 0 || json.rows.length === 0) {
-            // The api call returned 200 OK but the data was empty
-            setData(noDataTable)
-          } else {
-            setData(json)
-          }
-        })
-        .catch((error) => {
-          if (error.name === 'AbortError') {
-            console.log('Request was cancelled')
-            setData(cancelledDataTable)
+    console.log('about to fetch: ', formattedApiCallStr)
+    fetch(formattedApiCallStr, { signal: abortController.signal })
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
+        }
+        return response.json()
+      })
+      .then((json) => {
+        console.log(json)
+        if (Object.keys(json).length === 0 || json.rows.length === 0) {
+          // The api call returned 200 OK but the data was empty
+          setData(noDataTable)
+        } else {
+          setData(json)
+        }
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled')
+          setData(cancelledDataTable)
 
-            // Once this fired, we need a new one for the next button click.
-            abortController = new AbortController()
-          } else {
-            setFetchError(`API call failed: ${formattedApiCallStr}\n${error}`)
-          }
-        })
-        .finally(() => {
-          // Mark the attempt as finished whether successful or not.
-          setIsLoaded(true)
-        })
-    }
+          // Once this fired, we need a new one for the next button click.
+          abortController = new AbortController()
+        } else {
+          setFetchError(`API call failed: ${formattedApiCallStr}\n${error}`)
+        }
+      })
+      .finally(() => {
+        // Mark the attempt as finished whether successful or not.
+        setIsLoaded(true)
+      })
   }
 
   console.log('ComponentReadiness end')
@@ -821,7 +773,6 @@ export default function ComponentReadiness(props) {
                         setExcludeVariantsCheckedItems
                       }
                       handleGenerateReport={handleGenerateReport}
-                      handleGenerateReportDebug={handleGenerateReportDebug}
                       setConfidence={setConfidence}
                       setPity={setPity}
                       setMinFail={setMinFail}
