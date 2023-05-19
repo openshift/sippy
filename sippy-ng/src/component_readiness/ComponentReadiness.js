@@ -344,14 +344,6 @@ export default function ComponentReadiness(props) {
         ignoreMissing
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
-    //console.log('formatted api call: ')
-    // formattedApiCallStr
-    //   .split('?')[1]
-    //   .split('&')
-    //   .map((item) => {
-    //     console.log('   ', item)
-    //   })
-    // console.log('apiurl: ', formattedApiCallStr)
     return formattedApiCallStr
   }
 
@@ -674,7 +666,7 @@ export default function ComponentReadiness(props) {
                   )
                 }}
               />
-              <Route path={path}>
+              <Route path={'/component_readiness/main'}>
                 <div className="cr-view">
                   <IconButton
                     color="inherit"

@@ -38,11 +38,13 @@ export default function CompReadyCell(props) {
   )
 
   const handleClick = (event) => {
-    event.preventDefault()
-    setComponentParam(componentName)
-    setEnvironmentParam(environment)
-    window.location.href =
-      '/sippy-ng' + componentReport(componentName, environment, filterVals)
+    if (!event.metaKey) {
+      event.preventDefault()
+      setComponentParam(componentName)
+      setEnvironmentParam(environment)
+      window.location.href =
+        '/sippy-ng' + componentReport(componentName, environment, filterVals)
+    }
   }
 
   if (status === undefined) {

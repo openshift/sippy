@@ -132,7 +132,7 @@ export default function Sidebar(props) {
                   <ListItem
                     key={'release-health-'}
                     component={Link}
-                    to={'/component_readiness/'}
+                    to={'/component_readiness/main'}
                     button
                     className={classes.nested}
                   >

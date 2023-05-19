@@ -71,7 +71,7 @@ export default function CompReadyMainInputs(props) {
           color="primary"
           component={Link}
           to={
-            '/component_readiness/' +
+            '/component_readiness/main' +
             getUpdatedUrlParts(
               baseRelease,
               baseStartTime,
