@@ -6,6 +6,7 @@ import React from 'react'
 
 // Make the HH:mm:ss as zeros to be more conducive to caching query caching.
 export const dateFormat = 'yyyy-MM-dd 00:00:00'
+export const dateFormatEnd = 'yyyy-MM-dd 23:59:59'
 
 // This is the table we use when the first page is initially rendered.
 export const initialPageTable = {

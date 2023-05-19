@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import {
   dateFormat,
+  dateFormatEnd,
   excludeArchesList,
   excludeCloudsList,
   excludeNetworksList,
@@ -131,11 +132,11 @@ export default function CompReadyMainInputs(props) {
             showTodayButton
             disableFuture
             label="To"
-            format={dateFormat}
+            format={dateFormatEnd}
             ampm={false}
             value={sampleEndTime}
             onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormatEnd)
               setSampleEndTime(formattedTime)
             }}
           />
@@ -166,11 +167,11 @@ export default function CompReadyMainInputs(props) {
             showTodayButton
             disableFuture
             label="To"
-            format={dateFormat}
+            format={dateFormatEnd}
             ampm={false}
             value={baseEndTime}
             onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateFormat)
+              const formattedTime = formatLongDate(e, dateFormatEnd)
               setBaseEndTime(formattedTime)
             }}
           />
