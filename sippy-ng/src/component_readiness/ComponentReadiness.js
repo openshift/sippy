@@ -47,6 +47,7 @@ import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
 import CompReadyEnvCapability from './CompReadyEnvCapability'
 import CompReadyEnvCapabilityTest from './CompReadyEnvCapabilityTest'
 import CompReadyMainInputs from './CompReadyMainInputs'
+import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import IconButton from '@material-ui/core/IconButton'
@@ -432,6 +433,7 @@ export default function ComponentReadiness(props) {
 
   const pageTitle = makePageTitle(
     `Component Readiness for ${baseRelease} vs. ${sampleRelease}`,
+    `page 1`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns
         ? data.rows[0].columns.length
@@ -748,7 +750,10 @@ export default function ComponentReadiness(props) {
                       setIgnoreDisruption={setIgnoreDisruption}
                     ></CompReadyMainInputs>
                   </Drawer>
-                  {pageTitle}
+                  <CompReadyPageTitle
+                    pageTitle={pageTitle}
+                    apiCallStr={showValuesForReport()}
+                  />
                   <TableContainer component="div" className="cr-wrapper">
                     <Table className="cr-comp-read-table">
                       <TableHead>

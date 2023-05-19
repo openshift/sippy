@@ -106,7 +106,8 @@ export default function CompReadyEnvCapabilities(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Capabilities report (page 2a)',
+    'Capabilities report',
+    'page 2a',
     `environment: ${environment}`,
     `component: ${component}`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${

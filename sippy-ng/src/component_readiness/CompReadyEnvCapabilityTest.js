@@ -97,7 +97,8 @@ export default function CompReadyEnvCapabilityTest(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test report (page 4a)',
+    'Test report',
+    'page 4a',
     `component: ${component}`,
     `capability: ${capability}`,
     `testId: ${testId}`,

@@ -321,7 +321,7 @@ export function getUpdatedUrlParts(
 }
 
 // Single place to make titles so they look consistent as well as capture the
-// key attributes.
+// key attributes you may want for debugging.
 export function makePageTitle(title, ...args) {
   return (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>

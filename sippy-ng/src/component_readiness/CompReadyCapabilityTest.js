@@ -95,7 +95,8 @@ export default function CompReadyCapabilityTest(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test report (page 4)',
+    'Test report',
+    'page 4',
     `component: ${component}`,
     `capability: ${capability}`,
     `testId:  ${testId}`,

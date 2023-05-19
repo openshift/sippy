@@ -21,7 +21,7 @@ export default function CompReadyProgress(props) {
         may take minutes.
       </p>
       <br />
-      Here is the API call in case you are interested:
+      Here is the clickable API call in case you are interested:
       <br />
       <a href={apiLink}>
         {

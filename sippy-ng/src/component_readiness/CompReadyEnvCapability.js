@@ -96,8 +96,9 @@ export default function CompReadyEnvCapability(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test report (page 3a)',
-    `environment ${environment}`,
+    'Test report',
+    'page 3a',
+    `environment: ${environment}`,
     `component: ${component}`,
     `capability: ${capability}`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
