@@ -50,8 +50,6 @@ export const cancelledDataTable = {
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
   const mainUrl = window.location.host.split(':')[0]
-
-  //console.log('mainUrl: ', mainUrl)
   return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
@@ -85,7 +83,7 @@ export function gotFetchError(fetchError) {
 //         "platform": "alibaba",
 //         "status": 0
 //       },
-// Do our best to handle empty data or the a "cancelled" condition.
+// Do our best to handle empty data or a "cancelled" condition.
 export function getColumns(data) {
   let isBad = false
   if (!data) {
@@ -106,7 +104,7 @@ export function getColumns(data) {
     console.log('got cancelled')
     return ['Cancelled']
   } else if (data.rows[0].component == 'None') {
-    //console.log('got no data')
+    console.log('got no data')
     return ['No data']
   } else if (!data.rows[0].columns) {
     return ['No data']
@@ -132,7 +130,6 @@ export function getColumns(data) {
 // We add a 'T' in the middle and a 'Z' on the end.
 export function makeRFC3339Time(aUrlStr) {
   // Translate all the %20 and %3a into spaces and colons so that the regex can work.
-  //console.log('rfc anUrlStr: ', aUrlStr)
   const decodedStr = decodeURIComponent(aUrlStr)
   const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
@@ -141,7 +138,6 @@ export function makeRFC3339Time(aUrlStr) {
   // The api thinks that the null component is real and will filter accordingly
   // so omit it.
   retVal = retVal.replace(/&component=null/g, '')
-  //console.log('rfc retVal: ', retVal)
   return retVal
 }
 
@@ -149,7 +145,6 @@ export function makeRFC3339Time(aUrlStr) {
 export function formatLongDate(aLongDateStr) {
   const dateObj = new Date(aLongDateStr)
   const ret = format(dateObj, dateFormat)
-  //console.log('formatLongDate: ', ret)
   return ret
 }
 
@@ -208,8 +203,8 @@ export const excludeVariantsList = [
 ]
 
 // Take a string that is an "environment" (environment is a list of strings that describe
-// an items in one or more of the lists above) and split it up so that it can be used in
-// an api call.
+// items in one or more of the lists above) and split it up so that it can be used in
+// an api call.  We keep this concept of "environment" because it's used for column labels.
 export function expandEnvironment(environmentStr) {
   if (environmentStr == null || environmentStr == '') {
     return ''
@@ -228,7 +223,7 @@ export function expandEnvironment(environmentStr) {
     } else if (excludeVariantsList.includes(item)) {
       params.variant = item
     } else {
-      //console.log(`Item '${item}' not found in lists`)
+      console.log(`Warning: Item '${item}' not found in lists`)
     }
   })
   const paramStrings = Object.entries(params).map(

@@ -21,9 +21,6 @@ function capabilityReport(capabilityName, environmentVal, filterVals) {
     '&capability=' +
     safeEncodeURIComponent(capabilityName) +
     expandEnvironment(environmentVal)
-
-  //const apiCallStr = makeRFC3339Time(getAPIUrl() + makeRFC3339Time(retUrl))
-  //console.log('apiCallStrR: ', apiCallStr)
   return retUrl
 }
 export default function CompReadyCapsCell(props) {

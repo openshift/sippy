@@ -46,16 +46,6 @@ export default function CompReadyEnvCapabilities(props) {
 
   const safeComponent = safeEncodeURIComponent(component)
 
-  // This may be obsolete by now since we're now pushing the values to the url.
-  // Continue to use the old working method -- but put out both values in the console;
-  // if the values remain the same for all testing, we can remove this.
-  // We need to get the environment from the current URL because it is not present
-  // when we try to get it from our caller.
-  //const [environmentParam] = useQueryParam('environment', StringParam)
-  //const environment1 = environmentParam
-
-  //console.log('environment1 page2a: ', environment1)
-  //console.log('environment page2a: ', environment)
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
@@ -67,7 +57,6 @@ export default function CompReadyEnvCapabilities(props) {
 
   useEffect(() => {
     setIsLoaded(false)
-    console.log('about to fetch page2a: ', apiCallStr)
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -86,7 +75,6 @@ export default function CompReadyEnvCapabilities(props) {
       })
       .catch((error) => {
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled')
           setData(cancelledDataTable)
 
           // Once this fired, we need a new one for the next button click.

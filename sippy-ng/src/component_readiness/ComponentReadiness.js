@@ -300,29 +300,6 @@ export default function ComponentReadiness(props) {
   // Show the current state of the filter variables and the url.
   // Create API call string and return it.
   const showValuesForReport = () => {
-    // console.log('--------------- showValuesForReport ------------------')
-    // console.log('baseRelease', baseRelease)
-    // console.log('baseStartTime', baseStartTime)
-    // console.log('baseEndTime', baseEndTime)
-    // console.log('sampleRelease', sampleRelease)
-    // console.log('sampleStartTime', sampleStartTime)
-    // console.log('sampleEndTime', sampleEndTime)
-    // console.log('groupBy: ', groupByCheckedItems)
-    // console.log('excludeClouds: ', excludeCloudsCheckedItems)
-    // console.log('excludeArches', excludeArchesCheckedItems)
-    // console.log('excludeNetworks', excludeNetworksCheckedItems)
-    // console.log('excludeUpgrades', excludeUpgradesCheckedItems)
-    // console.log('excludeVariants', excludeVariantsCheckedItems)
-    // console.log('confidence:', confidence)
-    // console.log('pity:', pity)
-    // console.log('minFail:', minFail)
-    // console.log('ignoreDisruption:', ignoreDisruption)
-    // console.log('ignoreMissing:', ignoreMissing)
-    // console.log('component', component)
-    // console.log('environment', environment)
-    // console.log('testId', testId)
-
-    // process.env.REACT_APP_API_URL +
     const apiCallStr =
       getAPIUrl() +
       getUpdatedUrlParts(
@@ -395,7 +372,6 @@ export default function ComponentReadiness(props) {
     const formattedApiCallStr = showValuesForReport()
 
     setIsLoaded(false)
-    console.log('about to fetch: ', formattedApiCallStr)
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -404,7 +380,6 @@ export default function ComponentReadiness(props) {
         return response.json()
       })
       .then((json) => {
-        //console.log(json)
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
@@ -414,7 +389,6 @@ export default function ComponentReadiness(props) {
       })
       .catch((error) => {
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled')
           setData(cancelledDataTable)
 
           // Once this fired, we need a new one for the next button click.

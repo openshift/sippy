@@ -54,7 +54,6 @@ export default function CompReadyCapability(props) {
 
   useEffect(() => {
     setIsLoaded(false)
-    console.log('about to fetch page3: ', apiCallStr)
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -73,7 +72,6 @@ export default function CompReadyCapability(props) {
       })
       .catch((error) => {
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled')
           setData(cancelledDataTable)
 
           // Once this fired, we need a new one for the next button click.
