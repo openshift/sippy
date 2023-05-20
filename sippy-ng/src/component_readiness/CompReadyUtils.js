@@ -86,41 +86,29 @@ export function gotFetchError(fetchError) {
 //       },
 // Do our best to handle empty data or a "cancelled" condition.
 export function getColumns(data) {
-  let isBad = false
-  if (!data) {
-    isBad = true
-    console.log('data is undefined')
-  } else if (!data.rows) {
-    isBad = true
-    console.log('data has no rows')
-  } else if (!data.rows[0]) {
-    isBad = true
-    console.log('data has no rows[0]')
-  }
-  if (isBad) {
-    console.log('No way to generate columns')
+  if (!data || !data.rows || !data.rows[0] || !data.rows[0].component) {
+    console.log(
+      'data is one of: undefined, no rows, no rows[0], no row[0].component'
+    )
     return ['No column']
+  }
+  if (data.rows[0].component == 'None' || !data.rows[0].columns) {
+    return ['No data']
   }
   if (data.rows[0].component === 'Cancelled') {
     console.log('got cancelled')
     return ['Cancelled']
-  } else if (data.rows[0].component == 'None') {
-    console.log('got no data')
-    return ['No data']
-  } else if (!data.rows[0].columns) {
-    return ['No data']
   }
-  const row0Columns = data.rows[0].columns
+
+  const firstColumn = data.rows[0].columns
   let columnNames = []
-  row0Columns.forEach((column) => {
-    let columnName = ''
-    for (const key in column) {
-      if (key !== 'status') {
-        columnName = columnName + ' ' + column[key]
-      }
-    }
-    columnNames.push(columnName.trimStart())
+  firstColumn.forEach((column) => {
+    const columnValues = Object.keys(column)
+      .filter((key) => key != 'status')
+      .map((key) => column[key])
+    columnNames.push(columnValues.join(' '))
   })
+
   return columnNames
 }
 
@@ -132,7 +120,8 @@ export function getColumns(data) {
 export function makeRFC3339Time(aUrlStr) {
   // Translate all the %20 and %3a into spaces and colons so that the regex can work.
   const decodedStr = decodeURIComponent(aUrlStr)
-  const regex = /(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}:\d{2})/g
+  // URLSearchParams uses a + to separate date and time.
+  const regex = /(\d{4}-\d{2}-\d{2})[\s+](\d{2}:\d{2}:\d{2})/g
   const replaceStr = '$1T$2Z'
   let retVal = decodedStr.replace(regex, replaceStr)
 
@@ -207,7 +196,11 @@ export const excludeVariantsList = [
 // items in one or more of the lists above) and split it up so that it can be used in
 // an api call.  We keep this concept of "environment" because it's used for column labels.
 export function expandEnvironment(environmentStr) {
-  if (environmentStr == null || environmentStr == '') {
+  if (
+    environmentStr == null ||
+    environmentStr == '' ||
+    environmentStr === 'No data'
+  ) {
     return ''
   }
   const items = environmentStr.split(' ')
@@ -284,35 +277,23 @@ export function getUpdatedUrlParts(
     group_by: groupByCheckedItems,
   }
 
+  const queryParams = new URLSearchParams()
+
   // Render the plain values first.
-  let retVal = '?'
-  let fieldList1 = Object.entries(valuesMap)
-  fieldList1.map(([key, value]) => {
-    let amper = '&'
-    if (key === 'baseRelease') {
-      amper = ''
-    }
-    retVal = retVal + amper + key + '=' + safeEncodeURIComponent(value)
+  Object.entries(valuesMap).forEach(([key, value]) => {
+    queryParams.append(key, value)
   })
 
-  const fieldList = Object.entries(arraysMap)
-  fieldList.map(([key, value]) => {
-    retVal = retVal + '&' + key + '='
-    let first = true
-
-    // Account for the case where value is undefined
-    // because the url said something like exclude_clouds=, ...
-    if (value) {
-      value.map((item) => {
-        let comma = ','
-        if (first) {
-          comma = ''
-          first = false
-        }
-        retVal = retVal + comma + item
-      })
+  // Render the array values.
+  Object.entries(arraysMap).forEach(([key, value]) => {
+    if (value && value.length) {
+      queryParams.append(key, value.join(','))
     }
   })
+
+  // Stringify and put the begin param character.
+  const queryString = queryParams.toString()
+  const retVal = `?${queryString}`
   return retVal
 }
 
