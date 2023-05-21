@@ -54,6 +54,11 @@ export function getAPIUrl() {
   return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
+export const gotoCompReadyMain = () => {
+  window.location.href = '/sippy-ng/component_readiness/main'
+  //window.history.back()
+}
+
 // When we get a fetch error, this will print a standard message.
 export function gotFetchError(fetchError) {
   return (
@@ -68,7 +73,8 @@ export function gotFetchError(fetchError) {
         ))}
       </h3>
       <hr />
-      <h3>Check, and possibly fix api server, then reload page to retry</h3>
+      <h3>Check, and possibly fix api server, then click below to retry</h3>
+      <button onClick={gotoCompReadyMain}>Retry</button>
     </Alert>
   )
 }

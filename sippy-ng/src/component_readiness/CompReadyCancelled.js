@@ -1,11 +1,7 @@
-import { Link } from 'react-router-dom'
+import { gotoCompReadyMain } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const handleOnClick = () => {
-  window.location.href = '/sippy-ng/component_readiness/main'
-  //window.history.back()
-}
 export default function CompReadyCancelled(props) {
   const { message, apiCallStr } = props
   const outStr = apiCallStr.split('&')
@@ -25,7 +21,7 @@ export default function CompReadyCancelled(props) {
           }
         })}
       </ul>
-      <button onClick={handleOnClick}>Start Over</button>
+      <button onClick={gotoCompReadyMain}>Start Over</button>
     </div>
   )
 }
