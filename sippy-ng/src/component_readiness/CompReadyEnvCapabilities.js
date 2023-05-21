@@ -11,7 +11,6 @@ import {
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
 import CompCapRow from './CompCapRow'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -33,7 +32,8 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// This is page 2a which runs when you click a component cell under an environment of page 1.
+// This component runs when we see /component_readiness/env_capabilities
+// This is page 2a which runs when you click a cell under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
   const { filterVals, component, environment } = props
 

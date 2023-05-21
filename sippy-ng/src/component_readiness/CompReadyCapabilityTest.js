@@ -97,7 +97,7 @@ export default function CompReadyCapabilityTest(props) {
     'page 4',
     `component: ${component}`,
     `capability: ${capability}`,
-    `testId:  ${testId}`,
+    `testId: ${testId}`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns
         ? data.rows[0].columns.length

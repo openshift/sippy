@@ -32,8 +32,8 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/test
-// This is page 4 which runs when you click a capability cell on the left in page 3 or 3a
+// This component runs when we see /component_readiness/env_test
+// This is page 4ia which runs when you click a cell on the right in page 3 or 3a
 export default function CompReadyEnvCapabilityTest(props) {
   const { filterVals, component, capability, testId, environment } = props
 
