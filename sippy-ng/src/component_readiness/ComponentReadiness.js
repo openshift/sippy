@@ -41,9 +41,6 @@ import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
 import CompReadyCancelled from './CompReadyCancelled'
-import CompReadyCapabilities from './CompReadyCapabilities'
-import CompReadyCapability from './CompReadyCapability'
-import CompReadyCapabilityTest from './CompReadyCapabilityTest'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
 import CompReadyEnvCapability from './CompReadyEnvCapability'
 import CompReadyEnvCapabilityTest from './CompReadyEnvCapabilityTest'
@@ -457,13 +454,13 @@ export default function ComponentReadiness(props) {
                   setCapabilityParam(capability)
                   setTestIdParam(testId)
                   return (
-                    <CompReadyCapabilityTest
+                    <CompReadyEnvCapabilityTest
                       key="capabilitytest"
                       filterVals={filterVals}
                       component={component}
                       capability={capability}
                       testId={testId}
-                    ></CompReadyCapabilityTest>
+                    ></CompReadyEnvCapabilityTest>
                   )
                 }}
               />
@@ -532,12 +529,12 @@ export default function ComponentReadiness(props) {
                   setComponentParam(component)
                   setCapabilityParam(capability)
                   return (
-                    <CompReadyCapability
+                    <CompReadyEnvCapability
                       key="capabilities"
                       filterVals={filterVals}
                       component={component}
                       capability={capability}
-                    ></CompReadyCapability>
+                    ></CompReadyEnvCapability>
                   )
                 }}
               />
@@ -602,10 +599,10 @@ export default function ComponentReadiness(props) {
                   )
                   setComponentParam(component)
                   return (
-                    <CompReadyCapabilities
+                    <CompReadyEnvCapabilities
                       filterVals={filterVals}
                       component={component}
-                    ></CompReadyCapabilities>
+                    ></CompReadyEnvCapabilities>
                   )
                 }}
               />

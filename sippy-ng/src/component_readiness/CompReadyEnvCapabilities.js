@@ -33,7 +33,8 @@ const cancelFetch = () => {
 }
 
 // This component runs when we see /component_readiness/env_capabilities
-// This is page 2a which runs when you click a cell under an environment of page 1.
+// This component runs when we see /component_readiness/capabilities
+// This is page 2 or 2a which runs when you click a component cell on the left or under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
   const { filterVals, component, environment } = props
 
@@ -42,7 +43,7 @@ export default function CompReadyEnvCapabilities(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `EnvCapabilities`
+  document.title = environment ? `EnvCapabilities` : `Capabilities`
 
   const safeComponent = safeEncodeURIComponent(component)
 
@@ -50,7 +51,7 @@ export default function CompReadyEnvCapabilities(props) {
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
-    expandEnvironment(environment)
+    (environment ? expandEnvironment(environment) : '')
 
   const newFilterVals =
     filterVals + `&component=${safeComponent}` + expandEnvironment(environment)
@@ -94,8 +95,8 @@ export default function CompReadyEnvCapabilities(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Capabilities report',
-    'page 2a',
+    'Capabilities report' + (environment ? ', Environment' : ''),
+    environment ? 'page 2a' : 'page2',
     `environment: ${environment}`,
     `component: ${component}`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
@@ -120,7 +121,8 @@ export default function CompReadyEnvCapabilities(props) {
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
-        <Link to="/component_readiness">/</Link> {environment} &gt; {component}
+        <Link to="/component_readiness">/</Link>
+        {environment ? `${environment} > ${component}` : component}
       </h2>
       <br></br>
       <TableContainer component="div" className="cr-wrapper">
@@ -178,5 +180,5 @@ export default function CompReadyEnvCapabilities(props) {
 CompReadyEnvCapabilities.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
-  environment: PropTypes.string.isRequired,
+  environment: PropTypes.string,
 }

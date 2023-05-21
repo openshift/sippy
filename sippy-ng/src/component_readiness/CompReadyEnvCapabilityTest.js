@@ -33,7 +33,8 @@ const cancelFetch = () => {
 }
 
 // This component runs when we see /component_readiness/env_test
-// This is page 4ia which runs when you click a cell on the right in page 3 or 3a
+// This component runs when we see /component_readiness/test
+// This is page 4 or page 4a which runs when you click a capability cell on the left or cell on the right in page 3 or 3a
 export default function CompReadyEnvCapabilityTest(props) {
   const { filterVals, component, capability, testId, environment } = props
 
@@ -42,7 +43,7 @@ export default function CompReadyEnvCapabilityTest(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `CapabilityEnvTest`
+  document.title = environment ? `CapabilityEnvTest` : `CapabilityTest`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
@@ -54,7 +55,7 @@ export default function CompReadyEnvCapabilityTest(props) {
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
     `&test_id=${safeTestId}` +
-    expandEnvironment(environment)
+    (environment ? expandEnvironment(environment) : '')
 
   useEffect(() => {
     setIsLoaded(false)
@@ -69,7 +70,6 @@ export default function CompReadyEnvCapabilityTest(props) {
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
-          console.log('got empty page4a', json)
         } else {
           setData(json)
         }
@@ -95,8 +95,8 @@ export default function CompReadyEnvCapabilityTest(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test report',
-    'page 4a',
+    'Test Report' + (environment ? ', Environment' : ''),
+    environment ? 'page 4a' : 'page 4',
     `component: ${component}`,
     `capability: ${capability}`,
     `testId: ${testId}`,
@@ -182,9 +182,9 @@ export default function CompReadyEnvCapabilityTest(props) {
 }
 
 CompReadyEnvCapabilityTest.propTypes = {
-  filterVals: PropTypes.string,
-  component: PropTypes.string,
-  capability: PropTypes.string,
-  testId: PropTypes.string,
+  filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
+  capability: PropTypes.string.isRequired,
+  testId: PropTypes.string.isRequired,
   environment: PropTypes.string,
 }

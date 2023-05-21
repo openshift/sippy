@@ -33,7 +33,9 @@ const cancelFetch = () => {
 }
 
 // This component runs when we see /component_readiness/env_capability
-// This is page 3a which runs when you click a cell under an environment on the right in page 2 or 2a
+// This component runs when we see /component_readiness/capability
+// This is page 3 or 3a which runs when you click a component on the left or
+// a cell under an environment on the right in page 2 or 2a
 export default function CompReadyEnvCapability(props) {
   const { filterVals, component, capability, environment } = props
 
@@ -42,7 +44,7 @@ export default function CompReadyEnvCapability(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = `EnvCapability`
+  document.title = environment ? `EnvCapability` : `Capability`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
@@ -52,7 +54,7 @@ export default function CompReadyEnvCapability(props) {
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
-    expandEnvironment(environment)
+    (environment ? expandEnvironment(environment) : '')
 
   useEffect(() => {
     setIsLoaded(false)
@@ -93,8 +95,8 @@ export default function CompReadyEnvCapability(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test report',
-    'page 3a',
+    'Test report for Component' + (environment ? ', Environment' : ''),
+    environment ? 'page 3a' : 'page 3',
     `environment: ${environment}`,
     `component: ${component}`,
     `capability: ${capability}`,
@@ -179,8 +181,8 @@ export default function CompReadyEnvCapability(props) {
 }
 
 CompReadyEnvCapability.propTypes = {
-  filterVals: PropTypes.string,
-  component: PropTypes.string,
-  capability: PropTypes.string,
+  filterVals: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
+  capability: PropTypes.string.isRequired,
   environment: PropTypes.string,
 }
