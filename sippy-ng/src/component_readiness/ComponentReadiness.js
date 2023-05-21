@@ -10,6 +10,7 @@ import {
 import {
   cancelledDataTable,
   formatLongDate,
+  formatLongEndDate,
   getAPIUrl,
   getColumns,
   getUpdatedUrlParts,
@@ -677,10 +678,10 @@ export default function ComponentReadiness(props) {
                     <CompReadyMainInputs
                       baseRelease={baseRelease}
                       baseStartTime={formatLongDate(baseStartTime)}
-                      baseEndTime={formatLongDate(baseEndTime)}
+                      baseEndTime={formatLongEndDate(baseEndTime)}
                       sampleRelease={sampleRelease}
                       sampleStartTime={formatLongDate(sampleStartTime)}
-                      sampleEndTime={formatLongDate(sampleEndTime)}
+                      sampleEndTime={formatLongEndDate(sampleEndTime)}
                       groupByCheckedItems={groupByCheckedItems}
                       excludeCloudsCheckedItems={excludeCloudsCheckedItems}
                       excludeArchesCheckedItems={excludeArchesCheckedItems}
