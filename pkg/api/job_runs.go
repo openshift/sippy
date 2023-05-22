@@ -25,6 +25,9 @@ const (
 	maxFailuresToFullyAnalyze = 20
 )
 
+// nonDeterministicRiskLevels indicate incomplete analysis and allow for fallback to other analysis methodologies name -> variant
+var nonDeterministicRiskLevels = []int{apitype.FailureRiskLevelUnknown.Level, apitype.FailureRiskLevelIncompleteTests.Level, apitype.FailureRiskLevelMissingData.Level}
+
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
 	sortField := req.URL.Query().Get("sortField")
 	sort := apitype.Sort(req.URL.Query().Get("sort"))
@@ -126,7 +129,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, logger *log.Entry) (*models.ProwJob
 // The use case is for pull request jobs that we want to find a matching periodic that is running the
 // same root job.  We use the periodic as the 'standard' to compare test rates.
 // e.g.
-//                   pull-ci-openshift-origin-master- e2e-vsphere-ovn-etcd-scaling
+// pull-ci-openshift-origin-master- e2e-vsphere-ovn-etcd-scaling
 // periodic-ci-openshift-release-master-nightly-4.14- e2e-vsphere-ovn-etcd-scaling
 // our common root is e2e-vsphere-ovn-etcd-scaling and our compareRelease is 4.14
 // if we don't have enough data from the current compareRelease we fall back to include the previous release as well
@@ -315,15 +318,22 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 	}
 
 	return runJobRunAnalysis(jobRun, compareRelease, jobRunTestCount, historicalCount, neverStableJob, jobNames, logger.WithField("func", "runJobRunAnalysis"),
-		jobNamesTestResultFunc(dbc))
+		jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc))
 }
 
-// testResultsFunc is used for injecting db responses in unit tests.
-type testResultsFunc func(testName string, jobNames []string) (*apitype.Test, error)
+// testResultsByJobNameFunc is used for injecting db responses in unit tests.
+type testResultsByJobNameFunc func(testName string, jobNames []string) (*apitype.Test, error)
+
+type testResultsByVariantsFunc func(testName string, release, suite string, variants []string, jobNames []string) (*apitype.Test, error)
 
 // jobNamesTestResultFunc looks to match job runs based on the jobnames
-func jobNamesTestResultFunc(dbc *db.DB) testResultsFunc {
+func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 	return func(testName string, jobNames []string) (*apitype.Test, error) {
+
+		if len(jobNames) == 0 {
+			return nil, nil
+		}
+
 		sql := fmt.Sprintf(query.QueryTestAnalysis, testName, strings.Join(jobNames, ","))
 		testReport := apitype.Test{}
 		q := dbc.DB.Raw(sql)
@@ -338,8 +348,53 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsFunc {
 	}
 }
 
+// variantsTestResultFunc looks to match job runs based on variant matches
+func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
+	return func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
+
+		fil := &filter.Filter{
+			Items: []filter.FilterItem{
+				{
+					Field:    "name",
+					Not:      false,
+					Operator: filter.OperatorEquals,
+					Value:    testName,
+				},
+			},
+			LinkOperator: "and",
+		}
+		testResults, _, err := BuildTestsResults(dbc, release, "default", false, false,
+			fil)
+		if err != nil {
+			return nil, err
+		}
+		gosort.Strings(variants)
+		for _, testResult := range testResults {
+			// this is a weird way to get the variant we want, but it allows re-use
+			// of the existing code.
+			gosort.Strings(testResult.Variants)
+			if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+				return &testResult, nil
+			}
+		}
+
+		// otherwise, what is our best match...
+		// do something more expensive and check to see
+		// which testResult contains all the variants we have currently
+		for _, testResult := range testResults {
+			// we didn't find an exact variant match
+			// next best guess is the first variant list that contains all of our known variants
+			if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+				return &testResult, nil
+			}
+		}
+
+		return nil, nil
+	}
+}
+
 func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunTestCount int, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry,
-	testResultsFunc testResultsFunc) (apitype.ProwJobRunRiskAnalysis, error) {
+	testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	logger.Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
@@ -400,30 +455,50 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 			continue
 		}
 
-		logger.WithFields(log.Fields{
+		loggerFields := logger.WithFields(log.Fields{
 			"name": ft.Test.Name,
-		}).Debug("failed test")
+		})
 
-		testResult, err := testResultsFunc(
-			ft.Test.Name, jobNames)
-		if err != nil {
-			return response, err
+		loggerFields.Debug("failed test")
+
+		var testResultsJobNames, testResultsVariants *apitype.Test
+		var errJobNames, errVariants error
+
+		// set upper and lower bounds for the number of jobNames we look to match against
+		if testResultsJobNameFunc != nil {
+			if len(jobNames) < 5 && len(jobNames) > 0 {
+				testResultsJobNames, errJobNames = testResultsJobNameFunc(ft.Test.Name, jobNames)
+			} else {
+				loggerFields.Warningf("Skipping job names test analysis due to jobNames length: %d", len(jobNames))
+			}
 		}
+
+		if testResultsVariantsFunc != nil {
+			testResultsVariants, errVariants = testResultsVariantsFunc(ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants, jobNames)
+		}
+
+		if errJobNames != nil && errVariants != nil {
+			// log them both or just the one we don't pass back up?
+			loggerFields.WithError(errVariants).Error("Failed test results by variants")
+			loggerFields.WithError(errJobNames).Error("Failed test results job names")
+			return response, errJobNames
+		}
+
 		// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
-		if testResult != nil && testResult.CurrentRuns > 0 {
-			testRiskLvl := getSeverityLevelForPassRate(testResult.CurrentPassPercentage)
+		if (testResultsVariants != nil && testResultsVariants.CurrentRuns > 0) || (testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0) {
+
+			// select the 'best' test result
+			testRiskLvl, reasons := selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
+
 			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
 				response.OverallRisk.Level = testRiskLvl
 				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
 			}
 			response.Tests = append(response.Tests, apitype.ProwJobRunTestRiskAnalysis{
-				Name: testResult.Name,
+				Name: ft.Test.Name,
 				Risk: apitype.FailureRisk{
-					Level: testRiskLvl,
-					Reasons: []string{
-						fmt.Sprintf("This test has passed %.2f%% of %d runs on jobs %v in the last 14 days.",
-							testResult.CurrentPassPercentage, testResult.CurrentRuns, jobNames),
-					},
+					Level:   testRiskLvl,
+					Reasons: reasons,
 				},
 				OpenBugs: ft.Test.Bugs,
 			})
@@ -450,6 +525,64 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
 
 	return response, nil
+}
+
+func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) (apitype.RiskLevel, []string) {
+
+	var testRiskLvlJobNames, testRiskLvlVariants apitype.RiskLevel
+	var reasonsJobNames, reasonsVariants []string
+
+	if testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0 {
+		testRiskLvlJobNames = getSeverityLevelForPassRate(testResultsJobNames.CurrentPassPercentage)
+		reasonsJobNames = []string{
+			fmt.Sprintf("This test has passed %.2f%% of %d runs on jobs %v in the last 14 days.",
+				testResultsJobNames.CurrentPassPercentage, testResultsJobNames.CurrentRuns, jobNames),
+		}
+	}
+
+	if testResultsVariants != nil && testResultsVariants.CurrentRuns > 0 {
+		testRiskLvlVariants = getSeverityLevelForPassRate(testResultsVariants.CurrentPassPercentage)
+		reasonsVariants = []string{
+			fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
+				testResultsVariants.CurrentPassPercentage, testResultsVariants.CurrentRuns, compareRelease, testResultsVariants.Variants),
+		}
+	}
+
+	// if one is empty return the other
+	// if both are empty then return Unknown
+	if len(testRiskLvlJobNames.Name) == 0 {
+		if len(testRiskLvlVariants.Name) == 0 {
+			return apitype.FailureRiskLevelUnknown, []string{"Analysis was not performed for this test due to lack of current runs"}
+		}
+		return testRiskLvlVariants, reasonsVariants
+	}
+	if len(testRiskLvlVariants.Name) == 0 {
+		return testRiskLvlJobNames, reasonsJobNames
+	}
+
+	// if jobnames nondeterministic then return variants
+	if containsValue(nonDeterministicRiskLevels, testRiskLvlJobNames.Level) {
+		return testRiskLvlVariants, reasonsVariants
+	}
+
+	// we had the case where etcd-scaling was reporting
+	// high risk using the variant methodology due
+	// to the analysis including more stable non scaling job results
+	// so, we don't want to just return the highest risk analysis
+	// bias is towards jobname analysis at this point
+	// we could check for the number of runs but
+	// that introduces flakiness on which analysis we are using
+	// for now we have a deterministic result based on the jobnames analsysis so return it
+	return testRiskLvlJobNames, reasonsJobNames
+}
+
+func containsValue(values []int, value int) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func getSeverityLevelForPassRate(passPercentage float64) apitype.RiskLevel {
