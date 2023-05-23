@@ -49,6 +49,7 @@ var (
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
 	// proxy jobs do not have a trailing -version segment
+	powervsRegex      = regexp.MustCompile(`(?i)-ppc64le-powervs`)
 	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
 	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
 	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
@@ -87,6 +88,7 @@ var (
 		"osd",
 		"ovirt",
 		"ovn",
+		"powervs",
 		"ppc64le",
 		"promote",
 		"proxy",
@@ -291,6 +293,8 @@ func determinePlatform(jobName, _ string) string {
 func determineArchitecture(jobName, _ string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
+	} else if powervsRegex.MatchString(jobName) {
+		return "ppc64le"
 	} else if ppc64leRegex.MatchString(jobName) {
 		return "ppc64le"
 	} else if s390xRegex.MatchString(jobName) {
