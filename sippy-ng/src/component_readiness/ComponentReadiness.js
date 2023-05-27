@@ -48,6 +48,7 @@ import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
+import CompReadyTestReport from './CompReadyTestReport'
 import IconButton from '@material-ui/core/IconButton'
 import MenuIcon from '@material-ui/icons/Menu'
 import React from 'react'
@@ -232,6 +233,7 @@ export default function ComponentReadiness(props) {
     StringParam
   )
   const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+  const [testNameParam, setTestNameParam] = useQueryParam('test_name', String)
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
@@ -242,6 +244,7 @@ export default function ComponentReadiness(props) {
   const [environment, setEnvironment] = React.useState(environmentParam)
   const [capability, setCapability] = React.useState(capabilityParam)
   const [testId, setTestId] = React.useState(testIdParam)
+  const [testName, setTestName] = React.useState(testNameParam)
 
   const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
     React.useState(excludeCloudsCheckedItemsParam)
@@ -427,6 +430,47 @@ export default function ComponentReadiness(props) {
             ></Grid>
             {/* eslint-disable react/prop-types */}
             <Switch>
+              <Route
+                path="/component_readiness/test_details"
+                render={(props) => {
+                  // We need to pass the testId and testName
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
+                  )
+                  setComponentParam(component)
+                  setCapabilityParam(capability)
+                  setTestIdParam(testId)
+                  setTestNameParam(testName)
+                  setEnvironmentParam(environment)
+                  return (
+                    <CompReadyTestReport
+                      key="testreport"
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                      environment={environment}
+                      testId={testId}
+                      testName={testName}
+                    ></CompReadyTestReport>
+                  )
+                }}
+              />
               <Route
                 path="/component_readiness/test"
                 render={(props) => {

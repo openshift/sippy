@@ -54,6 +54,11 @@ export function getAPIUrl() {
   return 'http://' + mainUrl + ':8080/api/component_readiness'
 }
 
+// Make one place to create the Component Readiness test_details api call
+export function getTestDetailsAPIUrl() {
+  const mainUrl = window.location.host.split(':')[0]
+  return 'http://' + mainUrl + ':8080/api/component_readiness/test_details'
+}
 export const gotoCompReadyMain = () => {
   window.location.href = '/sippy-ng/component_readiness/main'
   //window.history.back()

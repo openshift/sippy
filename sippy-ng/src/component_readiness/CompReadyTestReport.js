@@ -2,8 +2,8 @@ import './ComponentReadiness.css'
 import {
   cancelledDataTable,
   expandEnvironment,
-  getAPIUrl,
   getColumns,
+  getTestDetailsAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
@@ -11,11 +11,11 @@ import {
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
-import { TableContainer, Tooltip, Typography } from '@material-ui/core'
-import CompCapTestRow from './CompCapTestRow'
+import { TableContainer, Typography } from '@material-ui/core'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
+import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import Table from '@material-ui/core/Table'
@@ -32,25 +32,26 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// This component runs when we see /component_readiness/env_test
-// This component runs when we see /component_readiness/test
-// This is page 4 or page 4a which runs when you click a capability cell on the left or cell on the right in page 3 or 3a
-export default function CompReadyEnvCapabilityTest(props) {
-  const { filterVals, component, capability, testId, environment } = props
+// This component runs when we see /component_readiness/test_details
+// This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
+export default function CompReadyTestReport(props) {
+  const { filterVals, component, capability, testId, environment, testName } =
+    props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = environment ? `CapabilityEnvTest` : `CapabilityTest`
+  document.title = environment ? `TestReportEnv` : `TestReport`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
+  const safeTestName = safeEncodeURIComponent(testName)
 
   const apiCallStr =
-    getAPIUrl() +
+    getTestDetailsAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
@@ -67,7 +68,9 @@ export default function CompReadyEnvCapabilityTest(props) {
         return response.json()
       })
       .then((json) => {
-        if (Object.keys(json).length === 0 || json.rows.length === 0) {
+        console.log('json: ', json)
+        // If the basics are not present, consider it no data
+        if (!json.component || !json.sample_stats || !json.base_stats) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -95,17 +98,13 @@ export default function CompReadyEnvCapabilityTest(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test Report' + (environment ? ', Environment' : ''),
-    environment ? 'page 4a' : 'page 4',
+    'Test Detail Report' + (environment ? ', Environment' : ''),
+    environment ? 'page 5a' : 'page 5',
     `component: ${component}`,
     `capability: ${capability}`,
     `testId: ${testId}`,
-    `environment: ${environment}`,
-    `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
-      data && data.rows && data.rows[0] && data.rows[0].columns
-        ? data.rows[0].columns.length
-        : 0
-    }`
+    `testName: ${testName}`,
+    `environment: ${environment}`
   )
 
   if (!isLoaded) {
@@ -119,53 +118,64 @@ export default function CompReadyEnvCapabilityTest(props) {
     )
   }
 
+  const printStats = (statsLabel, stats) => {
+    return (
+      <Fragment>
+        {statsLabel} Release: {stats.release}
+        <ul>
+          <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
+          <li>Successes: {stats.success_count}</li>
+          <li>Failures: {stats.failure_count}</li>
+          <li>Flakes: {stats.flake_count}</li>
+        </ul>
+      </Fragment>
+    )
+  }
+
+  const tableCell = (label, idx) => {
+    return (
+      <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
+        <Typography className="cr-cell-name">{label}</Typography>
+      </TableCell>
+    )
+  }
+
   return (
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
-      <h2>
-        <Link to="/component_readiness">/</Link> {component} &gt; {capability}
-      </h2>
-      <br></br>
+      <h3>
+        <Link to="/component_readiness">
+          / {environment} &gt; {component}
+          &gt; {testName}{' '}
+        </Link>
+      </h3>
+      Test Name: {testName}
+      <hr />
+      {printStats('Sample', data.sample_stats)}
+      {printStats('Base', data.base_stats)}
+      Fisher Exact: {data.fisher_exact.toFixed(4)}
       <TableContainer component="div" className="cr-wrapper">
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
-              <TableCell className={'cr-col-result-full'}>
-                <Typography className="cr-cell-capab-col">Name</Typography>
-              </TableCell>
-              {columnNames.map((column, idx) => {
-                if (column !== 'Name') {
-                  return (
-                    <TableCell
-                      className={'cr-col-result'}
-                      key={'column' + '-' + idx}
-                    >
-                      <Tooltip title={'Single row report for ' + column}>
-                        <Typography className="cr-cell-name">
-                          {column}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                  )
-                }
-              })}
+              {tableCell('ProwJob Name', 0)}
+              {tableCell('Basis Info', 1)}
+              {tableCell('Basis Runs', 2)}
+              {tableCell('Sample Info', 3)}
+              {tableCell('Sample Runs', 4)}
+              {tableCell('Statistically Significant', 5)}
             </TableRow>
           </TableHead>
           <TableBody>
             {/* Ensure we have data before trying to map on it; we need data and rows */}
-            {data && data.rows && Object.keys(data.rows).length > 0 ? (
-              Object.keys(data.rows).map((componentIndex) => {
+            {data && data.job_stats && data.job_stats.length > 0 ? (
+              data.job_stats.map((element, idx) => {
                 return (
-                  <CompCapTestRow
-                    key={componentIndex}
-                    testName={data.rows[componentIndex].test_name}
-                    testId={data.rows[componentIndex].test_id}
-                    results={data.rows[componentIndex].columns}
-                    columnNames={columnNames}
-                    filterVals={filterVals}
-                    component={component}
-                    capability={capability}
-                  />
+                  <CompReadyTestDetailRow
+                    key={idx}
+                    element={element}
+                    idx={idx}
+                  ></CompReadyTestDetailRow>
                 )
               })
             ) : (
@@ -181,10 +191,11 @@ export default function CompReadyEnvCapabilityTest(props) {
   )
 }
 
-CompReadyEnvCapabilityTest.propTypes = {
+CompReadyTestReport.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
-  environment: PropTypes.string,
+  environment: PropTypes.string.isRequired,
+  testName: PropTypes.string.isRequired,
 }
