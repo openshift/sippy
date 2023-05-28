@@ -6,21 +6,38 @@ import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
+const getJobRunColor = (jobRun) => {
+  if (jobRun.test_stats.flake_count > 0) {
+    return 'purple'
+  } else if (jobRun.test_stats.failure_count > 0) {
+    return 'red'
+  } else {
+    return 'green'
+  }
+}
+
+const infoCell = (stats) => {
+  return (
+    <Typography className="cr-cell-name">
+      pass rate=
+      {(stats.success_rate * 100).toFixed(2)}%
+      <br />
+      successes={stats.success_count}
+      <br />
+      failures={stats.failure_count}
+      <br />
+      flakes={stats.flake_count}
+    </Typography>
+  )
+}
+
 // Represents a row on page 5a when you clicked a status cell on on page4 or page4a
 export default function CompReadyTestDetailRow(props) {
   // element: a test detail element
   // idx: array index of test detail element
+  // jobFactor: a multiplicative factor for 10 jobs
+  // showOnlyFailures: says to focus on job failures
   const { element, idx, jobFactor, showOnlyFailures } = props
-
-  const getJobRunColor = (jobRun) => {
-    if (jobRun.test_stats.flake_count > 0) {
-      return 'purple'
-    } else if (jobRun.test_stats.failure_count > 0) {
-      return 'red'
-    } else {
-      return 'green'
-    }
-  }
 
   const testJobDetailCell = (element, statsKind) => {
     let item
@@ -44,60 +61,25 @@ export default function CompReadyTestDetailRow(props) {
 
     return (
       <div style={{ display: 'flex' }}>
-        {element &&
-          filtered &&
+        {filtered &&
           filtered.length > 0 &&
           filtered.slice(0, 10 * jobFactor).map((jobRun, jobRunIndex) => {
-            if (showOnlyFailures) {
-              if (jobRun.test_stats.failure_count > 0) {
-                return (
-                  <a
-                    href={jobRun.job_url}
-                    key={jobRunIndex}
-                    style={{
-                      color: getJobRunColor(jobRun),
-                      marginRight: '1px',
-                    }}
-                  >
-                    <Typography className="cr-cell-name">
-                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
-                    </Typography>
-                  </a>
-                )
-              }
-            } else {
-              return (
-                <a
-                  href={jobRun.job_url}
-                  key={jobRunIndex}
-                  style={{
-                    color: getJobRunColor(jobRun),
-                    marginRight: '1px',
-                  }}
-                >
-                  <Typography className="cr-cell-name">
-                    {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
-                  </Typography>
-                </a>
-              )
-            }
+            return (
+              <a
+                href={jobRun.job_url}
+                key={jobRunIndex}
+                style={{
+                  color: getJobRunColor(jobRun),
+                  marginRight: '1px',
+                }}
+              >
+                <Typography className="cr-cell-name">
+                  {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                </Typography>
+              </a>
+            )
           })}
       </div>
-    )
-  }
-
-  const infoCell = (stats) => {
-    return (
-      <Typography className="cr-cell-name">
-        rate=
-        {(stats.success_rate * 100).toFixed(2)}%
-        <br />
-        successes={stats.success_count}
-        <br />
-        failures={stats.failure_count}
-        <br />
-        flakes={stats.flake_count}
-      </Typography>
     )
   }
 

@@ -1,5 +1,4 @@
 import './ComponentReadiness.css'
-import { Add, Remove } from '@material-ui/icons'
 import {
   cancelledDataTable,
   expandEnvironment,
@@ -10,11 +9,9 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
-import { IconButton } from '@material-ui/core'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
-import CheckBoxList from './CheckboxList'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
@@ -32,8 +29,30 @@ import TableRow from '@material-ui/core/TableRow'
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
 const cancelFetch = () => {
-  console.log('Aborting page4')
+  console.log('Aborting page5a')
   abortController.abort()
+}
+
+const printStats = (statsLabel, stats) => {
+  return (
+    <Fragment>
+      {statsLabel} Release: {stats.release}
+      <ul>
+        <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
+        <li>Successes: {stats.success_count}</li>
+        <li>Failures: {stats.failure_count}</li>
+        <li>Flakes: {stats.flake_count}</li>
+      </ul>
+    </Fragment>
+  )
+}
+
+const tableCell = (label, idx) => {
+  return (
+    <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
+      <Typography className="cr-cell-name">{label}</Typography>
+    </TableCell>
+  )
 }
 
 // This component runs when we see /component_readiness/test_details
@@ -49,12 +68,11 @@ export default function CompReadyTestReport(props) {
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
 
   // Set the browser tab title
-  document.title = environment ? `TestReportEnv` : `TestReport`
+  document.title = environment ? `TestDetailsEnv` : `TestDetails`
 
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
-  const safeTestName = safeEncodeURIComponent(testName)
 
   const apiCallStr =
     getTestDetailsAPIUrl() +
@@ -74,7 +92,6 @@ export default function CompReadyTestReport(props) {
         return response.json()
       })
       .then((json) => {
-        console.log('json: ', json)
         // If the basics are not present, consider it no data
         if (!json.component || !json.sample_stats || !json.base_stats) {
           // The api call returned 200 OK but the data was empty
@@ -121,28 +138,6 @@ export default function CompReadyTestReport(props) {
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
     return (
       <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
-    )
-  }
-
-  const printStats = (statsLabel, stats) => {
-    return (
-      <Fragment>
-        {statsLabel} Release: {stats.release}
-        <ul>
-          <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
-          <li>Successes: {stats.success_count}</li>
-          <li>Failures: {stats.failure_count}</li>
-          <li>Flakes: {stats.flake_count}</li>
-        </ul>
-      </Fragment>
-    )
-  }
-
-  const tableCell = (label, idx) => {
-    return (
-      <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
-        <Typography className="cr-cell-name">{label}</Typography>
-      </TableCell>
     )
   }
 
