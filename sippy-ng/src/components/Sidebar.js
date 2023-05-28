@@ -11,7 +11,7 @@ import {
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
-import { ListSubheader, useTheme } from '@material-ui/core'
+import { ListSubheader, Tooltip, useTheme } from '@material-ui/core'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
@@ -125,7 +125,7 @@ export default function Sidebar(props) {
                 <List
                   subheader={
                     <ListSubheader component="div" id="Overall Components">
-                      Overall Components
+                      Experimental
                     </ListSubheader>
                   }
                 >
@@ -137,7 +137,9 @@ export default function Sidebar(props) {
                     className={classes.nested}
                   >
                     <ListItemIcon>
-                      <InfoIcon />
+                      <Tooltip title="This functionality is experimental; please do NOT depend on this data">
+                        <InfoIcon />
+                      </Tooltip>
                     </ListItemIcon>
                     <ListItemText primary="Component Readiness" />
                   </ListItem>
