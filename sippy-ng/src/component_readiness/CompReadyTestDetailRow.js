@@ -10,7 +10,17 @@ import TableRow from '@material-ui/core/TableRow'
 export default function CompReadyTestDetailRow(props) {
   // element: a test detail element
   // idx: array index of test detail element
-  const { element, idx } = props
+  const { element, idx, jobFactor, showOnlyFailures } = props
+
+  const getJobRunColor = (jobRun) => {
+    if (jobRun.test_stats.flake_count > 0) {
+      return 'purple'
+    } else if (jobRun.test_stats.failure_count > 0) {
+      return 'red'
+    } else {
+      return 'green'
+    }
+  }
 
   const testJobDetailCell = (element, statsKind) => {
     let item
@@ -22,25 +32,56 @@ export default function CompReadyTestDetailRow(props) {
       item = 'unknown statsKind in testDetailJobRow'
       console.log('ERROR in testDetailJobRow')
     }
+
+    let filtered = item
+    // If we only care to see failures, then remove anything else
+    // Protect against empty/undefined data
+    if (showOnlyFailures) {
+      filtered = item
+        ? item.filter((jstat) => jstat.test_stats.failure_count > 0)
+        : []
+    }
+
     return (
       <div style={{ display: 'flex' }}>
         {element &&
-          item &&
-          item.length > 0 &&
-          item.slice(0, 10).map((jobRun, jobRunIndex) => (
-            <a
-              href={jobRun.job_url}
-              key={jobRunIndex}
-              style={{
-                color: jobRun.test_stats.failure_count > 0 ? 'red' : 'green',
-                marginRight: '1px',
-              }}
-            >
-              <Typography className="cr-cell-name">
-                {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
-              </Typography>
-            </a>
-          ))}
+          filtered &&
+          filtered.length > 0 &&
+          filtered.slice(0, 10 * jobFactor).map((jobRun, jobRunIndex) => {
+            if (showOnlyFailures) {
+              if (jobRun.test_stats.failure_count > 0) {
+                return (
+                  <a
+                    href={jobRun.job_url}
+                    key={jobRunIndex}
+                    style={{
+                      color: getJobRunColor(jobRun),
+                      marginRight: '1px',
+                    }}
+                  >
+                    <Typography className="cr-cell-name">
+                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                    </Typography>
+                  </a>
+                )
+              }
+            } else {
+              return (
+                <a
+                  href={jobRun.job_url}
+                  key={jobRunIndex}
+                  style={{
+                    color: getJobRunColor(jobRun),
+                    marginRight: '1px',
+                  }}
+                >
+                  <Typography className="cr-cell-name">
+                    {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                  </Typography>
+                </a>
+              )
+            }
+          })}
       </div>
     )
   }
@@ -81,6 +122,8 @@ export default function CompReadyTestDetailRow(props) {
 }
 
 CompReadyTestDetailRow.propTypes = {
-  element: PropTypes.string.isRequired,
+  element: PropTypes.object.isRequired,
   idx: PropTypes.number.isRequired,
+  jobFactor: PropTypes.number.isRequired,
+  showOnlyFailures: PropTypes.bool.isRequired,
 }

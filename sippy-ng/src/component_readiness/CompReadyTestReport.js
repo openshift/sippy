@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { Add, Remove } from '@material-ui/icons'
 import {
   cancelledDataTable,
   expandEnvironment,
@@ -9,15 +10,18 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
+import { IconButton } from '@material-ui/core'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
+import CheckBoxList from './CheckboxList'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+import Slider from '@material-ui/core/Slider'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -41,6 +45,8 @@ export default function CompReadyTestReport(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [jobFactor, setJobFactor] = React.useState(1)
+  const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
 
   // Set the browser tab title
   document.title = environment ? `TestReportEnv` : `TestReport`
@@ -140,6 +146,33 @@ export default function CompReadyTestReport(props) {
     )
   }
 
+  // Customize the maxJobNumFactor based on number of potential number of JobRuns.
+  // The display will get wide so max out at 100 jobs.
+  let maxLength = 0
+  data.job_stats.forEach((item) => {
+    if (item.base_job_run_stats && item.base_job_run_stats.length > maxLength) {
+      maxLength = item.base_job_run_stats.length
+    }
+    if (
+      item.sample_job_run_stats &&
+      item.sample_job_run_stats.length > maxLength
+    ) {
+      maxLength = item.sample_job_run_stats.length
+    }
+  })
+  const maxJobNumFactor = Math.min(maxLength / 10 + 1, 10)
+  const marks = Array.from({ length: maxJobNumFactor }, (_, index) => ({
+    value: index + 1,
+    label: (index + 1).toString(),
+  }))
+
+  const handleChangeJobFactor = (event, newValue) => {
+    setJobFactor(newValue)
+  }
+  const handleFailuresOnlyChange = (event) => {
+    setShowOnlyFailures(event.target.checked)
+  }
+
   return (
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
@@ -151,9 +184,30 @@ export default function CompReadyTestReport(props) {
       </h3>
       Test Name: {testName}
       <hr />
-      {printStats('Sample', data.sample_stats)}
-      {printStats('Base', data.base_stats)}
+      {printStats('Sample (being evaluated)', data.sample_stats)}
+      {printStats('Base (historical)', data.base_stats)}
       Fisher Exact: {data.fisher_exact.toFixed(4)}
+      <hr />
+      <p>Prow JobsRuns shown : {jobFactor * 10} </p>
+      <Slider
+        value={jobFactor}
+        onChange={handleChangeJobFactor}
+        aria-labelledby="my-slider"
+        min={1}
+        max={maxJobNumFactor}
+        style={{ width: `${15 * maxJobNumFactor}px` }}
+        marks={marks}
+      />
+      <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={showOnlyFailures}
+            onChange={handleFailuresOnlyChange}
+          />
+          Only Show Failures
+        </label>
+      </div>
       <TableContainer component="div" className="cr-wrapper">
         <Table className="cr-comp-read-table">
           <TableHead>
@@ -175,6 +229,8 @@ export default function CompReadyTestReport(props) {
                     key={idx}
                     element={element}
                     idx={idx}
+                    jobFactor={jobFactor}
+                    showOnlyFailures={showOnlyFailures}
                   ></CompReadyTestDetailRow>
                 )
               })
