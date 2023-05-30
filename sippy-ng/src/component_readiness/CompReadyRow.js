@@ -35,12 +35,10 @@ export default function CompReadyRow(props) {
 
   const handleClick = (event) => {
     if (!event.metaKey) {
-      if (!event.metaKey) {
-        event.preventDefault()
-        setComponentParam(componentName)
-        window.location.href =
-          '/sippy-ng' + capabilitiesReport(filterVals, componentName)
-      }
+      event.preventDefault()
+      setComponentParam(componentName)
+      window.location.href =
+        '/sippy-ng' + capabilitiesReport(filterVals, componentName)
     }
   }
 
