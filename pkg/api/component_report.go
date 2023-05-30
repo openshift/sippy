@@ -1035,10 +1035,10 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 	result.SampleStats.SuccessRate = getSuccessRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake)
 	result.ReportStatus, result.FisherExact = c.assessComponentStatus(
 		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
-		totalSampleFailure,
+		totalSampleSuccess,
 		totalSampleFlake,
 		totalBaseSuccess+totalBaseFailure+totalBaseFlake,
-		totalBaseFailure,
+		totalBaseSuccess,
 		totalBaseFlake)
 	sort.Slice(result.JobStats, func(i, j int) bool {
 		return result.JobStats[i].JobName < result.JobStats[j].JobName
