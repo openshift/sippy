@@ -68,8 +68,9 @@ export default function CompReadyTestReport(props) {
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
 
   // Set the browser tab title
-  document.title = environment ? `TestDetailsEnv` : `TestDetails`
-
+  document.title =
+    'Sippy > ComponentReadiness > Capabilities > Tests > Capability Tests > TestDetails' +
+    (environment ? `Env` : '')
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
@@ -121,7 +122,7 @@ export default function CompReadyTestReport(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test Detail Report' + (environment ? ', Environment' : ''),
+    'Test Details Report',
     environment ? 'page 5a' : 'page 5',
     `component: ${component}`,
     `capability: ${capability}`,
@@ -181,7 +182,13 @@ export default function CompReadyTestReport(props) {
       <hr />
       {printStats('Sample (being evaluated)', data.sample_stats)}
       {printStats('Base (historical)', data.base_stats)}
-      Fisher Exact: {data.fisher_exact.toFixed(4)}
+      <Fragment>
+        <div style={{ display: 'block' }}>Environment: {environment}</div>
+        <br />
+        <div style={{ display: 'block' }}>
+          Fisher Exact: {data.fisher_exact.toFixed(4)}
+        </div>
+      </Fragment>
       <hr />
       <p>Prow JobsRuns shown : {jobFactor * 10} </p>
       <Slider

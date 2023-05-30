@@ -43,8 +43,9 @@ export default function CompReadyEnvCapabilityTest(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = environment ? `CapabilityEnvTest` : `CapabilityTest`
-
+  document.title =
+    'Sippy > ComponentReadiness > Capabilities > Tests > Capability Tests' +
+    (environment ? `Env` : '')
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
@@ -95,7 +96,7 @@ export default function CompReadyEnvCapabilityTest(props) {
   }
 
   const pageTitle = makePageTitle(
-    'Test Report' + (environment ? ', Environment' : ''),
+    'Capability Test Report' + (environment ? ', Environment' : ''),
     environment ? 'page 4a' : 'page 4',
     `component: ${component}`,
     `capability: ${capability}`,

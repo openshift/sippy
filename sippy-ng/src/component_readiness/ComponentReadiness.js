@@ -770,68 +770,77 @@ export default function ComponentReadiness(props) {
                     pageTitle={pageTitle}
                     apiCallStr={showValuesForReport()}
                   />
-                  <TableContainer component="div" className="cr-wrapper">
-                    <Table className="cr-comp-read-table">
-                      <TableHead>
-                        <TableRow>
-                          {
-                            <TableCell className={'cr-col-result-full'}>
-                              <Typography className="cr-cell-name">
-                                Name
-                              </Typography>
-                            </TableCell>
-                          }
-                          {columnNames.map((column, idx) => {
-                            if (column !== 'Name') {
-                              return (
-                                <TableCell
-                                  className={'cr-col-result'}
-                                  key={'column' + '-' + idx}
-                                >
-                                  <Tooltip
-                                    title={'Single row report for ' + column}
-                                  >
-                                    <Typography className="cr-cell-name">
-                                      {column}
-                                    </Typography>
-                                  </Tooltip>
-                                </TableCell>
-                              )
+                  {data === initialPageTable ? (
+                    <Typography variant="h6" style={{ textAlign: 'left' }}>
+                      To get started, make your filter selections on the left,
+                      then click Generate Report
+                    </Typography>
+                  ) : (
+                    <TableContainer component="div" className="cr-wrapper">
+                      <Table className="cr-comp-read-table">
+                        <TableHead>
+                          <TableRow>
+                            {
+                              <TableCell className={'cr-col-result-full'}>
+                                <Typography className="cr-cell-name">
+                                  Name
+                                </Typography>
+                              </TableCell>
                             }
-                          })}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {Object.keys(data.rows).map((componentIndex) => (
-                          <CompReadyRow
-                            key={componentIndex}
-                            componentName={data.rows[componentIndex].component}
-                            results={data.rows[componentIndex].columns}
-                            columnNames={columnNames}
-                            filterVals={getUpdatedUrlParts(
-                              baseRelease,
-                              baseStartTime,
-                              baseEndTime,
-                              sampleRelease,
-                              sampleStartTime,
-                              sampleEndTime,
-                              groupByCheckedItems,
-                              excludeCloudsCheckedItems,
-                              excludeArchesCheckedItems,
-                              excludeNetworksCheckedItems,
-                              excludeUpgradesCheckedItems,
-                              excludeVariantsCheckedItems,
-                              confidence,
-                              pity,
-                              minFail,
-                              ignoreDisruption,
-                              ignoreMissing
-                            )}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                            {columnNames.map((column, idx) => {
+                              if (column !== 'Name') {
+                                return (
+                                  <TableCell
+                                    className={'cr-col-result'}
+                                    key={'column' + '-' + idx}
+                                  >
+                                    <Tooltip
+                                      title={'Single row report for ' + column}
+                                    >
+                                      <Typography className="cr-cell-name">
+                                        {column}
+                                      </Typography>
+                                    </Tooltip>
+                                  </TableCell>
+                                )
+                              }
+                            })}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {Object.keys(data.rows).map((componentIndex) => (
+                            <CompReadyRow
+                              key={componentIndex}
+                              componentName={
+                                data.rows[componentIndex].component
+                              }
+                              results={data.rows[componentIndex].columns}
+                              columnNames={columnNames}
+                              filterVals={getUpdatedUrlParts(
+                                baseRelease,
+                                baseStartTime,
+                                baseEndTime,
+                                sampleRelease,
+                                sampleStartTime,
+                                sampleEndTime,
+                                groupByCheckedItems,
+                                excludeCloudsCheckedItems,
+                                excludeArchesCheckedItems,
+                                excludeNetworksCheckedItems,
+                                excludeUpgradesCheckedItems,
+                                excludeVariantsCheckedItems,
+                                confidence,
+                                pity,
+                                minFail,
+                                ignoreDisruption,
+                                ignoreMissing
+                              )}
+                            />
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </div>
               </Route>
             </Switch>

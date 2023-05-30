@@ -43,7 +43,8 @@ export default function CompReadyEnvCapabilities(props) {
   const [data, setData] = React.useState({})
 
   // Set the browser tab title
-  document.title = environment ? `EnvCapabilities` : `Capabilities`
+  document.title =
+    'Sippy > ComponentReadiness > Capabilities' + (environment ? `Env` : '')
 
   const safeComponent = safeEncodeURIComponent(component)
 
