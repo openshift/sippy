@@ -1,3 +1,4 @@
+import { debugMode } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -12,7 +13,7 @@ export default function CompReadyPageTitle(props) {
   return (
     <div>
       {pageTitle}
-      <p>curl -sk &apos;{callStr}&apos;</p>
+      {debugMode ? <p>curl -sk &apos;{callStr}&apos;</p> : null}
     </div>
   )
 }

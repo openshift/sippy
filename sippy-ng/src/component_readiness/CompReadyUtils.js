@@ -4,6 +4,9 @@ import { safeEncodeURIComponent } from '../helpers'
 import { Typography } from '@material-ui/core'
 import React from 'react'
 
+// Set to true for debug mode
+export const debugMode = false
+
 // Make the HH:mm:ss as zeros to be more conducive to caching query caching.
 export const dateFormat = 'yyyy-MM-dd 00:00:00'
 export const dateEndFormat = 'yyyy-MM-dd 23:59:59'
@@ -320,13 +323,14 @@ export function makePageTitle(title, ...args) {
   return (
     <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
       <div>{title}</div>
-      {args.map((item, index) => (
-        <div key={index}>
-          <Typography variant="body2" component="div" key={index}>
-            {item}
-          </Typography>
-        </div>
-      ))}
+      {debugMode &&
+        args.map((item, index) => (
+          <div key={index}>
+            <Typography variant="body2" component="div" key={index}>
+              {item}
+            </Typography>
+          </div>
+        ))}
       <hr />
     </Typography>
   )
