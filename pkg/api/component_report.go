@@ -18,11 +18,12 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-func getSingleColumnResultToSlice(query *bigquery.Query, names *[]string) error {
+func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
+	names := []string{}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
-		return err
+		return names, err
 	}
 
 	for {
@@ -33,11 +34,11 @@ func getSingleColumnResultToSlice(query *bigquery.Query, names *[]string) error 
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing component from bigquery")
-			return err
+			return names, err
 		}
-		*names = append(*names, row.Name)
+		names = append(names, row.Name)
 	}
-	return nil
+	return names, nil
 }
 
 var (
@@ -47,6 +48,7 @@ var (
 
 func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.ComponentReportTestVariants, []error) {
 	errs := []error{}
+	var err error
 	result := apitype.ComponentReportTestVariants{}
 	cacheLock.RLock()
 	if cacheVariants != nil {
@@ -57,7 +59,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 	cacheLock.RUnlock()
 	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
 	query := client.Query(queryString)
-	err := getSingleColumnResultToSlice(query, &result.Platform)
+	result.Platform, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying platforms from bigquery")
 		errs = append(errs, err)
@@ -65,7 +67,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 	}
 	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
 	query = client.Query(queryString)
-	err = getSingleColumnResultToSlice(query, &result.Network)
+	result.Network, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying networks from bigquery")
 		errs = append(errs, err)
@@ -73,7 +75,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 	}
 	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
 	query = client.Query(queryString)
-	err = getSingleColumnResultToSlice(query, &result.Arch)
+	result.Arch, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying arches from bigquery")
 		errs = append(errs, err)
@@ -81,7 +83,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 	}
 	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
 	query = client.Query(queryString)
-	err = getSingleColumnResultToSlice(query, &result.Upgrade)
+	result.Upgrade, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying upgrades from bigquery")
 		errs = append(errs, err)
@@ -89,7 +91,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 	}
 	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
 	query = client.Query(queryString)
-	err = getSingleColumnResultToSlice(query, &result.Variant)
+	result.Variant, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying variants from bigquery")
 		errs = append(errs, err)
@@ -157,12 +159,9 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	fmt.Printf("----- total query took %+v base count %v, sample count %v\n", time.Since(before), len(baseStatus), len(sampleStatus))
-	var report apitype.ComponentReport
+	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 
-	before = time.Now()
-	report = c.generateComponentTestReport(baseStatus, sampleStatus)
-	fmt.Printf("----- generate report took %+v\n", time.Since(before))
+	report := c.generateComponentTestReport(baseStatus, sampleStatus)
 	return report, nil
 }
 
@@ -180,7 +179,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	if len(errs) > 0 {
 		return apitype.ComponentReportTestDetails{}, errs
 	}
-	fmt.Printf("----- total query took %+v\n", time.Since(before))
+	log.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 	report := c.generateComponentTestDetailsReport(baseStatus, sampleStatus)
 	return report, nil
 }
@@ -234,9 +233,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 					ORDER BY
 						modified_time `
 	if c.schema == nil {
-		b := time.Now()
 		c.fetchQuerySchema(queryString + groupString)
-		fmt.Printf("----- schema query took %+v\n", time.Since(b))
 	}
 	queryString += `
 					WHERE
@@ -299,9 +296,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		before := time.Now()
 		baseStatus, baseErrs = c.fetchJobRunTestStatus(baseQuery)
-		fmt.Printf("----- base query took %+v\n", time.Since(before))
 	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
@@ -324,9 +319,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		before := time.Now()
 		sampleStatus, sampleErrs = c.fetchJobRunTestStatus(sampleQuery)
-		fmt.Printf("----- sample query took %+v\n", time.Since(before))
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -375,9 +368,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						test_id `
 
 	if c.schema == nil {
-		b := time.Now()
 		c.fetchQuerySchema(queryString + groupString)
-		fmt.Printf("----- schema query took %+v\n", time.Since(b))
 	}
 	queryString += `WHERE TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To `
 	commonParams := []bigquery.QueryParameter{}
@@ -490,9 +481,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		before := time.Now()
 		baseStatus, baseErrs = c.fetchTestStatus(baseQuery)
-		fmt.Printf("----- base query took %+v\n", time.Since(before))
 	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
@@ -515,9 +504,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		before := time.Now()
 		sampleStatus, sampleErrs = c.fetchTestStatus(sampleQuery)
-		fmt.Printf("----- sample query took %+v\n", time.Since(before))
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -655,6 +642,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	errs := []error{}
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{}
+	log.Infof("Fetching test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(context.TODO())
 	if err != nil {
@@ -757,6 +745,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) (map[string][]apitype.ComponentJobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]apitype.ComponentJobRunTestStatusRow{}
+	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(context.TODO())
 	if err != nil {
@@ -916,7 +905,7 @@ func getSuccessRate(success, failure, flake int) float64 {
 	if total == 0 {
 		return 0.0
 	}
-	return float64(success) / float64(total)
+	return float64(success+flake) / float64(total)
 }
 
 const prowJobPrefix = "https://prow.ci.openshift.org/view/gs/origin-ci-test/"
