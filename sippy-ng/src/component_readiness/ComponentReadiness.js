@@ -776,7 +776,10 @@ export default function ComponentReadiness(props) {
                       then click Generate Report
                     </Typography>
                   ) : (
-                    <TableContainer component="div" className="cr-wrapper">
+                    <TableContainer
+                      component="div"
+                      className="cr-table-wrapper"
+                    >
                       <Table className="cr-comp-read-table">
                         <TableHead>
                           <TableRow>

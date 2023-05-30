@@ -20,7 +20,9 @@
     margin-bottom: 20px;
 }
 
-.cr-wrapper {
+.cr-table-wrapper {
+  width: 100%;
+  max-width: 100%;
 }
 
 .cr-view {

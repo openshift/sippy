@@ -127,7 +127,7 @@ export default function CompReadyEnvCapabilityTest(props) {
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>
       <br></br>
-      <TableContainer component="div" className="cr-wrapper">
+      <TableContainer component="div" className="cr-table-wrapper">
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>

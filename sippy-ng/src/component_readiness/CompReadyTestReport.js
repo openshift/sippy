@@ -210,7 +210,7 @@ export default function CompReadyTestReport(props) {
           Only Show Failures
         </label>
       </div>
-      <TableContainer component="div" className="cr-wrapper">
+      <TableContainer component="div" className="cr-table-wrapper">
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
