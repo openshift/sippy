@@ -208,7 +208,7 @@ export default function ComponentReadiness(props) {
     'confidence',
     NumberParam
   )
-  const [pityParam = 0, setPityParam] = useQueryParam('pity', NumberParam)
+  const [pityParam = 5, setPityParam] = useQueryParam('pity', NumberParam)
   const [minFailParam = 3, setMinFailParam] = useQueryParam(
     'minFail',
     NumberParam
