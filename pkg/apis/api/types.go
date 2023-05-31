@@ -762,6 +762,206 @@ type RiskLevel struct {
 	Level int
 }
 
+type ComponentReportRequestReleaseOptions struct {
+	Release string
+	Start   time.Time
+	End     time.Time
+}
+
+type ComponentReportRequestTestIdentificationOptions struct {
+	Component  string
+	Capability string
+	// TestID is a unique identification for the test defined in the DB.
+	// It matches the test_id in the bigquery ci_analysis_us.junit table.
+	TestID string
+}
+
+// ComponentReportRequestExcludeOptions group all the exclude options passed in the request.
+// Each of the variable is a comma separated string.
+type ComponentReportRequestExcludeOptions struct {
+	ExcludePlatforms string
+	ExcludeArches    string
+	ExcludeNetworks  string
+	ExcludeUpgrades  string
+	ExcludeVariants  string
+}
+
+type ComponentReportRequestVariantOptions struct {
+	GroupBy  string
+	Platform string
+	Upgrade  string
+	Arch     string
+	Network  string
+	Variant  string
+}
+
+type ComponentReportRequestAdvancedOptions struct {
+	MinimumFailure   int
+	Confidence       int
+	PityFactor       int
+	IgnoreMissing    bool
+	IgnoreDisruption bool
+}
+
+type ComponentTestStatus struct {
+	Component    string
+	Capabilities []string
+	Variants     []string
+	TotalCount   int
+	SuccessCount int
+	FlakeCount   int
+}
+
+type ComponentTestIdentification struct {
+	TestName string
+	TestID   string
+	Network  string
+	Upgrade  string
+	Arch     string
+	Platform string
+}
+
+type ComponentTestStatusRow struct {
+	TestName     string   `bigquery:"test_name"`
+	TestID       string   `bigquery:"test_id"`
+	Network      string   `bigquery:"network"`
+	Upgrade      string   `bigquery:"upgrade"`
+	Arch         string   `bigquery:"arch"`
+	Platform     string   `bigquery:"platform"`
+	Variants     []string `bigquery:"variants"`
+	TotalCount   int      `bigquery:"total_count"`
+	SuccessCount int      `bigquery:"success_count"`
+	FlakeCount   int      `bigquery:"flake_count"`
+	Component    string   `bigquery:"component"`
+	Capabilities []string `bigquery:"capabilities"`
+}
+
+type ComponentReport struct {
+	Rows []ComponentReportRow `json:"rows,omitempty"`
+}
+
+type ComponentReportRow struct {
+	ComponentReportRowIdentification
+	Columns []ComponentReportColumn `json:"columns,omitempty"`
+}
+
+type ComponentReportRowIdentification struct {
+	Component  string `json:"component"`
+	Capability string `json:"capability,omitempty"`
+	TestName   string `json:"test_name,omitempty"`
+	TestID     string `json:"test_id,omitempty"`
+}
+
+type ComponentReportColumn struct {
+	ComponentReportColumnIdentification
+	Status ComponentReportStatus `json:"status"`
+}
+
+type ComponentReportColumnIdentification struct {
+	Network  string `json:"network,omitempty"`
+	Upgrade  string `json:"upgrade,omitempty"`
+	Arch     string `json:"arch,omitempty"`
+	Platform string `json:"platform,omitempty"`
+	Variant  string `json:"variant,omitempty"`
+}
+
+type ComponentReportStatus int
+
+type ComponentReportTestDetails struct {
+	ComponentReportRowIdentification
+	ComponentReportColumnIdentification
+	SampleStats  ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
+	BaseStats    ComponentReportTestDetailsReleaseStats `json:"base_stats"`
+	FisherExact  float64                                `json:"fisher_exact"`
+	ReportStatus ComponentReportStatus                  `json:"report_status"`
+	JobStats     []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
+}
+
+type ComponentReportTestDetailsReleaseStats struct {
+	Release string `json:"release"`
+	ComponentReportTestDetailsTestStats
+}
+
+type ComponentReportTestDetailsTestStats struct {
+	SuccessRate  float64 `json:"success_rate"`
+	SuccessCount int     `json:"success_count"`
+	FailureCount int     `json:"failure_count"`
+	FlakeCount   int     `json:"flake_count"`
+}
+
+type ComponentReportTestDetailsJobStats struct {
+	JobName           string                                  `json:"job_name"`
+	SampleStats       ComponentReportTestDetailsTestStats     `json:"sample_stats"`
+	BaseStats         ComponentReportTestDetailsTestStats     `json:"base_stats"`
+	SampleJobRunStats []ComponentReportTestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
+	BaseJobRunStats   []ComponentReportTestDetailsJobRunStats `json:"base_job_run_stats,omitempty"`
+	Significant       bool                                    `json:"significant"`
+}
+
+type ComponentReportTestDetailsJobRunStats struct {
+	JobURL string `json:"job_url"`
+	// TestStats is the test stats from one particular job run.
+	// For the majority of the tests, there is only one junit. But
+	// there are cases multiple junits are generated for the same test.
+	TestStats ComponentReportTestDetailsTestStats `json:"test_stats"`
+}
+
+type ComponentJobRunTestStatus struct {
+	Component    string
+	Capabilities []string
+	Network      string
+	Upgrade      string
+	Arch         string
+	Platform     string
+	Variants     []string
+	TotalCount   int
+	SuccessCount int
+	FlakeCount   int
+}
+
+type ComponentJobRunTestIdentification struct {
+	TestName string
+	TestID   string
+	FilePath string
+}
+
+type ComponentJobRunTestStatusRow struct {
+	ProwJob      string `bigquery:"prowjob_name"`
+	TestID       string `bigquery:"test_id"`
+	TestName     string `bigquery:"test_name"`
+	FilePath     string `bigquery:"file_path"`
+	TotalCount   int    `bigquery:"total_count"`
+	SuccessCount int    `bigquery:"success_count"`
+	FlakeCount   int    `bigquery:"flake_count"`
+}
+
+const (
+	// ExtremeRegression shows regression with >15% pass rate change
+	ExtremeRegression ComponentReportStatus = -3
+	// SignificantRegression shows significant regression
+	SignificantRegression ComponentReportStatus = -2
+	// MissingSample indicates sample data missing
+	MissingSample ComponentReportStatus = -1
+	// NotSignificant indicates no significant difference
+	NotSignificant ComponentReportStatus = 0
+	// MissingBasis indicates basis data missing
+	MissingBasis ComponentReportStatus = 1
+	// MissingBasisAndSample indicates basis and sample data missing
+	MissingBasisAndSample ComponentReportStatus = 2
+	// SignificantImprovement indicates improved sample rate
+	SignificantImprovement ComponentReportStatus = 3
+)
+
+type ComponentReportResponse []ComponentReportRow
+
+type ComponentReportTestVariants struct {
+	Network  []string `json:"network,omitempty"`
+	Upgrade  []string `json:"upgrade,omitempty"`
+	Arch     []string `json:"arch,omitempty"`
+	Platform []string `json:"platform,omitempty"`
+	Variant  []string `json:"variant,omitempty"`
+}
+
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
 var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 25}

@@ -665,6 +665,21 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
+	var bigQueryClient *bigquery.Client
+	if o.GoogleServiceAccountCredentialFile != "" {
+		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		if err != nil {
+			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents component readiness queries from working")
+			return err
+		}
+		// Enable Storage API usage for fetching data
+		err = bigQueryClient.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		if err != nil {
+			log.WithError(err).Error("CRITICAL error enabling BigQuery Storage API")
+			return err
+		}
+	}
 	server := sippyserver.NewServer(
 		o.getServerMode(),
 		o.toTestGridLoadingConfig(),
@@ -678,6 +693,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		&static,
 		dbc,
 		gcsClient,
+		bigQueryClient,
 		pinnedDateTime,
 	)
 
