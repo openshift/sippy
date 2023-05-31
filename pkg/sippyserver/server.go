@@ -80,7 +80,9 @@ func NewServer(
 	}
 
 	// Fill cache
-	go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
+	if bigQueryClient != nil {
+		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
+	}
 
 	return server
 }
@@ -546,6 +548,13 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "component report API is only available when google-service-account-credential-file is configured",
+		})
+		return
+	}
 	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
@@ -639,6 +648,10 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	var advancedOption apitype.ComponentReportRequestAdvancedOptions
 
 	var err error
+	if s.bigQueryClient == nil {
+		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption,
+			fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if baseRelease.Release == "" {
