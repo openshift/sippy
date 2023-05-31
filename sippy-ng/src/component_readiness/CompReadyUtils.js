@@ -53,15 +53,14 @@ export const cancelledDataTable = {
 }
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
-  const mainUrl = window.location.host.split(':')[0]
-  return 'http://' + mainUrl + ':8080/api/component_readiness'
+  return process.env.REACT_APP_API_URL + '/api/component_readiness'
 }
 
 // Make one place to create the Component Readiness test_details api call
 export function getTestDetailsAPIUrl() {
-  const mainUrl = window.location.host.split(':')[0]
-  return 'http://' + mainUrl + ':8080/api/component_readiness/test_details'
+  return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'
 }
+
 export const gotoCompReadyMain = () => {
   window.location.href = '/sippy-ng/component_readiness/main'
   //window.history.back()
