@@ -238,6 +238,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	queryString += `
 					WHERE
 						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
+						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -370,7 +371,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	if c.schema == nil {
 		c.fetchQuerySchema(queryString + groupString)
 	}
-	queryString += `WHERE TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To `
+	queryString += `
+					WHERE
+						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
+						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
 	commonParams := []bigquery.QueryParameter{}
 	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
