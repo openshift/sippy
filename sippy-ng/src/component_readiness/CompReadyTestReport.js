@@ -64,7 +64,6 @@ export default function CompReadyTestReport(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
-  const [jobFactor, setJobFactor] = React.useState(1)
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
 
   // Set the browser tab title
@@ -162,9 +161,6 @@ export default function CompReadyTestReport(props) {
     label: (index + 1).toString(),
   }))
 
-  const handleChangeJobFactor = (event, newValue) => {
-    setJobFactor(newValue)
-  }
   const handleFailuresOnlyChange = (event) => {
     setShowOnlyFailures(event.target.checked)
   }
@@ -190,16 +186,6 @@ export default function CompReadyTestReport(props) {
         </div>
       </Fragment>
       <hr />
-      <p>Prow JobsRuns shown : {jobFactor * 10} </p>
-      <Slider
-        value={jobFactor}
-        onChange={handleChangeJobFactor}
-        aria-labelledby="my-slider"
-        min={1}
-        max={maxJobNumFactor}
-        style={{ width: `${15 * maxJobNumFactor}px` }}
-        marks={marks}
-      />
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <label>
           <input
@@ -231,7 +217,6 @@ export default function CompReadyTestReport(props) {
                     key={idx}
                     element={element}
                     idx={idx}
-                    jobFactor={jobFactor}
                     showOnlyFailures={showOnlyFailures}
                   ></CompReadyTestDetailRow>
                 )
