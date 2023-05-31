@@ -11,7 +11,7 @@ import {
 } from '@material-ui/icons'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
-import { ListSubheader, useTheme } from '@material-ui/core'
+import { ListSubheader, Tooltip, useTheme } from '@material-ui/core'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
@@ -109,6 +109,39 @@ export default function Sidebar(props) {
                       <Favorite />
                     </ListItemIcon>
                     <ListItemText primary="Build Cluster Health" />
+                  </ListItem>
+                </List>
+              </Fragment>
+            )
+          }
+        }}
+      </CapabilitiesContext.Consumer>
+      <CapabilitiesContext.Consumer>
+        {(value) => {
+          if (value.includes('openshift_releases')) {
+            return (
+              <Fragment>
+                <Divider />
+                <List
+                  subheader={
+                    <ListSubheader component="div" id="Overall Components">
+                      Experimental
+                    </ListSubheader>
+                  }
+                >
+                  <ListItem
+                    key={'release-health-'}
+                    component={Link}
+                    to={'/component_readiness/main'}
+                    button
+                    className={classes.nested}
+                  >
+                    <ListItemIcon>
+                      <Tooltip title="This functionality is experimental; please do NOT depend on this data">
+                        <InfoIcon />
+                      </Tooltip>
+                    </ListItemIcon>
+                    <ListItemText primary="Component Readiness" />
                   </ListItem>
                 </List>
               </Fragment>

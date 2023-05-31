@@ -1,0 +1,74 @@
+.cr-release-historical {
+  text-align: center;
+  margin-bottom: 50px;
+  font-weight: bold;
+  background-color: rgb(199, 215, 241);
+  padding: 5px;
+}
+
+.cr-release-sample {
+  text-align: center;
+  margin-bottom: 50px;
+  font-weight: bold;
+  background-color: rgb(208, 213, 217);
+  padding: 5px;
+}
+
+.cr-report-button {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.cr-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+}
+
+.cr-view {
+  margin: auto;
+}
+
+.cr-table-container {
+  overflow-y: scroll;
+}
+
+.cr-comp-read-table {
+  width: auto !important;
+  margin-top: 0.5em;
+  border: 1px solid #EEE;
+  table-layout: fixed;
+}
+
+.cr-col-name {
+}
+
+.cr-cell-name {
+    font-size: 11px !important;
+}
+
+.cr-cell-capab-col {
+    font-size: 11px !important;
+    width: 300px;
+}
+
+.cr-col-result {
+    hyphens: auto;
+}
+
+.cr-col-result-full {
+}
+
+.cr-component-name {
+    width: 175px;
+    min-width: 175px;
+    max-width: 175px;
+}
+
+.cr-cell-result {
+    height: 50px;
+    width: 50px;
+    padding: 5px !important;
+    line-height: 13px !important;
+    border: 1px solid #EEE;
+}
