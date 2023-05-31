@@ -86,6 +86,15 @@ export function gotFetchError(fetchError) {
   )
 }
 
+// The values of a column's key/value pairs (except status) are
+// concatenated to form a column name
+export function formColumnName(column) {
+  return Object.keys(column)
+    .filter((key) => key != 'status')
+    .map((key) => column[key])
+    .join(' ')
+}
+
 // Given the data pulled from the API server, calculate an array
 // of columns using the first row.  Assumption: the number of columns
 // is the same across all rows.
@@ -116,10 +125,8 @@ export function getColumns(data) {
   const firstColumn = data.rows[0].columns
   let columnNames = []
   firstColumn.forEach((column) => {
-    const columnValues = Object.keys(column)
-      .filter((key) => key != 'status')
-      .map((key) => column[key])
-    columnNames.push(columnValues.join(' '))
+    const columnValues = formColumnName(column)
+    columnNames.push(columnValues)
   })
 
   return columnNames
