@@ -811,35 +811,42 @@ export default function ComponentReadiness(props) {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {Object.keys(data.rows).map((componentIndex) => (
-                            <CompReadyRow
-                              key={componentIndex}
-                              componentName={
-                                data.rows[componentIndex].component
-                              }
-                              results={data.rows[componentIndex].columns}
-                              columnNames={columnNames}
-                              filterVals={getUpdatedUrlParts(
-                                baseRelease,
-                                baseStartTime,
-                                baseEndTime,
-                                sampleRelease,
-                                sampleStartTime,
-                                sampleEndTime,
-                                groupByCheckedItems,
-                                excludeCloudsCheckedItems,
-                                excludeArchesCheckedItems,
-                                excludeNetworksCheckedItems,
-                                excludeUpgradesCheckedItems,
-                                excludeVariantsCheckedItems,
-                                confidence,
-                                pity,
-                                minFail,
-                                ignoreDisruption,
-                                ignoreMissing
-                              )}
-                            />
-                          ))}
+                          {Object.keys(data.rows)
+                            .sort((a, b) =>
+                              data.rows[a].component.toLowerCase() >
+                              data.rows[b].component.toLowerCase()
+                                ? 1
+                                : -1
+                            )
+                            .map((componentIndex) => (
+                              <CompReadyRow
+                                key={componentIndex}
+                                componentName={
+                                  data.rows[componentIndex].component
+                                }
+                                results={data.rows[componentIndex].columns}
+                                columnNames={columnNames}
+                                filterVals={getUpdatedUrlParts(
+                                  baseRelease,
+                                  baseStartTime,
+                                  baseEndTime,
+                                  sampleRelease,
+                                  sampleStartTime,
+                                  sampleEndTime,
+                                  groupByCheckedItems,
+                                  excludeCloudsCheckedItems,
+                                  excludeArchesCheckedItems,
+                                  excludeNetworksCheckedItems,
+                                  excludeUpgradesCheckedItems,
+                                  excludeVariantsCheckedItems,
+                                  confidence,
+                                  pity,
+                                  minFail,
+                                  ignoreDisruption,
+                                  ignoreMissing
+                                )}
+                              />
+                            ))}
                         </TableBody>
                       </Table>
                     </TableContainer>
