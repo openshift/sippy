@@ -686,20 +686,20 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 
 	testIDOption.Component = req.URL.Query().Get("component")
 	testIDOption.Capability = req.URL.Query().Get("capability")
-	testIDOption.TestID = req.URL.Query().Get("test_id")
+	testIDOption.TestID = req.URL.Query().Get("testId")
 
-	variantOption.GroupBy = req.URL.Query().Get("group_by")
+	variantOption.GroupBy = req.URL.Query().Get("groupBy")
 	variantOption.Platform = req.URL.Query().Get("platform")
 	variantOption.Upgrade = req.URL.Query().Get("upgrade")
 	variantOption.Arch = req.URL.Query().Get("arch")
 	variantOption.Network = req.URL.Query().Get("network")
 	variantOption.Variant = req.URL.Query().Get("variant")
 
-	excludeOption.ExcludePlatforms = req.URL.Query().Get("exclude_clouds")
-	excludeOption.ExcludeArches = req.URL.Query().Get("exclude_arches")
-	excludeOption.ExcludeNetworks = req.URL.Query().Get("exclude_networks")
-	excludeOption.ExcludeUpgrades = req.URL.Query().Get("exclude_upgrades")
-	excludeOption.ExcludeVariants = req.URL.Query().Get("exclude_variants")
+	excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
+	excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
+	excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
+	excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
+	excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
 
 	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")
@@ -726,7 +726,7 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	advancedOption.MinimumFailure = 3
-	minFailStr := req.URL.Query().Get("min_fail")
+	minFailStr := req.URL.Query().Get("minFail")
 	if minFailStr != "" {
 		advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
 		if err != nil {
@@ -738,21 +738,24 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	advancedOption.IgnoreMissing = false
-	ignoreMissingStr := req.URL.Query().Get("missing")
+	ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
 	if ignoreMissingStr != "" {
-		if ignoreMissingStr != "ok" {
+		if ignoreMissingStr == "true" {
+			advancedOption.IgnoreMissing = true
+		} else if ignoreMissingStr != "false" {
 			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("missing parameter is in the wrong format")
 		}
-		advancedOption.IgnoreMissing = true
+
 	}
 
-	advancedOption.IgnoreDisruption = false
-	ignoreDisruptionsStr := req.URL.Query().Get("disruption")
+	advancedOption.IgnoreDisruption = true
+	ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
 	if ignoreDisruptionsStr != "" {
-		if ignoreDisruptionsStr != "ok" {
+		if ignoreDisruptionsStr == "false" {
+			advancedOption.IgnoreDisruption = false
+		} else if ignoreDisruptionsStr != "true" {
 			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("ignore disruption is in the wrong format")
 		}
-		advancedOption.IgnoreDisruption = true
 	}
 
 	return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, err
