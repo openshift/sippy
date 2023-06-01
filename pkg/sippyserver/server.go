@@ -60,7 +60,7 @@ func NewServer(
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
-	cache cache.Cache,
+	cacheClient cache.Cache,
 ) *Server {
 
 	server := &Server{
@@ -81,7 +81,7 @@ func NewServer(
 		bigQueryClient: bigQueryClient,
 		pinnedDateTime: pinnedDateTime,
 		gcsClient:      gcsClient,
-		cache:          cache,
+		cache:          cacheClient,
 	}
 
 	// Fill cache
@@ -1235,8 +1235,11 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 		} else if content != nil {
 			log.Infof("cache hit for %q", r.RequestURI)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("X-Sippy-Cached", "true")
 			w.WriteHeader(http.StatusOK)
-			w.Write(content)
+			if _, err := w.Write(content); err != nil {
+				log.WithError(err).Debugf("error writing http response")
+			}
 			return
 		}
 
@@ -1254,7 +1257,9 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 		if err := s.cache.Set(r.RequestURI, content, duration); err != nil {
 			log.WithError(err).Warningf("could not cache page")
 		}
-		w.Write(content)
+		if _, err := w.Write(content); err != nil {
+			log.WithError(err).Debugf("error writing http response")
+		}
 	}
 }
 

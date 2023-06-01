@@ -25,10 +25,10 @@ func NewRedisCache(url string) (*Cache, error) {
 	}, nil
 }
 
-func (r Cache) Get(key string) ([]byte, error) {
-	return r.client.Get(prefix + key).Bytes()
+func (c Cache) Get(key string) ([]byte, error) {
+	return c.client.Get(prefix + key).Bytes()
 }
 
-func (r Cache) Set(key string, content []byte, duration time.Duration) error {
-	return r.client.Set(prefix+key, content, duration).Err()
+func (c Cache) Set(key string, content []byte, duration time.Duration) error {
+	return c.client.Set(prefix+key, content, duration).Err()
 }
