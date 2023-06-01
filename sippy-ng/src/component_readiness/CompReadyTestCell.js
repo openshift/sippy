@@ -28,11 +28,11 @@ function generateTestReport(
   const retUrl =
     '/component_readiness/test_details' +
     filterVals +
-    `&test_id=${safeTestId}` +
+    `&testId=${safeTestId}` +
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${capabilityName}` +
-    `&test_name=${safeTestName}`
+    `&testName=${safeTestName}`
 
   return retUrl
 }
@@ -62,9 +62,9 @@ export default function CompReadyTestCell(props) {
     'environment',
     StringParam
   )
-  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
   const [testNameParam, setTestNameParam] = useQueryParam(
-    'test_name',
+    'testName',
     StringParam
   )
 

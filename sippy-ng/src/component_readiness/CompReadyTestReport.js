@@ -80,7 +80,7 @@ export default function CompReadyTestReport(props) {
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
-    `&test_id=${safeTestId}` +
+    `&testId=${safeTestId}` +
     (environment ? expandEnvironment(environment) : '')
 
   useEffect(() => {

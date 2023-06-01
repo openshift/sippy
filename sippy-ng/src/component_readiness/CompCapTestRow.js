@@ -12,7 +12,7 @@ import TableRow from '@material-ui/core/TableRow'
 
 // Represents a row on page 4 or page4a when you clicked a testName on page3
 export default function CompCapTestRow(props) {
-  // testName is the name of the test (called test_name)
+  // testName is the name of the test (called testName)
   // testId is the unique test ID that maps to the testName
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
