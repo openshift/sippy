@@ -279,7 +279,7 @@ export default function ComponentReadiness(props) {
     ignoreMissingParam || false
   )
   const [ignoreDisruption, setIgnoreDisruption] = React.useState(
-    ignoreDisruptionParam || false
+    ignoreDisruptionParam || true
   )
 
   const { path, url } = useRouteMatch()
