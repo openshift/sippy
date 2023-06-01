@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
+	"github.com/openshift/sippy/pkg/apis/cache"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -58,6 +60,7 @@ func NewServer(
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
+	cache cache.Cache,
 ) *Server {
 
 	server := &Server{
@@ -78,6 +81,7 @@ func NewServer(
 		bigQueryClient: bigQueryClient,
 		pinnedDateTime: pinnedDateTime,
 		gcsClient:      gcsClient,
+		cache:          cache,
 	}
 
 	// Fill cache
@@ -116,6 +120,7 @@ type Server struct {
 	bigQueryClient             *bigquery.Client
 	pinnedDateTime             *time.Time
 	gcsClient                  *storage.Client
+	cache                      cache.Cache
 }
 
 type TestGridDashboardCoordinates struct {
@@ -1217,6 +1222,42 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWriter, r *http.Request)) func(http.ResponseWriter, *http.Request) {
+	if s.cache == nil {
+		log.Debugf("no cache configured, making live api call")
+		return handler
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		content, err := s.cache.Get(r.RequestURI)
+		if err != nil {
+			log.WithError(err).Warningf("could not fetch data from cache, going to make live api call")
+		} else if content != nil {
+			log.Infof("cache hit for %q", r.RequestURI)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write(content)
+			return
+		}
+
+		c := httptest.NewRecorder()
+		handler(c, r)
+
+		for k, v := range c.Result().Header {
+			w.Header()[k] = v
+		}
+
+		w.WriteHeader(c.Code)
+		content = c.Body.Bytes()
+
+		log.Infof("new page cached: %s for %s\n", r.RequestURI, duration)
+		if err := s.cache.Set(r.RequestURI, content, duration); err != nil {
+			log.WithError(err).Warningf("could not cache page")
+		}
+		w.Write(content)
+	}
+}
+
 func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
 	reports := s.perfscaleMetricsJobReports
 
@@ -1273,13 +1314,13 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/pull_requests", s.jsonPullRequestsReportFromDB)
 	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
-	serveMux.HandleFunc("/api/tests/analysis/overall", s.jsonTestAnalysisOverallFromDB)
-	serveMux.HandleFunc("/api/tests/analysis/variants", s.jsonTestAnalysisByVariantFromDB)
+	serveMux.HandleFunc("/api/tests/details", s.cached(1*time.Hour, s.jsonTestDetailsReportFromDB))
+	serveMux.HandleFunc("/api/tests/analysis/overall", s.cached(1*time.Hour, s.jsonTestAnalysisOverallFromDB))
+	serveMux.HandleFunc("/api/tests/analysis/variants", s.cached(1*time.Hour, s.jsonTestAnalysisByVariantFromDB))
 	serveMux.HandleFunc("/api/tests/analysis/jobs", s.jsonTestAnalysisByJobFromDB)
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
 	serveMux.HandleFunc("/api/tests/outputs", s.jsonTestOutputsFromDB)
-	serveMux.HandleFunc("/api/tests/durations", s.jsonTestDurationsFromDB)
+	serveMux.HandleFunc("/api/tests/durations", s.cached(1*time.Hour, s.jsonTestDurationsFromDB))
 	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
 	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
@@ -1289,9 +1330,9 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness", s.cached(4*time.Hour, s.jsonComponentReportFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(4*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(4*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)

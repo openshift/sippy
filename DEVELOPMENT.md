@@ -161,6 +161,22 @@ See [Sippy front-end docs](sippy-ng/README.md) for more details about developing
 cd sippy-ng && npm start
 ```
 
+## Caching
+
+For particularly slow API's, such as those that need to fetch data from
+BigQuery, Sippy supports using a redis key/value store by specifying
+this argument on the command line:
+
+```
+--redis-url="redis://localhost:6379"
+```
+
+In development, you can start a Redis cache using Podman or Docker:
+
+```
+podman run --name sippy-redis -p 6379:6379 -d redis
+```
+
 ## Run Sippy comment processing
 
 If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.
