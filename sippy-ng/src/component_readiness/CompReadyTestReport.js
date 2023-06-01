@@ -12,10 +12,12 @@ import {
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
+import { Tooltip } from '@material-ui/core'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
+import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import Slider from '@material-ui/core/Slider'
@@ -182,8 +184,19 @@ export default function CompReadyTestReport(props) {
         <div style={{ display: 'block' }}>Environment: {environment}</div>
         <br />
         <div style={{ display: 'block' }}>
-          Fisher Exact: {data.fisher_exact.toFixed(4)}
+          {/* data.fisher_exact is from 0-1; from that we calculate the probability of regression
+              expressed as a percentage */}
+          <Tooltip
+            title="Test results for individual Prow Jobs may not be statistically
+          significant, but when taken in aggregate, there may be a statistically
+          significant difference compared to the historical basis"
+          >
+            <InfoIcon />
+          </Tooltip>
+          Probability of regression:{' '}
+          {((1.0 - data.fisher_exact) * 100.0).toFixed(2)}%
         </div>
+        <br />
       </Fragment>
       <hr />
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
