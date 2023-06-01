@@ -376,6 +376,9 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
 						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
 	commonParams := []bigquery.QueryParameter{}
+	if c.IgnoreDisruption {
+		queryString += ` AND test_name NOT LIKE %disruption/%`
+	}
 	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -646,7 +649,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	errs := []error{}
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{}
-	log.Infof("Fetching test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(context.TODO())
 	if err != nil {

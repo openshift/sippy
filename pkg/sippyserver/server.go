@@ -738,21 +738,25 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	advancedOption.IgnoreMissing = false
-	ignoreMissingStr := req.URL.Query().Get("missing")
+	ignoreMissingStr := req.URL.Query().Get("ignore_missing")
 	if ignoreMissingStr != "" {
-		if ignoreMissingStr != "ok" {
+		if ignoreMissingStr != "true" && ignoreMissingStr != "false" {
 			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("missing parameter is in the wrong format")
 		}
-		advancedOption.IgnoreMissing = true
+		if ignoreMissingStr == "true" {
+			advancedOption.IgnoreMissing = true
+		}
 	}
 
-	advancedOption.IgnoreDisruption = false
-	ignoreDisruptionsStr := req.URL.Query().Get("disruption")
+	advancedOption.IgnoreDisruption = true
+	ignoreDisruptionsStr := req.URL.Query().Get("ignore_disruption")
 	if ignoreDisruptionsStr != "" {
-		if ignoreDisruptionsStr != "ok" {
+		if ignoreDisruptionsStr != "true" && ignoreDisruptionsStr != "false" {
 			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("ignore disruption is in the wrong format")
 		}
-		advancedOption.IgnoreDisruption = true
+		if ignoreDisruptionsStr == "false" {
+			advancedOption.IgnoreDisruption = false
+		}
 	}
 
 	return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, err
