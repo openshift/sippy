@@ -377,7 +377,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
 	commonParams := []bigquery.QueryParameter{}
 	if c.IgnoreDisruption {
-		queryString += ` AND test_name NOT LIKE %disruption/%`
+		queryString += ` AND test_name NOT LIKE '%disruption/%'`
 	}
 	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
