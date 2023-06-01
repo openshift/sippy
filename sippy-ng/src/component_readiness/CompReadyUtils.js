@@ -282,8 +282,8 @@ export function getUpdatedUrlParts(
     confidence: confidence,
     pity: pity,
     minFail: minFail,
-    ignoreDisruption: ignoreDisruption,
-    ignoreMissing: ignoreMissing,
+    ignore_disruption: ignoreDisruption,
+    ignore_missing: ignoreMissing,
     //component: component,
   }
 
