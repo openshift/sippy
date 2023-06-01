@@ -288,12 +288,12 @@ export function getUpdatedUrlParts(
   }
 
   const arraysMap = {
-    exclude_clouds: excludeCloudsCheckedItems,
-    exclude_arches: excludeArchesCheckedItems,
-    exclude_networks: excludeNetworksCheckedItems,
-    exclude_upgrades: excludeUpgradesCheckedItems,
-    exclude_variants: excludeVariantsCheckedItems,
-    group_by: groupByCheckedItems,
+    excludeClouds: excludeCloudsCheckedItems,
+    excludeArches: excludeArchesCheckedItems,
+    excludeNetworks: excludeNetworksCheckedItems,
+    excludeUpgrades: excludeUpgradesCheckedItems,
+    excludeVariants: excludeVariantsCheckedItems,
+    groupBy: groupByCheckedItems,
   }
 
   const queryParams = new URLSearchParams()

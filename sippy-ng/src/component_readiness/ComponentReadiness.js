@@ -182,27 +182,27 @@ export default function ComponentReadiness(props) {
   const [
     groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
     setGroupByCheckedItemsParam,
-  ] = useQueryParam('group_by', ArrayParam)
+  ] = useQueryParam('groupBy', ArrayParam)
   const [
     excludeCloudsCheckedItemsParam = [],
     setExcludeCloudsCheckedItemsParam,
-  ] = useQueryParam('exclude_clouds', ArrayParam)
+  ] = useQueryParam('excludeClouds', ArrayParam)
   const [
     excludeArchesCheckedItemsParam = [],
     setExcludeArchesCheckedItemsParam,
-  ] = useQueryParam('exclude_arches', ArrayParam)
+  ] = useQueryParam('excludeArches', ArrayParam)
   const [
     excludeNetworksCheckedItemsParam = [],
     setExcludeNetworksCheckedItemsParam,
-  ] = useQueryParam('exclude_networks', ArrayParam)
+  ] = useQueryParam('excludeNetworks', ArrayParam)
   const [
     excludeUpgradesCheckedItemsParam = [],
     setExcludeUpgradesCheckedItemsParam,
-  ] = useQueryParam('exclude_upgrades', ArrayParam)
+  ] = useQueryParam('excludeUpgrades', ArrayParam)
   const [
     excludeVariantsCheckedItemsParam = [],
     setExcludeVariantsCheckedItemsParam,
-  ] = useQueryParam('exclude_variants', ArrayParam)
+  ] = useQueryParam('excludeVariants', ArrayParam)
 
   const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
     'confidence',
@@ -232,8 +232,8 @@ export default function ComponentReadiness(props) {
     'capability',
     StringParam
   )
-  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
-  const [testNameParam, setTestNameParam] = useQueryParam('test_name', String)
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
+  const [testNameParam, setTestNameParam] = useQueryParam('testName', String)
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
@@ -279,7 +279,7 @@ export default function ComponentReadiness(props) {
     ignoreMissingParam || false
   )
   const [ignoreDisruption, setIgnoreDisruption] = React.useState(
-    ignoreDisruptionParam || false
+    ignoreDisruptionParam || true
   )
 
   const { path, url } = useRouteMatch()

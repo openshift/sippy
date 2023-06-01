@@ -25,7 +25,7 @@ function testReport(
   const retUrl =
     '/component_readiness/env_test' +
     filterVals +
-    `&test_id=${safeTestId}` +
+    `&testId=${safeTestId}` +
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${capabilityName}`
@@ -49,7 +49,7 @@ export default function CompReadyCapCell(props) {
     'environment',
     StringParam
   )
-  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
 
   const handleClick = (event) => {
     if (!event.metaKey) {

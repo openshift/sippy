@@ -10,7 +10,7 @@ import React from 'react'
 import TableCell from '@material-ui/core/TableCell'
 import TableRow from '@material-ui/core/TableRow'
 
-// After clicking a testName on page 3 or 3a, we add that test_id (that corresponds
+// After clicking a testName on page 3 or 3a, we add that testId (that corresponds
 // to that testName) to the api call along with all the other parts we already have.
 function testLink(filterVals, componentName, capabilityName, testId) {
   const safeComponentName = safeEncodeURIComponent(componentName)
@@ -21,14 +21,14 @@ function testLink(filterVals, componentName, capabilityName, testId) {
     filterVals +
     `&component=${safeComponentName}` +
     `&capability=${safeCapability}` +
-    `&test_id=${safeTestId}`
+    `&testId=${safeTestId}`
   return retVal
 }
 
 // Represents a row when you clicked a capability on page2
 // We display tests on the left and results on the right.
 export default function CompTestRow(props) {
-  // testName is the name of the test (called test_name)
+  // testName is the name of the test (called testName)
   // testId is the unique test ID that maps to the testName
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
@@ -52,7 +52,7 @@ export default function CompTestRow(props) {
     'capability',
     StringParam
   )
-  const [testIdParam, setTestIdParam] = useQueryParam('test_id', StringParam)
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
 
   const handleClick = (event) => {
     if (!event.metaKey) {
