@@ -35,9 +35,8 @@ const infoCell = (stats) => {
 export default function CompReadyTestDetailRow(props) {
   // element: a test detail element
   // idx: array index of test detail element
-  // jobFactor: a multiplicative factor for 10 jobs
   // showOnlyFailures: says to focus on job failures
-  const { element, idx, jobFactor, showOnlyFailures } = props
+  const { element, idx, showOnlyFailures } = props
 
   const testJobDetailCell = (element, statsKind) => {
     let item
@@ -51,6 +50,7 @@ export default function CompReadyTestDetailRow(props) {
     }
 
     let filtered = item
+
     // If we only care to see failures, then remove anything else
     // Protect against empty/undefined data
     if (showOnlyFailures) {
@@ -59,27 +59,34 @@ export default function CompReadyTestDetailRow(props) {
         : []
     }
 
+    // Print out the S and F letters for job runs (20 per line) in reverse order
+    // so you see the most recent jobRuns first.
     return (
-      <div style={{ display: 'flex' }}>
-        {filtered &&
-          filtered.length > 0 &&
-          filtered.slice(0, 10 * jobFactor).map((jobRun, jobRunIndex) => {
-            return (
-              <a
-                href={jobRun.job_url}
-                key={jobRunIndex}
-                style={{
-                  color: getJobRunColor(jobRun),
-                  marginRight: '1px',
-                }}
-              >
-                <Typography className="cr-cell-name">
-                  {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
-                </Typography>
-              </a>
-            )
-          })}
-      </div>
+      <TableCell className="cr-jobrun-table-wrapper">
+        <div style={{ display: 'flex', maxWidth: '205px', flexWrap: 'wrap' }}>
+          {filtered &&
+            filtered.length > 0 &&
+            filtered
+              .slice()
+              .reverse()
+              .map((jobRun, jobRunIndex) => {
+                return (
+                  <a
+                    href={jobRun.job_url}
+                    key={jobRunIndex}
+                    style={{
+                      color: getJobRunColor(jobRun),
+                      marginRight: '1px',
+                    }}
+                  >
+                    <Typography className="cr-cell-name">
+                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                    </Typography>
+                  </a>
+                )
+              })}
+        </div>
+      </TableCell>
     )
   }
 
@@ -90,9 +97,9 @@ export default function CompReadyTestDetailRow(props) {
           <Typography className="cr-cell-name">{element.job_name}</Typography>
         </TableCell>
         <TableCell>{infoCell(element.base_stats)}</TableCell>
-        <TableCell>{testJobDetailCell(element, 'base')}</TableCell>
+        {testJobDetailCell(element, 'base')}
         <TableCell>{infoCell(element.sample_stats)}</TableCell>
-        <TableCell>{testJobDetailCell(element, 'sample')}</TableCell>
+        {testJobDetailCell(element, 'sample')}
         <TableCell>
           <Typography className="cr-cell-name">
             {element.significant ? 'True' : 'False'}
@@ -106,6 +113,5 @@ export default function CompReadyTestDetailRow(props) {
 CompReadyTestDetailRow.propTypes = {
   element: PropTypes.object.isRequired,
   idx: PropTypes.number.isRequired,
-  jobFactor: PropTypes.number.isRequired,
   showOnlyFailures: PropTypes.bool.isRequired,
 }

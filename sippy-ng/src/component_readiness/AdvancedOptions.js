@@ -86,7 +86,7 @@ export default function AdvancedOptions(props) {
               value={confidence}
               onChange={handleChangeConfidence}
               aria-labelledby="my-slider"
-              min={1}
+              min={90}
               max={100}
             />
             <p>Pity: {pity}</p>
@@ -94,16 +94,16 @@ export default function AdvancedOptions(props) {
               value={pity}
               onChange={handleChangePity}
               aria-labelledby="my-slider"
-              min={1}
-              max={100}
+              min={0}
+              max={10}
             />
             <p>MinFail: {minFail}</p>
             <Slider
               value={minFail}
               onChange={handleChangeMinFail}
               aria-labelledby="my-slider"
-              min={1}
-              max={3}
+              min={0}
+              max={20}
             />
             <p>Missing: {ignoreMissing ? 'ignore' : 'keep'}</p>
             <Switch

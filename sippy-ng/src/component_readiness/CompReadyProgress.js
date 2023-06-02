@@ -12,7 +12,7 @@ export default function CompReadyProgress(props) {
   const currentTitle = document.title
 
   // Make the title different so you can tell it's loading
-  document.title = '*' + currentTitle
+  document.title = 'Loading ...'
 
   return (
     <Fragment>

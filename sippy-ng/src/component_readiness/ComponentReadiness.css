@@ -47,6 +47,10 @@
     font-size: 11px !important;
 }
 
+.cr-jobrun-table-wrapper {
+  width: 205px;
+}
+
 .cr-cell-capab-col {
     font-size: 11px !important;
     width: 300px;
