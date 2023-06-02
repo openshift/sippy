@@ -106,6 +106,20 @@ export default function TimelineChart({ eventIntervals, data }) {
         .maxLineHeight(20)
         .maxHeight(10000)
         .zColorScale(ordinalScale)
+        .segmentTooltipContent((d) => {
+          return (
+            '<span·style="max-inline-size:·min-content;·display:·inline-block;">' +
+            '<strong>' +
+            d.labelVal +
+            '</strong><br/>' +
+            '<strong>From: </strong>' +
+            new Date(d.timeRange[0]).toUTCString() +
+            '<br>' +
+            '<strong>To: </strong>' +
+            new Date(d.timeRange[1]).toUTCString() +
+            '</span>'
+          )
+        })
       if (eventIntervals.length > 0) {
         chart.zoomX([
           new Date(eventIntervals[0].from),
