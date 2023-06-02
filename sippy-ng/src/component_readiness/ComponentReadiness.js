@@ -11,6 +11,7 @@ import {
   cancelledDataTable,
   formatLongDate,
   formatLongEndDate,
+  formColumnName,
   getAPIUrl,
   getColumns,
   getUpdatedUrlParts,
@@ -24,6 +25,7 @@ import {
   Drawer,
   Grid,
   TableContainer,
+  TextField,
   Tooltip,
   Typography,
 } from '@material-ui/core'
@@ -144,6 +146,17 @@ export default function ComponentReadiness(props) {
   //console.log('ComponentReadiness start')
   const classes = useStyles()
   const theme = useTheme()
+
+  const [searchComponentRegex, setSearchComponentRegex] = useState('')
+  const handleSearchComponentRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchComponentRegex(searchValue)
+  }
+  const [searchColumnRegex, setSearchColumnRegex] = useState('')
+  const handleSearchColumnRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchColumnRegex(searchValue)
+  }
 
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
@@ -776,80 +789,118 @@ export default function ComponentReadiness(props) {
                       then click Generate Report
                     </Typography>
                   ) : (
-                    <TableContainer
-                      component="div"
-                      className="cr-table-wrapper"
-                    >
-                      <Table className="cr-comp-read-table">
-                        <TableHead>
-                          <TableRow>
-                            {
-                              <TableCell className={'cr-col-result-full'}>
-                                <Typography className="cr-cell-name">
-                                  Name
-                                </Typography>
-                              </TableCell>
-                            }
-                            {columnNames.map((column, idx) => {
-                              if (column !== 'Name') {
-                                return (
-                                  <TableCell
-                                    className={'cr-col-result'}
-                                    key={'column' + '-' + idx}
-                                  >
-                                    <Tooltip
-                                      title={'Single row report for ' + column}
-                                    >
-                                      <Typography className="cr-cell-name">
-                                        {column}
-                                      </Typography>
-                                    </Tooltip>
-                                  </TableCell>
-                                )
+                    <div>
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <TextField
+                          label="Search Component"
+                          value={searchComponentRegex}
+                          onChange={handleSearchComponentRegexChange}
+                        />
+                        <TextField
+                          label="Search Column"
+                          value={searchColumnRegex}
+                          onChange={handleSearchColumnRegexChange}
+                        />
+                      </div>
+                      <TableContainer
+                        component="div"
+                        className="cr-table-wrapper"
+                      >
+                        <Table className="cr-comp-read-table">
+                          <TableHead>
+                            <TableRow>
+                              {
+                                <TableCell className={'cr-col-result-full'}>
+                                  <Typography className="cr-cell-name">
+                                    Name
+                                  </Typography>
+                                </TableCell>
                               }
-                            })}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {Object.keys(data.rows)
-                            .sort((a, b) =>
-                              data.rows[a].component.toLowerCase() >
-                              data.rows[b].component.toLowerCase()
-                                ? 1
-                                : -1
-                            )
-                            .map((componentIndex) => (
-                              <CompReadyRow
-                                key={componentIndex}
-                                componentName={
-                                  data.rows[componentIndex].component
-                                }
-                                results={data.rows[componentIndex].columns}
-                                columnNames={columnNames}
-                                filterVals={getUpdatedUrlParts(
-                                  baseRelease,
-                                  baseStartTime,
-                                  baseEndTime,
-                                  sampleRelease,
-                                  sampleStartTime,
-                                  sampleEndTime,
-                                  groupByCheckedItems,
-                                  excludeCloudsCheckedItems,
-                                  excludeArchesCheckedItems,
-                                  excludeNetworksCheckedItems,
-                                  excludeUpgradesCheckedItems,
-                                  excludeVariantsCheckedItems,
-                                  confidence,
-                                  pity,
-                                  minFail,
-                                  ignoreDisruption,
-                                  ignoreMissing
-                                )}
-                              />
-                            ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                              {columnNames
+                                .filter((column) =>
+                                  column.match(
+                                    new RegExp(searchColumnRegex, 'i')
+                                  )
+                                )
+
+                                .map((column, idx) => {
+                                  if (column !== 'Name') {
+                                    return (
+                                      <TableCell
+                                        className={'cr-col-result'}
+                                        key={'column' + '-' + idx}
+                                      >
+                                        <Tooltip
+                                          title={
+                                            'Single row report for ' + column
+                                          }
+                                        >
+                                          <Typography className="cr-cell-name">
+                                            {column}
+                                          </Typography>
+                                        </Tooltip>
+                                      </TableCell>
+                                    )
+                                  }
+                                })}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {Object.keys(data.rows)
+                              .filter((componentIndex) =>
+                                data.rows[componentIndex].component.match(
+                                  new RegExp(searchComponentRegex, 'i')
+                                )
+                              )
+                              .sort((a, b) =>
+                                data.rows[a].component.toLowerCase() >
+                                data.rows[b].component.toLowerCase()
+                                  ? 1
+                                  : -1
+                              )
+                              .map((componentIndex) => (
+                                <CompReadyRow
+                                  key={componentIndex}
+                                  componentName={
+                                    data.rows[componentIndex].component
+                                  }
+                                  results={data.rows[
+                                    componentIndex
+                                  ].columns.filter((column) =>
+                                    formColumnName(column).match(
+                                      new RegExp(searchColumnRegex, 'i')
+                                    )
+                                  )}
+                                  columnNames={columnNames.filter((column) =>
+                                    column.match(
+                                      new RegExp(searchColumnRegex, 'i')
+                                    )
+                                  )}
+                                  filterVals={getUpdatedUrlParts(
+                                    baseRelease,
+                                    baseStartTime,
+                                    baseEndTime,
+                                    sampleRelease,
+                                    sampleStartTime,
+                                    sampleEndTime,
+                                    groupByCheckedItems,
+                                    excludeCloudsCheckedItems,
+                                    excludeArchesCheckedItems,
+                                    excludeNetworksCheckedItems,
+                                    excludeUpgradesCheckedItems,
+                                    excludeVariantsCheckedItems,
+                                    confidence,
+                                    pity,
+                                    minFail,
+                                    ignoreDisruption,
+                                    ignoreMissing
+                                  )}
+                                />
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
                   )}
                 </div>
               </Route>
