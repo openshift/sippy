@@ -813,12 +813,13 @@ type ComponentTestStatus struct {
 }
 
 type ComponentTestIdentification struct {
-	TestName string
-	TestID   string
-	Network  string
-	Upgrade  string
-	Arch     string
-	Platform string
+	TestName     string
+	TestID       string
+	Network      string
+	Upgrade      string
+	Arch         string
+	Platform     string
+	FlatVariants string
 }
 
 type ComponentTestStatusRow struct {
@@ -828,6 +829,7 @@ type ComponentTestStatusRow struct {
 	Upgrade      string   `bigquery:"upgrade"`
 	Arch         string   `bigquery:"arch"`
 	Platform     string   `bigquery:"platform"`
+	FlatVariants string   `bigquery:"flat_variants"`
 	Variants     []string `bigquery:"variants"`
 	TotalCount   int      `bigquery:"total_count"`
 	SuccessCount int      `bigquery:"success_count"`
