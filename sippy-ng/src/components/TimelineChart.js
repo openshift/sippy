@@ -120,6 +120,10 @@ export default function TimelineChart({ eventIntervals, data }) {
             '</span>'
           )
         })
+        .onSegmentClick((seg) => {
+          // Copy hover popup label to clipboard
+          navigator.clipboard.writeText(seg.labelVal)
+        })
       if (eventIntervals.length > 0) {
         chart.zoomX([
           new Date(eventIntervals[0].from),
