@@ -8,7 +8,7 @@ import (
 )
 
 func fakeComponentAndCapabilityGetter(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string) {
-	name := test.TestName
+	name := stats.TestName
 	known := map[string]struct {
 		component    string
 		capabilities []string
@@ -92,7 +92,6 @@ var (
 
 func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNTest := apitype.ComponentTestIdentification{
-		TestName: "test 1",
 		TestID:   "1",
 		Platform: "aws",
 		Arch:     "amd64",
@@ -100,7 +99,6 @@ func TestGenerateComponentReport(t *testing.T) {
 		Upgrade:  "upgrade-micro",
 	}
 	awsAMD64SDNTest := apitype.ComponentTestIdentification{
-		TestName: "test 2",
 		TestID:   "2",
 		Platform: "aws",
 		Arch:     "amd64",
@@ -108,66 +106,77 @@ func TestGenerateComponentReport(t *testing.T) {
 		Upgrade:  "upgrade-micro",
 	}
 	awsAMD64OVNBaseTestStats90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64OVNBaseTestStats50Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 500,
 	}
 	awsAMD64OVNBaseTestStatsVariants90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard", "fips"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64OVNSampleTestStats90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 90,
 	}
 	awsAMD64OVNSampleTestStats85Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 85,
 	}
 	awsAMD64OVNSampleTestStats50Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 50,
 	}
 	awsAMD64OVNSampleTestStatsTiny := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard"},
 		TotalCount:   3,
 		FlakeCount:   0,
 		SuccessCount: 1,
 	}
 	awsAMD64OVNSampleTestStatsVariants90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 1",
 		Variants:     []string{"standard", "fips"},
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 90,
 	}
 	awsAMD64SDNBaseTestStats90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 2",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 900,
 	}
 	awsAMD64SDNBaseTestStats50Percent := apitype.ComponentTestStatus{
+		TestName:     "test 2",
 		Variants:     []string{"standard"},
 		TotalCount:   1000,
 		FlakeCount:   10,
 		SuccessCount: 500,
 	}
 	awsAMD64SDNSampleTestStats90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 2",
 		Variants:     []string{"standard"},
 		TotalCount:   100,
 		FlakeCount:   1,

@@ -804,6 +804,7 @@ type ComponentReportRequestAdvancedOptions struct {
 }
 
 type ComponentTestStatus struct {
+	TestName     string
 	Component    string
 	Capabilities []string
 	Variants     []string
@@ -813,7 +814,6 @@ type ComponentTestStatus struct {
 }
 
 type ComponentTestIdentification struct {
-	TestName     string
 	TestID       string
 	Network      string
 	Upgrade      string
