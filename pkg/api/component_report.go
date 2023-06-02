@@ -350,6 +350,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						upgrade,
 						arch,
 						platform,
+						flat_variants,
 						ANY_VALUE(variants) AS variants,
 						COUNT(test_id) AS total_count,
 						SUM(success_val) AS success_count,
@@ -366,6 +367,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						upgrade,
 						arch,
 						platform,
+						flat_variants,
 						test_id `
 
 	if c.schema == nil {
@@ -688,12 +690,13 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			continue
 		}
 		testIdentification := apitype.ComponentTestIdentification{
-			TestName: testStatus.TestName,
-			TestID:   testStatus.TestID,
-			Network:  testStatus.Network,
-			Upgrade:  testStatus.Upgrade,
-			Arch:     testStatus.Arch,
-			Platform: testStatus.Platform,
+			TestName:     testStatus.TestName,
+			TestID:       testStatus.TestID,
+			Network:      testStatus.Network,
+			Upgrade:      testStatus.Upgrade,
+			Arch:         testStatus.Arch,
+			Platform:     testStatus.Platform,
+			FlatVariants: testStatus.FlatVariants,
 		}
 		status[testIdentification] = apitype.ComponentTestStatus{
 			Component:    testStatus.Component,
@@ -853,10 +856,17 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		sortedRows = append(sortedRows, rowID)
 	}
 	sort.Slice(sortedRows, func(i, j int) bool {
-		return sortedRows[i].Component < sortedRows[j].Component ||
-			sortedRows[i].Capability < sortedRows[j].Capability ||
-			sortedRows[i].TestName < sortedRows[j].TestName ||
-			sortedRows[i].TestID < sortedRows[j].TestID
+		less := sortedRows[i].Component < sortedRows[j].Component
+		if sortedRows[i].Component == sortedRows[j].Component {
+			less = sortedRows[i].Capability < sortedRows[j].Capability
+			if sortedRows[i].Capability == sortedRows[j].Capability {
+				less = sortedRows[i].TestName < sortedRows[j].TestName
+				if sortedRows[i].TestName == sortedRows[j].TestName {
+					less = sortedRows[i].TestID < sortedRows[j].TestID
+				}
+			}
+		}
+		return less
 	})
 
 	// Sort the column identifications
@@ -865,11 +875,20 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		sortedColumns = append(sortedColumns, columnID)
 	}
 	sort.Slice(sortedColumns, func(i, j int) bool {
-		return sortedColumns[i].Platform < sortedColumns[j].Platform ||
-			sortedColumns[i].Arch < sortedColumns[j].Arch ||
-			sortedColumns[i].Network < sortedColumns[j].Network ||
-			sortedColumns[i].Upgrade < sortedColumns[j].Upgrade ||
-			sortedColumns[i].Variant < sortedColumns[j].Variant
+		less := sortedColumns[i].Platform < sortedColumns[j].Platform
+		if sortedColumns[i].Platform == sortedColumns[j].Platform {
+			less = sortedColumns[i].Arch < sortedColumns[j].Arch
+			if sortedColumns[i].Arch == sortedColumns[j].Arch {
+				less = sortedColumns[i].Network < sortedColumns[j].Network
+				if sortedColumns[i].Network == sortedColumns[j].Network {
+					less = sortedColumns[i].Upgrade < sortedColumns[j].Upgrade
+					if sortedColumns[i].Upgrade == sortedColumns[j].Upgrade {
+						less = sortedColumns[i].Variant < sortedColumns[j].Variant
+					}
+				}
+			}
+		}
+		return less
 	})
 
 	// Now build the report
