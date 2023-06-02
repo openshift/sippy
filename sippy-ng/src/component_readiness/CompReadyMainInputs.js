@@ -113,70 +113,22 @@ export default function CompReadyMainInputs(props) {
           label="Release to Evaluate"
           version={sampleRelease}
           onChange={setSampleRelease}
+          startTime={sampleStartTime}
+          setStartTime={setSampleStartTime}
+          endTime={sampleEndTime}
+          setEndTime={setSampleEndTime}
         ></ReleaseSelector>
-        <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="From"
-            format={dateFormat}
-            ampm={false}
-            value={sampleStartTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateFormat)
-              setSampleStartTime(formattedTime)
-            }}
-          />
-        </MuiPickersUtilsProvider>
-        <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="To"
-            format={dateEndFormat}
-            ampm={false}
-            value={sampleEndTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateEndFormat)
-              setSampleEndTime(formattedTime)
-            }}
-          />
-        </MuiPickersUtilsProvider>
       </div>
       <div className="cr-release-historical">
         <ReleaseSelector
           version={baseRelease}
           label="Historical Release"
           onChange={setBaseRelease}
+          startTime={baseStartTime}
+          setStartTime={setBaseStartTime}
+          endTime={baseEndTime}
+          setEndTime={setBaseEndTime}
         ></ReleaseSelector>
-        <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="From"
-            format={dateFormat}
-            ampm={false}
-            value={baseStartTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateFormat)
-              setBaseStartTime(formattedTime)
-            }}
-          />
-        </MuiPickersUtilsProvider>
-        <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="To"
-            format={dateEndFormat}
-            ampm={false}
-            value={baseEndTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateEndFormat)
-              setBaseEndTime(formattedTime)
-            }}
-          />
-        </MuiPickersUtilsProvider>
       </div>
       <div>
         <CheckBoxList
