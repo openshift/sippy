@@ -185,11 +185,13 @@ export default function CompReadyTestReport(props) {
         <br />
         <div style={{ display: 'block' }}>
           {/* data.fisher_exact is from 0-1; from that we calculate the probability of regression
-              expressed as a percentage */}
+              expressed as a percentage; we'll display the number in the tooltip in case a user
+              is interested */}
           <Tooltip
-            title="Test results for individual Prow Jobs may not be statistically
+            title={`Test results for individual Prow Jobs may not be statistically
           significant, but when taken in aggregate, there may be a statistically
-          significant difference compared to the historical basis"
+          significant difference compared to the historical basis.  Fisher Exact
+          Number for this basis and sample = ${data.fisher_exact}`}
           >
             <InfoIcon />
           </Tooltip>
