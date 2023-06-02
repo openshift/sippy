@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
+	"github.com/openshift/sippy/pkg/apis/cache"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -58,6 +60,7 @@ func NewServer(
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
+	cacheClient cache.Cache,
 ) *Server {
 
 	server := &Server{
@@ -78,6 +81,7 @@ func NewServer(
 		bigQueryClient: bigQueryClient,
 		pinnedDateTime: pinnedDateTime,
 		gcsClient:      gcsClient,
+		cache:          cacheClient,
 	}
 
 	// Fill cache
@@ -116,6 +120,7 @@ type Server struct {
 	bigQueryClient             *bigquery.Client
 	pinnedDateTime             *time.Time
 	gcsClient                  *storage.Client
+	cache                      cache.Cache
 }
 
 type TestGridDashboardCoordinates struct {
@@ -1266,22 +1271,22 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
-	serveMux.HandleFunc("/api/jobs/runs/intervals", s.jsonJobRunIntervals)
+	serveMux.HandleFunc("/api/jobs/runs/intervals", s.cached(4*time.Hour, s.jsonJobRunIntervals))
 	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
 	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
 	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
-	serveMux.HandleFunc("/api/pull_requests", s.jsonPullRequestsReportFromDB)
+	serveMux.HandleFunc("/api/pull_requests", s.cached(1*time.Hour, s.jsonPullRequestsReportFromDB))
 	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
 	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
-	serveMux.HandleFunc("/api/tests/details", s.jsonTestDetailsReportFromDB)
-	serveMux.HandleFunc("/api/tests/analysis/overall", s.jsonTestAnalysisOverallFromDB)
-	serveMux.HandleFunc("/api/tests/analysis/variants", s.jsonTestAnalysisByVariantFromDB)
-	serveMux.HandleFunc("/api/tests/analysis/jobs", s.jsonTestAnalysisByJobFromDB)
+	serveMux.HandleFunc("/api/tests/details", s.cached(1*time.Hour, s.jsonTestDetailsReportFromDB))
+	serveMux.HandleFunc("/api/tests/analysis/overall", s.cached(1*time.Hour, s.jsonTestAnalysisOverallFromDB))
+	serveMux.HandleFunc("/api/tests/analysis/variants", s.cached(1*time.Hour, s.jsonTestAnalysisByVariantFromDB))
+	serveMux.HandleFunc("/api/tests/analysis/jobs", s.cached(1*time.Hour, s.jsonTestAnalysisByJobFromDB))
 	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
-	serveMux.HandleFunc("/api/tests/outputs", s.jsonTestOutputsFromDB)
-	serveMux.HandleFunc("/api/tests/durations", s.jsonTestDurationsFromDB)
-	serveMux.HandleFunc("/api/install", s.jsonInstallReportFromDB)
-	serveMux.HandleFunc("/api/upgrade", s.jsonUpgradeReportFromDB)
+	serveMux.HandleFunc("/api/tests/outputs", s.cached(1*time.Hour, s.jsonTestOutputsFromDB))
+	serveMux.HandleFunc("/api/tests/durations", s.cached(1*time.Hour, s.jsonTestDurationsFromDB))
+	serveMux.HandleFunc("/api/install", s.cached(1*time.Hour, s.jsonInstallReportFromDB))
+	serveMux.HandleFunc("/api/upgrade", s.cached(1*time.Hour, s.jsonUpgradeReportFromDB))
 	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
 	serveMux.HandleFunc("/api/health/build_cluster/analysis", s.jsonBuildClusterHealthAnalysis)
 	serveMux.HandleFunc("/api/health/build_cluster", s.jsonBuildClusterHealth)
@@ -1289,9 +1294,9 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness", s.cached(4*time.Hour, s.jsonComponentReportFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(4*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(4*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
@@ -1336,6 +1341,70 @@ func logRequestHandler(h http.Handler) http.Handler {
 		}).Info("responded to request")
 	}
 	return http.HandlerFunc(fn)
+}
+
+func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWriter, r *http.Request)) func(http.ResponseWriter, *http.Request) {
+	if s.cache == nil {
+		log.Debugf("no cache configured, making live api call")
+		return handler
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		content, err := s.cache.Get(r.RequestURI)
+		if err != nil { // cache miss
+			log.WithError(err).Debugf("cache miss: could not fetch data from cache for %q", r.RequestURI)
+		} else if content != nil && respondFromCache(content, w, r) == nil { // cache hit
+			return
+		}
+		recordResponse(s.cache, duration, w, r, handler)
+	}
+}
+
+func respondFromCache(content []byte, w http.ResponseWriter, r *http.Request) error {
+	apiResponse := cache.APIResponse{}
+	if err := json.Unmarshal(content, &apiResponse); err != nil {
+		log.WithError(err).Warningf("couldn't unmarshal api response")
+		return err
+	}
+	log.Debugf("cache hit for %q", r.RequestURI)
+	for k, v := range apiResponse.Headers {
+		w.Header()[k] = v
+	}
+	w.Header().Set("X-Sippy-Cached", "true")
+	w.WriteHeader(http.StatusOK)
+
+	if _, err := w.Write(apiResponse.Response); err != nil {
+		log.WithError(err).Debugf("error writing http response")
+		return err
+	}
+
+	return nil
+}
+
+func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter, r *http.Request, handler func(w http.ResponseWriter, r *http.Request)) {
+	apiResponse := cache.APIResponse{}
+	recorder := httptest.NewRecorder()
+	handler(recorder, r)
+	apiResponse.Headers = w.Header()
+	for k, v := range recorder.Result().Header {
+		w.Header()[k] = v
+	}
+	w.WriteHeader(recorder.Code)
+	content := recorder.Body.Bytes()
+	apiResponse.Response = content
+
+	log.Debugf("caching new page: %s for %s\n", r.RequestURI, duration)
+	apiResponseBytes, err := json.Marshal(apiResponse)
+	if err != nil {
+		log.WithError(err).Warningf("couldn't marshal api response")
+	}
+
+	if err := c.Set(r.RequestURI, apiResponseBytes, duration); err != nil {
+		log.WithError(err).Warningf("could not cache page")
+	}
+	if _, err := w.Write(content); err != nil {
+		log.WithError(err).Debugf("error writing http response")
+	}
 }
 
 func (s *Server) GetHTTPServer() *http.Server {

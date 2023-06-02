@@ -20,7 +20,9 @@ import (
 	"gopkg.in/yaml.v3"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/cache/redis"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -87,6 +89,7 @@ type Options struct {
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
 	PinnedDateTime                     string
+	RedisURL                           string
 
 	DaemonServer            bool
 	CommentProcessing       bool
@@ -168,6 +171,9 @@ func main() {
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
+
+	// caching
+	flags.StringVar(&opt.RedisURL, "redis-url", os.Getenv("REDIS_URL"), "Redis caching server URL")
 
 	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use in a historical context with a fixed date / time value specified in RFC3339 format - 2006-01-02T15:04:05+00:00")
 
@@ -680,6 +686,18 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 			return err
 		}
 	}
+
+	var cacheClient cache.Cache
+
+	if o.RedisURL != "" {
+		cacheClient, err = redis.NewRedisCache(o.RedisURL)
+		if err != nil {
+			log.WithError(err).Error("couldn't create redis cache")
+			return err
+		}
+
+	}
+
 	server := sippyserver.NewServer(
 		o.getServerMode(),
 		o.toTestGridLoadingConfig(),
@@ -695,6 +713,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		gcsClient,
 		bigQueryClient,
 		pinnedDateTime,
+		cacheClient,
 	)
 
 	// Do an immediate metrics update
