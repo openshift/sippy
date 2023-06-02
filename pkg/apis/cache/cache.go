@@ -10,7 +10,7 @@ type Cache interface {
 	Set(key string, content []byte, duration time.Duration) error
 }
 
-type ApiResponse struct {
+type APIResponse struct {
 	Headers  http.Header
 	Response []byte
 }

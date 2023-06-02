@@ -173,7 +173,7 @@ func main() {
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
 
 	// caching
-	flags.StringVar(&opt.RedisURL, "redis-url", os.Getenv("REDIS_URL"), "Cache caching server URL")
+	flags.StringVar(&opt.RedisURL, "redis-url", os.Getenv("REDIS_URL"), "Redis caching server URL")
 
 	flags.StringVar(&opt.PinnedDateTime, "pinnedDateTime", opt.PinnedDateTime, "optional value to use in a historical context with a fixed date / time value specified in RFC3339 format - 2006-01-02T15:04:05+00:00")
 

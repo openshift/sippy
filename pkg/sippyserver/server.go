@@ -1353,7 +1353,7 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 		content, err := s.cache.Get(r.RequestURI)
 		if err != nil { // cache miss
 			log.WithError(err).Debugf("cache miss: could not fetch data from cache for %q", r.RequestURI)
-		} else if content != nil && respondFromCache(content, w, r) == nil { //cache hit
+		} else if content != nil && respondFromCache(content, w, r) == nil { // cache hit
 			return
 		}
 		recordResponse(s.cache, duration, w, r, handler)
@@ -1361,7 +1361,7 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 }
 
 func respondFromCache(content []byte, w http.ResponseWriter, r *http.Request) error {
-	apiResponse := cache.ApiResponse{}
+	apiResponse := cache.APIResponse{}
 	if err := json.Unmarshal(content, &apiResponse); err != nil {
 		log.WithError(err).Warningf("couldn't unmarshal api response")
 		return err
@@ -1382,7 +1382,7 @@ func respondFromCache(content []byte, w http.ResponseWriter, r *http.Request) er
 }
 
 func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter, r *http.Request, handler func(w http.ResponseWriter, r *http.Request)) {
-	apiResponse := cache.ApiResponse{}
+	apiResponse := cache.APIResponse{}
 	recorder := httptest.NewRecorder()
 	handler(recorder, r)
 	apiResponse.Headers = w.Header()
