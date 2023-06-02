@@ -2,7 +2,13 @@ import { Alert } from '@material-ui/lab'
 import { format } from 'date-fns'
 import { safeEncodeURIComponent } from '../helpers'
 import { Typography } from '@material-ui/core'
+import green from './green-3.png'
+import green_half_data from './green-half-data.png'
+import green_missing_data from './green_no_data.png'
+import heart from './green-heart.png'
 import React from 'react'
+import red from './red-3.png'
+import red_3d from './red-3d.png'
 
 // Set to true for debug mode
 export const debugMode = false
@@ -84,6 +90,70 @@ export function gotFetchError(fetchError) {
       <button onClick={gotoCompReadyMain}>Retry</button>
     </Alert>
   )
+}
+
+// getStatusAndIcon returns a status string and icon to display to denote a visual and textual
+// meaning of a 'status' value.
+export function getStatusAndIcon(status) {
+  let icon = ''
+
+  let statusStr = status + ': '
+
+  if (status >= 3) {
+    statusStr =
+      statusStr + 'SignificantImprovement detected (improved sample rate)'
+    icon = (
+      <img
+        src={heart}
+        width="20px"
+        height="20px"
+        alt="SignificantImprovement"
+      />
+    )
+  } else if (status == 2) {
+    statusStr =
+      statusStr + 'Missing Basis And Sample (basis and sample data missing)'
+    icon = (
+      <img
+        src={green_missing_data}
+        alt="MissingBasisAndSample"
+        width="15px"
+        height="15px"
+      />
+    )
+  } else if (status == 1) {
+    statusStr = statusStr + 'Missing Basis (basis data missing)'
+    icon = (
+      <img
+        src={green_half_data}
+        alt="MissingBasis"
+        width="15px"
+        height="15px"
+      />
+    )
+  } else if (status == 0) {
+    statusStr = statusStr + 'NoSignificantDifference detected'
+    icon = <img src={green} alt="NotSignificant" />
+  } else if (status == -1) {
+    statusStr = statusStr + 'Missing Sample (sample data missing)'
+    icon = (
+      <img
+        src={green_missing_data}
+        alt="MissingBasisAndSample"
+        width="15px"
+        height="15px"
+      />
+    )
+  } else if (status == -2) {
+    statusStr = statusStr + 'SignificantRegression detected'
+    icon = <img src={red} alt="SignificantRegression" />
+  } else if (status <= -3) {
+    statusStr =
+      statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
+    icon = <img src={red_3d} alt="ExtremRegressio >15%n" />
+  }
+
+  return [statusStr, icon]
 }
 
 // The values of a column's key/value pairs (except status) are

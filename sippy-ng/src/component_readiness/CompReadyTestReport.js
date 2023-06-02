@@ -3,6 +3,7 @@ import {
   cancelledDataTable,
   expandEnvironment,
   getColumns,
+  getStatusAndIcon,
   getTestDetailsAPIUrl,
   gotFetchError,
   makePageTitle,
@@ -20,7 +21,6 @@ import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import Slider from '@material-ui/core/Slider'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -54,6 +54,18 @@ const tableCell = (label, idx) => {
     <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
       <Typography className="cr-cell-name">{label}</Typography>
     </TableCell>
+  )
+}
+const tableTooltipCell = (label, idx, title) => {
+  return (
+    <Tooltip title={title}>
+      <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <InfoIcon style={{ fontSize: '16px', fontWeight: 'lighter' }} />
+          <Typography className="cr-cell-name">{label}</Typography>
+        </div>
+      </TableCell>
+    </Tooltip>
   )
 }
 
@@ -167,6 +179,31 @@ export default function CompReadyTestReport(props) {
     setShowOnlyFailures(event.target.checked)
   }
 
+  const probabilityStr = (statusStr, fisherNumber) => {
+    if (
+      statusStr.includes('SignificantRegression') ||
+      statusStr.includes('ExtremeRegression')
+    ) {
+      return `Probability of significant regression: ${(
+        (1 - fisherNumber) *
+        100
+      ).toFixed(2)}%`
+    } else if (statusStr.includes('SignificantImprovement')) {
+      return `Probability of significant improvement: ${(
+        (1 - fisherNumber) *
+        100
+      ).toFixed(2)}%`
+    } else {
+      return 'There is no significant evidence of regression'
+    }
+  }
+
+  const [statusStr, assessmentIcon] = getStatusAndIcon(data.report_status)
+  const significanceTitle = `Test results for individual Prow Jobs may not be statistically
+  significant, but when taken in aggregate, there may be a statistically
+  significant difference compared to the historical basis
+  `
+
   return (
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
@@ -183,18 +220,17 @@ export default function CompReadyTestReport(props) {
       <Fragment>
         <div style={{ display: 'block' }}>Environment: {environment}</div>
         <br />
+        Assessment: <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
+        <br />
         <div style={{ display: 'block' }}>
           {/* data.fisher_exact is from 0-1; from that we calculate the probability of regression
               expressed as a percentage */}
           <Tooltip
-            title="Test results for individual Prow Jobs may not be statistically
-          significant, but when taken in aggregate, there may be a statistically
-          significant difference compared to the historical basis"
+            title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
           >
             <InfoIcon />
           </Tooltip>
-          Probability of regression:{' '}
-          {((1.0 - data.fisher_exact) * 100.0).toFixed(2)}%
+          {probabilityStr(statusStr, data.fisher_exact)}
         </div>
         <br />
       </Fragment>
@@ -218,7 +254,11 @@ export default function CompReadyTestReport(props) {
               {tableCell('Basis Runs', 2)}
               {tableCell('Sample Info', 3)}
               {tableCell('Sample Runs', 4)}
-              {tableCell('Statistically Significant', 5)}
+              {tableTooltipCell(
+                'Statistically Significant',
+                5,
+                significanceTitle
+              )}
             </TableRow>
           </TableHead>
           <TableBody>
