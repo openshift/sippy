@@ -49,6 +49,7 @@
 
 .cr-jobrun-table-wrapper {
   width: 205px;
+  vertical-align: top !important;
 }
 
 .cr-cell-capab-col {
@@ -58,6 +59,7 @@
 
 .cr-col-result {
     hyphens: auto;
+    vertical-align: top !important;
 }
 
 .cr-col-result-full {

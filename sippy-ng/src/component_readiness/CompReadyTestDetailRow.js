@@ -63,7 +63,13 @@ export default function CompReadyTestDetailRow(props) {
     // so you see the most recent jobRuns first.
     return (
       <TableCell className="cr-jobrun-table-wrapper">
-        <div style={{ display: 'flex', maxWidth: '205px', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            maxWidth: '205px',
+            flexWrap: 'wrap',
+          }}
+        >
           {filtered &&
             filtered.length > 0 &&
             filtered
@@ -96,11 +102,15 @@ export default function CompReadyTestDetailRow(props) {
         <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
           <Typography className="cr-cell-name">{element.job_name}</Typography>
         </TableCell>
-        <TableCell>{infoCell(element.base_stats)}</TableCell>
+        <TableCell style={{ verticalAlign: 'top' }}>
+          {infoCell(element.base_stats)}
+        </TableCell>
         {testJobDetailCell(element, 'base')}
-        <TableCell>{infoCell(element.sample_stats)}</TableCell>
+        <TableCell style={{ verticalAlign: 'top' }}>
+          {infoCell(element.sample_stats)}
+        </TableCell>
         {testJobDetailCell(element, 'sample')}
-        <TableCell>
+        <TableCell style={{ verticalAlign: 'top' }}>
           <Typography className="cr-cell-name">
             {element.significant ? 'True' : 'False'}
           </Typography>
