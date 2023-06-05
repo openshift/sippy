@@ -163,6 +163,7 @@ export function TestStackedChart(props) {
         },
       },
       y: {
+        suggestedMax: 80,
         grid: {
           z: 1,
         },
