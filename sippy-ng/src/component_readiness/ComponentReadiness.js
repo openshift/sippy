@@ -22,6 +22,7 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import {
+  Checkbox,
   Drawer,
   Grid,
   TableContainer,
@@ -156,6 +157,11 @@ export default function ComponentReadiness(props) {
   const handleSearchColumnRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchColumnRegex(searchValue)
+  }
+
+  const [redOnlyChecked, setRedOnlyChecked] = React.useState(false)
+  const handleRedOnlyCheckboxChange = (event) => {
+    setRedOnlyChecked(event.target.checked)
   }
 
   const [drawerOpen, setDrawerOpen] = React.useState(true)
@@ -814,6 +820,16 @@ export default function ComponentReadiness(props) {
                                   <Typography className="cr-cell-name">
                                     Name
                                   </Typography>
+                                  <Checkbox
+                                    checked={redOnlyChecked}
+                                    onChange={handleRedOnlyCheckboxChange}
+                                    color="primary"
+                                    size="small"
+                                    style={{ borderRadius: 4 }}
+                                  />
+                                  <label htmlFor="redOnlyCheckbox">
+                                    Red Only
+                                  </label>
                                 </TableCell>
                               }
                               {columnNames
@@ -857,6 +873,18 @@ export default function ComponentReadiness(props) {
                                 data.rows[b].component.toLowerCase()
                                   ? 1
                                   : -1
+                              )
+                              .filter((componentIndex) =>
+                                redOnlyChecked
+                                  ? data.rows[componentIndex].columns.some(
+                                      // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
+                                      (column) =>
+                                        column.status <= -2 &&
+                                        formColumnName(column).match(
+                                          new RegExp(searchColumnRegex, 'i')
+                                        )
+                                    )
+                                  : true
                               )
                               .map((componentIndex) => (
                                 <CompReadyRow
