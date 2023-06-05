@@ -806,6 +806,7 @@ type ComponentReportRequestAdvancedOptions struct {
 
 type ComponentTestStatus struct {
 	TestName     string
+	TestSuite    string
 	Component    string
 	Capabilities []string
 	Variants     []string
@@ -825,6 +826,7 @@ type ComponentTestIdentification struct {
 
 type ComponentTestStatusRow struct {
 	TestName     string   `bigquery:"test_name"`
+	TestSuite    string   `bigquery:"test_suite"`
 	TestID       string   `bigquery:"test_id"`
 	Network      string   `bigquery:"network"`
 	Upgrade      string   `bigquery:"upgrade"`
@@ -852,6 +854,7 @@ type ComponentReportRowIdentification struct {
 	Component  string `json:"component"`
 	Capability string `json:"capability,omitempty"`
 	TestName   string `json:"test_name,omitempty"`
+	TestSuite  string `json:"test_suite,omitempty"`
 	TestID     string `json:"test_id,omitempty"`
 }
 

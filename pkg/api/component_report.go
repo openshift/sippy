@@ -11,11 +11,12 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
@@ -226,6 +227,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
+						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
 						COUNT(*) AS total_count,
@@ -353,6 +355,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
+						ANY_VALUE(testsuite) AS test_suite,
 						cm.id as test_id,
 						network,
 						upgrade,
@@ -572,6 +575,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 				Component: component,
 				TestID:    test.TestID,
 				TestName:  stats.TestName,
+				TestSuite: stats.TestSuite,
 			}
 			if c.Capability != "" {
 				row.Capability = c.Capability
@@ -586,6 +590,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 							Component:  component,
 							TestID:     test.TestID,
 							TestName:   stats.TestName,
+							TestSuite:  stats.TestSuite,
 							Capability: capability,
 						}
 						rows = append(rows, row)
@@ -706,6 +711,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 		}
 		status[testIdentification] = apitype.ComponentTestStatus{
 			TestName:     testStatus.TestName,
+			TestSuite:    testStatus.TestSuite,
 			Component:    testStatus.Component,
 			Capabilities: testStatus.Capabilities,
 			Variants:     testStatus.Variants,
