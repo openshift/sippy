@@ -178,28 +178,34 @@ func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRele
 					// how do we handle never-stable
 					if len(job.Variants) == 1 && job.Variants[0] == testidentification.NeverStable {
 						hasNeverStableJob = true
-					} else {
-						gosort.Strings(job.Variants)
-						if stringSlicesEqual(variants, job.Variants) {
+					}
 
-							jobIds, err := query.ProwJobRunIds(dbc, job.ID)
+					gosort.Strings(job.Variants)
+					if stringSlicesEqual(variants, job.Variants) {
 
-							if err != nil {
-								logger.WithError(err).Errorf("Failed to query job run ids for %d", job.ID)
-								continue
-							}
+						jobIds, err := query.ProwJobRunIds(dbc, job.ID)
 
-							totalJobRunsCount += len(jobIds)
-							allJobNames = append(allJobNames, "'"+job.Name+"'")
+						if err != nil {
+							logger.WithError(err).Errorf("Failed to query job run ids for %d", job.ID)
+							continue
 						}
+
+						totalJobRunsCount += len(jobIds)
+						allJobNames = append(allJobNames, "'"+job.Name+"'")
 					}
 				}
 
-				if len(allJobNames) == 0 && hasNeverStableJob {
-					return nil, 0, errors.New(testidentification.NeverStable)
+				// logging at info for now so we can monitor, can dial down to debug if / when preferred
+				if len(allJobNames) > 0 {
+					logger.Infof("Matched job name: %s to %v", jobRun.ProwJob.Name, allJobNames)
 				}
 
-				return allJobNames, totalJobRunsCount, nil
+				var err error
+				if hasNeverStableJob {
+					err = errors.New(testidentification.NeverStable)
+				}
+
+				return allJobNames, totalJobRunsCount, err
 			}
 
 		}
@@ -436,13 +442,6 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
 		return response, nil
-
-	// Return early is this is for a never-stable job
-	case neverStableJob:
-		response.OverallRisk.Level = apitype.FailureRiskLevelLow
-		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
-			"Job is marked as never-stable")
-		return response, nil
 	}
 
 	var maxTestRiskReason string
@@ -473,7 +472,10 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 			}
 		}
 
-		if testResultsVariantsFunc != nil {
+		// if this matched a neverStableJob we don't want to use the variant match as it will include
+		// results from stable jobs and potentially skew results.
+		// we will rely on the jobname match, if any, for analysis
+		if testResultsVariantsFunc != nil && !neverStableJob {
 			testResultsVariants, errVariants = testResultsVariantsFunc(ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants, jobNames)
 		}
 
@@ -572,7 +574,7 @@ func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.
 	// bias is towards jobname analysis at this point
 	// we could check for the number of runs but
 	// that introduces flakiness on which analysis we are using
-	// for now we have a deterministic result based on the jobnames analsysis so return it
+	// for now we have a deterministic result based on the jobnames analysis so return it
 	return testRiskLvlJobNames, reasonsJobNames
 }
 
