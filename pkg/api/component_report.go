@@ -218,14 +218,22 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := `SELECT
+	queryString := `WITH latest_component_mapping AS (
+    					SELECT *
+    					FROM ci_analysis_us.component_mapping cm
+    					WHERE created_at = (
+								SELECT MAX(created_at)
+								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
 						COUNT(*) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
-					FROM ci_analysis_us.junit `
+					FROM ci_analysis_us.junit
+						INNER JOIN latest_component_mapping cm ON testsuite = cm.suite
+							AND test_name = cm.name `
 	groupString := `
 					GROUP BY
 						file_path,
@@ -244,7 +252,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						AND network = @Network
 						AND platform = @Platform
 						AND @Variant IN UNNEST(variants)
-						AND test_id = @TestId `
+						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
 		{
 			Name:  "Upgrade",
@@ -338,28 +346,27 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 ) {
 	errs := []error{}
 	queryString := `WITH latest_component_mapping AS (
-    					SELECT *
-    					FROM ci_analysis_us.component_mapping cm
-    					WHERE created_at = (
+						SELECT *
+						FROM ci_analysis_us.component_mapping cm
+						WHERE created_at = (
 								SELECT MAX(created_at)
 								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
-						test_id,
+						cm.id as test_id,
 						network,
 						upgrade,
 						arch,
 						platform,
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
-						COUNT(test_id) AS total_count,
+						COUNT(cm.id) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities
 					FROM ci_analysis_us.junit
-						INNER JOIN latest_component_mapping cm ON testsuite = cm.suite
-							AND test_name = cm.name `
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`
 
 	groupString := `
 					GROUP BY
@@ -368,7 +375,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						arch,
 						platform,
 						flat_variants,
-						test_id `
+						cm.id `
 
 	if c.schema == nil {
 		c.fetchQuerySchema(queryString + groupString)
@@ -410,7 +417,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		})
 	}
 	if c.TestID != "" {
-		queryString += ` AND test_id = @TestId`
+		queryString += ` AND cm.id = @TestId`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "TestId",
 			Value: c.TestID,
@@ -564,7 +571,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 			row := apitype.ComponentReportRowIdentification{
 				Component: component,
 				TestID:    test.TestID,
-				TestName:  test.TestName,
+				TestName:  stats.TestName,
 			}
 			if c.Capability != "" {
 				row.Capability = c.Capability
@@ -578,7 +585,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 						row := apitype.ComponentReportRowIdentification{
 							Component:  component,
 							TestID:     test.TestID,
-							TestName:   test.TestName,
+							TestName:   stats.TestName,
 							Capability: capability,
 						}
 						rows = append(rows, row)
@@ -690,7 +697,6 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			continue
 		}
 		testIdentification := apitype.ComponentTestIdentification{
-			TestName:     testStatus.TestName,
 			TestID:       testStatus.TestID,
 			Network:      testStatus.Network,
 			Upgrade:      testStatus.Upgrade,
@@ -699,6 +705,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			FlatVariants: testStatus.FlatVariants,
 		}
 		status[testIdentification] = apitype.ComponentTestStatus{
+			TestName:     testStatus.TestName,
 			Component:    testStatus.Component,
 			Capabilities: testStatus.Capabilities,
 			Variants:     testStatus.Variants,
