@@ -807,22 +807,23 @@ export default function ComponentReadiness(props) {
                           value={searchColumnRegex}
                           onChange={handleSearchColumnRegexChange}
                         />
-                        <Checkbox
-                          checked={redOnlyChecked}
-                          onChange={handleRedOnlyCheckboxChange}
-                          color="primary"
-                          size="small"
-                          style={{ borderRadius: 1 }}
-                        />
-                        <label
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={redOnlyChecked}
+                              onChange={handleRedOnlyCheckboxChange}
+                              color="primary"
+                              size="small"
+                              style={{ borderRadius: 1 }}
+                            />
+                          }
                           htmlFor="redOnlyCheckbox"
                           style={{
                             textAlign: 'left',
                             marginTop: 15,
                           }}
-                        >
-                          Red Only
-                        </label>
+                          label="Red Only"
+                        ></FormControlLabel>
                       </div>
                       <TableContainer
                         component="div"
