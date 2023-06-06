@@ -14,6 +14,7 @@ import {
   formColumnName,
   getAPIUrl,
   getColumns,
+  getKeeperColumns,
   getUpdatedUrlParts,
   gotFetchError,
   initialPageTable,
@@ -364,6 +365,12 @@ export default function ComponentReadiness(props) {
       />
     )
   }
+
+  const keepColumnsList =
+    data &&
+    data.rows &&
+    data.rows.length > 1 &&
+    getKeeperColumns(data, columnNames, redOnlyChecked)
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
@@ -841,10 +848,11 @@ export default function ComponentReadiness(props) {
                                 </TableCell>
                               }
                               {columnNames
-                                .filter((column) =>
-                                  column.match(
-                                    new RegExp(searchColumnRegex, 'i')
-                                  )
+                                .filter(
+                                  (column, idx) =>
+                                    column.match(
+                                      new RegExp(searchColumnRegex, 'i')
+                                    ) && keepColumnsList[idx]
                                 )
 
                                 .map((column, idx) => {
@@ -902,15 +910,18 @@ export default function ComponentReadiness(props) {
                                   }
                                   results={data.rows[
                                     componentIndex
-                                  ].columns.filter((column) =>
-                                    formColumnName(column).match(
-                                      new RegExp(searchColumnRegex, 'i')
-                                    )
+                                  ].columns.filter(
+                                    (column, idx) =>
+                                      formColumnName(column).match(
+                                        new RegExp(searchColumnRegex, 'i')
+                                      ) && keepColumnsList[idx]
                                   )}
-                                  columnNames={columnNames.filter((column) =>
-                                    column.match(
-                                      new RegExp(searchColumnRegex, 'i')
-                                    )
+                                  columnNames={columnNames.filter(
+                                    (column, idx) =>
+                                      column.match(
+                                        new RegExp(searchColumnRegex, 'i') &&
+                                          keepColumnsList[idx]
+                                      )
                                   )}
                                   grayFactor={redOnlyChecked ? 100 : 0}
                                   filterVals={getUpdatedUrlParts(
