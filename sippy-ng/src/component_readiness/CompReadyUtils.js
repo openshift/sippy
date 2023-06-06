@@ -93,8 +93,8 @@ export function gotFetchError(fetchError) {
 }
 
 // getStatusAndIcon returns a status string and icon to display to denote a visual and textual
-// meaning of a 'status' value.
-export function getStatusAndIcon(status) {
+// meaning of a 'status' value.  We optionally allow a grayscale mode for the red colors.
+export function getStatusAndIcon(status, grayFactor = 0) {
   let icon = ''
 
   let statusStr = status + ': '
@@ -107,7 +107,7 @@ export function getStatusAndIcon(status) {
         src={heart}
         width="20px"
         height="20px"
-        alt="SignificantImprovement"
+        style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
   } else if (status == 2) {
@@ -119,6 +119,7 @@ export function getStatusAndIcon(status) {
         alt="MissingBasisAndSample"
         width="15px"
         height="15px"
+        style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
   } else if (status == 1) {
@@ -129,11 +130,18 @@ export function getStatusAndIcon(status) {
         alt="MissingBasis"
         width="15px"
         height="15px"
+        style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
   } else if (status == 0) {
     statusStr = statusStr + 'NoSignificantDifference detected'
-    icon = <img src={green} alt="NotSignificant" />
+    icon = (
+      <img
+        src={green}
+        alt="NotSignificant"
+        style={{ filter: `grayscale(${grayFactor}%)` }}
+      />
+    )
   } else if (status == -1) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     icon = (
@@ -142,6 +150,7 @@ export function getStatusAndIcon(status) {
         alt="MissingBasisAndSample"
         width="15px"
         height="15px"
+        style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
   } else if (status == -2) {

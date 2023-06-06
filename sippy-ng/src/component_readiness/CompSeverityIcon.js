@@ -7,12 +7,13 @@ import React from 'react'
 
 export default function CompSeverityIcon(props) {
   const theme = useTheme()
-  const status = props.status
+  const { status, grayFactor } = props
 
-  const [statusStr, icon] = getStatusAndIcon(status)
+  const [statusStr, icon] = getStatusAndIcon(status, grayFactor)
   return <Tooltip title={statusStr}>{icon}</Tooltip>
 }
 
 CompSeverityIcon.propTypes = {
   status: PropTypes.number,
+  grayFactor: PropTypes.number,
 }

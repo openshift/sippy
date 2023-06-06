@@ -807,6 +807,22 @@ export default function ComponentReadiness(props) {
                           value={searchColumnRegex}
                           onChange={handleSearchColumnRegexChange}
                         />
+                        <Checkbox
+                          checked={redOnlyChecked}
+                          onChange={handleRedOnlyCheckboxChange}
+                          color="primary"
+                          size="small"
+                          style={{ borderRadius: 1 }}
+                        />
+                        <label
+                          htmlFor="redOnlyCheckbox"
+                          style={{
+                            textAlign: 'left',
+                            marginTop: 15,
+                          }}
+                        >
+                          Red Only
+                        </label>
                       </div>
                       <TableContainer
                         component="div"
@@ -820,16 +836,6 @@ export default function ComponentReadiness(props) {
                                   <Typography className="cr-cell-name">
                                     Name
                                   </Typography>
-                                  <Checkbox
-                                    checked={redOnlyChecked}
-                                    onChange={handleRedOnlyCheckboxChange}
-                                    color="primary"
-                                    size="small"
-                                    style={{ borderRadius: 4 }}
-                                  />
-                                  <label htmlFor="redOnlyCheckbox">
-                                    Red Only
-                                  </label>
                                 </TableCell>
                               }
                               {columnNames
@@ -904,6 +910,7 @@ export default function ComponentReadiness(props) {
                                       new RegExp(searchColumnRegex, 'i')
                                     )
                                   )}
+                                  grayFactor={redOnlyChecked ? 100 : 0}
                                   filterVals={getUpdatedUrlParts(
                                     baseRelease,
                                     baseStartTime,
