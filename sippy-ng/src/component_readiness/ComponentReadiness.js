@@ -22,7 +22,9 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import {
+  Checkbox,
   Drawer,
+  FormControlLabel,
   Grid,
   TableContainer,
   TextField,
@@ -156,6 +158,11 @@ export default function ComponentReadiness(props) {
   const handleSearchColumnRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchColumnRegex(searchValue)
+  }
+
+  const [redOnlyChecked, setRedOnlyChecked] = React.useState(false)
+  const handleRedOnlyCheckboxChange = (event) => {
+    setRedOnlyChecked(event.target.checked)
   }
 
   const [drawerOpen, setDrawerOpen] = React.useState(true)
@@ -801,6 +808,23 @@ export default function ComponentReadiness(props) {
                           value={searchColumnRegex}
                           onChange={handleSearchColumnRegexChange}
                         />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={redOnlyChecked}
+                              onChange={handleRedOnlyCheckboxChange}
+                              color="primary"
+                              size="small"
+                              style={{ borderRadius: 1 }}
+                            />
+                          }
+                          htmlFor="redOnlyCheckbox"
+                          style={{
+                            textAlign: 'left',
+                            marginTop: 15,
+                          }}
+                          label="Red Only"
+                        ></FormControlLabel>
                       </div>
                       <TableContainer
                         component="div"
@@ -858,6 +882,18 @@ export default function ComponentReadiness(props) {
                                   ? 1
                                   : -1
                               )
+                              .filter((componentIndex) =>
+                                redOnlyChecked
+                                  ? data.rows[componentIndex].columns.some(
+                                      // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
+                                      (column) =>
+                                        column.status <= -2 &&
+                                        formColumnName(column).match(
+                                          new RegExp(searchColumnRegex, 'i')
+                                        )
+                                    )
+                                  : true
+                              )
                               .map((componentIndex) => (
                                 <CompReadyRow
                                   key={componentIndex}
@@ -876,6 +912,7 @@ export default function ComponentReadiness(props) {
                                       new RegExp(searchColumnRegex, 'i')
                                     )
                                   )}
+                                  grayFactor={redOnlyChecked ? 100 : 0}
                                   filterVals={getUpdatedUrlParts(
                                     baseRelease,
                                     baseStartTime,

@@ -26,7 +26,7 @@ export default function CompReadyRow(props) {
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  const { componentName, results, columnNames, filterVals } = props
+  const { componentName, results, columnNames, filterVals, grayFactor } = props
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -70,6 +70,7 @@ export default function CompReadyRow(props) {
             environment={columnNames[idx]}
             componentName={componentName}
             filterVals={filterVals}
+            grayFactor={grayFactor}
           />
         ))}
       </TableRow>
@@ -82,4 +83,5 @@ CompReadyRow.propTypes = {
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
+  grayFactor: PropTypes.number.isRequired,
 }

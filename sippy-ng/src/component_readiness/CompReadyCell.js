@@ -25,7 +25,7 @@ function componentReport(componentName, environmentVal, filterVals) {
   return retUrl
 }
 export default function CompReadyCell(props) {
-  const { status, environment, componentName, filterVals } = props
+  const { status, environment, componentName, filterVals, grayFactor } = props
   const theme = useTheme()
 
   const [componentParam, setComponentParam] = useQueryParam(
@@ -74,7 +74,7 @@ export default function CompReadyCell(props) {
           to={componentReport(componentName, environment, filterVals)}
           onClick={handleClick}
         >
-          <CompSeverityIcon status={status} />
+          <CompSeverityIcon status={status} grayFactor={grayFactor} />
         </Link>
       </TableCell>
     )
@@ -86,4 +86,5 @@ CompReadyCell.propTypes = {
   environment: PropTypes.string.isRequired,
   componentName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
+  grayFactor: PropTypes.number.isRequired,
 }
