@@ -158,6 +158,7 @@ export default function CompReadyEnvCapability(props) {
                 return (
                   <CompTestRow
                     key={componentIndex}
+                    testSuite={data.rows[componentIndex].test_suite}
                     testName={data.rows[componentIndex].test_name}
                     testId={data.rows[componentIndex].test_id}
                     results={data.rows[componentIndex].columns}

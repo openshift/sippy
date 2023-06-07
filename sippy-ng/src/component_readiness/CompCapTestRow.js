@@ -20,6 +20,7 @@ export default function CompCapTestRow(props) {
   // component, capability: these are passed because we need them in the /test endpoint
   const {
     testName,
+    testSuite,
     testId,
     results,
     columnNames,
@@ -32,7 +33,9 @@ export default function CompCapTestRow(props) {
   const testNameColumn = (
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={testId}>
-        <Typography className="cr-cell-name">{testName}</Typography>
+        <Typography className="cr-cell-name">
+          {[testSuite, testName].filter(Boolean).join('.')}
+        </Typography>
       </Tooltip>
     </TableCell>
   )
@@ -60,6 +63,7 @@ export default function CompCapTestRow(props) {
 
 CompCapTestRow.propTypes = {
   testName: PropTypes.string.isRequired,
+  testSuite: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,

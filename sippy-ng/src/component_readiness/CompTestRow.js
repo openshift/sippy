@@ -36,6 +36,7 @@ export default function CompTestRow(props) {
   // component, capability: these are passed because we need them in the /test endpoint
   const {
     testName,
+    testSuite,
     testId,
     results,
     columnNames,
@@ -75,7 +76,7 @@ export default function CompTestRow(props) {
             to={testLink(filterVals, component, capability, testId)}
             onClick={handleClick}
           >
-            {testName}
+            {[testSuite, testName].filter(Boolean).join('.')}
           </Link>
         </Typography>
       </Tooltip>
@@ -104,6 +105,7 @@ export default function CompTestRow(props) {
 
 CompTestRow.propTypes = {
   testName: PropTypes.string.isRequired,
+  testSuite: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
