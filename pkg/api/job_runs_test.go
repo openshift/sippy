@@ -14,15 +14,20 @@ import (
 func TestRunJobAnalysis(t *testing.T) {
 
 	tests := []struct {
-		name          string
-		testPassRates []apitype.Test
+		name                  string
+		jobNames              []string
+		testVariantsPassRates []apitype.Test
+		testJobNamePassRates  []apitype.Test
 
-		expectedTestRisks   map[string]apitype.RiskLevel
-		expectedOverallRisk apitype.RiskLevel
+		includeVariantsAnalysis bool
+		includeJobNamesAnalysis bool
+		expectedTestRisks       map[string]apitype.RiskLevel
+		expectedOverallRisk     apitype.RiskLevel
 	}{
 		{
-			name: "max test risk level high",
-			testPassRates: []apitype.Test{
+			name:                    "max test risk level high",
+			includeVariantsAnalysis: true,
+			testVariantsPassRates: []apitype.Test{
 				{
 					Name:                  "test1",
 					CurrentPassPercentage: 21.0,
@@ -49,8 +54,10 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelHigh,
 		},
 		{
-			name: "max test risk level low",
-			testPassRates: []apitype.Test{
+			name:                    "max test risk level low jobnames",
+			includeJobNamesAnalysis: true,
+			jobNames:                []string{"jobname1"},
+			testJobNamePassRates: []apitype.Test{
 				{
 					Name:                  "test1",
 					CurrentPassPercentage: 21.0,
@@ -72,8 +79,42 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelLow,
 		},
 		{
-			name: "max test risk level medium",
-			testPassRates: []apitype.Test{
+			name:                    "max test risk level medium jobnames fallback unknown",
+			includeJobNamesAnalysis: true,
+			includeVariantsAnalysis: true,
+			jobNames:                []string{"jobname1"},
+			testVariantsPassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 100.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: 85, // hack to tell the setup to not return results for this test
+				},
+			},
+			testJobNamePassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 85.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: -1, // hack to tell the setup to not return results for this test
+				},
+			},
+			expectedTestRisks: map[string]apitype.RiskLevel{
+				"test4": apitype.FailureRiskLevelMedium,
+				"test3": apitype.FailureRiskLevelMedium,
+			},
+			expectedOverallRisk: apitype.FailureRiskLevelMedium,
+		},
+		{
+			name:                    "max test risk level medium jobnames",
+			includeJobNamesAnalysis: true,
+			jobNames:                []string{"jobname1"},
+
+			testJobNamePassRates: []apitype.Test{
 				{
 					Name:                  "test3",
 					CurrentPassPercentage: 85.0,
@@ -90,8 +131,39 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelMedium,
 		},
 		{
-			name: "max test risk level unknown",
-			testPassRates: []apitype.Test{
+			name:                    "max test risk level medium variants",
+			includeJobNamesAnalysis: true,
+			includeVariantsAnalysis: true,
+			testJobNamePassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 100.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: 85, // hack to tell the setup to not return results for this test
+				},
+			},
+			testVariantsPassRates: []apitype.Test{
+				{
+					Name:                  "test3",
+					CurrentPassPercentage: 85.0,
+				},
+				{
+					Name:                  "test4",
+					CurrentPassPercentage: -1, // hack to tell the setup to not return results for this test
+				},
+			},
+			expectedTestRisks: map[string]apitype.RiskLevel{
+				"test4": apitype.FailureRiskLevelUnknown,
+				"test3": apitype.FailureRiskLevelMedium,
+			},
+			expectedOverallRisk: apitype.FailureRiskLevelMedium,
+		},
+		{
+			name:                    "max test risk level unknown",
+			includeVariantsAnalysis: true,
+			testVariantsPassRates: []apitype.Test{
 				{
 					Name:                  "test3",
 					CurrentPassPercentage: 50.0,
@@ -108,14 +180,16 @@ func TestRunJobAnalysis(t *testing.T) {
 			expectedOverallRisk: apitype.FailureRiskLevelUnknown,
 		},
 		{
-			name:                "max test risk level none",
-			testPassRates:       []apitype.Test{},
-			expectedTestRisks:   map[string]apitype.RiskLevel{},
-			expectedOverallRisk: apitype.FailureRiskLevelNone,
+			name:                    "max test risk level none",
+			includeVariantsAnalysis: true,
+			testVariantsPassRates:   []apitype.Test{},
+			expectedTestRisks:       map[string]apitype.RiskLevel{},
+			expectedOverallRisk:     apitype.FailureRiskLevelNone,
 		},
 		{
-			name: "max test risk level high with mass failures",
-			testPassRates: func() []apitype.Test {
+			name:                    "max test risk level high with mass failures",
+			includeVariantsAnalysis: true,
+			testVariantsPassRates: func() []apitype.Test {
 				fts := []apitype.Test{}
 				// One more than allowed. All low risk failures, but because so many we want to see high
 				// risk on the job.
@@ -134,7 +208,16 @@ func TestRunJobAnalysis(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeProwJobRun := buildFakeProwJobRun()
 			// Assume to build out the failed tests as those we provided pass rates for.
-			for _, t := range tc.testPassRates {
+
+			var tests []apitype.Test
+
+			if tc.testVariantsPassRates != nil {
+				tests = tc.testVariantsPassRates
+			} else {
+				tests = tc.testJobNamePassRates
+			}
+
+			for _, t := range tests {
 				fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
 					Test:   models.Test{Name: t.Name},
 					Suite:  models.Suite{Name: t.SuiteName},
@@ -143,17 +226,34 @@ func TestRunJobAnalysis(t *testing.T) {
 			}
 
 			// Fake test results lookup func:
-			testResultsLookupFunc := func(testName, release, suite string, variants []string) (*apitype.Test, error) {
-				for _, tpr := range tc.testPassRates {
-					if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
-						tpr.CurrentRuns = 100
-						return &tpr, nil
+			var testResultsJobNamesLookupFunc testResultsByJobNameFunc
+			if tc.includeJobNamesAnalysis {
+				testResultsJobNamesLookupFunc = func(testName string, jobNames []string) (*apitype.Test, error) {
+					for _, tpr := range tc.testJobNamePassRates {
+						if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
+							tpr.CurrentRuns = 100
+							return &tpr, nil
+						}
 					}
+					return nil, nil
 				}
-				return nil, nil
 			}
 
-			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, log.WithField("jobRunID", "test"), testResultsLookupFunc)
+			var testResultsVariantsLookupFunc testResultsByVariantsFunc
+			if tc.includeVariantsAnalysis {
+				testResultsVariantsLookupFunc = func(testName string, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
+					for _, tpr := range tc.testVariantsPassRates {
+						if tpr.Name == testName && tpr.CurrentPassPercentage > 0 {
+							tpr.CurrentRuns = 100
+							return &tpr, nil
+						}
+					}
+					return nil, nil
+				}
+			}
+
+			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc)
+
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {
@@ -264,6 +364,81 @@ func TestSubSliceEqual(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.expectedMatch, stringSubSlicesEqual(tc.variants, tc.testRunVariants), "%s did not match expected", tc.name)
+		})
+	}
+}
+
+func TestSelectRiskAnalysisResult(t *testing.T) {
+
+	tests := []struct {
+		name              string
+		expectedResponse  []string
+		expectedRiskLevel int
+		jobNames          []string
+		compareRelease    string
+		variantsRiskLevel *apitype.Test
+		jobNamesRiskLevel *apitype.Test
+	}{
+		{
+			name:              "matching risk levels",
+			variantsRiskLevel: &apitype.Test{CurrentPassPercentage: 50, CurrentRuns: 100},
+			jobNamesRiskLevel: &apitype.Test{CurrentPassPercentage: 50, CurrentRuns: 100},
+			expectedResponse:  []string{"This test has passed 50.00% of 100 runs on jobs [jobname-4.14 jobname-4.13] in the last 14 days."},
+			expectedRiskLevel: apitype.FailureRiskLevelLow.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{"jobname-4.14", "jobname-4.13"},
+		},
+		{
+			name:              "mismatch risk levels bias to jobNames",
+			variantsRiskLevel: &apitype.Test{CurrentPassPercentage: 100, CurrentRuns: 100},
+			jobNamesRiskLevel: &apitype.Test{CurrentPassPercentage: 50, CurrentRuns: 100},
+			expectedResponse:  []string{"This test has passed 50.00% of 100 runs on jobs [jobname-4.14 jobname-4.13] in the last 14 days."},
+			expectedRiskLevel: apitype.FailureRiskLevelLow.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{"jobname-4.14", "jobname-4.13"},
+		},
+		{
+			name:              "mismatch risk levels bias to variants",
+			variantsRiskLevel: &apitype.Test{CurrentPassPercentage: 100, CurrentRuns: 100, Variants: []string{"aws", "ovn"}},
+			jobNamesRiskLevel: &apitype.Test{CurrentPassPercentage: 50, CurrentRuns: 0},
+			expectedResponse:  []string{"This test has passed 100.00% of 100 runs on release 4.14 [aws ovn] in the last week."},
+			expectedRiskLevel: apitype.FailureRiskLevelHigh.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{},
+		},
+		{
+			name:              "no runs",
+			variantsRiskLevel: &apitype.Test{CurrentPassPercentage: 100, CurrentRuns: 0, Variants: []string{"aws", "ovn"}},
+			jobNamesRiskLevel: &apitype.Test{CurrentPassPercentage: 50, CurrentRuns: 0},
+			expectedResponse:  []string{"Analysis was not performed for this test due to lack of current runs"},
+			expectedRiskLevel: apitype.FailureRiskLevelUnknown.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{},
+		},
+		{
+			name:              "job name risk level",
+			jobNamesRiskLevel: &apitype.Test{CurrentPassPercentage: 85, CurrentRuns: 100},
+			expectedResponse:  []string{"This test has passed 85.00% of 100 runs on jobs [jobname-4.14 jobname-4.13] in the last 14 days."},
+			expectedRiskLevel: apitype.FailureRiskLevelMedium.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{"jobname-4.14", "jobname-4.13"},
+		},
+		{
+			name:              "variants risk level",
+			variantsRiskLevel: &apitype.Test{CurrentPassPercentage: 100, CurrentRuns: 100, Variants: []string{"aws", "ovn"}},
+			expectedResponse:  []string{"This test has passed 100.00% of 100 runs on release 4.14 [aws ovn] in the last week."},
+			expectedRiskLevel: apitype.FailureRiskLevelHigh.Level,
+			compareRelease:    "4.14",
+			jobNames:          []string{"jobname-4.14", "jobname-4.13"},
+		},
+	}
+
+	for _, tc := range tests {
+
+		t.Run(tc.name, func(t *testing.T) {
+			riskLevel, response := selectRiskAnalysisResult(tc.jobNamesRiskLevel, tc.variantsRiskLevel, tc.jobNames, tc.compareRelease)
+			assert.Equal(t, tc.expectedRiskLevel, riskLevel.Level, "%s risk level did not match expected", tc.name)
+			assert.Equal(t, tc.expectedResponse, response, "%s response did not match expected", tc.name)
 		})
 	}
 }

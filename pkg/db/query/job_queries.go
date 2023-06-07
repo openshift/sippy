@@ -27,6 +27,35 @@ func JobRunTestCount(dbc *db.DB, jobRunID int64) (int, error) {
 	return prowJobRunTestCount, nil
 }
 
+func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob, error) {
+
+	// pull-ci-openshift-origin-master-e2e-vsphere-ovn-etcd-scaling
+	// periodic-ci-openshift-release-master-nightly-4.14-e2e-vsphere-ovn-etcd-scaling
+	// can we split on - and strip out pieces until we get a 'like' / 'contains' match
+	// the compare versions / variants to match up, all in search of is this a 'never-stable' job
+	// and other edge cases
+	jobs := make([]models.ProwJob, 0)
+	q := dbc.DB.Raw(`SELECT * FROM prow_jobs WHERE name LIKE ? AND release = ?`, "%"+rootName, release)
+	if q.Error != nil {
+		return nil, q.Error
+	}
+	q.Scan(&jobs)
+
+	return jobs, nil
+}
+
+func ProwJobRunIds(dbc *db.DB, prowJobID uint) ([]uint, error) {
+	jobIds := make([]uint, 0)
+	q := dbc.DB.Raw(`SELECT id 
+	FROM prow_job_runs WHERE prow_job_id = ?`, prowJobID)
+	if q.Error != nil {
+		return nil, q.Error
+	}
+	q.Scan(&jobIds)
+
+	return jobIds, nil
+}
+
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint) (int, error) {
 
 	var historicalProwJobRunTestCount float64
