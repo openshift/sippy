@@ -73,11 +73,14 @@ func FindIssuesForVariants() (map[string][]jira.Issue, error) {
 // isRegex defines whether the search is exact match or match by regex. If match by regex, the matched strings
 // in the result context will be used as keys instead of the search string.
 func findBugsForSearchStrings(isRegex bool, searchFor ...string) (map[string][]jira.Issue, error) {
+	const maxFindBugErrors = 3
+
 	ret := map[string][]jira.Issue{}
 
 	var lastUpdateError error
 	batchSearchStrs := []string{}
 	queryCtr := 0
+	findBugsErrorCount := 0
 	for i, searchStr := range searchFor {
 		if _, found := ret[searchStr]; found {
 			continue
@@ -104,7 +107,15 @@ func findBugsForSearchStrings(isRegex bool, searchFor ...string) (map[string][]j
 		}
 		if err != nil {
 			lastUpdateError = err
-			log.Warnf("findBugsForSearchStrings got error in findBugs '%v' after %d requests", err, queryCtr)
+			findBugsErrorCount++
+			log.Warnf("findBugsForSearchStrings got error (%d of %d) in findBugs '%v' after %d requests",
+				findBugsErrorCount, maxFindBugErrors, err, queryCtr)
+			if findBugsErrorCount == maxFindBugErrors {
+				// If we exceed what we're willing to tolerate, finish doing search.ci lookups to avoid
+				// long delays for fetchdata uploads.
+				log.Errorf("findBugs calls with error exceeded max times; search.ci queries aborted")
+				break
+			}
 		}
 		batchSearchStrs = []string{}
 	}
