@@ -190,7 +190,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.13 --skip-bug-lookup --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy --init-database --load-database --log-level=debug --load-prow=true --load-testgrid=false --release 4.13 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
