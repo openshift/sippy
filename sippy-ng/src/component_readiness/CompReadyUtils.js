@@ -420,31 +420,3 @@ export function makePageTitle(title, ...args) {
     </Typography>
   )
 }
-
-// Given data and columnNames, calculate an array, parallel to columnNames,
-// that has true or false depending on if that column is to be kept and displayed.
-// The length and order of the returned array is identical to the columnNames array.
-// The criteria for keeping a column is based on the redOnlyChecked checkbox.
-// If redOnlyChecked is true, keep columns only if status <= -2
-// If redOnlyChecked is false, keep all columns.
-export function getKeeperColumns(data, columnNames, redOnlyChecked) {
-  let keepColumnList = Array(columnNames.length).fill(
-    redOnlyChecked ? false : true
-  )
-
-  if (!redOnlyChecked) {
-    // All columns are kept and displayed.
-    return keepColumnList
-  }
-
-  // Do a cross-sectional search across rows/componentsfor status <= -2
-  data.rows.forEach((row) => {
-    row.columns.forEach((column, index) => {
-      // Only if status <= -2 do we keep/display this column.
-      if (column.status <= -2) {
-        keepColumnList[index] = true
-      }
-    })
-  })
-  return keepColumnList
-}
