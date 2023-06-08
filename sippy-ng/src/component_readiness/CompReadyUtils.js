@@ -1,4 +1,5 @@
 import { Alert } from '@material-ui/lab'
+import { CompReadyVarsContext } from '../CompReadyVars'
 import { format } from 'date-fns'
 import { safeEncodeURIComponent } from '../helpers'
 import { Typography } from '@material-ui/core'
@@ -6,7 +7,7 @@ import green from './green-3.png'
 import green_half_data from './green-half-data.png'
 import green_missing_data from './green_no_data.png'
 import heart from './green-heart.png'
-import React from 'react'
+import React, { useContext } from 'react'
 import red from './red-3.png'
 import red_3d from './red-3d.png'
 
@@ -247,60 +248,18 @@ export function formatLongEndDate(aLongDateStr) {
 
 export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
 
-// TODO: Get these from single place.
-export const excludeCloudsList = [
-  'alibaba',
-  'aws',
-  'azure',
-  'gcp',
-  'ibmcloud',
-  'libvirt',
-  'metal-assisted',
-  'metal-ipi',
-  'openstack',
-  'ovirt',
-  'unknown',
-  'vsphere',
-  'vsphere-upi',
-]
-
-// TODO: Get these from single place.
-export const excludeArchesList = [
-  'amd64',
-  'arm64',
-  'ppc64le',
-  's390x',
-  'heterogeneous',
-]
-
-export const excludeNetworksList = ['ovn', 'sdn']
-
-export const excludeUpgradesList = [
-  'no-upgrade',
-  'none',
-  'upgrade-micro',
-  'upgrade-minor',
-]
-
-export const excludeVariantsList = [
-  'assisted',
-  'compact',
-  'fips',
-  'hypershift',
-  'microshift',
-  'osd',
-  'proxy',
-  'rt',
-  'serial',
-  'single-node',
-  'standard',
-  'techpreview',
-]
-
 // Take a string that is an "environment" (environment is a list of strings that describe
 // items in one or more of the lists above) and split it up so that it can be used in
 // an api call.  We keep this concept of "environment" because it's used for column labels.
 export function expandEnvironment(environmentStr) {
+  const {
+    excludeNetworksList,
+    excludeCloudsList,
+    excludeArchesList,
+    excludeUpgradesList,
+    excludeVariantsList,
+  } = useContext(CompReadyVarsContext)
+
   if (
     environmentStr == null ||
     environmentStr == '' ||
