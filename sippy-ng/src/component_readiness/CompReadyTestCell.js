@@ -1,5 +1,4 @@
 import './ComponentReadiness.css'
-//import { expandEnvironment } from './CompReadyUtils'
 import { CompReadyVarsContext } from '../CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'

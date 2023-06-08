@@ -1,16 +1,7 @@
 import './ComponentReadiness.css'
 import { CompReadyVarsContext } from '../CompReadyVars'
-import {
-  dateEndFormat,
-  dateFormat,
-  formatLongDate,
-  formatLongEndDate,
-  getUpdatedUrlParts,
-  groupByList,
-} from './CompReadyUtils'
-import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { Fragment } from 'react'
-import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
+import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@material-ui/core/Button'

@@ -1,6 +1,5 @@
 import './ComponentReadiness.css'
 import { CompReadyVarsContext } from '../CompReadyVars'
-import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'

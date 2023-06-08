@@ -1,7 +1,5 @@
 import { Alert } from '@material-ui/lab'
-import { CompReadyVarsContext } from '../CompReadyVars'
 import { format } from 'date-fns'
-import { safeEncodeURIComponent } from '../helpers'
 import { Typography } from '@material-ui/core'
 import green from './green-3.png'
 import green_half_data from './green-half-data.png'
@@ -247,9 +245,6 @@ export function formatLongEndDate(aLongDateStr) {
 // These next set of variables are used for CompReadyMainInputs
 
 export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
-
-
-
 
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
