@@ -919,9 +919,8 @@ export default function ComponentReadiness(props) {
                                   columnNames={columnNames.filter(
                                     (column, idx) =>
                                       column.match(
-                                        new RegExp(searchColumnRegex, 'i') &&
-                                          keepColumnsList[idx]
-                                      )
+                                        new RegExp(searchColumnRegex, 'i')
+                                      ) && keepColumnsList[idx]
                                   )}
                                   grayFactor={redOnlyChecked ? 100 : 0}
                                   filterVals={getUpdatedUrlParts(
