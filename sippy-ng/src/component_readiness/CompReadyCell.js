@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
+import { CompReadyVarsContext } from '../CompReadyVars'
+import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -8,22 +9,9 @@ import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 import TableCell from '@material-ui/core/TableCell'
 
-// Construct an URL with all existing filters plus component and environment.
-// This is the url used when you click inside a TableCell.
-// Note that we are keeping the environment value so we can use it later for displays.
-function componentReport(componentName, environmentVal, filterVals) {
-  const retUrl =
-    '/component_readiness/env_capabilities' +
-    filterVals +
-    '&component=' +
-    safeEncodeURIComponent(componentName) +
-    expandEnvironment(environmentVal)
-
-  return retUrl
-}
 export default function CompReadyCell(props) {
   const { status, environment, componentName, filterVals, grayFactor } = props
   const theme = useTheme()
@@ -36,6 +24,22 @@ export default function CompReadyCell(props) {
     'environment',
     StringParam
   )
+
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  // Construct an URL with all existing filters plus component and environment.
+  // This is the url used when you click inside a TableCell.
+  // Note that we are keeping the environment value so we can use it later for displays.
+  function componentReport(componentName, environmentVal, filterVals) {
+    const retUrl =
+      '/component_readiness/env_capabilities' +
+      filterVals +
+      '&component=' +
+      safeEncodeURIComponent(componentName) +
+      expandEnvironment(environmentVal)
+
+    return retUrl
+  }
 
   const handleClick = (event) => {
     if (!event.metaKey) {

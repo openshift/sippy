@@ -248,53 +248,8 @@ export function formatLongEndDate(aLongDateStr) {
 
 export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
 
-// Take a string that is an "environment" (environment is a list of strings that describe
-// items in one or more of the lists above) and split it up so that it can be used in
-// an api call.  We keep this concept of "environment" because it's used for column labels.
-export function expandEnvironment(environmentStr) {
-  const {
-    excludeNetworksList,
-    excludeCloudsList,
-    excludeArchesList,
-    excludeUpgradesList,
-    excludeVariantsList,
-  } = useContext(CompReadyVarsContext)
 
-  if (
-    environmentStr == null ||
-    environmentStr == '' ||
-    environmentStr === 'No data'
-  ) {
-    return ''
-  }
-  const items = environmentStr.split(' ')
-  const params = {}
-  items.forEach((item) => {
-    if (excludeCloudsList.includes(item)) {
-      params.platform = item
-    } else if (excludeArchesList.includes(item)) {
-      params.arch = item
-    } else if (excludeNetworksList.includes(item)) {
-      params.network = item
-    } else if (excludeUpgradesList.includes(item)) {
-      params.upgrade = item
-    } else if (excludeVariantsList.includes(item)) {
-      params.variant = item
-    } else {
-      console.log(`Warning: Item '${item}' not found in lists`)
-    }
-  })
-  const paramStrings = Object.entries(params).map(
-    ([key, value]) => `${key}=${value}`
-  )
 
-  // We keep the environment along with the expanded environment for other components that
-  // may use it.
-  const safeEnvironment = safeEncodeURIComponent(environmentStr)
-  const retVal =
-    `&environment=${safeEnvironment}` + '&' + paramStrings.join('&')
-  return retVal
-}
 
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.

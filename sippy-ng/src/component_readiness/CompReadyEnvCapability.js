@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import {
   cancelledDataTable,
-  expandEnvironment,
   getAPIUrl,
   getColumns,
   gotFetchError,
@@ -9,6 +8,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
+import { CompReadyVarsContext } from '../CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'
@@ -17,7 +17,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useContext, useEffect } from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -50,6 +50,7 @@ export default function CompReadyEnvCapability(props) {
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
 
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
   const apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +

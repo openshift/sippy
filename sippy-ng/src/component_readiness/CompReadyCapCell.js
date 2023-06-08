@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { expandEnvironment, getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
+import { CompReadyVarsContext } from '../CompReadyVars'
+import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -8,30 +9,9 @@ import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 import TableCell from '@material-ui/core/TableCell'
 
-// Construct a URL with all existing filters plus testId and environment.
-// This is the url used when you click inside a TableCell.
-function testReport(
-  testId,
-  environmentVal,
-  filterVals,
-  componentName,
-  capabilityName
-) {
-  const safeComponentName = safeEncodeURIComponent(componentName)
-  const safeTestId = safeEncodeURIComponent(testId)
-  const retUrl =
-    '/component_readiness/env_test' +
-    filterVals +
-    `&testId=${safeTestId}` +
-    expandEnvironment(environmentVal) +
-    `&component=${safeComponentName}` +
-    `&capability=${capabilityName}`
-
-  return retUrl
-}
 export default function CompReadyCapCell(props) {
   const { status, environment, testId, filterVals, component, capability } =
     props
@@ -50,6 +30,30 @@ export default function CompReadyCapCell(props) {
     StringParam
   )
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
+
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  // Construct a URL with all existing filters plus testId and environment.
+  // This is the url used when you click inside a TableCell.
+  function testReport(
+    testId,
+    environmentVal,
+    filterVals,
+    componentName,
+    capabilityName
+  ) {
+    const safeComponentName = safeEncodeURIComponent(componentName)
+    const safeTestId = safeEncodeURIComponent(testId)
+    const retUrl =
+      '/component_readiness/env_test' +
+      filterVals +
+      `&testId=${safeTestId}` +
+      expandEnvironment(environmentVal) +
+      `&component=${safeComponentName}` +
+      `&capability=${capabilityName}`
+
+    return retUrl
+  }
 
   const handleClick = (event) => {
     if (!event.metaKey) {

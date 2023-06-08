@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import {
   cancelledDataTable,
-  expandEnvironment,
   getColumns,
   getStatusAndIcon,
   getTestDetailsAPIUrl,
@@ -10,6 +9,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
+import { CompReadyVarsContext } from '../CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
@@ -20,7 +20,7 @@ import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import InfoIcon from '@material-ui/icons/Info'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useContext, useEffect } from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -87,6 +87,8 @@ export default function CompReadyTestReport(props) {
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
+
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
 
   const apiCallStr =
     getTestDetailsAPIUrl() +

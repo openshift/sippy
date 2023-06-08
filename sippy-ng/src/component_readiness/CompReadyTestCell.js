@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { expandEnvironment } from './CompReadyUtils'
+//import { expandEnvironment } from './CompReadyUtils'
+import { CompReadyVarsContext } from '../CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -8,34 +9,8 @@ import { useTheme } from '@material-ui/core/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 import TableCell from '@material-ui/core/TableCell'
-
-// Construct a URL with all existing filters plus testId, environment, and testName.
-// This is the url used when you click inside a TableCell on page4 on the right.
-// We pass these arguments to the component that generates the test details report.
-function generateTestReport(
-  testId,
-  environmentVal,
-  filterVals,
-  componentName,
-  capabilityName,
-  testName
-) {
-  const safeComponentName = safeEncodeURIComponent(componentName)
-  const safeTestId = safeEncodeURIComponent(testId)
-  const safeTestName = safeEncodeURIComponent(testName)
-  const retUrl =
-    '/component_readiness/test_details' +
-    filterVals +
-    `&testId=${safeTestId}` +
-    expandEnvironment(environmentVal) +
-    `&component=${safeComponentName}` +
-    `&capability=${capabilityName}` +
-    `&testName=${safeTestName}`
-
-  return retUrl
-}
 
 // CompReadyTestCall is for rendering the cells on the right of page4 or page4a
 export default function CompReadyTestCell(props) {
@@ -67,6 +42,34 @@ export default function CompReadyTestCell(props) {
     'testName',
     StringParam
   )
+
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  // Construct a URL with all existing filters plus testId, environment, and testName.
+  // This is the url used when you click inside a TableCell on page4 on the right.
+  // We pass these arguments to the component that generates the test details report.
+  function generateTestReport(
+    testId,
+    environmentVal,
+    filterVals,
+    componentName,
+    capabilityName,
+    testName
+  ) {
+    const safeComponentName = safeEncodeURIComponent(componentName)
+    const safeTestId = safeEncodeURIComponent(testId)
+    const safeTestName = safeEncodeURIComponent(testName)
+    const retUrl =
+      '/component_readiness/test_details' +
+      filterVals +
+      `&testId=${safeTestId}` +
+      expandEnvironment(environmentVal) +
+      `&component=${safeComponentName}` +
+      `&capability=${capabilityName}` +
+      `&testName=${safeTestName}`
+
+    return retUrl
+  }
 
   const handleClick = (event) => {
     if (!event.metaKey) {

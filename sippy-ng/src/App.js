@@ -1,4 +1,5 @@
 import './App.css'
+import { CompReadyVarsProvider } from './CompReadyVars'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
 import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
 import { getReportStartDate, relativeTime } from './helpers'
@@ -387,7 +388,13 @@ export default function App(props) {
 
                   <Route
                     path="/component_readiness"
-                    render={(props) => <ComponentReadiness />}
+                    render={(props) => {
+                      return (
+                        <CompReadyVarsProvider>
+                          <ComponentReadiness />
+                        </CompReadyVarsProvider>
+                      )
+                    }}
                   />
 
                   <Route
