@@ -188,9 +188,10 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 // fetchQuerySchema is used to get the schema of the query we are going to use
 // to fetch base and sample status
 // But this seems to be adding 3s query time
-func (c *componentReportGenerator) fetchQuerySchema(queryString string) {
+func (c *componentReportGenerator) fetchQuerySchema(queryString string, queryParameters []bigquery.QueryParameter) {
 	queryString += `LIMIT 1`
 	query := c.client.Query(queryString)
+	query.Parameters = queryParameters
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
@@ -242,9 +243,6 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						modified_time
 					ORDER BY
 						modified_time `
-	if c.schema == nil {
-		c.fetchQuerySchema(queryString + groupString)
-	}
 	queryString += `
 					WHERE
 						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
@@ -300,6 +298,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 			Value: c.baseRelease.Release,
 		},
 	}...)
+
+	if c.schema == nil {
+		c.fetchQuerySchema(baseString+groupString, baseQuery.Parameters)
+	}
 
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
@@ -380,9 +382,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						flat_variants,
 						cm.id `
 
-	if c.schema == nil {
-		c.fetchQuerySchema(queryString + groupString)
-	}
 	queryString += `
 					WHERE
 						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
@@ -493,6 +492,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 			Value: c.baseRelease.Release,
 		},
 	}...)
+
+	if c.schema == nil {
+		c.fetchQuerySchema(baseString+groupString, baseQuery.Parameters)
+	}
 
 	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
