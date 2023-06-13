@@ -88,6 +88,10 @@ export default function PullRequestsTable(props) {
       sort: 'desc',
       fieldOrder: [
         {
+          field: 'number',
+          flex: 0.7,
+        },
+        {
           field: 'repo',
           flex: 0.9,
         },
@@ -141,6 +145,10 @@ export default function PullRequestsTable(props) {
   }
 
   const columns = {
+    number: {
+      field: 'number',
+      headerName: 'PR number',
+    },
     repo: {
       field: 'repo',
       headerName: 'Repo',
