@@ -8,7 +8,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
-import { CompReadyVarsContext } from '../CompReadyVars'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@material-ui/core'

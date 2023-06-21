@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { CompReadyVarsContext } from '../CompReadyVars'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment } from 'react'
 import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'

@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { CompReadyVarsContext } from '../CompReadyVars'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'

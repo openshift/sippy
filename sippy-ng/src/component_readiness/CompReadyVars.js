@@ -1,7 +1,6 @@
-import { getAPIUrl } from './component_readiness/CompReadyUtils'
-import { gotFetchError } from './component_readiness/CompReadyUtils'
-import { safeEncodeURIComponent } from './helpers'
-import CompReadyProgress from './component_readiness/CompReadyProgress'
+import { getAPIUrl, gotFetchError } from './CompReadyUtils'
+import { safeEncodeURIComponent } from '../helpers'
+import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { createContext, useEffect, useState } from 'react'
 export const CompReadyVarsContext = createContext()
