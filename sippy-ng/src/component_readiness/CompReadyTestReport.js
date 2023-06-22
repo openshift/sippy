@@ -35,20 +35,6 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-const printStats = (statsLabel, stats) => {
-  return (
-    <Fragment>
-      {statsLabel} Release: {stats.release}
-      <ul>
-        <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
-        <li>Successes: {stats.success_count}</li>
-        <li>Failures: {stats.failure_count}</li>
-        <li>Flakes: {stats.flake_count}</li>
-      </ul>
-    </Fragment>
-  )
-}
-
 const tableCell = (label, idx) => {
   return (
     <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
@@ -79,6 +65,7 @@ export default function CompReadyTestReport(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
+  const [versions, setVersions] = React.useState({})
 
   // Set the browser tab title
   document.title =
@@ -98,6 +85,16 @@ export default function CompReadyTestReport(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+
+    const checkFetchesDone = () => {
+      if (isReportDone && isVersionFetchDone) {
+        setIsLoaded(true)
+      }
+    }
+
+    let isReportDone = false
+    let isVersionFetchDone = false
+
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -125,8 +122,28 @@ export default function CompReadyTestReport(props) {
         }
       })
       .finally(() => {
-        // Mark the attempt as finished whether successful or not.
-        setIsLoaded(true)
+        isReportDone = true
+        checkFetchesDone()
+      })
+
+    fetch(process.env.REACT_APP_API_URL + '/api/releases')
+      .then((response) => response.json())
+      .then((data) => {
+        let tmpRelease = {}
+        data.releases
+          .filter((aVersion) => {
+            // We won't process Presubmits or 3.11
+            return aVersion !== 'Presubmits' && aVersion != '3.11'
+          })
+          .forEach((r) => {
+            tmpRelease[r] = data.ga_dates[r]
+          })
+        setVersions(tmpRelease)
+      })
+      .catch((error) => console.error(error))
+      .finally(() => {
+        isVersionFetchDone = true
+        checkFetchesDone()
       })
   }, [])
 
@@ -204,6 +221,74 @@ export default function CompReadyTestReport(props) {
   significant difference compared to the historical basis
   `
 
+  const url = new URL(apiCallStr)
+  const params = new URLSearchParams(url.search)
+  const baseStartTime = params.get('baseStartTime')
+  const baseEndTime = params.get('baseEndTime')
+  const sampleStartTime = params.get('sampleStartTime')
+  const sampleEndTime = params.get('sampleEndTime')
+
+  // getSummaryDate attempts to translate a date into text relative to the version GA
+  // dates we know about.  If there are no versions, there is no translation.
+  const getSummaryDate = (from, to, versions) => {
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+
+    // Go through the versions map from latest release to earliest; ensure that
+    // the ordering is by version (e.g., 4.6 is considered earlier than 4.10).
+    const sortedVersions = Object.keys(versions).sort((a, b) => {
+      const itemA = parseInt(a.toString().replace(/\./g, ''))
+      const itemB = parseInt(b.toString().replace(/\./g, ''))
+      return itemB - itemA
+    })
+
+    for (const version of sortedVersions) {
+      const gaDateStr = versions[version]
+      // For items with no date string (i.e., not GA'ed yet, we use a date very far out).
+      const gaDate = gaDateStr ? new Date(gaDateStr) : new Date('2100-12-31')
+
+      // Widen the window by 1 day on each side to account for timezone offsets
+      // because we only need granularity of a day.
+      const fourWeeksPreGA = new Date(gaDate.getTime())
+      fourWeeksPreGA.setDate(fourWeeksPreGA.getDate() - 28 - 1)
+      gaDate.setDate(gaDate.getDate() + 1)
+
+      if (fromDate >= fourWeeksPreGA && toDate <= gaDate) {
+        // Calculate the time (in milliseconds) to weeks
+        const weeksBefore = Math.floor(
+          (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
+        )
+        return `${weeksBefore} week(s) before '${version}' GA date`
+      }
+    }
+    return null
+  }
+
+  const printStats = (statsLabel, stats, from, to) => {
+    const summaryDate = getSummaryDate(from, to, versions)
+    return (
+      <Fragment>
+        {statsLabel} Release: <strong>{stats.release}</strong>
+        <br />
+        &nbsp;&nbsp;Start Time: <strong>{from}</strong>
+        <br />
+        &nbsp;&nbsp;End Time: <strong>{to}</strong>
+        {summaryDate && (
+          <Fragment>
+            <br />
+            &nbsp;&nbsp;<strong>{summaryDate}</strong>
+          </Fragment>
+        )}
+        <ul>
+          <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
+          <li>Successes: {stats.success_count}</li>
+          <li>Failures: {stats.failure_count}</li>
+          <li>Flakes: {stats.flake_count}</li>
+        </ul>
+      </Fragment>
+    )
+  }
+
   return (
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
@@ -215,8 +300,18 @@ export default function CompReadyTestReport(props) {
       </h3>
       Test Name: {testName}
       <hr />
-      {printStats('Sample (being evaluated)', data.sample_stats)}
-      {printStats('Base (historical)', data.base_stats)}
+      {printStats(
+        'Sample (being evaluated)',
+        data.sample_stats,
+        sampleStartTime,
+        sampleEndTime
+      )}
+      {printStats(
+        'Base (historical)',
+        data.base_stats,
+        baseStartTime,
+        baseEndTime
+      )}
       <Fragment>
         <div style={{ display: 'block' }}>Environment: {environment}</div>
         <br />
