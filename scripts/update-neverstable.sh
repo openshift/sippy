@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # This script updates the never-stable
 
+# Use consistent locale, otherwise sort produces different results!
+export LC_ALL="C.utf8"
+export LANG="C.utf8"
+
 SIPPY_URL=${SIPPY_URL:-https://sippy.dptools.openshift.org}
 RELEASES=$(curl -s "${SIPPY_URL}/api/releases" | jq -r '.releases | join(" ")' | sed "s/Presubmits//")
 

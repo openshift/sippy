@@ -1,3 +1,5 @@
+periodic-ci-RedHatQE-interop-testing-main-ocp-cnv-odf-4.11-cnv-odf-tests-aws-upi-ocp411
+periodic-ci-RedHatQE-interop-testing-main-ocp-cnv-odf-4.12-cnv-odf-tests-aws-upi-ocp412
 periodic-ci-openshift-assisted-service-master-edge-e2e-ai-operator-ztp-ipv4v6-3masters-ocp-411-periodic
 periodic-ci-openshift-assisted-service-master-edge-e2e-ai-operator-ztp-ipv4v6-3masters-periodic
 periodic-ci-openshift-assisted-service-master-edge-e2e-ai-operator-ztp-ipv4v6-sno-ocp-411-periodic
@@ -101,9 +103,9 @@ periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-cilium
 periodic-ci-openshift-release-master-nightly-4.10-e2e-alibaba
 periodic-ci-openshift-release-master-nightly-4.10-e2e-alibaba-csi
 periodic-ci-openshift-release-master-nightly-4.10-e2e-aws-upgrade-rollback-oldest-supported
+periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-upi
 periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-csi
 periodic-ci-openshift-release-master-nightly-4.10-e2e-azurestack-upi
-periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-upi
 periodic-ci-openshift-release-master-nightly-4.10-e2e-gcp-upi
 periodic-ci-openshift-release-master-nightly-4.10-e2e-metal-ipi-upgrade-ovn-ipv6
 periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.8-e2e-aws-upgrade-paused
@@ -112,9 +114,9 @@ periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-me
 periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-single-node-workers
 periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-upgrade-rollback-oldest-supported
 periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-workers-rhel8
+periodic-ci-openshift-release-master-nightly-4.11-e2e-azure-upi
 periodic-ci-openshift-release-master-nightly-4.11-e2e-azurestack-csi
 periodic-ci-openshift-release-master-nightly-4.11-e2e-azurestack-upi
-periodic-ci-openshift-release-master-nightly-4.11-e2e-azure-upi
 periodic-ci-openshift-release-master-nightly-4.11-e2e-gcp-libvirt-cert-rotation
 periodic-ci-openshift-release-master-nightly-4.11-e2e-gcp-upi
 periodic-ci-openshift-release-master-nightly-4.11-upgrade-from-stable-4.10-e2e-aws-upgrade-ovn-single-node
@@ -178,8 +180,6 @@ periodic-ci-quay-quay-tests-master-quay-e2e-tests-quay38-ocp413-fips
 periodic-ci-redhat-chaos-krkn-hub-main-rosa-4.13-nightly-ocp-qe-perfscale-ci-tests-rosa
 periodic-ci-redhat-openshift-ecosystem-msp-ocp-4.10-small-single-az-amd64-aws
 periodic-ci-redhat-openshift-ecosystem-msp-ocp-4.11-small-single-az-amd64-aws
-periodic-ci-RedHatQE-interop-testing-main-ocp-cnv-odf-4.11-cnv-odf-tests-aws-upi-ocp411
-periodic-ci-RedHatQE-interop-testing-main-ocp-cnv-odf-4.12-cnv-odf-tests-aws-upi-ocp412
 periodic-ci-rhpit-interop-tests-main-s3-bucket-cleanup-daily-s3-bucket-cleanup
 periodic-ci-rhpit-interop-tests-main-slack-poc-cspi-qe-slack-poc-fail
 periodic-ci-shiftstack-shiftstack-ci-main-periodic-4.10-e2e-openstack-serial
