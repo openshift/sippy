@@ -1,26 +1,13 @@
 import './ComponentReadiness.css'
-import {
-  dateEndFormat,
-  dateFormat,
-  excludeArchesList,
-  excludeCloudsList,
-  excludeNetworksList,
-  excludeUpgradesList,
-  excludeVariantsList,
-  formatLongDate,
-  formatLongEndDate,
-  getUpdatedUrlParts,
-  groupByList,
-} from './CompReadyUtils'
-import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment } from 'react'
-import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
+import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@material-ui/core/Tooltip'
 
@@ -64,6 +51,14 @@ export default function CompReadyMainInputs(props) {
     setIgnoreMissing,
     setIgnoreDisruption,
   } = props
+
+  const {
+    excludeNetworksList,
+    excludeCloudsList,
+    excludeArchesList,
+    excludeUpgradesList,
+    excludeVariantsList,
+  } = useContext(CompReadyVarsContext)
 
   return (
     <Fragment>
