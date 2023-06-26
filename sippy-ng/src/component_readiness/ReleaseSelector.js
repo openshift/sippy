@@ -62,13 +62,6 @@ function ReleaseSelector(props) {
             tmpRelease[r] = data.ga_dates[r]
           })
         setVersions(tmpRelease)
-        if (tmpRelease[version] !== undefined && tmpRelease[version] !== null) {
-          let start = new Date(tmpRelease[version])
-          setStartTime(formatLongDate(start.setDate(start.getDate() - 28)))
-          setEndTime(formatLongDate(tmpRelease[version]))
-        } else {
-          set4Weeks()
-        }
       })
       .catch((error) => console.error(error))
   }
@@ -88,14 +81,6 @@ function ReleaseSelector(props) {
     setStartTime(twoWeeksStart)
     setEndTime(defaultEndTime)
   }
-
-  useEffect(() => {
-    if (versions[version] !== undefined && versions[version] !== null) {
-      setGADate()
-    } else {
-      set4Weeks()
-    }
-  }, [version])
 
   useEffect(() => {
     fetchData()
