@@ -1,6 +1,6 @@
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
 import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { Filter2, Filter4, LocalShipping } from '@material-ui/icons'
+import { Filter1, Filter2, Filter4, LocalShipping } from '@material-ui/icons'
 import {
   FormControl,
   Grid,
@@ -9,9 +9,10 @@ import {
   Select,
   Tooltip,
 } from '@material-ui/core'
-import { Fragment, useEffect } from 'react'
+import { Fragment, useContext, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import { makeStyles } from '@material-ui/core/styles'
+import { ReleasesContext } from '../App'
 import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -32,46 +33,23 @@ const useStyles = makeStyles((theme) => ({
 
 function ReleaseSelector(props) {
   const classes = useStyles()
+  const releases = useContext(ReleasesContext)
   const [versions, setVersions] = React.useState({})
   const {
     label,
+    setStartTime,
+    startTime,
+    setEndTime,
+    endTime,
     version,
     onChange,
-    startTime,
-    setStartTime,
-    endTime,
-    setEndTime,
   } = props
 
   const days = 24 * 60 * 60 * 1000
+  const oneWeekStart = new Date(new Date().getTime() - 7 * days)
   const twoWeeksStart = new Date(new Date().getTime() - 2 * 7 * days)
   const fourWeeksStart = new Date(new Date().getTime() - 4 * 7 * days)
   const defaultEndTime = new Date(new Date().getTime())
-
-  const fetchData = () => {
-    fetch(process.env.REACT_APP_API_URL + '/api/releases')
-      .then((response) => response.json())
-      .then((data) => {
-        let tmpRelease = {}
-        data.releases
-          .filter((aVersion) => {
-            // We won't process Presubmits or 3.11
-            return aVersion !== 'Presubmits' && aVersion != '3.11'
-          })
-          .forEach((r) => {
-            tmpRelease[r] = data.ga_dates[r]
-          })
-        setVersions(tmpRelease)
-        if (tmpRelease[version] !== undefined && tmpRelease[version] !== null) {
-          let start = new Date(tmpRelease[version])
-          setStartTime(formatLongDate(start.setDate(start.getDate() - 28)))
-          setEndTime(formatLongDate(tmpRelease[version]))
-        } else {
-          set4Weeks()
-        }
-      })
-      .catch((error) => console.error(error))
-  }
 
   const setGADate = () => {
     let start = new Date(versions[version])
@@ -89,21 +67,23 @@ function ReleaseSelector(props) {
     setEndTime(defaultEndTime)
   }
 
-  useEffect(() => {
-    if (versions[version] !== undefined && versions[version] !== null) {
-      setGADate()
-    } else {
-      set4Weeks()
-    }
-  }, [version])
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const handleChange = (event) => {
-    onChange(event.target.value)
+  const set1Week = () => {
+    setStartTime(oneWeekStart)
+    setEndTime(defaultEndTime)
   }
+
+  useEffect(() => {
+    let tmpRelease = {}
+    releases.releases
+      .filter((aVersion) => {
+        // We won't process Presubmits or 3.11
+        return aVersion !== 'Presubmits' && aVersion != '3.11'
+      })
+      .forEach((r) => {
+        tmpRelease[r] = releases.ga_dates[r]
+      })
+    setVersions(tmpRelease)
+  }, [releases])
 
   // Ensure that versions has a list of versions before trying to display the Form
   if (Object.keys(versions).length === 0) {
@@ -116,7 +96,7 @@ function ReleaseSelector(props) {
         <Grid item md={12}>
           <FormControl className={classes.formControl}>
             <InputLabel className={classes.label}>{label}</InputLabel>
-            <Select value={version} onChange={handleChange}>
+            <Select value={version} onChange={onChange}>
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
                   {v}
@@ -153,8 +133,13 @@ function ReleaseSelector(props) {
             />
           </MuiPickersUtilsProvider>
         </Grid>
-        <Grid item sm={12} md={6} style={{ marginTop: 5 }}>
+        <Grid item md={12} style={{ marginTop: 5 }}>
           <ToggleButtonGroup size="small" ria-label="release-dates">
+            <Tooltip title="Last week">
+              <ToggleButton onClick={set1Week} aria-label="filter-2">
+                <Filter1 fontSize="small" />
+              </ToggleButton>
+            </Tooltip>
             <Tooltip title="Last 2 weeks">
               <ToggleButton onClick={set2Weeks} aria-label="filter-2">
                 <Filter2 fontSize="small" />
@@ -195,7 +180,6 @@ ReleaseSelector.propTypes = {
   setEndTime: PropTypes.func,
   label: PropTypes.string,
   version: PropTypes.string,
-  versions: PropTypes.array,
   onChange: PropTypes.func,
 }
 

@@ -32,7 +32,7 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useContext, useEffect, useState } from 'react'
 import {
   Link,
   Route,
@@ -42,6 +42,7 @@ import {
 } from 'react-router-dom'
 
 import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
 import ChevronRightIcon from '@material-ui/icons/ChevronRight'
 import clsx from 'clsx'
@@ -131,13 +132,6 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const days = 24 * 60 * 60 * 1000
-const initialTime = new Date()
-const initialStartTime = new Date(initialTime.getTime() - 30 * days)
-const initialEndTime = new Date(initialTime.getTime())
-const initialPrevStartTime = new Date(initialTime.getTime() - 30 * days)
-const initialPrevEndTime = new Date(initialTime.getTime())
-
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
@@ -146,6 +140,42 @@ const cancelFetch = () => {
 }
 
 export default function ComponentReadiness(props) {
+  const releases = useContext(ReleasesContext)
+  const defaultSampleRelease = '4.13'
+  const getReleaseDate = (release) => {
+    if (releases.ga_dates && releases.ga_dates[release]) {
+      return new Date(releases.ga_dates[release])
+    }
+
+    return new Date()
+  }
+  const days = 24 * 60 * 60 * 1000
+  const now = new Date()
+
+  // Sample is last 7 days by default
+  const initialSampleStartTime = new Date(now.getTime() - 7 * days)
+  const initialSampleEndTime = new Date(now.getTime())
+
+  // Base is 30 days from GA or now
+  const initialBaseEndTime = getReleaseDate(defaultSampleRelease)
+  const initialBaseStartTime = initialBaseEndTime.getTime() - 30 * days
+
+  const setBaseReleaseWithDates = (event) => {
+    let release = event.target.value
+    let endTime = getReleaseDate(release)
+    let startTime = endTime.getTime() - 30 * days
+    setBaseRelease(release)
+    setBaseStartTime(formatLongDate(startTime))
+    setBaseEndTime(formatLongDate(endTime))
+  }
+
+  const setSampleReleaseWithDates = (event) => {
+    let release = event.target.value
+    setSampleRelease(release)
+    setSampleStartTime(formatLongDate(initialBaseStartTime))
+    setSampleEndTime(formatLongDate(initialBaseEndTime))
+  }
+
   //console.log('ComponentReadiness start')
   const classes = useStyles()
   const theme = useTheme()
@@ -176,16 +206,14 @@ export default function ComponentReadiness(props) {
   }
 
   // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam = '4.13', setBaseReleaseParam] = useQueryParam(
-    'baseRelease',
-    StringParam
-  )
+  const [baseReleaseParam = defaultSampleRelease, setBaseReleaseParam] =
+    useQueryParam('baseRelease', StringParam)
   const [
-    baseStartTimeParam = formatLongDate(initialStartTime),
+    baseStartTimeParam = formatLongDate(initialBaseStartTime),
     setBaseStartTimeParam,
   ] = useQueryParam('baseStartTime', StringParam)
   const [
-    baseEndTimeParam = formatLongDate(initialEndTime),
+    baseEndTimeParam = formatLongDate(initialBaseEndTime),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
   const [sampleReleaseParam = '4.14', setSampleReleaseParam] = useQueryParam(
@@ -193,11 +221,11 @@ export default function ComponentReadiness(props) {
     StringParam
   )
   const [
-    sampleStartTimeParam = formatLongDate(initialPrevStartTime),
+    sampleStartTimeParam = formatLongDate(initialSampleStartTime),
     setSampleStartTimeParam,
   ] = useQueryParam('sampleStartTime', StringParam)
   const [
-    sampleEndTimeParam = formatLongDate(initialPrevEndTime),
+    sampleEndTimeParam = formatLongDate(initialSampleEndTime),
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
   const [
@@ -763,8 +791,8 @@ export default function ComponentReadiness(props) {
                       ignoreDisruption={ignoreDisruption}
                       component={component}
                       environment={environment}
-                      setBaseRelease={setBaseRelease}
-                      setSampleRelease={setSampleRelease}
+                      setBaseRelease={setBaseReleaseWithDates}
+                      setSampleRelease={setSampleReleaseWithDates}
                       setBaseStartTime={setBaseStartTime}
                       setBaseEndTime={setBaseEndTime}
                       setSampleStartTime={setSampleStartTime}
