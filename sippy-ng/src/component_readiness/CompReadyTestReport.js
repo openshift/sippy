@@ -223,7 +223,14 @@ export default function CompReadyTestReport(props) {
   significant difference compared to the historical basis
   `
 
-  const url = new URL(apiCallStr)
+  let url
+  if (apiCallStr.startsWith('/')) {
+    // In production mode, there is no hostname so we add it so that 'new URL' will work
+    // for both production and development modes.
+    url = new URL('http://sippy.dptools.openshift.org' + apiCallStr)
+  } else {
+    url = new URL(apiCallStr)
+  }
   const params = new URLSearchParams(url.search)
   const baseStartTime = params.get('baseStartTime')
   const baseEndTime = params.get('baseEndTime')
