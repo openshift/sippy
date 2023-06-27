@@ -190,7 +190,7 @@ export default function App(props) {
   let landingPage = ''
   if (fetchError !== '') {
     landingPage = <Alert severity="error">{fetchError}</Alert>
-  } else if (releases.releases.length > 0) {
+  } else if (releases?.releases?.length > 0) {
     landingPage = (
       <ReleaseOverview
         key={releases.releases[0]}
@@ -198,7 +198,7 @@ export default function App(props) {
       />
     )
   } else {
-    landingPage = 'No data.'
+    landingPage = 'No releases found! Have you configured Sippy correctly?'
   }
 
   const startDate = getReportStartDate(reportDate)
