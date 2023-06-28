@@ -174,26 +174,6 @@ export default function CompReadyTestReport(props) {
     )
   }
 
-  // Customize the maxJobNumFactor based on number of potential number of JobRuns.
-  // The display will get wide so max out at 100 jobs.
-  let maxLength = 0
-  data.job_stats.forEach((item) => {
-    if (item.base_job_run_stats && item.base_job_run_stats.length > maxLength) {
-      maxLength = item.base_job_run_stats.length
-    }
-    if (
-      item.sample_job_run_stats &&
-      item.sample_job_run_stats.length > maxLength
-    ) {
-      maxLength = item.sample_job_run_stats.length
-    }
-  })
-  const maxJobNumFactor = Math.min(maxLength / 10 + 1, 10)
-  const marks = Array.from({ length: maxJobNumFactor }, (_, index) => ({
-    value: index + 1,
-    label: (index + 1).toString(),
-  }))
-
   const handleFailuresOnlyChange = (event) => {
     setShowOnlyFailures(event.target.checked)
   }
@@ -253,8 +233,9 @@ export default function CompReadyTestReport(props) {
 
     if (!versions[version]) {
       // Handle the case where GA date is undefined (implies under development and not GA)
+      const today = new Date()
       const weeksBefore = Math.floor(
-        (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
+        (today - fromDate) / (1000 * 60 * 60 * 24 * 7)
       )
       return `Recent ${weeksBefore} week(s) of ${version}`
     }
