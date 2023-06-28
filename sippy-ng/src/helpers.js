@@ -32,7 +32,11 @@ export const SafeStringParam = {
 // square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
 // others mishandle them.
 export function safeEncodeURIComponent(value) {
-  return encodeURIComponent(value).replace('[', '%5B').replace(']', '%5D')
+  return encodeURIComponent(value)
+    .replace('[', '%5B')
+    .replace(']', '%5D')
+    .replace('{', '%7B')
+    .replace('}', '%7D')
 }
 
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".
