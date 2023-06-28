@@ -239,7 +239,7 @@ export default function CompReadyTestReport(props) {
 
   // getSummaryDate attempts to translate a date into text relative to the version GA
   // dates we know about.  If there are no versions, there is no translation.
-  const getSummaryDate = (from, to, versions) => {
+  const getSummaryDate = (from, to, version, versions) => {
     const fromDate = new Date(from)
     const toDate = new Date(to)
 
@@ -251,30 +251,41 @@ export default function CompReadyTestReport(props) {
       return itemB - itemA
     })
 
+    if (!versions[version]) {
+      // Handle the case where GA date is undefined (implies under development and not GA)
+      const weeksBefore = Math.floor(
+        (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
+      )
+      return `Recent ${weeksBefore} week(s) of ${version}`
+    }
+
     for (const version of sortedVersions) {
+      if (!versions[version]) {
+        // We already dealt with a version with no GA date above.
+        continue
+      }
       const gaDateStr = versions[version]
-      // For items with no date string (i.e., not GA'ed yet, we use a date very far out).
-      const gaDate = gaDateStr ? new Date(gaDateStr) : new Date('2100-12-31')
+      const gaDate = new Date(gaDateStr)
 
-      // Widen the window by 1 day on each side to account for timezone offsets
-      // because we only need granularity of a day.
-      const fourWeeksPreGA = new Date(gaDate.getTime())
-      fourWeeksPreGA.setDate(fourWeeksPreGA.getDate() - 28 - 1)
-      gaDate.setDate(gaDate.getDate() + 1)
+      // Widen the window by 20 weeks prior to GA (because releases seems to be that long) and give
+      // a buffer of 1 week after GA.
+      const twentyWeeksPreGA = new Date(gaDate.getTime())
+      twentyWeeksPreGA.setDate(twentyWeeksPreGA.getDate() - 20 * 7)
+      gaDate.setDate(gaDate.getDate() + 7)
 
-      if (fromDate >= fourWeeksPreGA && toDate <= gaDate) {
+      if (fromDate >= twentyWeeksPreGA && toDate <= gaDate) {
         // Calculate the time (in milliseconds) to weeks
         const weeksBefore = Math.floor(
           (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
         )
-        return `${weeksBefore} week(s) before '${version}' GA date`
+        return `About ${weeksBefore} week(s) before '${version}' GA date`
       }
     }
     return null
   }
 
   const printStats = (statsLabel, stats, from, to) => {
-    const summaryDate = getSummaryDate(from, to, versions)
+    const summaryDate = getSummaryDate(from, to, stats.release, versions)
     return (
       <Fragment>
         {statsLabel} Release: <strong>{stats.release}</strong>
