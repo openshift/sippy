@@ -233,11 +233,21 @@ export default function CompReadyTestReport(props) {
 
     if (!versions[version]) {
       // Handle the case where GA date is undefined (implies under development and not GA)
-      const today = new Date()
       const weeksBefore = Math.floor(
-        (today - fromDate) / (1000 * 60 * 60 * 24 * 7)
+        (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
       )
-      return `Recent ${weeksBefore} week(s) of ${version}`
+
+      // Calculate the difference between now and toDate in hours
+      const now = new Date()
+      const hoursDifference = Math.abs(now - toDate) / (1000 * 60 * 60)
+
+      if (hoursDifference <= 72) {
+        return `Recent ${weeksBefore} week(s) of ${version}`
+      } else {
+        // Convert toDate to human-readable format
+        const toDateFormatted = new Date(toDate).toLocaleDateString()
+        return `${weeksBefore} week(s) before ${toDateFormatted} of ${version}`
+      }
     }
 
     for (const version of sortedVersions) {
