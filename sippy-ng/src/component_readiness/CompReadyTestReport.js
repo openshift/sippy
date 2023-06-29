@@ -242,11 +242,15 @@ export default function CompReadyTestReport(props) {
       const hoursDifference = Math.abs(now - toDate) / (1000 * 60 * 60)
 
       if (hoursDifference <= 72) {
-        return weeksBefore ? `Recent ${weeksBefore} week(s) of ${version}` : null
+        return weeksBefore
+          ? `Recent ${weeksBefore} week(s) of ${version}`
+          : null
       } else {
         // Convert toDate to human-readable format
         const toDateFormatted = new Date(toDate).toLocaleDateString()
-        return weeksBefore ? `${weeksBefore} week(s) before ${toDateFormatted} of ${version}` : null
+        return weeksBefore
+          ? `${weeksBefore} week(s) before ${toDateFormatted} of ${version}`
+          : null
       }
     }
 
@@ -269,7 +273,9 @@ export default function CompReadyTestReport(props) {
         const weeksBefore = Math.floor(
           (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
         )
-        return weeksBefore ? `About ${weeksBefore} week(s) before '${version}' GA date` : null
+        return weeksBefore
+          ? `About ${weeksBefore} week(s) before '${version}' GA date`
+          : null
       }
     }
     return null
