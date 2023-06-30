@@ -11,6 +11,7 @@ import {
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
+import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
 import { Tooltip } from '@material-ui/core'
@@ -66,6 +67,7 @@ export default function CompReadyTestReport(props) {
   const [data, setData] = React.useState({})
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
   const [versions, setVersions] = React.useState({})
+  const releases = useContext(ReleasesContext)
 
   // Set the browser tab title
   document.title =
@@ -87,15 +89,6 @@ export default function CompReadyTestReport(props) {
 
   useEffect(() => {
     setIsLoaded(false)
-
-    const checkFetchesDone = () => {
-      if (isReportDone && isVersionFetchDone) {
-        setIsLoaded(true)
-      }
-    }
-
-    let isReportDone = false
-    let isVersionFetchDone = false
 
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => {
@@ -124,30 +117,22 @@ export default function CompReadyTestReport(props) {
         }
       })
       .finally(() => {
-        isReportDone = true
-        checkFetchesDone()
-      })
-
-    fetch(process.env.REACT_APP_API_URL + '/api/releases')
-      .then((response) => response.json())
-      .then((data) => {
-        let tmpRelease = {}
-        data.releases
-          .filter((aVersion) => {
-            // We won't process Presubmits or 3.11
-            return aVersion !== 'Presubmits' && aVersion != '3.11'
-          })
-          .forEach((r) => {
-            tmpRelease[r] = data.ga_dates[r]
-          })
-        setVersions(tmpRelease)
-      })
-      .catch((error) => console.error(error))
-      .finally(() => {
-        isVersionFetchDone = true
-        checkFetchesDone()
+        setIsLoaded(true)
       })
   }, [])
+
+  useEffect(() => {
+    let tmpRelease = {}
+    releases.releases
+      .filter((aVersion) => {
+        // We won't process Presubmits or 3.11
+        return aVersion !== 'Presubmits' && aVersion != '3.11'
+      })
+      .forEach((r) => {
+        tmpRelease[r] = releases.ga_dates[r]
+      })
+    setVersions(tmpRelease)
+  }, [releases])
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
