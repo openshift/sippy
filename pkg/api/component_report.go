@@ -33,7 +33,7 @@ const (
 	singleFailureJunitTable = `
 		WITH failed_testcases AS (
 			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, test_name ORDER BY success_val, flake_count) AS row_num
+				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
 			FROM
 				ci_analysis_us.junit
   			WHERE success_val = 0
