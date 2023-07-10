@@ -754,6 +754,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			FlakeCount:   testStatus.FlakeCount,
 			SuccessCount: testStatus.SuccessCount,
 		}
+		log.Tracef("testStatus is %+v", testStatus)
 	}
 	return status, errs
 }
