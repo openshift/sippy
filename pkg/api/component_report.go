@@ -19,40 +19,6 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-const (
-	// Some test suites in OpenShift retry, resulting in potentially multiple
-	// failures for the same test in a job.  Component Readiness is currently
-	// counting these as separate failures, resulting in an outsized impact on
-	// our statistical analysis.
-	//
-	// Counting them only once with the schema we have is challenging, this
-	// creates a couple of CTE to split the table into failed test results,
-	// and non-failed (success and flake).  We partition the failed test
-	// results by name and prow job ID, and only select the first row from
-	// each partition and then union it all with the non-failed table.
-	singleFailureJunitTable = `
-		WITH failed_testcases AS (
-			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
-			FROM
-				ci_analysis_us.junit
-  			WHERE success_val = 0
-			AND flake_count = 0
-			AND TIMESTAMP(modified_time) >= @From
-			AND TIMESTAMP(modified_time) < @To
-		),
-		other_testcases AS (
-			SELECT *,
-				ROW_NUMBER() OVER() as row_num
-			FROM
-				ci_analysis_us.junit
-			WHERE TIMESTAMP(modified_time) >= @From
-			AND TIMESTAMP(modified_time) < @To
-			AND NOT (success_val = 0 AND flake_count = 0)
-		)
-		SELECT * FROM other_testcases UNION ALL SELECT * FROM failed_testcases WHERE row_num = 1`
-)
-
 func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	names := []string{}
 	it, err := query.Read(context.TODO())
@@ -254,10 +220,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM ci_analysis_us.component_mapping cm
-						WHERE created_at = (
+	queryString := `WITH latest_component_mapping AS (
+    					SELECT *
+    					FROM ci_analysis_us.component_mapping cm
+    					WHERE created_at = (
 								SELECT MAX(created_at)
 								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
 					SELECT
@@ -265,12 +231,12 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
-						COUNT(*) AS total_count,
+						COUNT(DISTINCT(file_path)) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, singleFailureJunitTable)
-
+					FROM ci_analysis_us.junit
+						INNER JOIN latest_component_mapping cm ON testsuite = cm.suite
+							AND test_name = cm.name `
 	groupString := `
 					GROUP BY
 						file_path,
@@ -279,7 +245,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						modified_time `
 	queryString += `
 					WHERE
-						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
+						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
+						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -382,7 +349,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
+	queryString := `WITH latest_component_mapping AS (
 						SELECT *
 						FROM ci_analysis_us.component_mapping cm
 						WHERE created_at = (
@@ -398,13 +365,13 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						platform,
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
-						COUNT(cm.id) AS total_count,
+						COUNT(DISTINCT(file_path)) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, singleFailureJunitTable)
+					FROM ci_analysis_us.junit
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`
 
 	groupString := `
 					GROUP BY
@@ -416,8 +383,9 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						cm.id `
 
 	queryString += `
-					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
-
+					WHERE
+						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
+						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
 	commonParams := []bigquery.QueryParameter{}
 	if c.IgnoreDisruption {
 		queryString += ` AND test_name NOT LIKE '%disruption/%'`
