@@ -57,3 +57,20 @@ type APISnapshot struct {
 	// by variant.
 	UpgradeHealth pgtype.JSONB `json:"upgrade_health" gorm:"type:jsonb"`
 }
+
+// JiraIncident is an implementation of incident tracking.
+type JiraIncident struct {
+	Model
+
+	// Key is the jira key, i.e. TRT-162
+	Key string `json:"key" gorm:"index"`
+
+	// Summary contains a description of the incident
+	Summary string `json:"summary"`
+
+	// StartTime is the issue was opened
+	StartTime *time.Time `json:"start_time" gorm:"index"`
+
+	// ResolutionTime is the time the issue was resolved
+	ResolutionTime *time.Time `json:"resolution_time" gorm:"index"`
+}

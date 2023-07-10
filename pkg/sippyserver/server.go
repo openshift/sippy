@@ -281,6 +281,17 @@ func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request)
 	api.PrintReleasesReport(w, req, s.db)
 }
 
+func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
+	results, err := api.GetJIRAIncidentsFromDB(s.db)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "couldn't fetch events" + err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
+}
+
 func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) {
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
@@ -1309,6 +1320,7 @@ func (s *Server) Serve() {
 		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
 		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
 		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
+		serveMux.HandleFunc("/api/incidents", s.jsonIncidentEvent)
 
 		serveMux.HandleFunc("/api/releases/test_failures",
 			s.jsonGetPayloadAnalysis)

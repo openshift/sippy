@@ -678,14 +678,16 @@ type FailedPayload struct {
 	FailedJobRuns []string `json:"failed_job_runs"`
 }
 
-// PayloadEvent is an API type representing a FullCalendar.io event type, for use
+// CalendarEvent is an API type representing a FullCalendar.io event type, for use
 // with calendering.
-type PayloadEvent struct {
+type CalendarEvent struct {
 	Title   string `json:"title"`
 	Start   string `json:"start"`
-	Phase   string `json:"phase"`
+	End     string `json:"end"`
 	AllDay  bool   `json:"allDay"`
 	Display string `json:"display,omitempty"`
+	Phase   string `json:"phase"`
+	JIRA    string `json:"jira"`
 }
 
 type BuildClusterHealthAnalysis struct {

@@ -4,6 +4,7 @@ import { filterFor } from '../helpers'
 import { useHistory } from 'react-router-dom'
 import { useTheme } from '@material-ui/core/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import PayloadCalendarLegend from './PayloadCalendarLegend'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -48,13 +49,28 @@ export default function PayloadCalendar(props) {
       color: theme.palette.error.light,
       textColor: theme.palette.error.contrastText,
     },
+    {
+      url: process.env.REACT_APP_API_URL + '/api/incidents',
+      method: 'GET',
+      color: theme.palette.error.dark,
+      textColor: theme.palette.error.contrastText,
+    },
   ]
 
-  const eventClick = (info) =>
-    history.push(`/release/${props.release}/tags/${info.event.title}`)
+  const eventClick = (info) => {
+    if (info.event?.extendedProps?.phase === 'incident') {
+      window.open(
+        'https://issues.redhat.com/browse/' + info.event.extendedProps.jira,
+        '_blank'
+      )
+    } else {
+      history.push(`/release/${props.release}/tags/${info.event.title}`)
+    }
+  }
 
   return (
     <Fragment>
+      <PayloadCalendarLegend />
       <FullCalendar
         timeZone="UTC"
         headerToolbar={{
