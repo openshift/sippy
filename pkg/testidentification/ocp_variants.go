@@ -21,6 +21,19 @@ import (
 var openshiftJobsNeverStableRaw string
 var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
+// jobsWithoutReleaseImpact contains a list of jobs that teams have indicated are not subject to regression checking.
+// IOW, these jobs can regress and not prevent a release from shipping (not a blocker bug).  This makes them ineligible
+// for analysis in our install rate, our upgrade rate, our overall job pass rate, and component readiness
+var jobsWithoutReleaseImpact = sets.NewString(
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-compact-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-serial-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-fips-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-image-ecosystem-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-jenkins-e2e-ovn-remote-libvirt-ppc64le",
+	"periodic-ci-openshift-multiarch-master-nightly-4.14-upgrade-from-nightly-4.13-ocp-ovn-remote-libvirt-ppc64le",
+)
+
 var (
 	// variant regexes - when adding a new one, please update both allOpenshiftVariants,
 	// and allPlatforms as appropriate.
@@ -118,6 +131,12 @@ var (
 		"vsphere-upi",
 	)
 )
+
+func init() {
+	// remove jobs that don't have a release impact from all standard sippy views.
+	// These can be inspected on a per-job basis by the particular team.
+	openshiftJobsNeverStable = append(openshiftJobsNeverStable, jobsWithoutReleaseImpact.List()...)
+}
 
 const NeverStable = "never-stable"
 
