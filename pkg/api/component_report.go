@@ -231,7 +231,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
-						COUNT(*) AS total_count,
+						COUNT(DISTINCT(file_path)) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM ci_analysis_us.junit
@@ -365,7 +365,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						platform,
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
-						COUNT(cm.id) AS total_count,
+						COUNT(DISTINCT(file_path)) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
