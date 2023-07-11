@@ -467,6 +467,14 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		if testResultsJobNameFunc != nil {
 			if len(jobNames) < 5 && len(jobNames) > 0 {
 				testResultsJobNames, errJobNames = testResultsJobNameFunc(ft.Test.Name, jobNames)
+
+				if errJobNames == nil && testResultsJobNames != nil {
+					if testResultsJobNames.CurrentRuns == 0 {
+						// do we need to prepend the suite name to the test?
+						testResultsJobNames, errJobNames = testResultsJobNameFunc(fmt.Sprintf("%s.%s", ft.Suite.Name, ft.Test.Name), jobNames)
+					}
+				}
+
 			} else {
 				loggerFields.Warningf("Skipping job names test analysis due to jobNames length: %d", len(jobNames))
 			}
@@ -477,6 +485,12 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		// we will rely on the jobname match, if any, for analysis
 		if testResultsVariantsFunc != nil && !neverStableJob {
 			testResultsVariants, errVariants = testResultsVariantsFunc(ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants, jobNames)
+
+			if errVariants == nil && (testResultsVariants == nil || testResultsVariants.CurrentRuns == 0) {
+				// do we need to prepend the suite name to the test?
+				// drop passing the suite name to the func as we are prepending it to the test name
+				testResultsVariants, errVariants = testResultsVariantsFunc(fmt.Sprintf("%s.%s", ft.Suite.Name, ft.Test.Name), compareRelease, "", jobRun.ProwJob.Variants, jobNames)
+			}
 		}
 
 		if errJobNames != nil && errVariants != nil {
