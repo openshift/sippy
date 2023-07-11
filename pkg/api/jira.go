@@ -9,7 +9,7 @@ import (
 
 func GetJIRAIncidentsFromDB(dbClient *db.DB, start, end *time.Time) ([]apitype.CalendarEvent, error) {
 	// Get JIRA Incidents for display in calendar
-	var incidents []apitype.CalendarEvent
+	incidents := make([]apitype.CalendarEvent, 0)
 	res := dbClient.DB.Table("jira_incidents").Select(`
 		start_time AS start,
 		resolution_time AS end,
