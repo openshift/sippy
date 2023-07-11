@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
+	"github.com/openshift/sippy/pkg/jiraloader"
 	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
@@ -495,6 +496,10 @@ func (o *Options) Run() error { //nolint:gocyclo
 			}
 		}
 
+		if err := o.loadJiraIncidents(dbc); err != nil {
+			return err
+		}
+
 		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		if loadBugs {
 			bugsStart := time.Now()
@@ -639,6 +644,11 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	errs := prowLoader.LoadProwJobsToDB()
 	allErrs = append(allErrs, errs...)
 	return allErrs
+}
+
+func (o *Options) loadJiraIncidents(dbc *db.DB) error {
+	jiraLoader := jiraloader.New(dbc)
+	return jiraLoader.LoadJIRAIncidents()
 }
 
 func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {
