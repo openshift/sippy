@@ -648,11 +648,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 
 func (o *Options) loadJiraIncidents(dbc *db.DB) error {
 	jiraLoader := jiraloader.New(dbc)
-	if err := jiraLoader.LoadJIRAIncidents(); err != nil {
-		return err
-	}
-
-	return nil
+	return jiraLoader.LoadJIRAIncidents()
 }
 
 func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {
