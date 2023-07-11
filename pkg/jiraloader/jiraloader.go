@@ -39,7 +39,7 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	*/
 
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20in%20(trt-incident,trt-resolved)", nil)
+	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20in%20(trt-incident)", nil)
 	if err != nil {
 		return err
 	}
