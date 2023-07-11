@@ -28,10 +28,10 @@ type IssueType struct {
 	Self        string `json:"self"`
 	ID          string `json:"id"`
 	Description string `json:"description"`
-	IconUrl     string `json:"iconUrl"`
+	IconURL     string `json:"iconUrl"`
 	Name        string `json:"name"`
 	Subtask     bool   `json:"subtask"`
-	AvatarId    int    `json:"avatarId"`
+	AvatarID    int    `json:"avatarId"`
 }
 
 type Project struct {
@@ -58,7 +58,7 @@ type Watches struct {
 
 type Priority struct {
 	Self    string `json:"self"`
-	IconUrl string `json:"iconUrl"`
+	IconURL string `json:"iconUrl"`
 	Name    string `json:"name"`
 	ID      string `json:"id"`
 }
@@ -66,7 +66,7 @@ type Priority struct {
 type Status struct {
 	Self           string         `json:"self"`
 	Description    string         `json:"description"`
-	IconUrl        string         `json:"iconUrl"`
+	IconURL        string         `json:"iconUrl"`
 	Name           string         `json:"name"`
 	ID             string         `json:"id"`
 	StatusCategory StatusCategory `json:"statusCategory"`
