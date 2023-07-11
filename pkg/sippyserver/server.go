@@ -282,7 +282,21 @@ func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
-	results, err := api.GetJIRAIncidentsFromDB(s.db)
+	start, err := getISO8601Date("start", req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "couldn't parse start param" + err.Error()})
+		return
+	}
+
+	end, err := getISO8601Date("end", req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "couldn't parse start param" + err.Error()})
+		return
+	}
+
+	results, err := api.GetJIRAIncidentsFromDB(s.db, start, end)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
 			"message": "couldn't fetch events" + err.Error()})
