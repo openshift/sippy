@@ -20,37 +20,27 @@ import (
 )
 
 const (
-	// Some test suites in OpenShift retry, resulting in potentially multiple
-	// failures for the same test in a job.  Component Readiness is currently
-	// counting these as separate failures, resulting in an outsized impact on
-	// our statistical analysis.
+	// This query de-dupes the test results. There are two issues:
 	//
-	// Counting them only once with the schema we have is challenging, this
-	// creates a couple of CTE to split the table into failed test results,
-	// and non-failed (success and flake).  We partition the failed test
-	// results by name and prow job ID, and only select the first row from
-	// each partition and then union it all with the non-failed table.
-	singleFailureJunitTable = `
-		WITH failed_testcases AS (
+	// 1. Some test suites in OpenShift retry, resulting in potentially multiple
+	//    failures for the same test in a job.  Component Readiness is currently
+	//    counting these as separate failures, resulting in an outsized impact on
+	//    our statistical analysis.
+	//
+	// 2. There is a second bug where successful test cases are sometimes
+	//    recorded by openshift-tests more than once, it's tracked by
+	//    https://issues.redhat.com/browse/OCPBUGS-16039
+	//
+	dedupedJunitTable = `
+		WITH deduped_testcases AS (
 			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
-			FROM
-				ci_analysis_us.junit
-  			WHERE success_val = 0
-			AND flake_count = 0
-			AND TIMESTAMP(modified_time) >= @From
-			AND TIMESTAMP(modified_time) < @To
-		),
-		other_testcases AS (
-			SELECT *,
-				ROW_NUMBER() OVER() as row_num
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
 			FROM
 				ci_analysis_us.junit
 			WHERE TIMESTAMP(modified_time) >= @From
 			AND TIMESTAMP(modified_time) < @To
-			AND NOT (success_val = 0 AND flake_count = 0)
 		)
-		SELECT * FROM other_testcases UNION ALL SELECT * FROM failed_testcases WHERE row_num = 1`
+		SELECT * FROM deduped_testcases WHERE row_num = 1`
 )
 
 func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
@@ -269,7 +259,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, singleFailureJunitTable)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
 
 	groupString := `
 					GROUP BY
@@ -404,7 +394,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, singleFailureJunitTable)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
 
 	groupString := `
 					GROUP BY
