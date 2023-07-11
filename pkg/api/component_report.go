@@ -34,7 +34,7 @@ const (
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
 			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count DESC) AS row_num
 			FROM
 				ci_analysis_us.junit
 			WHERE TIMESTAMP(modified_time) >= @From
