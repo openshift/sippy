@@ -49,7 +49,7 @@ export default function PayloadCalendarLegend() {
       <Box className={classes.legendItem}>
         <Box
           className={classes.square}
-          style={{ backgroundColor: theme.palette.error.dark }}
+          style={{ backgroundColor: theme.palette.common.black }}
         />
         <Typography variant="body2">Incident</Typography>
       </Box>

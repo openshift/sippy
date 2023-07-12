@@ -52,7 +52,7 @@ export default function PayloadCalendar(props) {
     {
       url: process.env.REACT_APP_API_URL + '/api/incidents',
       method: 'GET',
-      color: theme.palette.error.dark,
+      color: theme.palette.common.black,
       textColor: theme.palette.error.contrastText,
     },
   ]
