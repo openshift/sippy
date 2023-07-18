@@ -31,10 +31,13 @@ const (
 	//    recorded by openshift-tests more than once, it's tracked by
 	//    https://issues.redhat.com/browse/OCPBUGS-16039
 	//
+	// The data source table junit also includes the failure cases for flakes, so the
+	// ordering in the partition below is intentional.  We'll get successes and flakes
+	// first before failures, so we'll ignore the failure rows for flakes.
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
 			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count DESC) AS row_num
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
 			FROM
 				ci_analysis_us.junit
 			WHERE TIMESTAMP(modified_time) >= @From
