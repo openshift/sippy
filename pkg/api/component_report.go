@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	// This query de-dupes the test results. There are two issues:
+	// This query de-dupes the test results. There are multiple issues present in
+	// our data set:
 	//
 	// 1. Some test suites in OpenShift retry, resulting in potentially multiple
 	//    failures for the same test in a job.  Component Readiness is currently
@@ -31,13 +32,22 @@ const (
 	//    recorded by openshift-tests more than once, it's tracked by
 	//    https://issues.redhat.com/browse/OCPBUGS-16039
 	//
-	// The data source table junit also includes the failure cases for flakes, so the
-	// ordering in the partition below is intentional.  We'll get successes and flakes
-	// first before failures, so we'll ignore the failure rows for flakes.
+	// 3. Flaked tests also have rows for the failures, so we need to ensure we only collect the flakes.
+	//
+	// 4. Flaked tests appear to be able to have success_val as 0 or 1.
+	//
+	// So, this sorts the data, partitioning by the 3-tuple of file_path/test_name/testsuite -
+	// preferring flakes, then successes, then failures, and we get the first row of each
+	// partition.
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
 			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
+					CASE
+						WHEN flake_count > 0 THEN 0
+						WHEN success_val > 0 THEN 1
+						ELSE 2
+					END) AS row_num
 			FROM
 				ci_analysis_us.junit
 			WHERE TIMESTAMP(modified_time) >= @From
