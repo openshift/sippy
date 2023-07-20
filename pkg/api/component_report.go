@@ -19,6 +19,33 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+const (
+	// This query de-dupes the test results. There are two issues:
+	//
+	// 1. Some test suites in OpenShift retry, resulting in potentially multiple
+	//    failures for the same test in a job.  Component Readiness is currently
+	//    counting these as separate failures, resulting in an outsized impact on
+	//    our statistical analysis.
+	//
+	// 2. There is a second bug where successful test cases are sometimes
+	//    recorded by openshift-tests more than once, it's tracked by
+	//    https://issues.redhat.com/browse/OCPBUGS-16039
+	//
+	// The data source table junit also includes the failure cases for flakes, so the
+	// ordering in the partition below is intentional.  We'll get successes and flakes
+	// first before failures, so we'll ignore the failure rows for flakes.
+	dedupedJunitTable = `
+		WITH deduped_testcases AS (
+			SELECT  *,
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY success_val, flake_count) AS row_num
+			FROM
+				ci_analysis_us.junit
+			WHERE TIMESTAMP(modified_time) >= @From
+			AND TIMESTAMP(modified_time) < @To
+		)
+		SELECT * FROM deduped_testcases WHERE row_num = 1`
+)
+
 func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	names := []string{}
 	it, err := query.Read(context.TODO())
@@ -220,10 +247,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := `WITH latest_component_mapping AS (
-    					SELECT *
-    					FROM ci_analysis_us.component_mapping cm
-    					WHERE created_at = (
+	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
+						SELECT *
+						FROM ci_analysis_us.component_mapping cm
+						WHERE created_at = (
 								SELECT MAX(created_at)
 								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
 					SELECT
@@ -231,12 +258,12 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
-						COUNT(DISTINCT(file_path)) AS total_count,
+						COUNT(*) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
-					FROM ci_analysis_us.junit
-						INNER JOIN latest_component_mapping cm ON testsuite = cm.suite
-							AND test_name = cm.name `
+					FROM (%s)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
+
 	groupString := `
 					GROUP BY
 						file_path,
@@ -245,8 +272,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						modified_time `
 	queryString += `
 					WHERE
-						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
-						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
+						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -349,7 +375,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := `WITH latest_component_mapping AS (
+	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM ci_analysis_us.component_mapping cm
 						WHERE created_at = (
@@ -365,13 +391,13 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						platform,
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
-						COUNT(DISTINCT(file_path)) AS total_count,
+						COUNT(cm.id) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities
-					FROM ci_analysis_us.junit
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`
+					FROM (%s)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
 
 	groupString := `
 					GROUP BY
@@ -383,9 +409,8 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						cm.id `
 
 	queryString += `
-					WHERE
-						TIMESTAMP(modified_time) >= @From AND TIMESTAMP(modified_time) < @To
-						AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
+					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') `
+
 	commonParams := []bigquery.QueryParameter{}
 	if c.IgnoreDisruption {
 		queryString += ` AND test_name NOT LIKE '%disruption/%'`
@@ -722,6 +747,7 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 			FlakeCount:   testStatus.FlakeCount,
 			SuccessCount: testStatus.SuccessCount,
 		}
+		log.Tracef("testStatus is %+v", testStatus)
 	}
 	return status, errs
 }
