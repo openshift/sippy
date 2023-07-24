@@ -361,16 +361,27 @@ export default function CompReadyTestReport(props) {
           <TableBody>
             {/* Ensure we have data before trying to map on it; we need data and rows */}
             {data && data.job_stats && data.job_stats.length > 0 ? (
-              data.job_stats.map((element, idx) => {
-                return (
-                  <CompReadyTestDetailRow
-                    key={idx}
-                    element={element}
-                    idx={idx}
-                    showOnlyFailures={showOnlyFailures}
-                  ></CompReadyTestDetailRow>
-                )
-              })
+              data.job_stats
+                .sort((a, b) => {
+                  if (a.significant && b.significant) {
+                    return 0
+                  } else if (a.significant) {
+                    // This makes it so that statistically significant ones go to the top.
+                    return -1
+                  } else {
+                    return 1
+                  }
+                })
+                .map((element, idx) => {
+                  return (
+                    <CompReadyTestDetailRow
+                      key={idx}
+                      element={element}
+                      idx={idx}
+                      showOnlyFailures={showOnlyFailures}
+                    ></CompReadyTestDetailRow>
+                  )
+                })
             ) : (
               <TableRow>
                 {/* No data to render (possible due to a Cancel */}
