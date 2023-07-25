@@ -25,6 +25,8 @@ func New(dbc *db.DB) *JIRALoader {
 	}
 }
 
+const jiraTimeLayout = "2006-01-02T15:04:05.000Z0700"
+
 func (jl *JIRALoader) LoadJIRAIncidents() error {
 	start := time.Now()
 	log.Infof("fetching incidents from jira...")
@@ -39,7 +41,7 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	*/
 
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20in%20(trt-incident)", nil)
+	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20in%20(trt-incident)&expand=changelog", nil)
 	if err != nil {
 		return err
 	}
@@ -66,31 +68,21 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 		return err
 	}
 
-	layout := "2006-01-02T15:04:05.000Z0700"
-	for _, issue := range issues.Issues {
+	for i, issue := range issues.Issues {
 		jiraID, err := strconv.ParseUint(issue.ID, 10, 64)
 		if err != nil {
 			fmt.Printf("parsing error: %+v", err)
 			continue
 		}
 
-		var startTimeP, resolutionTimeP *time.Time
+		var startTimeP *time.Time
 		if issue.Fields.Created != "" {
-			startTime, err := time.Parse(layout, issue.Fields.Created)
+			startTime, err := time.Parse(jiraTimeLayout, issue.Fields.Created)
 			if err != nil {
 				fmt.Printf("parsing error: %+v", err)
 				continue
 			}
 			startTimeP = &startTime
-		}
-
-		if issue.Fields.ResolutionDate != "" {
-			resolutionTime, err := time.Parse(layout, issue.Fields.ResolutionDate)
-			if err != nil {
-				fmt.Printf("parsing error: %+v", err)
-				continue
-			}
-			resolutionTimeP = &resolutionTime
 		}
 
 		model := &models.JiraIncident{
@@ -100,7 +92,7 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 			Key:            issue.Key,
 			Summary:        issue.Fields.Summary,
 			StartTime:      startTimeP,
-			ResolutionTime: resolutionTimeP,
+			ResolutionTime: findResolutionTime(&issues.Issues[i]),
 		}
 
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
@@ -111,4 +103,44 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 
 	log.Infof("jira incident fetch complete in %+v", time.Since(start))
 	return nil
+}
+
+func findResolutionTime(issue *v1jira.Issue) *time.Time {
+	var oldestResolutionTime *time.Time
+
+	changelogLayout := "2006-01-02T15:04:05.999-0700"
+
+	// OCPBUGS don't get a resolution time until it's closed which happens when a release GA's. We
+	// find the first terminal incident status changelog instead. From TRT's perspective, we don't
+	// care about OCPBUGS incidents after they go to MODIFIED.
+	for _, history := range issue.Changelog.Histories {
+		for _, item := range history.Items {
+			resolvedStatuses := []string{"MODIFIED", "ON_QA", "Verified", "Closed"}
+			for _, status := range resolvedStatuses {
+				if item.ToString == status {
+					createdTime, err := time.Parse(changelogLayout, history.Created)
+					if err != nil {
+						log.WithError(err).Warningf("parsing error: %s", history.Created)
+						continue
+					}
+					if oldestResolutionTime == nil || oldestResolutionTime.After(createdTime) {
+						log.Debugf("%s to %s at %+v", issue.Key, status, createdTime)
+						oldestResolutionTime = &createdTime
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback to the jira resolution time
+	if issue.Fields.ResolutionDate != "" && oldestResolutionTime == nil {
+		resolutionTime, err := time.Parse(jiraTimeLayout, issue.Fields.ResolutionDate)
+		if err != nil {
+			fmt.Printf("parsing error: %+v", err)
+		}
+		log.Debugf("resolution time for %s is %+v", issue.Key, resolutionTime)
+		oldestResolutionTime = &resolutionTime
+	}
+
+	return oldestResolutionTime
 }
