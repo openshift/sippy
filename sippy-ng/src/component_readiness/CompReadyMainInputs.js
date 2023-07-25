@@ -7,7 +7,7 @@ import AdvancedOptions from './AdvancedOptions'
 import Button from '@material-ui/core/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@material-ui/core/Tooltip'
 
@@ -51,6 +51,16 @@ export default function CompReadyMainInputs(props) {
     setIgnoreMissing,
     setIgnoreDisruption,
   } = props
+
+  // Alibaba is no longer supported so ensure it's always excluded.
+  useEffect(() => {
+    if (!excludeCloudsCheckedItems.includes('alibaba')) {
+      setExcludeCloudsCheckedItems((currCheckedItems) => [
+        ...currCheckedItems,
+        'alibaba',
+      ])
+    }
+  }, [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems])
 
   const {
     excludeNetworksList,
@@ -146,7 +156,9 @@ export default function CompReadyMainInputs(props) {
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Clouds"
-          displayList={excludeCloudsList}
+
+          // Since we no longer support alibaba, don't display it.
+          displayList={excludeCloudsList.filter((item) => item !== 'alibaba')}
           checkedItems={excludeCloudsCheckedItems}
           setCheckedItems={setExcludeCloudsCheckedItems}
         ></CheckBoxList>
