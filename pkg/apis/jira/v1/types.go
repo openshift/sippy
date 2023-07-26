@@ -1,11 +1,12 @@
 package v1
 
 type Issue struct {
-	Expand string `json:"expand"`
-	ID     string `json:"id"`
-	Self   string `json:"self"`
-	Key    string `json:"key"`
-	Fields Fields `json:"fields"`
+	Expand    string    `json:"expand"`
+	ID        string    `json:"id"`
+	Self      string    `json:"self"`
+	Key       string    `json:"key"`
+	Fields    Fields    `json:"fields"`
+	Changelog Changelog `json:"changelog"`
 }
 
 type Fields struct {
@@ -20,8 +21,8 @@ type Fields struct {
 	Status         Status    `json:"status"`
 	Description    string    `json:"description"`
 	Summary        string    `json:"summary"`
-	Creator        Creator   `json:"creator"`
-	Reporter       Reporter  `json:"reporter"`
+	Creator        User      `json:"creator"`
+	Reporter       User      `json:"reporter"`
 }
 
 type IssueType struct {
@@ -89,10 +90,25 @@ type User struct {
 	TimeZone    string `json:"timeZone"`
 }
 
-type Creator struct {
-	User
+type Changelog struct {
+	StartAt    int       `json:"startAt"`
+	MaxResults int       `json:"maxResults"`
+	Total      int       `json:"total"`
+	Histories  []History `json:"histories"`
 }
 
-type Reporter struct {
-	User
+type History struct {
+	ID      string `json:"id"`
+	Author  User   `json:"author"`
+	Created string `json:"created"`
+	Items   []Item `json:"items"`
+}
+
+type Item struct {
+	Field      string `json:"field"`
+	FieldType  string `json:"fieldtype"`
+	From       string `json:"from"`
+	FromString string `json:"fromString"`
+	To         string `json:"to"`
+	ToString   string `json:"toString"`
 }
