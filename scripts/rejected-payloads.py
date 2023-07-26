@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Example usage:
+#   ./scripts/rejected-payloads.py --days 5 -d $POSTGRES_DSN categorize -r 4.14 -a amd64
 
 import argparse
 import datetime
@@ -16,6 +18,7 @@ class ReleaseTags(base):
     release_tag = Column(String)
     release = Column(String)
     release_time = Column(DateTime)
+    architecture = Column(String)
     stream = Column(String)
     phase = Column(String)
     reject_reason = Column(String)
@@ -29,7 +32,7 @@ class PayloadTestFailures(base):
     name = Column(String)
     prow_job_name = Column(DateTime)
 
-def selectReleases(session, release, stream, showAll, days):
+def selectReleases(session, release, stream, architecture, showAll, days):
     selectedTags = []
     start = datetime.datetime.utcnow() - datetime.timedelta(days=days)
     releaseTags = session.query(ReleaseTags).filter(ReleaseTags.phase == "Rejected", ReleaseTags.release_time >= start).order_by(ReleaseTags.release_time.desc()).all()
@@ -40,6 +43,8 @@ def selectReleases(session, release, stream, showAll, days):
             continue
         if not showAll and releaseTag.reject_reason:
             continue
+        if architecture and releaseTag.architecture != architecture:
+            continue
         selectedTags.append(releaseTag)
 
     return selectedTags
@@ -49,8 +54,8 @@ def printReleases(selectedTags):
     for idx, releaseTag in enumerate(selectedTags):
         print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason, releaseTag.reject_reason_note))
 
-def list_releases(session, release, stream, showAll, days):
-    selectedTags = selectReleases(session, release, stream, showAll, days)
+def list_releases(session, release, stream, architecture, showAll, days):
+    selectedTags = selectReleases(session, release, stream, architecture, showAll, days)
     printReleases(selectedTags)
 
 reject_reasons = {
@@ -107,8 +112,8 @@ def categorizeSingle(session, tag):
 
     session.commit()
 
-def categorize(session, release, stream, showAll, days):
-    selectedTags = selectReleases(session, release, stream, showAll, days)
+def categorize(session, release, stream, architecture, showAll, days):
+    selectedTags = selectReleases(session, release, stream, architecture, showAll, days)
     while True:
         if len(selectedTags) == 0:
             print("No payloads are available to select, exiting.")
@@ -140,14 +145,16 @@ if __name__ == '__main__':
     list_parser.set_defaults(action='list')
     list_parser.add_argument('-r', '--release', help='Specifies a release, like 4.11', default=None)
     list_parser.add_argument('-s', '--stream', help='Specifies a stream, like nightly or ci', default=None)
-    list_parser.add_argument('-a', '--all', help='List all rejected payloads. If not specified , list only uncategorized ones.', action='store_true')
+    list_parser.add_argument('-a', '--arch', help='Specifies an architecture, like amd64', default=None)
+    list_parser.add_argument('--all', help='List all rejected payloads. If not specified , list only uncategorized ones.', action='store_true')
 
     categorize_parser = subparsers.add_parser('categorize', help='categorize a rejected payload')
     categorize_parser.set_defaults(action='categorize')
     categorize_parser.add_argument('-t', '--release_tag', help='Specifies a release payload tag, like 4.11.0-0.nightly-2022-06-25-081133', default=None)
     categorize_parser.add_argument('-r', '--release', help='Specifies a release, like 4.11', default=None)
     categorize_parser.add_argument('-s', '--stream', help='Specifies a stream, like nightly or ci', default=None)
-    categorize_parser.add_argument('-a', '--all', help='List all rejected payloads. If not specified , list only uncategorized ones.', action='store_true')
+    categorize_parser.add_argument('-a', '--arch', help='Specifies an architecture, like amd64', default=None)
+    categorize_parser.add_argument('--all', help='List all rejected payloads. If not specified , list only uncategorized ones.', action='store_true')
 
     args = vars(parser.parse_args())
 
@@ -165,7 +172,7 @@ if __name__ == '__main__':
         if args["release_tag"]:
             categorizeSingle(session, args["release_tag"])
         else:
-            categorize(session, args["release"], args["stream"], args["all"], args["days"])
+            categorize(session, args["release"], args["stream"], args["arch"], args["all"], args["days"])
     else:
-        list_releases(session, args["release"], args["stream"], args["all"], args["days"])
+        list_releases(session, args["release"], args["stream"], args["arch"], args["all"], args["days"])
 
