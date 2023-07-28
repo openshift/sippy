@@ -117,9 +117,10 @@ type AnalysisWorker struct {
 }
 
 type RiskAnalysisSummary struct {
-	Name      string
-	URL       string
-	RiskLevel api.RiskLevel
+	Name             string
+	URL              string
+	RiskLevel        api.RiskLevel
+	TestRiskAnalysis []api.ProwJobRunTestRiskAnalysis
 }
 
 type RiskAnalysisEntryList []RiskAnalysisEntry
@@ -524,20 +525,7 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 		}
 		sort.Sort(sortedAnalysis)
 
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Job Failure Risk Analysis for sha: %s\n\n| Job Name | Failure Risk |\n|:---|:---:|\n", prPendingComment.SHA))
-
-		for _, value := range sortedAnalysis {
-			tableKey := value.Key
-
-			if value.Value.URL != "" {
-				tableKey = fmt.Sprintf("[%s](%s)", value.Key, value.Value.URL)
-			}
-
-			sb.WriteString(fmt.Sprintf("|%s|%s|\n", tableKey, value.Value.RiskLevel.Name))
-		}
-
-		comment = sb.String()
+		comment = buildComment(sortedAnalysis, prPendingComment.SHA)
 	}
 
 	pendingComment := PendingComment{
@@ -553,6 +541,71 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 	log.Debugf("Adding comment to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
 	aw.pendingComments <- pendingComment
 	log.Debugf("Comment added to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
+}
+
+func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Job Failure Risk Analysis for sha: %s\n\n| Job Name | Failure Risk |\n|:---|:---|\n", sha))
+
+	// don't want the comment to be too large so if we have a high number of jobs to analyze
+	// reduce the max tests / reasons we show
+	maxSubRows := 3
+	if len(sortedAnalysis) > 10 {
+		maxSubRows = 1
+	}
+
+	for a, value := range sortedAnalysis {
+		tableKey := value.Key
+
+		// top 20 should be more than enough
+		if a > 19 {
+			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", a, len(sortedAnalysis)))
+			break
+		}
+
+		if value.Value.URL != "" {
+			tableKey = fmt.Sprintf("[%s](%s)", value.Key, value.Value.URL)
+		}
+
+		var riskSb strings.Builder
+		riskSb.WriteString(fmt.Sprintf("**%s**", value.Value.RiskLevel.Name))
+		for i, t := range value.Value.TestRiskAnalysis {
+			if i > maxSubRows {
+				riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(value.Value.TestRiskAnalysis)))
+				break
+			}
+			if i > 0 {
+				riskSb.WriteString("<br>---")
+			}
+			riskSb.WriteString(fmt.Sprintf("<br>*%s*", t.Name))
+			for j, r := range t.Risk.Reasons {
+				if j > maxSubRows {
+					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(t.Risk.Reasons)))
+					break
+				}
+				riskSb.WriteString(fmt.Sprintf("<br>%s", r))
+			}
+
+			// Do we have open bugs?  Stack them vertically to preserve real estate
+			for k, b := range t.OpenBugs {
+
+				// Currently we don't limit the number of open bugs we show
+				if k == 0 {
+					if len(t.Risk.Reasons) > 0 {
+						riskSb.WriteString("<br><br>")
+					}
+
+					riskSb.WriteString("Open Bugs")
+				}
+				riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", b.Summary, b.URL))
+			}
+		}
+
+		sb.WriteString(fmt.Sprintf("|%s|%s|\n", tableKey, riskSb.String()))
+
+	}
+
+	return sb.String()
 }
 
 // Walks the GCS path for this job to find the most recent job runs, if they have not finished then returns false
@@ -598,7 +651,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 		latestPath := fmt.Sprintf("%s%s/", attrs.Prefix, latest)
 		finishedJSON := fmt.Sprintf("%sfinished.json", latestPath)
 
-		var riskLevel api.RiskLevel
+		var riskSummary api.RiskSummary
 
 		// currently we only validate that the file exists, we aren't pulling anything out of it
 		if !jobRun.ContentExists(context.TODO(), finishedJSON) {
@@ -637,7 +690,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 			log.WithError(err).Errorf("Failed to parse latest id: %s for: %s", latest, latestPath)
 
 			// skip the db lookup and go right to gcs
-			riskLevel = aw.getGCSOverallRiskLevel(latestPath)
+			riskSummary = aw.getGCSOverallRiskLevel(latestPath)
 		} else {
 
 			// lookup prowjob and run count
@@ -653,23 +706,31 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 				}
 
 				// in all failure cases fall back to gcs
-				riskLevel = aw.getGCSOverallRiskLevel(latestPath)
+				riskSummary = aw.getGCSOverallRiskLevel(latestPath)
 
 			} else {
 				riskAnalysis, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
 
 				if err != nil {
 					logger.WithError(err).Errorf("Error querying risk analysis for: %s", latestPath)
-					riskLevel = aw.getGCSOverallRiskLevel(latestPath)
+					riskSummary = aw.getGCSOverallRiskLevel(latestPath)
 				} else {
-					riskLevel = riskAnalysis.OverallRisk.Level
+					riskSummary = api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level}}
+
+					for _, t := range riskAnalysis.Tests {
+						if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level {
+							// test failure risk matches the current overall risk level
+							// so keep it
+							riskSummary.Tests = append(riskSummary.Tests, t)
+						}
+					}
 				}
 			}
 		}
 
 		// don't include none or unknown in our report
-		if riskLevel != api.FailureRiskLevelNone && riskLevel != api.FailureRiskLevelUnknown {
-			riskAnalysisSummary := RiskAnalysisSummary{Name: jobName, URL: prowLink, RiskLevel: riskLevel}
+		if riskSummary.OverallRisk.Level != api.FailureRiskLevelNone && riskSummary.OverallRisk.Level != api.FailureRiskLevelUnknown {
+			riskAnalysisSummary := RiskAnalysisSummary{Name: jobName, URL: prowLink, RiskLevel: riskSummary.OverallRisk.Level, TestRiskAnalysis: riskSummary.Tests}
 			analysisByJobs[jobName] = riskAnalysisSummary
 		}
 	}
@@ -678,21 +739,38 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 	return true, analysisByJobs
 }
 
-func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) api.RiskLevel {
+func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) api.RiskSummary {
 	riskAnalysis, err := aw.getJobRunGCSRiskAnalysis(latestPath)
 	if err != nil {
 		log.WithError(err).Errorf("Error with fallback lookup of gcs RiskAnalysis for: %s", latestPath)
-		return api.FailureRiskLevelUnknown
+		return api.RiskSummary{
+			OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelUnknown},
+		}
 	}
 
 	// it is ok for it to be nil, not everything will have risk analysis
 	// in that case we do not include an entry for it
 	if riskAnalysis != nil {
-		return riskAnalysis.OverallRisk.Level
+		riskSummary := api.RiskSummary{
+			OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level},
+		}
+
+		for _, t := range riskAnalysis.Tests {
+			if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level {
+				// test failure risk matches the current overall risk level
+				// so keep it
+				riskSummary.Tests = append(riskSummary.Tests, t)
+			}
+		}
+
+		return riskSummary
+
 	}
 
 	// default is none if we didn't find one
-	return api.FailureRiskLevelNone
+	return api.RiskSummary{
+		OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelNone},
+	}
 }
 
 func (aw *AnalysisWorker) getJobRunGCSRiskAnalysis(jobPath string) (*api.ProwJobRunRiskAnalysis, error) {

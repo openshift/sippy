@@ -758,6 +758,11 @@ type FailureRisk struct {
 	Reasons []string
 }
 
+type RiskSummary struct {
+	OverallRisk FailureRisk
+	Tests       []ProwJobRunTestRiskAnalysis
+}
+
 type RiskLevel struct {
 	// Name is a human readable name for the given risk level.
 	Name string
