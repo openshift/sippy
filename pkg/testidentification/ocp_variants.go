@@ -44,6 +44,7 @@ var (
 	awsRegex        = regexp.MustCompile(`(?i)-aws`)
 	azureRegex      = regexp.MustCompile(`(?i)-azure`)
 	compactRegex    = regexp.MustCompile(`(?i)-compact`)
+	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
 	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
 	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
@@ -85,6 +86,7 @@ var (
 		"aws",
 		"azure",
 		"compact",
+		"etcd-scaling",
 		"fips",
 		"gcp",
 		"ha",
@@ -249,6 +251,9 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 	}
 	if compactRegex.MatchString(jobName) {
 		variants = append(variants, "compact")
+	}
+	if etcdScaling.MatchString(jobName) {
+		variants = append(variants, "etcd-scaling")
 	}
 	if osdRegex.MatchString(jobName) {
 		variants = append(variants, "osd")
