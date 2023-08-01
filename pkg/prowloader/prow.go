@@ -63,7 +63,6 @@ func New(
 	githubClient *github.Client,
 	variantManager testidentification.VariantManager,
 	syntheticTestManager synthetictests.SyntheticTestManager,
-	releases []string,
 	config *v1config.SippyConfig,
 	ghCommenter *commenter.GitHubCommenter) *ProwLoader {
 
@@ -81,7 +80,6 @@ func New(
 		suiteCache:           make(map[string]*uint),
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
-		releases:             releases,
 		config:               config,
 		ghCommenter:          ghCommenter,
 	}
@@ -155,13 +153,7 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 
 	var newJobRunsCtr int
 	for i, pj := range prowJobs {
-		for _, release := range pl.releases {
-			cfg, ok := pl.config.Releases[release]
-			if !ok {
-				log.Warningf("configuration not found for release %q", release)
-				continue
-			}
-
+		for release, cfg := range pl.config.Releases {
 			if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
 				if err := pl.prowJobToJobRun(pj, release, &newJobRunsCtr, i, len(prowJobs)); err != nil {
 					err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)

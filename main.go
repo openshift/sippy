@@ -638,7 +638,6 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		githubClient,
 		o.getVariantManager(),
 		o.getSyntheticTestManager(),
-		o.OpenshiftReleases,
 		&sippyConfig,
 		ghCommenter)
 	errs := prowLoader.LoadProwJobsToDB()
