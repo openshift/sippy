@@ -276,6 +276,8 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 		variants = append(variants, "agent")
 	}
 
+	variants = removeDuplicates(variants)
+
 	if len(variants) == 0 {
 		log.Infof("unknown variant for job: %s\n", jobName)
 		return []string{"unknown variant"}
@@ -361,4 +363,18 @@ func (openshiftVariants) IsJobNeverStable(jobName string) bool {
 	}
 
 	return false
+}
+
+func removeDuplicates(variants []string) []string {
+	uniqueMap := make(map[string]bool)
+	var uniqueArr []string
+
+	for _, val := range variants {
+		if _, ok := uniqueMap[val]; !ok {
+			uniqueMap[val] = true
+			uniqueArr = append(uniqueArr, val)
+		}
+	}
+
+	return uniqueArr
 }

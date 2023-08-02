@@ -86,8 +86,9 @@ func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
 			want:        []string{"azure", "arm64", "sdn", "ha"},
 		},
 		{
-			name: "periodic-ci-openshift-release-master-nightly-4.14-e2e-agent-ha-dualstack",
-			want: []string{"amd64", "ha", "agent"},
+			name:        "periodic-ci-openshift-release-master-nightly-4.14-e2e-agent-compact-ipv4",
+			clusterData: models.ClusterData{Release: "4.14", Topology: "compact"},
+			want:        []string{"amd64", "compact", "agent"},
 		},
 	}
 	for _, tt := range tests {
