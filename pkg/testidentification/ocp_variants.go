@@ -366,15 +366,6 @@ func (openshiftVariants) IsJobNeverStable(jobName string) bool {
 }
 
 func removeDuplicates(variants []string) []string {
-	uniqueMap := make(map[string]bool)
-	var uniqueArr []string
-
-	for _, val := range variants {
-		if _, ok := uniqueMap[val]; !ok {
-			uniqueMap[val] = true
-			uniqueArr = append(uniqueArr, val)
-		}
-	}
-
-	return uniqueArr
+	stringSet := sets.NewString(variants...)
+	return stringSet.List()
 }
