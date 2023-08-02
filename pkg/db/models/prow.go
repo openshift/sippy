@@ -61,7 +61,7 @@ type ProwJobRun struct {
 	OverallResult v1.JobOverallResult `gorm:"index"`
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
 	TestCount   int         `gorm:"-"`
-	ClusterData ClusterData `gorm:"-"`
+	ClusterData ClusterData `gorm:"type:jsonb"`
 }
 
 type Test struct {
