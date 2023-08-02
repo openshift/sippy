@@ -37,6 +37,7 @@ var jobsWithoutReleaseImpact = sets.NewString(
 var (
 	// variant regexes - when adding a new one, please update both allOpenshiftVariants,
 	// and allPlatforms as appropriate.
+	agentRegex      = regexp.MustCompile(`(?i)agent-`)
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
 	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
@@ -79,6 +80,7 @@ var (
 	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
 
 	allOpenshiftVariants = sets.NewString(
+		"agent",
 		"alibaba",
 		"amd64",
 		"arm64",
@@ -269,6 +271,9 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 	}
 	if proxyRegex.MatchString(jobName) {
 		variants = append(variants, "proxy")
+	}
+	if agentRegex.MatchString(jobName) {
+		variants = append(variants, "agent")
 	}
 
 	if len(variants) == 0 {
