@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"regexp"
 	"sort"
 	"strconv"
@@ -120,6 +121,7 @@ type RiskAnalysisSummary struct {
 	Name             string
 	URL              string
 	RiskLevel        api.RiskLevel
+	OverallReasons   []string
 	TestRiskAnalysis []api.ProwJobRunTestRiskAnalysis
 }
 
@@ -569,38 +571,50 @@ func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
 
 		var riskSb strings.Builder
 		riskSb.WriteString(fmt.Sprintf("**%s**", value.Value.RiskLevel.Name))
-		for i, t := range value.Value.TestRiskAnalysis {
-			if i > maxSubRows {
-				riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(value.Value.TestRiskAnalysis)))
-				break
-			}
-			if i > 0 {
-				riskSb.WriteString("<br>---")
-			}
-			riskSb.WriteString(fmt.Sprintf("<br>*%s*", t.Name))
-			for j, r := range t.Risk.Reasons {
+
+		// if we don't have any TestRiskAnalysis use the OverallReasons
+		if len(value.Value.TestRiskAnalysis) == 0 {
+			for j, r := range value.Value.OverallReasons {
 				if j > maxSubRows {
-					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(t.Risk.Reasons)))
+					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(value.Value.OverallReasons)))
 					break
 				}
 				riskSb.WriteString(fmt.Sprintf("<br>%s", r))
 			}
+		} else {
 
-			// Do we have open bugs?  Stack them vertically to preserve real estate
-			for k, b := range t.OpenBugs {
-
-				// Currently we don't limit the number of open bugs we show
-				if k == 0 {
-					if len(t.Risk.Reasons) > 0 {
-						riskSb.WriteString("<br><br>")
-					}
-
-					riskSb.WriteString("Open Bugs")
+			for i, t := range value.Value.TestRiskAnalysis {
+				if i > maxSubRows {
+					riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(value.Value.TestRiskAnalysis)))
+					break
 				}
-				riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", b.Summary, b.URL))
+				if i > 0 {
+					riskSb.WriteString("<br>---")
+				}
+				riskSb.WriteString(fmt.Sprintf("<br>*%s*", t.Name))
+				for j, r := range t.Risk.Reasons {
+					if j > maxSubRows {
+						riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(t.Risk.Reasons)))
+						break
+					}
+					riskSb.WriteString(fmt.Sprintf("<br>%s", r))
+				}
+
+				// Do we have open bugs?  Stack them vertically to preserve real estate
+				for k, b := range t.OpenBugs {
+
+					// Currently we don't limit the number of open bugs we show
+					if k == 0 {
+						if len(t.Risk.Reasons) > 0 {
+							riskSb.WriteString("<br><br>")
+						}
+
+						riskSb.WriteString("Open Bugs")
+					}
+					riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", html.EscapeString(b.Summary), b.URL))
+				}
 			}
 		}
-
 		sb.WriteString(fmt.Sprintf("|%s|%s|\n", tableKey, riskSb.String()))
 
 	}
@@ -715,7 +729,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 					logger.WithError(err).Errorf("Error querying risk analysis for: %s", latestPath)
 					riskSummary = aw.getGCSOverallRiskLevel(latestPath)
 				} else {
-					riskSummary = api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level}}
+					riskSummary = api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level, Reasons: riskAnalysis.OverallRisk.Reasons}}
 
 					for _, t := range riskAnalysis.Tests {
 						if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level {
@@ -730,7 +744,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 
 		// don't include none or unknown in our report
 		if riskSummary.OverallRisk.Level != api.FailureRiskLevelNone && riskSummary.OverallRisk.Level != api.FailureRiskLevelUnknown {
-			riskAnalysisSummary := RiskAnalysisSummary{Name: jobName, URL: prowLink, RiskLevel: riskSummary.OverallRisk.Level, TestRiskAnalysis: riskSummary.Tests}
+			riskAnalysisSummary := RiskAnalysisSummary{Name: jobName, URL: prowLink, RiskLevel: riskSummary.OverallRisk.Level, OverallReasons: riskSummary.OverallRisk.Reasons, TestRiskAnalysis: riskSummary.Tests}
 			analysisByJobs[jobName] = riskAnalysisSummary
 		}
 	}
