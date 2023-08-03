@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	goversion "github.com/hashicorp/go-version"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -267,24 +268,38 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 }
 
 func GetReleasesList(dbc *db.DB, config v1.SippyConfig) (*apitype.Releases, error) {
-	gaDates := make(map[string]*time.Time, 0)
+	releases := make([]string, 0)
+	gaDates := make(map[string]*time.Time)
 	for release, releaseConf := range config.Releases {
+		if !releaseConf.Hidden {
+			releases = append(releases, release)
+		}
 		if releaseConf.GADate != nil {
 			gaDates[release] = releaseConf.GADate
 		}
 	}
+
+	// Sort releases such that ocp releases come first, then releases with suffixes come later, as well as anything
+	// that's not a version
+	sort.Slice(releases, func(i, j int) bool {
+		v1, err1 := goversion.NewVersion(releases[i])
+		v2, err2 := goversion.NewVersion(releases[j])
+
+		if err1 != nil || strings.Contains(releases[i], "-") {
+			// If parsing error or has a hyphen suffix, v1 should go to the end
+			return false
+		} else if err2 != nil || strings.Contains(releases[j], "-") {
+			// If parsing error or has a hyphen suffix, v2 should go to the end
+			return true
+		} else {
+			// Compare the versions
+			return v1.GreaterThan(v2)
+		}
+	})
+
 	results := apitype.Releases{
-		GADates: gaDates,
-	}
-
-	releases, err := query.ReleasesFromDB(dbc)
-	if err != nil {
-		log.WithError(err).Error("error querying releases from db")
-		return nil, err
-	}
-
-	for _, release := range releases {
-		results.Releases = append(results.Releases, release.Release)
+		Releases: releases,
+		GADates:  gaDates,
 	}
 
 	type LastUpdated struct {
@@ -295,9 +310,8 @@ func GetReleasesList(dbc *db.DB, config v1.SippyConfig) (*apitype.Releases, erro
 	res := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error querying last updated from db")
-		return nil, err
+		return nil, res.Error
 	}
-
 	results.LastUpdated = lastUpdated.Max
 
 	return &results, nil

@@ -2,6 +2,8 @@
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
 releases:
+  "4.15":
+    hidden: true,
   "4.13":
     gaDate: 2023-05-17
   "4.12":

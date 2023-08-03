@@ -14,6 +14,9 @@ type ProwConfig struct {
 }
 
 type ReleaseConfig struct {
+	// Hidden determines if a release is shown in the sippy sidebar
+	Hidden bool
+
 	// GADate contains the GA date for this release, if any.
 	GADate *time.Time
 
