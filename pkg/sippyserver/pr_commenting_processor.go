@@ -611,7 +611,8 @@ func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
 
 						riskSb.WriteString("Open Bugs")
 					}
-					riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", html.EscapeString(b.Summary), b.URL))
+					// prevent the openshift-ci bot from detecting JIRA references in the link by replacing - with html escaped sequence
+					riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", strings.ReplaceAll(html.EscapeString(b.Summary), "-", "&#45;"), b.URL))
 				}
 			}
 		}
