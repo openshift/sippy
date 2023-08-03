@@ -1,5 +1,7 @@
 package v1
 
+import "time"
+
 type SippyConfig struct {
 	Prow     ProwConfig               `yaml:"prow"`
 	Releases map[string]ReleaseConfig `yaml:"releases"`
@@ -12,6 +14,9 @@ type ProwConfig struct {
 }
 
 type ReleaseConfig struct {
+	// GADate contains the GA date for this release, if any.
+	GADate *time.Time
+
 	// Jobs is a set of jobs that should be considered part of the release.
 	Jobs map[string]bool `yaml:"jobs,omitempty"`
 

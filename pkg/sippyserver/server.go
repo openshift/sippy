@@ -20,8 +20,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/releasesync"
-
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -55,6 +54,7 @@ func NewServer(
 	listenAddr string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
+	config v1.SippyConfig,
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
@@ -83,6 +83,7 @@ func NewServer(
 		pinnedDateTime: pinnedDateTime,
 		gcsClient:      gcsClient,
 		cache:          cacheClient,
+		config:         config,
 	}
 
 	// Fill cache
@@ -106,6 +107,7 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 })
 
 type Server struct {
+	config               v1.SippyConfig
 	mode                 Mode
 	listenAddr           string
 	dashboardCoordinates []TestGridDashboardCoordinates
@@ -849,40 +851,16 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
-	response := apitype.Releases{
-		GADates: releasesync.GADateMap,
-	}
-	releases, err := query.ReleasesFromDB(s.db)
+	results, err := api.GetReleasesList(s.db, s.config)
 	if err != nil {
-		log.WithError(err).Error("error querying releases from db")
+		log.WithError(err).Error("error fetching releases")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying releases from db",
+			"message": "error fetching releases",
 		})
 		return
 	}
-
-	for _, release := range releases {
-		response.Releases = append(response.Releases, release.Release)
-	}
-
-	type LastUpdated struct {
-		Max time.Time
-	}
-	var lastUpdated LastUpdated
-	// Assume our last update is the last time we inserted a prow job run.
-	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error querying last updated from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying last updated from db",
-		})
-		return
-	}
-
-	response.LastUpdated = lastUpdated.Max
-	api.RespondWithJSON(http.StatusOK, w, response)
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {

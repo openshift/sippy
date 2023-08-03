@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -263,6 +264,43 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 	q.Scan(&releases)
 
 	return releases, nil
+}
+
+func GetReleasesList(dbc *db.DB, config v1.SippyConfig) (*apitype.Releases, error) {
+	gaDates := make(map[string]*time.Time, 0)
+	for release, releaseConf := range config.Releases {
+		if releaseConf.GADate != nil {
+			gaDates[release] = releaseConf.GADate
+		}
+	}
+	results := apitype.Releases{
+		GADates: gaDates,
+	}
+
+	releases, err := query.ReleasesFromDB(dbc)
+	if err != nil {
+		log.WithError(err).Error("error querying releases from db")
+		return nil, err
+	}
+
+	for _, release := range releases {
+		results.Releases = append(results.Releases, release.Release)
+	}
+
+	type LastUpdated struct {
+		Max time.Time
+	}
+	var lastUpdated LastUpdated
+	// Assume our last update is the last time we inserted a prow job run.
+	res := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error querying last updated from db")
+		return nil, err
+	}
+
+	results.LastUpdated = lastUpdated.Max
+
+	return &results, nil
 }
 
 func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {

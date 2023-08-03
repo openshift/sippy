@@ -572,7 +572,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.Server {
-		return o.runServerMode(pinnedTime, gormLogLevel)
+		return o.runServerMode(pinnedTime, gormLogLevel, sippyConfig)
 	}
 
 	return nil
@@ -650,7 +650,7 @@ func (o *Options) loadJiraIncidents(dbc *db.DB) error {
 	return jiraLoader.LoadJIRAIncidents()
 }
 
-func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {
+func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel, config v1.SippyConfig) error {
 	var dbc *db.DB
 	var err error
 	if o.DSN != "" {
@@ -716,6 +716,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		o.ListenAddr,
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
+		config,
 		webRoot,
 		&static,
 		dbc,

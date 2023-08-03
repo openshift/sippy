@@ -712,9 +712,9 @@ type TestOutput struct {
 }
 
 type Releases struct {
-	Releases    []string             `json:"releases"`
-	GADates     map[string]time.Time `json:"ga_dates"`
-	LastUpdated time.Time            `json:"last_updated"`
+	Releases    []string              `json:"releases"`
+	GADates     map[string]*time.Time `json:"ga_dates"`
+	LastUpdated time.Time             `json:"last_updated"`
 }
 
 type Indicator struct {
