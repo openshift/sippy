@@ -5,9 +5,8 @@
 import argparse
 import datetime
 from sqlalchemy import create_engine
-from sqlalchemy import Column, DateTime, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import ARRAY, Column, DateTime, String
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 base = declarative_base()
 
@@ -23,6 +22,7 @@ class ReleaseTags(base):
     phase = Column(String)
     reject_reason = Column(String)
     reject_reason_note = Column(String)
+    reject_reasons = Column(ARRAY(String))
 
 class PayloadTestFailures(base):
     __tablename__ = 'payload_test_failures_14d_matview'
@@ -50,9 +50,19 @@ def selectReleases(session, release, stream, architecture, showAll, days):
     return selectedTags
 
 def printReleases(selectedTags):
-    print("%-10s%-50s%-20s%-20s%s" % ("index", "release tag", "phase", "reject reason", "note"))
+    print("%-10s%-50s%-20s%-20s%s" % ("index", "release tag", "phase", "reject reasons", "note"))
     for idx, releaseTag in enumerate(selectedTags):
-        print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, releaseTag.reject_reason, releaseTag.reject_reason_note))
+        if releaseTag.reject_reasons is not None:
+            reject_reasons_lines = "\n".join(releaseTag.reject_reasons).split("\n")
+        else:
+            reject_reasons_lines = [releaseTag.reject_reason]
+        if len(reject_reasons_lines) > 1:
+            # Multiple reasons get treated differently so the reasons are stack and the output looks pleasant.
+            print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, reject_reasons_lines[0], releaseTag.reject_reason_note))
+            for reason_line in reject_reasons_lines[1:]:
+                print("%-10s%-50s%-20s%-20s" % ("", "", "", reason_line))
+        else:
+            print("%-10d%-50s%-20s%-20s%s" % (idx+1, releaseTag.release_tag, releaseTag.phase, reject_reasons_lines[0], releaseTag.reject_reason_note))
 
 def list_releases(session, release, stream, architecture, showAll, days):
     selectedTags = selectReleases(session, release, stream, architecture, showAll, days)
@@ -98,14 +108,19 @@ def categorizeSingle(session, tag):
             print("%10d: %20s - %s" % (idx+1, reason, reject_reasons[reason]))
 
         while True:
-            val = input("Enter your selection between 1 and " + str(len(reject_reasons_keys)) + ": ")
+            val = input("Enter one or more selections between 1 and " + str(len(reject_reasons_keys)) + " separated by spaces: ")
             try:
-                index = int(val)
-                if index > 0 and index <= len(reject_reasons_keys):
+                # Values outside the legal range are ignored.  Invalid values throw an exception so you can
+                # try again.
+                selected_indexes = [i for i in map(int, val.split()) if 1 <= i <= len(reject_reasons_keys)]
+                if selected_indexes:
                     break
             except ValueError:
+                print("  This contains invalid integer values: %s" % val)
+                print("  Please try again")
                 continue
-        releaseTag.reject_reason = reject_reasons_keys[index-1]
+        releaseTag.reject_reason = reject_reasons_keys[selected_indexes[0]-1]
+        releaseTag.reject_reasons = [reject_reasons_keys[i-1] for i in selected_indexes]
 
         note = input("Enter a brief note on why this payload was categorized as such (optional): ")
         releaseTag.reject_reason_note = note
