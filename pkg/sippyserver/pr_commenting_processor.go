@@ -642,7 +642,9 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 		if err == iterator.Done {
 			break
 		}
-
+		if err != nil {
+			log.Fatal(err)
+		}
 		// want empty Name indicating a folder
 		if len(attrs.Name) > 0 {
 			continue

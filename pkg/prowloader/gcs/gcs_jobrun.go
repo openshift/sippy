@@ -170,7 +170,9 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 		if err == iterator.Done {
 			break
 		}
-
+		if err != nil {
+			log.Fatal(err)
+		}
 		if filename.MatchString(attrs.Name) {
 			data, err := j.GetContent(context.Background(), attrs.Name)
 
@@ -205,7 +207,9 @@ func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) [][]string {
 		if err == iterator.Done {
 			break
 		}
-
+		if err != nil {
+			log.Fatal(err)
+		}
 		for i, filename := range filenames {
 			if matches[i] == nil {
 				matches[i] = make([]string, 0)
