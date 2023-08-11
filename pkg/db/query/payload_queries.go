@@ -34,6 +34,47 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportE
 	return results, nil
 }
 
+func GetTestFailuresForPayload(db *gorm.DB, payloadTag string) ([]models.PayloadFailedTest, error) {
+	results := make([]models.PayloadFailedTest, 0)
+	result := db.Raw(`SELECT DISTINCT
+	rt.release,
+		rt.architecture,
+		rt.stream,
+		rt.release_tag,
+		pjrt.id,
+		pjrt.test_id,
+		pjrt.suite_id,
+		pjrt.status,
+		t.name,
+		pjrt.prow_job_run_id as prow_job_run_id,
+		pjr.url as prow_job_run_url,
+		pj.name as prow_job_name
+	FROM
+	release_tags rt,
+		release_job_runs rjr,
+		prow_job_run_tests pjrt,
+		tests t,
+		prow_jobs pj,
+		prow_job_runs pjr
+	WHERE
+	rt.release_tag = ?
+	AND rjr.release_tag_id = rt.id
+	/*AND rjr.kind = 'Blocking'*/
+	AND rjr.State = 'Failed'
+	AND pjrt.prow_job_run_id = rjr.prow_job_run_id
+	AND pjrt.status = 12
+	AND t.id = pjrt.test_id
+	AND pjr.id = pjrt.prow_job_run_id
+	AND pj.id = pjr.prow_job_id
+	ORDER BY pjrt.id DESC`, payloadTag).Scan(&results)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return results, nil
+}
+
 // GetLastOSUpgradeByArchitectureAndStream returns the last release tag that contains an OS upgrade.
 func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)

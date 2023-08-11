@@ -26,6 +26,7 @@ import InfoIcon from '@material-ui/icons/Info'
 import JobRunsTable from '../jobs/JobRunsTable'
 import JobsDetail from '../jobs/JobsDetail'
 import JobTable from '../jobs/JobTable'
+import PayloadTestFailures from './PayloadTestFailures'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 import ReleasePayloadJobRuns from './ReleasePayloadJobRuns'
@@ -129,7 +130,7 @@ export default function ReleasePayloadDetails(props) {
         previousPage={<Link to={`/release/${props.release}/tags`}>Tags</Link>}
         currentPage={releaseTag}
       />
-      <Container xl>
+      <Container maxWidth={'xl'}>
         <Typography variant="h4" gutterBottom className={classes.title}>
           {releaseTag}{' '}
         </Typography>
@@ -153,6 +154,12 @@ export default function ReleasePayloadDetails(props) {
                 value={releaseTag}
                 component={Link}
                 to={url}
+              />
+              <Tab
+                label="Test Failures"
+                value="failures"
+                component={Link}
+                to={url + '/testfailures'}
               />
               <Tab
                 label="Pull requests"
@@ -185,6 +192,15 @@ export default function ReleasePayloadDetails(props) {
                   items: [filterFor('release_tag', 'equals', releaseTag)],
                 }}
               />
+            </Card>
+          </Route>
+
+          <Route path={path + '/testfailures'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <PayloadTestFailures payload={props.releaseTag} />
             </Card>
           </Route>
 
