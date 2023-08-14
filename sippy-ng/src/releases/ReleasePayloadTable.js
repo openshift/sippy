@@ -124,13 +124,43 @@ function ReleasePayloadTable(props) {
     },
     {
       field: 'reject_reason',
-      headerName: 'Reject reason',
+      headerName: 'Reject reasons',
       flex: 1.5,
       hide: props.briefTable,
       renderCell: (params) => {
+        let display_reasons = []
+
+        // Until we migrate to just reject_reasons, we'll display the current value
+        // of reject_reason if present.
+        if (params.row.reject_reason) {
+          display_reasons.push(params.row.reject_reason)
+        }
+
+        // Since the reject_reason will be the first element, we only need anything after that.
+        if (params.row.reject_reasons && params.row.reject_reasons.length > 1) {
+          display_reasons = display_reasons.concat(
+            params.row.reject_reasons.slice(1)
+          )
+        }
+
+        // Make the font a little smaller in case there are many reasons.  Display only
+        // the first three and then Etc... in case there are more.
         return (
           <Tooltip title={`${params.row.reject_reason_note}`}>
-            <Typography>{params.value}</Typography>
+            <Typography style={{ fontSize: '12px' }}>
+              {display_reasons.slice(0, 3).map((reason, index) => (
+                <Fragment key={index}>
+                  {reason}
+                  <br />
+                </Fragment>
+              ))}
+              {display_reasons.length > 3 ? (
+                <Fragment>
+                  Etc...
+                  <br />
+                </Fragment>
+              ) : null}
+            </Typography>
           </Tooltip>
         )
       },

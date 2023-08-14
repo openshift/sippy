@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type ReleaseTag struct {
@@ -65,6 +67,9 @@ type ReleaseTag struct {
 
 	// RejectReasonNote is a description from TRT as to why the payload was categorized as it was.
 	RejectReasonNote string `json:"reject_reason_note" gorm:"column:reject_reason_note"`
+
+	// RejectReasons represents multiple RejectReasons; the value of RejectReason is the first array element.
+	RejectReasons pq.StringArray `json:"reject_reasons" gorm:"type:text[]"`
 }
 
 // ReleasePullRequest represents a pull request that was included for the first time
