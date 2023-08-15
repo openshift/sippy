@@ -423,6 +423,35 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonGetPayloadTestFailures is an api to fetch information about what tests failed across all jobs in a specific
+// payload.
+func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Request) {
+	log.Info("hello")
+	payload := req.URL.Query().Get("payload")
+	if payload == "" {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Errorf(`"payload" is required`),
+		})
+		return
+	}
+
+	logger := log.WithFields(log.Fields{
+		"payload": payload,
+	})
+	logger.Info("checking for test failures in payload")
+
+	result, err := api.GetPayloadTestFailures(s.db, payload, logger)
+	if err != nil {
+		log.WithError(err).Error("error")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
+			"message": "Error looking up test failures for payload: " + err.Error()})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	if release == "" {
@@ -1338,6 +1367,9 @@ func (s *Server) Serve() {
 
 		serveMux.HandleFunc("/api/releases/test_failures",
 			s.jsonGetPayloadAnalysis)
+
+		serveMux.HandleFunc("/api/payloads/test_failures",
+			s.jsonGetPayloadTestFailures)
 	}
 
 	var handler http.Handler = serveMux

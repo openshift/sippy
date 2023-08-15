@@ -64,21 +64,6 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 	return jobRuns, res.Error
 }
 
-type PayloadFailedTest struct {
-	ID            uint
-	Release       string
-	Architecture  string
-	Stream        string
-	ReleaseTag    string
-	TestID        uint
-	SuiteID       uint
-	Status        int
-	Name          string
-	ProwJobRunID  uint
-	ProwJobRunURL string
-	ProwJobName   string
-}
-
 // GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
 func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, reportEnd time.Time) ([]*apitype.TestFailureAnalysis, error) {
@@ -133,7 +118,7 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	logger.WithField("failedPayloads", len(onlyFailedPayloads)).Debug("failed payloads")
 
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests := []PayloadFailedTest{}
+	failedTests := []models.PayloadFailedTest{}
 	q := dbc.DB.Table(payloadFailedTests14dMatView).
 		Where("release = ?", release).
 		Where("architecture = ?", arch).
@@ -148,32 +133,7 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 
 	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
 	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
-	for _, ft := range failedTests {
-		if ft.Name == testidentification.OpenShiftTestsName {
-			// Skip the "all tests passed" test we inject, it's not relevant here.
-			continue
-		}
-		if _, ok := testNameToAnalysis[ft.Name]; !ok {
-			testNameToAnalysis[ft.Name] = &apitype.TestFailureAnalysis{
-				Name:                ft.Name,
-				ID:                  ft.TestID,
-				FailedPayloads:      map[string]*apitype.FailedPayload{},
-				BlockerScoreReasons: []string{},
-			}
-		}
-		ta := testNameToAnalysis[ft.Name]
-		ta.FailureCount++
-		pl := ft.ReleaseTag
-		if _, ok := ta.FailedPayloads[pl]; !ok {
-			ta.FailedPayloads[pl] = &apitype.FailedPayload{
-				FailedJobs:    []string{},
-				FailedJobRuns: []string{},
-			}
-		}
-
-		ta.FailedPayloads[pl].FailedJobs = append(ta.FailedPayloads[pl].FailedJobs, ft.ProwJobName)
-		ta.FailedPayloads[pl].FailedJobRuns = append(ta.FailedPayloads[pl].FailedJobRuns, ft.ProwJobRunURL)
-	}
+	processFailedTests(failedTests, testNameToAnalysis)
 	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
 
 	for _, v := range testNameToAnalysis {
@@ -232,6 +192,86 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 		ta.BlockerScore = failedInStreakPercentage
 	}
 
+}
+
+// GetPayloadTestFailures loads the test failures for a specific payload across all of it's jobs. At present,
+// aggregated sub-jobs are not included and we assume only what bubbles up to failing the aggregated job is
+// sufficient.
+func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogger) ([]*apitype.TestFailureAnalysis, error) {
+
+	result := &apitype.PayloadStreamAnalysis{
+		ConsecutiveFailedPayloads: []string{},
+	}
+
+	payload := &models.ReleaseTag{}
+	dbc.DB.Where("release_tag = ?", payloadTag).First(payload)
+	logger.Infof("got payload: %+v", payload)
+	if payload.ID == 0 {
+		return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
+	}
+
+	result.PayloadsAnalyzed = 1
+
+	// Unfortunate, I wanted this to work for any payload, but it looks like we had to resort to using
+	// a matview for the failed tests in the last two weeks.
+
+	// Query all test failures for the given payload stream in the last two weeks:
+	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag)
+	if err != nil {
+		logger.WithError(err).Error("unable to list test failures for payload")
+		return nil, err
+	}
+	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
+
+	if len(failedTests) <= 100 {
+		for _, ft := range failedTests {
+			logger.Debugf("failed test: %+v", ft)
+		}
+	}
+
+	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
+	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
+	processFailedTests(failedTests, testNameToAnalysis)
+	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
+
+	for _, v := range testNameToAnalysis {
+		testFailures = append(testFailures, v)
+	}
+
+	// sort so the most likely blocker test failures are first in the slice:
+	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].FailureCount >= testFailures[j].FailureCount })
+	result.TestFailures = testFailures
+
+	return result.TestFailures, nil
+}
+
+func processFailedTests(failedTests []models.PayloadFailedTest, testNameToAnalysis map[string]*apitype.TestFailureAnalysis) {
+	for _, ft := range failedTests {
+		if ft.Name == testidentification.OpenShiftTestsName {
+			// Skip the "all tests passed" test we inject, it's not relevant here.
+			continue
+		}
+		if _, ok := testNameToAnalysis[ft.Name]; !ok {
+			testNameToAnalysis[ft.Name] = &apitype.TestFailureAnalysis{
+				Name:                ft.Name,
+				ID:                  ft.TestID,
+				FailedPayloads:      map[string]*apitype.FailedPayload{},
+				BlockerScoreReasons: []string{},
+			}
+		}
+		ta := testNameToAnalysis[ft.Name]
+		ta.FailureCount++
+		pl := ft.ReleaseTag
+		if _, ok := ta.FailedPayloads[pl]; !ok {
+			ta.FailedPayloads[pl] = &apitype.FailedPayload{
+				FailedJobs:    []string{},
+				FailedJobRuns: []string{},
+			}
+		}
+
+		ta.FailedPayloads[pl].FailedJobs = append(ta.FailedPayloads[pl].FailedJobs, ft.ProwJobName)
+		ta.FailedPayloads[pl].FailedJobRuns = append(ta.FailedPayloads[pl].FailedJobRuns, ft.ProwJobRunURL)
+	}
 }
 
 // GetPayloadEvents returns the list of release tags in a format suitable for a calendar

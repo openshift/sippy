@@ -139,3 +139,18 @@ type PayloadStatistics struct {
 	MeanSecondsBetween int64 `json:"mean_seconds_between"`
 	MaxSecondsBetween  int64 `json:"max_seconds_between"`
 }
+
+type PayloadFailedTest struct {
+	ID            uint
+	Release       string
+	Architecture  string
+	Stream        string
+	ReleaseTag    string
+	TestID        uint
+	SuiteID       uint
+	Status        int
+	Name          string
+	ProwJobRunID  uint
+	ProwJobRunURL string
+	ProwJobName   string
+}

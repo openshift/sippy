@@ -65,6 +65,8 @@ var PostgresMatViews = []PostgresMaterializedView{
 		},
 	},
 	{
+		// TODO: this probably doesn't need to be a matview anymore since we only keep 3 months of data,
+		// metrics show this refreshing in .6s a lot of the time, occasionally up to 5s.
 		Name:           "payload_test_failures_14d_matview",
 		Definition:     payloadTestFailuresMatView,
 		IndexColumns:   []string{"release", "architecture", "stream", "prow_job_run_id", "test_id", "suite_id"},
