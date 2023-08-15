@@ -187,8 +187,6 @@ function PayloadTestFailures(props) {
     return <Typography variant="h5">Analysis not found.</Typography>
   }
 
-  console.log('hello world')
-
   return (
     <Grid item md={12}>
       <Card className="test-failure-card" elevation={5}>
