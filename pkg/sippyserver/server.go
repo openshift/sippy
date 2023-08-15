@@ -426,7 +426,6 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 // jsonGetPayloadTestFailures is an api to fetch information about what tests failed across all jobs in a specific
 // payload.
 func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Request) {
-	log.Info("hello")
 	payload := req.URL.Query().Get("payload")
 	if payload == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
