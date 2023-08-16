@@ -369,10 +369,13 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 			},
 			LinkOperator: "and",
 		}
-		testResults, _, err := BuildTestsResults(dbc, release, "default", false, false,
+		testResults, overallTest, err := BuildTestsResults(dbc, release, "default", false, true,
 			fil)
 		if err != nil {
 			return nil, err
+		}
+		if overallTest != nil {
+			overallTest.Variants = append(overallTest.Variants, "Overall")
 		}
 		gosort.Strings(variants)
 		for _, testResult := range testResults {
@@ -380,6 +383,9 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 			// of the existing code.
 			gosort.Strings(testResult.Variants)
 			if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return overallTest, nil
+				}
 				return &testResult, nil
 			}
 		}
@@ -391,6 +397,9 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 			// we didn't find an exact variant match
 			// next best guess is the first variant list that contains all of our known variants
 			if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
+				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return overallTest, nil
+				}
 				return &testResult, nil
 			}
 		}
@@ -581,14 +590,16 @@ func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.
 		return testRiskLvlVariants, reasonsVariants
 	}
 
-	// we had the case where etcd-scaling was reporting
-	// high risk using the variant methodology due
-	// to the analysis including more stable non scaling job results
-	// so, we don't want to just return the highest risk analysis
-	// bias is towards jobname analysis at this point
-	// we could check for the number of runs but
-	// that introduces flakiness on which analysis we are using
-	// for now we have a deterministic result based on the jobnames analysis so return it
+	// if variants nondeterministic then return jobnames
+	if containsValue(nonDeterministicRiskLevels, testRiskLvlVariants.Level) {
+		return testRiskLvlJobNames, reasonsJobNames
+	}
+
+	// biased to return the lower risk level
+	if testRiskLvlVariants.Level < testRiskLvlJobNames.Level {
+		return testRiskLvlVariants, reasonsVariants
+	}
+
 	return testRiskLvlJobNames, reasonsJobNames
 }
 
