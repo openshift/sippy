@@ -30,14 +30,14 @@ const jiraTimeLayout = "2006-01-02T15:04:05.000Z0700"
 
 func (jl *JIRALoader) LoadJIRAIncidents() error {
 	start := time.Now()
-	log.Infof("populating jira incident cache...")
+	log.Infof("populating unresolved jira incident cache...")
 	var dbIssues []string
-	jl.dbc.DB.Table("jira_incidents").Pluck("key", &dbIssues)
-	// unseenIssues contains the set of issues we have in the DB, but didn't see yet from the jira API. At the end,
+	jl.dbc.DB.Table("jira_incidents").Where("resolution_time IS NULL").Pluck("key", &dbIssues)
+	// unseenUnresolvedIssues contains the set of unresolved issues we have in the DB, but didn't see yet from the jira API. At the end,
 	// we'll query to see what happened to the unseen issues. Most likely, we removed the trt-incident label, so we need
 	// to dig into the changelog and find that state transition and consider the incident closed then.
-	unseenIssues := sets.NewString(dbIssues...)
-	log.Infof("cache populated in %+v", time.Since(start))
+	unseenUnresolvedIssues := sets.NewString(dbIssues...)
+	log.Infof("cache populated in %+v with %d records", time.Since(start), len(dbIssues))
 
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
@@ -52,7 +52,7 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	*/
 
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20in%20(trt-incident)&expand=changelog", nil)
+	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog", nil)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	}
 
 	for i, issue := range issues.Issues {
-		unseenIssues.Delete(issue.Key)
+		unseenUnresolvedIssues.Delete(issue.Key)
 
 		model, err := issueToDB(&issues.Issues[i])
 		if err != nil {
@@ -93,8 +93,9 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 		}
 	}
 
-	for _, unseen := range unseenIssues.List() {
-		log.Infof("processing unseen jira incidents (trt-incident label removed?)...")
+	log.Infof("we have %d unseen and unresolved jira incidents", unseenUnresolvedIssues.Len())
+	for _, unseen := range unseenUnresolvedIssues.List() {
+		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
 		issue, err := queryJiraAPI(unseen)
 		if err != nil {
 			log.WithError(err).Errorf("couldn't query details for %+v", issue)
