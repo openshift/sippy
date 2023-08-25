@@ -141,7 +141,7 @@ const cancelFetch = () => {
 
 export default function ComponentReadiness(props) {
   const releases = useContext(ReleasesContext)
-  const defaultSampleRelease = '4.13'
+  const defaultSampleRelease = '4.14'
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
       return new Date(releases.ga_dates[release])
@@ -216,7 +216,7 @@ export default function ComponentReadiness(props) {
     baseEndTimeParam = formatLongDate(initialBaseEndTime),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = '4.14', setSampleReleaseParam] = useQueryParam(
+  const [sampleReleaseParam = '4.15', setSampleReleaseParam] = useQueryParam(
     'sampleRelease',
     StringParam
   )
