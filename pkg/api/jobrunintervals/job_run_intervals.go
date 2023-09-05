@@ -14,26 +14,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// JobRunIntervals fetches intervals for a given job run.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, logger *log.Entry) (*apitype.EventIntervalList, error) {
+// JobRunIntervals fetches intervals for a given job run by fetching from the prow job's GCS bucket path
+// contructed using the prow job name and jobID using one of these methods:
+// 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
+// 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
+// If the GCS path could not be calculated, it will be empty.
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
-	// Right now, we need the job run in our DB to fetch its URL, so we can find the GCS
-	// bucket. This means until sippy imports the job, you will not be able to fetch
-	// its intervals.
-	// However, long term we expect these to live in an external system, and the prow job ID
-	// should be all we need to look it up. At that point the limitation should be removed.
-	jobRun, _, err := api.FetchJobRun(dbc, jobRunID, logger)
-	if err != nil {
-		logger.WithError(err).Error("error querying job run")
-		return nil, err
-	}
-
-	parts := strings.Split(jobRun.URL, gcs.OpenshiftGCSBucket)
-	path := parts[1][1:]
-	log.WithField("path", path).Debug("calculated gcs path")
 	bkt := gcsClient.Bucket(gcs.OpenshiftGCSBucket)
-	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 
+	var gcsJobRun *gcs.GCSJobRun
+
+	if len(gcsPath) > 0 {
+		log.WithField("gcsPath", gcsPath).Debug("calculated gcs path from job attributes")
+		gcsJobRun = gcs.NewGCSJobRun(bkt, gcsPath)
+	} else {
+		// Fall back to looking up the job run ID in the DB and extracting the URL that way.
+		// This is here to support older prow jobs where only the jobID was passed.  Eventually,
+		// we will not have to fallback because we will expect all jobs to pass in enough
+		// information to construct a full GCS bucket path.
+		jobRun, _, err := api.FetchJobRun(dbc, jobRunID, logger)
+		if err != nil {
+			logger.WithError(err).Error("error querying job run")
+			return nil, err
+		}
+		parts := strings.Split(jobRun.URL, gcs.OpenshiftGCSBucket)
+		path := parts[1][1:]
+		log.WithField("path", path).Debug("calculated gcs path")
+		gcsJobRun = gcs.NewGCSJobRun(bkt, path)
+	}
 	intervalFiles := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
 
 	// We will often match multiple files here, one for upgrade phase, one for conformance
