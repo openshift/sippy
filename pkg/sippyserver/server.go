@@ -1350,9 +1350,9 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	serveMux.HandleFunc("/api/component_readiness", s.cached(4*time.Hour, s.jsonComponentReportFromBigQuery))
-	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(4*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
-	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(4*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness", s.cached(8*time.Hour, s.jsonComponentReportFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(8*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
+	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(8*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
 
 	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
