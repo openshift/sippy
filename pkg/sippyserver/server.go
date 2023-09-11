@@ -623,7 +623,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		}
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying test variants from big query",
+			"message": fmt.Sprintf("error querying test variants from big query: %v", errs),
 		})
 		return
 	}

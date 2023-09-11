@@ -15,9 +15,16 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [fetchError, setFetchError] = useState('')
 
   useEffect(() => {
-    fetch(getAPIUrl() + '/variants')
+    const apiCallStr = getAPIUrl() + '/variants'
+    fetch(apiCallStr)
       .then((response) => response.json())
       .then((data) => {
+        if (data.code < 200 || data.code >= 300) {
+          const errorMessage = data.message
+            ? `${data.message}`
+            : 'No error message'
+          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+        }
         setExcludeCloudsList(data.platform)
         setExcludeArchesList(data.arch)
         setExcludeNetworksList(data.network)
@@ -26,7 +33,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         setIsLoaded(true)
       })
       .catch((error) => {
-        setFetchError('Error loading /variant variables via sippy API', error)
+        setFetchError(`API call failed: ${apiCallStr}\n${error}`)
       })
       .finally(() => {
         // Mark the attempt as finished whether successful or not.

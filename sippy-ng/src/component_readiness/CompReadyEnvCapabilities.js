@@ -61,11 +61,15 @@ export default function CompReadyEnvCapabilities(props) {
   useEffect(() => {
     setIsLoaded(false)
     fetch(apiCallStr, { signal: abortController.signal })
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error('API server returned ' + response.status)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.code < 200 || data.code >= 300) {
+          const errorMessage = data.message
+            ? `${data.message}`
+            : 'No error message'
+          throw new Error(`Return code = ${data.code} (${errorMessage})`)
         }
-        return response.json()
+        return data
       })
       .then((json) => {
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
