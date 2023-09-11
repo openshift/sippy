@@ -60,12 +60,24 @@ export default function ProwJobRun(props) {
 
   const fetchData = () => {
     let queryString = ''
-    console.log('hello world we got the prow job run id of ' + props.jobRunID)
+    console.log(
+      'We got the prow job run id of ' +
+        props.jobRunID +
+        ', jobName=' +
+        props.jobName +
+        ', pullNumber=' +
+        props.pullNumber +
+        ', repoInfo=' +
+        props.repoInfo
+    )
 
     fetch(
       process.env.REACT_APP_API_URL +
         '/api/jobs/runs/intervals?prow_job_run_id=' +
         props.jobRunID +
+        (props.jobName ? '&job_name=' + props.jobName : '') +
+        (props.repoInfo ? '&repo_info=' + props.repoInfo : '') +
+        (props.pullNumber ? '&pull_number=' + props.pullNumber : '') +
         queryString
     )
       .then((response) => {
@@ -102,7 +114,16 @@ export default function ProwJobRun(props) {
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve intervals for ' + props.jobRunID + ', ' + error
+          'Could not retrieve intervals for ' +
+            'jobRunID=' +
+            props.jobRunID +
+            ' jobName=' +
+            props.jobName +
+            ' pullNumber=' +
+            props.pullNumber +
+            ' repoInfo=' +
+            ', ' +
+            error
         )
       })
   }
@@ -157,7 +178,13 @@ export default function ProwJobRun(props) {
   }
 
   if (isLoaded === false) {
-    return <p>Loading intervals for job run {props.jobRunID}...</p>
+    return (
+      <p>
+        Loading intervals for job run: jobRunID={props.jobRunID}, jobName=
+        {props.jobName}, pullNumber={props.pullNumber}, repoInfo=
+        {props.repoInfo}
+      </p>
+    )
   }
 
   let chartData = groupIntervals(filteredIntervals)
@@ -275,6 +302,9 @@ ProwJobRun.propTypes = {
 
 ProwJobRun.propTypes = {
   jobRunID: PropTypes.string.isRequired,
+  jobName: PropTypes.string,
+  repoInfo: PropTypes.string,
+  pullNumber: PropTypes.string,
   filterModel: PropTypes.object,
 }
 

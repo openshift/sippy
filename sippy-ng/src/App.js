@@ -460,9 +460,14 @@ export default function App(props) {
                     />
 
                     <Route
-                      path="/job_runs/:jobrunid/intervals"
+                      path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
                       render={(props) => (
-                        <ProwJobRun jobRunID={props.match.params.jobrunid} />
+                        <ProwJobRun
+                          jobRunID={props.match.params.jobrunid}
+                          jobName={props.match.params.jobname}
+                          repoInfo={props.match.params.repoinfo}
+                          pullNumber={props.match.params.pullnumber}
+                        />
                       )}
                     />
 

@@ -1212,7 +1212,25 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	}
 	logger = logger.WithField("jobRunID", jobRunID)
 
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, logger.WithField("func", "JobRunRiskIntervals"))
+	jobName := req.URL.Query().Get("job_name")
+	repoInfo := req.URL.Query().Get("repo_info")
+	pullNumber := req.URL.Query().Get("pull_number")
+
+	// Attempt to calculate a GCS path based on a passed in jobName.
+	var gcsPath string
+	if len(jobName) > 0 {
+		if len(repoInfo) > 0 {
+			// GCS bucket path for presubmits
+			gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s/%s", repoInfo, pullNumber, jobName, jobRunIDStr)
+		} else {
+			// GCS bucket for periodics
+			gcsPath = fmt.Sprintf("logs/%s/%s", jobName, jobRunIDStr)
+		}
+	} else {
+		// JobName was not passed.
+		gcsPath = ""
+	}
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, gcsPath, logger.WithField("func", "JobRunRiskIntervals"))
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
