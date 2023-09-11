@@ -606,14 +606,18 @@ func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
 func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	allErrs := []error{}
 
+	// Cancel syncing after 4 hours
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
+	defer cancel()
+	start := time.Now()
+
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-prow-job-loader")
 		promPusher.Collector(prowJobLoadMetric)
 	}
-	start := time.Now()
 
-	gcsClient, err := gcs.NewGCSClient(context.TODO(),
+	gcsClient, err := gcs.NewGCSClient(ctx,
 		o.GoogleServiceAccountCredentialFile,
 		o.GoogleOAuthClientCredentialFile,
 	)
@@ -625,7 +629,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 
 	var bigQueryClient *bigquery.Client
 	if o.LoadOpenShiftCIBigQuery {
-		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+		bigQueryClient, err = bigquery.NewClient(ctx, "openshift-gce-devel",
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
@@ -636,7 +640,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 
 	var githubClient *github.Client
 	if o.LoadGitHub {
-		githubClient = github.New(context.TODO())
+		githubClient = github.New(ctx)
 	}
 
 	ghCommenter, err := commenter.NewGitHubCommenter(githubClient, dbc, o.ExcludeReposCommenting, o.IncludeReposCommenting)
@@ -646,7 +650,9 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		return allErrs
 	}
 
-	prowLoader := prowloader.New(dbc,
+	prowLoader := prowloader.New(
+		ctx,
+		dbc,
 		gcsClient,
 		bigQueryClient,
 		gcs.OpenshiftGCSBucket,

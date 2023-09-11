@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	gh "github.com/google/go-github/v45/github"
@@ -38,7 +39,9 @@ type PREntry struct {
 type Client struct {
 	ctx                 context.Context
 	cache               map[prlocator]*PREntry
+	cacheLock           sync.RWMutex
 	closedCache         map[string]map[string]map[int]*gh.PullRequest
+	closedCacheLock     sync.RWMutex
 	prFetch             func(org, repo string, number int) (*gh.PullRequest, error)
 	prCommentsFetch     func(org, repo string, number int) ([]*gh.IssueComment, error)
 	prCommentCreate     func(org, repo string, number int, comment string) (*gh.IssueComment, error)
@@ -152,6 +155,8 @@ func New(ctx context.Context) *Client {
 }
 
 func (c *Client) IsPrRecentlyMerged(org, repo string, number int) (*time.Time, *string, error) {
+	c.closedCacheLock.Lock()
+	defer c.closedCacheLock.Unlock()
 	if c.closedCache[org] == nil {
 		c.closedCache[org] = make(map[string]map[int]*gh.PullRequest)
 	}
@@ -234,11 +239,15 @@ func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time
 }
 
 func (c *Client) GetPREntry(org, repo string, number int) (*PREntry, error) {
+	c.cacheLock.RLock()
 	prl := prlocator{org: org, repo: repo, number: number}
 	if val, ok := c.cache[prl]; ok {
+		c.cacheLock.RUnlock()
 		// If it's in the cache return it
 		return val, nil
 	}
+	c.cacheLock.RUnlock()
+
 	pr, err := c.fetchPR(prl)
 	if err != nil {
 		return nil, err
@@ -250,6 +259,9 @@ func (c *Client) GetPREntry(org, repo string, number int) (*PREntry, error) {
 }
 
 func (c *Client) fetchPR(prl prlocator) (*PREntry, error) {
+	c.cacheLock.Lock()
+	defer c.cacheLock.Unlock()
+
 	// Get PR from GitHub
 	pr, err := c.PRFetch(prl.org, prl.repo, prl.number)
 	if err != nil {

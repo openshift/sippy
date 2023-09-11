@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -39,23 +41,31 @@ import (
 )
 
 type ProwLoader struct {
-	dbc                  *db.DB
-	bkt                  *storage.BucketHandle
-	bktName              string
-	githubClient         *github.Client
-	bigQueryClient       *bigquery.Client
-	prowJobCache         map[string]*models.ProwJob
-	prowJobRunCache      map[uint]bool
-	prowJobRunTestCache  map[string]uint
-	variantManager       testidentification.VariantManager
-	suiteCache           map[string]*uint
-	syntheticTestManager synthetictests.SyntheticTestManager
-	releases             []string
-	config               *v1config.SippyConfig
-	ghCommenter          *commenter.GitHubCommenter
+	ctx                     context.Context
+	dbc                     *db.DB
+	bkt                     *storage.BucketHandle
+	bktName                 string
+	githubClient            *github.Client
+	bigQueryClient          *bigquery.Client
+	maxConcurrency          int
+	prowJobCache            map[string]*models.ProwJob
+	prowJobCacheLock        sync.RWMutex
+	prowJobRunCache         map[uint]bool
+	prowJobRunCacheLock     sync.RWMutex
+	prowJobRunTestCache     map[string]uint
+	prowJobRunTestCacheLock sync.RWMutex
+	variantManager          testidentification.VariantManager
+	suiteCache              map[string]*uint
+	suiteCacheLock          sync.RWMutex
+	syntheticTestManager    synthetictests.SyntheticTestManager
+	releases                []string
+	config                  *v1config.SippyConfig
+	ghCommenter             *commenter.GitHubCommenter
+	jobsImportedCount       atomic.Int32
 }
 
 func New(
+	ctx context.Context,
 	dbc *db.DB,
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
@@ -70,11 +80,13 @@ func New(
 	bkt := gcsClient.Bucket(gcsBucket)
 
 	return &ProwLoader{
+		ctx:                  ctx,
 		dbc:                  dbc,
 		bkt:                  bkt,
 		bktName:              gcsBucket,
 		githubClient:         githubClient,
 		bigQueryClient:       bigQueryClient,
+		maxConcurrency:       10,
 		prowJobRunCache:      loadProwJobRunCache(dbc),
 		prowJobCache:         loadProwJobCache(dbc),
 		prowJobRunTestCache:  make(map[string]uint),
@@ -124,6 +136,9 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 }
 
 func (pl *ProwLoader) LoadProwJobsToDB() []error {
+	start := time.Now()
+	log.Infof("started loading prow jobs to DB...")
+
 	errs := []error{}
 	// Update unmerged PR statuses in case any have merged
 	if err := pl.syncPRStatus(); err != nil {
@@ -153,46 +168,103 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 		}
 	}
 
-	var newJobRunsCtr int
-	for i, pj := range prowJobs {
-		for _, release := range pl.releases {
-			cfg, ok := pl.config.Releases[release]
-			if !ok {
-				log.Warningf("configuration not found for release %q", release)
+	queue := make(chan *prow.ProwJob)
+	errsCh := make(chan error, len(prowJobs))
+	total := len(prowJobs)
+
+	// Producer to keep feeding the queue
+	go prowJobsProducer(pl.ctx, queue, prowJobs)
+
+	// Start pl.maxConcurrency consumers
+	var wg sync.WaitGroup
+	for i := 0; i < pl.maxConcurrency; i++ {
+		wg.Add(1)
+		go func(ctx context.Context) {
+			defer wg.Done()
+			for job := range queue {
+				if ctx.Err() != nil {
+					errsCh <- ctx.Err()
+					fmt.Println("consumer exiting, got error")
+					break
+				}
+				if err := pl.processProwJob(ctx, job); err != nil {
+					errsCh <- err
+				} else {
+					pl.jobsImportedCount.Add(1)
+					log.Infof("%d of %d job runs completed", pl.jobsImportedCount.Load(), total)
+				}
+			}
+		}(pl.ctx)
+	}
+
+	wg.Wait()
+	close(errsCh)
+	for err := range errsCh {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		log.Warningf("encountered %d errors while importing job runs", len(errs))
+	}
+	log.Infof("finished importing new job runs in %+v", time.Since(start))
+
+	return errs
+}
+
+func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow.ProwJob) {
+	defer close(queue)
+	for i := range jobs {
+		select {
+		case queue <- &jobs[i]:
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) error {
+	pjLog := log.WithFields(log.Fields{
+		"job":     pj.Spec.Job,
+		"buildID": pj.Status.BuildID,
+	})
+
+	for _, release := range pl.releases {
+		cfg, ok := pl.config.Releases[release]
+		if !ok {
+			log.Warningf("configuration not found for release %q", release)
+			continue
+		}
+
+		if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
+			if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
+				err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
+				pjLog.WithError(err).Warning("prow import error")
+				return err
+			}
+			return nil
+		}
+
+		for _, expr := range cfg.Regexp {
+			re, err := regexp.Compile(expr)
+			if err != nil {
+				err = errors.Wrap(err, "invalid regex in configuration")
+				log.WithError(err).Errorf("config regex error")
 				continue
 			}
 
-			if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
-				if err := pl.prowJobToJobRun(pj, release, &newJobRunsCtr, i, len(prowJobs)); err != nil {
+			if re.MatchString(pj.Spec.Job) {
+				if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
 					err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-					log.WithError(err).Warning("prow import error")
-					errs = append(errs, err)
+					pjLog.WithError(err).Warning("prow import error")
+					return err
 				}
-				break
-			}
-
-			for _, expr := range cfg.Regexp {
-				re, err := regexp.Compile(expr)
-				if err != nil {
-					err = errors.Wrap(err, "invalid regex in configuration")
-					log.WithError(err).Errorf("config regex error")
-					errs = append(errs, err)
-					continue
-				}
-
-				if re.MatchString(pj.Spec.Job) {
-					if err := pl.prowJobToJobRun(pj, release, &newJobRunsCtr, i, len(prowJobs)); err != nil {
-						err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-						log.WithError(err).Warning("prow import error")
-						errs = append(errs, err)
-					}
-				}
+				return nil
 			}
 		}
 	}
-	log.WithField("newJobRuns", newJobRunsCtr).Info("finished importing new ProwJobs and ProwJobRuns")
 
-	return errs
+	pjLog.Debugf("no match for release in sippy configuration, skipping")
+	return nil
 }
 
 func (pl *ProwLoader) syncPRStatus() error {
@@ -296,7 +368,7 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
-func (pl *ProwLoader) getClusterData(path string, matches []string) models.ClusterData {
+func (pl *ProwLoader) getClusterData(ctx context.Context, path string, matches []string) models.ClusterData {
 	// get the variant cluster data for this job run
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	cd := models.ClusterData{}
@@ -307,7 +379,7 @@ func (pl *ProwLoader) getClusterData(path string, matches []string) models.Clust
 		return cd
 	}
 
-	bytes, err := gcsJobRun.GetContent(context.TODO(), match)
+	bytes, err := gcsJobRun.GetContent(ctx, match)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get prow job variant data for: %s", match)
 	} else if bytes != nil {
@@ -410,23 +482,25 @@ func mostRecentDateTimeName(one, two DateTimeName) DateTimeName {
 	return two
 }
 
-func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRunsCtr *int, currentIndex, totalJobsToScan int) error {
+func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, release string) error {
+	pjLog := log.WithFields(log.Fields{
+		"job":     pj.Spec.Job,
+		"buildID": pj.Status.BuildID,
+		"start":   pj.Status.StartTime,
+	})
+
 	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
-		// Skip for now, only store runs in a terminal state
+		pjLog.Infof("skipping, job not in a terminal state yet")
 		return nil
 	}
 
 	id, err := strconv.ParseUint(pj.Status.BuildID, 0, 64)
 	if err != nil {
+		pjLog.Warningf("skipping, couldn't parse build ID: %+v", err)
 		return nil
 	}
 
-	pjLog := log.WithFields(log.Fields{
-		"job":      pj.Spec.Job,
-		"buildID":  pj.Status.BuildID,
-		"start":    pj.Status.StartTime,
-		"progress": fmt.Sprintf("%d/%d", currentIndex, totalJobsToScan),
-	})
+	pjLog.Infof("starting processing")
 
 	// this err validation has moved up
 	// and will exit before we save / update the ProwJob
@@ -452,8 +526,11 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 		junitMatches = allMatches[1]
 	}
 
-	clusterData := pl.getClusterData(path, clusterMatches)
+	clusterData := pl.getClusterData(ctx, path, clusterMatches)
 
+	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
+	// (resulting in a DB error)
+	pl.prowJobCacheLock.Lock()
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
 		pjLog.Info("creating new ProwJob")
@@ -464,7 +541,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job, release, clusterData),
 			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
 		}
-		err := pl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
+		err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
 			return errors.Wrapf(err, "error loading prow job into db: %s", pj.Spec.Job)
 		}
@@ -484,15 +561,24 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 			}
 		}
 		if saveDB {
-			pl.dbc.DB.Save(&dbProwJob)
+			fmt.Println("update")
+			if res := pl.dbc.DB.WithContext(ctx).Save(&dbProwJob); res.Error != nil {
+				return res.Error
+			}
 		}
 	}
+	pl.prowJobCacheLock.Unlock()
 
-	if _, ok := pl.prowJobRunCache[uint(id)]; !ok {
-		pjLog.Info("creating new ProwJobRun")
+	pl.prowJobRunCacheLock.RLock()
+	_, ok := pl.prowJobRunCache[uint(id)]
+	pl.prowJobRunCacheLock.RUnlock()
+	if ok {
+		pjLog.Infof("job run was already processed")
+	} else {
+		pjLog.Info("processing GCS bucket")
 
 		if len(parts) == 2 {
-			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(pj, uint(id), path, junitMatches)
+			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
 			if err != nil {
 				return err
 			}
@@ -504,7 +590,7 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 				duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
 			}
 
-			err = pl.dbc.DB.Create(&models.ProwJobRun{
+			err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
 				Model: gorm.Model{
 					ID: uint(id),
 				},
@@ -523,16 +609,18 @@ func (pl *ProwLoader) prowJobToJobRun(pj prow.ProwJob, release string, newJobRun
 				return err
 			}
 			// Looks like sometimes, we might be getting duplicate entries from bigquery:
+			pl.prowJobRunCacheLock.Lock()
 			pl.prowJobRunCache[uint(id)] = true
+			pl.prowJobRunCacheLock.Unlock()
 
-			err = pl.dbc.DB.CreateInBatches(tests, 1000).Error
+			err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
 			if err != nil {
 				return err
 			}
-			*newJobRunsCtr++
 		}
 	}
 
+	pjLog.Infof("processing complete")
 	return nil
 }
 
@@ -623,19 +711,28 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []mo
 	return pulls
 }
 
-func (pl *ProwLoader) findOrAddTest(name string) uint {
+func (pl *ProwLoader) findOrAddTest(name string) (uint, error) {
+	pl.prowJobRunTestCacheLock.RLock()
 	if id, ok := pl.prowJobRunTestCache[name]; ok {
-		return id
+		pl.prowJobRunTestCacheLock.RUnlock()
+		return id, nil
+	}
+	pl.prowJobRunTestCacheLock.RUnlock()
+
+	// Lock the whole block here because composite operations (like FirstOrCreate) in gorm are
+	// NOT atomic. https://github.com/go-gorm/gorm/issues/6253
+	pl.prowJobRunTestCacheLock.Lock()
+	defer pl.prowJobRunTestCacheLock.Unlock()
+	test := &models.Test{
+		Name: name,
+	}
+	tx := pl.dbc.DB.FirstOrCreate(&test)
+	if tx.Error != nil {
+		return 0, tx.Error
 	}
 
-	test := &models.Test{}
-	pl.dbc.DB.Where("name = ?", name).Find(&test)
-	if test.ID == 0 {
-		test.Name = name
-		pl.dbc.DB.Save(test)
-	}
 	pl.prowJobRunTestCache[name] = test.ID
-	return test.ID
+	return test.ID, nil
 }
 
 func (pl *ProwLoader) findSuite(name string) *uint {
@@ -643,10 +740,15 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 		return nil
 	}
 
+	pl.suiteCacheLock.RLock()
 	if id, ok := pl.suiteCache[name]; ok {
+		pl.suiteCacheLock.RUnlock()
 		return id
 	}
+	pl.suiteCacheLock.RUnlock()
 
+	pl.suiteCacheLock.Lock()
+	defer pl.suiteCacheLock.Unlock()
 	suite := &models.Suite{}
 	pl.dbc.DB.Where("name = ?", name).Find(&suite)
 	if suite.ID == 0 {
@@ -658,41 +760,43 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 	return pl.suiteCache[name]
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(pj prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
-	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(context.TODO())
+	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(ctx)
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
 		return []*models.ProwJobRunTest{}, 0, "", err
 	}
-	testCases := make(map[string]*models.ProwJobRunTest)
+	var testCases sync.Map
 	for _, suite := range suites.Suites {
-		pl.extractTestCases(suite, testCases)
+		pl.extractTestCases(suite, &testCases)
 	}
 
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, testCases, pl.syntheticTestManager)
-	pl.extractTestCases(syntheticSuite, testCases)
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, &testCases, pl.syntheticTestManager)
+	pl.extractTestCases(syntheticSuite, &testCases)
 
 	results := make([]*models.ProwJobRunTest, 0)
-	for k, v := range testCases {
-		if testidentification.IsIgnoredTest(k) {
-			continue
+	testCases.Range(func(k any, v any) bool {
+		pjrt, _ := v.(*models.ProwJobRunTest)
+
+		if !testidentification.IsIgnoredTest(k.(string)) {
+			pjrt.ProwJobRunID = id
+			results = append(results, pjrt)
+			if pjrt.Status == 12 {
+				failures++
+			}
 		}
 
-		v.ProwJobRunID = id
-		results = append(results, v)
-		if v.Status == 12 {
-			failures++
-		}
-	}
+		return true
+	})
 
 	return results, failures, jobResult, nil
 }
 
-func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
+func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases *sync.Map) {
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
@@ -738,20 +842,26 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 			}
 		}
 
-		if existing, ok := testCases[testCacheKey]; !ok {
-			testCases[testCacheKey] = &models.ProwJobRunTest{
-				TestID:               pl.findOrAddTest(testNameWithKnownSuite),
+		if existing, ok := testCases.Load(testCacheKey); !ok {
+			testID, err := pl.findOrAddTest(testNameWithKnownSuite)
+			if err != nil {
+				log.WithError(err).Warningf("could not find or create test %q", testNameWithKnownSuite)
+				continue
+			}
+
+			testCases.Store(testCacheKey, &models.ProwJobRunTest{
+				TestID:               testID,
 				SuiteID:              suiteID,
 				Status:               int(status),
 				Duration:             tc.Duration,
 				ProwJobRunTestOutput: failureOutput,
-			}
-		} else if (existing.Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
-			(existing.Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
+			})
+		} else if (existing.(*models.ProwJobRunTest).Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
+			(existing.(*models.ProwJobRunTest).Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
 			// One pass among failures makes this a flake
-			existing.Status = int(v1.TestStatusFlake)
-			if existing.ProwJobRunTestOutput == nil {
-				existing.ProwJobRunTestOutput = failureOutput
+			existing.(*models.ProwJobRunTest).Status = int(v1.TestStatusFlake)
+			if existing.(*models.ProwJobRunTest).ProwJobRunTestOutput == nil {
+				existing.(*models.ProwJobRunTest).ProwJobRunTestOutput = failureOutput
 			}
 		}
 	}

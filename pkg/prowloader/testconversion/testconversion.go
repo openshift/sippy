@@ -1,6 +1,8 @@
 package testconversion
 
 import (
+	"sync"
+
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -10,7 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
-func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models.ProwJobRunTest, manager synthetictests.SyntheticTestManager) (*junit.TestSuite, v1.JobOverallResult) {
+func ConvertProwJobRunToSyntheticTests(pj *prow.ProwJob, tests *sync.Map, manager synthetictests.SyntheticTestManager) (*junit.TestSuite, v1.JobOverallResult) {
 	jrr := v1.RawJobRunResult{
 		Job:       pj.Spec.Job,
 		Errored:   pj.Status.State == prow.ErrorState,
@@ -23,8 +25,11 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models
 	return syntheticTests, jrr.OverallResult
 }
 
-func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.ProwJobRunTest) {
-	for name, test := range tests {
+func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests *sync.Map) {
+	tests.Range(func(k any, v any) bool {
+		name := k.(string)
+		test := v.(*models.ProwJobRunTest)
+
 		switch testgridv1.TestStatus(test.Status) {
 		case testgridv1.TestStatusSuccess, testgridv1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
 			switch {
@@ -82,5 +87,7 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				jrr.OpenShiftTestsStatus = testidentification.Failure
 			}
 		}
-	}
+
+		return true
+	})
 }

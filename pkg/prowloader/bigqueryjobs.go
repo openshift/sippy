@@ -14,7 +14,6 @@ import (
 )
 
 func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []error) {
-
 	errs := []error{}
 
 	// Figure out our last imported job timestamp:
@@ -67,7 +66,9 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		return []prow.ProwJob{}, errs
 	}
 
-	prowJobs := []prow.ProwJob{}
+	// Using a set since sometimes bigquery has multiple copies of the same prow job
+	prowJobs := map[string]prow.ProwJob{}
+	count := 0
 	for {
 		bqjr := bigqueryProwJobRun{}
 		err := it.Next(&bqjr)
@@ -95,7 +96,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			log.Warningf("Presubmit job found without matching PR data for: %s", bqjr.JobName)
 		}
 		// Convert to a prow.ProwJob:
-		pj := prow.ProwJob{
+		prowJobs[bqjr.BuildID] = prow.ProwJob{
 			Spec: prow.ProwJobSpec{
 				Type:    bqjr.Type,
 				Cluster: bqjr.Cluster,
@@ -110,12 +111,16 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				BuildID:        bqjr.BuildID,
 			},
 		}
-		prowJobs = append(prowJobs, pj)
+		count++
 	}
 
-	log.Infof("found %d jobs in bigquery since last import (roughly)", len(prowJobs))
+	var prowJobsList []prow.ProwJob
+	for _, job := range prowJobs {
+		prowJobsList = append(prowJobsList, job)
+	}
 
-	return prowJobs, errs
+	log.Infof("found %d jobs (%d dupes) in bigquery since last import (roughly)", len(prowJobs), count-len(prowJobs))
+	return prowJobsList, errs
 }
 
 // bigqueryProwJobRun is a transient struct for processing results from the bigquery jobs table.
