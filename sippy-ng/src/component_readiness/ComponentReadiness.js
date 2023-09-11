@@ -141,7 +141,7 @@ const cancelFetch = () => {
 
 export default function ComponentReadiness(props) {
   const releases = useContext(ReleasesContext)
-  const defaultSampleRelease = '4.14'
+  const defaultSampleRelease = '4.13'
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
       return new Date(releases.ga_dates[release])
@@ -150,6 +150,7 @@ export default function ComponentReadiness(props) {
     return new Date()
   }
   const days = 24 * 60 * 60 * 1000
+  const weeks = days * 7
   const now = new Date()
 
   // Sample is last 7 days by default
@@ -157,8 +158,9 @@ export default function ComponentReadiness(props) {
   const initialSampleEndTime = new Date(now.getTime())
 
   // Base is 30 days from GA or now
+  // For now hard code these to the 4 weeks before when 4.13 GA'ed
   const initialBaseEndTime = getReleaseDate(defaultSampleRelease)
-  const initialBaseStartTime = initialBaseEndTime.getTime() - 30 * days
+  const initialBaseStartTime = initialBaseEndTime.getTime() - 4 * weeks
 
   const setBaseReleaseWithDates = (event) => {
     let release = event.target.value
@@ -216,7 +218,7 @@ export default function ComponentReadiness(props) {
     baseEndTimeParam = formatLongDate(initialBaseEndTime),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = '4.15', setSampleReleaseParam] = useQueryParam(
+  const [sampleReleaseParam = '4.14', setSampleReleaseParam] = useQueryParam(
     'sampleRelease',
     StringParam
   )
@@ -233,11 +235,23 @@ export default function ComponentReadiness(props) {
     setGroupByCheckedItemsParam,
   ] = useQueryParam('groupBy', ArrayParam)
   const [
-    excludeCloudsCheckedItemsParam = [],
+    excludeCloudsCheckedItemsParam = [
+      'openstack',
+      'alibaba',
+      'ibmcloud',
+      'libvirt',
+      'ovirt',
+      'unknown',
+    ],
     setExcludeCloudsCheckedItemsParam,
   ] = useQueryParam('excludeClouds', ArrayParam)
   const [
-    excludeArchesCheckedItemsParam = [],
+    excludeArchesCheckedItemsParam = [
+      'arm64',
+      'heterogeneous',
+      'ppc64le',
+      's390x',
+    ],
     setExcludeArchesCheckedItemsParam,
   ] = useQueryParam('excludeArches', ArrayParam)
   const [
@@ -249,7 +263,15 @@ export default function ComponentReadiness(props) {
     setExcludeUpgradesCheckedItemsParam,
   ] = useQueryParam('excludeUpgrades', ArrayParam)
   const [
-    excludeVariantsCheckedItemsParam = [],
+    excludeVariantsCheckedItemsParam = [
+      'hypershift',
+      'osd',
+      'microshift',
+      'techpreview',
+      'single-node',
+      'assisted',
+      'compact',
+    ],
     setExcludeVariantsCheckedItemsParam,
   ] = useQueryParam('excludeVariants', ArrayParam)
 
