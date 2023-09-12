@@ -50,8 +50,8 @@ const (
 					END) AS row_num
 			FROM
 				ci_analysis_us.junit
-			WHERE TIMESTAMP(modified_time) >= @From
-			AND TIMESTAMP(modified_time) < @To
+			WHERE modified_time >= DATETIME(@From)
+			AND modified_time < DATETIME(@To)
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
 )
