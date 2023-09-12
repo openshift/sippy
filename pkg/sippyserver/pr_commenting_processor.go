@@ -98,7 +98,7 @@ type PendingComment struct {
 	org         string
 	repo        string
 	number      int
-	commentType int8
+	commentType int
 }
 
 type CommentWorker struct {
@@ -378,7 +378,7 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 		return nil
 	}
 
-	if pendingComment.commentType == int8(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
+	if pendingComment.commentType == int(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
 		logger.Warning("PR has merged, skipping risk analysis comment")
 		return nil
 	}
@@ -462,7 +462,7 @@ func (aw *AnalysisWorker) Run() {
 	// exit when closed
 	for i := range aw.pendingAnalysis {
 
-		if i.CommentType == int8(models.CommentTypeRiskAnalysis) {
+		if i.CommentType == int(models.CommentTypeRiskAnalysis) {
 			aw.processRiskAnalysisComment(i)
 		} else {
 			log.Warningf("Unsupported comment type: %d for %s/%s/%d/%s", i.CommentType, i.Org, i.Repo, i.PullNumber, i.SHA)
@@ -481,7 +481,7 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 	start := time.Now()
 	logger.Debug("Processing item")
 
-	if prPendingComment.CommentType != int8(models.CommentTypeRiskAnalysis) {
+	if prPendingComment.CommentType != int(models.CommentTypeRiskAnalysis) {
 		logger.Warningf("Unsupported comment type: %d", prPendingComment.CommentType)
 		return
 	}
