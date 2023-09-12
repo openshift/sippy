@@ -198,7 +198,7 @@ func (ghc *GitHubCommenter) UpdatePendingCommentRecords(org, repo string, number
 	if !foundExistingPRC && sha == prEntry.SHA && mergedAt == nil {
 
 		var pullRequestComment = &models.PullRequestComment{}
-		pullRequestComment.CommentType = int8(commentType)
+		pullRequestComment.CommentType = int(commentType)
 		pullRequestComment.PullNumber = number
 		pullRequestComment.SHA = sha
 		pullRequestComment.Org = org
