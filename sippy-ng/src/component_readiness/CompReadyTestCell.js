@@ -71,15 +71,14 @@ export default function CompReadyTestCell(props) {
   }
 
   const handleClick = (event) => {
-    if (!event.metaKey) {
-      event.preventDefault()
-      setComponentParam(component)
-      setCapabilityParam(capability)
-      setTestIdParam(testId)
-      setEnvironmentParam(environment)
-      setTestNameParam(testName)
-      window.location.href =
-        '/sippy-ng' +
+    event.preventDefault()
+    setComponentParam(component)
+    setCapabilityParam(capability)
+    setTestIdParam(testId)
+    setEnvironmentParam(environment)
+    setTestNameParam(testName)
+    window.open(
+      '/sippy-ng' +
         generateTestReport(
           testId,
           environment,
@@ -87,8 +86,9 @@ export default function CompReadyTestCell(props) {
           component,
           capability,
           testName
-        )
-    }
+        ),
+      '_blank'
+    )
   }
 
   if (status === undefined) {

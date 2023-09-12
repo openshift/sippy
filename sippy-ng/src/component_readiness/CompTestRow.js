@@ -56,14 +56,14 @@ export default function CompTestRow(props) {
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
 
   const handleClick = (event) => {
-    if (!event.metaKey) {
-      event.preventDefault()
-      setComponentParam(component)
-      setCapabilityParam(capability)
-      setTestIdParam(testId)
-      window.location.href =
-        '/sippy-ng' + testLink(filterVals, component, capability, testId)
-    }
+    event.preventDefault()
+    setComponentParam(component)
+    setCapabilityParam(capability)
+    setTestIdParam(testId)
+    window.open(
+      '/sippy-ng' + testLink(filterVals, component, capability, testId),
+      '_blank'
+    )
   }
 
   // Put the testName on the left side with a link to a test specific
