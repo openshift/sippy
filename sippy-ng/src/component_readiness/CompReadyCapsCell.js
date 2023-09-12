@@ -40,13 +40,13 @@ export default function CompReadyCapsCell(props) {
   }
 
   const handleClick = (event) => {
-    if (!event.metaKey) {
-      event.preventDefault()
-      setCapabilityParam(capabilityName)
-      setEnvironmentParam(environment)
-      window.location.href =
-        '/sippy-ng' + capabilityReport(capabilityName, environment, filterVals)
-    }
+    event.preventDefault()
+    setCapabilityParam(capabilityName)
+    setEnvironmentParam(environment)
+    window.open(
+      '/sippy-ng' + capabilityReport(capabilityName, environment, filterVals),
+      '_blank'
+    )
   }
   if (status === undefined) {
     return (

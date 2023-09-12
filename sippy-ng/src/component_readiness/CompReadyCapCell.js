@@ -55,16 +55,16 @@ export default function CompReadyCapCell(props) {
   }
 
   const handleClick = (event) => {
-    if (!event.metaKey) {
-      event.preventDefault()
-      setComponentParam(component)
-      setCapabilityParam(capability)
-      setTestIdParam(testId)
-      setEnvironmentParam(environment)
-      window.location.href =
-        '/sippy-ng' +
-        testReport(testId, environment, filterVals, component, capability)
-    }
+    event.preventDefault()
+    setComponentParam(component)
+    setCapabilityParam(capability)
+    setTestIdParam(testId)
+    setEnvironmentParam(environment)
+    window.open(
+      '/sippy-ng' +
+        testReport(testId, environment, filterVals, component, capability),
+      '_blank'
+    )
   }
 
   if (status === undefined) {

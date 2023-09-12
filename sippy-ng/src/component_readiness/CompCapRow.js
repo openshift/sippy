@@ -34,12 +34,12 @@ export default function CompCapRow(props) {
   )
 
   const handleClick = (event) => {
-    if (!event.metaKey) {
-      event.preventDefault()
-      setCapabilityParam(capabilityName)
-      window.location.href =
-        '/sippy-ng' + capabilityLink(filterVals, capabilityName)
-    }
+    event.preventDefault()
+    setCapabilityParam(capabilityName)
+    window.open(
+      '/sippy-ng' + capabilityLink(filterVals, capabilityName),
+      '_blank'
+    )
   }
 
   // Put the capabilityName on the left side with a link to a capability specific
