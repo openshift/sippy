@@ -13,7 +13,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/api/option"
@@ -47,6 +50,12 @@ var sippyNG embed.FS
 
 //go:embed static
 var static embed.FS
+
+var prowJobLoadMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name:    "sippy_prow_job_load_millis",
+	Help:    "Milliseconds to load our prow jobs",
+	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
+})
 
 const (
 	defaultLogLevel                = "info"
@@ -595,8 +604,14 @@ func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
 }
 
 func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
-
 	allErrs := []error{}
+
+	var promPusher *push.Pusher
+	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
+		promPusher = push.New(pushgateway, "sippy-prow-job-loader")
+		promPusher.Collector(prowJobLoadMetric)
+	}
+	start := time.Now()
 
 	gcsClient, err := gcs.NewGCSClient(context.TODO(),
 		o.GoogleServiceAccountCredentialFile,
@@ -643,6 +658,16 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		ghCommenter)
 	errs := prowLoader.LoadProwJobsToDB()
 	allErrs = append(allErrs, errs...)
+
+	prowJobLoadMetric.Observe(float64(time.Since(start).Milliseconds()))
+	if promPusher != nil {
+		log.Info("pushing metrics to prometheus gateway")
+		if err := promPusher.Add(); err != nil {
+			log.WithError(err).Error("could not push to prometheus pushgateway")
+		} else {
+			log.Info("successfully pushed metrics to prometheus gateway")
+		}
+	}
 	return allErrs
 }
 
