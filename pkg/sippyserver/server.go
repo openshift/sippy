@@ -164,7 +164,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	wg := sync.WaitGroup{}
 
 	// allow concurrent workers for refreshing matviews in parallel
-	for t := 0; t < 3; t++ {
+	for t := 0; t < 2; t++ {
 		wg.Add(1)
 		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
