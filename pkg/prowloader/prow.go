@@ -182,9 +182,9 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 		go func(ctx context.Context) {
 			defer wg.Done()
 			for job := range queue {
-				if ctx.Err() != nil {
-					errsCh <- ctx.Err()
-					fmt.Println("consumer exiting, got error")
+				if err := ctx.Err(); err != nil {
+					errsCh <- err
+					log.WithError(err).Warningf("consumer exiting, got error")
 					break
 				}
 				if err := pl.processProwJob(ctx, job); err != nil {
@@ -561,7 +561,6 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 			}
 		}
 		if saveDB {
-			fmt.Println("update")
 			if res := pl.dbc.DB.WithContext(ctx).Save(&dbProwJob); res.Error != nil {
 				return res.Error
 			}
