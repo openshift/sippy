@@ -239,28 +239,13 @@ func (c *Client) GetPRSHAMerged(org, repo string, number int, sha string) (*time
 }
 
 func (c *Client) GetPREntry(org, repo string, number int) (*PREntry, error) {
-	c.cacheLock.RLock()
+	c.cacheLock.Lock()
+	defer c.cacheLock.Unlock()
 	prl := prlocator{org: org, repo: repo, number: number}
 	if val, ok := c.cache[prl]; ok {
-		c.cacheLock.RUnlock()
 		// If it's in the cache return it
 		return val, nil
 	}
-	c.cacheLock.RUnlock()
-
-	pr, err := c.fetchPR(prl)
-	if err != nil {
-		return nil, err
-	}
-	if pr != nil {
-		return pr, nil
-	}
-	return nil, nil
-}
-
-func (c *Client) fetchPR(prl prlocator) (*PREntry, error) {
-	c.cacheLock.Lock()
-	defer c.cacheLock.Unlock()
 
 	// Get PR from GitHub
 	pr, err := c.PRFetch(prl.org, prl.repo, prl.number)
@@ -283,7 +268,7 @@ func (c *Client) fetchPR(prl prlocator) (*PREntry, error) {
 	return pr, nil
 }
 
-// This is an uncached call to github to get the most up to date information
+// PRFetch is an uncached call to github to get the most up to date information
 // on the PR.  Use cautiously and only when necessary
 func (c *Client) PRFetch(org, repo string, number int) (prEntry *PREntry, err error) {
 	// Get PR from GitHub
