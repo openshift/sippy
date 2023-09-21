@@ -23,6 +23,8 @@
 .cr-table-wrapper {
   width: 100%;
   max-width: 100%;
+  max-height: 1200px;
+  overflow: auto;
 }
 
 .cr-view {
@@ -60,15 +62,32 @@
 .cr-col-result {
     hyphens: auto;
     vertical-align: top !important;
+    background-color: whitesmoke;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 .cr-col-result-full {
+  background-color: whitesmoke;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 
 .cr-component-name {
     width: 175px;
     min-width: 175px;
     max-width: 175px;
+    background-color: whitesmoke;
+    font-weight: bold;
+    position: sticky;
+    left: 0;
+    z-index: 1;
 }
 
 .cr-cell-result {
