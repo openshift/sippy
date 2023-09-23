@@ -189,10 +189,10 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 				}
 				if err := pl.processProwJob(ctx, job); err != nil {
 					errsCh <- err
-				} else {
-					pl.jobsImportedCount.Add(1)
-					log.Infof("%d of %d job runs completed", pl.jobsImportedCount.Load(), total)
+					log.WithError(err).Warningf("couldn't import job %s/%s, continuing", job.Spec.Job, job.Status.BuildID)
 				}
+				pl.jobsImportedCount.Add(1)
+				log.Infof("%d of %d job runs processed", pl.jobsImportedCount.Load(), total)
 			}
 		}(pl.ctx)
 	}
