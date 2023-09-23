@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -46,6 +48,7 @@ func SippyRequest(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("Received Response: %s", string(body))
 	err = json.Unmarshal(body, data)
 	if err != nil {
 		return err
