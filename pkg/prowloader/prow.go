@@ -776,6 +776,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, testCases, pl.syntheticTestManager)
 	pl.extractTestCases(syntheticSuite, testCases)
+	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	results := make([]*models.ProwJobRunTest, 0)
 	for k, v := range testCases {
