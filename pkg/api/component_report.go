@@ -283,7 +283,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	queryString += `
 					WHERE
 						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
-						AND prowjob_name NOT LIKE '%-okd%'
+						AND prowjob_name NOT LIKE '%-okd%' AND prowjob_name NOT LIKE '%-recovery'
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -420,7 +420,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						cm.id `
 
 	queryString += `
-					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND prowjob_name NOT LIKE '%-okd%' `
+					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND prowjob_name NOT LIKE '%-okd%' AND prowjob_name NOT LIKE '%-recovery'`
 
 	commonParams := []bigquery.QueryParameter{}
 	if c.IgnoreDisruption {
