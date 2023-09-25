@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
 	// Needs to match what we import in the e2e sh scripts and the
 	// config/e2e-openshift.yaml.
-	Release = "4.13"
+	Release = "4.14"
 
 	// APIPort is the port e2e.sh launches the sippy API on. These values must be kept in sync.
 	APIPort = 18080
@@ -46,6 +48,7 @@ func SippyRequest(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("Received Response: %s", string(body))
 	err = json.Unmarshal(body, data)
 	if err != nil {
 		return err
