@@ -865,7 +865,7 @@ func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysi
 
 		// If this is one of the levels that doesn't have tests associated and it matches the prior risk analysis then return the summary
 		if riskSummary.OverallRisk.Level == api.FailureRiskLevelIncompleteTests || riskSummary.OverallRisk.Level == api.FailureRiskLevelMissingData {
-			if riskSummary.OverallRisk.Level == priorRiskAnalysis.OverallRisk.Level {
+			if priorRiskAnalysis != nil && riskSummary.OverallRisk.Level == priorRiskAnalysis.OverallRisk.Level {
 				return riskSummary
 			}
 		}

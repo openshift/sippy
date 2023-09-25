@@ -57,6 +57,11 @@ func TestMatchPriorRiskAnalysisTest(t *testing.T) {
 			expectedRiskLevel:        api.FailureRiskLevelNone,
 			expectedSummaryTestCount: 0,
 		},
+		"NoMatchIncompletesNoPrior": {
+			riskAnalysisJSON:         `{"ProwJobName":"pull-ci-openshift-origin-master-e2e-aws-ovn-serial","ProwJobRunID":1684985307130236928,"Release":"Presubmits","CompareRelease":"4.14","Tests":[],"OverallRisk":{"Level":{"Name":"IncompleteTests","Level":75},"Reasons":["Tests for this run (57) are below the historical average (709):IncompleteTests"]},"OpenBugs":[]}`,
+			expectedRiskLevel:        api.FailureRiskLevelNone,
+			expectedSummaryTestCount: 0,
+		},
 	}
 
 	for name, tc := range tests {
