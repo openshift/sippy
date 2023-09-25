@@ -780,7 +780,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	results := make([]*models.ProwJobRunTest, 0)
-	for k, _ := range testCases {
+	for k := range testCases {
 		if testidentification.IsIgnoredTest(k) {
 			continue
 		}
