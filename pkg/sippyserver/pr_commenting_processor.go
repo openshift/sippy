@@ -623,7 +623,8 @@ func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
 	return sb.String()
 }
 
-// Walks the GCS path for this job to find the most recent job runs, if they have not finished then returns false
+// buildPRJobRiskAnalysis walks the GCS path for this PR to find the most recent job runs,
+// if any have not finished it returns false
 // otherwise returns a map of the test name and the overall RiskAnalysis for that test
 // if the map is empty it indicates either all jobs passed or any analysis for failures was unknown
 func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bool, map[string]RiskAnalysisSummary) {
@@ -666,8 +667,6 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 		latestPath := fmt.Sprintf("%s%s/", attrs.Prefix, latest)
 		finishedJSON := fmt.Sprintf("%sfinished.json", latestPath)
 
-		var riskSummary api.RiskSummary
-
 		// currently we only validate that the file exists, we aren't pulling anything out of it
 		if !jobRun.ContentExists(context.TODO(), finishedJSON) {
 			return false, nil
@@ -678,70 +677,62 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 			continue
 		}
 
-		prowLink := ""
-		prowJobJSON := fmt.Sprintf("%sprowjob.json", latestPath)
-		bytes, err = jobRun.GetContent(context.TODO(), prowJobJSON)
-		if err != nil {
-			log.WithError(err).Errorf("Failed to get prow job for: %s", latestPath)
+		// we don't want just latest anymore we want to grab all the runs
+		// so we can find the most recent run prior to latest
+		// we build the risk analysis for latest but only include failed tests that
+		// have occurred in latest-1
+		prowJobMap := aw.buildProwJobMap(attrs.Prefix)
 
-			// we don't have to return, but we can't include a prow link
-		} else {
-			pj := prow.ProwJob{}
-			if bytes != nil {
-
-				err := json.Unmarshal(bytes, &pj)
-				if err != nil {
-					log.WithError(err).Errorf("Failed to unmarshal prow job for: %s", latestPath)
-				} else {
-					prowLink = pj.Status.URL
-				}
-
-			}
+		// we don't report risk on jobs that don't have 2 or more runs
+		// this is so we can compare failed tests against latest and latest-1
+		// only returning analysis on tests that have failed in both
+		if len(prowJobMap) < 2 {
+			continue
 		}
 
-		jobRunID, err := strconv.ParseInt(latest, 10, 64)
+		var latestProwJob, priorProwJob *prow.ProwJob
+		var priorTime time.Time
+		var prowLink string
 
-		if err != nil {
-			log.WithError(err).Errorf("Failed to parse latest id: %s for: %s", latest, latestPath)
-
-			// skip the db lookup and go right to gcs
-			riskSummary = aw.getGCSOverallRiskLevel(latestPath)
-		} else {
-
-			// lookup prowjob and run count
-			logger := log.WithField("jobRunID", jobRunID)
-			jobRun, jobRunTestCount, err := jobQueries.FetchJobRun(aw.dbc, jobRunID, logger)
-
-			if err != nil {
-
-				// RecordNotFound can be expected if the latest job isn't in sippy yet
-				// so don't log an error
-				if !errors.Is(err, gorm.ErrRecordNotFound) {
-					logger.WithError(err).Errorf("Error fetching job run for: %s", latestPath)
-				}
-
-				// in all failure cases fall back to gcs
-				riskSummary = aw.getGCSOverallRiskLevel(latestPath)
-
+		for k, v := range prowJobMap {
+			// if we have the latestProwJob mark it
+			if v.Status.BuildID == latest {
+				pj := v
+				latestProwJob = &pj
+				prowLink = latestProwJob.Status.URL
 			} else {
-				riskAnalysis, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
-
-				if err != nil {
-					logger.WithError(err).Errorf("Error querying risk analysis for: %s", latestPath)
-					riskSummary = aw.getGCSOverallRiskLevel(latestPath)
-				} else {
-					riskSummary = api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level, Reasons: riskAnalysis.OverallRisk.Reasons}}
-
-					for _, t := range riskAnalysis.Tests {
-						if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level {
-							// test failure risk matches the current overall risk level
-							// so keep it
-							riskSummary.Tests = append(riskSummary.Tests, t)
-						}
+				if latestProwJob != nil {
+					if latestProwJob.Status.CompletionTime.Before(k) {
+						// shouldn't be the case
+						continue
 					}
 				}
+				if priorTime.Before(k) {
+					priorTime = k
+					// can't use the pointer of v as its reference changes
+					pj := v
+					priorProwJob = &pj
+				}
 			}
 		}
+
+		// we didn't find the latest so log a warning and continue on
+		if latestProwJob == nil {
+			log.Warnf("Failed to find latest prowjob for: %s", latestPath)
+			continue
+		}
+
+		// job count is > 1, but we didn't find a valid prior job
+		// Completion time is validated in buildProwJobMap
+		if priorProwJob == nil || latestProwJob.Status.CompletionTime.Before(*priorProwJob.Status.CompletionTime) {
+			log.Warnf("Invalid prior prowjob for: %s", latestPath)
+			continue
+		}
+
+		priorRunID := priorProwJob.Status.BuildID
+		_, priorRiskAnalysis := aw.getRiskSummary(priorRunID, fmt.Sprintf("%s%s/", attrs.Prefix, priorRunID), nil)
+
+		riskSummary, _ := aw.getRiskSummary(latest, latestPath, priorRiskAnalysis)
 
 		// don't include none or unknown in our report
 		if riskSummary.OverallRisk.Level != api.FailureRiskLevelNone && riskSummary.OverallRisk.Level != api.FailureRiskLevelUnknown {
@@ -754,13 +745,166 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 	return true, analysisByJobs
 }
 
-func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) api.RiskSummary {
+// buildProwJobMap Walks the GCS path for this job to find the most recent job runs, if they have not finished then returns false
+// otherwise returns a map of the test name and the overall RiskAnalysis for that test
+// if the map is empty it indicates either all jobs passed or any analysis for failures was unknown
+func (aw *AnalysisWorker) buildProwJobMap(prJobRoot string) map[time.Time]prow.ProwJob {
+	// get the list of objects one level down from our root
+	it := aw.gcsBucket.Objects(context.Background(), &storage.Query{
+		Prefix:    prJobRoot,
+		Delimiter: "/",
+	})
+
+	jobsByTime := make(map[time.Time]prow.ProwJob)
+	jobRun := gcs.NewGCSJobRun(aw.gcsBucket, "")
+
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		// want empty Name indicating a folder
+		if len(attrs.Name) > 0 {
+			continue
+		}
+
+		// jobName
+		// pr-logs/pull/org_repo/1555/pull-ci-openshift-origin-master-e2e-aws-csi/
+		// jobPath := strings.Split(attrs.Prefix, "/")
+
+		// last string is "" so -2
+		// jobName := jobPath[len(jobPath)-2]
+
+		// https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/origin-ci-test/logs/openshift-cluster-node-tuning-operator-771-ci-4.14-upgrade-from-stable-4.13-e2e-gcp-ovn-rt-upgrade/1693982822663983104/prowjob.json
+
+		bytes, err := jobRun.GetContent(context.TODO(), fmt.Sprintf("%s%s", attrs.Prefix, "prowjob.json"))
+		if err != nil {
+			log.WithError(err).Errorf("Failed to get prowjob for: %s", attrs.Prefix)
+			continue
+		}
+
+		var pj prow.ProwJob
+		if err := json.Unmarshal(bytes, &pj); err != nil {
+			log.WithError(err).Errorf("Failed to unmarshall prowjob for: %s", attrs.Prefix)
+			continue
+		}
+
+		// CompletionTime can be nil
+		// validate it isn't prior to adding
+		if pj.Status.CompletionTime != nil {
+			jobsByTime[*pj.Status.CompletionTime] = pj
+		}
+	}
+
+	return jobsByTime
+}
+
+func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
+
+	var riskSummary api.RiskSummary
+	var riskAnalysis *api.ProwJobRunRiskAnalysis
+	jobRunIntID, err := strconv.ParseInt(jobRunID, 10, 64)
+
+	if err != nil {
+		log.WithError(err).Errorf("Failed to parse jobRunId id: %s for: %s", jobRunID, jobRunIDPath)
+
+		// skip the db lookup and go right to gcs
+		riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
+	} else {
+
+		// lookup prowjob and run count
+		logger := log.WithField("jobRunID", jobRunIntID)
+		jobRun, jobRunTestCount, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, logger)
+
+		if err != nil {
+
+			// RecordNotFound can be expected if the jobRunId job isn't in sippy yet
+			// so don't log an error
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
+			}
+
+			// in all failure cases fall back to gcs
+			riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
+
+		} else {
+
+			// get the riskanalysis directly from jobqueries
+			ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
+
+			if err != nil {
+				logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
+				riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
+			} else {
+				// query succeeded so set riskAnalysis
+				riskAnalysis = &ra
+				riskSummary = buildRiskSummary(riskAnalysis, priorRiskAnalysis)
+			}
+		}
+	}
+
+	return riskSummary, riskAnalysis
+}
+
+func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) api.RiskSummary {
+
+	riskSummary := api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level, Reasons: riskAnalysis.OverallRisk.Reasons}}
+
+	for _, t := range riskAnalysis.Tests {
+		if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level && !isTestFiltered(t, priorRiskAnalysis) {
+			// test failure risk matches the current overall risk level
+			// so keep it
+			riskSummary.Tests = append(riskSummary.Tests, t)
+		}
+	}
+
+	if len(riskSummary.Tests) == 0 {
+		// if we don't have any tests then only MissingData or IncompleteTests are valid for this scenario
+		// otherwise we filtered them all out so set the risk level to none
+
+		// If this is one of the levels that doesn't have tests associated and it matches the prior risk analysis then return the summary
+		if riskSummary.OverallRisk.Level == api.FailureRiskLevelIncompleteTests || riskSummary.OverallRisk.Level == api.FailureRiskLevelMissingData {
+			if riskSummary.OverallRisk.Level == priorRiskAnalysis.OverallRisk.Level {
+				return riskSummary
+			}
+		}
+
+		// otherwise none
+		return api.RiskSummary{
+			OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelNone},
+		}
+	}
+
+	return riskSummary
+}
+
+func isTestFiltered(test api.ProwJobRunTestRiskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) bool {
+	// TODO: Observe how restrictive this is
+	// Many PRs don't appear to have multiple runs
+	// Those that do don't have the same failures (because the failures are flakes and not regressions?)
+	// When we have searchable results for Mechanical Deads could we check to see
+	// if the test is a known regresion and filter it that way?
+	if priorRiskAnalysis != nil {
+		for _, t := range priorRiskAnalysis.Tests {
+			if t.Name == test.Name {
+				return false
+			}
+		}
+		return true
+	}
+	// if we don't have a prior risk analysis nothing is filtered at this level
+	// we should get the full results for the first summary
+	return false
+}
+
+func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
 	riskAnalysis, err := aw.getJobRunGCSRiskAnalysis(latestPath)
 	if err != nil {
 		log.WithError(err).Errorf("Error with fallback lookup of gcs RiskAnalysis for: %s", latestPath)
 		return api.RiskSummary{
 			OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelUnknown},
-		}
+		}, nil
 	}
 
 	// it is ok for it to be nil, not everything will have risk analysis
@@ -778,14 +922,14 @@ func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) api.RiskSumm
 			}
 		}
 
-		return riskSummary
+		return riskSummary, riskAnalysis
 
 	}
 
 	// default is none if we didn't find one
 	return api.RiskSummary{
 		OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelNone},
-	}
+	}, nil
 }
 
 func (aw *AnalysisWorker) getJobRunGCSRiskAnalysis(jobPath string) (*api.ProwJobRunRiskAnalysis, error) {
