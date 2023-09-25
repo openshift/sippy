@@ -20,6 +20,8 @@ import (
 )
 
 const (
+	ignoredJobsRegexp = `-okd|-recovery`
+
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
 	//
@@ -283,7 +285,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	queryString += `
 					WHERE
 						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
-						AND prowjob_name NOT LIKE '%-okd%'
+						AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -291,6 +293,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						AND @Variant IN UNNEST(variants)
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
+		{
+			Name:  "IgnoredJobs",
+			Value: ignoredJobsRegexp,
+		},
 		{
 			Name:  "Upgrade",
 			Value: c.Upgrade,
@@ -420,9 +426,14 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						cm.id `
 
 	queryString += `
-					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND prowjob_name NOT LIKE '%-okd%' `
+					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
 
-	commonParams := []bigquery.QueryParameter{}
+	commonParams := []bigquery.QueryParameter{
+		{
+			Name:  "IgnoredJobs",
+			Value: ignoredJobsRegexp,
+		},
+	}
 	if c.IgnoreDisruption {
 		queryString += ` AND test_name NOT LIKE '%disruption/%'`
 	}
