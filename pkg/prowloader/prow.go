@@ -718,16 +718,17 @@ func (pl *ProwLoader) findOrAddTest(name string) (uint, error) {
 	}
 	pl.prowJobRunTestCacheLock.RUnlock()
 
-	// Lock the whole block here because composite operations (like FirstOrCreate) in gorm are
-	// NOT atomic. https://github.com/go-gorm/gorm/issues/6253
 	pl.prowJobRunTestCacheLock.Lock()
 	defer pl.prowJobRunTestCacheLock.Unlock()
-	test := &models.Test{
-		Name: name,
-	}
-	tx := pl.dbc.DB.FirstOrCreate(&test)
-	if tx.Error != nil {
-		return 0, tx.Error
+	test := &models.Test{}
+	pl.dbc.DB.Where("name = ?", name).Find(&test)
+	if test.ID == 0 {
+		test.Name = name
+		tx := pl.dbc.DB.Save(test)
+		if tx.Error != nil {
+			log.WithError(tx.Error).Warningf("failed to create test %q", name)
+			return 0, tx.Error
+		}
 	}
 
 	pl.prowJobRunTestCache[name] = test.ID
@@ -779,14 +780,14 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	results := make([]*models.ProwJobRunTest, 0)
-	for k, v := range testCases {
+	for k, _ := range testCases {
 		if testidentification.IsIgnoredTest(k) {
 			continue
 		}
 
-		v.ProwJobRunID = id
-		results = append(results, v)
-		if v.Status == 12 {
+		testCases[k].ProwJobRunID = id
+		results = append(results, testCases[k])
+		if testCases[k].Status == 12 {
 			failures++
 		}
 	}

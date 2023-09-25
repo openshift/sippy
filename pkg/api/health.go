@@ -60,7 +60,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Infrastructure
 	infraIndicator, err := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying infrastructure test report")
 		return
 	}
 	indicators["infrastructure"] = infraIndicator
@@ -68,7 +68,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Install Configuration
 	installConfigIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying install test report")
 		return
 	}
 	indicators["installConfig"] = installConfigIndicator
@@ -76,7 +76,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Bootstrap
 	bootstrapIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying bootstrap test report")
 		return
 	}
 	indicators["bootstrap"] = bootstrapIndicator
@@ -84,7 +84,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Install Other
 	installOtherIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying install (other) test report")
 		return
 	}
 	indicators["installOther"] = installOtherIndicator
@@ -92,7 +92,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Install
 	installIndicator, err := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying install test report")
 		return
 	}
 	indicators["install"] = installIndicator
@@ -100,7 +100,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// Upgrade
 	upgradeIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants)
 	if err != nil {
-		log.WithError(err).Error("error querying test report")
+		log.WithError(err).Error("error querying upgrade test report")
 		return
 	}
 	indicators["upgrade"] = upgradeIndicator
