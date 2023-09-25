@@ -769,33 +769,31 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		log.Warningf("failed to get junit test suites: %s", err.Error())
 		return []*models.ProwJobRunTest{}, 0, "", err
 	}
-	var testCases sync.Map
+	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
-		pl.extractTestCases(suite, &testCases)
+		pl.extractTestCases(suite, testCases)
 	}
 
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(pj, &testCases, pl.syntheticTestManager)
-	pl.extractTestCases(syntheticSuite, &testCases)
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, testCases, pl.syntheticTestManager)
+	pl.extractTestCases(syntheticSuite, testCases)
 
 	results := make([]*models.ProwJobRunTest, 0)
-	testCases.Range(func(k any, v any) bool {
-		pjrt, _ := v.(*models.ProwJobRunTest)
-
-		if !testidentification.IsIgnoredTest(k.(string)) {
-			pjrt.ProwJobRunID = id
-			results = append(results, pjrt)
-			if pjrt.Status == 12 {
-				failures++
-			}
+	for k, v := range testCases {
+		if testidentification.IsIgnoredTest(k) {
+			continue
 		}
 
-		return true
-	})
+		v.ProwJobRunID = id
+		results = append(results, v)
+		if v.Status == 12 {
+			failures++
+		}
+	}
 
 	return results, failures, jobResult, nil
 }
 
-func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases *sync.Map) {
+func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 	for _, tc := range suite.TestCases {
 		status := v1.TestStatusFailure
@@ -841,26 +839,26 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases *sync.M
 			}
 		}
 
-		if existing, ok := testCases.Load(testCacheKey); !ok {
+		if existing, ok := testCases[testCacheKey]; !ok {
 			testID, err := pl.findOrAddTest(testNameWithKnownSuite)
 			if err != nil {
 				log.WithError(err).Warningf("could not find or create test %q", testNameWithKnownSuite)
 				continue
 			}
 
-			testCases.Store(testCacheKey, &models.ProwJobRunTest{
+			testCases[testCacheKey] = &models.ProwJobRunTest{
 				TestID:               testID,
 				SuiteID:              suiteID,
 				Status:               int(status),
 				Duration:             tc.Duration,
 				ProwJobRunTestOutput: failureOutput,
-			})
-		} else if (existing.(*models.ProwJobRunTest).Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
-			(existing.(*models.ProwJobRunTest).Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
+			}
+		} else if (existing.Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
+			(existing.Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
 			// One pass among failures makes this a flake
-			existing.(*models.ProwJobRunTest).Status = int(v1.TestStatusFlake)
-			if existing.(*models.ProwJobRunTest).ProwJobRunTestOutput == nil {
-				existing.(*models.ProwJobRunTest).ProwJobRunTestOutput = failureOutput
+			existing.Status = int(v1.TestStatusFlake)
+			if existing.ProwJobRunTestOutput == nil {
+				existing.ProwJobRunTestOutput = failureOutput
 			}
 		}
 	}
