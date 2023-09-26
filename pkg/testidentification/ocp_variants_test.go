@@ -50,6 +50,16 @@ func Test_openshiftVariants_IdentifyVariants(t *testing.T) {
 			want:    []string{"aws", "amd64", "ha"},
 		},
 		{
+			name:    "periodic-ci-openshift-release-master-nightly-4.13-e2e-vsphere-upi-zones",
+			release: "4.13",
+			want:    []string{"vsphere-upi", "amd64", "ovn", "ha"},
+		},
+		{
+			name:    "periodic-ci-openshift-release-master-nightly-4.14-e2e-vsphere-ovn-upi",
+			release: "4.13",
+			want:    []string{"vsphere-upi", "amd64", "ovn", "ha"},
+		},
+		{
 			name:        "periodic-ci-openshift-release-master-ci-e2e-aws-cluster-release",
 			release:     "4.13",
 			clusterData: models.ClusterData{Release: "4.13"},
