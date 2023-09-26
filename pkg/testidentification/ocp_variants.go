@@ -76,7 +76,7 @@ var (
 	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
-	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere-upi`)
+	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere.*-upi`)
 
 	allOpenshiftVariants = sets.NewString(
 		"alibaba",
