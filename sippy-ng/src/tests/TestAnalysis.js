@@ -42,7 +42,6 @@ import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [bugs, setBugs] = React.useState([])
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
@@ -76,27 +75,15 @@ export function TestAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
-      fetch(
-        `${
-          process.env.REACT_APP_API_URL
-        }/api/tests/bugs?test=${safeEncodeURIComponent(
-          testName
-        )}&filter=${filter}`
-      ),
     ])
-      .then(([test, bugs]) => {
+      .then(([test]) => {
         if (test.status !== 200) {
           throw new Error('server returned ' + test.status)
         }
-
-        if (bugs.status !== 200) {
-          throw new Error('server returned ' + bugs.status)
-        }
-        return Promise.all([test.json(), bugs.json()])
+        return Promise.all([test.json()])
       })
-      .then(([test, bugs]) => {
+      .then(([test]) => {
         setTest(test[0])
-        setBugs(bugs)
         setLoaded(true)
       })
       .catch((error) => {
@@ -240,7 +227,7 @@ export function TestAnalysis(props) {
                   <InfoIcon />
                 </Tooltip>
               </Typography>
-              <BugTable bugs={bugs} />
+              <BugTable testName={testName} />
             </Card>
           </Grid>
 
