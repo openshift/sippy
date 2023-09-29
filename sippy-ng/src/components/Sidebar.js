@@ -22,7 +22,6 @@ import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import ApartmentIcon from '@material-ui/icons/Apartment'
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward'
 import AssessmentIcon from '@material-ui/icons/Assessment'
-import BugzillaSearch from '../bugzilla/BugzillaSearch'
 import Collapse from '@material-ui/core/Collapse'
 import Divider from '@material-ui/core/Divider'
 import ExitToAppIcon from '@material-ui/icons/ExitToApp'
@@ -445,20 +444,6 @@ export default function Sidebar(props) {
                   </ListItemIcon>
                   <ListItemText primary="Search Bugzilla" />
                 </ListItem>
-              )
-            }
-          }}
-        </CapabilitiesContext.Consumer>
-
-        <CapabilitiesContext.Consumer>
-          {(value) => {
-            if (value.includes('openshift_releases')) {
-              return (
-                <BugzillaSearch
-                  open={handleBugzillaOpen}
-                  close={handleBugzillaClose}
-                  isOpen={bugzillaOpen}
-                />
               )
             }
           }}

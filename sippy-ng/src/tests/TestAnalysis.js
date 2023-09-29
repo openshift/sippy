@@ -27,8 +27,7 @@ import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
-import BugTable from '../bugzilla/BugTable'
-import bugzillaURL from '../bugzilla/BugzillaUtils'
+import BugTable from '../bugs/BugTable'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
@@ -173,17 +172,6 @@ export function TestAnalysis(props) {
                     },
                   ]}
                 />
-
-                <Button
-                  className="test-button"
-                  target="_blank"
-                  startIcon={<BugReport />}
-                  variant="contained"
-                  color="primary"
-                  href={bugzillaURL(props.release, test)}
-                >
-                  Open bug
-                </Button>
 
                 <Button
                   className="test-button"
