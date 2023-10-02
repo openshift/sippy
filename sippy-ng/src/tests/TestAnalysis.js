@@ -27,8 +27,7 @@ import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
-import BugTable from '../bugzilla/BugTable'
-import bugzillaURL from '../bugzilla/BugzillaUtils'
+import BugTable from '../bugs/BugTable'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@material-ui/icons/Info'
@@ -42,7 +41,6 @@ import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [bugs, setBugs] = React.useState([])
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
@@ -76,27 +74,15 @@ export function TestAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
-      fetch(
-        `${
-          process.env.REACT_APP_API_URL
-        }/api/tests/bugs?test=${safeEncodeURIComponent(
-          testName
-        )}&filter=${filter}`
-      ),
     ])
-      .then(([test, bugs]) => {
+      .then(([test]) => {
         if (test.status !== 200) {
           throw new Error('server returned ' + test.status)
         }
-
-        if (bugs.status !== 200) {
-          throw new Error('server returned ' + bugs.status)
-        }
-        return Promise.all([test.json(), bugs.json()])
+        return Promise.all([test.json()])
       })
-      .then(([test, bugs]) => {
+      .then(([test]) => {
         setTest(test[0])
-        setBugs(bugs)
         setLoaded(true)
       })
       .catch((error) => {
@@ -190,17 +176,6 @@ export function TestAnalysis(props) {
                 <Button
                   className="test-button"
                   target="_blank"
-                  startIcon={<BugReport />}
-                  variant="contained"
-                  color="primary"
-                  href={bugzillaURL(props.release, test)}
-                >
-                  Open bug
-                </Button>
-
-                <Button
-                  className="test-button"
-                  target="_blank"
                   startIcon={<InfoIcon />}
                   variant="contained"
                   color="secondary"
@@ -240,7 +215,7 @@ export function TestAnalysis(props) {
                   <InfoIcon />
                 </Tooltip>
               </Typography>
-              <BugTable bugs={bugs} />
+              <BugTable testName={testName} />
             </Card>
           </Grid>
 

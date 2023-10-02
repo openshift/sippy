@@ -8,11 +8,51 @@ import {
   TableRow,
   Typography,
 } from '@material-ui/core'
+import { safeEncodeURIComponent } from '../helpers'
+import Alert from '@material-ui/lab/Alert'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useEffect } from 'react'
 
 export default function BugTable(props) {
-  if (!props.bugs || props.bugs.length === 0) {
+  const [isLoaded, setLoaded] = React.useState(false)
+  const [bugs, setBugs] = React.useState([])
+  const [fetchError, setFetchError] = React.useState('')
+
+  const fetchData = () => {
+    Promise.all([
+      fetch(
+        `${
+          process.env.REACT_APP_API_URL
+        }/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
+      ),
+    ])
+      .then(([bugs]) => {
+        if (bugs.status !== 200) {
+          throw new Error('server returned ' + bugs.status)
+        }
+        return Promise.all([bugs.json()])
+      })
+      .then(([bugs]) => {
+        setBugs(bugs)
+        setLoaded(true)
+      })
+      .catch((error) => {
+        setFetchError('Could not retrieve bug data ' + error)
+      })
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  if (!isLoaded) {
+    return <p>Loading...</p>
+  }
+  if (fetchError !== '') {
+    return <Alert severity="error">{fetchError}</Alert>
+  }
+
+  if (!bugs || bugs.length === 0) {
     return <Typography>None found</Typography>
   }
 
@@ -30,7 +70,7 @@ export default function BugTable(props) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {props.bugs.map((bug) => (
+          {bugs.map((bug) => (
             <TableRow key={'bug-row-' + bug.id}>
               <TableCell scope="row">
                 <a href={bug.url}>{bug.key}</a>
@@ -51,6 +91,6 @@ export default function BugTable(props) {
 }
 
 BugTable.propTypes = {
-  bugs: PropTypes.array,
+  testName: PropTypes.string,
   classes: PropTypes.object,
 }

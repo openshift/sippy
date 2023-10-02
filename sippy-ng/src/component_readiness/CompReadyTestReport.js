@@ -15,6 +15,7 @@ import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Typography } from '@material-ui/core'
 import { Tooltip } from '@material-ui/core'
+import BugTable from '../bugs/BugTable'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
@@ -304,8 +305,13 @@ export default function CompReadyTestReport(props) {
           &gt; {testName}{' '}
         </Link>
       </h3>
-      Test Name: {testName}
-      <hr />
+      <div align="center" style={{ marginTop: 50 }}>
+        <h2>{testName}</h2>
+      </div>
+      <h2>Known Bugs</h2>
+      <BugTable testName={testName} />
+
+      <h2>Regression Report</h2>
       {printStats(
         'Sample (being evaluated)',
         data.sample_stats,
@@ -335,7 +341,6 @@ export default function CompReadyTestReport(props) {
         </div>
         <br />
       </Fragment>
-      <hr />
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <label>
           <input
