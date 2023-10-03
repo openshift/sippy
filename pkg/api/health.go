@@ -15,8 +15,8 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testreportconversion"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // useNewInstallTest decides which install test name to use based on releases. For
@@ -163,7 +163,7 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 			continue
 		}
 
-		if testreportconversion.IsNeverStable(result.Variants) {
+		if util.IsNeverStable(result.Variants) {
 			continue
 		}
 
@@ -192,9 +192,9 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 		currStats.Mean = mean
 		currStats.StandardDeviation = sd
 		currStats.Quartiles = []float64{
-			testreportconversion.ConvertNaNToZero(quartiles.Q1),
-			testreportconversion.ConvertNaNToZero(quartiles.Q2),
-			testreportconversion.ConvertNaNToZero(quartiles.Q3),
+			util.ConvertNaNToZero(quartiles.Q1),
+			util.ConvertNaNToZero(quartiles.Q2),
+			util.ConvertNaNToZero(quartiles.Q3),
 		}
 		currStats.P95 = p95
 	}
@@ -209,9 +209,9 @@ func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats s
 		prevStats.Mean = mean
 		prevStats.StandardDeviation = sd
 		prevStats.Quartiles = []float64{
-			testreportconversion.ConvertNaNToZero(quartiles.Q1),
-			testreportconversion.ConvertNaNToZero(quartiles.Q2),
-			testreportconversion.ConvertNaNToZero(quartiles.Q3),
+			util.ConvertNaNToZero(quartiles.Q1),
+			util.ConvertNaNToZero(quartiles.Q2),
+			util.ConvertNaNToZero(quartiles.Q3),
 		}
 		prevStats.P95 = p95
 	}

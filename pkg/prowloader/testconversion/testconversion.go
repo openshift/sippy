@@ -4,7 +4,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	testgridv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -25,8 +24,8 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models
 
 func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.ProwJobRunTest) {
 	for name, test := range tests {
-		switch testgridv1.TestStatus(test.Status) {
-		case testgridv1.TestStatusSuccess, testgridv1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
+		switch v1.TestStatus(test.Status) {
+		case v1.TestStatusSuccess, v1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
 			switch {
 			case testidentification.IsOverallTest(name):
 				jrr.Succeeded = true
@@ -52,7 +51,7 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 					jrr.OpenShiftTestsStatus = testidentification.Success
 				}
 			}
-		case testgridv1.TestStatusFailure:
+		case v1.TestStatusFailure:
 			// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
 			// which we use to set various JobRunResult markers
 			if !testidentification.IsOverallTest(name) {

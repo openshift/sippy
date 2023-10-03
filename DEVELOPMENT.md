@@ -23,7 +23,6 @@ Sippy obtains data from multiple sources:
 
 | Data Source         | Job names | Job runs | Test results | Release tags | Build cluster | PR State |
 |---------------------|-----------|----------|--------------|--------------|---------------|----------|
-| TestGrid            | X         | X        | X            |              |               |          |
 | Prow                |           | X        |              |              | X             |          |
 | Release controller  |           |          |              | X            |               |          |
 | Sippy configuration | X         |          |              |              |               |          |
@@ -44,38 +43,7 @@ or with a command like this if you are using the custom format file (you can ign
 pg_restore -h localhost -U postgres -p 5432 --verbose -Fc -d postgres ./sippy-backup-2022-10-20.dump
 ```
 
-### From TestGrid
-
-Fetch data from TestGrid, and load it into the db. This process can take some time for recent OpenShift releases with
-substantial number of jobs. Using older releases like 4.7 can be fetched and loaded in just a couple minutes.
-
-TestGrid data is loaded into the database in two steps. It is first downloaded and stored in a local data directory, and
-then loaded into the DB.
-
-To download TestGrid data:
-
-```bash
-./sippy --local-data /opt/sippy-testdata \
-  --release 4.11 \
-  --fetch-data /opt/sippy-testdata \
-  --log-level=debug
-```
-
-To load the database:
-
-```bash
-./sippy --local-data /opt/sippy-testdata \
-  --init-database \
-  --release 4.11 \
-  --load-database \
-  --log-level=debug \
-  --database-dsn="postgresql://postgres:password@localhost:5432/postgres"
-````
-
 ### From Prow and GCS buckets
-
-Fetching data from prow directly gives us access to more raw data that TestGrid doesn't have, such as build cluster
-data, raw junit files, test durations, and more -- but it requires more configuration that using TestGrid.
 
 In order to access the GCS storage buckets where the raw junit data is stored, you need to provide Sippy with a google
 service account credential. See the [official google docs](https://cloud.google.com/iam/docs/service-accounts) for

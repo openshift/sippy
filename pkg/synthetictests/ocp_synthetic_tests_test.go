@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	tgv1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
@@ -36,9 +35,9 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]v1.RawTestResult{},
 			},
 			expectedTestResults: []v1.RawJobRunTestResult{
-				{Name: testidentification.InstallTestName, Status: tgv1.TestStatusSuccess},
-				{Name: testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
-				{Name: "operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.InstallTestName, Status: v1.TestStatusSuccess},
+				{Name: testidentification.FinalOperatorHealthTestName, Status: v1.TestStatusSuccess},
+				{Name: "operator install openshift-apiserver", Status: v1.TestStatusSuccess},
 			},
 		},
 		{
@@ -55,8 +54,8 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				TestResults: map[string]v1.RawTestResult{},
 			},
 			expectedTestResults: []v1.RawJobRunTestResult{
-				{Name: testidentification.FinalOperatorHealthTestName, Status: tgv1.TestStatusSuccess},
-				{Name: "operator install openshift-apiserver", Status: tgv1.TestStatusSuccess},
+				{Name: testidentification.FinalOperatorHealthTestName, Status: v1.TestStatusSuccess},
+				{Name: "operator install openshift-apiserver", Status: v1.TestStatusSuccess},
 			},
 			expectedFailedTestNames: []string{
 				testidentification.SippySuiteName + "." + testidentification.InstallTestName,

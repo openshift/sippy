@@ -141,30 +141,6 @@ func IsInstallStepEquivalent(testName string) bool {
 	return false
 }
 
-// curatedTestSubstrings is keyed by release.  This is a list of tests that are important enough to individually watch.
-// Whoever is running or working on TRT gets freedom to choose 10-20 of these for whatever reason they need.  At the moment,
-// we're chasing problems where pods are not running reliably and we have to track it down.
-var curatedTestSubstrings = map[string][]string{
-	"4.11": []string{
-		"Kubernetes APIs remain available",
-		"OAuth APIs remain available",
-		"OpenShift APIs remain available",
-		"Cluster frontend ingress remain available",
-	},
-	"4.10": []string{
-		"Kubernetes APIs remain available",
-		"OAuth APIs remain available",
-		"OpenShift APIs remain available",
-		"Cluster frontend ingress remain available",
-	},
-	"4.9": []string{
-		"Kubernetes APIs remain available",
-		"OAuth APIs remain available",
-		"OpenShift APIs remain available",
-		"Cluster frontend ingress remain available",
-	},
-}
-
 var (
 	cvoAcknowledgesUpgradeRegex = regexp.MustCompile(`^(Cluster upgrade\.)?\[sig-cluster-lifecycle\] Cluster version operator acknowledges upgrade$`)
 	CVOAcknowledgesUpgradeTest  = "[sig-cluster-lifecycle] Cluster version operator acknowledges upgrade"
@@ -177,15 +153,6 @@ var (
 	ignoreTestRegex             = regexp.MustCompile(`^$|Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
 	ignoreSuiteRegex            = regexp.MustCompile(`test/e2e_`)
 )
-
-func IsCuratedTest(bugzillaRelease, testName string) bool {
-	for _, substring := range curatedTestSubstrings[bugzillaRelease] {
-		if strings.Contains(testName, substring) {
-			return true
-		}
-	}
-	return false
-}
 
 func IsOldInstallOperatorTest(testName string) bool {
 	return OperatorConditionsTestCaseName.MatchString(testName)
@@ -251,34 +218,6 @@ func GetOperatorNameFromTest(testName string) string {
 		return testName[len(OperatorFinalHealthPrefix):]
 	}
 	return ""
-}
-
-// IsUpgradeRelatedTest is a filter function for identifying tests that are valuable to track for upgrade diagnosis.
-func IsUpgradeRelatedTest(testName string) bool {
-	if IsOldUpgradeOperatorTest(testName) {
-		return true
-	}
-	if strings.Contains(testName, UpgradeTestName) {
-		return true
-	}
-	if IsUpgradeStartedTest(testName) {
-		// indicates that the CVO updated the clusterversion.status to indicate that it started work on a new payload
-		return true
-	}
-	if IsOperatorsUpgradedTest(testName) {
-		// indicates every cluster operator upgraded successfully.  This does not include machine config pools
-		return true
-	}
-	if IsMachineConfigPoolsUpgradedTest(testName) {
-		// indicates that all the machines restarted with new rhcos
-		return true
-	}
-	if strings.Contains(testName, APIsRemainAvailTest) {
-		return true
-	}
-
-	return false
-
 }
 
 // IsIgnoredSuite is used to ignore test problematic test suites such as those that include namespaces or other
