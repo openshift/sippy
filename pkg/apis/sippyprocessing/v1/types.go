@@ -4,7 +4,6 @@ package v1
 
 import (
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
-	v1testgrid "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 )
 
 type ReportType string
@@ -134,7 +133,7 @@ type RawTestResult struct {
 // RawJobRunTestResult represents an execution of a test in a job run, and whether it was success, failure, or a flake.
 type RawJobRunTestResult struct {
 	Name   string
-	Status v1testgrid.TestStatus
+	Status TestStatus
 }
 
 // RawJobRunResult is an intermediate datatype that may not have complete or consistent data when interrogated.
@@ -177,3 +176,14 @@ type OperatorState struct {
 	// OperatorState can be "", "Success", "Failure"
 	State string
 }
+
+// TestStatus corresponds to the values used by TestGrid, for historical reasons.
+type TestStatus int
+
+const (
+	TestStatusAbsent  TestStatus = 0
+	TestStatusSuccess TestStatus = 1
+	TestStatusRunning TestStatus = 4
+	TestStatusFailure TestStatus = 12
+	TestStatusFlake   TestStatus = 13
+)

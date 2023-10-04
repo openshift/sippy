@@ -32,7 +32,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
-	workloadmetricsv1 "github.com/openshift/sippy/pkg/apis/workloadmetrics/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -48,10 +47,6 @@ const (
 
 func NewServer(
 	mode Mode,
-	testGridLoadingConfig TestGridLoadingConfig,
-	rawJobResultsAnalysisOptions RawJobResultsAnalysisConfig,
-	displayDataOptions DisplayDataConfig,
-	dashboardCoordinates []TestGridDashboardCoordinates,
 	listenAddr string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
@@ -67,22 +62,15 @@ func NewServer(
 	server := &Server{
 		mode:                 mode,
 		listenAddr:           listenAddr,
-		dashboardCoordinates: dashboardCoordinates,
-
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
-		testReportGeneratorConfig: TestReportGeneratorConfig{
-			TestGridLoadingConfig:       testGridLoadingConfig,
-			RawJobResultsAnalysisConfig: rawJobResultsAnalysisOptions,
-			DisplayDataConfig:           displayDataOptions,
-		},
-		sippyNG:        sippyNG,
-		static:         static,
-		db:             dbClient,
-		bigQueryClient: bigQueryClient,
-		pinnedDateTime: pinnedDateTime,
-		gcsClient:      gcsClient,
-		cache:          cacheClient,
+		sippyNG:              sippyNG,
+		static:               static,
+		db:                   dbClient,
+		bigQueryClient:       bigQueryClient,
+		pinnedDateTime:       pinnedDateTime,
+		gcsClient:            gcsClient,
+		cache:                cacheClient,
 	}
 
 	// Fill cache
@@ -108,29 +96,16 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 type Server struct {
 	mode                 Mode
 	listenAddr           string
-	dashboardCoordinates []TestGridDashboardCoordinates
-
-	syntheticTestManager       synthetictests.SyntheticTestManager
-	variantManager             testidentification.VariantManager
-	testReportGeneratorConfig  TestReportGeneratorConfig
-	perfscaleMetricsJobReports []workloadmetricsv1.WorkloadMetricsRow
-	sippyNG                    fs.FS
-	static                     fs.FS
-	httpServer                 *http.Server
-	db                         *db.DB
-	bigQueryClient             *bigquery.Client
-	pinnedDateTime             *time.Time
-	gcsClient                  *storage.Client
-	cache                      cache.Cache
-}
-
-type TestGridDashboardCoordinates struct {
-	// this is how we index and display.  it gets wired to ?release for now
-	ReportName string
-	// this is generic and is required
-	TestGridDashboardNames []string
-	// this is openshift specific, used for BZ lookup and not required
-	BugzillaRelease string
+	syntheticTestManager synthetictests.SyntheticTestManager
+	variantManager       testidentification.VariantManager
+	sippyNG              fs.FS
+	static               fs.FS
+	httpServer           *http.Server
+	db                   *db.DB
+	bigQueryClient       *bigquery.Client
+	pinnedDateTime       *time.Time
+	gcsClient            *storage.Client
+	cache                cache.Cache
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -239,23 +214,6 @@ func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmp
 	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
 
 	log.Infof("Refresh complete")
-}
-
-func (s *Server) reportNameToDashboardCoordinates(reportName string) (TestGridDashboardCoordinates, bool) {
-	for _, dashboard := range s.dashboardCoordinates {
-		if dashboard.ReportName == reportName {
-			return dashboard, true
-		}
-	}
-	return TestGridDashboardCoordinates{}, false
-}
-
-func (s *Server) reportNames() []string {
-	ret := []string{}
-	for _, dashboard := range s.dashboardCoordinates {
-		ret = append(ret, dashboard.ReportName)
-	}
-	return ret
 }
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
@@ -1296,15 +1254,6 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-func (s *Server) jsonPerfScaleMetricsReport(w http.ResponseWriter, req *http.Request) {
-	reports := s.perfscaleMetricsJobReports
-
-	release := s.getReleaseOrFail(w, req)
-	if release != "" {
-		api.PrintPerfscaleWorkloadMetricsReport(w, req, release, reports)
-	}
-}
-
 func (s *Server) Serve() {
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
 	serveMux := http.NewServeMux()
@@ -1372,7 +1321,6 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(8*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
 	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(8*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
 
-	serveMux.HandleFunc("/api/perfscalemetrics", s.jsonPerfScaleMetricsReport)
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {
 		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)

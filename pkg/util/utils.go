@@ -1,10 +1,10 @@
 package util
 
 import (
-	"regexp"
+	"fmt"
+	"math"
+	gourl "net/url"
 	"time"
-
-	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
 type FailureGroupStats struct {
@@ -14,25 +14,6 @@ type FailureGroupStats struct {
 	MedianPrev int
 	Avg        int
 	AvgPrev    int
-}
-
-// ComputeFailureGroupStats computes count, median, and average number of failuregroups
-// returns FailureGroupStats containing count, countPrev, median, medianPrev, avg, avgPrev
-
-func RelevantJob(jobName, status string, filter *regexp.Regexp) bool {
-	if filter != nil && !filter.MatchString(jobName) {
-		return false
-	}
-	return true
-}
-
-func IsActiveBug(bug bugsv1.Bug) bool {
-	switch bug.Status {
-	case "VERIFIED", "RELEASE_PENDING", "CLOSED":
-		return false
-	default:
-		return true
-	}
 }
 
 func StrSliceContains(strSlice []string, elem string) bool {
@@ -65,4 +46,35 @@ func GetReportEnd(pinnedTime *time.Time) time.Time {
 	}
 
 	return *pinnedTime
+}
+
+func IsNeverStable(variants []string) bool {
+	for _, variant := range variants {
+		if variant == "never-stable" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ConvertNaNToZero prevents attempts to marshal the NaN zero-value of a float64 in go by converting to 0.
+func ConvertNaNToZero(f float64) float64 {
+	if math.IsNaN(f) {
+		return 0.0
+	}
+
+	return f
+}
+
+func URLForJob(dashboard, jobName string) *gourl.URL {
+	url := &gourl.URL{
+		Scheme: "https",
+		Host:   "testgrid.k8s.io",
+		Path:   fmt.Sprintf("/%s", gourl.PathEscape(dashboard)),
+	}
+	// this is a non-standard fragment honored by test-grid
+	url.Fragment = gourl.PathEscape(jobName)
+
+	return url
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	v1 "github.com/openshift/sippy/pkg/apis/testgrid/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -35,8 +34,8 @@ import (
 	"github.com/openshift/sippy/pkg/prowloader/github"
 	"github.com/openshift/sippy/pkg/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -362,7 +361,7 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 		}
 		if len(jobType) != 0 {
 			dashboard = dashboard + "-" + jobType
-			return testgridhelpers.URLForJob(dashboard, jobName)
+			return util.URLForJob(dashboard, jobName)
 		}
 	}
 	return &url.URL{}
@@ -798,12 +797,12 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 	for _, tc := range suite.TestCases {
-		status := v1.TestStatusFailure
+		status := sippyprocessingv1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
 		if tc.SkipMessage != nil {
 			continue
 		} else if tc.FailureOutput == nil {
-			status = v1.TestStatusSuccess
+			status = sippyprocessingv1.TestStatusSuccess
 		} else {
 			failureOutput = &models.ProwJobRunTestOutput{
 				Output: tc.FailureOutput.Output,
@@ -855,10 +854,10 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 				Duration:             tc.Duration,
 				ProwJobRunTestOutput: failureOutput,
 			}
-		} else if (existing.Status == int(v1.TestStatusFailure) && status == v1.TestStatusSuccess) ||
-			(existing.Status == int(v1.TestStatusSuccess) && status == v1.TestStatusFailure) {
+		} else if (existing.Status == int(sippyprocessingv1.TestStatusFailure) && status == sippyprocessingv1.TestStatusSuccess) ||
+			(existing.Status == int(sippyprocessingv1.TestStatusSuccess) && status == sippyprocessingv1.TestStatusFailure) {
 			// One pass among failures makes this a flake
-			existing.Status = int(v1.TestStatusFlake)
+			existing.Status = int(sippyprocessingv1.TestStatusFlake)
 			if existing.ProwJobRunTestOutput == nil {
 				existing.ProwJobRunTestOutput = failureOutput
 			}

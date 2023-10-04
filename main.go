@@ -7,8 +7,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"path"
-	"regexp"
 	"strings"
 	"time"
 
@@ -30,7 +28,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/jiraloader"
-	"github.com/openshift/sippy/pkg/perfscaleanalysis"
 	"github.com/openshift/sippy/pkg/prowloader"
 	"github.com/openshift/sippy/pkg/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/prowloader/github"
@@ -39,7 +36,6 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/snapshot"
 	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/testgridanalysis/testgridhelpers"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -79,8 +75,6 @@ type Options struct {
 	MinTestRuns                        int
 	Output                             string
 	FailureClusterThreshold            int
-	FetchData                          string
-	FetchPerfScaleData                 bool
 	InitDatabase                       bool
 	LoadDatabase                       bool
 	ListenAddr                         string
@@ -151,10 +145,8 @@ func main() {
 		"Number of days prior to --start-day to analyze testgrid results back to. (default 14 days) i.e. --start-day 30 --num-days 14 would load test grid results from 30 days ago back to 30+14=44 days ago.")
 	flags.Float64Var(&opt.TestSuccessThreshold, "test-success-threshold", opt.TestSuccessThreshold, "Filter results for tests that are more than this percent successful")
 	flags.StringVar(&opt.JobFilter, "job-filter", opt.JobFilter, "Only analyze jobs that match this regex")
-	flags.StringVar(&opt.FetchData, "fetch-data", opt.FetchData, "Download testgrid data to directory specified for future use with --local-data")
 	flags.BoolVar(&opt.LoadDatabase, "load-database", opt.LoadDatabase, "Process testgrid data in --local-data and store in database")
 	flags.BoolVar(&opt.InitDatabase, "init-database", opt.InitDatabase, "Initialize postgresql database tables and materialized views")
-	flags.BoolVar(&opt.FetchPerfScaleData, "fetch-openshift-perfscale-data", opt.FetchPerfScaleData, "Download ElasticSearch data for workload CPU/memory use from jobs run by the OpenShift perfscale team. Will be stored in 'perfscale-metrics/' subdirectory beneath the --fetch-data dir.")
 	flags.IntVar(&opt.MinTestRuns, "min-test-runs", opt.MinTestRuns, "Ignore tests with less than this number of runs")
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
@@ -205,27 +197,6 @@ func (o *Options) Complete() {
 	}
 }
 
-func (o *Options) ToTestGridDashboardCoordinates() []sippyserver.TestGridDashboardCoordinates {
-	dashboards := []sippyserver.TestGridDashboardCoordinates{}
-	for _, dashboard := range o.Dashboards {
-		tokens := strings.Split(dashboard, "=")
-		if len(tokens) != 3 {
-			// launch error
-			panic(fmt.Sprintf("must have three tokens: %q", dashboard))
-		}
-
-		dashboards = append(dashboards,
-			sippyserver.TestGridDashboardCoordinates{
-				ReportName:             tokens[0],
-				TestGridDashboardNames: strings.Split(tokens[1], ","),
-				BugzillaRelease:        tokens[2],
-			},
-		)
-	}
-
-	return dashboards
-}
-
 // dashboardArgFromOpenshiftRelease converts a --release string into the generic --dashboard arg
 func dashboardArgFromOpenshiftRelease(release string) string {
 	const openshiftDashboardTemplate = "redhat-openshift-ocp-release-%s-%s"
@@ -262,24 +233,8 @@ func (o *Options) Validate() error {
 		}
 	}
 
-	if o.FetchPerfScaleData && o.FetchData == "" {
-		return fmt.Errorf("must specify --fetch-data with --fetch-openshift-perfscale-data")
-	}
-
-	if o.Server && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --server with --fetch-data")
-	}
-
 	if o.Server && o.LoadDatabase {
 		return fmt.Errorf("cannot specify --server with --load-database")
-	}
-
-	if o.LoadDatabase && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --load-database with --fetch-data")
-	}
-
-	if o.LoadDatabase && o.LocalData == "" && o.LoadTestgrid {
-		return fmt.Errorf("must specify --local-data with --load-database for loading testgrid data")
 	}
 
 	if (o.LoadDatabase || o.Server || o.CreateSnapshot || o.CommentProcessing) && o.DSN == "" {
@@ -304,10 +259,6 @@ func (o *Options) Validate() error {
 
 	if o.DaemonServer && o.LoadDatabase {
 		return fmt.Errorf("cannot specify --daemon-server with --load-database")
-	}
-
-	if o.DaemonServer && o.FetchData != "" {
-		return fmt.Errorf("cannot specify --daemon-server with --fetch-data")
 	}
 
 	if !o.DaemonServer && o.CommentProcessing {
@@ -407,41 +358,6 @@ func (o *Options) Run() error { //nolint:gocyclo
 		return snapshotter.Create()
 	}
 
-	// This block downloads testgrid data and stores as files on disk.
-	// Typically unused for OpenShift we now scrape prow directly instead.
-	if o.FetchData != "" {
-		start := time.Now()
-		err := os.MkdirAll(o.FetchData, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		dashboards := []string{}
-
-		for _, dashboardCoordinate := range o.ToTestGridDashboardCoordinates() {
-			dashboards = append(dashboards, dashboardCoordinate.TestGridDashboardNames...)
-		}
-		testgridhelpers.DownloadData(dashboards, o.JobFilter, o.FetchData)
-
-		// Fetch OpenShift PerfScale Data from ElasticSearch:
-		if o.FetchPerfScaleData {
-			scaleJobsDir := path.Join(o.FetchData, perfscaleanalysis.ScaleJobsSubDir)
-			err := os.MkdirAll(scaleJobsDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-			err = perfscaleanalysis.DownloadPerfScaleData(scaleJobsDir, util.GetReportEnd(pinnedTime))
-			if err != nil {
-				return err
-			}
-		}
-
-		elapsed := time.Since(start)
-		log.Infof("Testgrid data fetched in: %s", elapsed)
-
-		return nil
-	}
-
 	if o.InitDatabase {
 		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
@@ -453,32 +369,12 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.LoadDatabase {
-
 		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
 		}
 
 		start := time.Now()
-
-		if o.LoadTestgrid {
-
-			trgc := sippyserver.TestReportGeneratorConfig{
-				TestGridLoadingConfig:       o.toTestGridLoadingConfig(),
-				RawJobResultsAnalysisConfig: o.toRawJobResultsAnalysisConfig(),
-				DisplayDataConfig:           o.toDisplayDataConfig(),
-			}
-
-			for _, dashboard := range o.ToTestGridDashboardCoordinates() {
-				err := trgc.LoadDatabase(dbc, dashboard, o.getVariantManager(), o.getSyntheticTestManager(),
-					o.StartDay, o.NumDays, util.GetReportEnd(pinnedTime))
-				if err != nil {
-					log.WithError(err).Error("error loading database")
-					return err
-				}
-			}
-
-		}
 
 		// Track all errors we encountered during the update. We'll log each again at the end, and return
 		// an overall error to exit non-zero and fail the job.
@@ -741,10 +637,6 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 
 	server := sippyserver.NewServer(
 		o.getServerMode(),
-		o.toTestGridLoadingConfig(),
-		o.toRawJobResultsAnalysisConfig(),
-		o.toDisplayDataConfig(),
-		o.ToTestGridDashboardCoordinates(),
 		o.ListenAddr,
 		o.getSyntheticTestManager(),
 		o.getVariantManager(),
@@ -829,30 +721,4 @@ func (o *Options) getSyntheticTestManager() synthetictests.SyntheticTestManager 
 	}
 
 	return synthetictests.NewEmptySyntheticTestManager()
-}
-
-func (o *Options) toTestGridLoadingConfig() sippyserver.TestGridLoadingConfig {
-	var jobFilter *regexp.Regexp
-	if len(o.JobFilter) > 0 {
-		jobFilter = regexp.MustCompile(o.JobFilter)
-	}
-
-	return sippyserver.TestGridLoadingConfig{
-		LocalData: o.LocalData,
-		JobFilter: jobFilter,
-	}
-}
-
-func (o *Options) toRawJobResultsAnalysisConfig() sippyserver.RawJobResultsAnalysisConfig {
-	return sippyserver.RawJobResultsAnalysisConfig{
-		StartDay: o.StartDay,
-		NumDays:  o.NumDays,
-	}
-}
-func (o *Options) toDisplayDataConfig() sippyserver.DisplayDataConfig {
-	return sippyserver.DisplayDataConfig{
-		MinTestRuns:             o.MinTestRuns,
-		TestSuccessThreshold:    o.TestSuccessThreshold,
-		FailureClusterThreshold: o.FailureClusterThreshold,
-	}
 }
