@@ -11,10 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"google.golang.org/api/option"
@@ -24,14 +21,17 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/cache/redis"
+	"github.com/openshift/sippy/pkg/dataloader"
+	"github.com/openshift/sippy/pkg/dataloader/bugloader"
+	"github.com/openshift/sippy/pkg/dataloader/incidentloader"
+	"github.com/openshift/sippy/pkg/dataloader/loaderwithmetrics"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
-	"github.com/openshift/sippy/pkg/jiraloader"
-	"github.com/openshift/sippy/pkg/prowloader"
-	"github.com/openshift/sippy/pkg/prowloader/gcs"
-	"github.com/openshift/sippy/pkg/prowloader/github"
-	"github.com/openshift/sippy/pkg/releasesync"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/snapshot"
@@ -46,12 +46,6 @@ var sippyNG embed.FS
 
 //go:embed static
 var static embed.FS
-
-var prowJobLoadMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_prow_job_load_millis",
-	Help:    "Milliseconds to load our prow jobs",
-	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
-})
 
 const (
 	defaultLogLevel                = "info"
@@ -292,6 +286,8 @@ func (o *Options) Validate() error {
 }
 
 func (o *Options) Run() error { //nolint:gocyclo
+	loaders := make([]dataloader.DataLoader, 0)
+
 	// Set log level
 	level, err := log.ParseLevel(o.LogLevel)
 	if err != nil {
@@ -369,6 +365,10 @@ func (o *Options) Run() error { //nolint:gocyclo
 	}
 
 	if o.LoadDatabase {
+		// Cancel syncing after 4 hours
+		ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
+		defer cancel()
+
 		dbc, err := db.New(o.DSN, gormLogLevel)
 		if err != nil {
 			return err
@@ -380,45 +380,43 @@ func (o *Options) Run() error { //nolint:gocyclo
 		// an overall error to exit non-zero and fail the job.
 		allErrs := []error{}
 
-		log.Info("Loading release streams...")
-		loadReleases := len(o.OpenshiftReleases) > 0
-		if loadReleases {
-			releaseStreams := make([]string, 0)
-			for _, release := range o.OpenshiftReleases {
-				for _, stream := range []string{"nightly", "ci"} {
-					releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
-				}
-			}
-
-			releaseSyncErrs := releasesync.Import(dbc, releaseStreams, o.OpenshiftArchitectures)
-			allErrs = append(allErrs, releaseSyncErrs...)
+		// Release payload tag loader
+		if len(o.OpenshiftReleases) > 0 {
+			loaders = append(loaders, releaseloader.New(dbc, o.OpenshiftReleases, o.OpenshiftArchitectures))
 		}
 
+		// Prow Loader
 		if o.LoadProw {
-			errs := o.loadProwJobs(dbc, sippyConfig)
-			if len(errs) > 0 {
-				allErrs = append(allErrs, errs...)
+			prowLoader, err := o.prowLoader(ctx, dbc, sippyConfig)
+			if err != nil {
+				return err
 			}
+			loaders = append(loaders, prowLoader)
 		}
 
-		if err := o.loadJiraIncidents(dbc); err != nil {
-			return err
-		}
+		// JIRA Loader
+		loaders = append(loaders, incidentloader.New(dbc))
 
+		// Bug Loader
 		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0
 		if loadBugs {
-			bugsStart := time.Now()
-			errs := sippyserver.LoadBugs(dbc)
-			allErrs = append(allErrs, errs...)
-			bugsElapsed := time.Since(bugsStart)
-			log.Infof("Bugs loaded from search.ci in: %s", bugsElapsed)
+			loaders = append(loaders, bugloader.New(dbc))
 		}
 
-		// Update the tests watchlist flag. Anything matching one of our configured
-		// regexes, or any test linked to a jira with a particular label will land on the watchlist
-		// for easier viewing in the UI.
-		watchlistErrs := sippyserver.UpdateWatchlist(dbc)
-		allErrs = append(allErrs, watchlistErrs...)
+		// Run loaders
+		for _, loader := range loaders {
+			log.Infof("Running loader %q", loader.Name())
+			l := loaderwithmetrics.New(loader)
+			l.Load()
+			if len(l.Errors()) > 0 {
+				allErrs = append(allErrs, l.Errors()...)
+				log.Infof("Running %q complete with %d errors", loader.Name(), len(l.Errors()))
+				for _, err := range l.Errors() {
+					log.Error(err.Error())
+				}
+			}
+			log.Infof("Running %q complete with 0 errors", loader.Name())
+		}
 
 		elapsed := time.Since(start)
 		log.WithField("elapsed", elapsed).Info("database load complete")
@@ -499,28 +497,14 @@ func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
 	daemonServer.Serve()
 }
 
-func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
-	allErrs := []error{}
-
-	// Cancel syncing after 4 hours
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
-	defer cancel()
-	start := time.Now()
-
-	var promPusher *push.Pusher
-	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
-		promPusher = push.New(pushgateway, "sippy-prow-job-loader")
-		promPusher.Collector(prowJobLoadMetric)
-	}
-
+func (o *Options) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig v1.SippyConfig) (dataloader.DataLoader, error) {
 	gcsClient, err := gcs.NewGCSClient(ctx,
 		o.GoogleServiceAccountCredentialFile,
 		o.GoogleOAuthClientCredentialFile,
 	)
 	if err != nil {
 		log.WithError(err).Error("CRITICAL error getting GCS client which prevents importing prow jobs")
-		allErrs = append(allErrs, err)
-		return allErrs
+		return nil, err
 	}
 
 	var bigQueryClient *bigquery.Client
@@ -529,8 +513,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
-			allErrs = append(allErrs, err)
-			return allErrs
+			return nil, err
 		}
 	}
 
@@ -542,11 +525,10 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 	ghCommenter, err := commenter.NewGitHubCommenter(githubClient, dbc, o.ExcludeReposCommenting, o.IncludeReposCommenting)
 	if err != nil {
 		log.WithError(err).Error("CRITICAL error initializing GitHub commenter which prevents importing prow jobs")
-		allErrs = append(allErrs, err)
-		return allErrs
+		return nil, err
 	}
 
-	prowLoader := prowloader.New(
+	return prowloader.New(
 		ctx,
 		dbc,
 		gcsClient,
@@ -557,25 +539,7 @@ func (o *Options) loadProwJobs(dbc *db.DB, sippyConfig v1.SippyConfig) []error {
 		o.getSyntheticTestManager(),
 		o.OpenshiftReleases,
 		&sippyConfig,
-		ghCommenter)
-	errs := prowLoader.LoadProwJobsToDB()
-	allErrs = append(allErrs, errs...)
-
-	prowJobLoadMetric.Observe(float64(time.Since(start).Milliseconds()))
-	if promPusher != nil {
-		log.Info("pushing metrics to prometheus gateway")
-		if err := promPusher.Add(); err != nil {
-			log.WithError(err).Error("could not push to prometheus pushgateway")
-		} else {
-			log.Info("successfully pushed metrics to prometheus gateway")
-		}
-	}
-	return allErrs
-}
-
-func (o *Options) loadJiraIncidents(dbc *db.DB) error {
-	jiraLoader := jiraloader.New(dbc)
-	return jiraLoader.LoadJIRAIncidents()
+		ghCommenter), nil
 }
 
 func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogger.LogLevel) error {

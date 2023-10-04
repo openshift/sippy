@@ -1,4 +1,4 @@
-package jiraloader
+package incidentloader
 
 import (
 	"encoding/json"
@@ -16,19 +16,24 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-type JIRALoader struct {
-	dbc *db.DB
+type IncidentLoader struct {
+	dbc    *db.DB
+	errors []error
 }
 
-func New(dbc *db.DB) *JIRALoader {
-	return &JIRALoader{
+func New(dbc *db.DB) *IncidentLoader {
+	return &IncidentLoader{
 		dbc: dbc,
 	}
 }
 
 const jiraTimeLayout = "2006-01-02T15:04:05.000Z0700"
 
-func (jl *JIRALoader) LoadJIRAIncidents() error {
+func (jl *IncidentLoader) Name() string {
+	return "jira"
+}
+
+func (jl *IncidentLoader) Load() {
 	start := time.Now()
 	log.Infof("populating unresolved jira incident cache...")
 	var dbIssues []string
@@ -54,7 +59,8 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog", nil)
 	if err != nil {
-		return err
+		jl.errors = append(jl.errors, err)
+		return
 	}
 
 	req.Header.Add("Accept", "application/json")
@@ -62,13 +68,15 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		jl.errors = append(jl.errors, err)
+		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		jl.errors = append(jl.errors, err)
+		return
 	}
 
 	var issues struct {
@@ -76,7 +84,8 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 	}
 	err = json.Unmarshal(body, &issues)
 	if err != nil {
-		return err
+		jl.errors = append(jl.errors, err)
+		return
 	}
 
 	for i, issue := range issues.Issues {
@@ -89,7 +98,8 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
 			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			return res.Error
+			jl.errors = append(jl.errors, err)
+			return
 		}
 	}
 
@@ -109,12 +119,16 @@ func (jl *JIRALoader) LoadJIRAIncidents() error {
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
 			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			return res.Error
+			jl.errors = append(jl.errors, err)
+			return
 		}
 	}
 
 	log.Infof("jira incident fetch complete in %+v", time.Since(start))
-	return nil
+}
+
+func (jl *IncidentLoader) Errors() []error {
+	return jl.errors
 }
 
 func findResolutionTime(issue *v1jira.Issue) *time.Time {

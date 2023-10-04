@@ -20,7 +20,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/releasesync"
+	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 
 	"github.com/openshift/sippy/pkg/db/models"
 
@@ -836,7 +836,7 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
 	response := apitype.Releases{
-		GADates: releasesync.GADateMap,
+		GADates: releaseloader.GADateMap,
 	}
 	releases, err := query.ReleasesFromDB(s.db)
 	if err != nil {

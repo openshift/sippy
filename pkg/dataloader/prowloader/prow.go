@@ -27,12 +27,12 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
-	"github.com/openshift/sippy/pkg/prowloader/gcs"
-	"github.com/openshift/sippy/pkg/prowloader/github"
-	"github.com/openshift/sippy/pkg/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -44,6 +44,7 @@ type ProwLoader struct {
 	dbc                     *db.DB
 	bkt                     *storage.BucketHandle
 	bktName                 string
+	errors                  []error
 	githubClient            *github.Client
 	bigQueryClient          *bigquery.Client
 	maxConcurrency          int
@@ -134,14 +135,21 @@ func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
 	return prowJobRunCache
 }
 
-func (pl *ProwLoader) LoadProwJobsToDB() []error {
+func (pl *ProwLoader) Name() string {
+	return "prow"
+}
+
+func (pl *ProwLoader) Errors() []error {
+	return pl.errors
+}
+
+func (pl *ProwLoader) Load() {
 	start := time.Now()
 	log.Infof("started loading prow jobs to DB...")
 
-	errs := []error{}
 	// Update unmerged PR statuses in case any have merged
 	if err := pl.syncPRStatus(); err != nil {
-		errs = append(errs, errors.Wrap(err, "error in syncPRStatus"))
+		pl.errors = append(pl.errors, errors.Wrap(err, "error in syncPRStatus"))
 	}
 
 	// Grab the ProwJob definitions from prow or CI bigquery. Note that these are the Kube
@@ -152,18 +160,18 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 		var bqErrs []error
 		prowJobs, bqErrs = pl.fetchProwJobsFromOpenShiftBigQuery()
 		if len(bqErrs) > 0 {
-			errs = append(errs, bqErrs...)
+			pl.errors = append(pl.errors, bqErrs...)
 		}
 	} else {
 		jobsJSON, err := fetchJobsJSON(pl.config.Prow.URL)
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "error fetching job JSON data from prow"))
-			return errs
+			pl.errors = append(pl.errors, errors.Wrap(err, "error fetching job JSON data from prow"))
+			return
 		}
 		prowJobs, err = jobsJSONToProwJobs(jobsJSON)
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "error decoding job JSON data from prow"))
-			return errs
+			pl.errors = append(pl.errors, errors.Wrap(err, "error decoding job JSON data from prow"))
+			return
 		}
 	}
 
@@ -199,15 +207,13 @@ func (pl *ProwLoader) LoadProwJobsToDB() []error {
 	wg.Wait()
 	close(errsCh)
 	for err := range errsCh {
-		errs = append(errs, err)
+		pl.errors = append(pl.errors, err)
 	}
 
-	if len(errs) > 0 {
-		log.Warningf("encountered %d errors while importing job runs", len(errs))
+	if len(pl.errors) > 0 {
+		log.Warningf("encountered %d errors while importing job runs", len(pl.errors))
 	}
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
-
-	return errs
 }
 
 func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow.ProwJob) {

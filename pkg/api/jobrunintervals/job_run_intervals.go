@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/prowloader/gcs"
-	log "github.com/sirupsen/logrus"
 )
 
 // JobRunIntervals fetches intervals for a given job run by fetching from the prow job's GCS bucket path

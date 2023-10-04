@@ -1,4 +1,4 @@
-package sippyserver
+package bugloader
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/andygrunwald/go-jira"
+
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
