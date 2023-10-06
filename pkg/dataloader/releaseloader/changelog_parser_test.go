@@ -1,4 +1,4 @@
-package releasesync
+package releaseloader
 
 import (
 	"encoding/json"

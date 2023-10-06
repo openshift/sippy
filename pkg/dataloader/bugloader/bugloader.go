@@ -1,4 +1,4 @@
-package sippyserver
+package bugloader
 
 import (
 	"fmt"
@@ -23,7 +23,207 @@ import (
 
 var FindIssuesForVariants = loader.FindIssuesForVariants
 
-func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
+type BugLoader struct {
+	dbc    *db.DB
+	errors []error
+}
+
+func New(dbc *db.DB) *BugLoader {
+	return &BugLoader{
+		dbc: dbc,
+	}
+}
+
+func (bl *BugLoader) Name() string {
+	return "bugs"
+}
+
+func (bl *BugLoader) Errors() []error {
+	return bl.errors
+}
+
+// LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
+func (bl *BugLoader) Load() {
+	testCache, err := loadTestCache(bl.dbc, []string{})
+	if err != nil {
+		bl.errors = append(bl.errors, err)
+		return
+	}
+
+	jobCache, err := loadProwJobCache(bl.dbc)
+	if err != nil {
+		bl.errors = append(bl.errors, err)
+		return
+	}
+
+	log.Info("querying search.ci for test/job associations")
+	testIssues, err := loader.FindIssuesForTests(sets.StringKeySet(testCache).List()...)
+	if err != nil {
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.")
+		err = errors.Wrap(err, "error querying bugs for tests")
+		bl.errors = append(bl.errors, err)
+	}
+
+	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
+	if err != nil {
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing jobs, some job failures may have associated bugs that are not listed below.")
+		err = errors.Wrap(err, "error querying bugs for jobs")
+		bl.errors = append(bl.errors, err)
+	}
+
+	err = appendJobIssuesFromVariants(jobCache, jobIssues)
+	if err != nil {
+		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs by jobs by variants.")
+		err = errors.Wrap(err, "error querying bugs for variants")
+		bl.errors = append(bl.errors, err)
+	}
+
+	log.Info("syncing issue test/job associations to db")
+
+	// Merge the test/job bugs into one list, associated with each failing test or job, mapped to our db model for the bug.
+	dbExpectedBugs := map[int64]*models.Bug{}
+
+	for testName, apiBugArr := range testIssues {
+		for _, apiBug := range apiBugArr {
+			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
+			if err != nil {
+				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
+				err = errors.Wrap(err, "error parsing issue ID")
+				bl.errors = append(bl.errors, err)
+				continue
+			}
+			if _, ok := dbExpectedBugs[issueID]; !ok {
+				log.Debugf("converting issue: %+v", apiBug)
+				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
+				dbExpectedBugs[issueID] = newBug
+			}
+			if _, ok := testCache[testName]; !ok {
+				// Shouldn't be possible, if it is we want to know.
+				err := fmt.Errorf("test name was in bug cache but not in database?: %s", testName)
+				log.WithError(err).Error("unexpected error getting test from cache")
+				bl.errors = append(bl.errors, err)
+				continue
+			}
+			dbExpectedBugs[issueID].Tests = append(dbExpectedBugs[issueID].Tests, *testCache[testName])
+		}
+	}
+
+	log.WithField("jobIssues", len(jobIssues)).Info("found job issues")
+	for jobSearchStr, apiBugArr := range jobIssues {
+		for _, apiBug := range apiBugArr {
+			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
+			if err != nil {
+				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
+				err = errors.Wrap(err, "error parsing issue ID")
+				bl.errors = append(bl.errors, err)
+				continue
+			}
+			if _, ok := dbExpectedBugs[issueID]; !ok {
+				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
+				dbExpectedBugs[issueID] = newBug
+			}
+			// We search for job=[jobname]=all, need to extract the raw job name from that search string
+			// which is what appears in our jobIssues map.
+			jobName := jobSearchStr[4 : len(jobSearchStr)-4]
+			if _, ok := jobCache[jobName]; !ok {
+				// Shouldn't be possible, if it is we want to know.
+				err := fmt.Errorf("job name was in bug cache but not in database?: %s", jobName)
+				log.WithError(err).Error("unexpected error getting job from cache")
+				bl.errors = append(bl.errors, err)
+				continue
+			}
+			dbExpectedBugs[issueID].Jobs = append(dbExpectedBugs[issueID].Jobs, *jobCache[jobName])
+		}
+	}
+
+	expectedBugIDs := make([]uint, 0, len(dbExpectedBugs))
+	for _, bug := range dbExpectedBugs {
+		expectedBugIDs = append(expectedBugIDs, bug.ID)
+		res := bl.dbc.DB.Clauses(clause.OnConflict{
+			UpdateAll: true,
+		}).Create(bug)
+		if res.Error != nil {
+			log.Errorf("error creating bug: %s %v", res.Error, bug)
+			err := errors.Wrap(res.Error, "error creating bug")
+			bl.errors = append(bl.errors, err)
+			continue
+		}
+		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
+		err := bl.dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
+		if err != nil {
+			log.Errorf("error updating bug test associations: %s %v", err, bug)
+			err := errors.Wrap(res.Error, "error updating bug test assocations")
+			bl.errors = append(bl.errors, err)
+			continue
+		}
+		err = bl.dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
+		if err != nil {
+			log.Errorf("error updating bug job associations: %s %v", err, bug)
+			err := errors.Wrap(res.Error, "error updating bug job assocations")
+			bl.errors = append(bl.errors, err)
+			continue
+		}
+	}
+
+	// Delete all stale referenced bugs that are no longer in our expected bugs.
+	// Unscoped deletes the rows from the db, rather than soft delete.
+	res := bl.dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
+	if res.Error != nil {
+		err := errors.Wrap(res.Error, "error deleting stale bugs")
+		bl.errors = append(bl.errors, err)
+	}
+	log.Infof("deleted %d stale bugs", res.RowsAffected)
+
+	// Update watch list
+	if err := updateWatchlist(bl.dbc); err != nil {
+		bl.errors = append(bl.errors, err...)
+	}
+
+}
+
+func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {
+	newBug := &models.Bug{
+		ID:             uint(issueID),
+		Key:            apiIssue.Key,
+		Status:         apiIssue.Fields.Status.Name,
+		LastChangeTime: time.Time(apiIssue.Fields.Updated),
+		Summary:        apiIssue.Fields.Summary,
+		URL:            fmt.Sprintf("https://issues.redhat.com/browse/%s", apiIssue.Key),
+		Tests:          []models.Test{},
+	}
+
+	// The version and components fields may typically or always be just one value, but we're told it
+	// may not be possible to actually prevent someone adding multiple, so we'll be ready for the possibility.
+	components := []string{}
+	for _, c := range apiIssue.Fields.Components {
+		components = append(components, c.Name)
+	}
+	sort.Strings(components)
+	newBug.Components = components
+
+	affectsVersions := []string{}
+	for _, av := range apiIssue.Fields.AffectsVersions {
+		affectsVersions = append(affectsVersions, av.Name)
+	}
+	sort.Strings(affectsVersions)
+	newBug.AffectsVersions = affectsVersions
+
+	fixVersions := []string{}
+	for _, fv := range apiIssue.Fields.FixVersions {
+		fixVersions = append(fixVersions, fv.Name)
+	}
+	sort.Strings(fixVersions)
+	newBug.FixVersions = fixVersions
+
+	labels := apiIssue.Fields.Labels
+	labels = append(labels, apiIssue.Fields.Labels...)
+	sort.Strings(labels)
+	newBug.Labels = labels
+
+	return newBug
+}
+
+func loadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
 	// Cache all tests by name to their ID, used for the join object.
 	testCache := map[string]*models.Test{}
 	q := dbc.DB.Model(&models.Test{})
@@ -50,7 +250,7 @@ func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, erro
 	return testCache, nil
 }
 
-func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
+func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	prowJobCache := map[string]*models.ProwJob{}
 	var allJobs []*models.ProwJob
 	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
@@ -137,12 +337,13 @@ func appendJobIssuesFromVariants(jobCache map[string]*models.ProwJob, jobIssues 
 			}
 		}
 	}
+
 	return nil
 }
 
-func UpdateWatchlist(dbc *db.DB) []error {
+func updateWatchlist(dbc *db.DB) []error {
 	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
-	testCache, err := LoadTestCache(dbc, []string{"Bugs"})
+	testCache, err := loadTestCache(dbc, []string{"Bugs"})
 	if err != nil {
 		return []error{errors.Wrap(err, "error loading test class for UpdateWatchList")}
 	}
@@ -161,180 +362,4 @@ func UpdateWatchlist(dbc *db.DB) []error {
 		}
 	}
 	return errs
-}
-
-// LoadBugs does a bulk query of all our tests and jobs, 50 at a time, to search.ci and then syncs the associations to the db.
-func LoadBugs(dbc *db.DB) []error {
-	testCache, err := LoadTestCache(dbc, []string{})
-	if err != nil {
-		return []error{err}
-	}
-
-	jobCache, err := LoadProwJobCache(dbc)
-	if err != nil {
-		return []error{err}
-	}
-
-	errs := []error{}
-	log.Info("querying search.ci for test/job associations")
-	testIssues, err := loader.FindIssuesForTests(sets.StringKeySet(testCache).List()...)
-	if err != nil {
-		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing tests, some test failures may have associated bugs that are not listed below.")
-		err = errors.Wrap(err, "error querying bugs for tests")
-		errs = append(errs, err)
-	}
-
-	jobIssues, err := loader.FindIssuesForJobs(sets.StringKeySet(jobCache).List()...)
-	if err != nil {
-		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs for failing jobs, some job failures may have associated bugs that are not listed below.")
-		err = errors.Wrap(err, "error querying bugs for jobs")
-		errs = append(errs, err)
-	}
-
-	err = appendJobIssuesFromVariants(jobCache, jobIssues)
-	if err != nil {
-		log.WithError(err).Warning("Issue Lookup Error: an error was encountered looking up existing bugs by jobs by variants.")
-		err = errors.Wrap(err, "error querying bugs for variants")
-		errs = append(errs, err)
-	}
-
-	log.Info("syncing issue test/job associations to db")
-
-	// Merge the test/job bugs into one list, associated with each failing test or job, mapped to our db model for the bug.
-	dbExpectedBugs := map[int64]*models.Bug{}
-
-	for testName, apiBugArr := range testIssues {
-		for _, apiBug := range apiBugArr {
-			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
-			if err != nil {
-				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
-				err = errors.Wrap(err, "error parsing issue ID")
-				errs = append(errs, err)
-				continue
-			}
-			if _, ok := dbExpectedBugs[issueID]; !ok {
-				log.Debugf("converting issue: %+v", apiBug)
-				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
-				dbExpectedBugs[issueID] = newBug
-			}
-			if _, ok := testCache[testName]; !ok {
-				// Shouldn't be possible, if it is we want to know.
-				err := fmt.Errorf("test name was in bug cache but not in database?: %s", testName)
-				log.WithError(err).Error("unexpected error getting test from cache")
-				errs = append(errs, err)
-				continue
-			}
-			dbExpectedBugs[issueID].Tests = append(dbExpectedBugs[issueID].Tests, *testCache[testName])
-		}
-	}
-
-	log.WithField("jobIssues", len(jobIssues)).Info("found job issues")
-	for jobSearchStr, apiBugArr := range jobIssues {
-		for _, apiBug := range apiBugArr {
-			issueID, err := strconv.ParseInt(apiBug.ID, 10, 64)
-			if err != nil {
-				log.WithError(err).Errorf("error parsing issue ID: %+v", apiBug)
-				err = errors.Wrap(err, "error parsing issue ID")
-				errs = append(errs, err)
-				continue
-			}
-			if _, ok := dbExpectedBugs[issueID]; !ok {
-				newBug := convertAPIIssueToDBIssue(issueID, apiBug)
-				dbExpectedBugs[issueID] = newBug
-			}
-			// We search for job=[jobname]=all, need to extract the raw job name from that search string
-			// which is what appears in our jobIssues map.
-			jobName := jobSearchStr[4 : len(jobSearchStr)-4]
-			if _, ok := jobCache[jobName]; !ok {
-				// Shouldn't be possible, if it is we want to know.
-				err := fmt.Errorf("job name was in bug cache but not in database?: %s", jobName)
-				log.WithError(err).Error("unexpected error getting job from cache")
-				errs = append(errs, err)
-				continue
-			}
-			dbExpectedBugs[issueID].Jobs = append(dbExpectedBugs[issueID].Jobs, *jobCache[jobName])
-		}
-	}
-
-	expectedBugIDs := make([]uint, 0, len(dbExpectedBugs))
-	for _, bug := range dbExpectedBugs {
-		expectedBugIDs = append(expectedBugIDs, bug.ID)
-		res := dbc.DB.Clauses(clause.OnConflict{
-			UpdateAll: true,
-		}).Create(bug)
-		if res.Error != nil {
-			log.Errorf("error creating bug: %s %v", res.Error, bug)
-			err := errors.Wrap(res.Error, "error creating bug")
-			errs = append(errs, err)
-			continue
-		}
-		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
-		err := dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
-		if err != nil {
-			log.Errorf("error updating bug test associations: %s %v", err, bug)
-			err := errors.Wrap(res.Error, "error updating bug test assocations")
-			errs = append(errs, err)
-			continue
-		}
-		err = dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
-		if err != nil {
-			log.Errorf("error updating bug job associations: %s %v", err, bug)
-			err := errors.Wrap(res.Error, "error updating bug job assocations")
-			errs = append(errs, err)
-			continue
-		}
-	}
-
-	// Delete all stale referenced bugs that are no longer in our expected bugs.
-	// Unscoped deletes the rows from the db, rather than soft delete.
-	res := dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
-	if res.Error != nil {
-		err := errors.Wrap(res.Error, "error deleting stale bugs")
-		errs = append(errs, err)
-	}
-	log.Infof("deleted %d stale bugs", res.RowsAffected)
-
-	return errs
-}
-
-func convertAPIIssueToDBIssue(issueID int64, apiIssue jira.Issue) *models.Bug {
-	newBug := &models.Bug{
-		ID:             uint(issueID),
-		Key:            apiIssue.Key,
-		Status:         apiIssue.Fields.Status.Name,
-		LastChangeTime: time.Time(apiIssue.Fields.Updated),
-		Summary:        apiIssue.Fields.Summary,
-		URL:            fmt.Sprintf("https://issues.redhat.com/browse/%s", apiIssue.Key),
-		Tests:          []models.Test{},
-	}
-
-	// The version and components fields may typically or always be just one value, but we're told it
-	// may not be possible to actually prevent someone adding multiple, so we'll be ready for the possibility.
-	components := []string{}
-	for _, c := range apiIssue.Fields.Components {
-		components = append(components, c.Name)
-	}
-	sort.Strings(components)
-	newBug.Components = components
-
-	affectsVersions := []string{}
-	for _, av := range apiIssue.Fields.AffectsVersions {
-		affectsVersions = append(affectsVersions, av.Name)
-	}
-	sort.Strings(affectsVersions)
-	newBug.AffectsVersions = affectsVersions
-
-	fixVersions := []string{}
-	for _, fv := range apiIssue.Fields.FixVersions {
-		fixVersions = append(fixVersions, fv.Name)
-	}
-	sort.Strings(fixVersions)
-	newBug.FixVersions = fixVersions
-
-	labels := apiIssue.Fields.Labels
-	labels = append(labels, apiIssue.Fields.Labels...)
-	sort.Strings(labels)
-	newBug.Labels = labels
-
-	return newBug
 }

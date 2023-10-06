@@ -1,4 +1,4 @@
-package releasesync
+package releaseloader
 
 import (
 	"encoding/json"
@@ -26,28 +26,40 @@ const (
 	failed           = "Failed"
 )
 
-type releaseSyncOptions struct {
+type ReleaseLoader struct {
 	db            *db.DB
 	httpClient    *http.Client
 	releases      []string
 	architectures []string
+	errors        []error
 }
 
-func Import(dbc *db.DB, releases, architectures []string) []error {
-	o := releaseSyncOptions{
+func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
+	releaseStreams := make([]string, 0)
+	for _, release := range releases {
+		for _, stream := range []string{"nightly", "ci"} {
+			releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
+		}
+	}
+
+	return &ReleaseLoader{
 		db:            dbc,
-		releases:      releases,
+		releases:      releaseStreams,
 		architectures: architectures,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
 	}
-
-	return o.run()
 }
 
-func (r *releaseSyncOptions) run() []error {
-	errs := []error{}
-	for _, release := range r.releases {
+func (r *ReleaseLoader) Name() string {
+	return "releases"
+}
 
+func (r *ReleaseLoader) Errors() []error {
+	return r.errors
+}
+
+func (r *ReleaseLoader) Load() {
+	for _, release := range r.releases {
 		log.Infof("Fetching release %s from release controller...", release)
 		allTags := r.fetchReleaseTags(release)
 
@@ -63,7 +75,7 @@ func (r *releaseSyncOptions) run() []error {
 						mReleaseTag.Forced = true
 						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
 							log.WithError(err).Errorf("error updating release tag")
-							errs = append(errs, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
+							r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
 						}
 					}
 					continue
@@ -77,16 +89,14 @@ func (r *releaseSyncOptions) run() []error {
 				}
 
 				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
-					errs = append(errs, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
+					r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
 				}
 			}
 		}
 	}
-
-	return errs
 }
 
-func (r *releaseSyncOptions) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
+func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
 	releaseDetails := r.fetchReleaseDetails(architecture, release, tag)
 	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
 
@@ -107,7 +117,7 @@ func (r *releaseSyncOptions) buildReleaseTag(architecture, release string, tag R
 	return releaseTag
 }
 
-func (r *releaseSyncOptions) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
+func (r *ReleaseLoader) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
 	releaseDetails := ReleaseDetails{}
 	releaseName := release
 	if architecture != "amd64" {
@@ -128,7 +138,7 @@ func (r *releaseSyncOptions) fetchReleaseDetails(architecture, release string, t
 	return releaseDetails
 }
 
-func (r *releaseSyncOptions) fetchReleaseTags(release string) []ReleaseTags {
+func (r *ReleaseLoader) fetchReleaseTags(release string) []ReleaseTags {
 	allTags := make([]ReleaseTags, 0)
 	for _, arch := range r.architectures {
 		tags := ReleaseTags{
