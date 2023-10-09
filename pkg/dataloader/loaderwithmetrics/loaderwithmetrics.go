@@ -12,10 +12,16 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader"
 )
 
-var prowJobLoadMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+var loadMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 	Name:    "sippy_data_load_millis",
 	Help:    "Milliseconds to load data into the DB",
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
+}, []string{"loader"})
+
+var errorMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	Name:    "sippy_data_load_errors",
+	Help:    "Errors encountered while trying to load data into the DB",
+	Buckets: []float64{0, 1, 10, 100, 1000},
 }, []string{"loader"})
 
 type LoaderWithMetrics struct {
@@ -30,7 +36,7 @@ func New(wrappedLoader dataloader.DataLoader) *LoaderWithMetrics {
 
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		loader.promPusher = push.New(pushgateway, "sippy-prow-job-loader")
-		loader.promPusher.Collector(prowJobLoadMetric)
+		loader.promPusher.Collector(loadMetric)
 	}
 
 	return loader
@@ -43,7 +49,8 @@ func (l *LoaderWithMetrics) Load() {
 	totalTime := time.Since(start)
 	log.Infof("loader %q complete after %+v", l.loader.Name(), totalTime)
 
-	prowJobLoadMetric.WithLabelValues(l.loader.Name()).Observe(float64(totalTime.Milliseconds()))
+	loadMetric.WithLabelValues(l.loader.Name()).Observe(float64(totalTime.Milliseconds()))
+	errorMetric.WithLabelValues(l.loader.Name()).Observe(float64(len(l.loader.Errors())))
 	if l.promPusher != nil {
 		log.Info("pushing metrics to prometheus gateway")
 		if err := l.promPusher.Add(); err != nil {
