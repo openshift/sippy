@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -47,20 +48,24 @@ func (jl *IncidentLoader) Load() {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	/* Note a token isn't currently required to hit the issues.redhat.com API. This gets
-	   us public jira cards which is probably what we want, I don't think we're ever doing non-public
-	   incidents. That way we don't leak anything embargoed. If at some point we do need a token, you
-	   can do it with the below, but make sure it has limited privileges and can only see public cards.
-
-		token := os.Getenv("JIRA_TOKEN")
-		req.Header.Add("Authorization", "Bearer "+token)
-	*/
-
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog", nil)
 	if err != nil {
 		jl.errors = append(jl.errors, err)
 		return
+	}
+
+	// For a fresh sync to a developer DB, no jira token is needed since the issues API is still open. However, if
+	// we need to find cards where the trt-incident label was removed this API is not protected and returns 401
+	// if tried unauthed.  So really this only affects long-lived instances of Sippy.
+	//
+	// WARNING: DO NOT give public-facing Sippy a personal developer token, use a service account that is not marked
+	// as a Red Hat employee.
+	token := os.Getenv("JIRA_TOKEN")
+	if token == "" {
+		log.Warningf("not all jira api queries are available without a token; some requests may fail")
+	} else {
+		req.Header.Add("Authorization", "Bearer "+token)
 	}
 
 	req.Header.Add("Accept", "application/json")
