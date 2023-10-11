@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	ignoredJobsRegexp = `-okd|-recovery`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
