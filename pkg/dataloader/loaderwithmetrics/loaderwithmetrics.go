@@ -36,6 +36,7 @@ func New(wrappedLoader dataloader.DataLoader) *LoaderWithMetrics {
 
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		loader.promPusher = push.New(pushgateway, "sippy-prow-job-loader")
+		loader.promPusher.Collector(errorMetric)
 		loader.promPusher.Collector(loadMetric)
 	}
 
