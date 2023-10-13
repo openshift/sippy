@@ -1178,8 +1178,13 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	var gcsPath string
 	if len(jobName) > 0 {
 		if len(repoInfo) > 0 {
-			// GCS bucket path for presubmits
-			gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s/%s", repoInfo, pullNumber, jobName, jobRunIDStr)
+			if repoInfo == "openshift_origin" {
+				// GCS bucket path for openshift/origin PRs
+				gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s", pullNumber, jobName, jobRunIDStr)
+			} else {
+				// GCS bucket path for repos other than origin PRs.
+				gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s/%s", repoInfo, pullNumber, jobName, jobRunIDStr)
+			}
 		} else {
 			// GCS bucket for periodics
 			gcsPath = fmt.Sprintf("logs/%s/%s", jobName, jobRunIDStr)
