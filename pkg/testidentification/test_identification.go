@@ -12,12 +12,12 @@ import (
 const (
 	// OperatorUpgradePrefix is used to detect tests in the junit which signal an operator's upgrade status.
 	// TODO: what writes these initially?
-	OperatorUpgradePrefix = "Cluster upgrade.Operator upgrade "
+	OperatorUpgradePrefix = "Operator upgrade "
 
 	// SippyOperatorUpgradePrefix is the test name sippy prefix adds to signal operator upgrade success. It added based on
 	// the above OperatorUpgradePrefix.
 	// TODO: why do we add a test when there already is one? It looks like it may have been to converge a legacy test name under the same name as a new test name.
-	SippyOperatorUpgradePrefix = "sippy.[sig-sippy] operator upgrade "
+	SippyOperatorUpgradePrefix = "[sig-sippy] operator upgrade "
 
 	// OperatorFinalHealthPrefix is used to detect tests in the junit which signal an operator's install status.
 	OperatorFinalHealthPrefix = "Operator results.operator conditions "
@@ -31,12 +31,12 @@ const (
 	UpgradeTestName        = `[sig-sippy] upgrade should work`
 	OpenShiftTestsName     = `[sig-sippy] openshift-tests should work`
 
-	InstallTestNamePrefix     = `cluster install.install should succeed: `
-	InstallConfigTestName     = `cluster install.install should succeed: configuration`
-	InstallBootstrapTestName  = `cluster install.install should succeed: cluster bootstrap`
-	InstallOtherTestName      = `cluster install.install should succeed: other`
-	NewInfrastructureTestName = `cluster install.install should succeed: infrastructure`
-	NewInstallTestName        = `cluster install.install should succeed: overall`
+	InstallTestNamePrefix     = `install should succeed: `
+	InstallConfigTestName     = `install should succeed: configuration`
+	InstallBootstrapTestName  = `install should succeed: cluster bootstrap`
+	InstallOtherTestName      = `install should succeed: other`
+	NewInfrastructureTestName = `install should succeed: infrastructure`
+	NewInstallTestName        = `install should succeed: overall`
 
 	Success = "Success"
 	Failure = "Failure"

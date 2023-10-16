@@ -150,6 +150,8 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	log.Info("db schema updated")
 
+	// More or less a one-time migration to remove suite names prepended to test names, and always use the suite
+	// join table.
 	if err := testNameWithoutSuite(d); err != nil {
 		log.Warningf("could not update test names")
 	}
