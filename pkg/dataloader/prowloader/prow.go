@@ -790,8 +790,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 
 	suiteID := pl.findSuite(syntheticSuite.Name)
 	if suiteID == nil {
-		// I don't like panics but this shouldn't happen and really needs to get
-		// the attention of the maintainers
+		// this shouldn't happen but if it does we want to know
 		panic("synthetic suite is missing from the database")
 	}
 	pl.extractTestCases(syntheticSuite, suiteID, testCases)

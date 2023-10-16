@@ -72,12 +72,12 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 			err := dbc.Transaction(func(tx *gorm.DB) error {
 				// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
 				if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
-					log.WithError(err).Warningf("Error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
+					log.WithError(err).Warningf("error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
 					return err
 				}
 
-				if err := tx.Delete(&testsWithPrefix[i]).Error; err != nil {
-					log.WithError(err).Warningf("Error deleting oldTest with ID %d", oldTest.ID)
+				if err := tx.Model(&models.Test{}).Unscoped().Delete(&testsWithPrefix[i]).Error; err != nil {
+					log.WithError(err).Warningf("error deleting oldTest with ID %d", oldTest.ID)
 					return err
 				}
 

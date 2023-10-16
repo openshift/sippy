@@ -156,11 +156,13 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	log.Infof("applying schema migrations...")
 	var keys []string
-	for k, _ := range migrations {
+	for k := range migrations {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
+		start := time.Now()
+
 		var foundMigration models.Migration
 		if err := d.DB.Model(&models.Migration{}).Where("name = ?", k).First(&foundMigration).Error; err == nil {
 			log.Debugf("skipping already applied migration %q", k)
@@ -171,20 +173,24 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 
 		log.Infof("applying migration %q...", k)
+		var since time.Duration
 		err := d.DB.Transaction(func(tx *gorm.DB) error {
 			if err := migrations[k](tx); err != nil {
 				return err
 			}
-			d.DB.Save(&models.Migration{
-				Name: k,
-			})
+			since := time.Since(start)
+			migrationRecord := &models.Migration{
+				Name:     k,
+				Duration: since,
+			}
+			d.DB.Save(migrationRecord)
 			return nil
 		})
 		if err != nil {
 			log.WithError(err).Warningf("error applying migration %q", err)
 			return err
 		}
-		log.Infof("migration %q applied", k)
+		log.Infof("migration %q applied in %+v", k, since)
 	}
 	log.Info("migrations complete")
 	log.Info("db schema updated")

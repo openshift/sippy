@@ -34,6 +34,9 @@ type SchemaHash struct {
 type Migration struct {
 	gorm.Model
 
+	// Duration is how long it took the migration to apply
+	Duration time.Duration
+
 	// Name is the name of the migration
 	Name string `json:"name"`
 }
