@@ -10,6 +10,10 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
+// testNameWithoutSuite removes test suite prefixes from tests in the database
+// and assigns the suite to all the prow_job_run_tests. When the test can't be
+// renamed because the unprefixed version exists in the DB, use that one and remove
+// the prefixed version.
 func testNameWithoutSuite(dbc *DB) error {
 	// Get list of suites
 	var knownSuites []models.Suite
@@ -27,7 +31,7 @@ func testNameWithoutSuite(dbc *DB) error {
 			return err
 		}
 
-		for _, oldTest := range testsWithPrefix {
+		for i, oldTest := range testsWithPrefix {
 			log.Infof("processing test %q", oldTest.Name)
 			var newTest models.Test
 			newTestName := strings.TrimPrefix(oldTest.Name, fmt.Sprintf("%s.", suite.Name))
@@ -35,10 +39,10 @@ func testNameWithoutSuite(dbc *DB) error {
 			if err := dbc.DB.Where("name = ?", newTestName).First(&newTest).Error; err != nil {
 				log.Infof("no existing test found, renaming and adding suite to prow job run tests...")
 				if err == gorm.ErrRecordNotFound {
-					dbc.DB.Transaction(func(tx *gorm.DB) error {
+					err := dbc.DB.Transaction(func(tx *gorm.DB) error {
 						// Update the oldTest's name if there's no existing oldTest with the new name.
-						oldTest.Name = newTestName
-						if err := tx.Save(&oldTest).Error; err != nil {
+						testsWithPrefix[i].Name = newTestName
+						if err := tx.Save(&testsWithPrefix[i]).Error; err != nil {
 							log.WithError(err).Warningf("error updating oldTest name for ID %d", oldTest.ID)
 							return err
 						}
@@ -51,26 +55,33 @@ func testNameWithoutSuite(dbc *DB) error {
 
 						return nil
 					})
-				} else {
-					log.WithError(err).Warningf("error looking for oldTest with name %q", newTestName)
+					if err != nil {
+						log.WithError(err).Warningf("test migration failed")
+						return err
+					}
+				}
+				log.WithError(err).Warningf("error looking for oldTest with name %q", newTestName)
+				return err
+			}
+
+			log.Infof("existing test found, making it the default and removing the old one...")
+			err := dbc.DB.Transaction(func(tx *gorm.DB) error {
+				// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
+				if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
+					log.WithError(err).Warningf("Error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
 					return err
 				}
-			} else {
-				log.Infof("existing test found, making it the default and removing the old one...")
-				dbc.DB.Transaction(func(tx *gorm.DB) error {
-					// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
-					if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
-						log.WithError(err).Warningf("Error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
-						return err
-					}
 
-					if err := tx.Delete(&oldTest).Error; err != nil {
-						log.WithError(err).Warningf("Error deleting oldTest with ID %d: %v", oldTest.ID)
-						return err
-					}
+				if err := tx.Delete(&testsWithPrefix[i]).Error; err != nil {
+					log.WithError(err).Warningf("Error deleting oldTest with ID %d", oldTest.ID)
+					return err
+				}
 
-					return nil
-				})
+				return nil
+			})
+			if err != nil {
+				log.WithError(err).Warningf("test migration failed")
+				return err
 			}
 		}
 	}
