@@ -777,17 +777,24 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
-		// If we don't know about this suite, then skip  it
-		if pl.findSuite(suite.Name) == nil {
+		suiteID := pl.findSuite(suite.Name)
+		if suiteID == nil {
 			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
 			continue
 		}
 
-		pl.extractTestCases(suite, testCases)
+		pl.extractTestCases(suite, suiteID, testCases)
 	}
 
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, testCases, pl.syntheticTestManager)
-	pl.extractTestCases(syntheticSuite, testCases)
+
+	suiteID := pl.findSuite(syntheticSuite.Name)
+	if suiteID == nil {
+		// I don't like panics but this shouldn't happen and really needs to get
+		// the attention of the maintainers
+		panic("synthetic suite is missing from the database")
+	}
+	pl.extractTestCases(syntheticSuite, suiteID, testCases)
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	results := make([]*models.ProwJobRunTest, 0)
@@ -806,12 +813,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	return results, failures, jobResult, nil
 }
 
-func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
-	suiteID := pl.findSuite(suite.Name)
-	if suiteID == nil {
-		panic("this shouldn't happen")
-	}
-
+func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, testCases map[string]*models.ProwJobRunTest) {
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 
 	for _, tc := range suite.TestCases {
@@ -874,6 +876,6 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 	}
 
 	for _, c := range suite.Children {
-		pl.extractTestCases(c, testCases)
+		pl.extractTestCases(c, suiteID, testCases)
 	}
 }
