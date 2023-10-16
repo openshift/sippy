@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"sort"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -132,6 +133,11 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	if err := d.DB.AutoMigrate(&models.JiraIncident{}); err != nil {
 		return err
 	}
+
+	if err := d.DB.AutoMigrate(&models.Migration{}); err != nil {
+		return err
+	}
+
 	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
 	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
 	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
@@ -148,13 +154,41 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	log.Infof("applying schema migrations...")
+	var keys []string
+	for k, _ := range migrations {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		var foundMigration models.Migration
+		if err := d.DB.Model(&models.Migration{}).Where("name = ?", k).First(&foundMigration).Error; err == nil {
+			log.Debugf("skipping already applied migration %q", k)
+			continue
+		} else if err != gorm.ErrRecordNotFound {
+			log.WithError(err).Warningf("encountered error while trying to find migration...")
+			return err
+		}
+
+		log.Infof("applying migration %q...", k)
+		err := d.DB.Transaction(func(tx *gorm.DB) error {
+			if err := migrations[k](tx); err != nil {
+				return err
+			}
+			d.DB.Save(&models.Migration{
+				Name: k,
+			})
+			return nil
+		})
+		if err != nil {
+			log.WithError(err).Warningf("error applying migration %q", err)
+			return err
+		}
+		log.Infof("migration %q applied", k)
+	}
+	log.Info("migrations complete")
 	log.Info("db schema updated")
 
-	// More or less a one-time migration to remove suite names prepended to test names, and always use the suite
-	// join table.
-	if err := testNameWithoutSuite(d); err != nil {
-		log.Warningf("could not update test names")
-	}
 	return nil
 }
 

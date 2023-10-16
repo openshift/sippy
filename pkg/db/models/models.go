@@ -30,6 +30,14 @@ type SchemaHash struct {
 	Hash string `json:"hash"`
 }
 
+// Migration stores a list of previously completed DB migrations, so they are only run once.
+type Migration struct {
+	gorm.Model
+
+	// Name is the name of the migration
+	Name string `json:"name"`
+}
+
 // APISnapshot is a minimal implementation of historical data tracking. On GA or other dates of interest, we use the snapshot CLI command
 // to query some of the main API endpoints, and store the resulting json with an type (indicating the API) into our database.
 type APISnapshot struct {
