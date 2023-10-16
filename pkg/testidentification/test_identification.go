@@ -151,7 +151,6 @@ var (
 	openshiftTestsRegex         = regexp.MustCompile(`(?:^openshift-tests\.|\[Suite:openshift|\[k8s\.io\]|\[sig-|\[bz-)`)
 	APIsRemainAvailTest         = "APIs remain available"
 	ignoreTestRegex             = regexp.MustCompile(`^$|Run multi-stage test|operator.Import the release payload|operator.Import a release payload|operator.Run template|operator.Build image|Monitor cluster while tests execute|Overall|job.initialize|\[sig-arch\]\[Feature:ClusterUpgrade\] Cluster should remain functional during upgrade`)
-	ignoreSuiteRegex            = regexp.MustCompile(`test/e2e_`)
 )
 
 func IsOldInstallOperatorTest(testName string) bool {
@@ -218,12 +217,6 @@ func GetOperatorNameFromTest(testName string) string {
 		return testName[len(OperatorFinalHealthPrefix):]
 	}
 	return ""
-}
-
-// IsIgnoredSuite is used to ignore test problematic test suites such as those that include namespaces or other
-// dynamic information in their names.
-func IsIgnoredSuite(suiteName string) bool {
-	return ignoreSuiteRegex.MatchString(suiteName)
 }
 
 // IsIgnoredTest is used to strip out tests that don't have predictive or diagnostic value.  We don't want to show these in our data.

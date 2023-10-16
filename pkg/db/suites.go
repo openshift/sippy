@@ -1,27 +1,52 @@
 package db
 
 import (
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
-// testSuitePrefixes are known test suites we want to detect in testgrid test names (appears as suiteName.testName)
-// and parse out so we can view results for the same test across any suite it might be used in. The suite info is
-// stored on the ProwJobRunTest row allowing us to query data specific to a suite if needed.
-var testSuitePrefixes = []string{
-	"openshift-tests",         // a primary origin test suite name
-	"openshift-tests-upgrade", // a primary origin test suite name
-	"sippy",                   // used for all synthetic tests sippy adds
-	// "Symptom detection.",       // TODO: origin unknown, possibly deprecated
-	// "OSD e2e suite.",           // TODO: origin unknown, possibly deprecated
-	// "Log Metrics.",             // TODO: origin unknown, possibly deprecated
+// testSuites are known test suites we want to import into sippy. tests from other suites will not be
+// imported into sippy. Get the list of seen test suites from bigquery with:
+//
+//	SELECT DISTINCT(testsuite), count(*) count
+//		FROM `openshift-gce-devel.ci_analysis_us.junit` \
+//		GROUP BY testsuite
+//		ORDER BY count desc
+var testSuites = []string{
+	// Primary origin suite names
+	"openshift-tests",
+	"openshift-tests-upgrade",
+
+	// Sippy synthetic tests
+	"sippy",
+
+	// ROSA
+	"OSD e2e suite",
+
+	// Other
+	"BackendDisruption",
+	"Cluster upgrade",
+	"E2E Suite",
+	"Kubernetes e2e suite",
+	"Log Metrics",
+	"Operator results",
+	"Symptom detection",
+	"Tests Suite",
+	"cluster install",
+	"cluster nodes ready",
+	"cluster nodes",
+	"gather core dump",
+	"hypershift-e2e",
+	"metal infra",
+	"step graph",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
-	for _, suiteName := range testSuitePrefixes {
+	for _, suiteName := range testSuites {
 		s := models.Suite{}
 		res := db.Where("name = ?", suiteName).First(&s)
 		if res.Error != nil {

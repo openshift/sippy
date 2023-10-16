@@ -150,6 +150,9 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	log.Info("db schema updated")
 
+	if err := testNameWithoutSuite(d); err != nil {
+		log.Warningf("could not update test names")
+	}
 	return nil
 }
 

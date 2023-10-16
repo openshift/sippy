@@ -777,6 +777,12 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	}
 	testCases := make(map[string]*models.ProwJobRunTest)
 	for _, suite := range suites.Suites {
+		// If we don't know about this suite, then skip  it
+		if pl.findSuite(suite.Name) == nil {
+			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
+			continue
+		}
+
 		pl.extractTestCases(suite, testCases)
 	}
 
@@ -801,7 +807,13 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 }
 
 func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[string]*models.ProwJobRunTest) {
+	suiteID := pl.findSuite(suite.Name)
+	if suiteID == nil {
+		panic("this shouldn't happen")
+	}
+
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
+
 	for _, tc := range suite.TestCases {
 		status := sippyprocessingv1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
@@ -819,19 +831,10 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		// a pass and a fail from two different suites to generate a flake.
 		testCacheKey := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
 
-		// For historical reasons (TestGrid didn't know about suites), Sippy
-		// only had a limited set of preconfigured suites that it knew. If we don't
-		// know the suite, we prepend the suite name.
-		testNameWithKnownSuite := tc.Name
-		suiteID := pl.findSuite(suite.Name)
-		if suiteID == nil && suite.Name != "" {
-			testNameWithKnownSuite = fmt.Sprintf("%s.%s", suite.Name, tc.Name)
-		}
-
 		if failureOutput != nil {
 			// Check if this test is configured to extract metadata from it's output, and if so, create it
 			// in the db.
-			extractedMetadata := testOutputMetadataExtractor.ExtractMetadata(testNameWithKnownSuite, failureOutput.Output)
+			extractedMetadata := testOutputMetadataExtractor.ExtractMetadata(tc.Name, failureOutput.Output)
 			if len(extractedMetadata) > 0 {
 				failureOutput.Metadata = make([]models.ProwJobRunTestOutputMetadata, 0, len(extractedMetadata))
 				for _, m := range extractedMetadata {
@@ -847,9 +850,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, testCases map[str
 		}
 
 		if existing, ok := testCases[testCacheKey]; !ok {
-			testID, err := pl.findOrAddTest(testNameWithKnownSuite)
+			testID, err := pl.findOrAddTest(tc.Name)
 			if err != nil {
-				log.WithError(err).Warningf("could not find or create test %q", testNameWithKnownSuite)
+				log.WithError(err).Warningf("could not find or create test %q", tc.Name)
 				continue
 			}
 

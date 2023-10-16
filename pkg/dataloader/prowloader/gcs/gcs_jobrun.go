@@ -12,7 +12,6 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
-	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 const OpenshiftGCSBucket = "origin-ci-test"
@@ -106,25 +105,13 @@ func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.Test
 		currTestSuites := &junit.TestSuites{}
 		testSuitesErr := xml.Unmarshal(junitContent, currTestSuites)
 		if testSuitesErr == nil {
-			// if this a test suites, add them here
-			for _, suite := range currTestSuites.Suites {
-				if testidentification.IsIgnoredSuite(suite.Name) {
-					log.Infof("ignoring tests from ignored suite %q", suite.Name)
-					continue
-				}
-				testSuites.Suites = append(testSuites.Suites, suite)
-			}
-
+			testSuites.Suites = append(testSuites.Suites, currTestSuites.Suites...)
 			continue
 		}
 
 		currTestSuite := &junit.TestSuite{}
 		if testSuiteErr := xml.Unmarshal(junitContent, currTestSuite); testSuiteErr != nil {
 			log.WithError(testSuiteErr).Warningf("error parsing content for jobrun in file %s path %s", junitFile, j.gcsProwJobPath)
-			continue
-		}
-		if testidentification.IsIgnoredSuite(currTestSuite.Name) {
-			log.Infof("ignoring tests from ignored suite %q", currTestSuite.Name)
 			continue
 		}
 		testSuites.Suites = append(testSuites.Suites, currTestSuite)
