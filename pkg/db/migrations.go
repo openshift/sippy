@@ -19,6 +19,14 @@ var migrations = map[string]func(*gorm.DB) error{
 // renamed because the unprefixed version exists in the DB, use that one and remove
 // the prefixed version.
 func testNameWithoutSuite(dbc *gorm.DB) error {
+	// Slight speed up for the number of updates we have to do. They'll get added back at the end.
+	dropIndexes := []string{"idx_prow_job_run_tests_status", "idx_prow_job_run_tests_prow_job_run_id", "idx_prow_job_run_tests_deleted_at"}
+	for _, idx := range dropIndexes {
+		if err := dbc.Exec("DROP INDEX IF EXISTS " + idx).Error; err != nil {
+			return err
+		}
+	}
+
 	// Get list of suites
 	var knownSuites []models.Suite
 	if res := dbc.Model(&models.Suite{}).Find(&knownSuites); res.Error != nil {
@@ -41,8 +49,8 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 			newTestName := strings.TrimPrefix(oldTest.Name, fmt.Sprintf("%s.", suite.Name))
 
 			if err := dbc.Where("name = ?", newTestName).First(&newTest).Error; err != nil {
-				log.Infof("no existing test found, renaming and adding suite to prow job run tests...")
-				if err == gorm.ErrRecordNotFound {
+				if err == gorm.ErrRecordNotFound { //nolint
+					log.Infof("no existing test found, renaming and adding suite to prow job run tests...")
 					err := dbc.Transaction(func(tx *gorm.DB) error {
 						// Update the oldTest's name if there's no existing oldTest with the new name.
 						testsWithPrefix[i].Name = newTestName
@@ -63,32 +71,34 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 						log.WithError(err).Warningf("test migration failed")
 						return err
 					}
-				}
-				log.WithError(err).Warningf("error looking for oldTest with name %q", newTestName)
-				return err
-			}
-
-			log.Infof("existing test found, making it the default and removing the old one...")
-			err := dbc.Transaction(func(tx *gorm.DB) error {
-				// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
-				if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
-					log.WithError(err).Warningf("error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
+				} else { //nolint
+					log.WithError(err).Warningf("error looking for oldTest with name %q", newTestName)
 					return err
 				}
+			} else { //nolint
+				log.Infof("existing test found, making it the default and removing the old one...")
+				err := dbc.Transaction(func(tx *gorm.DB) error {
+					// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
+					if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
+						log.WithError(err).Warningf("error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
+						return err
+					}
 
-				if err := tx.Model(&models.Test{}).Unscoped().Delete(&testsWithPrefix[i]).Error; err != nil {
-					log.WithError(err).Warningf("error deleting oldTest with ID %d", oldTest.ID)
+					if err := tx.Model(&models.Test{}).Unscoped().Delete(&testsWithPrefix[i]).Error; err != nil {
+						log.WithError(err).Warningf("error deleting oldTest with ID %d", oldTest.ID)
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					log.WithError(err).Warningf("test migration failed")
 					return err
 				}
-
-				return nil
-			})
-			if err != nil {
-				log.WithError(err).Warningf("test migration failed")
-				return err
 			}
 		}
 	}
 
-	return nil
+	// Make sure indices get re-applied
+	return dbc.AutoMigrate(&models.ProwJobRunTest{})
 }

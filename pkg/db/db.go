@@ -173,21 +173,18 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 
 		log.Infof("applying migration %q...", k)
-		var since time.Duration
-		err := d.DB.Transaction(func(tx *gorm.DB) error {
-			if err := migrations[k](tx); err != nil {
-				return err
-			}
-			since := time.Since(start)
-			migrationRecord := &models.Migration{
-				Name:     k,
-				Duration: since,
-			}
-			d.DB.Save(migrationRecord)
-			return nil
-		})
-		if err != nil {
+		if err := migrations[k](d.DB); err != nil {
 			log.WithError(err).Warningf("error applying migration %q", err)
+			return err
+		}
+		since := time.Since(start)
+		migrationRecord := &models.Migration{
+			Name:     k,
+			Duration: since,
+		}
+		err := d.DB.Save(migrationRecord).Error
+		if err != nil {
+			log.WithError(err).Warningf("error saving migration state %q", err)
 			return err
 		}
 		log.Infof("migration %q applied in %+v", k, since)
