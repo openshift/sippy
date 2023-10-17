@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"sort"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -134,14 +133,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&models.Migration{}); err != nil {
-		return err
-	}
-
-	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
-	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
-	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
-	// change this happens without thinking to update sippy.
 	if err := populateTestSuitesInDB(d.DB); err != nil {
 		return err
 	}
@@ -150,49 +141,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := syncPostgresFunctions(d.DB); err != nil {
-		return err
-	}
-
-	log.Infof("applying schema migrations...")
-	var keys []string
-	for k := range migrations {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		start := time.Now()
-
-		var foundMigration models.Migration
-		if err := d.DB.Model(&models.Migration{}).Where("name = ?", k).First(&foundMigration).Error; err == nil {
-			log.Debugf("skipping already applied migration %q", k)
-			continue
-		} else if err != gorm.ErrRecordNotFound {
-			log.WithError(err).Warningf("encountered error while trying to find migration...")
-			return err
-		}
-
-		log.Infof("applying migration %q...", k)
-		if err := migrations[k](d.DB); err != nil {
-			log.WithError(err).Warningf("error applying migration %q", err)
-			return err
-		}
-		since := time.Since(start)
-		migrationRecord := &models.Migration{
-			Name:     k,
-			Duration: since,
-		}
-		err := d.DB.Save(migrationRecord).Error
-		if err != nil {
-			log.WithError(err).Warningf("error saving migration state %q", err)
-			return err
-		}
-		log.Infof("migration %q applied in %+v", k, since)
-	}
-	log.Info("migrations complete")
-	log.Info("db schema updated")
-
-	return nil
+	return syncPostgresFunctions(d.DB)
 }
 
 // syncSchema will update generic db resources if their schema has changed. (functions, materialized views, indexes)

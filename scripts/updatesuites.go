@@ -1,17 +1,56 @@
-package db
+package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-var migrations = map[string]func(*gorm.DB) error{
-	"9999_testNameWithoutSuite": testNameWithoutSuite,
+func main() {
+	dsn := os.Getenv("SIPPY_DATABASE_DSN")
+	if dsn == "" {
+		fmt.Println("Set SIPPY_DATABSE_DSN")
+		os.Exit(1)
+	}
+
+	gormLogger := gormlogger.New(
+		log2LogrusWriter{entry: log.WithField("source", "gorm")},
+		gormlogger.Config{
+			SlowThreshold:             60 * time.Second,
+			LogLevel:                  gormlogger.Info,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		},
+	)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormLogger,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if err := testNameWithoutSuite(db); err != nil {
+		panic(err)
+	}
+}
+
+// log2LogrusWriter bridges gorm logging to logrus logging.
+// All messages will come through at DEBUG level.
+type log2LogrusWriter struct {
+	entry *log.Entry
+}
+
+func (w log2LogrusWriter) Printf(msg string, args ...interface{}) {
+	w.entry.Debugf(msg, args...)
 }
 
 // testNameWithoutSuite removes test suite prefixes from tests in the database
@@ -100,5 +139,6 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 	}
 
 	// Make sure indices get re-applied
+	log.Infof("migrating table to restore indicies...")
 	return dbc.AutoMigrate(&models.ProwJobRunTest{})
 }
