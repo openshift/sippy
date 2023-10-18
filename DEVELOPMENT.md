@@ -29,6 +29,8 @@ Sippy obtains data from multiple sources:
 | GCS Storage Buckets |           |          | X            |              |               |          |
 | GitHub              |           |          |              |              |               | X        |
 
+**Note**: Test results are only stored from [known suites](pkg/db/suites.go).
+
 ### From a Prod Sippy Backup
 
 The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:
