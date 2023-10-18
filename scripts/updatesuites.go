@@ -11,7 +11,9 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/sippyserver"
 )
 
 func main() {
@@ -31,14 +33,14 @@ func main() {
 		},
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	dbc, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormLogger,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	if err := testNameWithoutSuite(db); err != nil {
+	if err := testNameWithoutSuite(dbc); err != nil {
 		panic(err)
 	}
 }
@@ -110,7 +112,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 							"suite":        suiteID,
 							"rows_updated": res.RowsAffected,
 						}).Infof("update complete for %q", newTestName)
-						rowsUpdated += rowsUpdated + res.RowsAffected
+						rowsUpdated += res.RowsAffected
 
 						return nil
 					})
@@ -137,7 +139,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 						"suite_id":     suiteID,
 						"rows_updated": res.RowsAffected,
 					}).Infof("update complete for %q", newTestName)
-					rowsUpdated = rowsUpdated + res.RowsAffected
+					rowsUpdated += res.RowsAffected
 
 					if err := tx.Model(&models.Test{}).Unscoped().Delete(&testsWithPrefix[i]).Error; err != nil {
 						log.WithError(err).Warningf("error deleting oldTest with ID %d", oldTest.ID)
@@ -157,5 +159,14 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 
 	// Make sure indices get re-applied
 	log.Infof("migrating table to restore indicies...")
-	return dbc.AutoMigrate(&models.ProwJobRunTest{})
+	if err := dbc.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
+		return err
+	}
+
+	// Refresh materialized views
+	sippyserver.RefreshData(&db.DB{
+		DB: dbc,
+	}, nil, false)
+
+	return nil
 }
