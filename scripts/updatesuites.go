@@ -71,6 +71,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 	if res := dbc.Model(&models.Suite{}).Find(&knownSuites); res.Error != nil {
 		return res.Error
 	}
+	rowsUpdated := int64(0)
 	for _, suite := range knownSuites {
 		log.Infof("processing suite %q", suite.Name)
 		suiteID := suite.ID
@@ -99,10 +100,17 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 						}
 
 						// Update rows in the prow_job_run_tests table to include the suite
-						if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{SuiteID: &suiteID}).Error; err != nil {
-							log.WithError(err).Warningf("Error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
-							return err
+						res := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{SuiteID: &suiteID})
+						if res.Error != nil {
+							log.WithError(res.Error).Warningf("Error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
+							return res.Error
 						}
+						log.WithFields(map[string]interface{}{
+							"test":         newTest.ID,
+							"suite":        suiteID,
+							"rows_updated": res.RowsAffected,
+						}).Infof("update complete for %q", newTestName)
+						rowsUpdated += rowsUpdated + res.RowsAffected
 
 						return nil
 					})
@@ -118,10 +126,18 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 				log.Infof("existing test found, making it the default and removing the old one...")
 				err := dbc.Transaction(func(tx *gorm.DB) error {
 					// Update rows in the prow_job_run_tests table and then delete the old oldTest row.
-					if err := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID}).Error; err != nil {
-						log.WithError(err).Warningf("error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
-						return err
+					res := tx.Model(&models.ProwJobRunTest{}).Where("test_id = ?", oldTest.ID).Updates(models.ProwJobRunTest{TestID: newTest.ID, SuiteID: &suiteID})
+					if res.Error != nil {
+						log.WithError(res.Error).Warningf("error updating prow_job_run_tests for oldTest ID %d", oldTest.ID)
+						return res.Error
 					}
+					log.WithFields(map[string]interface{}{
+						"old_test":     oldTest.ID,
+						"new_test":     newTest.ID,
+						"suite_id":     suiteID,
+						"rows_updated": res.RowsAffected,
+					}).Infof("update complete for %q", newTestName)
+					rowsUpdated = rowsUpdated + res.RowsAffected
 
 					if err := tx.Model(&models.Test{}).Unscoped().Delete(&testsWithPrefix[i]).Error; err != nil {
 						log.WithError(err).Warningf("error deleting oldTest with ID %d", oldTest.ID)
@@ -137,6 +153,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 			}
 		}
 	}
+	log.Infof("update complete, total rows updated %d", rowsUpdated)
 
 	// Make sure indices get re-applied
 	log.Infof("migrating table to restore indicies...")
