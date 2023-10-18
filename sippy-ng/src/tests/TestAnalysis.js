@@ -79,15 +79,19 @@ export function TestAnalysis(props) {
         if (test.status !== 200) {
           throw new Error('server returned ' + test.status)
         }
+
         return Promise.all([test.json()])
       })
       .then(([test]) => {
+        if (test.length === 0) {
+          throw new Error('test not found')
+        }
         setTest(test[0])
         setLoaded(true)
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve test data ' + props.release + ', ' + error
+          'Could not retrieve test analysis ' + props.release + ', ' + error
         )
       })
   }
@@ -96,8 +100,24 @@ export function TestAnalysis(props) {
     fetchData()
   }, [])
 
+  const breadcrumbs = (
+    <SimpleBreadcrumbs
+      release={props.release}
+      previousPage={<Link to={'/tests/' + props.release}>Tests</Link>}
+      currentPage="Test Analysis"
+    />
+  )
+
   if (fetchError !== '') {
-    return <Alert severity="error">{fetchError}</Alert>
+    return (
+      <Fragment>
+        {breadcrumbs}
+
+        <Alert style={{ marginTop: 25 }} severity="error">
+          {fetchError}
+        </Alert>
+      </Fragment>
+    )
   }
 
   if (!isLoaded) {
@@ -106,12 +126,6 @@ export function TestAnalysis(props) {
 
   return (
     <Fragment>
-      <SimpleBreadcrumbs
-        release={props.release}
-        previousPage={<Link to={'/tests/' + props.release}>Tests</Link>}
-        currentPage="Test Analysis"
-      />
-
       <Container maxWidth="xl">
         <Typography variant="h3" style={{ textAlign: 'center' }}>
           Test Analysis
