@@ -745,6 +745,14 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 
 		_, priorRiskAnalysis := aw.getRiskSummary(priorRunID, fmt.Sprintf("%s%s/", attrs.Prefix, priorRunID), nil)
 
+		// if the priorRiskAnalysis is nil then skip since we require consecutive test failures
+		// this can happen if the job hasn't been imported yet
+		// and the prior risk analysis artifact failed to be created in gcs
+		if priorRiskAnalysis == nil {
+			log.Warnf("Failed to determine prior risk analysis for prowjob: %s", priorRunID)
+			continue
+		}
+
 		riskSummary, _ := aw.getRiskSummary(latest, latestPath, priorRiskAnalysis)
 
 		// don't include none or unknown in our report
