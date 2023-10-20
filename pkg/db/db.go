@@ -132,10 +132,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	if err := d.DB.AutoMigrate(&models.JiraIncident{}); err != nil {
 		return err
 	}
-	// TODO: in the future, we should add an implied migration. If we see a new suite needs to be created,
-	// scan all test names for any starting with that prefix, and if found merge all records into a new or modified test
-	// with the prefix stripped. This is not necessary today, but in future as new suites are added, there'll be a good
-	// change this happens without thinking to update sippy.
+
 	if err := populateTestSuitesInDB(d.DB); err != nil {
 		return err
 	}
@@ -144,13 +141,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := syncPostgresFunctions(d.DB); err != nil {
-		return err
-	}
-
-	log.Info("db schema updated")
-
-	return nil
+	return syncPostgresFunctions(d.DB)
 }
 
 // syncSchema will update generic db resources if their schema has changed. (functions, materialized views, indexes)

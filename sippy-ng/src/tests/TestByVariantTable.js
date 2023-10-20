@@ -62,6 +62,20 @@ function Cell(props) {
         </TableCell>
       </Tooltip>
     )
+  } else if (result.current_runs === 0) {
+    return (
+      <Tooltip title="No runs in the current period">
+        <TableCell
+          className="cell-result"
+          style={{
+            textAlign: 'center',
+            backgroundColor: theme.palette.text.disabled,
+          }}
+        >
+          <HelpOutlineIcon style={{ color: theme.palette.text.disabled }} />
+        </TableCell>
+      </Tooltip>
+    )
   } else if (props.showFull) {
     return (
       <TableCell

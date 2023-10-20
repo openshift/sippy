@@ -58,7 +58,7 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 				{Name: "operator install openshift-apiserver", Status: v1.TestStatusSuccess},
 			},
 			expectedFailedTestNames: []string{
-				testidentification.SippySuiteName + "." + testidentification.InstallTestName,
+				testidentification.InstallTestName,
 			},
 		},
 	}
