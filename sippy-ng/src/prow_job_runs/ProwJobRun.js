@@ -6,7 +6,6 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import { Button, ButtonGroup, TextField } from '@material-ui/core'
-import { Error } from '@material-ui/icons'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'

@@ -8,7 +8,12 @@ import {
   Typography,
 } from '@material-ui/core'
 import { BOOKMARKS } from '../constants'
-import { CheckCircle, Error, GitHub, History } from '@material-ui/icons'
+import {
+  CheckCircle,
+  Error as ErrorIcon,
+  GitHub,
+  History,
+} from '@material-ui/icons'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   getReportStartDate,
@@ -215,7 +220,7 @@ export default function PullRequestsTable(props) {
               {params.row.first_ci_payload_phase === 'Accepted' ? (
                 <CheckCircle style={{ color: theme.palette.success.light }} />
               ) : (
-                <Error style={{ color: theme.palette.error.light }} />
+                <ErrorIcon style={{ color: theme.palette.error.light }} />
               )}
             </Grid>
           )
@@ -243,7 +248,7 @@ export default function PullRequestsTable(props) {
               {params.row.first_nightly_payload_phase === 'Accepted' ? (
                 <CheckCircle style={{ color: theme.palette.success.light }} />
               ) : (
-                <Error style={{ color: theme.palette.error.light }} />
+                <ErrorIcon style={{ color: theme.palette.error.light }} />
               )}
             </Grid>
           )

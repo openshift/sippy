@@ -1,5 +1,4 @@
 import { Card, Container, Grid, Tooltip, Typography } from '@material-ui/core'
-import { Error } from '@material-ui/icons'
 import {
   getReportStartDate,
   relativeDuration,

@@ -1,5 +1,11 @@
 import './TestTable.css'
-import { AcUnit, BugReport, Check, Error, Search } from '@material-ui/icons'
+import {
+  AcUnit,
+  BugReport,
+  Check,
+  Error as ErrorIcon,
+  Search,
+} from '@material-ui/icons'
 import {
   Backdrop,
   Badge,
@@ -633,7 +639,7 @@ function TestTable(props) {
                   }
                   color="error"
                 >
-                  <Error />
+                  <ErrorIcon />
                 </Badge>
               </IconButton>
             </Tooltip>

@@ -1,7 +1,6 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
 import { Box, Card, Grid, Tooltip, Typography } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { Error } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'

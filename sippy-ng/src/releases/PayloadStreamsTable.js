@@ -1,4 +1,4 @@
-import { CheckCircle, Error, Help } from '@material-ui/icons'
+import { CheckCircle, Error as ErrorIcon, Help } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
@@ -55,13 +55,13 @@ function PayloadStreamsTable(props) {
           if (params.row.forced === true) {
             return (
               <Tooltip title="This payload was manually force rejected.">
-                <Error style={{ fill: 'maroon' }} />
+                <ErrorIcon style={{ fill: 'maroon' }} />
               </Tooltip>
             )
           } else {
             return (
               <Tooltip title="This payload was rejected.">
-                <Error style={{ fill: 'maroon' }} />
+                <ErrorIcon style={{ fill: 'maroon' }} />
               </Tooltip>
             )
           }

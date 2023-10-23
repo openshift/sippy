@@ -6,7 +6,12 @@ import {
   Tooltip,
   Typography,
 } from '@material-ui/core'
-import { CheckCircle, Error, Help, Warning } from '@material-ui/icons'
+import {
+  CheckCircle,
+  Error as ErrorIcon,
+  Help,
+  Warning,
+} from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import {
   getReportStartDate,
@@ -92,7 +97,7 @@ function ReleasePayloadAcceptance(props) {
       } else if (row.last_phase === 'Rejected') {
         // If the last payload was rejected, we are red.
         bgColor = theme.palette.error.light
-        icon = <Error style={{ fill: 'maroon' }} />
+        icon = <ErrorIcon style={{ fill: 'maroon' }} />
       } else {
         // Otherwise we are yellow -- e.g., last release payload was accepted
         // but it's been several days.
