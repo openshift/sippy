@@ -3,7 +3,7 @@ import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
 import {
   CheckCircle,
   CompareArrows,
-  Error,
+  Error as ErrorIcon,
   Help,
   Warning,
 } from '@material-ui/icons'
@@ -69,13 +69,13 @@ function ReleasePayloadTable(props) {
           if (params.row.forced === true) {
             return (
               <Tooltip title="This payload was manually force rejected.">
-                <Error style={{ fill: 'maroon' }} />
+                <ErrorIcon style={{ fill: 'maroon' }} />
               </Tooltip>
             )
           } else {
             return (
               <Tooltip title="This payload was rejected.">
-                <Error style={{ fill: 'maroon' }} />
+                <ErrorIcon style={{ fill: 'maroon' }} />
               </Tooltip>
             )
           }

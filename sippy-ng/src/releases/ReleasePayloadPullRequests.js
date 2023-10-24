@@ -1,6 +1,5 @@
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import { Error } from '@material-ui/icons'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@material-ui/lab/Alert'

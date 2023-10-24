@@ -1,5 +1,4 @@
 import { CircularProgress } from '@material-ui/core'
-import { Error } from '@material-ui/icons'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'
