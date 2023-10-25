@@ -60,14 +60,6 @@ func (w log2LogrusWriter) Printf(msg string, args ...interface{}) {
 // renamed because the unprefixed version exists in the DB, use that one and remove
 // the prefixed version.
 func testNameWithoutSuite(dbc *gorm.DB) error {
-	// Slight speed up for the number of updates we have to do. They'll get added back at the end.
-	dropIndexes := []string{"idx_prow_job_run_tests_status", "idx_prow_job_run_tests_prow_job_run_id", "idx_prow_job_run_tests_deleted_at"}
-	for _, idx := range dropIndexes {
-		if err := dbc.Exec("DROP INDEX IF EXISTS " + idx).Error; err != nil {
-			return err
-		}
-	}
-
 	// Get list of suites
 	var knownSuites []models.Suite
 	if res := dbc.Model(&models.Suite{}).Find(&knownSuites); res.Error != nil {
@@ -156,12 +148,6 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 		}
 	}
 	log.Infof("update complete, total rows updated %d", rowsUpdated)
-
-	// Make sure indices get re-applied
-	log.Infof("migrating table to restore indicies...")
-	if err := dbc.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
-		return err
-	}
 
 	// Refresh materialized views
 	sippyserver.RefreshData(&db.DB{
