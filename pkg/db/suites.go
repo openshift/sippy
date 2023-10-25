@@ -34,7 +34,7 @@ var testSuites = []string{
 	"Kubernetes e2e suite",
 	"Log Metrics",
 	"Operator results",
-	"Symptom detection",
+	"Symptom Detection",
 	"Tests Suite",
 	"cluster install",
 	"cluster nodes ready",
