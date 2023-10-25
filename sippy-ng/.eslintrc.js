@@ -30,6 +30,11 @@ module.exports = {
         memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
       },
     ],
-    'no-shadow': ['error'],
+    'no-shadow': [
+      'error',
+      {
+        builtinGlobals: true,
+      },
+    ],
   },
 }
