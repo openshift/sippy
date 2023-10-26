@@ -162,8 +162,8 @@ export default function ComponentReadiness(props) {
   const initialBaseEndTime = getReleaseDate(defaultSampleRelease)
   const initialBaseStartTime = initialBaseEndTime.getTime() - 4 * weeks
 
-  const setBaseReleaseWithDates = (event) => {
-    let release = event.target.value
+  const setBaseReleaseWithDates = (theEvent) => {
+    let release = theEvent.target.value
     let endTime = getReleaseDate(release)
     let startTime = endTime.getTime() - 30 * days
     setBaseRelease(release)
@@ -171,8 +171,8 @@ export default function ComponentReadiness(props) {
     setBaseEndTime(formatLongDate(endTime))
   }
 
-  const setSampleReleaseWithDates = (event) => {
-    let release = event.target.value
+  const setSampleReleaseWithDates = (theEvent) => {
+    let release = theEvent.target.value
     setSampleRelease(release)
     setSampleStartTime(formatLongDate(initialSampleStartTime))
     setSampleEndTime(formatLongDate(initialSampleEndTime))
@@ -183,19 +183,19 @@ export default function ComponentReadiness(props) {
   const theme = useTheme()
 
   const [searchComponentRegex, setSearchComponentRegex] = useState('')
-  const handleSearchComponentRegexChange = (event) => {
-    const searchValue = event.target.value
+  const handleSearchComponentRegexChange = (theEvent) => {
+    const searchValue = theEvent.target.value
     setSearchComponentRegex(searchValue)
   }
   const [searchColumnRegex, setSearchColumnRegex] = useState('')
-  const handleSearchColumnRegexChange = (event) => {
-    const searchValue = event.target.value
+  const handleSearchColumnRegexChange = (theEvent) => {
+    const searchValue = theEvent.target.value
     setSearchColumnRegex(searchValue)
   }
 
   const [redOnlyChecked, setRedOnlyChecked] = React.useState(false)
-  const handleRedOnlyCheckboxChange = (event) => {
-    setRedOnlyChecked(event.target.checked)
+  const handleRedOnlyCheckboxChange = (theEvent) => {
+    setRedOnlyChecked(theEvent.target.checked)
   }
 
   const [drawerOpen, setDrawerOpen] = React.useState(true)
@@ -447,8 +447,8 @@ export default function ComponentReadiness(props) {
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
-  const handleGenerateReport = (event) => {
-    event.preventDefault()
+  const handleGenerateReport = (theEvent) => {
+    theEvent.preventDefault()
     setBaseReleaseParam(baseRelease)
     setBaseStartTimeParam(formatLongDate(baseStartTime))
     setBaseEndTimeParam(formatLongDate(baseEndTime))
@@ -494,7 +494,7 @@ export default function ComponentReadiness(props) {
     <Fragment>
       <Route
         path={path}
-        render={({ location }) => (
+        render={({ theLocation }) => (
           <Fragment>
             <Grid
               container
@@ -506,7 +506,7 @@ export default function ComponentReadiness(props) {
             <Switch>
               <Route
                 path="/component_readiness/test_details"
-                render={(props) => {
+                render={(theProps) => {
                   // We need to pass the testId and testName
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
@@ -547,7 +547,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/test"
-                render={(props) => {
+                render={(theProps) => {
                   // We need to pass the testId
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
@@ -584,7 +584,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/env_test"
-                render={(props) => {
+                render={(theProps) => {
                   // We need to pass the environment and testId
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
@@ -623,7 +623,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/capability"
-                render={(props) => {
+                render={(theProps) => {
                   // We need the component and capability from url
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
@@ -658,7 +658,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/env_capability"
-                render={(props) => {
+                render={(theProps) => {
                   // We need the component and capability and environment from url
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
@@ -692,7 +692,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/capabilities"
-                render={(props) => {
+                render={(theProps) => {
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
                     baseStartTime,
@@ -722,7 +722,7 @@ export default function ComponentReadiness(props) {
               />
               <Route
                 path="/component_readiness/env_capabilities"
-                render={(props) => {
+                render={(theProps) => {
                   const filterVals = getUpdatedUrlParts(
                     baseRelease,
                     baseStartTime,

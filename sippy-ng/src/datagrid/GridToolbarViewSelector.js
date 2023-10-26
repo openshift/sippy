@@ -6,8 +6,8 @@ import React, { Fragment } from 'react'
 export default function GridToolbarViewSelector(props) {
   const [anchor, setAnchor] = React.useState('')
 
-  const handleClick = (event) => {
-    setAnchor(event.currentTarget)
+  const handleClick = (theEvent) => {
+    setAnchor(theEvent.currentTarget)
   }
 
   const handleClose = () => {

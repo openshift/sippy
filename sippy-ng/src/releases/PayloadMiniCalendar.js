@@ -12,7 +12,7 @@ import React, { Fragment, useEffect } from 'react'
 
 export default function PayloadMiniCalendar(props) {
   const theme = useTheme()
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -42,7 +42,7 @@ export default function PayloadMiniCalendar(props) {
       })
     )
 
-    history.push(
+    theHistory.push(
       `/release/${props.release}/streams/${props.arch}/${props.stream}/payloads?filters=${filter}`
     )
   }
@@ -75,14 +75,14 @@ export default function PayloadMiniCalendar(props) {
         // Prefer accepted payloads to make the square green if we had any accepted payload that day.
         // Rejected payloads will make the square red, and no payload at all will be an empty square.
         let eventsOnePerDay = {}
-        json.forEach((event) => {
+        json.forEach((theEvent) => {
           if (
-            event.phase === 'Accepted' ||
-            eventsOnePerDay[event.start] === undefined
+            theEvent.phase === 'Accepted' ||
+            eventsOnePerDay[theEvent.start] === undefined
           ) {
-            event.display = 'background'
-            event.title = event.phase.charAt(0) // Show 'A' for accepted for 'R' for rejected
-            eventsOnePerDay[event.start] = event
+            theEvent.display = 'background'
+            theEvent.title = theEvent.phase.charAt(0) // Show 'A' for accepted for 'R' for rejected
+            eventsOnePerDay[theEvent.start] = theEvent
           }
         })
         setAccepted(

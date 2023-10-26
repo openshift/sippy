@@ -74,8 +74,8 @@ export default function GridToolbarFilterMenu(props) {
     }
   })
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget)
+  const handleClick = (theEvent) => {
+    setAnchorEl(theEvent.currentTarget)
   }
 
   const handleClose = () => {
@@ -102,8 +102,8 @@ export default function GridToolbarFilterMenu(props) {
     }
   }
 
-  const open = Boolean(anchorEl)
-  const id = open ? 'filter-popover' : undefined
+  const isOpen = Boolean(anchorEl)
+  const id = isOpen ? 'filter-popover' : undefined
 
   const addFilter = () => {
     let currentFilters = models
@@ -211,7 +211,7 @@ export default function GridToolbarFilterMenu(props) {
 
       <Popover
         id="filter-popover"
-        open={open}
+        open={isOpen}
         anchorEl={anchorEl}
         onClose={handleClose}
         anchorOrigin={{

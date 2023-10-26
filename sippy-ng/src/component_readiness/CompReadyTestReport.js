@@ -93,14 +93,14 @@ export default function CompReadyTestReport(props) {
 
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
+      .then((jsonData) => {
+        if (jsonData.code < 200 || jsonData.code >= 300) {
+          const errorMessage = jsonData.message
+            ? `${jsonData.message}`
             : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+          throw new Error(`Return code = ${jsonData.code} (${errorMessage})`)
         }
-        return data
+        return jsonData
       })
       .then((json) => {
         // If the basics are not present, consider it no data
@@ -164,8 +164,8 @@ export default function CompReadyTestReport(props) {
     )
   }
 
-  const handleFailuresOnlyChange = (event) => {
-    setShowOnlyFailures(event.target.checked)
+  const handleFailuresOnlyChange = (theEvent) => {
+    setShowOnlyFailures(theEvent.target.checked)
   }
 
   const probabilityStr = (statusStr, fisherNumber) => {
@@ -209,19 +209,19 @@ export default function CompReadyTestReport(props) {
 
   // getSummaryDate attempts to translate a date into text relative to the version GA
   // dates we know about.  If there are no versions, there is no translation.
-  const getSummaryDate = (from, to, version, versions) => {
+  const getSummaryDate = (from, to, version, versionsTable) => {
     const fromDate = new Date(from)
     const toDate = new Date(to)
 
     // Go through the versions map from latest release to earliest; ensure that
     // the ordering is by version (e.g., 4.6 is considered earlier than 4.10).
-    const sortedVersions = Object.keys(versions).sort((a, b) => {
+    const sortedVersions = Object.keys(versionsTable).sort((a, b) => {
       const itemA = parseInt(a.toString().replace(/\./g, ''))
       const itemB = parseInt(b.toString().replace(/\./g, ''))
       return itemB - itemA
     })
 
-    if (!versions[version]) {
+    if (!versionsTable[version]) {
       // Handle the case where GA date is undefined (implies under development and not GA)
       const weeksBefore = Math.floor(
         (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
@@ -244,12 +244,12 @@ export default function CompReadyTestReport(props) {
       }
     }
 
-    for (const version of sortedVersions) {
-      if (!versions[version]) {
+    for (const currVersion of sortedVersions) {
+      if (!versionsTable[currVersion]) {
         // We already dealt with a version with no GA date above.
         continue
       }
-      const gaDateStr = versions[version]
+      const gaDateStr = versionsTable[currVersion]
       const gaDate = new Date(gaDateStr)
 
       // Widen the window by 20 weeks prior to GA (because releases seems to be that long) and give
@@ -264,7 +264,7 @@ export default function CompReadyTestReport(props) {
           (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
         )
         return weeksBefore
-          ? `About ${weeksBefore} week(s) before '${version}' GA date`
+          ? `About ${weeksBefore} week(s) before '${currVersion}' GA date`
           : null
       }
     }

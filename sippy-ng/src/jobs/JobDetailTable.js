@@ -25,8 +25,8 @@ export default function JobDetailTable(props) {
     failedTestNames: [],
   })
 
-  const openTestDialog = (test) => {
-    setTestDetails(test)
+  const openTestDialog = (theTest) => {
+    setTestDetails(theTest)
     setTestDialogOpen(true)
   }
 

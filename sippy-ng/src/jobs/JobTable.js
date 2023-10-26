@@ -590,7 +590,7 @@ function JobTable(props) {
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
         checkboxSelection={!props.briefTable}
-        onSelectionModelChange={(rows) => setSelectedJobs(rows)}
+        onSelectionModelChange={(currRows) => setSelectedJobs(currRows)}
         rowsPerPageOptions={props.rowsPerPageOptions}
         pageSize={pageSize}
         onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}

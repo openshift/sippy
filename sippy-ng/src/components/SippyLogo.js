@@ -18,20 +18,20 @@ export default function SippyLogo() {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
 
-  const handlePopoverOpen = (event) => {
-    setAnchorEl(event.currentTarget)
+  const handlePopoverOpen = (theEvent) => {
+    setAnchorEl(theEvent.currentTarget)
   }
 
   const handlePopoverClose = () => {
     setAnchorEl(null)
   }
 
-  const open = Boolean(anchorEl)
+  const isOpen = Boolean(anchorEl)
 
   return (
     <div align="center">
       <Typography
-        aria-owns={open ? 'mouse-over-popover' : undefined}
+        aria-owns={isOpen ? 'mouse-over-popover' : undefined}
         aria-haspopup="true"
         onMouseEnter={handlePopoverOpen}
         onMouseLeave={handlePopoverClose}
@@ -49,7 +49,7 @@ export default function SippyLogo() {
         classes={{
           paper: classes.paper,
         }}
-        open={open}
+        open={isOpen}
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'top',

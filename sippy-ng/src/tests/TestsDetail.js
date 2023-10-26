@@ -64,9 +64,9 @@ export default function TestsDetails(props) {
   }
 
   const updateFilter = () => {
-    const names = query.match(/([^\\|]|\\.)+/g)
+    const matchedNames = query.match(/([^\\|]|\\.)+/g)
     setLoaded(false)
-    setNames(names)
+    setNames(matchedNames)
   }
 
   const filterBox = (

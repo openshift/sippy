@@ -10,25 +10,25 @@ export default function GridToolbarQueriesMenu(props) {
     props.initialFilters
   )
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget)
+  const handleClick = (theEvent) => {
+    setAnchorEl(theEvent.currentTarget)
   }
 
   const handleClose = () => {
     setAnchorEl(null)
   }
 
-  const selectFilter = (name, conflicts) => {
+  const selectFilter = (theName, conflicts) => {
     let newFilters = []
 
-    if (selectedFilters.includes(name)) {
-      newFilters = selectedFilters.filter((e) => e !== name)
-    } else if (name === 'all') {
+    if (selectedFilters.includes(theName)) {
+      newFilters = selectedFilters.filter((e) => e !== theName)
+    } else if (theName === 'all') {
       newFilters = []
     } else {
       newFilters = selectedFilters
         .filter((e) => e !== 'all' && e !== conflicts)
-        .concat(name)
+        .concat(theName)
     }
 
     props.setFilters(newFilters)

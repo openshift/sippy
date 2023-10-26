@@ -33,7 +33,7 @@ export const hourFilter = (dayOffset, startDate) => {
 }
 
 export function JobStackedChart(props) {
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({})
@@ -52,15 +52,15 @@ export function JobStackedChart(props) {
     }
 
     fetch(`${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`)
-      .then((analysis) => {
-        if (analysis.status !== 200) {
-          throw new Error('server returned ' + analysis.status)
+      .then((analysisData) => {
+        if (analysisData.status !== 200) {
+          throw new Error('server returned ' + analysisData.status)
         }
 
-        return analysis.json()
+        return analysisData.json()
       })
-      .then((analysis) => {
-        setAnalysis(analysis)
+      .then((analysisJson) => {
+        setAnalysis(analysisJson)
         setLoaded(true)
       })
       .catch((error) => {
@@ -132,7 +132,7 @@ export function JobStackedChart(props) {
   }
 
   const handleClick = (e) => {
-    history.push(
+    theHistory.push(
       `/jobs/${
         props.release
       }/analysis?period=day&filters=${safeEncodeURIComponent(

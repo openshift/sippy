@@ -10,7 +10,7 @@ import React, { Fragment } from 'react'
 
 export default function PayloadCalendar(props) {
   const theme = useTheme()
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const eventSources = [
     {
@@ -64,7 +64,7 @@ export default function PayloadCalendar(props) {
         '_blank'
       )
     } else {
-      history.push(`/release/${props.release}/tags/${info.event.title}`)
+      theHistory.push(`/release/${props.release}/tags/${info.event.title}`)
     }
   }
 

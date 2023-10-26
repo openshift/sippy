@@ -124,10 +124,10 @@ export function pathForExactJobAnalysis(release, job) {
   return `/jobs/${release}/analysis?${single(filterFor('name', 'equals', job))}`
 }
 
-export function pathForExactTestAnalysis(release, test, excludedVariants) {
+export function pathForExactTestAnalysis(release, theTest, excludedVariants) {
   console.log(excludedVariants)
 
-  let filters = [filterFor('name', 'equals', test)]
+  let filters = [filterFor('name', 'equals', theTest)]
   if (Array.isArray(excludedVariants)) {
     excludedVariants.forEach((variant) => {
       filters.push(not(filterFor('variants', 'contains', variant)))
@@ -135,14 +135,14 @@ export function pathForExactTestAnalysis(release, test, excludedVariants) {
   }
 
   return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
-    test
+    theTest
   )}&${multiple(...filters)}`
 }
 
-export function pathForExactTestAnalysisWithFilter(release, test, filter) {
+export function pathForExactTestAnalysisWithFilter(release, theTest, filter) {
   console.log(filter)
 
-  let filters = [filterFor('name', 'equals', test)]
+  let filters = [filterFor('name', 'equals', theTest)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -151,28 +151,28 @@ export function pathForExactTestAnalysisWithFilter(release, test, filter) {
     })
   }
   return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
-    test
+    theTest
   )}&${multiple(...filters)}`
 }
 
-export function pathForExactTest(release, test) {
-  return `/tests/${release}?${single(filterFor('name', 'equals', test))}`
+export function pathForExactTest(release, theTest) {
+  return `/tests/${release}?${single(filterFor('name', 'equals', theTest))}`
 }
 
 export function pathForExactJobRuns(release, job) {
   return `/jobs/${release}/runs?${single(filterFor('job', 'equals', job))}`
 }
 
-export function pathForVariantsWithTestFailure(release, variant, test) {
+export function pathForVariantsWithTestFailure(release, variant, theTest) {
   return `/jobs/${release}/runs?${multiple(
-    filterFor('failed_test_names', 'contains', test),
+    filterFor('failed_test_names', 'contains', theTest),
     filterFor('variants', 'contains', variant)
   )}`
 }
 
-export function pathForJobRunsWithTestFailure(release, test, filter) {
+export function pathForJobRunsWithTestFailure(release, theTest, filter) {
   let filters = []
-  filters.push(filterFor('failed_test_names', 'contains', test))
+  filters.push(filterFor('failed_test_names', 'contains', theTest))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -184,9 +184,9 @@ export function pathForJobRunsWithTestFailure(release, test, filter) {
   return `/jobs/${release}/runs?${multiple(...filters)}`
 }
 
-export function pathForJobRunsWithTestFlake(release, test, filter) {
+export function pathForJobRunsWithTestFlake(release, theTest, filter) {
   let filters = []
-  filters.push(filterFor('flaked_test_names', 'contains', test))
+  filters.push(filterFor('flaked_test_names', 'contains', theTest))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -199,6 +199,7 @@ export function pathForJobRunsWithTestFlake(release, test, filter) {
 }
 
 export function pathForJobRunsWithFilter(release, filter) {
+  // filter.items == [] will always return 'false' since JavaScript compares object by reference, not value.
   if (!filter || filter.items === []) {
     return `/jobs/${release}/runs`
   }
@@ -208,9 +209,9 @@ export function pathForJobRunsWithFilter(release, filter) {
   )}`
 }
 
-export function pathForTestByVariant(release, test) {
+export function pathForTestByVariant(release, theTest) {
   return (
-    `/tests/${release}/details?` + single(filterFor('name', 'equals', test))
+    `/tests/${release}/details?` + single(filterFor('name', 'equals', theTest))
   )
 }
 

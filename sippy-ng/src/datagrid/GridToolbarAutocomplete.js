@@ -6,7 +6,7 @@ import React, { useEffect } from 'react'
 import TextField from '@material-ui/core/TextField'
 
 export default function GridToolbarAutocomplete(props) {
-  const [open, setOpen] = React.useState(false)
+  const [isOpen, setIsOpen] = React.useState(false)
   const [options, setOptions] = React.useState([])
   const [loading, setLoading] = React.useState(false)
 
@@ -33,12 +33,12 @@ export default function GridToolbarAutocomplete(props) {
   }
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       fetchOptions(props.value)
     } else {
       setOptions([])
     }
-  }, [open])
+  }, [isOpen])
 
   // Based on https://stackoverflow.com/a/61973338/1683486
   return (
@@ -46,12 +46,12 @@ export default function GridToolbarAutocomplete(props) {
       disableClearable
       id={`autocomplete-${props.id}`}
       style={{ width: 220 }}
-      open={open}
+      open={isOpen}
       onOpen={() => {
-        setOpen(true)
+        setIsOpen(true)
       }}
       onClose={() => {
-        setOpen(false)
+        setIsOpen(false)
       }}
       onChange={(e, v) => v && props.onChange(v.name)}
       defaultValue={{ name: props.value }}

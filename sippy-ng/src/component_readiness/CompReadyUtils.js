@@ -93,12 +93,12 @@ export function gotFetchError(fetchError) {
 
 // getStatusAndIcon returns a status string and icon to display to denote a visual and textual
 // meaning of a 'status' value.  We optionally allow a grayscale mode for the red colors.
-export function getStatusAndIcon(status, grayFactor = 0) {
+export function getStatusAndIcon(colStatus, grayFactor = 0) {
   let icon = ''
 
-  let statusStr = status + ': '
+  let statusStr = colStatus + ': '
 
-  if (status >= 3) {
+  if (colStatus >= 3) {
     statusStr =
       statusStr + 'SignificantImprovement detected (improved sample rate)'
     icon = (
@@ -109,7 +109,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == 2) {
+  } else if (colStatus == 2) {
     statusStr =
       statusStr + 'Missing Basis And Sample (basis and sample data missing)'
     icon = (
@@ -121,7 +121,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == 1) {
+  } else if (colStatus == 1) {
     statusStr = statusStr + 'Missing Basis (basis data missing)'
     icon = (
       <img
@@ -132,7 +132,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == 0) {
+  } else if (colStatus == 0) {
     statusStr = statusStr + 'NoSignificantDifference detected'
     icon = (
       <img
@@ -141,7 +141,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == -1) {
+  } else if (colStatus == -1) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     icon = (
       <img
@@ -152,10 +152,10 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == -2) {
+  } else if (colStatus == -2) {
     statusStr = statusStr + 'SignificantRegression detected'
     icon = <img src={red} alt="SignificantRegression" />
-  } else if (status <= -3) {
+  } else if (colStatus <= -3) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     icon = <img src={red_3d} alt="ExtremRegressio >15%n" />

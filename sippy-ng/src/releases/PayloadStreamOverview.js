@@ -55,12 +55,12 @@ function PayloadStreamOverview(props) {
       })
       .then((json) => {
         // Find our specific stream's health in the list:
-        for (const stream of json) {
+        for (const streamJson of json) {
           if (
-            stream.architecture === props.arch &&
-            stream.stream === props.stream
+            streamJson.architecture === props.arch &&
+            streamJson.stream === props.stream
           ) {
-            setStreamHealth(stream)
+            setStreamHealth(streamJson)
           }
         }
         setLoaded(true)

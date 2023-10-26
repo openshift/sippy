@@ -14,12 +14,12 @@ export default function JobDetailTestModal(props) {
   }
 
   if (props.item.failedTestNames) {
-    props.item.failedTestNames.slice(0, 25).forEach((test, index) => {
+    props.item.failedTestNames.slice(0, 25).forEach((testName, index) => {
       filterModel.items.push({
         id: index,
         columnField: 'name',
         operatorValue: 'equals',
-        value: test,
+        value: testName,
       })
     })
   }

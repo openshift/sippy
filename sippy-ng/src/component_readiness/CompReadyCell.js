@@ -13,7 +13,8 @@ import React, { useContext } from 'react'
 import TableCell from '@material-ui/core/TableCell'
 
 export default function CompReadyCell(props) {
-  const { status, environment, componentName, filterVals, grayFactor } = props
+  const { colStatus, environment, componentName, filterVals, grayFactor } =
+    props
   const theme = useTheme()
 
   const [componentParam, setComponentParam] = useQueryParam(
@@ -30,18 +31,18 @@ export default function CompReadyCell(props) {
   // Construct an URL with all existing filters plus component and environment.
   // This is the url used when you click inside a TableCell.
   // Note that we are keeping the environment value so we can use it later for displays.
-  function componentReport(componentName, environmentVal, filterVals) {
+  function componentReport(compName, environmentVal, filtVals) {
     const retUrl =
       '/component_readiness/env_capabilities' +
-      filterVals +
+      filtVals +
       '&component=' +
-      safeEncodeURIComponent(componentName) +
+      safeEncodeURIComponent(compName) +
       expandEnvironment(environmentVal)
 
     return sortQueryParams(retUrl)
   }
 
-  if (status === undefined) {
+  if (colStatus === undefined) {
     return (
       <Tooltip title="No data">
         <TableCell
@@ -65,7 +66,7 @@ export default function CompReadyCell(props) {
         }}
       >
         <Link to={componentReport(componentName, environment, filterVals)}>
-          <CompSeverityIcon status={status} grayFactor={grayFactor} />
+          <CompSeverityIcon status={colStatus} grayFactor={grayFactor} />
         </Link>
       </TableCell>
     )
@@ -73,7 +74,7 @@ export default function CompReadyCell(props) {
 }
 
 CompReadyCell.propTypes = {
-  status: PropTypes.number.isRequired,
+  colStatus: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
   componentName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,

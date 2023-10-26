@@ -4,10 +4,10 @@ import React from 'react'
 
 export default function NotYetImplemented(props) {
   const { path } = props
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const goBack = () => {
-    history.goBack()
+    theHistory.goBack()
   }
 
   return (

@@ -6,8 +6,8 @@ import React, { Fragment } from 'react'
 export default function GridToolbarBookmarkMenu(props) {
   const [anchorEl, setAnchorEl] = React.useState(null)
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget)
+  const handleClick = (theEvent) => {
+    setAnchorEl(theEvent.currentTarget)
   }
 
   const handleClose = () => {

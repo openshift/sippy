@@ -11,8 +11,8 @@ export default function GridToolbarPeriodSelector(props) {
   const [anchor, setAnchor] = React.useState('')
   const [period, setPeriod] = React.useState(props.period)
 
-  const handleClick = (event) => {
-    setAnchor(event.currentTarget)
+  const handleClick = (theEvent) => {
+    setAnchor(theEvent.currentTarget)
   }
 
   const handleClose = () => {

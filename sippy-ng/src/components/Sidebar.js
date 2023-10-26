@@ -41,15 +41,15 @@ import SippyLogo from './SippyLogo'
 
 export default function Sidebar(props) {
   const classes = useTheme()
-  const location = useLocation()
+  const theLocation = useLocation()
 
-  const [open, setOpen] = React.useState({})
+  const [isOpen, setIsOpen] = React.useState({})
 
   useEffect(() => {
     return () => {
       // infer release from current url when loading sidebar for first time
-      let parts = location.pathname.split('/')
-      let tmpOpen = open
+      let parts = theLocation.pathname.split('/')
+      let tmpOpen = isOpen
       if (parts.length >= 3) {
         let index = props.releases.indexOf(parts[2])
         if (index !== -1) {
@@ -58,12 +58,12 @@ export default function Sidebar(props) {
       } else {
         tmpOpen[0] = true
       }
-      setOpen(tmpOpen)
+      setIsOpen(tmpOpen)
     }
   }, [props])
 
   function handleClick(id) {
-    setOpen((prevState) => ({ ...prevState, [id]: !prevState[id] }))
+    setIsOpen((prevState) => ({ ...prevState, [id]: !prevState[id] }))
   }
 
   function reportAnIssueURI() {
@@ -165,10 +165,10 @@ export default function Sidebar(props) {
               button
               onClick={() => handleClick(index)}
             >
-              {open[index] ? <ExpandLess /> : <ExpandMore />}
+              {isOpen[index] ? <ExpandLess /> : <ExpandMore />}
               <ListItemText primary={release} />
             </ListItem>
-            <Collapse in={open[index]} timeout="auto" unmountOnExit>
+            <Collapse in={isOpen[index]} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
                 <ListItem
                   key={'release-overview-' + index}

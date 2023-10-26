@@ -26,14 +26,14 @@ export default function BugTable(props) {
         }/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
       ),
     ])
-      .then(([bugs]) => {
-        if (bugs.status !== 200) {
-          throw new Error('server returned ' + bugs.status)
+      .then(([bugsParam]) => {
+        if (bugsParam.status !== 200) {
+          throw new Error('server returned ' + bugsParam.status)
         }
-        return Promise.all([bugs.json()])
+        return Promise.all([bugsParam.json()])
       })
-      .then(([bugs]) => {
-        setBugs(bugs)
+      .then(([bugsParam]) => {
+        setBugs(bugsParam)
         setLoaded(true)
       })
       .catch((error) => {

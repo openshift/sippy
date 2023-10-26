@@ -74,7 +74,7 @@ const useStyles = makeStyles((theme) => ({
 function TestTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
-  const location = useLocation().pathname
+  const theLocation = useLocation().pathname
 
   const [testDetails, setTestDetails] = React.useState({ bugs: [] })
 
@@ -810,12 +810,12 @@ function TestTable(props) {
   const prevLocation = useRef()
 
   useEffect(() => {
-    if (prevLocation.current !== location) {
+    if (prevLocation.current !== theLocation) {
       setRows([])
       setLoaded(false)
     }
     fetchData()
-    prevLocation.current = location
+    prevLocation.current = theLocation
   }, [period, filterModel, sort, sortField, props.collapse, view])
 
   const requestSearch = (searchValue) => {
@@ -850,9 +850,11 @@ function TestTable(props) {
 
   const createTestNameQuery = () => {
     const selectedIDs = new Set(selectedTests)
-    let tests = rows.filter((row) => selectedIDs.has(row.id))
-    tests = tests.map((test) => 'test=' + safeEncodeURIComponent(test.name))
-    return tests.join('&')
+    let testsLists = rows.filter((row) => selectedIDs.has(row.id))
+    testsLists = testsLists.map(
+      (theTest) => 'test=' + safeEncodeURIComponent(theTest.name)
+    )
+    return testsLists.join('&')
   }
 
   const addFilters = (filter) => {
@@ -909,7 +911,7 @@ function TestTable(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        onSelectionModelChange={(rows) => setSelectedTests(rows)}
+        onSelectionModelChange={(currRows) => setSelectedTests(currRows)}
         getRowClassName={(params) => {
           let rowClass = []
           if (params.row.name === overallTestName) {

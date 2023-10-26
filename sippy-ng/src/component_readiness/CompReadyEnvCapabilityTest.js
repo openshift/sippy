@@ -63,14 +63,14 @@ export default function CompReadyEnvCapabilityTest(props) {
     setIsLoaded(false)
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
+      .then((jsonData) => {
+        if (jsonData.code < 200 || jsonData.code >= 300) {
+          const errorMessage = jsonData.message
+            ? `${jsonData.message}`
             : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+          throw new Error(`Return code = ${jsonData.code} (${errorMessage})`)
         }
-        return data
+        return jsonData
       })
       .then((json) => {
         if (Object.keys(json).length === 0 || json.rows.length === 0) {

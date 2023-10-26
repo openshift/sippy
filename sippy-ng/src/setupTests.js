@@ -1,10 +1,10 @@
 /** @jest-environment setup-polly-jest/jest-environment-node */
 
 import '@testing-library/jest-dom'
+import { fetch as nodeFetch } from 'node-fetch'
 import { setupPolly } from 'setup-polly-jest'
 import Adapter from '@wojtekmaj/enzyme-adapter-react-17'
 import Enzyme from 'enzyme'
-import fetch from 'node-fetch'
 import path from 'path'
 import toDiffableHtml from 'diffable-html'
 
@@ -22,7 +22,7 @@ export const withoutMuiID = (wrapper) =>
 Enzyme.configure({ adapter: new Adapter() })
 
 // To stub out fetch(), we need to use node-fetch and this line:
-global.fetch = fetch
+global.fetch = nodeFetch
 
 // See: https://github.com/vuejs/vue-test-utils/issues/974
 global.requestAnimationFrame = (cb) => cb()

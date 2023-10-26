@@ -33,7 +33,7 @@ export default function Jobs(props) {
       <SimpleBreadcrumbs release={props.release} currentPage="Jobs" />
       <Route
         path="/"
-        render={({ location }) => (
+        render={({ theLocation }) => (
           <TabContext value={path}>
             <Typography align="center" variant="h4">
               Job health for {props.release}
@@ -46,8 +46,8 @@ export default function Jobs(props) {
             >
               <Paper>
                 <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
+                  value={theLocation.pathname.substring(
+                    theLocation.pathname.lastIndexOf('/') + 1
                   )}
                   indicatorColor="primary"
                   textColor="primary"

@@ -255,16 +255,16 @@ export default function TestByVariantTable(props) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {Object.keys(props.data.tests).map((test) => (
+            {Object.keys(props.data.tests).map((theTest) => (
               <Row
                 briefTable={props.briefTable}
                 colorScale={props.colorScale}
                 showFull={showFull}
-                key={test}
-                testName={test}
+                key={theTest}
+                testName={theTest}
                 excludedVariants={props.excludedVariants}
                 columnNames={props.data.column_names}
-                results={props.data.tests[test]}
+                results={props.data.tests[theTest]}
                 release={props.release}
               />
             ))}

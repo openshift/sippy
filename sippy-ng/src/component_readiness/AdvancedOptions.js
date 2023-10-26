@@ -52,19 +52,19 @@ export default function AdvancedOptions(props) {
 
   const classes = useStyles()
 
-  const handleChangeConfidence = (event, newValue) => {
+  const handleChangeConfidence = (theEvent, newValue) => {
     setConfidence(newValue)
   }
-  const handleChangePity = (event, newValue) => {
+  const handleChangePity = (theEvent, newValue) => {
     setPity(newValue)
   }
-  const handleChangeMinFail = (event, newValue) => {
+  const handleChangeMinFail = (theEvent, newValue) => {
     setMinFail(newValue)
   }
-  const handleChangeIgnoreMissing = (event, newValue) => {
+  const handleChangeIgnoreMissing = (theEvent, newValue) => {
     setIgnoreMissing(newValue)
   }
-  const handleChangeIgnoreDisruption = (event, newValue) => {
+  const handleChangeIgnoreDisruption = (theEvent, newValue) => {
     setIgnoreDisruption(newValue)
   }
 

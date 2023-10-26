@@ -69,19 +69,19 @@ export default function ReleasePayloadDetails(props) {
         `${process.env.REACT_APP_API_URL}/api/releases/tags?filter=${filter}`
       ),
     ])
-      .then(([tag]) => {
-        if (tag.status !== 200) {
-          throw new Error('server returned ' + tag.status)
+      .then(([tagData]) => {
+        if (tagData.status !== 200) {
+          throw new Error('server returned ' + tagData.status)
         }
 
-        return Promise.all([tag.json()])
+        return Promise.all([tagData.json()])
       })
-      .then(([tag]) => {
-        if (tag.length === 0) {
-          return <Typography variant="h5">Tag #{tag} not found.</Typography>
+      .then(([tagJson]) => {
+        if (tagJson.length === 0) {
+          return <Typography variant="h5">Tag #{tagJson} not found.</Typography>
         }
 
-        setTag(tag[0])
+        setTag(tagJson[0])
         setLoaded(true)
       })
       .catch((error) => {

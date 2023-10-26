@@ -15,7 +15,7 @@ import TableCell from '@material-ui/core/TableCell'
 // CompReadyTestCall is for rendering the cells on the right of page4 or page4a
 export default function CompReadyTestCell(props) {
   const {
-    status,
+    colStatus,
     environment,
     testId,
     filterVals,
@@ -49,19 +49,19 @@ export default function CompReadyTestCell(props) {
   // This is the url used when you click inside a TableCell on page4 on the right.
   // We pass these arguments to the component that generates the test details report.
   function generateTestReport(
-    testId,
+    testIdent,
     environmentVal,
-    filterVals,
+    filtVals,
     componentName,
     capabilityName,
-    testName
+    nameOfTest
   ) {
     const safeComponentName = safeEncodeURIComponent(componentName)
-    const safeTestId = safeEncodeURIComponent(testId)
-    const safeTestName = safeEncodeURIComponent(testName)
+    const safeTestId = safeEncodeURIComponent(testIdent)
+    const safeTestName = safeEncodeURIComponent(nameOfTest)
     const retUrl =
       '/component_readiness/test_details' +
-      filterVals +
+      filtVals +
       `&testId=${safeTestId}` +
       expandEnvironment(environmentVal) +
       `&component=${safeComponentName}` +
@@ -71,7 +71,7 @@ export default function CompReadyTestCell(props) {
     return sortQueryParams(retUrl)
   }
 
-  if (status === undefined) {
+  if (colStatus === undefined) {
     return (
       <Tooltip title="No data">
         <TableCell
@@ -104,7 +104,7 @@ export default function CompReadyTestCell(props) {
             testName
           )}
         >
-          <CompSeverityIcon status={status} />
+          <CompSeverityIcon status={colStatus} />
         </Link>
       </TableCell>
     )
@@ -112,7 +112,7 @@ export default function CompReadyTestCell(props) {
 }
 
 CompReadyTestCell.propTypes = {
-  status: PropTypes.number.isRequired,
+  colStatus: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,

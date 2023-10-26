@@ -12,7 +12,7 @@ import {
   CheckCircle,
   Error as ErrorIcon,
   GitHub,
-  History,
+  History as HistoryIcon,
 } from '@material-ui/icons'
 import { DataGrid } from '@material-ui/data-grid'
 import {
@@ -66,7 +66,7 @@ export default function PullRequestsTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
   const theme = useTheme()
-  const location = useLocation().pathname
+  const theLocation = useLocation().pathname
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -284,7 +284,7 @@ export default function PullRequestsTable(props) {
             <Button
               style={{ justifyContent: 'center' }}
               target="_blank"
-              startIcon={<History />}
+              startIcon={<HistoryIcon />}
               href={`https://prow.ci.openshift.org/pr-history/?org=${params.row.org}&repo=${params.row.repo}&pr=${params.row.number}`}
             />
           </Tooltip>

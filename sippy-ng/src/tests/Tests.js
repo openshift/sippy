@@ -40,7 +40,7 @@ export default function Tests(props) {
 
       <Route
         path="/"
-        render={({ location }) => (
+        render={({ location: theLocation }) => (
           <TabContext value={path}>
             <Typography align="center" variant="h4">
               Tests for {props.release}
@@ -53,8 +53,8 @@ export default function Tests(props) {
             >
               <Paper>
                 <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
+                  value={theLocation.pathname.substring(
+                    theLocation.pathname.lastIndexOf('/') + 1
                   )}
                   indicatorColor="primary"
                   textColor="primary"

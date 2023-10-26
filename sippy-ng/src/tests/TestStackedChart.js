@@ -27,15 +27,15 @@ export function TestStackedChart(props) {
     fetch(
       `${process.env.REACT_APP_API_URL}/api/tests/analysis/overall?${queryParams}`
     )
-      .then((analysis) => {
-        if (analysis.status !== 200) {
-          throw new Error('server returned ' + analysis.status)
+      .then((analysisData) => {
+        if (analysisData.status !== 200) {
+          throw new Error('server returned ' + analysisData.status)
         }
 
-        return analysis.json()
+        return analysisData.json()
       })
-      .then((analysis) => {
-        setAnalysis(analysis['overall'])
+      .then((analysisJson) => {
+        setAnalysis(analysisJson['overall'])
         setLoaded(true)
       })
       .catch((error) => {

@@ -38,24 +38,24 @@ export default function CompReadyTestDetailRow(props) {
   // showOnlyFailures: says to focus on job failures
   const { element, idx, showOnlyFailures } = props
 
-  const testJobDetailCell = (element, statsKind) => {
-    let item
+  const testJobDetailCell = (item, statsKind) => {
+    let itemStats
     if (statsKind === 'base') {
-      item = element.base_job_run_stats
+      itemStats = item.base_job_run_stats
     } else if (statsKind === 'sample') {
-      item = element.sample_job_run_stats
+      itemStats = item.sample_job_run_stats
     } else {
-      item = 'unknown statsKind in testDetailJobRow'
+      itemStats = 'unknown statsKind in testDetailJobRow'
       console.log('ERROR in testDetailJobRow')
     }
 
-    let filtered = item
+    let filtered = itemStats
 
     // If we only care to see failures, then remove anything else
     // Protect against empty/undefined data
     if (showOnlyFailures) {
-      filtered = item
-        ? item.filter((jstat) => jstat.test_stats.failure_count > 0)
+      filtered = itemStats
+        ? itemStats.filter((jstat) => jstat.test_stats.failure_count > 0)
         : []
     }
 

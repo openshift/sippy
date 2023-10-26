@@ -6,7 +6,6 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import { Button, ButtonGroup, TextField } from '@material-ui/core'
-import { Error } from '@material-ui/icons'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@material-ui/lab/Alert'
@@ -15,7 +14,7 @@ import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
 
 export default function ProwJobRun(props) {
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -134,7 +133,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     updateFiltering()
-  }, [categories, history, intervalFiles, eventIntervals])
+  }, [categories, theHistory, intervalFiles, eventIntervals])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -160,17 +159,17 @@ export default function ProwJobRun(props) {
     )
     console.log('queryString = ' + stringify(queryString))
 
-    history.replace({
+    theHistory.replace({
       search: stringify(queryString),
     })
 
-    let filteredIntervals = filterIntervals(
+    let tmpFilteredIntervals = filterIntervals(
       eventIntervals,
       categories,
       intervalFiles,
       filterText
     )
-    setFilteredIntervals(filteredIntervals)
+    setFilteredIntervals(tmpFilteredIntervals)
   }
 
   if (fetchError !== '') {
@@ -223,8 +222,8 @@ export default function ProwJobRun(props) {
     setIntervalFiles(newSelectedIntervalFiles)
   }
 
-  const handleFilterChange = (event) => {
-    setFilterText(event.target.value)
+  const handleFilterChange = (theEvent) => {
+    setFilterText(theEvent.target.value)
   }
 
   return (
@@ -923,8 +922,8 @@ function createTimelineData(
   for (const label in data) {
     const section = data[label]
     for (const sub in section) {
-      const data = section[sub]
-      const totalDurationSeconds = data.reduce(
+      const dataSub = section[sub]
+      const totalDurationSeconds = dataSub.reduce(
         (prev, curr) =>
           prev +
           (curr.timeRange[1].getTime() - curr.timeRange[0].getTime()) / 1000,
@@ -933,7 +932,7 @@ function createTimelineData(
 
       timelineData.push({
         label: label + sub + ' ' + getDurationString(totalDurationSeconds),
-        data: data,
+        data: dataSub,
       })
     }
   }

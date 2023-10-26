@@ -13,7 +13,7 @@ import React, { useContext } from 'react'
 import TableCell from '@material-ui/core/TableCell'
 
 export default function CompReadyCapCell(props) {
-  const { status, environment, testId, filterVals, component, capability } =
+  const { colStatus, environment, testId, filterVals, component, capability } =
     props
   const theme = useTheme()
 
@@ -36,17 +36,17 @@ export default function CompReadyCapCell(props) {
   // Construct a URL with all existing filters plus testId and environment.
   // This is the url used when you click inside a TableCell.
   function testReport(
-    testId,
+    testIdent,
     environmentVal,
-    filterVals,
+    filtVals,
     componentName,
     capabilityName
   ) {
     const safeComponentName = safeEncodeURIComponent(componentName)
-    const safeTestId = safeEncodeURIComponent(testId)
+    const safeTestId = safeEncodeURIComponent(testIdent)
     const retUrl =
       '/component_readiness/env_test' +
-      filterVals +
+      filtVals +
       `&testId=${safeTestId}` +
       expandEnvironment(environmentVal) +
       `&component=${safeComponentName}` +
@@ -55,7 +55,7 @@ export default function CompReadyCapCell(props) {
     return sortQueryParams(retUrl)
   }
 
-  if (status === undefined) {
+  if (colStatus === undefined) {
     return (
       <Tooltip title="No data">
         <TableCell
@@ -87,7 +87,7 @@ export default function CompReadyCapCell(props) {
             capability
           )}
         >
-          <CompSeverityIcon status={status} />
+          <CompSeverityIcon status={colStatus} />
         </Link>
       </TableCell>
     )
@@ -95,7 +95,7 @@ export default function CompReadyCapCell(props) {
 }
 
 CompReadyCapCell.propTypes = {
-  status: PropTypes.number.isRequired,
+  colStatus: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,

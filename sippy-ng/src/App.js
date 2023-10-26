@@ -137,30 +137,30 @@ export default function App(props) {
       fetch(process.env.REACT_APP_API_URL + '/api/capabilities'),
       fetch(process.env.REACT_APP_API_URL + '/api/report_date'),
     ])
-      .then(([releases, capabilities, reportDate]) => {
-        if (releases.status !== 200) {
-          throw new Error('server returned ' + releases.status)
+      .then(([fetchedReleases, fetchedCapabilities, fetchedReportDate]) => {
+        if (fetchedReleases.status !== 200) {
+          throw new Error('server returned ' + fetchedReleases.status)
         }
 
-        if (capabilities.status !== 200) {
-          throw new Error('server returned ' + capabilities.status)
+        if (fetchedCapabilities.status !== 200) {
+          throw new Error('server returned ' + fetchedCapabilities.status)
         }
 
-        if (reportDate.status !== 200) {
-          throw new Error('server returned ' + reportDate.status)
+        if (fetchedReportDate.status !== 200) {
+          throw new Error('server returned ' + fetchedReportDate.status)
         }
 
         return Promise.all([
-          releases.json(),
-          capabilities.json(),
-          reportDate.json(),
+          fetchedReleases.json(),
+          fetchedCapabilities.json(),
+          fetchedReportDate.json(),
         ])
       })
-      .then(([releases, capabilities, reportDate]) => {
-        setReleases(releases)
-        setCapabilities(capabilities)
-        setReportDate(reportDate['pinnedDateTime'])
-        setLastUpdated(new Date(releases.last_updated))
+      .then(([jsonReleases, jsonCapabilities, jsonReportDate]) => {
+        setReleases(jsonReleases)
+        setCapabilities(jsonCapabilities)
+        setReportDate(jsonReportDate['pinnedDateTime'])
+        setLastUpdated(new Date(jsonReleases.last_updated))
         setLoaded(true)
       })
       .catch((error) => {
@@ -288,116 +288,122 @@ export default function App(props) {
 
                     <Route
                       path="/release/:release/tags/:tag"
-                      render={(props) => (
+                      render={(theProps) => (
                         <ReleasePayloadDetails
-                          key={'release-details-' + props.match.params.release}
-                          release={props.match.params.release}
-                          releaseTag={props.match.params.tag}
+                          key={
+                            'release-details-' + theProps.match.params.release
+                          }
+                          release={theProps.match.params.release}
+                          releaseTag={theProps.match.params.tag}
                         />
                       )}
                     />
 
                     <Route
                       path="/release/:release/streams/:arch/:stream"
-                      render={(props) => (
+                      render={(theProps) => (
                         <PayloadStream
-                          release={props.match.params.release}
-                          arch={props.match.params.arch}
-                          stream={props.match.params.stream}
+                          release={theProps.match.params.release}
+                          arch={theProps.match.params.arch}
+                          stream={theProps.match.params.stream}
                         />
                       )}
                     />
 
                     <Route
                       path="/release/:release/streams"
-                      render={(props) => (
+                      render={(theProps) => (
                         <PayloadStreams
-                          key={'release-streams-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={
+                            'release-streams-' + theProps.match.params.release
+                          }
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/release/:release/tags"
-                      render={(props) => (
+                      render={(theProps) => (
                         <ReleasePayloads
-                          key={'release-tags-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={'release-tags-' + theProps.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/release/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <ReleaseOverview
-                          key={'release-overview-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={
+                            'release-overview-' + theProps.match.params.release
+                          }
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/variants/:release/:variant"
-                      render={(props) => (
+                      render={(theProps) => (
                         <VariantStatus
-                          release={props.match.params.release}
-                          variant={props.match.params.variant}
+                          release={theProps.match.params.release}
+                          variant={theProps.match.params.variant}
                         />
                       )}
                     />
 
                     <Route
                       path="/jobs/:release/analysis"
-                      render={(props) => (
-                        <JobAnalysis release={props.match.params.release} />
+                      render={(theProps) => (
+                        <JobAnalysis release={theProps.match.params.release} />
                       )}
                     />
 
                     <Route
                       path="/jobs/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <Jobs
-                          key={'jobs-' + props.match.params.release}
+                          key={'jobs-' + theProps.match.params.release}
                           title={
-                            'Job results for ' + props.match.params.release
+                            'Job results for ' + theProps.match.params.release
                           }
-                          release={props.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/tests/:release/analysis"
-                      render={(props) => (
-                        <TestAnalysis release={props.match.params.release} />
+                      render={(theProps) => (
+                        <TestAnalysis release={theProps.match.params.release} />
                       )}
                     />
 
                     <Route
                       path="/tests/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <Tests
-                          key={'tests-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={'tests-' + theProps.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/upgrade/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <Upgrades
-                          key={'upgrades-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={'upgrades-' + theProps.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/component_readiness"
-                      render={(props) => {
+                      render={(theProps) => {
                         return (
                           <CompReadyVarsProvider>
                             <ComponentReadiness key={window.location.href} />
@@ -408,20 +414,20 @@ export default function App(props) {
 
                     <Route
                       path="/install/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <Install
-                          key={'install-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={'install-' + theProps.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/build_clusters/:cluster"
-                      render={(props) => (
+                      render={(theProps) => (
                         <BuildClusterDetails
-                          key={'cluster-' + props.match.params.cluster}
-                          cluster={props.match.params.cluster}
+                          key={'cluster-' + theProps.match.params.cluster}
+                          cluster={theProps.match.params.cluster}
                         />
                       )}
                     />
@@ -433,40 +439,40 @@ export default function App(props) {
 
                     <Route
                       path="/repositories/:release/:org/:repo"
-                      render={(props) => (
+                      render={(theProps) => (
                         <RepositoryDetails
-                          release={props.match.params.release}
-                          org={props.match.params.org}
-                          repo={props.match.params.repo}
+                          release={theProps.match.params.release}
+                          org={theProps.match.params.org}
+                          repo={theProps.match.params.repo}
                         />
                       )}
                     />
 
                     <Route
                       path="/repositories/:release"
-                      render={(props) => (
-                        <Repositories release={props.match.params.release} />
+                      render={(theProps) => (
+                        <Repositories release={theProps.match.params.release} />
                       )}
                     />
 
                     <Route
                       path="/pull_requests/:release"
-                      render={(props) => (
+                      render={(theProps) => (
                         <PullRequests
-                          key={'pr-' + props.match.params.release}
-                          release={props.match.params.release}
+                          key={'pr-' + theProps.match.params.release}
+                          release={theProps.match.params.release}
                         />
                       )}
                     />
 
                     <Route
                       path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
-                      render={(props) => (
+                      render={(theProps) => (
                         <ProwJobRun
-                          jobRunID={props.match.params.jobrunid}
-                          jobName={props.match.params.jobname}
-                          repoInfo={props.match.params.repoinfo}
-                          pullNumber={props.match.params.pullnumber}
+                          jobRunID={theProps.match.params.jobrunid}
+                          jobName={theProps.match.params.jobname}
+                          repoInfo={theProps.match.params.repoinfo}
+                          pullNumber={theProps.match.params.pullnumber}
                         />
                       )}
                     />

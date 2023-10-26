@@ -12,11 +12,11 @@ Chart.register(annotationPlugin)
 
 export default function Histogram(props) {
   const theme = useTheme()
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const handleClick = (e) => {
     let percentile = e[0].index * 10
-    history.push(
+    theHistory.push(
       pathForJobsInPercentile(props.release, percentile, percentile + 10)
     )
   }

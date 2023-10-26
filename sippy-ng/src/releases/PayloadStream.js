@@ -33,7 +33,7 @@ export default function PayloadStream(props) {
   const { path, url } = useRouteMatch()
 
   const [currentTab, setCurrentTab] = useState(0)
-  function handleTabChange(event, newValue) {
+  function handleTabChange(theEvent, newValue) {
     console.warn('Setting new value ' + newValue)
     setCurrentTab(newValue)
   }
@@ -68,7 +68,7 @@ export default function PayloadStream(props) {
       />
       <Route
         path="/"
-        render={({ location }) => (
+        render={({ location: theLocation }) => (
           <TabContext value={path}>
             <Fragment>
               <Typography variant="h4" gutterBottom className={classes.title}>
@@ -83,8 +83,8 @@ export default function PayloadStream(props) {
               >
                 <Paper>
                   <Tabs
-                    value={location.pathname.substring(
-                      location.pathname.lastIndexOf('/') + 1
+                    value={theLocation.pathname.substring(
+                      theLocation.pathname.lastIndexOf('/') + 1
                     )}
                     indicatorColor="primary"
                     textColor="primary"

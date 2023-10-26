@@ -27,19 +27,19 @@ export default function Install(props) {
         process.env.REACT_APP_API_URL + '/api/health?release=' + props.release
       ),
     ])
-      .then(([install, health]) => {
-        if (install.status !== 200) {
-          throw new Error('server returned ' + install.status)
+      .then(([installData, healthData]) => {
+        if (installData.status !== 200) {
+          throw new Error('server returned ' + installData.status)
         }
 
-        if (health.status !== 200) {
-          throw new Error('server returned ' + health.status)
+        if (healthData.status !== 200) {
+          throw new Error('server returned ' + healthData.status)
         }
-        return Promise.all([install.json(), health.json()])
+        return Promise.all([installData.json(), healthData.json()])
       })
-      .then(([install, health]) => {
-        setData(install)
-        setHealth(health)
+      .then(([installJson, healthJson]) => {
+        setData(installJson)
+        setHealth(healthJson)
         setLoaded(true)
       })
       .catch((error) => {
@@ -70,7 +70,7 @@ export default function Install(props) {
       <SimpleBreadcrumbs release={props.release} currentPage="Install" />
       <Route
         path="/"
-        render={({ location }) => (
+        render={({ location: theLocation }) => (
           <TabContext value={path}>
             <Typography align="center" variant="h4">
               Install health for {props.release}
@@ -88,8 +88,8 @@ export default function Install(props) {
               >
                 <Paper>
                   <Tabs
-                    value={location.pathname.substring(
-                      location.pathname.lastIndexOf('/') + 1
+                    value={theLocation.pathname.substring(
+                      theLocation.pathname.lastIndexOf('/') + 1
                     )}
                     indicatorColor="primary"
                     textColor="primary"

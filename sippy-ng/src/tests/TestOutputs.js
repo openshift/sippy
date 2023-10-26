@@ -10,7 +10,7 @@ import {
   TableRow,
   Tooltip,
 } from '@material-ui/core'
-import { DirectionsBoat, Error } from '@material-ui/icons'
+import { DirectionsBoat } from '@material-ui/icons'
 import { makeStyles } from '@material-ui/core/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@material-ui/lab/Alert'

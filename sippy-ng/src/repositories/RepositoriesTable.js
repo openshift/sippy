@@ -7,7 +7,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { Details, Error, Launch } from '@material-ui/icons'
+import { Details, Launch } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { makeStyles } from '@material-ui/core/styles'
@@ -53,7 +53,7 @@ function RepositoriesTable(props) {
 
   const { classes } = props
   const gridClasses = useStyles()
-  const history = useHistory()
+  const theHistory = useHistory()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -290,7 +290,7 @@ function RepositoriesTable(props) {
           ]
         }
         onRowClick={(e) =>
-          history.push(
+          theHistory.push(
             `/repositories/${props.release}/${e.row.org}/${e.row.repo}`
           )
         }

@@ -68,7 +68,7 @@ export default function Upgrades(props) {
       <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
       <Route
         path="/"
-        render={({ location }) => (
+        render={({ location: theLocation }) => (
           <TabContext value={path}>
             <Typography align="center" variant="h4">
               Upgrade health for {props.release}
@@ -76,8 +76,8 @@ export default function Upgrades(props) {
             <Grid container justifyContent="center" size="xl" className="view">
               <Paper>
                 <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
+                  value={theLocation.pathname.substring(
+                    theLocation.pathname.lastIndexOf('/') + 1
                   )}
                   indicatorColor="primary"
                   textColor="primary"

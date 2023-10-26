@@ -153,8 +153,8 @@ function BuildClusterTable(props) {
         setRows(json)
         setLoaded(true)
       })
-      .catch((error) => {
-        setError('Could not retrieve build cluster health: ' + error)
+      .catch((errorParam) => {
+        setError('Could not retrieve build cluster health: ' + errorParam)
       })
   }
 

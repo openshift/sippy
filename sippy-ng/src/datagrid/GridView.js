@@ -6,11 +6,11 @@ export class GridView {
     this.setView(defaultView)
   }
 
-  setView(name) {
-    if (name in this.views) {
+  setView(theName) {
+    if (theName in this.views) {
       let columns = []
-      this.view = this.views[name]
-      this.viewName = name
+      this.view = this.views[theName]
+      this.viewName = theName
       this.view.fieldOrder.forEach((e) => {
         let field = this.allColumns[e.field]
         if (field === undefined) {
@@ -23,7 +23,7 @@ export class GridView {
       })
       this.columns = columns
     } else {
-      console.error(name + ' is not a known view')
+      console.error(theName + ' is not a known view')
     }
   }
 }

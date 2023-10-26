@@ -38,9 +38,9 @@ export default function CheckBoxList(props) {
   const classes = useStyles()
   const checkedItems = props.checkedItems
   const setCheckedItems = props.setCheckedItems
-  const handleChange = (event) => {
-    const item = event.target.name
-    const isChecked = event.target.checked
+  const handleChange = (theEvent) => {
+    const item = theEvent.target.name
+    const isChecked = theEvent.target.checked
     if (isChecked) {
       setCheckedItems([...checkedItems, item])
     } else {

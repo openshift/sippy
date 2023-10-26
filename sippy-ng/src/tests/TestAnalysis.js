@@ -41,7 +41,7 @@ import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
-  const [test, setTest] = React.useState({})
+  const [theTest, setTheTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
 
@@ -75,18 +75,18 @@ export function TestAnalysis(props) {
         `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
       ),
     ])
-      .then(([test]) => {
-        if (test.status !== 200) {
-          throw new Error('server returned ' + test.status)
+      .then(([testData]) => {
+        if (testData.status !== 200) {
+          throw new Error('server returned ' + testData.status)
         }
 
-        return Promise.all([test.json()])
+        return Promise.all([testData.json()])
       })
-      .then(([test]) => {
-        if (test.length === 0) {
+      .then(([testJson]) => {
+        if (testJson.length === 0) {
           throw new Error('test not found')
         }
-        setTest(test[0])
+        setTheTest(testJson[0])
         setLoaded(true)
       })
       .catch((error) => {
@@ -137,20 +137,24 @@ export function TestAnalysis(props) {
               key="test-summary"
               threshold={TEST_THRESHOLDS}
               name="Overall"
-              success={test.current_successes}
-              flakes={test.current_flakes}
+              success={theTest.current_successes}
+              flakes={theTest.current_flakes}
               caption={
                 <Fragment>
-                  <Tooltip title={`${test.current_runs} runs`}>
-                    <span>{test.current_working_percentage.toFixed(2)}%</span>
+                  <Tooltip title={`${theTest.current_runs} runs`}>
+                    <span>
+                      {theTest.current_working_percentage.toFixed(2)}%
+                    </span>
                   </Tooltip>
-                  <PassRateIcon improvement={test.net_improvement} />
-                  <Tooltip title={`${test.previous_runs} runs`}>
-                    <span>{test.previous_working_percentage.toFixed(2)}%</span>
+                  <PassRateIcon improvement={theTest.net_improvement} />
+                  <Tooltip title={`${theTest.previous_runs} runs`}>
+                    <span>
+                      {theTest.previous_working_percentage.toFixed(2)}%
+                    </span>
                   </Tooltip>
                 </Fragment>
               }
-              fail={test.current_failures}
+              fail={theTest.current_failures}
             />
           </Grid>
           <Grid item md={8}>

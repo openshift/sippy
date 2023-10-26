@@ -92,58 +92,65 @@ export function JobAnalysis(props) {
       ),
       fetch(`${process.env.REACT_APP_API_URL}/api/jobs/bugs?${queryParams}`),
     ])
-      .then(([analysis, bugs]) => {
-        if (analysis.status !== 200) {
-          throw new Error('server returned ' + analysis.status)
+      .then(([analysisData, bugsData]) => {
+        if (analysisData.status !== 200) {
+          throw new Error('server returned ' + analysisData.status)
         }
 
-        return Promise.all([analysis.json(), bugs.json()])
+        return Promise.all([analysisData.json(), bugsData.json()])
       })
-      .then(([analysis, bugs]) => {
-        setAnalysis(analysis)
-        setBugs(bugs)
+      .then(([analysisJson, bugsJson]) => {
+        setAnalysis(analysisJson)
+        setBugs(bugsJson)
 
         // allTests maps each test name to a struct containing the test name again, and the total number of
         // failures in the past 7 days. This value is used to sort on and determine the most relevant tests
         // to preselect in the graph.
 
-        let allTests = new Map()
+        let allTestsMap = new Map()
         let twoWeeksAgo = new Date(+startDate - 1000 * 60 * 60 * 24 * 7)
-        Object.keys(analysis.by_period).map((key) =>
-          Object.keys(analysis.by_period[key].test_count).forEach((test) => {
-            const count = allTests.get(test) || { name: test, value: 0 }
+        Object.keys(analysisJson.by_period).map((key) =>
+          Object.keys(analysisJson.by_period[key].test_count).forEach(
+            (testName) => {
+              const count = allTestsMap.get(testName) || {
+                name: testName,
+                value: 0,
+              }
 
-            // We are most interested in the test failures for the last 7 days. We'll graph the whole timeframe we
-            // have, but here we skip counts of failures before 7 days ago.
-            let keyDate = new Date(Date.parse(key))
-            let countChange = 0
-            if (keyDate >= twoWeeksAgo) {
-              countChange = analysis.by_period[key].test_count[test]
+              // We are most interested in the test failures for the last 7 days. We'll graph the whole timeframe we
+              // have, but here we skip counts of failures before 7 days ago.
+              let keyDate = new Date(Date.parse(key))
+              let countChange = 0
+              if (keyDate >= twoWeeksAgo) {
+                countChange = analysisJson.by_period[key].test_count[testName]
+              }
+
+              allTestsMap.set(testName, {
+                name: testName,
+                value: count.value + countChange,
+              })
             }
-
-            allTests.set(test, {
-              name: test,
-              value: count.value + countChange,
-            })
-          })
+          )
         )
 
-        allTests = [...allTests.values()].sort((a, b) => b.value - a.value)
+        allTestsMap = [...allTestsMap.values()].sort(
+          (a, b) => b.value - a.value
+        )
 
         const selected = []
         // DataGrid tables need an ID:
-        for (let i = 0; i < allTests.length; i++) {
-          if (selectedTests && selectedTests.includes(allTests[i].name)) {
+        for (let i = 0; i < allTestsMap.length; i++) {
+          if (selectedTests && selectedTests.includes(allTestsMap[i].name)) {
             selected.push(i)
           }
-          allTests[i].id = i
+          allTestsMap[i].id = i
         }
 
         if (selected.length > 0) {
           setSelectionModel(selected)
         }
 
-        setAllTests(allTests)
+        setAllTests(allTestsMap)
         setLoaded(true)
       })
       .catch((error) => {
@@ -318,15 +325,16 @@ export function JobAnalysis(props) {
     setPeriod(newPeriod)
   }
 
-  function withoutJobRunFilters(filterModel) {
+  function withoutJobRunFilters(currfilterModel) {
     let jobRunFilters = ['cluster', 'timestamp']
 
-    if (!filterModel || filterModel.items === []) {
-      return filterModel
+    // currentfilterModel.items === [] will always return 'false' since JavaScript compares object by reference, not value.
+    if (!currfilterModel || currfilterModel.items === []) {
+      return currfilterModel
     }
 
     let newFilters = []
-    filterModel.items.forEach((filter) => {
+    currfilterModel.items.forEach((filter) => {
       if (!jobRunFilters.includes(filter.columnField)) {
         newFilters.push(filter)
       }
@@ -334,8 +342,8 @@ export function JobAnalysis(props) {
 
     return {
       items: newFilters,
-      not: filterModel.not,
-      linkOperator: filterModel.linkOperator,
+      not: currfilterModel.not,
+      linkOperator: currfilterModel.linkOperator,
     }
   }
 
