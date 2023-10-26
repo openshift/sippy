@@ -23,6 +23,11 @@ releases:
 The Prow section of the configuration contains a URL, pointing to the prowjob.js endpoint which contains a JSON file of
 all ProwJob's from the last 12 hours or so.
 
+## Suites
+
+Sippy expects every test it imports to belong to a test suite, this list
+of suites will tell Sippy which ones to import. Others will be ignored.
+
 ## Releases
 
 Releases is a map of releases, containing the release name, and possibly a list of regexp matchers or explicit list of

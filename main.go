@@ -418,7 +418,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 				for _, err := range l.Errors() {
 					errs = append(errs, errors.Wrap(err, fmt.Sprintf("%q loader encountered a problem", err)))
 				}
-				allErrs = append(allErrs, errs)
+				allErrs = append(allErrs, errs...)
 				log.Infof("Running %q complete with %d errors", loader.Name(), len(l.Errors()))
 				for _, err := range l.Errors() {
 					log.Error(err.Error())
