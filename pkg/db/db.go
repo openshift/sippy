@@ -133,10 +133,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := populateTestSuitesInDB(d.DB); err != nil {
-		return err
-	}
-
 	if err := syncPostgresMaterializedViews(d.DB, reportEnd); err != nil {
 		return err
 	}

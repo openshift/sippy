@@ -1,6 +1,33 @@
 # This file is used as an overlay to customize the generated config, so it contains the Presubmit pseudorelease.
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
+suites:
+  # Primary origin suite names
+  - openshift-tests
+  - openshift-tests-upgrade
+
+  # Sippy synthetic tests
+  - sippy
+
+  # ROSA
+  - OSD e2e suite
+
+  # Other
+  - BackendDisruption
+  - Cluster upgrade
+  - E2E Suite
+  - Kubernetes e2e suite
+  - Log Metrics
+  - Operator results
+  - Symptom Detection
+  - Tests Suite
+  - cluster install
+  - cluster nodes ready
+  - cluster nodes
+  - gather core dump
+  - hypershift-e2e
+  - metal infra
+  - step graph
 releases:
   "3.11":
     jobs:

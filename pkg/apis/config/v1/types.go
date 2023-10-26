@@ -2,6 +2,7 @@ package v1
 
 type SippyConfig struct {
 	Prow     ProwConfig               `yaml:"prow"`
+	Suites   []string                 `yaml:"suites""`
 	Releases map[string]ReleaseConfig `yaml:"releases"`
 }
 

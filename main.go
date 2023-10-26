@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -29,6 +30,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
+	"github.com/openshift/sippy/pkg/dataloader/suiteloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -380,6 +382,9 @@ func (o *Options) Run() error { //nolint:gocyclo
 		// an overall error to exit non-zero and fail the job.
 		allErrs := []error{}
 
+		// Load test suites
+		loaders = append(loaders, suiteloader.New(&sippyConfig, dbc.DB))
+
 		// Release payload tag loader
 		if len(o.OpenshiftReleases) > 0 {
 			loaders = append(loaders, releaseloader.New(dbc, o.OpenshiftReleases, o.OpenshiftArchitectures))
@@ -409,7 +414,11 @@ func (o *Options) Run() error { //nolint:gocyclo
 			l := loaderwithmetrics.New(loader)
 			l.Load()
 			if len(l.Errors()) > 0 {
-				allErrs = append(allErrs, l.Errors()...)
+				var errs []error
+				for _, err := range l.Errors() {
+					errs = append(errs, errors.Wrap(err, fmt.Sprintf("%q loader encountered a problem", err)))
+				}
+				allErrs = append(allErrs, errs)
 				log.Infof("Running %q complete with %d errors", loader.Name(), len(l.Errors()))
 				for _, err := range l.Errors() {
 					log.Error(err.Error())
