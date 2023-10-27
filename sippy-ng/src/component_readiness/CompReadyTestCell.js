@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
@@ -67,28 +68,7 @@ export default function CompReadyTestCell(props) {
       `&capability=${capabilityName}` +
       `&testName=${safeTestName}`
 
-    return retUrl
-  }
-
-  const handleClick = (event) => {
-    event.preventDefault()
-    setComponentParam(component)
-    setCapabilityParam(capability)
-    setTestIdParam(testId)
-    setEnvironmentParam(environment)
-    setTestNameParam(testName)
-    window.open(
-      '/sippy-ng' +
-        generateTestReport(
-          testId,
-          environment,
-          filterVals,
-          component,
-          capability,
-          testName
-        ),
-      '_blank'
-    )
+    return sortQueryParams(retUrl)
   }
 
   if (status === undefined) {
@@ -123,7 +103,6 @@ export default function CompReadyTestCell(props) {
             capability,
             testName
           )}
-          onClick={handleClick}
         >
           <CompSeverityIcon status={status} />
         </Link>

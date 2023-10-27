@@ -359,6 +359,8 @@ export default function ComponentReadiness(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
+  useEffect(() => {}, [isLoaded])
+
   useEffect(() => {
     setData(initialPageTable)
     setIsLoaded(true)
@@ -682,9 +684,6 @@ export default function ComponentReadiness(props) {
                     ignoreDisruption,
                     ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
-                  setEnvironmentParam(environment)
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
@@ -718,7 +717,6 @@ export default function ComponentReadiness(props) {
                     ignoreDisruption,
                     ignoreMissing
                   )
-                  setComponentParam(component)
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}

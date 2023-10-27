@@ -72,7 +72,7 @@ export default function CompReadyTestReport(props) {
 
   // Set the browser tab title
   document.title =
-    'Sippy > ComponentReadiness > Capabilities > Tests > Capability Tests > TestDetails' +
+    'Sippy > Component Readiness > Capabilities > Tests > Capability Tests > Test Details' +
     (environment ? `Env` : '')
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)

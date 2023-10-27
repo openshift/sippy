@@ -400,7 +400,7 @@ export default function App(props) {
                       render={(props) => {
                         return (
                           <CompReadyVarsProvider>
-                            <ComponentReadiness />
+                            <ComponentReadiness key={window.location.href} />
                           </CompReadyVarsProvider>
                         )
                       }}

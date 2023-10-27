@@ -306,9 +306,34 @@ export function getUpdatedUrlParts(
   })
 
   // Stringify and put the begin param character.
-  const queryString = queryParams.toString()
+  queryParams.sort() // ensure they always stay in sorted order to prevent url history changes
+
+  // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
+  // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
+  // %20 for spaces. This makes URL's change (and creates additional history entries, breaking the back button.
+  const queryString = queryParams.toString().replace(/\+/g, '%20')
   const retVal = `?${queryString}`
   return retVal
+}
+
+// sortQueryParams sorts a query parameters order so we don't screw up the history when they change
+export function sortQueryParams(path) {
+  // Split the path into base path and query string
+  const [basePath, queryString] = path.split('?')
+
+  if (!queryString) {
+    return path
+  }
+
+  // Use URLSearchParams to parse and sort the query parameters
+  const params = new URLSearchParams(queryString)
+  const sortedParams = new URLSearchParams([...params.entries()].sort())
+
+  // Re-assemble the path with sorted query parameters.
+  // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
+  // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
+  // %20 for spaces. This makes URL's change (and creates additional history entries, breaking the back button.
+  return basePath + '?' + sortedParams.toString().replace(/\+/g, '%20')
 }
 
 // Single place to make titles so they look consistent as well as capture the
