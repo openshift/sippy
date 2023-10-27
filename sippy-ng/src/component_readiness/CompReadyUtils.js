@@ -310,7 +310,7 @@ export function getUpdatedUrlParts(
 
   // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
   // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
-  // %20 for spaces. This makes URL's change (and creates additional history entries, breaking the back button.
+  // %20 for spaces. This makes URL's change, which creates additional history entries, and breaks the back button.
   const queryString = queryParams.toString().replace(/\+/g, '%20')
   const retVal = `?${queryString}`
   return retVal
@@ -332,7 +332,7 @@ export function sortQueryParams(path) {
   // Re-assemble the path with sorted query parameters.
   // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
   // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
-  // %20 for spaces. This makes URL's change (and creates additional history entries, breaking the back button.
+  // %20 for spaces. This makes URL's change, which creates additional history entries, and breaks the back button.
   return basePath + '?' + sortedParams.toString().replace(/\+/g, '%20')
 }
 
