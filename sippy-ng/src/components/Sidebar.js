@@ -15,6 +15,7 @@ import { ListSubheader, Tooltip, useTheme } from '@material-ui/core'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
+  safeEncodeURIComponent,
   withoutUnstable,
   withSort,
 } from '../helpers'
@@ -42,7 +43,6 @@ export default function Sidebar(props) {
   const classes = useTheme()
   const location = useLocation()
 
-  const [bugzillaOpen, setBugzillaOpen] = React.useState(false)
   const [open, setOpen] = React.useState({})
 
   useEffect(() => {
@@ -62,16 +62,18 @@ export default function Sidebar(props) {
     }
   }, [props])
 
-  const handleBugzillaOpen = () => {
-    setBugzillaOpen(true)
-  }
-
-  const handleBugzillaClose = () => {
-    setBugzillaOpen(false)
-  }
-
   function handleClick(id) {
     setOpen((prevState) => ({ ...prevState, [id]: !prevState[id] }))
+  }
+
+  function reportAnIssueURI() {
+    const description = `Describe your feature request or bug:\n\n
+    
+    Relevant Sippy URL:\n
+    ${window.location.href}\n\n`
+    return `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?priority=10200&pid=12323832&issuetype=17&description=${safeEncodeURIComponent(
+      description
+    )}`
   }
 
   return (
@@ -373,81 +375,18 @@ export default function Sidebar(props) {
           </ListSubheader>
         }
       >
-        <CapabilitiesContext.Consumer>
-          {(value) => {
-            if (value.includes('openshift_releases')) {
-              return (
-                <ListItem
-                  button
-                  component="a"
-                  href="https://testgrid.k8s.io/redhat"
-                  target="_blank"
-                  key="TestGrid"
-                >
-                  <ListItemIcon>
-                    <AssessmentIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="TestGrid" />
-                </ListItem>
-              )
-            } else {
-              return (
-                <ListItem
-                  button
-                  component="a"
-                  href="https://testgrid.k8s.io/sig-release"
-                  target="_blank"
-                  key="TestGrid"
-                >
-                  <ListItemIcon>
-                    <AssessmentIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="TestGrid" />
-                </ListItem>
-              )
-            }
-          }}
-        </CapabilitiesContext.Consumer>
-
-        <CapabilitiesContext.Consumer>
-          {(value) => {
-            if (value.includes('openshift_releases')) {
-              return (
-                <ListItem
-                  button
-                  component="a"
-                  href="https://amd64.ocp.releases.ci.openshift.org/"
-                  target="_blank"
-                  key="ReleaseController"
-                >
-                  <ListItemIcon>
-                    <NewReleasesIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Release Controller" />
-                </ListItem>
-              )
-            }
-          }}
-        </CapabilitiesContext.Consumer>
-
-        <CapabilitiesContext.Consumer>
-          {(value) => {
-            if (value.includes('openshift_releases')) {
-              return (
-                <ListItem
-                  button
-                  onClick={handleBugzillaOpen}
-                  key="SearchBugzilla"
-                >
-                  <ListItemIcon>
-                    <BugReport />
-                  </ListItemIcon>
-                  <ListItemText primary="Search Bugzilla" />
-                </ListItem>
-              )
-            }
-          }}
-        </CapabilitiesContext.Consumer>
+        <ListItem
+          button
+          component="a"
+          target="_blank"
+          href={reportAnIssueURI()}
+          key="ReportAnIssue"
+        >
+          <ListItemIcon>
+            <BugReport />
+          </ListItemIcon>
+          <ListItemText primary="Report an Issue" />
+        </ListItem>
 
         <ListItem
           button
