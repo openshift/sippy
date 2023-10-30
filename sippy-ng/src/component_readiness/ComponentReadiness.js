@@ -174,8 +174,8 @@ export default function ComponentReadiness(props) {
   const setSampleReleaseWithDates = (event) => {
     let release = event.target.value
     setSampleRelease(release)
-    setSampleStartTime(formatLongDate(initialBaseStartTime))
-    setSampleEndTime(formatLongDate(initialBaseEndTime))
+    setSampleStartTime(formatLongDate(initialSampleStartTime))
+    setSampleEndTime(formatLongDate(initialSampleEndTime))
   }
 
   //console.log('ComponentReadiness start')
