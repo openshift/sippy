@@ -481,7 +481,7 @@ export default function ComponentReadiness(props) {
   }
 
   const pageTitle = makePageTitle(
-    `Component Readiness for ${baseRelease} vs. ${sampleRelease}`,
+    `Component Readiness for ${sampleRelease} vs. ${baseRelease}`,
     `page 1`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns
