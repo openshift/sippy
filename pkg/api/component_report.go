@@ -190,7 +190,6 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
 	apitype.ComponentReportRequestAdvancedOptions
-	schema bigquery.Schema
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
@@ -222,35 +221,6 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	log.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 	report := c.generateComponentTestDetailsReport(baseStatus, sampleStatus)
 	return report, nil
-}
-
-// fetchQuerySchema is used to get the schema of the query we are going to use
-// to fetch base and sample status
-// But this seems to be adding 3s query time
-func (c *componentReportGenerator) fetchQuerySchema(queryString string, queryParameters []bigquery.QueryParameter) {
-	queryString += `LIMIT 1`
-	query := c.client.Query(queryString)
-	query.Parameters = queryParameters
-	it, err := query.Read(context.TODO())
-	if err != nil {
-		log.WithError(err).Error("error querying test status from bigquery")
-		return
-	}
-
-	for {
-		testStatus := apitype.ComponentTestStatusRow{}
-		err := it.Next(&testStatus)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing component from bigquery")
-			continue
-		}
-
-		c.schema = it.Schema
-		break
-	}
 }
 
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
@@ -341,10 +311,6 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 			Value: c.baseRelease.Release,
 		},
 	}...)
-
-	if c.schema == nil {
-		c.fetchQuerySchema(baseString+groupString, baseQuery.Parameters)
-	}
 
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
@@ -540,10 +506,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		},
 	}...)
 
-	if c.schema == nil {
-		c.fetchQuerySchema(baseString+groupString, baseQuery.Parameters)
-	}
-
 	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
@@ -724,24 +686,6 @@ func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[a
 
 	for {
 		testStatus := apitype.ComponentTestStatusRow{}
-		if it.Schema == nil {
-			// There seems to be a bug with bigquery storage API
-			// Without this schema, data is not marshalled properly into
-			// ComponentTestStatusRow
-			// We work around this by running one query and get
-			// the schema set. Our last resort is to infer the schema
-			// from the structure.
-			it.Schema = c.schema
-			if it.Schema == nil {
-				schema, err := bigquery.InferSchema(testStatus)
-				if err != nil {
-					log.WithError(err).Error("error inferring schema")
-					errs = append(errs, errors.Wrap(err, "error inferring schema"))
-				} else {
-					it.Schema = schema
-				}
-			}
-		}
 		err := it.Next(&testStatus)
 		if err == iterator.Done {
 			break
