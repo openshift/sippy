@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
@@ -37,17 +38,7 @@ export default function CompReadyCell(props) {
       safeEncodeURIComponent(componentName) +
       expandEnvironment(environmentVal)
 
-    return retUrl
-  }
-
-  const handleClick = (event) => {
-    event.preventDefault()
-    setComponentParam(componentName)
-    setEnvironmentParam(environment)
-    window.open(
-      '/sippy-ng' + componentReport(componentName, environment, filterVals),
-      '_blank'
-    )
+    return sortQueryParams(retUrl)
   }
 
   if (status === undefined) {
@@ -73,10 +64,7 @@ export default function CompReadyCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link
-          to={componentReport(componentName, environment, filterVals)}
-          onClick={handleClick}
-        >
+        <Link to={componentReport(componentName, environment, filterVals)}>
           <CompSeverityIcon status={status} grayFactor={grayFactor} />
         </Link>
       </TableCell>

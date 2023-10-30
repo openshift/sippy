@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCapCell from './CompReadyCapCell'
@@ -22,7 +23,7 @@ function testLink(filterVals, componentName, capabilityName, testId) {
     `&component=${safeComponentName}` +
     `&capability=${safeCapability}` +
     `&testId=${safeTestId}`
-  return retVal
+  return sortQueryParams(retVal)
 }
 
 // Represents a row when you clicked a capability on page2
@@ -55,27 +56,13 @@ export default function CompTestRow(props) {
   )
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
 
-  const handleClick = (event) => {
-    event.preventDefault()
-    setComponentParam(component)
-    setCapabilityParam(capability)
-    setTestIdParam(testId)
-    window.open(
-      '/sippy-ng' + testLink(filterVals, component, capability, testId),
-      '_blank'
-    )
-  }
-
   // Put the testName on the left side with a link to a test specific
   // test report.
   const testNameColumn = (
     <TableCell className={'cr-component-name'} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography className="cr-cell-name">
-          <Link
-            to={testLink(filterVals, component, capability, testId)}
-            onClick={handleClick}
-          >
+          <Link to={testLink(filterVals, component, capability, testId)}>
             {[testSuite, testName].filter(Boolean).join('.')}
           </Link>
         </Typography>

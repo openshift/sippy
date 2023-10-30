@@ -33,25 +33,13 @@ export default function CompReadyRow(props) {
     StringParam
   )
 
-  const handleClick = (event) => {
-    event.preventDefault()
-    setComponentParam(componentName)
-    window.open(
-      '/sippy-ng' + capabilitiesReport(filterVals, componentName),
-      '_blank'
-    )
-  }
-
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
     <TableCell className={'cr-component-name'} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
         <Typography className="cr-cell-name">
-          <Link
-            to={capabilitiesReport(filterVals, componentName)}
-            onClick={handleClick}
-          >
+          <Link to={capabilitiesReport(filterVals, componentName)}>
             {componentName}
           </Link>
         </Typography>

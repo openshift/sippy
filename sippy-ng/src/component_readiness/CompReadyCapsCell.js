@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@material-ui/core'
 import { useTheme } from '@material-ui/core/styles'
@@ -36,18 +37,9 @@ export default function CompReadyCapsCell(props) {
       '&capability=' +
       safeEncodeURIComponent(capabilityName) +
       expandEnvironment(environmentVal)
-    return retUrl
+    return sortQueryParams(retUrl)
   }
 
-  const handleClick = (event) => {
-    event.preventDefault()
-    setCapabilityParam(capabilityName)
-    setEnvironmentParam(environment)
-    window.open(
-      '/sippy-ng' + capabilityReport(capabilityName, environment, filterVals),
-      '_blank'
-    )
-  }
   if (status === undefined) {
     return (
       <Tooltip title="No data">
@@ -71,10 +63,7 @@ export default function CompReadyCapsCell(props) {
           backgroundColor: 'white',
         }}
       >
-        <Link
-          to={capabilityReport(capabilityName, environment, filterVals)}
-          onClick={handleClick}
-        >
+        <Link to={capabilityReport(capabilityName, environment, filterVals)}>
           <CompSeverityIcon status={status} />
         </Link>
       </TableCell>

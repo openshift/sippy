@@ -359,11 +359,6 @@ export default function ComponentReadiness(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
-  useEffect(() => {
-    setData(initialPageTable)
-    setIsLoaded(true)
-  }, [])
-
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -397,15 +392,6 @@ export default function ComponentReadiness(props) {
     return formattedApiCallStr
   }
 
-  if (!isLoaded) {
-    return (
-      <CompReadyProgress
-        apiLink={showValuesForReport()}
-        cancelFunc={cancelFetch}
-      />
-    )
-  }
-
   const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
     return (
@@ -422,34 +408,8 @@ export default function ComponentReadiness(props) {
     data.rows.length > 1 &&
     getKeeperColumns(data, columnNames, redOnlyChecked)
 
-  // This runs when someone pushes the "Generate Report" button.
-  // We form an api string and then call the api.
-  const handleGenerateReport = (event) => {
-    event.preventDefault()
-    setBaseReleaseParam(baseRelease)
-    setBaseStartTimeParam(formatLongDate(baseStartTime))
-    setBaseEndTimeParam(formatLongDate(baseEndTime))
-    setSampleReleaseParam(sampleRelease)
-    setSampleStartTimeParam(formatLongDate(sampleStartTime))
-    setSampleEndTimeParam(formatLongDate(sampleEndTime))
-    setGroupByCheckedItemsParam(groupByCheckedItems)
-    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
-    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
-    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
-    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
-    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
-    setConfidenceParam(confidence)
-    setPityParam(pity)
-    setMinFailParam(minFail)
-    setIgnoreDisruptionParam(ignoreDisruption)
-    setIgnoreMissingParam(ignoreMissing)
-    setComponentParam(component)
-    setEnvironmentParam(environment)
-    setCapabilityParam(capability)
-
+  const fetchData = () => {
     const formattedApiCallStr = showValuesForReport()
-
-    setIsLoaded(false)
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -481,7 +441,44 @@ export default function ComponentReadiness(props) {
       })
   }
 
-  //console.log('ComponentReadiness end')
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  // This runs when someone pushes the "Generate Report" button.
+  // We form an api string and then call the api.
+  const handleGenerateReport = (event) => {
+    event.preventDefault()
+    setBaseReleaseParam(baseRelease)
+    setBaseStartTimeParam(formatLongDate(baseStartTime))
+    setBaseEndTimeParam(formatLongDate(baseEndTime))
+    setSampleReleaseParam(sampleRelease)
+    setSampleStartTimeParam(formatLongDate(sampleStartTime))
+    setSampleEndTimeParam(formatLongDate(sampleEndTime))
+    setGroupByCheckedItemsParam(groupByCheckedItems)
+    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
+    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
+    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
+    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
+    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
+    setConfidenceParam(confidence)
+    setPityParam(pity)
+    setMinFailParam(minFail)
+    setIgnoreDisruptionParam(ignoreDisruption)
+    setIgnoreMissingParam(ignoreMissing)
+    setComponentParam(component)
+    setEnvironmentParam(environment)
+    setCapabilityParam(capability)
+  }
+
+  if (!isLoaded) {
+    return (
+      <CompReadyProgress
+        apiLink={showValuesForReport()}
+        cancelFunc={cancelFetch}
+      />
+    )
+  }
 
   const pageTitle = makePageTitle(
     `Component Readiness for ${baseRelease} vs. ${sampleRelease}`,
@@ -682,9 +679,6 @@ export default function ComponentReadiness(props) {
                     ignoreDisruption,
                     ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
-                  setEnvironmentParam(environment)
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
@@ -718,7 +712,6 @@ export default function ComponentReadiness(props) {
                     ignoreDisruption,
                     ignoreMissing
                   )
-                  setComponentParam(component)
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}

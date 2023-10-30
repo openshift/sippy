@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@material-ui/core'
 import CompReadyCapsCell from './CompReadyCapsCell'
@@ -16,7 +17,8 @@ function capabilityLink(filterVals, capabilityName) {
     '/component_readiness/capability' +
     filterVals +
     `&capability=${capabilityName}`
-  return retVal
+
+  return sortQueryParams(retVal)
 }
 
 // Represents a row when you clicked a cell from page 1
@@ -33,25 +35,13 @@ export default function CompCapRow(props) {
     StringParam
   )
 
-  const handleClick = (event) => {
-    event.preventDefault()
-    setCapabilityParam(capabilityName)
-    window.open(
-      '/sippy-ng' + capabilityLink(filterVals, capabilityName),
-      '_blank'
-    )
-  }
-
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
   const capabilityNameColumn = (
     <TableCell className={'cr-component-name'} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
         <Typography className="cr-cell-name">
-          <Link
-            to={capabilityLink(filterVals, capabilityName)}
-            onClick={handleClick}
-          >
+          <Link to={capabilityLink(filterVals, capabilityName)}>
             {capabilityName}
           </Link>
         </Typography>

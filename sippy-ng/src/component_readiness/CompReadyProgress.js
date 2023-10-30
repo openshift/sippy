@@ -9,10 +9,8 @@ import React from 'react'
 // wrong.
 export default function CompReadyProgress(props) {
   const { apiLink, cancelFunc } = props
-  const currentTitle = document.title
 
-  // Make the title different so you can tell it's loading
-  document.title = 'Loading ...'
+  document.title = 'Loading...'
 
   return (
     <Fragment>
