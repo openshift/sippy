@@ -217,6 +217,11 @@ func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmp
 }
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, "openshift_releases")
@@ -232,14 +237,29 @@ func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) 
 }
 
 func (s *Server) jsonAutocompleteFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	api.PrintAutocompleteFromDB(w, req, s.db)
 }
 
 func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	api.PrintReleasesReport(w, req, s.db)
 }
 
 func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	start, err := getISO8601Date("start", req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
@@ -265,6 +285,11 @@ func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
@@ -300,10 +325,20 @@ func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) 
 }
 
 func (s *Server) jsonReleasePullRequestsReport(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	api.PrintPullRequestsReport(w, req, s.db)
 }
 
 func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	// Release appears optional here, perhaps when listing all job runs for all payloads
 	// in the release, but this may not make sense. Likely this API call should be
 	// moved away from filters and possible support for multiple payloads at once to
@@ -333,6 +368,11 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 // if we could boil the go logic for building this down into a query, it could become another matview and then
 // could be run quickly, assembling into the health api much more easily
 func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := req.URL.Query().Get("release")
 	if release == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -384,6 +424,11 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 // jsonGetPayloadTestFailures is an api to fetch information about what tests failed across all jobs in a specific
 // payload.
 func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	payload := req.URL.Query().Get("payload")
 	if payload == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -410,6 +455,11 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := req.URL.Query().Get("release")
 	if release == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -433,6 +483,11 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -472,6 +527,11 @@ func (s *Server) jsonTestAnalysisOverallFromDB(w http.ResponseWriter, req *http.
 }
 
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -494,6 +554,11 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release == "" {
 		return
@@ -530,6 +595,11 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release == "" {
 		return
@@ -779,6 +849,11 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getRelease(req)
 
 	fil, err := filter.ExtractFilters(req)
@@ -819,6 +894,11 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintTestsJSONFromDB(release, w, req, s.db)
@@ -826,6 +906,11 @@ func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	// Filter to test names containing this query param:
 	testSubstring := req.URL.Query()["test"]
 	release := s.getReleaseOrFail(w, req)
@@ -835,6 +920,11 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	response := apitype.Releases{
 		GADates: releaseloader.GADateMap,
 	}
@@ -872,6 +962,11 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 }
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
@@ -879,6 +974,11 @@ func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 
 	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
@@ -895,6 +995,11 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 }
 
 func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	period := req.URL.Query().Get("period")
 	if period == "" {
 		period = api.PeriodDay
@@ -932,6 +1037,11 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) stri
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	jobName := req.URL.Query().Get("job")
 	if release != "" && jobName != "" {
@@ -951,6 +1061,11 @@ func (s *Server) printReportDate(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintCanaryTestsFromDB(release, w, s.db)
@@ -958,6 +1073,11 @@ func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetReportEnd())
@@ -965,6 +1085,11 @@ func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
@@ -972,6 +1097,11 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 }
 
 func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "premerge_job_failures", apitype.SortDescending)
@@ -994,6 +1124,11 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "merged_at", apitype.SortDescending)
@@ -1016,6 +1151,11 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getRelease(req)
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
@@ -1050,6 +1190,10 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 // be stored in the job run artifacts, then imported with the job run, and will ultimately be the
 // data that is returned by the get by ID version.
 func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
 
 	logger := log.WithField("func", "jsonJobRunRiskAnalysis")
 
@@ -1144,6 +1288,10 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 //
 // This API is used by the job run intervals chart in the UI.
 func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
 
 	logger := log.WithField("func", "jsonJobRunIntervals")
 
@@ -1226,6 +1374,11 @@ func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
+	if s.db == nil {
+		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		return
+	}
+
 	release := s.getRelease(req)
 
 	fil, err := filter.ExtractFilters(req)
