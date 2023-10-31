@@ -16,7 +16,6 @@ import (
 	v1jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/stagingtablemanager"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -133,19 +132,7 @@ func (jl *JiraLoader) componentLoader() {
 		return
 	}
 
-	tblUpdater := stagingtablemanager.New(jl.dbc, "jira_components")
-	tmpTable, err := tblUpdater.CreateStagingTable()
-	if err != nil {
-		jl.errors = append(jl.errors, errors.Wrap(err, "couldn't create temporary table"))
-		return
-	}
-	defer func() {
-		if err := tblUpdater.Cleanup(); err != nil {
-			jl.errors = append(jl.errors, errors.Wrap(err, "couldn't cleanup table updater"))
-			return
-		}
-	}()
-
+	var ids []uint
 	for _, c := range components {
 		jiraID, err := strconv.ParseUint(c.ID, 10, 64)
 		if err != nil {
@@ -165,26 +152,16 @@ func (jl *JiraLoader) componentLoader() {
 			LeadEmail:   c.Lead.Name,
 		}
 
-		// Save to main table
 		if err := jl.dbc.DB.Clauses(clause.OnConflict{UpdateAll: true}).Save(&mc).Error; err != nil {
 			jl.errors = append(jl.errors, err)
 			log.WithError(err).Warningf("failed to save component %q", c.Name)
 			continue
 		}
-
-		// Save to staging table
-		res := jl.dbc.DB.Table(tmpTable).Save(&mc)
-		if res.Error != nil {
-			jl.errors = append(jl.errors, res.Error)
-			log.WithError(err).Warningf("failed to save component %q", c.Name)
-			return
-		}
-
-		fmt.Println(mc.ID)
+		ids = append(ids, mc.ID)
 	}
 
 	log.Infof("deleting old records...")
-	oldRecords := jl.dbc.DB.Exec(fmt.Sprintf(`DELETE FROM jira_components WHERE id NOT IN (SELECT id FROM %s)`, tmpTable))
+	oldRecords := jl.dbc.DB.Where("id NOT IN ?", ids).Unscoped().Delete(&models.JiraComponent{})
 	if oldRecords.Error != nil {
 		log.WithError(oldRecords.Error).Warningf("couldn't delete old records")
 		jl.errors = append(jl.errors, oldRecords.Error)

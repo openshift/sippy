@@ -12,7 +12,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/stagingtablemanager"
 )
 
 // TestOwnershipLoader loads test ownership information from BigQuery. This data is generated and
@@ -48,24 +47,10 @@ func (tol *TestOwnershipLoader) Load() {
 		return
 	}
 
-	tblUpdater := stagingtablemanager.New(tol.dbc, "test_ownerships")
-	tmpTable, err := tblUpdater.CreateStagingTable()
-	if err != nil {
-		tol.errors = append(tol.errors, errors.Wrap(err, "couldn't create temporary table"))
-		return
-	}
-
-	defer func() {
-		if err := tblUpdater.Cleanup(); err != nil {
-			tol.errors = append(tol.errors, errors.Wrap(err, "couldn't cleanup table updater"))
-			return
-		}
-	}()
-
 	// Link up the ci-test-mapping records to Sippy's test_ids
 	unknown := 0
 	known := 0
-
+	var ids []uint
 	for _, m := range mappings {
 		// Find the test or suite.test in Sippy DB:
 		var test models.Test
@@ -130,7 +115,6 @@ func (tol *TestOwnershipLoader) Load() {
 			JiraComponentID:       jiraComponentID,
 		}
 		known++
-		// Save to regular table
 		res = tol.dbc.DB.Model(&models.TestOwnership{}).Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "name"}, {Name: "suite"}},
 			UpdateAll: true,
@@ -140,18 +124,11 @@ func (tol *TestOwnershipLoader) Load() {
 			log.WithError(err).Warningf("error saving test ownership record for %q", m.Name)
 			return
 		}
-
-		// Save to staging table
-		res = tol.dbc.DB.Table(tmpTable).Save(tom)
-		if res.Error != nil {
-			tol.errors = append(tol.errors, res.Error)
-			log.WithError(err).Warningf("error saving test ownership record for %q", m.Name)
-			return
-		}
+		ids = append(ids, tom.ID)
 	}
 
 	log.Infof("deleting old records...")
-	oldRecords := tol.dbc.DB.Exec(fmt.Sprintf(`DELETE FROM test_ownerships WHERE (name, suite) NOT IN (SELECT name, suite FROM %s)`, tmpTable))
+	oldRecords := tol.dbc.DB.Where("id NOT IN ?", ids).Unscoped().Delete(&models.TestOwnership{})
 	if oldRecords.Error != nil {
 		log.WithError(oldRecords.Error).Warningf("couldn't delete old records")
 		tol.errors = append(tol.errors, oldRecords.Error)
