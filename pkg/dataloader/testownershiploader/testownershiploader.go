@@ -21,6 +21,7 @@ type TestOwnershipLoader struct {
 	mappingTableMgr  *bigquery.MappingTableManager
 	errors           []error
 	jiraComponentIDs map[string]uint
+	suiteIDs         map[string]uint
 }
 
 func New(ctx context.Context, dbc *db.DB, googleServiceAccountCredentialFile, googleOAuthClientCredentialFile string) (*TestOwnershipLoader, error) {
@@ -31,8 +32,10 @@ func New(ctx context.Context, dbc *db.DB, googleServiceAccountCredentialFile, go
 	mappingTableMgr := bigquery.NewMappingTableManager(ctx, client)
 
 	return &TestOwnershipLoader{
-		dbc:             dbc,
-		mappingTableMgr: mappingTableMgr,
+		dbc:              dbc,
+		mappingTableMgr:  mappingTableMgr,
+		jiraComponentIDs: make(map[string]uint),
+		suiteIDs:         make(map[string]uint),
 	}, nil
 }
 
@@ -52,7 +55,7 @@ func (tol *TestOwnershipLoader) Load() {
 	known := 0
 	var ids []uint
 	for _, m := range mappings {
-		// Find the test or suite.test in Sippy DB:
+		// Find the test in Sippy DB:
 		var test models.Test
 		res := tol.dbc.DB.Table("tests").First(&test, "name = ?", m.Name)
 		if res.Error == gorm.ErrRecordNotFound {
@@ -71,16 +74,21 @@ func (tol *TestOwnershipLoader) Load() {
 			continue
 		}
 
-		var suite models.Suite
-		res = tol.dbc.DB.Model(&models.Suite{}).First(&suite, "name = ?", m.Suite)
-		if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
-			tol.errors = append(tol.errors, res.Error)
-			return
-		}
 		var suiteID *uint
-		if res.Error == nil {
-			suiteIDVal := suite.ID
-			suiteID = &suiteIDVal
+		if id, ok := tol.suiteIDs[m.Suite]; ok {
+			suiteID = &id
+		} else {
+			var suite models.Suite
+			res = tol.dbc.DB.Model(&models.Suite{}).First(&suite, "name = ?", m.Suite)
+			if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
+				tol.errors = append(tol.errors, errors.Wrap(res.Error, "couldn't find suite "+m.Suite))
+				continue
+			}
+			if res.Error == nil {
+				suiteIDVal := suite.ID
+				suiteID = &suiteIDVal
+				tol.suiteIDs[m.Suite] = suiteIDVal
+			}
 		}
 
 		var jiraComponentID *uint
@@ -97,6 +105,7 @@ func (tol *TestOwnershipLoader) Load() {
 			}
 			id := jiraComponent.ID
 			jiraComponentID = &id
+			tol.jiraComponentIDs[m.JIRAComponent] = id
 		}
 
 		tom := &models.TestOwnership{
