@@ -52,7 +52,7 @@ const (
 						ELSE 2
 					END) AS row_num
 			FROM
-				ci_analysis_us.junit
+				ci_analysis_us.qe_junit
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 		)
@@ -1157,7 +1157,7 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 	queryString := fmt.Sprintf(`SELECT
 						DISTINCT %s as name
 					FROM
-						ci_analysis_us.junit %s
+						ci_analysis_us.qe_junit %s
 					WHERE
 						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
 					ORDER BY
