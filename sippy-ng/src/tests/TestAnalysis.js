@@ -27,6 +27,7 @@ import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@material-ui/lab/Alert'
+import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
 import Divider from '@material-ui/core/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
@@ -230,6 +231,10 @@ export function TestAnalysis(props) {
                 </Tooltip>
               </Typography>
               <BugTable testName={testName} />
+              <BugButton
+                jiraComponentID={test.jira_component_id}
+                testName={testName}
+              />
             </Card>
           </Grid>
 

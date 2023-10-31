@@ -174,8 +174,8 @@ github.com/googleapis/gax-go/v2/internal
 # github.com/hashicorp/go-version v1.6.0
 ## explicit
 github.com/hashicorp/go-version
-# github.com/inconshreveable/mousetrap v1.0.0
-## explicit
+# github.com/inconshreveable/mousetrap v1.1.0
+## explicit; go 1.18
 github.com/inconshreveable/mousetrap
 # github.com/jackc/chunkreader/v2 v2.0.1
 ## explicit; go 1.12
@@ -211,6 +211,8 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.2
 ## explicit; go 1.12
 github.com/jinzhu/now
+# github.com/jtolds/gls v4.20.0+incompatible
+## explicit
 # github.com/klauspost/asmfmt v1.3.2
 ## explicit; go 1.16
 github.com/klauspost/asmfmt
@@ -252,6 +254,10 @@ github.com/montanaflynn/stats
 ## explicit; go 1.16
 # github.com/onsi/gomega v1.27.1
 ## explicit; go 1.18
+# github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
+## explicit; go 1.19
+github.com/openshift-eng/ci-test-mapping/pkg/api/types/v1
+github.com/openshift-eng/ci-test-mapping/pkg/bigquery
 # github.com/pierrec/lz4/v4 v4.1.15
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
@@ -285,14 +291,14 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/skelterjohn/go.matrix v0.0.0-20130517144113-daa59528eefd
 ## explicit
 github.com/skelterjohn/go.matrix
-# github.com/spf13/cobra v1.2.1
-## explicit; go 1.14
+# github.com/spf13/cobra v1.7.0
+## explicit; go 1.15
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12

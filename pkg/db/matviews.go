@@ -211,6 +211,8 @@ SELECT tests.id,
    tests.name,
    tests.watchlist, 
    suites.name as suite_name,
+   jira_components.name AS jira_component,
+   jira_components.id AS jira_component_id,   
    COALESCE(count(
        CASE
            WHEN prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY||| THEN 1
@@ -258,10 +260,13 @@ FROM prow_job_run_tests
    JOIN tests ON tests.id = prow_job_run_tests.test_id
    LEFT JOIN open_bugs ON prow_job_run_tests.test_id = open_bugs.test_id
    LEFT JOIN suites on suites.id = prow_job_run_tests.suite_id
+   LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id
+     AND prow_job_run_tests.suite_id = test_ownerships.suite_id)
+   LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs.timestamp >= |||START|||
-GROUP BY tests.id, tests.name, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
+GROUP BY tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
 `
 
 const testAnalysisByVariantMatView = `
