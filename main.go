@@ -18,6 +18,8 @@ import (
 	"gopkg.in/yaml.v3"
 	gormlogger "gorm.io/gorm/logger"
 
+	bqclient "github.com/openshift/sippy/pkg/bigquery"
+
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/cache/redis"
@@ -571,16 +573,16 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
-	var bigQueryClient *bigquery.Client
+	var bigQueryClient bqclient.Client
 	if o.GoogleServiceAccountCredentialFile != "" {
-		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+		bigQueryClient.BQ, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents component readiness queries from working")
 			return err
 		}
 		// Enable Storage API usage for fetching data
-		err = bigQueryClient.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		err = bigQueryClient.BQ.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error enabling BigQuery Storage API")
 			return err
@@ -595,7 +597,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 			log.WithError(err).Error("couldn't create redis cache")
 			return err
 		}
-
+		bigQueryClient.Cache = cacheClient
 	}
 
 	server := sippyserver.NewServer(
@@ -607,7 +609,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		&static,
 		dbc,
 		gcsClient,
-		bigQueryClient,
+		&bigQueryClient,
 		pinnedDateTime,
 		cacheClient,
 	)
