@@ -410,19 +410,11 @@ func (o *Options) Run() error { //nolint:gocyclo
 			loaders = append(loaders, bugloader.New(dbc))
 		}
 
-		// Run loaders
-		for _, loader := range loaders {
-			log.Infof("Running loader %q", loader.Name())
-			l := loaderwithmetrics.New(loader)
-			l.Load()
-			if len(l.Errors()) > 0 {
-				allErrs = append(allErrs, l.Errors()...)
-				log.Infof("Running %q complete with %d errors", loader.Name(), len(l.Errors()))
-				for _, err := range l.Errors() {
-					log.Error(err.Error())
-				}
-			}
-			log.Infof("Running %q complete with 0 errors", loader.Name())
+		// Run loaders with the metrics wrapper
+		l := loaderwithmetrics.New(loaders)
+		l.Load()
+		if len(l.Errors()) > 0 {
+			allErrs = append(allErrs, l.Errors()...)
 		}
 
 		elapsed := time.Since(start)
