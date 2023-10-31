@@ -403,6 +403,11 @@ function TestTable(props) {
       type: 'array',
       renderCell: (params) => <div className="test-name">{params.value}</div>,
     },
+    jira_component: {
+      field: 'jira_component',
+      headerName: 'Jira Component',
+      autocomplete: 'jira_component',
+    },
     variants: {
       field: 'variants',
       headerName: 'Variants',

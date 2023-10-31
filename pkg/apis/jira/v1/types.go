@@ -112,3 +112,20 @@ type Item struct {
 	To         string `json:"to"`
 	ToString   string `json:"toString"`
 }
+
+type Component struct {
+	Self                string `json:"self"`
+	ID                  string `json:"id"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	Lead                User   `json:"lead"`
+	AssigneeType        string `json:"assigneeType"`
+	Assignee            User   `json:"assignee"`
+	RealAssigneeType    string `json:"realAssigneeType"`
+	RealAssignee        User   `json:"realAssignee"`
+	IsAssigneeTypeValid bool   `json:"isAssigneeTypeValid"`
+	Project             string `json:"project"`
+	ProjectID           int    `json:"projectId"`
+	Archived            bool   `json:"archived"`
+	Deleted             bool   `json:"deleted"`
+}

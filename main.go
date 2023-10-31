@@ -23,12 +23,13 @@ import (
 	"github.com/openshift/sippy/pkg/cache/redis"
 	"github.com/openshift/sippy/pkg/dataloader"
 	"github.com/openshift/sippy/pkg/dataloader/bugloader"
-	"github.com/openshift/sippy/pkg/dataloader/incidentloader"
+	"github.com/openshift/sippy/pkg/dataloader/jiraloader"
 	"github.com/openshift/sippy/pkg/dataloader/loaderwithmetrics"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
+	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -239,10 +240,6 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("--load-github can only be specified with --load-prow")
 	}
 
-	if o.LoadOpenShiftCIBigQuery && !o.LoadProw {
-		return fmt.Errorf("--load-openshift-ci-bigquery can only be specified with --load-prow")
-	}
-
 	if o.LoadProw && o.Config == "" {
 		return fmt.Errorf("must specify --config with --load-prow")
 	}
@@ -395,7 +392,17 @@ func (o *Options) Run() error { //nolint:gocyclo
 		}
 
 		// JIRA Loader
-		loaders = append(loaders, incidentloader.New(dbc))
+		loaders = append(loaders, jiraloader.New(dbc))
+
+		// Load maping for jira components to tests
+		if o.LoadOpenShiftCIBigQuery {
+			cl, err := testownershiploader.New(ctx, dbc, o.GoogleServiceAccountCredentialFile, o.GoogleOAuthClientCredentialFile)
+			if err != nil {
+				log.WithError(err).Warningf("failed to create component loader")
+			} else {
+				loaders = append(loaders, cl)
+			}
+		}
 
 		// Bug Loader
 		loadBugs := !o.SkipBugLookup && len(o.OpenshiftReleases) > 0

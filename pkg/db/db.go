@@ -133,6 +133,14 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.JiraComponent{}); err != nil {
+		return err
+	}
+
+	if err := d.DB.AutoMigrate(&models.TestOwnership{}); err != nil {
+		return err
+	}
+
 	if err := populateTestSuitesInDB(d.DB); err != nil {
 		return err
 	}

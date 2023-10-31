@@ -452,6 +452,9 @@ type Test struct {
 	Variant   string         `json:"variant,omitempty"`
 	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
 
+	JiraComponent   string `json:"jira_component"`
+	JiraComponentID int    `json:"jira_component_id"`
+
 	CurrentSuccesses         int     `json:"current_successes"`
 	CurrentFailures          int     `json:"current_failures"`
 	CurrentFlakes            int     `json:"current_flakes"`
