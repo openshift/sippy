@@ -51,7 +51,7 @@ const (
 						ELSE 2
 					END) AS row_num
 			FROM
-				ci_analysis_us.junit
+				ci_analysis_us.qe_junit
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 		)
@@ -97,7 +97,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		return result, errs
 	}
 	cacheLock.RUnlock()
-	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
+	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.qe_junit ORDER BY name`
 	query := client.Query(queryString)
 	result.Platform, err = getSingleColumnResultToSlice(query)
 	if err != nil {
@@ -105,7 +105,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		errs = append(errs, err)
 		return result, errs
 	}
-	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
+	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.qe_junit ORDER BY name`
 	query = client.Query(queryString)
 	result.Network, err = getSingleColumnResultToSlice(query)
 	if err != nil {
@@ -113,7 +113,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		errs = append(errs, err)
 		return result, errs
 	}
-	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
+	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.qe_junit ORDER BY name`
 	query = client.Query(queryString)
 	result.Arch, err = getSingleColumnResultToSlice(query)
 	if err != nil {
@@ -121,7 +121,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		errs = append(errs, err)
 		return result, errs
 	}
-	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
+	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.qe_junit ORDER BY name`
 	query = client.Query(queryString)
 	result.Upgrade, err = getSingleColumnResultToSlice(query)
 	if err != nil {
@@ -129,7 +129,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		errs = append(errs, err)
 		return result, errs
 	}
-	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
+	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.qe_junit, UNNEST(variants) variant`
 	query = client.Query(queryString)
 	result.Variant, err = getSingleColumnResultToSlice(query)
 	if err != nil {
