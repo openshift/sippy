@@ -141,7 +141,7 @@ const cancelFetch = () => {
 
 export default function ComponentReadiness(props) {
   const releases = useContext(ReleasesContext)
-  const defaultSampleRelease = '4.13'
+  const defaultBaseRelease = '4.14'
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
       return new Date(releases.ga_dates[release])
@@ -158,8 +158,7 @@ export default function ComponentReadiness(props) {
   const initialSampleEndTime = new Date(now.getTime())
 
   // Base is 30 days from GA or now
-  // For now hard code these to the 4 weeks before when 4.13 GA'ed
-  const initialBaseEndTime = getReleaseDate(defaultSampleRelease)
+  const initialBaseEndTime = getReleaseDate(defaultBaseRelease)
   const initialBaseStartTime = initialBaseEndTime.getTime() - 4 * weeks
 
   const setBaseReleaseWithDates = (event) => {
@@ -208,7 +207,7 @@ export default function ComponentReadiness(props) {
   }
 
   // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam = defaultSampleRelease, setBaseReleaseParam] =
+  const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
     useQueryParam('baseRelease', StringParam)
   const [
     baseStartTimeParam = formatLongDate(initialBaseStartTime),
@@ -218,7 +217,7 @@ export default function ComponentReadiness(props) {
     baseEndTimeParam = formatLongDate(initialBaseEndTime),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = '4.14', setSampleReleaseParam] = useQueryParam(
+  const [sampleReleaseParam = '4.15', setSampleReleaseParam] = useQueryParam(
     'sampleRelease',
     StringParam
   )

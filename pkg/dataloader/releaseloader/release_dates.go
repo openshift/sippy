@@ -3,6 +3,7 @@ package releaseloader
 import "time"
 
 var GADateMap = map[string]time.Time{
+	"4.14": time.Date(2023, 10, 31, 0, 0, 0, 0, time.UTC),
 	"4.13": time.Date(2023, 5, 17, 0, 0, 0, 0, time.UTC),
 	"4.12": time.Date(2023, 1, 17, 0, 0, 0, 0, time.UTC),
 	"4.11": time.Date(2022, 8, 10, 0, 0, 0, 0, time.UTC),
