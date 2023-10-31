@@ -183,6 +183,10 @@ func main() {
 	flags.BoolVar(&opt.CommentProcessing, "comment-processing", opt.CommentProcessing, "Enable comment processing for github repos")
 	flags.BoolVar(&opt.CommentProcessingDryRun, "comment-processing-dry-run", commentProcessingDryRunDefault, "Enable github comment interaction for comment processing, disabled by default")
 
+	cmd.AddCommand(
+		NewComponentReadinessCommand(),
+	)
+
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
