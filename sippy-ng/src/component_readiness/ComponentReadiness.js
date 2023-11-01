@@ -926,12 +926,6 @@ export default function ComponentReadiness(props) {
                                   new RegExp(searchComponentRegex, 'i')
                                 )
                               )
-                              .sort((a, b) =>
-                                data.rows[a].component.toLowerCase() >
-                                data.rows[b].component.toLowerCase()
-                                  ? 1
-                                  : -1
-                              )
                               .filter((componentIndex) =>
                                 redOnlyChecked
                                   ? data.rows[componentIndex].columns.some(

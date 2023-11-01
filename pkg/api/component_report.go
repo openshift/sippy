@@ -834,7 +834,9 @@ func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
 	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
-	report := apitype.ComponentReport{}
+	report := apitype.ComponentReport{
+		Rows: []apitype.ComponentReportRow{},
+	}
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
@@ -858,6 +860,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
+
 	// Sort the row identifications
 	sortedRows := []apitype.ComponentReportRowIdentification{}
 	for rowID := range allRows {
@@ -900,29 +903,40 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	})
 
 	// Now build the report
+	var regressionRows, goodRows []apitype.ComponentReportRow
 	for _, rowID := range sortedRows {
-		if columns, ok := aggregatedStatus[rowID]; ok {
-			if report.Rows == nil {
-				report.Rows = []apitype.ComponentReportRow{}
+		columns, ok := aggregatedStatus[rowID]
+		if !ok {
+			continue
+		}
+		reportRow := apitype.ComponentReportRow{ComponentReportRowIdentification: rowID}
+		hasRegression := false
+		for _, columnID := range sortedColumns {
+			if reportRow.Columns == nil {
+				reportRow.Columns = []apitype.ComponentReportColumn{}
 			}
-			reportRow := apitype.ComponentReportRow{ComponentReportRowIdentification: rowID}
-			for _, columnID := range sortedColumns {
-				if reportRow.Columns == nil {
-					reportRow.Columns = []apitype.ComponentReportColumn{}
-				}
-				reportColumn := apitype.ComponentReportColumn{ComponentReportColumnIdentification: columnID}
-				status, ok := columns[columnID]
-				if !ok {
-					reportColumn.Status = apitype.MissingBasisAndSample
-				} else {
-					reportColumn.Status = status
-				}
-				reportRow.Columns = append(reportRow.Columns, reportColumn)
+			reportColumn := apitype.ComponentReportColumn{ComponentReportColumnIdentification: columnID}
+			status, ok := columns[columnID]
+			if !ok {
+				reportColumn.Status = apitype.MissingBasisAndSample
+			} else {
+				reportColumn.Status = status
 			}
-			report.Rows = append(report.Rows, reportRow)
+			reportRow.Columns = append(reportRow.Columns, reportColumn)
+			if reportColumn.Status <= apitype.SignificantRegression {
+				hasRegression = true
+			}
+		}
+		// Any rows with regression should appear first, so make two slices
+		// and assemble them later.
+		if hasRegression {
+			regressionRows = append(regressionRows, reportRow)
+		} else {
+			goodRows = append(goodRows, reportRow)
 		}
 	}
 
+	report.Rows = append(regressionRows, goodRows...)
 	return report
 }
 
