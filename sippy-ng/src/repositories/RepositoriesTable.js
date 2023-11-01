@@ -7,7 +7,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { DataGrid } from '@material-ui/data-grid'
-import { Details, Error, Launch } from '@material-ui/icons'
+import { Details, Launch } from '@material-ui/icons'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { makeStyles } from '@material-ui/core/styles'

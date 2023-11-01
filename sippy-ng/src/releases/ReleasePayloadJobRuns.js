@@ -1,5 +1,5 @@
 import { Button, Tooltip } from '@material-ui/core'
-import { Check, DirectionsBoat, Error } from '@material-ui/icons'
+import { Check, DirectionsBoat } from '@material-ui/icons'
 import { createTheme, makeStyles } from '@material-ui/core/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
