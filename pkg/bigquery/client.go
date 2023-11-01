@@ -11,9 +11,9 @@ type Client struct {
 	Cache cache.Cache
 }
 
-func New(client *bigquery.Client, cache cache.Cache) *Client {
+func New(bqc *bigquery.Client, c cache.Cache) *Client {
 	return &Client{
-		BQ:    client,
-		Cache: cache,
+		BQ:    bqc,
+		Cache: c,
 	}
 }

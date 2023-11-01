@@ -74,9 +74,8 @@ func NewServer(
 		cache:                cacheClient,
 	}
 
-	// Fill cache
-	if bigQueryClient != nil {
-		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient.BQ)
+	if bigQueryClient.BQ != nil {
+		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
 	}
 
 	return server
@@ -574,7 +573,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		})
 		return
 	}
-	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient.BQ)
+	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
 		for _, err := range errs {
@@ -1323,9 +1322,11 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
+	// Note that component readiness is cached, but at the lower layer of report generation so we can use the cached
+	// data in metrics.
 	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(8*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
 	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
 
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {

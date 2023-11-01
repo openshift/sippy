@@ -1,13 +1,20 @@
 package metrics
 
 import (
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
 
+	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -60,11 +67,15 @@ var (
 		Name: "sippy_hours_since_last_update",
 		Help: "Number of hours since Sippy last successfully fetched new data.",
 	}, []string{})
+	componentReadinessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_component_readiness",
+		Help: "Regression score for components",
+	}, []string{"component", "network", "arch", "platform"})
 )
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, variantManager testidentification.VariantManager, reportEnd time.Time) error {
+func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testidentification.VariantManager, reportEnd time.Time) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := query.ReleasesFromDB(dbc)
@@ -118,6 +129,12 @@ func RefreshMetricsDB(dbc *db.DB, variantManager testidentification.VariantManag
 
 	refreshPayloadMetrics(dbc, reportEnd)
 
+	if bqc != nil {
+		if err := refreshComponentReadinessMetrics(bqc); err != nil {
+			log.WithError(err).Error("error refreshing component readiness metrics")
+		}
+	}
+
 	if err := refreshInstallSuccessMetrics(dbc); err != nil {
 		log.WithError(err).Error("error refreshing install success metrics")
 	}
@@ -128,6 +145,89 @@ func RefreshMetricsDB(dbc *db.DB, variantManager testidentification.VariantManag
 		log.WithError(err).Error("error refreshing infrastructure success metrics")
 	}
 	log.Infof("refresh metrics completed in %s", time.Since(start))
+
+	return nil
+}
+
+func refreshComponentReadinessMetrics(client *bqclient.Client) error {
+	if client == nil || client.BQ == nil {
+		log.Infof("not generating component readiness metrics as we don't have a bigquery client")
+		return nil
+	}
+
+	// Sort our known GA releases, and get the most recent one: that's our base release
+	type releaseInfo struct {
+		Version *version.Version
+		Release string
+	}
+	var releases []releaseInfo
+	for release := range releaseloader.GADateMap {
+		v, err := version.NewVersion(release)
+		if err != nil {
+			log.WithError(err).Error("unparseable release " + release)
+			return err
+		}
+		releases = append(releases, releaseInfo{v, release})
+	}
+	sort.Slice(releases, func(i, j int) bool {
+		return releases[i].Version.LessThan(releases[j].Version)
+	})
+	mostRecentGA := releases[len(releases)-1].Release
+	log.Debugf("most recent GA is %q", mostRecentGA)
+	baseRelease := apitype.ComponentReportRequestReleaseOptions{
+		Release: mostRecentGA,
+		// Match what UI sends to API, although it's not correct TRT-1346
+		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -29),
+		End:   releaseloader.GADateMap[mostRecentGA].Add(-1 * time.Second),
+	}
+
+	// Get the next minor, that's our sample release
+	next, err := nextMinor(mostRecentGA)
+	if err != nil {
+		log.WithError(err).Error("couldn't calculate next minor")
+		return err
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
+		Release: next,
+		Start:   today.AddDate(0, 0, -7),
+		// Match what UI sends to API, although it's not correct TRT-1346
+		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
+	}
+
+	// Defaults - these are also hardcoded in the UI side
+	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
+	excludeOption := apitype.ComponentReportRequestExcludeOptions{
+		ExcludePlatforms: "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown",
+		ExcludeArches:    "arm64,heterogeneous,ppc64le,s390x",
+		ExcludeVariants:  "hypershift,osd,microshift,techpreview,single-node,assisted,compact",
+	}
+	variantOption := apitype.ComponentReportRequestVariantOptions{
+		GroupBy: "cloud,arch,network",
+	}
+	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
+		MinimumFailure:   3,
+		Confidence:       95,
+		PityFactor:       5,
+		IgnoreMissing:    false,
+		IgnoreDisruption: true,
+	}
+
+	// Get report
+	rows, errs := api.GetComponentReportFromBigQuery(client, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption)
+	if len(errs) > 0 {
+		var strErrors []string
+		for _, err := range errs {
+			strErrors = append(strErrors, err.Error())
+		}
+		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
+	}
+
+	for _, row := range rows.Rows {
+		for _, col := range row.Columns {
+			componentReadinessMetric.WithLabelValues(row.Component, col.Network, col.Arch, col.Platform).Set(float64(col.Status))
+		}
+	}
 
 	return nil
 }
@@ -240,4 +340,32 @@ func buildPromReportTypes(releases []query.Release) []promReportType {
 	}
 
 	return promReportTypes
+}
+
+func nextMinor(vStr string) (string, error) {
+	// Parse the version string
+	v, err := version.NewVersion(vStr)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the segments of the version
+	segments := v.Segments()
+	if len(segments) < 2 {
+		return "", fmt.Errorf("version '%s' does not have enough segments to determine minor", vStr)
+	}
+
+	// Increment the minor segment
+	segments[1]++
+
+	// Reconstruct version string with incremented minor version
+	// Only consider major and minor segments
+	nextMinorSegments := segments[:2]
+	nextMinorVersionStr := make([]string, len(nextMinorSegments))
+	for i, seg := range nextMinorSegments {
+		nextMinorVersionStr[i] = strconv.Itoa(seg)
+	}
+
+	// Concatenate the segments to form the new version string
+	return strings.Join(nextMinorVersionStr, "."), nil
 }

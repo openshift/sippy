@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 	gormlogger "gorm.io/gorm/logger"
 
-	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -573,7 +573,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
-	var bigQueryClient bqclient.Client
+	var bigQueryClient bqcachedclient.Client
 	if o.GoogleServiceAccountCredentialFile != "" {
 		bigQueryClient.BQ, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
@@ -590,7 +590,6 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 	}
 
 	var cacheClient cache.Cache
-
 	if o.RedisURL != "" {
 		cacheClient, err = redis.NewRedisCache(o.RedisURL)
 		if err != nil {
@@ -615,7 +614,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 	)
 
 	// Do an immediate metrics update
-	err = metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+	err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 	if err != nil {
 		log.WithError(err).Error("error refreshing metrics")
 	}
@@ -628,7 +627,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 			select {
 			case <-ticker.C:
 				log.Info("tick")
-				err := metrics.RefreshMetricsDB(dbc, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+				err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}

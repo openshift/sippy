@@ -19,7 +19,7 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -89,55 +89,15 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	return names, nil
 }
 
-func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.ComponentReportTestVariants, []error) {
-	errs := []error{}
-	var err error
-	result := apitype.ComponentReportTestVariants{}
-	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
-	query := client.Query(queryString)
-	result.Platform, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying platforms from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
-	result.Network, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying networks from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
-	result.Arch, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying arches from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
-	result.Upgrade, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying upgrades from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
-	query = client.Query(queryString)
-	result.Variant, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying variants from bigquery")
-		errs = append(errs, err)
-		return result, errs
+func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client) (apitype.ComponentReportTestVariants, []error) {
+	generator := componentReportGenerator{
+		client: client.BQ,
 	}
 
-	return result, errs
+	return getReportFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
 
-func GetComponentReportFromBigQuery(client *bqclient.Client,
+func GetComponentReportFromBigQuery(client *bqcachedclient.Client,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
@@ -145,8 +105,8 @@ func GetComponentReportFromBigQuery(client *bqclient.Client,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
 		client:        client.BQ,
-		baseRelease:   baseRelease,
-		sampleRelease: sampleRelease,
+		BaseRelease:   baseRelease,
+		SampleRelease: sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestExcludeOptions:            excludeOption,
@@ -156,7 +116,7 @@ func GetComponentReportFromBigQuery(client *bqclient.Client,
 	return getReportFromCacheOrGenerate[apitype.ComponentReport](client.Cache, generator, generator.GenerateReport, apitype.ComponentReport{})
 }
 
-func GetComponentReportTestDetailsFromBigQuery(client *bqclient.Client,
+func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
@@ -164,8 +124,8 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqclient.Client,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
 		client:        client.BQ,
-		baseRelease:   baseRelease,
-		sampleRelease: sampleRelease,
+		BaseRelease:   baseRelease,
+		SampleRelease: sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestExcludeOptions:            excludeOption,
@@ -176,13 +136,60 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqclient.Client,
 }
 
 type componentReportGenerator struct {
-	client        *bigquery.Client `json:"-"`
-	baseRelease   apitype.ComponentReportRequestReleaseOptions
-	sampleRelease apitype.ComponentReportRequestReleaseOptions
+	client        *bigquery.Client
+	BaseRelease   apitype.ComponentReportRequestReleaseOptions
+	SampleRelease apitype.ComponentReportRequestReleaseOptions
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
 	apitype.ComponentReportRequestAdvancedOptions
+}
+
+func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {
+	result := apitype.ComponentReportTestVariants{}
+	errs := []error{}
+	var err error
+	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
+	query := c.client.Query(queryString)
+	result.Platform, err = getSingleColumnResultToSlice(query)
+	if err != nil {
+		log.WithError(err).Error("error querying platforms from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
+	query = c.client.Query(queryString)
+	result.Network, err = getSingleColumnResultToSlice(query)
+	if err != nil {
+		log.WithError(err).Error("error querying networks from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
+	query = c.client.Query(queryString)
+	result.Arch, err = getSingleColumnResultToSlice(query)
+	if err != nil {
+		log.WithError(err).Error("error querying arches from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
+	query = c.client.Query(queryString)
+	result.Upgrade, err = getSingleColumnResultToSlice(query)
+	if err != nil {
+		log.WithError(err).Error("error querying upgrades from bigquery")
+		errs = append(errs, err)
+		return result, errs
+	}
+	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
+	query = c.client.Query(queryString)
+	result.Variant, err = getSingleColumnResultToSlice(query)
+	if err != nil {
+		log.WithError(err).Error("error querying variants from bigquery")
+		errs = append(errs, err)
+	}
+
+	return result, errs
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
@@ -293,15 +300,15 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.baseRelease.Start,
+			Value: c.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.baseRelease.End,
+			Value: c.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.baseRelease.Release,
+			Value: c.BaseRelease.Release,
 		},
 	}...)
 
@@ -320,15 +327,15 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.sampleRelease.Start,
+			Value: c.SampleRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.sampleRelease.End,
+			Value: c.SampleRelease.End,
 		},
 		{
 			Name:  "SampleRelease",
-			Value: c.sampleRelease.Release,
+			Value: c.SampleRelease.Release,
 		},
 	}...)
 	wg.Add(1)
@@ -487,15 +494,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.baseRelease.Start,
+			Value: c.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.baseRelease.End,
+			Value: c.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.baseRelease.Release,
+			Value: c.BaseRelease.Release,
 		},
 	}...)
 
@@ -514,15 +521,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.sampleRelease.Start,
+			Value: c.SampleRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.sampleRelease.End,
+			Value: c.SampleRelease.End,
 		},
 		{
 			Name:  "SampleRelease",
-			Value: c.sampleRelease.Release,
+			Value: c.SampleRelease.Release,
 		},
 	}...)
 	wg.Add(1)
@@ -742,12 +749,12 @@ func previousRelease(release string) (string, error) {
 
 func (c *componentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
-	name = strings.ReplaceAll(name, c.baseRelease.Release, "X.X")
-	if prev, err := previousRelease(c.baseRelease.Release); err == nil {
+	name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
+	if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
 		name = strings.ReplaceAll(name, prev, "X.X")
 	}
-	name = strings.ReplaceAll(name, c.sampleRelease.Release, "X.X")
-	if prev, err := previousRelease(c.sampleRelease.Release); err == nil {
+	name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
+	if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
 		name = strings.ReplaceAll(name, prev, "X.X")
 	}
 	return name
@@ -1050,12 +1057,12 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	result.BaseStats.Release = c.baseRelease.Release
+	result.BaseStats.Release = c.BaseRelease.Release
 	result.BaseStats.SuccessCount = totalBaseSuccess
 	result.BaseStats.FailureCount = totalBaseFailure
 	result.BaseStats.FlakeCount = totalBaseFlake
 	result.BaseStats.SuccessRate = getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake)
-	result.SampleStats.Release = c.sampleRelease.Release
+	result.SampleStats.Release = c.SampleRelease.Release
 	result.SampleStats.SuccessCount = totalSampleSuccess
 	result.SampleStats.FailureCount = totalSampleFailure
 	result.SampleStats.FlakeCount = totalSampleFlake
@@ -1143,12 +1150,15 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, ge
 			}
 			return cr, nil
 		}
+		log.Infof("cache miss for cache key: %s", string(cacheKey))
 		result, errs := generateFn()
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)
 			if err == nil {
 				if err := c.Set(string(cacheKey), cr, componentReadinessCacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
+				} else {
+					log.Debugf("cache set for cache key: %s", string(cacheKey))
 				}
 			}
 		}
