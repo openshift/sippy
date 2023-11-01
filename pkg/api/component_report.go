@@ -858,6 +858,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
+
 	// Sort the row identifications
 	sortedRows := []apitype.ComponentReportRowIdentification{}
 	for rowID := range allRows {
@@ -900,12 +901,14 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	})
 
 	// Now build the report
+	var regressionRows, goodRows []apitype.ComponentReportRow
 	for _, rowID := range sortedRows {
 		if columns, ok := aggregatedStatus[rowID]; ok {
 			if report.Rows == nil {
 				report.Rows = []apitype.ComponentReportRow{}
 			}
 			reportRow := apitype.ComponentReportRow{ComponentReportRowIdentification: rowID}
+			hasRegression := false
 			for _, columnID := range sortedColumns {
 				if reportRow.Columns == nil {
 					reportRow.Columns = []apitype.ComponentReportColumn{}
@@ -918,11 +921,21 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 					reportColumn.Status = status
 				}
 				reportRow.Columns = append(reportRow.Columns, reportColumn)
+				if reportColumn.Status <= apitype.SignificantRegression {
+					hasRegression = true
+				}
 			}
-			report.Rows = append(report.Rows, reportRow)
+			// Any rows with regression should appear first, so make two slices
+			// and assemble them later.
+			if hasRegression {
+				regressionRows = append(regressionRows, reportRow)
+			} else {
+				goodRows = append(goodRows, reportRow)
+			}
 		}
 	}
 
+	report.Rows = append(regressionRows, goodRows...)
 	return report
 }
 
