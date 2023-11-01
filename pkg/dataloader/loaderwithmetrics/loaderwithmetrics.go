@@ -1,9 +1,11 @@
 package loaderwithmetrics
 
 import (
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -25,13 +27,13 @@ var errorMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 }, []string{"loader"})
 
 type LoaderWithMetrics struct {
-	loader     dataloader.DataLoader
+	loaders    []dataloader.DataLoader
 	promPusher *push.Pusher
 }
 
-func New(wrappedLoader dataloader.DataLoader) *LoaderWithMetrics {
+func New(wrappedLoaders []dataloader.DataLoader) *LoaderWithMetrics {
 	loader := &LoaderWithMetrics{
-		loader: wrappedLoader,
+		loaders: wrappedLoaders,
 	}
 
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
@@ -44,14 +46,22 @@ func New(wrappedLoader dataloader.DataLoader) *LoaderWithMetrics {
 }
 
 func (l *LoaderWithMetrics) Load() {
-	log.Infof("starting loader %q with metrics wrapper", l.loader.Name())
-	start := time.Now()
-	l.loader.Load()
-	totalTime := time.Since(start)
-	log.Infof("loader %q complete after %+v", l.loader.Name(), totalTime)
+	overallStart := time.Now()
+	log.Infof("starting %d loaders...", len(l.loaders))
+	for _, loader := range l.loaders {
+		log.Infof("starting loader %q with metrics wrapper", loader.Name())
+		start := time.Now()
+		loader.Load()
+		totalTime := time.Since(start)
+		log.Infof("loader %q complete after %+v", loader.Name(), totalTime)
 
-	loadMetric.WithLabelValues(l.loader.Name()).Observe(float64(totalTime.Milliseconds()))
-	errorMetric.WithLabelValues(l.loader.Name()).Observe(float64(len(l.loader.Errors())))
+		loadMetric.WithLabelValues(loader.Name()).Observe(float64(totalTime.Milliseconds()))
+		errorMetric.WithLabelValues(loader.Name()).Observe(float64(len(loader.Errors())))
+	}
+	overallDuration := time.Since(overallStart)
+	log.Infof("%d loaders finished in %+v...", len(l.loaders), overallDuration)
+	loadMetric.WithLabelValues("total").Observe(float64(overallDuration.Milliseconds()))
+
 	if l.promPusher != nil {
 		log.Info("pushing metrics to prometheus gateway")
 		if err := l.promPusher.Add(); err != nil {
@@ -63,5 +73,11 @@ func (l *LoaderWithMetrics) Load() {
 }
 
 func (l *LoaderWithMetrics) Errors() []error {
-	return l.loader.Errors()
+	var errs []error
+	for _, loader := range l.loaders {
+		for _, err := range loader.Errors() {
+			errs = append(errs, errors.Wrap(err, fmt.Sprintf("loader %q returned error", loader.Name())))
+		}
+	}
+	return errs
 }
