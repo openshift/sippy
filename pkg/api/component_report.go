@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +18,8 @@ import (
 	"google.golang.org/api/iterator"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -58,6 +62,22 @@ const (
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
 )
 
+var (
+	componentReadinessCacheDuration = 8 * time.Hour
+
+	// Default filters, these are also hardcoded in the UI. Both must be updated.
+	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
+	DefaultExcludePlatforms = "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown"
+	DefaultExcludeArches    = "arm64,heterogeneous,ppc64le,s390x"
+	DefaultExcludeVariants  = "hypershift,osd,microshift,techpreview,single-node,assisted,compact"
+	DefaultGroupBy          = "cloud,arch,network"
+	DefaultMinimumFailure   = 3
+	DefaultConfidence       = 95
+	DefaultPityFactor       = 5
+	DefaultIgnoreMissing    = false
+	DefaultIgnoreDisruption = true
+)
+
 func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	names := []string{}
 	it, err := query.Read(context.TODO())
@@ -81,24 +101,68 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	return names, nil
 }
 
-var (
-	cacheLock     = new(sync.RWMutex)
-	cacheVariants *apitype.ComponentReportTestVariants
-)
+func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client) (apitype.ComponentReportTestVariants, []error) {
+	generator := componentReportGenerator{
+		client: client.BQ,
+	}
 
-func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.ComponentReportTestVariants, []error) {
+	return getReportFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
+}
+
+func GetComponentReportFromBigQuery(client *bqcachedclient.Client,
+	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
+	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
+	variantOption apitype.ComponentReportRequestVariantOptions,
+	excludeOption apitype.ComponentReportRequestExcludeOptions,
+	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReport, []error) {
+	generator := componentReportGenerator{
+		client:        client.BQ,
+		BaseRelease:   baseRelease,
+		SampleRelease: sampleRelease,
+		ComponentReportRequestTestIdentificationOptions: testIDOption,
+		ComponentReportRequestVariantOptions:            variantOption,
+		ComponentReportRequestExcludeOptions:            excludeOption,
+		ComponentReportRequestAdvancedOptions:           advancedOption,
+	}
+
+	return getReportFromCacheOrGenerate[apitype.ComponentReport](client.Cache, generator, generator.GenerateReport, apitype.ComponentReport{})
+}
+
+func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client,
+	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
+	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
+	variantOption apitype.ComponentReportRequestVariantOptions,
+	excludeOption apitype.ComponentReportRequestExcludeOptions,
+	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
+	generator := componentReportGenerator{
+		client:        client.BQ,
+		BaseRelease:   baseRelease,
+		SampleRelease: sampleRelease,
+		ComponentReportRequestTestIdentificationOptions: testIDOption,
+		ComponentReportRequestVariantOptions:            variantOption,
+		ComponentReportRequestExcludeOptions:            excludeOption,
+		ComponentReportRequestAdvancedOptions:           advancedOption,
+	}
+
+	return getReportFromCacheOrGenerate[apitype.ComponentReportTestDetails](client.Cache, generator, generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+}
+
+type componentReportGenerator struct {
+	client        *bigquery.Client
+	BaseRelease   apitype.ComponentReportRequestReleaseOptions
+	SampleRelease apitype.ComponentReportRequestReleaseOptions
+	apitype.ComponentReportRequestTestIdentificationOptions
+	apitype.ComponentReportRequestVariantOptions
+	apitype.ComponentReportRequestExcludeOptions
+	apitype.ComponentReportRequestAdvancedOptions
+}
+
+func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {
+	result := apitype.ComponentReportTestVariants{}
 	errs := []error{}
 	var err error
-	result := apitype.ComponentReportTestVariants{}
-	cacheLock.RLock()
-	if cacheVariants != nil {
-		result = *cacheVariants
-		cacheLock.RUnlock()
-		return result, errs
-	}
-	cacheLock.RUnlock()
 	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
-	query := client.Query(queryString)
+	query := c.client.Query(queryString)
 	result.Platform, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying platforms from bigquery")
@@ -106,7 +170,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		return result, errs
 	}
 	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
+	query = c.client.Query(queryString)
 	result.Network, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying networks from bigquery")
@@ -114,7 +178,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		return result, errs
 	}
 	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
+	query = c.client.Query(queryString)
 	result.Arch, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying arches from bigquery")
@@ -122,7 +186,7 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		return result, errs
 	}
 	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
-	query = client.Query(queryString)
+	query = c.client.Query(queryString)
 	result.Upgrade, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying upgrades from bigquery")
@@ -130,66 +194,14 @@ func GetComponentTestVariantsFromBigQuery(client *bigquery.Client) (apitype.Comp
 		return result, errs
 	}
 	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
-	query = client.Query(queryString)
+	query = c.client.Query(queryString)
 	result.Variant, err = getSingleColumnResultToSlice(query)
 	if err != nil {
 		log.WithError(err).Error("error querying variants from bigquery")
 		errs = append(errs, err)
-		return result, errs
 	}
-
-	cacheLock.Lock()
-	defer cacheLock.Unlock()
-	cacheVariants = &apitype.ComponentReportTestVariants{}
-	*cacheVariants = result
 
 	return result, errs
-}
-
-func GetComponentReportFromBigQuery(client *bigquery.Client,
-	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
-	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
-	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReport, []error) {
-	generator := componentReportGenerator{
-		client:        client,
-		baseRelease:   baseRelease,
-		sampleRelease: sampleRelease,
-		ComponentReportRequestTestIdentificationOptions: testIDOption,
-		ComponentReportRequestVariantOptions:            variantOption,
-		ComponentReportRequestExcludeOptions:            excludeOption,
-		ComponentReportRequestAdvancedOptions:           advancedOption,
-	}
-	return generator.GenerateReport()
-}
-
-func GetComponentReportTestDetailsFromBigQuery(client *bigquery.Client,
-	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
-	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
-	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
-	generator := componentReportGenerator{
-		client:        client,
-		baseRelease:   baseRelease,
-		sampleRelease: sampleRelease,
-		ComponentReportRequestTestIdentificationOptions: testIDOption,
-		ComponentReportRequestVariantOptions:            variantOption,
-		ComponentReportRequestExcludeOptions:            excludeOption,
-		ComponentReportRequestAdvancedOptions:           advancedOption,
-	}
-	return generator.GenerateTestDetailsReport()
-}
-
-type componentReportGenerator struct {
-	client        *bigquery.Client
-	baseRelease   apitype.ComponentReportRequestReleaseOptions
-	sampleRelease apitype.ComponentReportRequestReleaseOptions
-	apitype.ComponentReportRequestTestIdentificationOptions
-	apitype.ComponentReportRequestVariantOptions
-	apitype.ComponentReportRequestExcludeOptions
-	apitype.ComponentReportRequestAdvancedOptions
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
@@ -300,15 +312,15 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.baseRelease.Start,
+			Value: c.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.baseRelease.End,
+			Value: c.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.baseRelease.Release,
+			Value: c.BaseRelease.Release,
 		},
 	}...)
 
@@ -327,15 +339,15 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.sampleRelease.Start,
+			Value: c.SampleRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.sampleRelease.End,
+			Value: c.SampleRelease.End,
 		},
 		{
 			Name:  "SampleRelease",
-			Value: c.sampleRelease.Release,
+			Value: c.SampleRelease.Release,
 		},
 	}...)
 	wg.Add(1)
@@ -494,15 +506,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.baseRelease.Start,
+			Value: c.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.baseRelease.End,
+			Value: c.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.baseRelease.Release,
+			Value: c.BaseRelease.Release,
 		},
 	}...)
 
@@ -521,15 +533,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.sampleRelease.Start,
+			Value: c.SampleRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.sampleRelease.End,
+			Value: c.SampleRelease.End,
 		},
 		{
 			Name:  "SampleRelease",
-			Value: c.sampleRelease.Release,
+			Value: c.SampleRelease.Release,
 		},
 	}...)
 	wg.Add(1)
@@ -749,12 +761,12 @@ func previousRelease(release string) (string, error) {
 
 func (c *componentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
-	name = strings.ReplaceAll(name, c.baseRelease.Release, "X.X")
-	if prev, err := previousRelease(c.baseRelease.Release); err == nil {
+	name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
+	if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
 		name = strings.ReplaceAll(name, prev, "X.X")
 	}
-	name = strings.ReplaceAll(name, c.sampleRelease.Release, "X.X")
-	if prev, err := previousRelease(c.sampleRelease.Release); err == nil {
+	name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
+	if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
 		name = strings.ReplaceAll(name, prev, "X.X")
 	}
 	return name
@@ -1071,12 +1083,12 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	result.BaseStats.Release = c.baseRelease.Release
+	result.BaseStats.Release = c.BaseRelease.Release
 	result.BaseStats.SuccessCount = totalBaseSuccess
 	result.BaseStats.FailureCount = totalBaseFailure
 	result.BaseStats.FlakeCount = totalBaseFlake
 	result.BaseStats.SuccessRate = getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake)
-	result.SampleStats.Release = c.sampleRelease.Release
+	result.SampleStats.Release = c.SampleRelease.Release
 	result.SampleStats.SuccessCount = totalSampleSuccess
 	result.SampleStats.FailureCount = totalSampleFailure
 	result.SampleStats.FlakeCount = totalSampleFlake
@@ -1144,6 +1156,42 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 		}
 	}
 	return status, fischerExact
+}
+
+// getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
+func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
+	if c != nil {
+		cacheKey, err := json.Marshal(cacheKey)
+		if err != nil {
+			return defaultVal, []error{err}
+		}
+		if res, err := c.Get(string(cacheKey)); err == nil {
+			log.WithFields(log.Fields{
+				"key":  string(cacheKey),
+				"type": reflect.TypeOf(defaultVal).String(),
+			}).Debugf("cache hit")
+			var cr T
+			if err := json.Unmarshal(res, &cr); err != nil {
+				return defaultVal, []error{err}
+			}
+			return cr, nil
+		}
+		log.Infof("cache miss for cache key: %s", string(cacheKey))
+		result, errs := generateFn()
+		if len(errs) == 0 {
+			cr, err := json.Marshal(result)
+			if err == nil {
+				if err := c.Set(string(cacheKey), cr, componentReadinessCacheDuration); err != nil {
+					log.WithError(err).Warningf("couldn't persist new item to cache")
+				} else {
+					log.Debugf("cache set for cache key: %s", string(cacheKey))
+				}
+			}
+		}
+		return result, errs
+	}
+
+	return generateFn()
 }
 
 func init() {

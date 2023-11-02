@@ -12,11 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
+
+	"github.com/openshift/sippy/pkg/bigquery"
 
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -73,8 +74,7 @@ func NewServer(
 		cache:                cacheClient,
 	}
 
-	// Fill cache
-	if bigQueryClient != nil {
+	if bigQueryClient.BQ != nil {
 		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
 	}
 
@@ -1322,9 +1322,11 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
 	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
 	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	serveMux.HandleFunc("/api/component_readiness", s.cached(8*time.Hour, s.jsonComponentReportFromBigQuery))
-	serveMux.HandleFunc("/api/component_readiness/variants", s.cached(8*time.Hour, s.jsonComponentTestVariantsFromBigQuery))
-	serveMux.HandleFunc("/api/component_readiness/test_details", s.cached(8*time.Hour, s.jsonComponentReportTestDetailsFromBigQuery))
+	// Note that component readiness is cached, but at the lower layer of report generation so we can use the cached
+	// data in metrics.
+	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
 
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {

@@ -2,9 +2,11 @@
 package api
 
 import (
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
 
 func fakeComponentAndCapabilityGetter(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string) {
@@ -789,7 +791,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Variant:  testDetailsGenerator.Variant,
 	}
 	sampleReleaseStatsTwoHigh := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.sampleRelease.Release,
+		Release: testDetailsGenerator.SampleRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 200,
@@ -798,7 +800,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		},
 	}
 	baseReleaseStatsTwoHigh := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.baseRelease.Release,
+		Release: testDetailsGenerator.BaseRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 2000,
@@ -831,7 +833,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		FlakeCount:   50,
 	}
 	sampleReleaseStatsOneHigh := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.sampleRelease.Release,
+		Release: testDetailsGenerator.SampleRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 100,
@@ -840,7 +842,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		},
 	}
 	baseReleaseStatsOneHigh := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.baseRelease.Release,
+		Release: testDetailsGenerator.BaseRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 1000,
@@ -849,7 +851,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		},
 	}
 	sampleReleaseStatsOneLow := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.sampleRelease.Release,
+		Release: testDetailsGenerator.SampleRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.4778761061946903,
 			SuccessCount: 50,
@@ -858,7 +860,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		},
 	}
 	baseReleaseStatsOneLow := apitype.ComponentReportTestDetailsReleaseStats{
-		Release: testDetailsGenerator.baseRelease.Release,
+		Release: testDetailsGenerator.BaseRelease.Release,
 		ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
 			SuccessRate:  0.4782608695652174,
 			SuccessCount: 500,
