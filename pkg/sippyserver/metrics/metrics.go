@@ -195,22 +195,21 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
 	}
 
-	// Defaults - these are also hardcoded in the UI side
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
 	excludeOption := apitype.ComponentReportRequestExcludeOptions{
-		ExcludePlatforms: "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown",
-		ExcludeArches:    "arm64,heterogeneous,ppc64le,s390x",
-		ExcludeVariants:  "hypershift,osd,microshift,techpreview,single-node,assisted,compact",
+		ExcludePlatforms: api.DefaultExcludePlatforms,
+		ExcludeArches:    api.DefaultExcludeArches,
+		ExcludeVariants:  api.DefaultExcludeVariants,
 	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
-		GroupBy: "cloud,arch,network",
+		GroupBy: api.DefaultGroupBy,
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
-		MinimumFailure:   3,
-		Confidence:       95,
-		PityFactor:       5,
-		IgnoreMissing:    false,
-		IgnoreDisruption: true,
+		MinimumFailure:   api.DefaultMinimumFailure,
+		Confidence:       api.DefaultConfidence,
+		PityFactor:       api.DefaultPityFactor,
+		IgnoreMissing:    api.DefaultIgnoreMissing,
+		IgnoreDisruption: api.DefaultIgnoreDisruption,
 	}
 
 	// Get report
