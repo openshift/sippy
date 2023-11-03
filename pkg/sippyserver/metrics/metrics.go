@@ -181,7 +181,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	log.Debugf("most recent GA is %q", mostRecentGA)
 	baseRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: mostRecentGA,
-		// Match what UI sends to API, although it's not correct TRT-1346
+		// Match what UI sends to API.
 		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -29),
 		End:   releaseloader.GADateMap[mostRecentGA].Add(-1 * time.Second),
 	}
@@ -196,7 +196,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
 		Start:   today.AddDate(0, 0, -7),
-		// Match what UI sends to API, although it's not correct TRT-1346
+		// Match what UI sends to API.
 		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
 	}
 
