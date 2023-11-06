@@ -137,6 +137,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.MetricsRefresh{}); err != nil {
+		return err
+	}
+
 	if err := d.DB.AutoMigrate(&models.TestOwnership{}); err != nil {
 		return err
 	}

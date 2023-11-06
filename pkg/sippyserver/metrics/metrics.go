@@ -15,6 +15,7 @@ import (
 
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -130,7 +131,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 	refreshPayloadMetrics(dbc, reportEnd)
 
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc); err != nil {
+		if err := refreshComponentReadinessMetrics(dbc, bqc); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 	}
@@ -149,9 +150,21 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client) error {
+func refreshComponentReadinessMetrics(dbc *db.DB, client *bqclient.Client) error {
 	if client == nil || client.BQ == nil {
-		log.Infof("not generating component readiness metrics as we don't have a bigquery client")
+		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
+		return nil
+	}
+
+	// Make sure we're not updating this every 5 minutes
+	metricsUpdate := models.MetricsRefresh{
+		Name: "component_readiness",
+	}
+	if res := dbc.DB.FirstOrInit(&metricsUpdate); res.Error != nil {
+		return res.Error
+	}
+	if metricsUpdate.UpdatedAt.After(time.Now().Add(-6 * time.Hour)) {
+		log.Warningf("not refreshing component readiness metrics, last updated %+v", time.Since(metricsUpdate.UpdatedAt))
 		return nil
 	}
 
@@ -228,7 +241,9 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 		}
 	}
 
-	return nil
+	log.Infof("component readiness metrics updated...")
+	metricsUpdate.UpdatedAt = time.Now()
+	return dbc.DB.Save(&metricsUpdate).Error
 }
 
 func refreshInfraMetrics(dbc *db.DB, variantManager testidentification.VariantManager) error {
