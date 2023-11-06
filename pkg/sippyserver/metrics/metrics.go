@@ -151,7 +151,12 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 
 func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	if client == nil || client.BQ == nil {
-		log.Infof("not generating component readiness metrics as we don't have a bigquery client")
+		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
+		return nil
+	}
+
+	if client.Cache == nil {
+		log.Warningf("not generating component readiness metrics as we don't have a cache configured")
 		return nil
 	}
 
