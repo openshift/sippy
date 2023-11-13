@@ -67,7 +67,6 @@ export default function CompReadyMainInputs(props) {
           size="large"
           variant="contained"
           color="primary"
-          component={Link}
           to={
             '/component_readiness/main' +
             getUpdatedUrlParts(
@@ -98,7 +97,7 @@ export default function CompReadyMainInputs(props) {
                against a historical (previous) release'
             }
           >
-            <span>Generate Report</span>
+            <Fragment>Generate Report</Fragment>
           </Tooltip>
         </Button>
       </div>
