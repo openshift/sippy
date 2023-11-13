@@ -6,7 +6,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/material/styles'
 import { scale } from 'chroma-js'
@@ -14,25 +13,18 @@ import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-const PREFIX = 'MiniCard';
-
-const classes = {
-  cardContent: `${PREFIX}-cardContent`,
-  miniCard: `${PREFIX}-miniCard`
-};
-
-const StyledBox = styled(Box)({
-  [`& .${classes.cardContent}`]: {
+const useStyles = makeStyles({
+  cardContent: {
     color: 'black',
     textAlign: 'center',
   },
-  [`& .${classes.miniCard}`]: (props) => ({
+  miniCard: (props) => ({
     height: '100%',
   }),
-});
+})
 
 export default function MiniCard(props) {
-
+  const classes = useStyles(props)
   const theme = useTheme()
 
   const colorScale = scale([
@@ -95,10 +87,10 @@ export default function MiniCard(props) {
   // Link if we have one
   if (props.link !== undefined) {
     return (
-      <StyledBox component={Link} to={props.link}>
+      <Box component={Link} to={props.link}>
         {card}
-      </StyledBox>
-    );
+      </Box>
+    )
   } else {
     return card
   }

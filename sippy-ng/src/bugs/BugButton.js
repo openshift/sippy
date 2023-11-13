@@ -1,31 +1,19 @@
 import { Button, IconButton, makeStyles, Modal, TextField } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { safeEncodeURIComponent } from '../helpers'
 import CloseIcon from '@mui/icons-material/Close'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-const PREFIX = 'BugButton';
-
-const classes = {
-  alignedButton: `${PREFIX}-alignedButton`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.alignedButton}`]: {
+const useStyles = makeStyles((theme) => ({
+  alignedButton: {
     marginTop: 25,
     float: 'left',
-  }
-}));
+  },
+}))
 
 export default function BugButton(props) {
-
+  const classes = useStyles()
   const [open, setOpen] = useState(false)
 
   const text = `The following test is failing:
@@ -44,7 +32,7 @@ Additional context here:
   }
 
   return (
-    (<Root>
+    <>
       <Button
         variant="contained"
         color="primary"
@@ -53,8 +41,8 @@ Additional context here:
       >
         File a new bug
       </Button>
-    </Root>)
-  );
+    </>
+  )
 }
 
 BugButton.propTypes = {

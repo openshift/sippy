@@ -1,5 +1,4 @@
 import './JobTable.css'
-import { styled } from '@mui/material/styles';
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
@@ -17,40 +16,12 @@ import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/material/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
+import { withStyles } from '@mui/styles'
 import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-
-const PREFIX = 'JobTable';
-
-const classes = {
-  root: `${PREFIX}-root`
-};
-
-const StyledContainer = styled(Container)((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
-  }
-}));
 
 const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
@@ -258,6 +229,24 @@ export const getColumns = (config, openBugzillaDialog) => {
     },
   }
 }
+const useStyles = makeStyles((theme) => ({
+  root: {
+    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
+      textOverflow: 'ellipsis',
+      display: '-webkit-box',
+      '-webkit-line-clamp': 2,
+      '-webkit-box-orient': 'vertical',
+      overflow: 'hidden',
+      overflowWrap: 'break-word',
+      lineHeight: '20px',
+      whiteSpace: 'normal',
+    },
+    backdrop: {
+      zIndex: 999999,
+      color: '#fff',
+    },
+  },
+}))
 
 /**
  * JobTable shows the list of all jobs matching any selected filters,
@@ -265,8 +254,8 @@ export const getColumns = (config, openBugzillaDialog) => {
  * bug links.
  */
 function JobTable(props) {
-  const { } = props
-
+  const { classes } = props
+  const gridClasses = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -579,7 +568,7 @@ function JobTable(props) {
 
   return (
     /* eslint-disable react/prop-types */
-    <StyledContainer size="xl">
+    <Container size="xl">
       {pageTitle()}
       <DataGrid
         className={gridClasses.root}
@@ -633,8 +622,8 @@ function JobTable(props) {
       />
       {props.briefTable ? '' : detailsButton}
       {props.briefTable ? '' : copyButton}
-    </StyledContainer>
-  );
+    </Container>
+  )
 }
 
 JobTable.defaultProps = {
@@ -668,4 +657,4 @@ JobTable.propTypes = {
   view: PropTypes.string,
 }
 
-export default )(JobTable)
+export default withStyles(generateClasses(JOB_THRESHOLDS))(JobTable)

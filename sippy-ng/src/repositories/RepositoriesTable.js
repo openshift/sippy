@@ -6,7 +6,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { DataGrid } from '@material-ui/data-grid'
 import { Details, Launch } from '@mui/icons-material'
 import { generateClasses } from '../datagrid/utils'
@@ -20,25 +19,15 @@ import {
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useHistory } from 'react-router-dom'
+import { withStyles } from '@mui/styles'
 import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const PREFIX = 'RepositoriesTable';
-
-const classes = {
-  root: `${PREFIX}-root`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
+const useStyles = makeStyles((theme) => ({
+  root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
@@ -53,8 +42,8 @@ const Root = styled('div')((
       zIndex: 999999,
       color: '#fff',
     },
-  }
-}));
+  },
+}))
 
 function RepositoriesTable(props) {
   const PREMERGE_JOB_FAILURES_TOOLTIP =
@@ -62,8 +51,8 @@ function RepositoriesTable(props) {
     'Failures exclude developer pushes or successful retests due to code changes.  It only looks ' +
     'at failures on merged commit shas.'
 
-  const { } = props
-
+  const { classes } = props
+  const gridClasses = useStyles()
   const history = useHistory()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -131,14 +120,14 @@ function RepositoriesTable(props) {
     worst_premerge_job_failures: {
       field: 'worst_premerge_job_failures',
       headerName: (
-        <Root>
+        <Fragment>
           <Tooltip title={PREMERGE_JOB_FAILURES_TOOLTIP}>
             <Typography>
               Premerge job failures
               <InfoIcon />
             </Typography>
           </Tooltip>
-        </Root>
+        </Fragment>
       ),
       type: 'number',
       renderCell: (params) => Number(params.value).toFixed(1).toLocaleString(),
@@ -367,6 +356,6 @@ RepositoriesTable.propTypes = {
   view: PropTypes.string,
 }
 
-export default )(
+export default withStyles(generateClasses(MERGE_FAILURE_THERSHOLDS))(
   RepositoriesTable
 )

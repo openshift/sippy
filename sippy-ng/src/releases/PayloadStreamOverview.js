@@ -234,7 +234,7 @@ function PayloadStreamOverview(props) {
         </Grid>
       </Grid>
     </Container>
-  )
+  );
 }
 
 PayloadStreamOverview.defaultProps = {}

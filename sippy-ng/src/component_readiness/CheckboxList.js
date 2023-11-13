@@ -1,5 +1,4 @@
 import './CheckboxList.css'
-import { styled } from '@mui/material/styles';
 import {
   Accordion,
   AccordionDetails,
@@ -15,44 +14,28 @@ import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-const PREFIX = 'CheckboxList';
-
-const classes = {
-  formControl: `${PREFIX}-formControl`,
-  selectEmpty: `${PREFIX}-selectEmpty`,
-  headerName: `${PREFIX}-headerName`,
-  summary: `${PREFIX}-summary`
-};
-
-const StyledFormControl = styled(FormControl)((
-  {
-    theme
-  }
-) => ({
-  [`&.${classes.formControl}`]: {
-    margin: theme.spacing(1),
-    minWidth: '20px',
-  },
-
-  [`& .${classes.selectEmpty}`]: {
-    marginTop: theme.spacing(2),
-  },
-
-  [`& .${classes.headerName}`]: {
-    width: '220px',
-    padding: '0px',
-    margin: '0px',
-  },
-
-  [`& .${classes.summary}`]: {
-    backgroundColor: 'rgb(0, 153, 255)',
-    margin: '0px !important',
-    padding: '0px',
-  }
-}));
-
 export default function CheckBoxList(props) {
+  const useStyles = makeStyles((theme) => ({
+    formControl: {
+      margin: theme.spacing(1),
+      minWidth: '20px',
+    },
+    selectEmpty: {
+      marginTop: theme.spacing(2),
+    },
+    headerName: {
+      width: '220px',
+      padding: '0px',
+      margin: '0px',
+    },
+    summary: {
+      backgroundColor: 'rgb(0, 153, 255)',
+      margin: '0px !important',
+      padding: '0px',
+    },
+  }))
 
+  const classes = useStyles()
   const checkedItems = props.checkedItems
   const setCheckedItems = props.setCheckedItems
   const handleChange = (event) => {
@@ -68,11 +51,7 @@ export default function CheckBoxList(props) {
   }
 
   return (
-    <StyledFormControl
-      variant="standard"
-      className={classes.formControl}
-      component="fieldset"
-    >
+    <FormControl variant="standard" className={classes.formControl} component="fieldset">
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}
@@ -100,7 +79,7 @@ export default function CheckBoxList(props) {
           </FormGroup>
         </AccordionDetails>
       </Accordion>
-    </StyledFormControl>
+    </FormControl>
   );
 }
 

@@ -1,5 +1,4 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/material/styles'
@@ -8,22 +7,15 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const PREFIX = 'SummaryCard';
-
-const classes = {
-  cardContent: `${PREFIX}-cardContent`,
-  summaryCard: `${PREFIX}-summaryCard`
-};
-
-const StyledBox = styled(Box)({
-  [`& .${classes.cardContent}`]: {
+const useStyles = makeStyles({
+  cardContent: {
     color: 'black',
     textAlign: 'center',
   },
-  [`& .${classes.summaryCard}`]: (props) => ({
+  summaryCard: (props) => ({
     height: '100%',
   }),
-});
+})
 
 /**
  * SummaryCard with a simple pie chart showing some data,
@@ -31,7 +23,7 @@ const StyledBox = styled(Box)({
  * page.
  */
 export default function SummaryCard(props) {
-
+  const classes = useStyles(props)
   const theme = useTheme()
 
   const percent =
@@ -112,10 +104,10 @@ export default function SummaryCard(props) {
   // Link if we have one
   if (props.link !== undefined) {
     return (
-      <StyledBox component={Link} to={props.link}>
+      <Box component={Link} to={props.link}>
         {card}
-      </StyledBox>
-    );
+      </Box>
+    )
   } else {
     return card
   }

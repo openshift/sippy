@@ -1,13 +1,7 @@
 import './App.css'
-import { styled } from '@mui/material/styles';
-import {
-  adaptV4Theme,
-  createTheme,
-  makeStyles,
-  useTheme,
-} from '@mui/material/styles'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
-import { CssBaseline, Grid, StyledEngineProvider } from '@mui/material'
+import { createTheme, makeStyles, useTheme, adaptV4Theme } from '@mui/material/styles';
+import { CssBaseline, Grid, ThemeProvider, StyledEngineProvider } from '@mui/material';
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { parse, stringify } from 'query-string'
@@ -15,7 +9,6 @@ import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
 import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
-import { ThemeProvider } from '@mui/material/styles'
 import Alert from '@mui/lab/Alert'
 import AppBar from '@mui/material/AppBar'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
@@ -47,45 +40,23 @@ import Typography from '@mui/material/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
 
-const PREFIX = 'ReleasesContext';
+const drawerWidth = 240
 
-const classes = {
-  root: `${PREFIX}-root`,
-  title: `${PREFIX}-title`,
-  appBar: `${PREFIX}-appBar`,
-  appBarShift: `${PREFIX}-appBarShift`,
-  backdrop: `${PREFIX}-backdrop`,
-  menuButton: `${PREFIX}-menuButton`,
-  hide: `${PREFIX}-hide`,
-  drawer: `${PREFIX}-drawer`,
-  drawerPaper: `${PREFIX}-drawerPaper`,
-  drawerHeader: `${PREFIX}-drawerHeader`,
-  content: `${PREFIX}-content`,
-  contentShift: `${PREFIX}-contentShift`
-};
-
-const StyledReleasesContextProvider = styled(ReleasesContext.Provider)((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
+const useStyles = makeStyles((theme) => ({
+  root: {
     display: 'flex',
     flexGrow: 1,
   },
-
-  [`& .${classes.title}`]: {
+  title: {
     flexGrow: 1,
   },
-
-  [`& .${classes.appBar}`]: {
+  appBar: {
     transition: theme.transitions.create(['margin', 'width'], {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
   },
-
-  [`& .${classes.appBarShift}`]: {
+  appBarShift: {
     width: `calc(100% - ${drawerWidth}px)`,
     marginLeft: drawerWidth,
     transition: theme.transitions.create(['margin', 'width'], {
@@ -93,30 +64,24 @@ const StyledReleasesContextProvider = styled(ReleasesContext.Provider)((
       duration: theme.transitions.duration.enteringScreen,
     }),
   },
-
-  [`& .${classes.backdrop}`]: {
+  backdrop: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
   },
-
-  [`& .${classes.menuButton}`]: {
+  menuButton: {
     marginRight: theme.spacing(2),
   },
-
-  [`& .${classes.hide}`]: {
+  hide: {
     display: 'none',
   },
-
-  [`& .${classes.drawer}`]: {
+  drawer: {
     width: drawerWidth,
     flexShrink: 0,
   },
-
-  [`& .${classes.drawerPaper}`]: {
+  drawerPaper: {
     width: drawerWidth,
   },
-
-  [`& .${classes.drawerHeader}`]: {
+  drawerHeader: {
     display: 'flex',
     alignItems: 'center',
     padding: theme.spacing(0, 1),
@@ -124,8 +89,7 @@ const StyledReleasesContextProvider = styled(ReleasesContext.Provider)((
     ...theme.mixins.toolbar,
     justifyContent: 'flex-end',
   },
-
-  [`& .${classes.content}`]: {
+  content: {
     maxWidth: '100%',
     flexGrow: 1,
     padding: theme.spacing(3),
@@ -135,17 +99,14 @@ const StyledReleasesContextProvider = styled(ReleasesContext.Provider)((
     }),
     marginLeft: -drawerWidth,
   },
-
-  [`& .${classes.contentShift}`]: {
+  contentShift: {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
     marginLeft: 0,
-  }
-}));
-
-const drawerWidth = 240
+  },
+}))
 
 // Default theme:
 const lightMode = {
@@ -159,7 +120,7 @@ export const CapabilitiesContext = React.createContext([])
 export const ReportEndContext = React.createContext('')
 
 export default function App(props) {
-
+  const classes = useStyles()
   const theme = useTheme()
 
   const [lastUpdated, setLastUpdated] = React.useState(null)
@@ -242,7 +203,7 @@ export default function App(props) {
 
   const startDate = getReportStartDate(reportDate)
   return (
-    <StyledReleasesContextProvider value={releases}>
+    <ReleasesContext.Provider value={releases}>
       <ReportEndContext.Provider value={reportDate}>
         <CapabilitiesContext.Provider value={capabilities}>
           <StyledEngineProvider injectFirst>
@@ -273,8 +234,7 @@ export default function App(props) {
                           classes.menuButton,
                           drawerOpen && classes.hide
                         )}
-                        size="large"
-                      >
+                        size="large">
                         <MenuIcon />
                       </IconButton>
                       <Grid
@@ -331,9 +291,7 @@ export default function App(props) {
                         path="/release/:release/tags/:tag"
                         render={(props) => (
                           <ReleasePayloadDetails
-                            key={
-                              'release-details-' + props.match.params.release
-                            }
+                            key={'release-details-' + props.match.params.release}
                             release={props.match.params.release}
                             releaseTag={props.match.params.tag}
                           />
@@ -355,9 +313,7 @@ export default function App(props) {
                         path="/release/:release/streams"
                         render={(props) => (
                           <PayloadStreams
-                            key={
-                              'release-streams-' + props.match.params.release
-                            }
+                            key={'release-streams-' + props.match.params.release}
                             release={props.match.params.release}
                           />
                         )}
@@ -377,9 +333,7 @@ export default function App(props) {
                         path="/release/:release"
                         render={(props) => (
                           <ReleaseOverview
-                            key={
-                              'release-overview-' + props.match.params.release
-                            }
+                            key={'release-overview-' + props.match.params.release}
                             release={props.match.params.release}
                           />
                         )}
@@ -528,6 +482,6 @@ export default function App(props) {
           </StyledEngineProvider>
         </CapabilitiesContext.Provider>
       </ReportEndContext.Provider>
-    </StyledReleasesContextProvider>
+    </ReleasesContext.Provider>
   );
 }

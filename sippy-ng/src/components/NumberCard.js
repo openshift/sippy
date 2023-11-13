@@ -1,5 +1,4 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/material/styles'
@@ -8,25 +7,18 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const PREFIX = 'NumberCard';
-
-const classes = {
-  cardContent: `${PREFIX}-cardContent`,
-  numberCard: `${PREFIX}-numberCard`
-};
-
-const StyledBox = styled(Box)({
-  [`& .${classes.cardContent}`]: {
+const useStyles = makeStyles({
+  cardContent: {
     color: 'black',
     textAlign: 'center',
   },
-  [`& .${classes.numberCard}`]: (props) => ({
+  numberCard: (props) => ({
     height: '100%',
   }),
-});
+})
 
 export default function NumberCard(props) {
-
+  const classes = useStyles(props)
   const theme = useTheme()
 
   let card = (
@@ -57,10 +49,10 @@ export default function NumberCard(props) {
   // Link if we have one
   if (props.link !== undefined) {
     return (
-      <StyledBox component={Link} to={props.link}>
+      <Box component={Link} to={props.link}>
         {card}
-      </StyledBox>
-    );
+      </Box>
+    )
   } else {
     return card
   }

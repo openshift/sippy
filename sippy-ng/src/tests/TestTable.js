@@ -1,5 +1,4 @@
 import './TestTable.css'
-import { styled } from '@mui/material/styles';
 import {
   AcUnit,
   BugReport,
@@ -36,6 +35,7 @@ import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@mui/material/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
+import { withStyles } from '@mui/styles'
 import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
@@ -43,19 +43,17 @@ import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useRef } from 'react'
 
-const PREFIX = 'TestTable';
+const overallTestName = 'Overall'
 
-const classes = {
-  root: `${PREFIX}-root`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
+const bookmarks = [
   {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
+    name: 'Runs > 10',
+    model: [BOOKMARKS.RUN_10],
+  },
+]
+
+const useStyles = makeStyles((theme) => ({
+  root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
@@ -70,21 +68,12 @@ const Root = styled('div')((
       zIndex: 999999,
       color: '#fff',
     },
-  }
-}));
-
-const overallTestName = 'Overall'
-
-const bookmarks = [
-  {
-    name: 'Runs > 10',
-    model: [BOOKMARKS.RUN_10],
   },
-]
+}))
 
 function TestTable(props) {
-  const { } = props
-
+  const { classes } = props
+  const gridClasses = useStyles()
   const location = useLocation().pathname
 
   const [testDetails, setTestDetails] = React.useState({ bugs: [] })
@@ -632,8 +621,7 @@ function TestTable(props) {
                   safeEncodeURIComponent(escapeRegex(params.row.name)) +
                   '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
                 }
-                size="large"
-              >
+                size="large">
                 <Search />
               </IconButton>
             </Tooltip>
@@ -649,8 +637,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
-                size="large"
-              >
+                size="large">
                 <Badge
                   badgeContent={
                     params.row.current_failures + params.row.previous_failures
@@ -673,8 +660,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
-                size="large"
-              >
+                size="large">
                 <Badge
                   badgeContent={
                     params.row.current_flakes + params.row.previous_flakes
@@ -686,7 +672,7 @@ function TestTable(props) {
               </IconButton>
             </Tooltip>
           </Grid>
-        )
+        );
       },
     },
     // These are here just to allow filtering
@@ -904,7 +890,7 @@ function TestTable(props) {
 
   return (
     /* eslint-disable react/prop-types */
-    <Root>
+    <Fragment>
       <DataGrid
         className={gridClasses.root}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
@@ -968,8 +954,8 @@ function TestTable(props) {
           },
         }}
       />
-    </Root>
-  );
+    </Fragment>
+  )
 }
 
 TestTable.defaultProps = {
@@ -1007,4 +993,4 @@ TestTable.propTypes = {
   view: PropTypes.string,
 }
 
-export default )(TestTable)
+export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)

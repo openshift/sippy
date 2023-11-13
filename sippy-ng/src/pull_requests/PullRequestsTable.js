@@ -1,5 +1,4 @@
 import './PullRequestsTable.css'
-import { styled } from '@mui/material/styles';
 import {
   Backdrop,
   Button,
@@ -32,19 +31,17 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const PREFIX = 'PullRequestsTable';
+const overallTestName = 'Overall'
 
-const classes = {
-  root: `${PREFIX}-root`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
+const bookmarks = [
   {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
+    name: 'Runs > 10',
+    model: [BOOKMARKS.RUN_10],
+  },
+]
+
+const useStyles = makeStyles((theme) => ({
+  root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
@@ -62,21 +59,12 @@ const Root = styled('div')((
       zIndex: 999999,
       color: '#fff',
     },
-  }
-}));
-
-const overallTestName = 'Overall'
-
-const bookmarks = [
-  {
-    name: 'Runs > 10',
-    model: [BOOKMARKS.RUN_10],
   },
-]
+}))
 
 export default function PullRequestsTable(props) {
-  const { } = props
-
+  const { classes } = props
+  const gridClasses = useStyles()
   const theme = useTheme()
   const location = useLocation().pathname
 
@@ -428,7 +416,7 @@ export default function PullRequestsTable(props) {
 
   return (
     /* eslint-disable react/prop-types */
-    <Root>
+    <Fragment>
       <DataGrid
         className={gridClasses.root}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
@@ -469,8 +457,8 @@ export default function PullRequestsTable(props) {
           },
         }}
       />
-    </Root>
-  );
+    </Fragment>
+  )
 }
 
 PullRequestsTable.defaultProps = {

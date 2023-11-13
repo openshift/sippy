@@ -1,5 +1,4 @@
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import { styled } from '@mui/material/styles';
 import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
@@ -18,37 +17,22 @@ import { ToggleButton, ToggleButtonGroup } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const PREFIX = 'ReleaseSelector';
-
-const classes = {
-  formControl: `${PREFIX}-formControl`,
-  selectEmpty: `${PREFIX}-selectEmpty`,
-  label: `${PREFIX}-label`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.formControl}`]: {
+const useStyles = makeStyles((theme) => ({
+  formControl: {
     margin: theme.spacing(1),
     minWidth: 80,
   },
-
-  [`& .${classes.selectEmpty}`]: {
+  selectEmpty: {
     marginTop: theme.spacing(5),
   },
-
-  [`& .${classes.label}`]: {
+  label: {
     display: 'flex',
     whiteSpace: 'nowrap',
-  }
-}));
+  },
+}))
 
 function ReleaseSelector(props) {
-
+  const classes = useStyles()
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = React.useState({})
   const {
@@ -107,7 +91,7 @@ function ReleaseSelector(props) {
   }
 
   return (
-    <Root>
+    <Fragment>
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
           <FormControl variant="standard" className={classes.formControl}>
@@ -185,7 +169,7 @@ function ReleaseSelector(props) {
           </ToggleButtonGroup>
         </Grid>
       </Grid>
-    </Root>
+    </Fragment>
   );
 }
 

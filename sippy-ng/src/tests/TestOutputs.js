@@ -10,7 +10,6 @@ import {
   TableRow,
   Tooltip,
 } from '@mui/material'
-import { styled } from '@mui/material/styles';
 import { DirectionsBoat } from '@mui/icons-material'
 import { makeStyles } from '@mui/material/styles'
 import { safeEncodeURIComponent } from '../helpers'
@@ -18,28 +17,17 @@ import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const PREFIX = 'TestOutputs';
-
-const classes = {
-  table: `${PREFIX}-table`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.table}`]: {
+const useStyles = makeStyles((theme) => ({
+  table: {
     minWidth: 650,
     '& .MuiTableCell-root': {
       border: '1px solid #cccccc',
     },
-  }
-}));
+  },
+}))
 
 export function TestOutputs(props) {
-
+  const classes = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -93,7 +81,7 @@ export function TestOutputs(props) {
   }
 
   if (outputs.length === 0) {
-    return <Root>No data.</Root>;
+    return <Fragment>No data.</Fragment>
   }
 
   return (

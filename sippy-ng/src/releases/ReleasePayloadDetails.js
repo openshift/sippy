@@ -1,5 +1,4 @@
 import { Alert } from '@mui/lab'
-import { styled } from '@mui/material/styles';
 import {
   Button,
   Card,
@@ -34,31 +33,18 @@ import ReleasePayloadJobRuns from './ReleasePayloadJobRuns'
 import ReleasePayloadPullRequests from './ReleasePayloadPullRequests'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const PREFIX = 'ReleasePayloadDetails';
-
-const classes = {
-  title: `${PREFIX}-title`,
-  backdrop: `${PREFIX}-backdrop`
-};
-
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.title}`]: {
+const useStyles = makeStyles((theme) => ({
+  title: {
     textAlign: 'center',
   },
-
-  [`& .${classes.backdrop}`]: {
+  backdrop: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
-  }
-}));
+  },
+}))
 
 export default function ReleasePayloadDetails(props) {
-
+  const classes = useStyles()
   const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -138,7 +124,7 @@ export default function ReleasePayloadDetails(props) {
   }
 
   return (
-    <Root>
+    <Fragment>
       <SimpleBreadcrumbs
         release={props.release}
         previousPage={<Link to={`/release/${props.release}/tags`}>Tags</Link>}
@@ -232,8 +218,8 @@ export default function ReleasePayloadDetails(props) {
           </Route>
         </Switch>
       </Container>
-    </Root>
-  );
+    </Fragment>
+  )
 }
 
 ReleasePayloadDetails.propTypes = {

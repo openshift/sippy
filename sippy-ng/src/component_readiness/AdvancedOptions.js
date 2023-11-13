@@ -1,5 +1,4 @@
 import './CheckboxList.css'
-import { styled } from '@mui/material/styles';
 import {
   Accordion,
   AccordionDetails,
@@ -16,42 +15,6 @@ import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 
-const PREFIX = 'AdvancedOptions';
-
-const classes = {
-  formControl: `${PREFIX}-formControl`,
-  selectEmpty: `${PREFIX}-selectEmpty`,
-  headerName: `${PREFIX}-headerName`,
-  summary: `${PREFIX}-summary`
-};
-
-const StyledFormControl = styled(FormControl)((
-  {
-    theme
-  }
-) => ({
-  [`&.${classes.formControl}`]: {
-    margin: theme.spacing(1),
-    minWidth: '20px',
-  },
-
-  [`& .${classes.selectEmpty}`]: {
-    marginTop: theme.spacing(2),
-  },
-
-  [`& .${classes.headerName}`]: {
-    width: '220px',
-    padding: '0px',
-    margin: '0px',
-  },
-
-  [`& .${classes.summary}`]: {
-    backgroundColor: 'rgb(0, 153, 255)',
-    margin: '0px !important',
-    padding: '0px',
-  }
-}));
-
 export default function AdvancedOptions(props) {
   const {
     headerName,
@@ -67,7 +30,27 @@ export default function AdvancedOptions(props) {
     setIgnoreDisruption,
   } = props
 
+  const useStyles = makeStyles((theme) => ({
+    formControl: {
+      margin: theme.spacing(1),
+      minWidth: '20px',
+    },
+    selectEmpty: {
+      marginTop: theme.spacing(2),
+    },
+    headerName: {
+      width: '220px',
+      padding: '0px',
+      margin: '0px',
+    },
+    summary: {
+      backgroundColor: 'rgb(0, 153, 255)',
+      margin: '0px !important',
+      padding: '0px',
+    },
+  }))
 
+  const classes = useStyles()
 
   const handleChangeConfidence = (event, newValue) => {
     setConfidence(newValue)
@@ -86,11 +69,7 @@ export default function AdvancedOptions(props) {
   }
 
   return (
-    <StyledFormControl
-      variant="standard"
-      className={classes.formControl}
-      component="fieldset"
-    >
+    <FormControl variant="standard" className={classes.formControl} component="fieldset">
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}
@@ -143,7 +122,7 @@ export default function AdvancedOptions(props) {
           </FormGroup>
         </AccordionDetails>
       </Accordion>
-    </StyledFormControl>
+    </FormControl>
   );
 }
 

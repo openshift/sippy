@@ -5,7 +5,6 @@ import {
   StringParam,
   useQueryParam,
 } from 'use-query-params'
-import { styled } from '@mui/material/styles';
 import { BUILD_CLUSTER_THRESHOLDS, JOB_THRESHOLDS } from '../constants'
 import { CircularProgress, Tooltip } from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
@@ -13,26 +12,15 @@ import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/material/styles'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { withStyles } from '@mui/styles'
 import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const PREFIX = 'BuildClusterTable';
-
-const classes = {
-  root: `${PREFIX}-root`
-};
-
-const Root = styled(
-  'ataGrid\n      className={gridClasses.root}\n      components={{ Toolbar: props.hideControls ? \'\' : GridToolbar }}\n      rows={rows}\n      columns={columns}\n      autoHeight={true}\n      disableColumnFilter={props.briefTable}\n      disableColumnMenu={true}\n      pageSize={pageSize}\n      onPageSizeChange={(newPageSize) ='
-)((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
+const useStyles = makeStyles((theme) => ({
+  root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
@@ -43,12 +31,12 @@ const Root = styled(
       lineHeight: '20px',
       whiteSpace: 'normal',
     },
-  }
-}));
+  },
+}))
 
 function BuildClusterTable(props) {
-
-  const { } = props
+  const gridClasses = useStyles()
+  const { classes } = props
 
   // place to store state (i.e., our table data, error message, etc)
   const [rows, setRows] = React.useState([])
@@ -228,7 +216,7 @@ function BuildClusterTable(props) {
   )
 }
 
-export default )(
+export default withStyles(generateClasses(BUILD_CLUSTER_THRESHOLDS))(
   BuildClusterTable
 )
 
