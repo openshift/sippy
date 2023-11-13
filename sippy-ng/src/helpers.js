@@ -140,8 +140,6 @@ export function pathForExactTestAnalysis(release, test, excludedVariants) {
 }
 
 export function pathForExactTestAnalysisWithFilter(release, test, filter) {
-  console.log(filter)
-
   let filters = [filterFor('name', 'equals', test)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
