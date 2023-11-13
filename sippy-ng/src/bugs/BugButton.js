@@ -1,10 +1,4 @@
-import {
-  Button,
-  IconButton,
-  makeStyles,
-  Modal,
-  TextField,
-} from '@mui/material'
+import { Button, IconButton, makeStyles, Modal, TextField } from '@mui/material'
 import { safeEncodeURIComponent } from '../helpers'
 import CloseIcon from '@mui/icons-material/Close'
 import PropTypes from 'prop-types'

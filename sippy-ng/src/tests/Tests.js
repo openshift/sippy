@@ -1,11 +1,4 @@
-import {
-  Container,
-  Grid,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material'
+import { Container, Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
