@@ -333,7 +333,7 @@ export function sortQueryParams(path) {
   // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
   // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
   // %20 for spaces. This makes URL's change, which creates additional history entries, and breaks the back button.
-  return basePath + '?' + sortedParams.toString().replace(/\+/g, '%20')
+  return basePath + '?' + sortedParams.toString().replace(/\+/g, '%20');
 }
 
 // Single place to make titles so they look consistent as well as capture the

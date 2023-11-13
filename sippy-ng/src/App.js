@@ -1,7 +1,7 @@
 import './App.css'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
 import { createTheme, makeStyles, useTheme } from '@material-ui/core/styles'
-import { CssBaseline, Grid, MuiThemeProvider } from '@material-ui/core'
+import { CssBaseline, Grid, ThemeProvider } from '@material-ui/core'
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { parse, stringify } from 'query-string'
@@ -206,7 +206,7 @@ export default function App(props) {
     <ReleasesContext.Provider value={releases}>
       <ReportEndContext.Provider value={reportDate}>
         <CapabilitiesContext.Provider value={capabilities}>
-          <MuiThemeProvider theme={createTheme(lightMode)}>
+          <ThemeProvider theme={createTheme(lightMode)}>
             <CssBaseline />
             <QueryParamProvider
               ReactRouterRoute={Route}
@@ -477,7 +477,7 @@ export default function App(props) {
                 </main>
               </div>
             </QueryParamProvider>
-          </MuiThemeProvider>
+          </ThemeProvider>
         </CapabilitiesContext.Provider>
       </ReportEndContext.Provider>
     </ReleasesContext.Provider>

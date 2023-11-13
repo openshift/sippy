@@ -88,7 +88,7 @@ export function relativeDuration(secondsAgo) {
 }
 
 export function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function searchCI(query) {
