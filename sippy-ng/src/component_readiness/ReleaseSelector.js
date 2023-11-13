@@ -11,7 +11,7 @@ import {
 } from '@mui/material'
 import { Fragment, useContext, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import { ToggleButton, ToggleButtonGroup } from '@mui/lab'
 import PropTypes from 'prop-types'
@@ -170,7 +170,7 @@ function ReleaseSelector(props) {
         </Grid>
       </Grid>
     </Fragment>
-  );
+  )
 }
 
 ReleaseSelector.propTypes = {

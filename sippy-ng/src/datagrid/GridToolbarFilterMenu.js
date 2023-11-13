@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { filterTooltip } from './utils'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
   operatorWithoutValue,
@@ -186,7 +186,8 @@ export default function GridToolbarFilterMenu(props) {
         className={classes.selector}
         labelId="linkOperatorLabel"
         id="linkOperator"
-        autoWidth>
+        autoWidth
+      >
         <MenuItem value="and">and</MenuItem>
         <MenuItem value="or">or</MenuItem>
       </Select>

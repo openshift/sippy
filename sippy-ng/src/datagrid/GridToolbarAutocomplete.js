@@ -82,10 +82,11 @@ export default function GridToolbarAutocomplete(props) {
                 {params.InputProps.endAdornment}
               </React.Fragment>
             ),
-          }} />
+          }}
+        />
       )}
     />
-  );
+  )
 }
 
 GridToolbarAutocomplete.defaultProps = {

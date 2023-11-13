@@ -51,7 +51,11 @@ export default function CheckBoxList(props) {
   }
 
   return (
-    <FormControl variant="standard" className={classes.formControl} component="fieldset">
+    <FormControl
+      variant="standard"
+      className={classes.formControl}
+      component="fieldset"
+    >
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}
@@ -80,7 +84,7 @@ export default function CheckBoxList(props) {
         </AccordionDetails>
       </Accordion>
     </FormControl>
-  );
+  )
 }
 
 CheckBoxList.propTypes = {

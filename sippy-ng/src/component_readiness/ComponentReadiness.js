@@ -764,7 +764,8 @@ export default function ComponentReadiness(props) {
                       classes.menuButton,
                       drawerOpen && classes.hide
                     )}
-                    size="large">
+                    size="large"
+                  >
                     <MenuIcon />
                   </IconButton>
                   <Drawer
@@ -851,12 +852,14 @@ export default function ComponentReadiness(props) {
                           variant="standard"
                           label="Search Component"
                           value={searchComponentRegex}
-                          onChange={handleSearchComponentRegexChange} />
+                          onChange={handleSearchComponentRegexChange}
+                        />
                         <TextField
                           variant="standard"
                           label="Search Column"
                           value={searchColumnRegex}
-                          onChange={handleSearchColumnRegexChange} />
+                          onChange={handleSearchColumnRegexChange}
+                        />
                         <FormControlLabel
                           control={
                             <Checkbox
@@ -992,5 +995,5 @@ export default function ComponentReadiness(props) {
         )}
       />
     </Fragment>
-  );
+  )
 }

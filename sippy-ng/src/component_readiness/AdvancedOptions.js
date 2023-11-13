@@ -7,7 +7,7 @@ import {
   FormGroup,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
@@ -69,7 +69,11 @@ export default function AdvancedOptions(props) {
   }
 
   return (
-    <FormControl variant="standard" className={classes.formControl} component="fieldset">
+    <FormControl
+      variant="standard"
+      className={classes.formControl}
+      component="fieldset"
+    >
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}
@@ -123,7 +127,7 @@ export default function AdvancedOptions(props) {
         </AccordionDetails>
       </Accordion>
     </FormControl>
-  );
+  )
 }
 
 AdvancedOptions.propTypes = {

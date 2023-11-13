@@ -12,7 +12,7 @@ import {
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -151,14 +151,15 @@ export default function GridToolbarFilterItem(props) {
                     value: e.target.value,
                   })
                 }
-                value={props.filterModel.value} />
+                value={props.filterModel.value}
+              />
               <FormHelperText error={valueError} style={{ marginTop: 12 }}>
                 {columnType === 'number'
                   ? 'Numerical value required'
                   : 'Required'}
               </FormHelperText>
             </Fragment>
-          );
+          )
         }
     }
   }
@@ -182,7 +183,8 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`columnFieldLabel-${props.id}`}
           id={`columnField-${props.id}`}
-          autoWidth>
+          autoWidth
+        >
           {props.columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
@@ -238,7 +240,8 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`operatorValueLabel-${props.id}`}
           id={`operatorValue-${props.id}`}
-          autoWidth>
+          autoWidth
+        >
           {operatorValues[columnType].map((operator, index) => (
             <MenuItem key={'operator-' + index} value={operator}>
               {operator}
@@ -249,7 +252,7 @@ export default function GridToolbarFilterItem(props) {
       </FormControl>
       <FormControl variant="standard">{inputField()}</FormControl>
     </Grid>
-  );
+  )
 }
 
 GridToolbarFilterItem.defaultProps = {

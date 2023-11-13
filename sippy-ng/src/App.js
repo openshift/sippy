@@ -1,7 +1,17 @@
 import './App.css'
+import {
+  adaptV4Theme,
+  createTheme,
+  makeStyles,
+  useTheme,
+} from '@mui/material/styles'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
-import { createTheme, makeStyles, useTheme, adaptV4Theme } from '@mui/material/styles';
-import { CssBaseline, Grid, ThemeProvider, StyledEngineProvider } from '@mui/material';
+import {
+  CssBaseline,
+  Grid,
+  StyledEngineProvider,
+  ThemeProvider,
+} from '@mui/material'
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { parse, stringify } from 'query-string'
@@ -234,7 +244,8 @@ export default function App(props) {
                           classes.menuButton,
                           drawerOpen && classes.hide
                         )}
-                        size="large">
+                        size="large"
+                      >
                         <MenuIcon />
                       </IconButton>
                       <Grid
@@ -291,7 +302,9 @@ export default function App(props) {
                         path="/release/:release/tags/:tag"
                         render={(props) => (
                           <ReleasePayloadDetails
-                            key={'release-details-' + props.match.params.release}
+                            key={
+                              'release-details-' + props.match.params.release
+                            }
                             release={props.match.params.release}
                             releaseTag={props.match.params.tag}
                           />
@@ -313,7 +326,9 @@ export default function App(props) {
                         path="/release/:release/streams"
                         render={(props) => (
                           <PayloadStreams
-                            key={'release-streams-' + props.match.params.release}
+                            key={
+                              'release-streams-' + props.match.params.release
+                            }
                             release={props.match.params.release}
                           />
                         )}
@@ -333,7 +348,9 @@ export default function App(props) {
                         path="/release/:release"
                         render={(props) => (
                           <ReleaseOverview
-                            key={'release-overview-' + props.match.params.release}
+                            key={
+                              'release-overview-' + props.match.params.release
+                            }
                             release={props.match.params.release}
                           />
                         )}
@@ -483,5 +500,5 @@ export default function App(props) {
         </CapabilitiesContext.Provider>
       </ReportEndContext.Provider>
     </ReleasesContext.Provider>
-  );
+  )
 }
