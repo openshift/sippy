@@ -68,41 +68,23 @@ export default function Install(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Install" />
+      <Grid width="100vw">
+        <Typography variant="h4" style={{ margin: 10 }} align="center">
+          Install health for {props.release}
+        </Typography>
+      </Grid>
       <Route
         path="/"
         render={({ location }) => (
-          <TabContext value={path}>
-            <Typography align="center" variant="h4">
-              Install health for {props.release}
-            </Typography>
-            <Grid container spacing={2} alignItems="stretch">
+          <Fragment>
+            <Grid container spacing={3} width="100vw">
               <TopLevelIndicators
                 release={props.release}
                 indicators={health.indicators}
               />
-              <Grid
-                container
-                justifyContent="center"
-                size="xl"
-                className="view"
-              >
-                <Paper>
-                  <Tabs
-                    value={location.pathname.substring(
-                      location.pathname.lastIndexOf('/') + 1
-                    )}
-                    indicatorColor="primary"
-                    textColor="primary"
-                  >
-                    <Tab
-                      label="Install rates by operators"
-                      value="operators"
-                      component={Link}
-                      to={url + '/operators'}
-                    />
-                  </Tabs>
-                </Paper>
-              </Grid>
+            </Grid>
+
+            <Grid container spacing={2} alignItems="stretch">
               <Switch>
                 <Route path={path + '/operators'}>
                   <TestByVariantTable
@@ -119,7 +101,7 @@ export default function Install(props) {
                 <Redirect from="/" to={url + '/operators'} />
               </Switch>
             </Grid>
-          </TabContext>
+          </Fragment>
         )}
       />
     </Fragment>

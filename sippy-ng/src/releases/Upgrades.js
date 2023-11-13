@@ -59,31 +59,15 @@ export default function Upgrades(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
+      <Grid width="100vw">
+        <Typography variant="h4" style={{ margin: 10 }} align="center">
+          Upgrade health for {props.release}
+        </Typography>
+      </Grid>
       <Route
         path="/"
         render={({ location }) => (
-          <TabContext value={path}>
-            <Typography align="center" variant="h4">
-              Upgrade health for {props.release}
-            </Typography>
-            <Grid container justifyContent="center" size="xl" className="view">
-              <Paper>
-                <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
-                  )}
-                  indicatorColor="primary"
-                  textColor="primary"
-                >
-                  <Tab
-                    label="Upgrade rates by operator"
-                    value="operators"
-                    component={Link}
-                    to={url + '/operators'}
-                  />
-                </Tabs>
-              </Paper>
-            </Grid>
+          <Fragment>
             <Switch>
               <Route path={path + '/operators'}>
                 <TestByVariantTable
@@ -94,7 +78,7 @@ export default function Upgrades(props) {
               </Route>
               <Redirect from="/" to={url + '/operators'} />
             </Switch>
-          </TabContext>
+          </Fragment>
         )}
       />
     </Fragment>

@@ -41,9 +41,6 @@
   width: 100px;
   min-width: 100px;
   max-width: 100px;
-  word-wrap: break-word;
-  white-space: break-spaces;
-  display: block;
 }
 
 .col-result-full {

@@ -55,15 +55,6 @@ export default function TopLevelIndicators(props) {
 
   return (
     <Fragment>
-      <Grid item md={12} sm={12} style={{ display: 'flex' }}>
-        <Typography variant="h5">
-          Top Level Install Indicators
-          <Tooltip title={TOOLTIP}>
-            <InfoIcon />
-          </Tooltip>
-        </Typography>
-      </Grid>
-
       <Grid item md={2} sm={4}>
         <SummaryCard
           key="infrastructure-summary"
