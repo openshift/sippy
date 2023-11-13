@@ -3,7 +3,13 @@ import { createTheme } from '@mui/material/styles'
 import { format, utcToZonedTime } from 'date-fns-tz'
 import { green, orange, red } from '@mui/material/colors'
 import { Link } from 'react-router-dom'
-import { ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material'
+import {
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Tooltip,
+} from '@mui/material'
 import { scale } from 'chroma-js'
 import List from '@mui/material/List'
 import React, { Fragment } from 'react'
@@ -145,7 +151,7 @@ export function filterList(filter, setFilter) {
 
     explanations.push(
       <ListItem
-        button={Boolean(setFilter)}
+        key={`filter-item-${idx}`}
         onClick={
           setFilter
             ? () => setFilter(filterRemoveItem(originalFilters, idx))

@@ -18,8 +18,9 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
+import { filterList } from '../datagrid/utils'
+import { getColumns, getViews } from './JobTable'
 import {
-  filterFor,
   getReportStartDate,
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
@@ -27,7 +28,6 @@ import {
   SafeJSONParam,
   withSort,
 } from '../helpers'
-import { filterList } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { hourFilter, JobStackedChart } from './JobStackedChart'
 import { JOB_THRESHOLDS } from '../constants'
@@ -41,7 +41,6 @@ import Divider from '@mui/material/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@mui/icons-material/Info'
-import JobTable, { getColumns } from './JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -339,7 +338,7 @@ export function JobAnalysis(props) {
     }
   }
 
-  const gridView = new GridView(getColumns(props), {}, '')
+  const gridView = new GridView(getColumns(props), getViews(props), 'Default')
 
   return (
     <Fragment>

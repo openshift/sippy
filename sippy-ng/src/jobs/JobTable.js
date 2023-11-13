@@ -229,6 +229,114 @@ export const getColumns = (config, openBugzillaDialog) => {
     },
   }
 }
+
+export const getViews = (props) => {
+  return {
+    Default: {
+      sortField: 'current_pass_percentage',
+      sort: 'asc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'test_grid_url',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+        {
+          field: 'job_runs',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+      ],
+    },
+    'Pull Requests': {
+      sortField: 'average_retests_to_merge',
+      sort: 'desc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 1.5,
+          headerClassName: 'wrapHeader',
+        },
+        {
+          field: 'average_retests_to_merge',
+          flex: 1,
+          headerClassName: 'wrapHeader',
+        },
+      ],
+    },
+    'Last passing': {
+      sortField: 'current_runs',
+      sort: 'desc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'last_pass',
+          flex: 1.0,
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'test_grid_url',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+        {
+          field: 'job_runs',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+      ],
+    },
+  }
+}
+
 const useStyles = makeStyles((theme) => ({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
@@ -451,112 +559,7 @@ function JobTable(props) {
     </Button>
   )
 
-  const views = {
-    Default: {
-      sortField: 'current_pass_percentage',
-      sort: 'asc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'net_improvement',
-          flex: 0.5,
-        },
-        {
-          field: 'previous_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'open_bugs',
-          flex: 0.5,
-          hide: props.briefTable,
-        },
-        {
-          field: 'test_grid_url',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-        {
-          field: 'job_runs',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-      ],
-    },
-    'Pull Requests': {
-      sortField: 'average_retests_to_merge',
-      sort: 'desc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 1.5,
-          headerClassName: 'wrapHeader',
-        },
-        {
-          field: 'average_retests_to_merge',
-          flex: 1,
-          headerClassName: 'wrapHeader',
-        },
-      ],
-    },
-    'Last passing': {
-      sortField: 'current_runs',
-      sort: 'desc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'net_improvement',
-          flex: 0.5,
-        },
-        {
-          field: 'previous_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'last_pass',
-          flex: 1.0,
-        },
-        {
-          field: 'open_bugs',
-          flex: 0.5,
-          hide: props.briefTable,
-        },
-        {
-          field: 'test_grid_url',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-        {
-          field: 'job_runs',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-      ],
-    },
-  }
-
-  const gridView = new GridView(getColumns(props), views, view)
+  const gridView = new GridView(getColumns(props), getViews(props), view)
 
   const selectView = (v) => {
     setLoaded(false)

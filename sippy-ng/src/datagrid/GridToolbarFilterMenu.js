@@ -199,7 +199,7 @@ export default function GridToolbarFilterMenu(props) {
       <Tooltip title={filterTooltip(props.filterModel)}>
         <Button
           aria-describedby={id}
-          color={props.standalone ? 'default' : 'primary'}
+          color="primary"
           variant={props.standalone ? 'contained' : 'text'}
           onClick={handleClick}
         >
