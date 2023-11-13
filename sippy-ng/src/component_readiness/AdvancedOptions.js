@@ -69,7 +69,7 @@ export default function AdvancedOptions(props) {
   }
 
   return (
-    <FormControl className={classes.formControl} component="fieldset">
+    <FormControl variant="standard" className={classes.formControl} component="fieldset">
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}
@@ -123,7 +123,7 @@ export default function AdvancedOptions(props) {
         </AccordionDetails>
       </Accordion>
     </FormControl>
-  )
+  );
 }
 
 AdvancedOptions.propTypes = {

@@ -177,16 +177,16 @@ export default function GridToolbarFilterMenu(props) {
       : props.filterModel.items.length
 
   const linkOperatorForm = (
-    <FormControl>
+    <FormControl variant="standard">
       <InputLabel id="linkOperatorLabel">Link operator</InputLabel>
       <Select
+        variant="standard"
         value={linkOperator}
         onChange={(e) => setLinkOperator(e.target.value)}
         className={classes.selector}
         labelId="linkOperatorLabel"
         id="linkOperator"
-        autoWidth
-      >
+        autoWidth>
         <MenuItem value="and">and</MenuItem>
         <MenuItem value="or">or</MenuItem>
       </Select>

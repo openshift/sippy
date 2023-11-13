@@ -55,12 +55,13 @@ export default function GridToolbarAutocomplete(props) {
       }}
       onChange={(e, v) => v && props.onChange(v.name)}
       defaultValue={{ name: props.value }}
-      getOptionSelected={(option, value) => option.name === value.name}
+      isOptionEqualToValue={(option, value) => option.name === value.name}
       getOptionLabel={(option) => option.name}
       options={options}
       loading={loading}
       renderInput={(params) => (
         <TextField
+          variant="standard"
           {...params}
           id={props.id}
           label={props.label}
@@ -81,11 +82,10 @@ export default function GridToolbarAutocomplete(props) {
                 {params.InputProps.endAdornment}
               </React.Fragment>
             ),
-          }}
-        />
+          }} />
       )}
     />
-  )
+  );
 }
 
 GridToolbarAutocomplete.defaultProps = {

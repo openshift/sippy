@@ -94,9 +94,9 @@ function ReleaseSelector(props) {
     <Fragment>
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
-          <FormControl className={classes.formControl}>
+          <FormControl variant="standard" className={classes.formControl}>
             <InputLabel className={classes.label}>{label}</InputLabel>
-            <Select value={version} onChange={onChange}>
+            <Select variant="standard" value={version} onChange={onChange}>
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
                   {v}
@@ -170,7 +170,7 @@ function ReleaseSelector(props) {
         </Grid>
       </Grid>
     </Fragment>
-  )
+  );
 }
 
 ReleaseSelector.propTypes = {

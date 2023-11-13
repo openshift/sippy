@@ -177,7 +177,7 @@ function PayloadStreamOverview(props) {
         spacing={3}
         direction="row"
         alignItems="stretch"
-        justify="center"
+        justifyContent="center"
       >
         <Grid item md={3}>
           <Grid container spacing={3}>
@@ -234,7 +234,7 @@ function PayloadStreamOverview(props) {
         </Grid>
       </Grid>
     </Container>
-  )
+  );
 }
 
 PayloadStreamOverview.defaultProps = {}

@@ -137,6 +137,7 @@ export default function GridToolbarFilterItem(props) {
           return (
             <Fragment>
               <TextField
+                variant="standard"
                 disabled={disabled}
                 inputProps={{ 'data-testid': `value-${props.id}` }}
                 error={operatorValueError}
@@ -150,15 +151,14 @@ export default function GridToolbarFilterItem(props) {
                     value: e.target.value,
                   })
                 }
-                value={props.filterModel.value}
-              />
+                value={props.filterModel.value} />
               <FormHelperText error={valueError} style={{ marginTop: 12 }}>
                 {columnType === 'number'
                   ? 'Numerical value required'
                   : 'Required'}
               </FormHelperText>
             </Fragment>
-          )
+          );
         }
     }
   }
@@ -170,9 +170,10 @@ export default function GridToolbarFilterItem(props) {
       ) : (
         <Button startIcon={<Close />} onClick={props.destroy} />
       )}
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel id={`columnFieldLabel-${props.id}`}>Field</InputLabel>
         <Select
+          variant="standard"
           disabled={disabled}
           inputProps={{ 'data-testid': `columnField-${props.id}` }}
           error={columnFieldError}
@@ -181,8 +182,7 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`columnFieldLabel-${props.id}`}
           id={`columnField-${props.id}`}
-          autoWidth
-        >
+          autoWidth>
           {props.columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
@@ -198,7 +198,7 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={columnFieldError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel shrink id={`notLabel-${props.id}`}>
           Not
         </InputLabel>
@@ -219,9 +219,10 @@ export default function GridToolbarFilterItem(props) {
           aria-labelledby={`notLabel-${props.id}`}
         />
       </FormControl>
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel id={`operatorValueLabel-${props.id}`}>Operator</InputLabel>
         <Select
+          variant="standard"
           disabled={disabled}
           inputProps={{ 'data-testid': `operatorValue-${props.id}` }}
           error={operatorValueError}
@@ -237,8 +238,7 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`operatorValueLabel-${props.id}`}
           id={`operatorValue-${props.id}`}
-          autoWidth
-        >
+          autoWidth>
           {operatorValues[columnType].map((operator, index) => (
             <MenuItem key={'operator-' + index} value={operator}>
               {operator}
@@ -247,9 +247,9 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>{inputField()}</FormControl>
+      <FormControl variant="standard">{inputField()}</FormControl>
     </Grid>
-  )
+  );
 }
 
 GridToolbarFilterItem.defaultProps = {

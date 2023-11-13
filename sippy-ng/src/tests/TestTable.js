@@ -621,7 +621,7 @@ function TestTable(props) {
                   safeEncodeURIComponent(escapeRegex(params.row.name)) +
                   '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
                 }
-              >
+                size="large">
                 <Search />
               </IconButton>
             </Tooltip>
@@ -637,7 +637,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
-              >
+                size="large">
                 <Badge
                   badgeContent={
                     params.row.current_failures + params.row.previous_failures
@@ -660,7 +660,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
-              >
+                size="large">
                 <Badge
                   badgeContent={
                     params.row.current_flakes + params.row.previous_flakes
@@ -672,7 +672,7 @@ function TestTable(props) {
               </IconButton>
             </Tooltip>
           </Grid>
-        )
+        );
       },
     },
     // These are here just to allow filtering
