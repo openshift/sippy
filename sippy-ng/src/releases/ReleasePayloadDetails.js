@@ -1,4 +1,4 @@
-import { Alert } from '@material-ui/lab'
+import { Alert } from '@mui/lab'
 import {
   Button,
   Card,
@@ -10,7 +10,7 @@ import {
   Tabs,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import {
   filterFor,
   pathForJobsWithFilter,
@@ -21,8 +21,8 @@ import {
 import { Fragment } from 'react'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { WarningOutlined } from '@material-ui/icons'
-import InfoIcon from '@material-ui/icons/Info'
+import { WarningOutlined } from '@mui/icons-material'
+import InfoIcon from '@mui/icons-material/Info'
 import JobRunsTable from '../jobs/JobRunsTable'
 import JobsDetail from '../jobs/JobsDetail'
 import JobTable from '../jobs/JobTable'

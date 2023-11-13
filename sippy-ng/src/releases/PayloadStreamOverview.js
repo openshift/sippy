@@ -1,4 +1,4 @@
-import { Card, Container, Grid, Tooltip, Typography } from '@material-ui/core'
+import { Card, Container, Grid, Tooltip, Typography } from '@mui/material'
 import {
   getReportStartDate,
   relativeDuration,
@@ -8,8 +8,8 @@ import {
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
-import { useTheme } from '@material-ui/core/styles'
-import Alert from '@material-ui/lab/Alert'
+import { useTheme } from '@mui/material/styles'
+import Alert from '@mui/lab/Alert'
 import NumberCard from '../components/NumberCard'
 import PayloadMiniCalendar from './PayloadMiniCalendar'
 import PropTypes from 'prop-types'

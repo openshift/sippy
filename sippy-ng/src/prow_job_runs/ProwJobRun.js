@@ -5,10 +5,10 @@ import {
   StringParam,
   useQueryParam,
 } from 'use-query-params'
-import { Button, ButtonGroup, TextField } from '@material-ui/core'
+import { Button, ButtonGroup, TextField } from '@mui/material'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'

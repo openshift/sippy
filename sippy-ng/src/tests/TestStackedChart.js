@@ -1,8 +1,8 @@
-import { Card, CircularProgress, Grid, Typography } from '@material-ui/core'
+import { Card, CircularProgress, Grid, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
-import { useTheme } from '@material-ui/core/styles'
-import Alert from '@material-ui/lab/Alert'
+import { useTheme } from '@mui/material/styles'
+import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

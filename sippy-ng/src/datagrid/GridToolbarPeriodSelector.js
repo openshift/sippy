@@ -1,5 +1,5 @@
-import { Button, Menu, MenuItem, Tooltip } from '@material-ui/core'
-import { Filter2, Filter7 } from '@material-ui/icons'
+import { Button, Menu, MenuItem, Tooltip } from '@mui/material'
+import { Filter2, Filter7 } from '@mui/icons-material'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 

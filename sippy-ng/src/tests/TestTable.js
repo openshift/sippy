@@ -5,7 +5,7 @@ import {
   Check,
   Error as ErrorIcon,
   Search,
-} from '@material-ui/icons'
+} from '@mui/icons-material'
 import {
   Backdrop,
   Badge,
@@ -15,7 +15,7 @@ import {
   Container,
   Grid,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import { DataGrid } from '@material-ui/data-grid'
 import {
@@ -33,12 +33,12 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/material/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@material-ui/styles'
-import Alert from '@material-ui/lab/Alert'
+import { withStyles } from '@mui/styles'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
-import IconButton from '@material-ui/core/IconButton'
+import IconButton from '@mui/material/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useRef } from 'react'

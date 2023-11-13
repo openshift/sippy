@@ -3,12 +3,12 @@ import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { Tooltip, Typography } from '@material-ui/core'
+import { Tooltip, Typography } from '@mui/material'
 import CompReadyTestCell from './CompReadyTestCell'
 import PropTypes from 'prop-types'
 import React from 'react'
-import TableCell from '@material-ui/core/TableCell'
-import TableRow from '@material-ui/core/TableRow'
+import TableCell from '@mui/material/TableCell'
+import TableRow from '@mui/material/TableRow'
 
 // Represents a row on page 4 or page4a when you clicked a testName on page3
 export default function CompCapTestRow(props) {

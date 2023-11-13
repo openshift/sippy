@@ -5,9 +5,9 @@ import {
   Container,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
-import { DirectionsBoat, GitHub } from '@material-ui/icons'
+import { DirectionsBoat, GitHub } from '@mui/icons-material'
 import {
   getReportStartDate,
   pathForExactJob,
@@ -18,7 +18,7 @@ import {
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'

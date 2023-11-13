@@ -8,11 +8,11 @@ import {
   MenuItem,
   Select,
   TextField,
-} from '@material-ui/core'
-import { Close } from '@material-ui/icons'
+} from '@mui/material'
+import { Close } from '@mui/icons-material'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/material/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'

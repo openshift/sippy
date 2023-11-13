@@ -1,5 +1,5 @@
-import { Alert } from '@material-ui/lab'
-import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
+import { Alert } from '@mui/lab'
+import { Backdrop, CircularProgress, makeStyles } from '@mui/material'
 import { PropTypes } from 'prop-types'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'

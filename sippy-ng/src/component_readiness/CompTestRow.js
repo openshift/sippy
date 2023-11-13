@@ -4,12 +4,12 @@ import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { Tooltip, Typography } from '@material-ui/core'
+import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapCell from './CompReadyCapCell'
 import PropTypes from 'prop-types'
 import React from 'react'
-import TableCell from '@material-ui/core/TableCell'
-import TableRow from '@material-ui/core/TableRow'
+import TableCell from '@mui/material/TableCell'
+import TableRow from '@mui/material/TableRow'
 
 // After clicking a testName on page 3 or 3a, we add that testId (that corresponds
 // to that testName) to the api call along with all the other parts we already have.

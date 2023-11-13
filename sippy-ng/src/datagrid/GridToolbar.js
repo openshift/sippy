@@ -1,17 +1,17 @@
-import { createTheme } from '@material-ui/core/styles'
+import { createTheme } from '@mui/material/styles'
 import { GridToolbarDensitySelector } from '@material-ui/data-grid'
-import { makeStyles } from '@material-ui/styles'
-import ClearIcon from '@material-ui/icons/Clear'
+import { makeStyles } from '@mui/styles'
+import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'
 import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
-import IconButton from '@material-ui/core/IconButton'
+import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import SearchIcon from '@material-ui/icons/Search'
-import TextField from '@material-ui/core/TextField'
+import SearchIcon from '@mui/icons-material/Search'
+import TextField from '@mui/material/TextField'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(

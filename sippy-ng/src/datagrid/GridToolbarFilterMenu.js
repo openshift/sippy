@@ -1,5 +1,5 @@
 import './GridToolbarFilterMenu.css'
-import { Add, FilterList } from '@material-ui/icons'
+import { Add, FilterList } from '@mui/icons-material'
 import {
   Badge,
   Button,
@@ -11,10 +11,10 @@ import {
   Popover,
   Select,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { filterTooltip } from './utils'
-import { makeStyles } from '@material-ui/core/styles'
-import Divider from '@material-ui/core/Divider'
+import { makeStyles } from '@mui/material/styles'
+import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
   operatorWithoutValue,
 } from './GridToolbarFilterItem'

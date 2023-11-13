@@ -1,4 +1,4 @@
-import { Container, Typography } from '@material-ui/core'
+import { Container, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import RepositoriesTable from './RepositoriesTable'

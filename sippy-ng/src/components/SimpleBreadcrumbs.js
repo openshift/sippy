@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import Breadcrumbs from '@material-ui/core/Breadcrumbs'
+import Breadcrumbs from '@mui/material/Breadcrumbs'
 import PropTypes from 'prop-types'
 import React from 'react'
-import Typography from '@material-ui/core/Typography'
+import Typography from '@mui/material/Typography'
 
 export default function SimpleBreadcrumbs(props) {
   return (

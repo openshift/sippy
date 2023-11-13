@@ -6,15 +6,15 @@ import {
   Tabs,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { createTheme, makeStyles } from '@mui/material/styles'
 import { Fragment, React } from 'react'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
-import { TabContext } from '@material-ui/lab'
+import { TabContext } from '@mui/lab'
 import BuildClusterHealthChart from './BuildClusterHealthChart'
 import BuildClusterTable from './BuildClusterTable'
-import Grid from '@material-ui/core/Grid'
-import InfoIcon from '@material-ui/icons/Info'
+import Grid from '@mui/material/Grid'
+import InfoIcon from '@mui/icons-material/Info'
 
 const defaultTheme = createTheme()
 const useStyles = makeStyles(

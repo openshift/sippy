@@ -7,14 +7,14 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
 import { scale } from 'chroma-js'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

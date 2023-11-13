@@ -5,8 +5,8 @@ import {
   Tab,
   Tabs,
   Typography,
-} from '@material-ui/core'
-import { TabContext } from '@material-ui/lab'
+} from '@mui/material'
+import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

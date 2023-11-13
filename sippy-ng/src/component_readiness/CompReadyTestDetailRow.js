@@ -1,10 +1,10 @@
 import './ComponentReadiness.css'
 import { Fragment } from 'react'
-import { Typography } from '@material-ui/core'
+import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React from 'react'
-import TableCell from '@material-ui/core/TableCell'
-import TableRow from '@material-ui/core/TableRow'
+import TableCell from '@mui/material/TableCell'
+import TableRow from '@mui/material/TableRow'
 
 const getJobRunColor = (jobRun) => {
   if (jobRun.test_stats.flake_count > 0) {

@@ -1,10 +1,10 @@
 // TODO: separate css for this file?
 import '../jobs/JobTable.css'
 import { DataGrid } from '@material-ui/data-grid'
-import { Grid } from '@material-ui/core'
+import { Grid } from '@mui/material'
 import { SafeJSONParam } from '../helpers'
 import { useQueryParam } from 'use-query-params'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'

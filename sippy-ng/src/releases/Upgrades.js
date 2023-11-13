@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types'
 
-import { Alert, TabContext } from '@material-ui/lab'
+import { Alert, TabContext } from '@mui/lab'
 import {
   Container,
   Grid,
@@ -8,7 +8,7 @@ import {
   Tab,
   Tabs,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import React, { Fragment, useEffect } from 'react'
 
 import './Upgrades.css'

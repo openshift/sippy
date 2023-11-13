@@ -1,6 +1,6 @@
-import { Alert } from '@material-ui/lab'
+import { Alert } from '@mui/lab'
 import { ArrayParam, useQueryParam } from 'use-query-params'
-import { Backdrop, CircularProgress, makeStyles } from '@material-ui/core'
+import { Backdrop, CircularProgress, makeStyles } from '@mui/material'
 import { safeEncodeURIComponent } from '../helpers'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import PropTypes from 'prop-types'

@@ -1,4 +1,4 @@
-import { Typography } from '@material-ui/core'
+import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import PullRequestsTable from './PullRequestsTable'
 import React, { Fragment, useEffect } from 'react'

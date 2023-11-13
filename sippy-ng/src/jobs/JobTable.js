@@ -1,7 +1,7 @@
 import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
-import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
-import { Button, Container, Tooltip, Typography } from '@material-ui/core'
+import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
+import { Button, Container, Tooltip, Typography } from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
@@ -14,10 +14,10 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/material/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@material-ui/styles'
-import Alert from '@material-ui/lab/Alert'
+import { withStyles } from '@mui/styles'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'

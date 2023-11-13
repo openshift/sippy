@@ -6,7 +6,7 @@ import {
   useQueryParam,
   withDefault,
 } from 'use-query-params'
-import { ArrowBack, ArrowForward } from '@material-ui/icons'
+import { ArrowBack, ArrowForward } from '@mui/icons-material'
 import {
   Box,
   Button,
@@ -16,7 +16,7 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   filterFor,
@@ -35,12 +35,12 @@ import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { ReportEndContext } from '../App'
 import { scale } from 'chroma-js'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import BugTable from '../bugs/BugTable'
-import Divider from '@material-ui/core/Divider'
+import Divider from '@mui/material/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import JobTable, { getColumns } from './JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'

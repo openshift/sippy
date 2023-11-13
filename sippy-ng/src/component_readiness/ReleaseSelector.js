@@ -1,6 +1,6 @@
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
 import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { Filter1, Filter2, Filter4, LocalShipping } from '@material-ui/icons'
+import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,
   Grid,
@@ -8,12 +8,12 @@ import {
   MenuItem,
   Select,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { Fragment, useContext, useEffect } from 'react'
 import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/material/styles'
 import { ReleasesContext } from '../App'
-import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab'
+import { ToggleButton, ToggleButtonGroup } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
 

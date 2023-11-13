@@ -5,10 +5,10 @@ import {
   INSTALL_OTHER_THRESHOLDS,
   INSTALL_THRESHOLDS,
 } from '../constants'
-import { Box, Tooltip, Typography } from '@material-ui/core'
+import { Box, Tooltip, Typography } from '@mui/material'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
-import Grid from '@material-ui/core/Grid'
-import InfoIcon from '@material-ui/icons/Info'
+import Grid from '@mui/material/Grid'
+import InfoIcon from '@mui/icons-material/Info'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'

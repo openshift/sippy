@@ -6,14 +6,14 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { BOOKMARKS } from '../constants'
 import {
   CheckCircle,
   Error as ErrorIcon,
   GitHub,
   History,
-} from '@material-ui/icons'
+} from '@mui/icons-material'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   getReportStartDate,
@@ -23,10 +23,10 @@ import {
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { makeStyles, useTheme } from '@mui/material/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'

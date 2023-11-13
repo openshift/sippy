@@ -5,14 +5,14 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import {
   CheckCircle,
   Error as ErrorIcon,
   Help,
   Warning,
-} from '@material-ui/icons'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+} from '@mui/icons-material'
+import { createTheme, makeStyles } from '@mui/material/styles'
 import {
   getReportStartDate,
   relativeTime,
@@ -20,7 +20,7 @@ import {
 } from '../helpers'
 import { Link } from 'react-router-dom'
 import { ReportEndContext } from '../App'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 

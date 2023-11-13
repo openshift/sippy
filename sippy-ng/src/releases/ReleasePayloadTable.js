@@ -1,13 +1,13 @@
 import './ReleasePayloadTable.css'
-import { Box, Button, Container, Tooltip, Typography } from '@material-ui/core'
+import { Box, Button, Container, Tooltip, Typography } from '@mui/material'
 import {
   CheckCircle,
   CompareArrows,
   Error as ErrorIcon,
   Help,
   Warning,
-} from '@material-ui/icons'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+} from '@mui/icons-material'
+import { createTheme, makeStyles } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   getReportStartDate,
@@ -18,7 +18,7 @@ import {
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'

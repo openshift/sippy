@@ -1,5 +1,5 @@
-import { Card, Container, Grid, Typography } from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+import { Card, Container, Grid, Typography } from '@mui/material'
+import { createTheme, makeStyles } from '@mui/material/styles'
 import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
 import { Link } from 'react-router-dom'
 import JobTable from '../jobs/JobTable'

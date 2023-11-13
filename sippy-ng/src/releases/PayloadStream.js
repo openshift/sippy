@@ -6,10 +6,10 @@ import {
   Tab,
   Tabs,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { TabContext } from '@material-ui/lab'
+import { TabContext } from '@mui/lab'
 import PayloadCalendar from './PayloadCalendar'
 import PayloadStreamOverview from './PayloadStreamOverview'
 import PayloadStreamTestFailures from './PayloadStreamTestFailures'

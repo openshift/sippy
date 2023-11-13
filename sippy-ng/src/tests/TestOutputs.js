@@ -9,11 +9,11 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-} from '@material-ui/core'
-import { DirectionsBoat } from '@material-ui/icons'
-import { makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { DirectionsBoat } from '@mui/icons-material'
+import { makeStyles } from '@mui/material/styles'
 import { safeEncodeURIComponent } from '../helpers'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

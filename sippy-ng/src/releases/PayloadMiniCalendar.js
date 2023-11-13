@@ -1,12 +1,12 @@
 import FullCalendar from '@fullcalendar/react'
 
 import { filterFor, safeEncodeURIComponent } from '../helpers'
-import { Tooltip, Typography } from '@material-ui/core'
+import { Tooltip, Typography } from '@mui/material'
 import { useHistory } from 'react-router-dom'
-import { useTheme } from '@material-ui/core/styles'
-import Alert from '@material-ui/lab/Alert'
+import { useTheme } from '@mui/material/styles'
+import Alert from '@mui/lab/Alert'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

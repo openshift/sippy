@@ -5,13 +5,13 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { Alert } from '@material-ui/lab'
-import { ExpandMore } from '@material-ui/icons'
+} from '@mui/material'
+import { Alert } from '@mui/lab'
+import { ExpandMore } from '@mui/icons-material'
 import { pathForVariantAnalysis } from '../helpers'
 import { PropTypes } from 'prop-types'
 import { VARIANT_THRESHOLDS } from '../constants'
-import Info from '@material-ui/icons/Info'
+import Info from '@mui/icons-material/Info'
 import MiniCard from '../components/MiniCard'
 import React, { Fragment, useEffect } from 'react'
 

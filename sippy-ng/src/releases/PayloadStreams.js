@@ -1,5 +1,5 @@
-import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { Typography } from '@material-ui/core'
+import { createTheme, makeStyles } from '@mui/material/styles'
+import { Typography } from '@mui/material'
 import PayloadStreamsTable from './PayloadStreamsTable'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'

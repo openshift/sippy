@@ -1,9 +1,9 @@
 import './SippyLogo.css'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/material/styles'
 import logo from '../sippy.svg'
-import Popover from '@material-ui/core/Popover'
+import Popover from '@mui/material/Popover'
 import React from 'react'
-import Typography from '@material-ui/core/Typography'
+import Typography from '@mui/material/Typography'
 
 const useStyles = makeStyles((theme) => ({
   popover: {

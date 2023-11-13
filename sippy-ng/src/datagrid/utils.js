@@ -1,15 +1,15 @@
-import { Close } from '@material-ui/icons'
+import { Close } from '@mui/icons-material'
 import {
   createTheme,
   ListItem,
   ListItemIcon,
   ListItemText,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { format, utcToZonedTime } from 'date-fns-tz'
 import { Link } from 'react-router-dom'
 import { scale } from 'chroma-js'
-import List from '@material-ui/core/List'
+import List from '@mui/material/List'
 import React, { Fragment } from 'react'
 
 const theme = createTheme()

@@ -4,12 +4,12 @@ import {
   makeStyles,
   Modal,
   TextField,
-} from '@material-ui/core'
+} from '@mui/material'
 import { safeEncodeURIComponent } from '../helpers'
-import CloseIcon from '@material-ui/icons/Close'
+import CloseIcon from '@mui/icons-material/Close'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
-import Typography from '@material-ui/core/Typography'
+import Typography from '@mui/material/Typography'
 
 const useStyles = makeStyles((theme) => ({
   alignedButton: {

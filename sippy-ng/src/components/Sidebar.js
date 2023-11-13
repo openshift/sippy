@@ -8,10 +8,10 @@ import {
   FileCopyOutlined,
   GitHub,
   Restore,
-} from '@material-ui/icons'
+} from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
-import { ListSubheader, Tooltip, useTheme } from '@material-ui/core'
+import { ListSubheader, Tooltip, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
@@ -20,23 +20,23 @@ import {
   withSort,
 } from '../helpers'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
-import ApartmentIcon from '@material-ui/icons/Apartment'
-import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward'
-import AssessmentIcon from '@material-ui/icons/Assessment'
-import Collapse from '@material-ui/core/Collapse'
-import Divider from '@material-ui/core/Divider'
-import ExitToAppIcon from '@material-ui/icons/ExitToApp'
-import HomeIcon from '@material-ui/icons/Home'
-import InfoIcon from '@material-ui/icons/Info'
-import List from '@material-ui/core/List'
-import ListIcon from '@material-ui/icons/List'
-import ListItem from '@material-ui/core/ListItem'
-import ListItemIcon from '@material-ui/core/ListItemIcon'
-import ListItemText from '@material-ui/core/ListItemText'
-import NewReleasesIcon from '@material-ui/icons/NewReleases'
+import ApartmentIcon from '@mui/icons-material/Apartment'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import Collapse from '@mui/material/Collapse'
+import Divider from '@mui/material/Divider'
+import ExitToAppIcon from '@mui/icons-material/ExitToApp'
+import HomeIcon from '@mui/icons-material/Home'
+import InfoIcon from '@mui/icons-material/Info'
+import List from '@mui/material/List'
+import ListIcon from '@mui/icons-material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
+import NewReleasesIcon from '@mui/icons-material/NewReleases'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import SearchIcon from '@material-ui/icons/Search'
+import SearchIcon from '@mui/icons-material/Search'
 import SippyLogo from './SippyLogo'
 
 export default function Sidebar(props) {
