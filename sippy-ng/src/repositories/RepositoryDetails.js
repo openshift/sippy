@@ -1,5 +1,4 @@
 import { Card, Container, Grid, Typography } from '@mui/material'
-import { createTheme } from '@mui/material/styles'
 import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
@@ -9,27 +8,23 @@ import PullRequestsTable from '../pull_requests/PullRequestsTable'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    root: {
-      flexGrow: 1,
-    },
-    card: {
-      minWidth: 275,
-      alignContent: 'center',
-      margin: 'auto',
-    },
-    title: {
-      textAlign: 'center',
-    },
-    warning: {
-      margin: 10,
-      width: '100%',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+  },
+  card: {
+    minWidth: 275,
+    alignContent: 'center',
+    margin: 'auto',
+  },
+  title: {
+    textAlign: 'center',
+  },
+  warning: {
+    margin: 10,
+    width: '100%',
+  },
+}))
 
 export default function RepositoryDetails(props) {
   const classes = useStyles()

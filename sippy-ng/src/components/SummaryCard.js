@@ -31,6 +31,7 @@ export default function SummaryCard(props) {
       ((props.flakes || 0) + props.fail + props.success)) *
     100
 
+  console.log(theme.palette.warning.light)
   const colors = scale([
     theme.palette.error.light,
     theme.palette.warning.light,

@@ -1,8 +1,7 @@
 import { CheckCircle, Error as ErrorIcon, Help } from '@mui/icons-material'
-import { createTheme } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { Tooltip } from '@mui/material'
@@ -11,25 +10,21 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseAccepted: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseRejected: {
-      backgroundColor: theme.palette.error.light,
-    },
-    rowPhaseForced: {
-      backgroundColor: theme.palette.warning.light,
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseAccepted: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseRejected: {
+    backgroundColor: theme.palette.error.light,
+  },
+  rowPhaseForced: {
+    backgroundColor: theme.palette.warning.light,
+  },
+}))
 
 function PayloadStreamsTable(props) {
-  const classes = useStyles()
-  const theme = defaultTheme
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const columns = [
     {

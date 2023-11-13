@@ -1,18 +1,34 @@
 import { Close } from '@mui/icons-material'
-import {
-  createTheme,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-} from '@mui/material'
+import { createTheme } from '@mui/material/styles'
 import { format, utcToZonedTime } from 'date-fns-tz'
+import { green, orange, red } from '@mui/material/colors'
 import { Link } from 'react-router-dom'
+import { ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material'
 import { scale } from 'chroma-js'
 import List from '@mui/material/List'
 import React, { Fragment } from 'react'
 
-const theme = createTheme()
+// TODO(v5): colors aren't right but I can't wire in the provider's theme yet here...
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    success: {
+      main: green[500],
+      light: green[300],
+      dark: green[700],
+    },
+    warning: {
+      main: orange[500],
+      light: orange[300],
+      dark: orange[700],
+    },
+    error: {
+      main: red[500],
+      light: red[300],
+      dark: red[700],
+    },
+  },
+})
 
 // DataGrid tables can only be customized by specifying a classname, so this
 // creates the classes needed for creating background color gradient.

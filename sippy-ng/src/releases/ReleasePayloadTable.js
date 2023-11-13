@@ -1,5 +1,5 @@
 import './ReleasePayloadTable.css'
-import { Box, Button, Container, Tooltip, Typography } from '@mui/material'
+import { Box, Button, Tooltip, Typography } from '@mui/material'
 import {
   CheckCircle,
   CompareArrows,
@@ -7,7 +7,6 @@ import {
   Help,
   Warning,
 } from '@mui/icons-material'
-import { createTheme } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import {
   getReportStartDate,
@@ -16,7 +15,7 @@ import {
   SafeJSONParam,
 } from '../helpers'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/lab/Alert'
@@ -24,25 +23,21 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseAccepted: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseRejected: {
-      backgroundColor: theme.palette.error.light,
-    },
-    rowPhaseForced: {
-      backgroundColor: theme.palette.warning.light,
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseAccepted: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseRejected: {
+    backgroundColor: theme.palette.error.light,
+  },
+  rowPhaseForced: {
+    backgroundColor: theme.palette.warning.light,
+  },
+}))
 
 function ReleasePayloadTable(props) {
-  const classes = useStyles()
-  const theme = defaultTheme
+  const theme = useTheme()
+  const classes = useStyles(theme)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
   const columns = [
     {

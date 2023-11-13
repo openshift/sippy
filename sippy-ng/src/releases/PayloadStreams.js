@@ -1,4 +1,3 @@
-import { createTheme } from '@mui/material/styles'
 import { makeStyles } from '@mui/styles'
 import { Typography } from '@mui/material'
 import PayloadStreamsTable from './PayloadStreamsTable'
@@ -6,15 +5,11 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 function PayloadStreams(props) {
   const classes = useStyles()

@@ -1,8 +1,7 @@
 import { Button, Tooltip } from '@mui/material'
 import { Check, DirectionsBoat } from '@mui/icons-material'
-import { createTheme } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@mui/lab/Alert'
@@ -10,24 +9,21 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseSucceeded: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseFailed: {
-      backgroundColor: theme.palette.error.light,
-    },
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseSucceeded: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseFailed: {
+    backgroundColor: theme.palette.error.light,
+  },
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 function ReleasePayloadJobRuns(props) {
-  const classes = useStyles()
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const columns = [
     {

@@ -12,35 +12,30 @@ import {
   Help,
   Warning,
 } from '@mui/icons-material'
-import { createTheme } from '@mui/material/styles'
 import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
 } from '../helpers'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    releasePayloadOK: {
-      backgroundColor: theme.palette.success.light,
-    },
-    releasePayloadProblem: {
-      backgroundColor: theme.palette.error.light,
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  releasePayloadOK: {
+    backgroundColor: theme.palette.success.light,
+  },
+  releasePayloadProblem: {
+    backgroundColor: theme.palette.error.light,
+  },
+}))
 
 function ReleasePayloadAcceptance(props) {
   const classes = useStyles()
-  const theme = defaultTheme
+  const theme = useTheme()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)

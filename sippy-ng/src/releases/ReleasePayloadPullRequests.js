@@ -1,4 +1,3 @@
-import { createTheme } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
@@ -8,24 +7,21 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseAccepted: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseRejected: {
-      backgroundColor: theme.palette.error.light,
-    },
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseAccepted: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseRejected: {
+    backgroundColor: theme.palette.error.light,
+  },
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 function ReleasePayloadPullRequests(props) {
-  const classes = useStyles()
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const columns = [
     {
