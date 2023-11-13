@@ -792,15 +792,6 @@ func (aw *AnalysisWorker) buildProwJobMap(prJobRoot string) (map[time.Time]prow.
 			continue
 		}
 
-		// jobName
-		// pr-logs/pull/org_repo/1555/pull-ci-openshift-origin-master-e2e-aws-csi/
-		// jobPath := strings.Split(attrs.Prefix, "/")
-
-		// last string is "" so -2
-		// jobName := jobPath[len(jobPath)-2]
-
-		// https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/origin-ci-test/logs/openshift-cluster-node-tuning-operator-771-ci-4.14-upgrade-from-stable-4.13-e2e-gcp-ovn-rt-upgrade/1693982822663983104/prowjob.json
-
 		bytes, err := jobRun.GetContent(context.TODO(), fmt.Sprintf("%s%s", attrs.Prefix, "prowjob.json"))
 		if err != nil {
 			log.WithError(err).Errorf("Failed to get prowjob for: %s", attrs.Prefix)
