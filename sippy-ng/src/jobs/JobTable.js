@@ -133,6 +133,7 @@ export const getColumns = (config, openBugzillaDialog) => {
         return (
           <Tooltip title="TestGrid">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GridOn />}
@@ -152,6 +153,7 @@ export const getColumns = (config, openBugzillaDialog) => {
         return (
           <Tooltip title="See all job runs">
             <Button
+              color="inherit"
               component={Link}
               style={{ justifyContent: 'center' }}
               startIcon={<DirectionsRun />}
