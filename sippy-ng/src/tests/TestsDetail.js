@@ -1,4 +1,5 @@
 import { Alert } from '@mui/lab'
+import { styled } from '@mui/material/styles';
 import { ArrayParam, useQueryParam } from 'use-query-params'
 import { Backdrop, CircularProgress, makeStyles } from '@mui/material'
 import { safeEncodeURIComponent } from '../helpers'
@@ -7,15 +8,26 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import TestByVariantTable from './TestByVariantTable'
 
-const useStyles = makeStyles((theme) => ({
-  backdrop: {
+const PREFIX = 'TestsDetail';
+
+const classes = {
+  backdrop: `${PREFIX}-backdrop`
+};
+
+// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.backdrop}`]: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
-  },
-}))
+  }
+}));
 
 export default function TestsDetails(props) {
-  const classes = useStyles()
+
 
   const [names = props.test, setNames] = useQueryParam('test', ArrayParam)
   const [query, setQuery] = React.useState('')
@@ -70,14 +82,14 @@ export default function TestsDetails(props) {
   }
 
   const filterBox = (
-    <Fragment>
+    <Root>
       <GridToolbarSearchBox
         value={query}
         setValue={setQuery}
         action={updateFilter}
         required={true}
       />
-    </Fragment>
+    </Root>
   )
 
   if (!isLoaded) {

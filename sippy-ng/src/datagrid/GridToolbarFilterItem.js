@@ -9,6 +9,7 @@ import {
   Select,
   TextField,
 } from '@mui/material'
+import { styled } from '@mui/material/styles';
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
 import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
@@ -17,19 +18,33 @@ import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  filterMenu: {
+const PREFIX = 'GridToolbarFilterItem';
+
+const classes = {
+  filterMenu: `${PREFIX}-filterMenu`,
+  filterAdd: `${PREFIX}-filterAdd`,
+  selector: `${PREFIX}-selector`
+};
+
+const StyledGrid = styled(Grid)((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.filterMenu}`]: {
     padding: 20,
   },
-  filterAdd: {
+
+  [`& .${classes.filterAdd}`]: {
     padding: 20,
     textAlign: 'right',
   },
-  selector: {
+
+  [`& .${classes.selector}`]: {
     margin: theme.spacing(1),
     minWidth: 120,
-  },
-}))
+  }
+}));
 
 export const operatorWithoutValue = ['is empty', 'is not empty']
 
@@ -45,7 +60,7 @@ const operatorValues = {
  * of a column field, operator, value, and optional not modifier.
  */
 export default function GridToolbarFilterItem(props) {
-  const classes = useStyles()
+
 
   let columnType = 'string'
   let autocomplete = ''
@@ -151,20 +166,21 @@ export default function GridToolbarFilterItem(props) {
                     value: e.target.value,
                   })
                 }
-                value={props.filterModel.value} />
+                value={props.filterModel.value}
+              />
               <FormHelperText error={valueError} style={{ marginTop: 12 }}>
                 {columnType === 'number'
                   ? 'Numerical value required'
                   : 'Required'}
               </FormHelperText>
             </Fragment>
-          );
+          )
         }
     }
   }
 
   return (
-    <Grid container>
+    <StyledGrid container>
       {disabled ? (
         <Button disabled />
       ) : (
@@ -182,7 +198,8 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`columnFieldLabel-${props.id}`}
           id={`columnField-${props.id}`}
-          autoWidth>
+          autoWidth
+        >
           {props.columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
@@ -238,7 +255,8 @@ export default function GridToolbarFilterItem(props) {
           className={classes.selector}
           labelId={`operatorValueLabel-${props.id}`}
           id={`operatorValue-${props.id}`}
-          autoWidth>
+          autoWidth
+        >
           {operatorValues[columnType].map((operator, index) => (
             <MenuItem key={'operator-' + index} value={operator}>
               {operator}
@@ -248,7 +266,7 @@ export default function GridToolbarFilterItem(props) {
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
       <FormControl variant="standard">{inputField()}</FormControl>
-    </Grid>
+    </StyledGrid>
   );
 }
 

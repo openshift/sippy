@@ -1,4 +1,5 @@
 import { Alert } from '@mui/lab'
+import { styled } from '@mui/material/styles';
 import { Backdrop, CircularProgress, makeStyles } from '@mui/material'
 import { PropTypes } from 'prop-types'
 import { safeEncodeURIComponent } from '../helpers'
@@ -7,12 +8,23 @@ import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import JobDetailTable from './JobDetailTable'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  backdrop: {
+const PREFIX = 'JobsDetail';
+
+const classes = {
+  backdrop: `${PREFIX}-backdrop`
+};
+
+// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.backdrop}`]: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
-  },
-}))
+  }
+}));
 
 const msPerDay = 86400 * 1000
 
@@ -20,7 +32,7 @@ const msPerDay = 86400 * 1000
  * JobsDetail is the landing page for the JobDetailTable.
  */
 export default function JobsDetail(props) {
-  const classes = useStyles()
+
 
   const [query, setQuery] = React.useState('')
   const [data, setData] = React.useState({ jobs: [] })
@@ -87,7 +99,7 @@ export default function JobsDetail(props) {
   }
 
   const filterSearch = (
-    <Fragment>
+    <Root>
       <Alert severity="warning">Enter a search query below</Alert>
       <br />
       <GridToolbarSearchBox
@@ -95,7 +107,7 @@ export default function JobsDetail(props) {
         setValue={setQuery}
         action={updateFilter}
       />
-    </Fragment>
+    </Root>
   )
 
   if (data.jobs.length === 0) {

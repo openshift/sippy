@@ -1,4 +1,5 @@
 import { filterFor } from '../helpers'
+import { styled } from '@mui/material/styles';
 import { Grid, makeStyles, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -11,18 +12,31 @@ import React, { Fragment, useState } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
-  title: {
+const PREFIX = 'PayloadStream';
+
+const classes = {
+  title: `${PREFIX}-title`,
+  backdrop: `${PREFIX}-backdrop`
+};
+
+// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.title}`]: {
     textAlign: 'center',
   },
-  backdrop: {
+
+  [`& .${classes.backdrop}`]: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
-  },
-}))
+  }
+}));
 
 export default function PayloadStream(props) {
-  const classes = useStyles()
+
   const { path, url } = useRouteMatch()
 
   const [currentTab, setCurrentTab] = useState(0)
@@ -51,7 +65,7 @@ export default function PayloadStream(props) {
   }
 
   return (
-    <Fragment>
+    <Root>
       <SimpleBreadcrumbs
         release={props.release}
         previousPage={
@@ -149,8 +163,8 @@ export default function PayloadStream(props) {
           </TabContext>
         )}
       />
-    </Fragment>
-  )
+    </Root>
+  );
 }
 
 PayloadStream.propTypes = {

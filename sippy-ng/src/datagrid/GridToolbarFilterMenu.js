@@ -1,4 +1,5 @@
 import './GridToolbarFilterMenu.css'
+import { styled } from '@mui/material/styles';
 import { Add, FilterList } from '@mui/icons-material'
 import {
   Badge,
@@ -21,22 +22,39 @@ import GridToolbarFilterItem, {
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  filterMenu: {
+const PREFIX = 'GridToolbarFilterMenu';
+
+const classes = {
+  filterMenu: `${PREFIX}-filterMenu`,
+  filterAdd: `${PREFIX}-filterAdd`,
+  selector: `${PREFIX}-selector`,
+  resetButton: `${PREFIX}-resetButton`
+};
+
+// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.filterMenu}`]: {
     padding: 20,
   },
-  filterAdd: {
+
+  [`& .${classes.filterAdd}`]: {
     padding: 20,
     textAlign: 'right',
   },
-  selector: {
+
+  [`& .${classes.selector}`]: {
     margin: theme.spacing(1),
     minWidth: 120,
   },
-  resetButton: {
+
+  [`& .${classes.resetButton}`]: {
     marginLeft: 10,
-  },
-}))
+  }
+}));
 
 /**
  * GridToolbarFilterMenu is a drop-in replacement for the built-in material data tables
@@ -44,7 +62,7 @@ const useStyles = makeStyles((theme) => ({
  * component can do multiple filters, as well as adding the concept of a "not" modifier.
  */
 export default function GridToolbarFilterMenu(props) {
-  const classes = useStyles()
+
   const [anchorEl, setAnchorEl] = React.useState(null)
   const [models, setModels] = React.useState(props.filterModel.items || [])
 
@@ -186,7 +204,8 @@ export default function GridToolbarFilterMenu(props) {
         className={classes.selector}
         labelId="linkOperatorLabel"
         id="linkOperator"
-        autoWidth>
+        autoWidth
+      >
         <MenuItem value="and">and</MenuItem>
         <MenuItem value="or">or</MenuItem>
       </Select>
@@ -194,7 +213,7 @@ export default function GridToolbarFilterMenu(props) {
   )
 
   return (
-    <Fragment>
+    <Root>
       <Tooltip title={filterTooltip(props.filterModel)}>
         <Button
           aria-describedby={id}
@@ -262,8 +281,8 @@ export default function GridToolbarFilterMenu(props) {
           </Button>
         </Grid>
       </Popover>
-    </Fragment>
-  )
+    </Root>
+  );
 }
 
 GridToolbarFilterItem.defaultProps = {

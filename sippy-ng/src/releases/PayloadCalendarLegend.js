@@ -1,37 +1,54 @@
 import { Box, Typography } from '@mui/material'
+import { styled } from '@mui/material/styles';
 import { makeStyles, useTheme } from '@mui/material/styles'
 import React from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  legendContainer: {
+const PREFIX = 'PayloadCalendarLegend';
+
+const classes = {
+  legendContainer: `${PREFIX}-legendContainer`,
+  legendLabel: `${PREFIX}-legendLabel`,
+  legendItem: `${PREFIX}-legendItem`,
+  square: `${PREFIX}-square`
+};
+
+const StyledBox = styled(Box)((
+  {
+    theme
+  }
+) => ({
+  [`&.${classes.legendContainer}`]: {
     display: 'flex',
     alignItems: 'center',
     marginBottom: theme.spacing(2),
     border: '1px solid black',
     padding: theme.spacing(2),
   },
-  legendLabel: {
+
+  [`& .${classes.legendLabel}`]: {
     marginBottom: theme.spacing(1),
   },
-  legendItem: {
+
+  [`& .${classes.legendItem}`]: {
     marginRight: theme.spacing(2),
     display: 'flex',
     alignItems: 'center',
   },
-  square: {
+
+  [`& .${classes.square}`]: {
     width: theme.spacing(1.5),
     height: theme.spacing(1.5),
     marginRight: theme.spacing(1),
     borderRadius: '2px',
-  },
-}))
+  }
+}));
 
 export default function PayloadCalendarLegend() {
   const theme = useTheme()
-  const classes = useStyles()
+
 
   return (
-    <Box className={classes.legendContainer}>
+    <StyledBox className={classes.legendContainer}>
       <Box className={classes.legendItem}>
         <Box
           className={classes.square}
@@ -53,6 +70,6 @@ export default function PayloadCalendarLegend() {
         />
         <Typography variant="body2">Incident</Typography>
       </Box>
-    </Box>
-  )
+    </StyledBox>
+  );
 }

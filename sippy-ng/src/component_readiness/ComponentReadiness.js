@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { styled } from '@mui/material/styles';
 import {
   ArrayParam,
   BooleanParam,
@@ -64,23 +65,46 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 
-const drawerWidth = 240
+const PREFIX = 'ComponentReadiness';
 
-const useStyles = makeStyles((theme) => ({
-  root: {
+const classes = {
+  root: `${PREFIX}-root`,
+  title: `${PREFIX}-title`,
+  appBar: `${PREFIX}-appBar`,
+  appBarShift: `${PREFIX}-appBarShift`,
+  backdrop: `${PREFIX}-backdrop`,
+  menuButton: `${PREFIX}-menuButton`,
+  hide: `${PREFIX}-hide`,
+  drawer: `${PREFIX}-drawer`,
+  drawerPaper: `${PREFIX}-drawerPaper`,
+  drawerHeader: `${PREFIX}-drawerHeader`,
+  content: `${PREFIX}-content`,
+  contentShift: `${PREFIX}-contentShift`
+};
+
+// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.root}`]: {
     display: 'flex',
     flexGrow: 1,
   },
-  title: {
+
+  [`& .${classes.title}`]: {
     flexGrow: 1,
   },
-  appBar: {
+
+  [`& .${classes.appBar}`]: {
     transition: theme.transitions.create(['margin', 'width'], {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
   },
-  appBarShift: {
+
+  [`& .${classes.appBarShift}`]: {
     width: `calc(100% - ${drawerWidth}px)`,
     marginLeft: drawerWidth,
     transition: theme.transitions.create(['margin', 'width'], {
@@ -88,24 +112,30 @@ const useStyles = makeStyles((theme) => ({
       duration: theme.transitions.duration.enteringScreen,
     }),
   },
-  backdrop: {
+
+  [`& .${classes.backdrop}`]: {
     zIndex: theme.zIndex.drawer + 1,
     color: '#fff',
   },
-  menuButton: {
+
+  [`& .${classes.menuButton}`]: {
     marginRight: theme.spacing(2),
   },
-  hide: {
+
+  [`& .${classes.hide}`]: {
     display: 'none',
   },
-  drawer: {
+
+  [`& .${classes.drawer}`]: {
     width: drawerWidth,
     flexShrink: 0,
   },
-  drawerPaper: {
+
+  [`& .${classes.drawerPaper}`]: {
     width: drawerWidth,
   },
-  drawerHeader: {
+
+  [`& .${classes.drawerHeader}`]: {
     display: 'flex',
     alignItems: 'center',
     padding: theme.spacing(0, 1),
@@ -113,7 +143,8 @@ const useStyles = makeStyles((theme) => ({
     ...theme.mixins.toolbar,
     justifyContent: 'flex-end',
   },
-  content: {
+
+  [`& .${classes.content}`]: {
     maxWidth: '100%',
     flexGrow: 1,
     padding: theme.spacing(3),
@@ -123,14 +154,17 @@ const useStyles = makeStyles((theme) => ({
     }),
     marginLeft: -drawerWidth,
   },
-  contentShift: {
+
+  [`& .${classes.contentShift}`]: {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
     marginLeft: 0,
-  },
-}))
+  }
+}));
+
+const drawerWidth = 240
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -178,7 +212,7 @@ export default function ComponentReadiness(props) {
   }
 
   //console.log('ComponentReadiness start')
-  const classes = useStyles()
+
   const theme = useTheme()
 
   const [searchComponentRegex, setSearchComponentRegex] = useState('')
@@ -490,7 +524,7 @@ export default function ComponentReadiness(props) {
   )
 
   return (
-    <Fragment>
+    <Root>
       <Route
         path={path}
         render={({ location }) => (
@@ -764,7 +798,8 @@ export default function ComponentReadiness(props) {
                       classes.menuButton,
                       drawerOpen && classes.hide
                     )}
-                    size="large">
+                    size="large"
+                  >
                     <MenuIcon />
                   </IconButton>
                   <Drawer
@@ -851,12 +886,14 @@ export default function ComponentReadiness(props) {
                           variant="standard"
                           label="Search Component"
                           value={searchComponentRegex}
-                          onChange={handleSearchComponentRegexChange} />
+                          onChange={handleSearchComponentRegexChange}
+                        />
                         <TextField
                           variant="standard"
                           label="Search Column"
                           value={searchColumnRegex}
-                          onChange={handleSearchColumnRegexChange} />
+                          onChange={handleSearchColumnRegexChange}
+                        />
                         <FormControlLabel
                           control={
                             <Checkbox
@@ -991,6 +1028,6 @@ export default function ComponentReadiness(props) {
           </Fragment>
         )}
       />
-    </Fragment>
+    </Root>
   );
 }

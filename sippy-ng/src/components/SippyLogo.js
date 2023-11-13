@@ -1,21 +1,34 @@
 import './SippyLogo.css'
+import { styled } from '@mui/material/styles';
 import { makeStyles } from '@mui/material/styles'
 import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
 import React from 'react'
 import Typography from '@mui/material/Typography'
 
-const useStyles = makeStyles((theme) => ({
-  popover: {
+const PREFIX = 'SippyLogo';
+
+const classes = {
+  popover: `${PREFIX}-popover`,
+  paper: `${PREFIX}-paper`
+};
+
+const Root = styled('div')((
+  {
+    theme
+  }
+) => ({
+  [`& .${classes.popover}`]: {
     pointerEvents: 'none',
   },
-  paper: {
+
+  [`& .${classes.paper}`]: {
     padding: theme.spacing(1),
-  },
-}))
+  }
+}));
 
 export default function SippyLogo() {
-  const classes = useStyles()
+
   const [anchorEl, setAnchorEl] = React.useState(null)
 
   const handlePopoverOpen = (event) => {
@@ -29,7 +42,7 @@ export default function SippyLogo() {
   const open = Boolean(anchorEl)
 
   return (
-    <div align="center">
+    <Root align="center">
       <Typography
         aria-owns={open ? 'mouse-over-popover' : undefined}
         aria-haspopup="true"
@@ -68,6 +81,6 @@ export default function SippyLogo() {
           Private Investigator (CIPI).
         </Typography>
       </Popover>
-    </div>
-  )
+    </Root>
+  );
 }
