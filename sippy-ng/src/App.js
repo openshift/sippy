@@ -204,7 +204,11 @@ export default function App(props) {
               }}
             >
               <div className={classes.root}>
-                <AppBar position="fixed" open={drawerOpen}>
+                <AppBar
+                  position="fixed"
+                  open={drawerOpen}
+                  sx={{ bgcolor: '#3f51b5' }}
+                >
                   <Toolbar edge="start">
                     <IconButton
                       color="inherit"

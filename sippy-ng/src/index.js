@@ -1,6 +1,6 @@
 import './index.css'
 import { createTheme } from '@mui/material/styles'
-import { green, orange, red } from '@mui/material/colors'
+import { cyan, green, orange, red } from '@mui/material/colors'
 import { QueryParamProvider } from 'use-query-params'
 import { BrowserRouter as Router } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
@@ -12,6 +12,11 @@ import ReactDOM from 'react-dom'
 const lightTheme = {
   palette: {
     mode: 'light',
+    info: {
+      main: cyan[500],
+      light: cyan[300],
+      dark: cyan[700],
+    },
     success: {
       main: green[500],
       light: green[300],
