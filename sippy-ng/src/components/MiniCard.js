@@ -7,7 +7,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/material/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { scale } from 'chroma-js'
 import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'

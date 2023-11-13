@@ -1,5 +1,6 @@
-import { createTheme, makeStyles } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
 import { DataGrid } from '@material-ui/data-grid'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@mui/lab/Alert'

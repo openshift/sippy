@@ -1,7 +1,7 @@
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
 import { Card, Container, Tooltip, Typography } from '@mui/material'
-import { createTheme, makeStyles } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
 import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import {
   getReportStartDate,
@@ -12,6 +12,7 @@ import {
   withSort,
 } from '../helpers'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/lab/Alert'

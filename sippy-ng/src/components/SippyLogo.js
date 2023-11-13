@@ -1,5 +1,5 @@
 import './SippyLogo.css'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
 import React from 'react'

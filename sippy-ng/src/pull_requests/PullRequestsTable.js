@@ -23,7 +23,7 @@ import {
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/material/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@mui/lab/Alert'

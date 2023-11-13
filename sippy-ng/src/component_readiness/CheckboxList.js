@@ -9,7 +9,7 @@ import {
   FormGroup,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Typography from '@mui/material/Typography'

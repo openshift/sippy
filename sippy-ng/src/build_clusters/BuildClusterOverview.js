@@ -7,9 +7,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { createTheme, makeStyles } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
 import { Fragment, React } from 'react'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { TabContext } from '@mui/lab'
 import BuildClusterHealthChart from './BuildClusterHealthChart'
 import BuildClusterTable from './BuildClusterTable'

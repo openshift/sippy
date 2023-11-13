@@ -1,7 +1,7 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/material/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { scale } from 'chroma-js'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'

@@ -4,28 +4,18 @@ import {
   Card,
   Container,
   Grid,
-  makeStyles,
   Paper,
   Tab,
   Tabs,
   Tooltip,
   Typography,
 } from '@mui/material'
-import {
-  filterFor,
-  pathForJobsWithFilter,
-  safeEncodeURIComponent,
-  withoutUnstable,
-  withSort,
-} from '../helpers'
+import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'
-import InfoIcon from '@mui/icons-material/Info'
-import JobRunsTable from '../jobs/JobRunsTable'
-import JobsDetail from '../jobs/JobsDetail'
-import JobTable from '../jobs/JobTable'
 import PayloadTestFailures from './PayloadTestFailures'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'

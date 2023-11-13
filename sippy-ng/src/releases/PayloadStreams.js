@@ -1,4 +1,5 @@
-import { createTheme, makeStyles } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import { Typography } from '@mui/material'
 import PayloadStreamsTable from './PayloadStreamsTable'
 import PropTypes from 'prop-types'

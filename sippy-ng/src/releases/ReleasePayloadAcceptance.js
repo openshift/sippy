@@ -12,13 +12,14 @@ import {
   Help,
   Warning,
 } from '@mui/icons-material'
-import { createTheme, makeStyles } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles'
 import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
 } from '../helpers'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'

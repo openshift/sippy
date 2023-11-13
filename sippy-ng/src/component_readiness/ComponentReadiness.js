@@ -41,7 +41,7 @@ import {
   useRouteMatch,
 } from 'react-router-dom'
 
-import { makeStyles, useTheme } from '@mui/material/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'

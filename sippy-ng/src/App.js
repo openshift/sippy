@@ -1,10 +1,5 @@
 import './App.css'
-import {
-  adaptV4Theme,
-  createTheme,
-  makeStyles,
-  useTheme,
-} from '@mui/material/styles'
+import { adaptV4Theme, createTheme, useTheme } from '@mui/material/styles'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
 import {
   CssBaseline,
@@ -14,6 +9,7 @@ import {
 } from '@mui/material'
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
+import { makeStyles } from '@mui/styles'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'

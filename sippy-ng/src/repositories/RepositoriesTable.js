@@ -10,7 +10,7 @@ import { DataGrid } from '@material-ui/data-grid'
 import { Details, Launch } from '@mui/icons-material'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,

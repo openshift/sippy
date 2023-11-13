@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { DirectionsBoat } from '@mui/icons-material'
-import { makeStyles } from '@mui/material/styles'
+import { makeStyles } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/lab/Alert'
 import PropTypes from 'prop-types'
