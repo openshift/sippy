@@ -134,9 +134,13 @@ function ReleaseSelector(props) {
           </MuiPickersUtilsProvider>
         </Grid>
         <Grid item md={12} style={{ marginTop: 5 }}>
-          <ToggleButtonGroup size="small" ria-label="release-dates">
+          <ToggleButtonGroup aria-label="release-dates">
             <Tooltip title="Last week">
-              <ToggleButton onClick={set1Week} aria-label="filter-2">
+              <ToggleButton
+                variant="primary"
+                onClick={set1Week}
+                aria-label="filter-2"
+              >
                 <Filter1 fontSize="small" />
               </ToggleButton>
             </Tooltip>
