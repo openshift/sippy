@@ -97,6 +97,10 @@ export const CapabilitiesContext = React.createContext([])
 export const ReportEndContext = React.createContext('')
 
 const useStyles = makeStyles(() => ({
+  root: {
+    display: 'flex',
+    flexGrow: 1,
+  },
   title: {
     flexGrow: 1,
   },
@@ -199,253 +203,257 @@ export default function App(props) {
                 objectToSearchString: stringify,
               }}
             >
-              <AppBar position="fixed" open={drawerOpen}>
-                <Toolbar edge="start">
-                  <IconButton
-                    color="inherit"
-                    aria-label="open drawer"
-                    onClick={handleDrawerOpen}
-                    edge="start"
-                    sx={{ mr: 2, ...(drawerOpen && { display: 'none' }) }}
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                  <Grid
-                    container
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
-                    <Typography variant="h6" className={classes.title}>
-                      Sippy
-                    </Typography>
-                    Last updated{' '}
-                    {lastUpdated !== null
-                      ? relativeTime(lastUpdated, startDate)
-                      : 'unknown'}
-                  </Grid>
-                </Toolbar>
-              </AppBar>
+              <div className={classes.root}>
+                <AppBar position="fixed" open={drawerOpen}>
+                  <Toolbar edge="start">
+                    <IconButton
+                      color="inherit"
+                      aria-label="open drawer"
+                      onClick={handleDrawerOpen}
+                      edge="start"
+                      sx={{ mr: 2, ...(drawerOpen && { display: 'none' }) }}
+                    >
+                      <MenuIcon />
+                    </IconButton>
+                    <Grid
+                      container
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="h6" className={classes.title}>
+                        Sippy
+                      </Typography>
+                      Last updated{' '}
+                      {lastUpdated !== null
+                        ? relativeTime(lastUpdated, startDate)
+                        : 'unknown'}
+                    </Grid>
+                  </Toolbar>
+                </AppBar>
 
-              <Drawer
-                sx={{
-                  width: drawerWidth,
-                  flexShrink: 0,
-                  '& .MuiDrawer-paper': {
+                <Drawer
+                  sx={{
                     width: drawerWidth,
-                    boxSizing: 'border-box',
-                  },
-                }}
-                variant="persistent"
-                anchor="left"
-                open={drawerOpen}
-              >
-                <DrawerHeader>
-                  <IconButton onClick={handleDrawerClose} size="large">
-                    {theme.direction === 'ltr' ? (
-                      <ChevronLeftIcon />
-                    ) : (
-                      <ChevronRightIcon />
-                    )}
-                  </IconButton>
-                </DrawerHeader>
-                <Sidebar releases={releases['releases']} />
-              </Drawer>
+                    flexShrink: 0,
+                    '& .MuiDrawer-paper': {
+                      width: drawerWidth,
+                      boxSizing: 'border-box',
+                    },
+                  }}
+                  variant="persistent"
+                  anchor="left"
+                  open={drawerOpen}
+                >
+                  <DrawerHeader>
+                    <IconButton onClick={handleDrawerClose} size="large">
+                      {theme.direction === 'ltr' ? (
+                        <ChevronLeftIcon />
+                      ) : (
+                        <ChevronRightIcon />
+                      )}
+                    </IconButton>
+                  </DrawerHeader>
+                  <Sidebar releases={releases['releases']} />
+                </Drawer>
 
-              <Main open={drawerOpen}>
-                <DrawerHeader />
-                {/* eslint-disable react/prop-types */}
-                <Switch>
-                  <Route path="/about">
-                    <p>Hello, world!</p>
-                  </Route>
+                <Main open={drawerOpen}>
+                  <DrawerHeader />
+                  {/* eslint-disable react/prop-types */}
+                  <Switch>
+                    <Route path="/about">
+                      <p>Hello, world!</p>
+                    </Route>
 
-                  <Route
-                    path="/release/:release/tags/:tag"
-                    render={(props) => (
-                      <ReleasePayloadDetails
-                        key={'release-details-' + props.match.params.release}
-                        release={props.match.params.release}
-                        releaseTag={props.match.params.tag}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/release/:release/tags/:tag"
+                      render={(props) => (
+                        <ReleasePayloadDetails
+                          key={'release-details-' + props.match.params.release}
+                          release={props.match.params.release}
+                          releaseTag={props.match.params.tag}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/release/:release/streams/:arch/:stream"
-                    render={(props) => (
-                      <PayloadStream
-                        release={props.match.params.release}
-                        arch={props.match.params.arch}
-                        stream={props.match.params.stream}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/release/:release/streams/:arch/:stream"
+                      render={(props) => (
+                        <PayloadStream
+                          release={props.match.params.release}
+                          arch={props.match.params.arch}
+                          stream={props.match.params.stream}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/release/:release/streams"
-                    render={(props) => (
-                      <PayloadStreams
-                        key={'release-streams-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/release/:release/streams"
+                      render={(props) => (
+                        <PayloadStreams
+                          key={'release-streams-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/release/:release/tags"
-                    render={(props) => (
-                      <ReleasePayloads
-                        key={'release-tags-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/release/:release/tags"
+                      render={(props) => (
+                        <ReleasePayloads
+                          key={'release-tags-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/release/:release"
-                    render={(props) => (
-                      <ReleaseOverview
-                        key={'release-overview-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/release/:release"
+                      render={(props) => (
+                        <ReleaseOverview
+                          key={'release-overview-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/variants/:release/:variant"
-                    render={(props) => (
-                      <VariantStatus
-                        release={props.match.params.release}
-                        variant={props.match.params.variant}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/variants/:release/:variant"
+                      render={(props) => (
+                        <VariantStatus
+                          release={props.match.params.release}
+                          variant={props.match.params.variant}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/jobs/:release/analysis"
-                    render={(props) => (
-                      <JobAnalysis release={props.match.params.release} />
-                    )}
-                  />
+                    <Route
+                      path="/jobs/:release/analysis"
+                      render={(props) => (
+                        <JobAnalysis release={props.match.params.release} />
+                      )}
+                    />
 
-                  <Route
-                    path="/jobs/:release"
-                    render={(props) => (
-                      <Jobs
-                        key={'jobs-' + props.match.params.release}
-                        title={'Job results for ' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/jobs/:release"
+                      render={(props) => (
+                        <Jobs
+                          key={'jobs-' + props.match.params.release}
+                          title={
+                            'Job results for ' + props.match.params.release
+                          }
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/tests/:release/analysis"
-                    render={(props) => (
-                      <TestAnalysis release={props.match.params.release} />
-                    )}
-                  />
+                    <Route
+                      path="/tests/:release/analysis"
+                      render={(props) => (
+                        <TestAnalysis release={props.match.params.release} />
+                      )}
+                    />
 
-                  <Route
-                    path="/tests/:release"
-                    render={(props) => (
-                      <Tests
-                        key={'tests-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/tests/:release"
+                      render={(props) => (
+                        <Tests
+                          key={'tests-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/upgrade/:release"
-                    render={(props) => (
-                      <Upgrades
-                        key={'upgrades-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/upgrade/:release"
+                      render={(props) => (
+                        <Upgrades
+                          key={'upgrades-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/component_readiness"
-                    render={(props) => {
-                      return (
-                        <CompReadyVarsProvider>
-                          <ComponentReadiness key={window.location.href} />
-                        </CompReadyVarsProvider>
-                      )
-                    }}
-                  />
+                    <Route
+                      path="/component_readiness"
+                      render={(props) => {
+                        return (
+                          <CompReadyVarsProvider>
+                            <ComponentReadiness key={window.location.href} />
+                          </CompReadyVarsProvider>
+                        )
+                      }}
+                    />
 
-                  <Route
-                    path="/install/:release"
-                    render={(props) => (
-                      <Install
-                        key={'install-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/install/:release"
+                      render={(props) => (
+                        <Install
+                          key={'install-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/build_clusters/:cluster"
-                    render={(props) => (
-                      <BuildClusterDetails
-                        key={'cluster-' + props.match.params.cluster}
-                        cluster={props.match.params.cluster}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/build_clusters/:cluster"
+                      render={(props) => (
+                        <BuildClusterDetails
+                          key={'cluster-' + props.match.params.cluster}
+                          cluster={props.match.params.cluster}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/build_clusters"
-                    render={() => <BuildClusterOverview />}
-                  />
+                    <Route
+                      path="/build_clusters"
+                      render={() => <BuildClusterOverview />}
+                    />
 
-                  <Route
-                    path="/repositories/:release/:org/:repo"
-                    render={(props) => (
-                      <RepositoryDetails
-                        release={props.match.params.release}
-                        org={props.match.params.org}
-                        repo={props.match.params.repo}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/repositories/:release/:org/:repo"
+                      render={(props) => (
+                        <RepositoryDetails
+                          release={props.match.params.release}
+                          org={props.match.params.org}
+                          repo={props.match.params.repo}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/repositories/:release"
-                    render={(props) => (
-                      <Repositories release={props.match.params.release} />
-                    )}
-                  />
+                    <Route
+                      path="/repositories/:release"
+                      render={(props) => (
+                        <Repositories release={props.match.params.release} />
+                      )}
+                    />
 
-                  <Route
-                    path="/pull_requests/:release"
-                    render={(props) => (
-                      <PullRequests
-                        key={'pr-' + props.match.params.release}
-                        release={props.match.params.release}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/pull_requests/:release"
+                      render={(props) => (
+                        <PullRequests
+                          key={'pr-' + props.match.params.release}
+                          release={props.match.params.release}
+                        />
+                      )}
+                    />
 
-                  <Route
-                    path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
-                    render={(props) => (
-                      <ProwJobRun
-                        jobRunID={props.match.params.jobrunid}
-                        jobName={props.match.params.jobname}
-                        repoInfo={props.match.params.repoinfo}
-                        pullNumber={props.match.params.pullnumber}
-                      />
-                    )}
-                  />
+                    <Route
+                      path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
+                      render={(props) => (
+                        <ProwJobRun
+                          jobRunID={props.match.params.jobrunid}
+                          jobName={props.match.params.jobname}
+                          repoInfo={props.match.params.repoinfo}
+                          pullNumber={props.match.params.pullnumber}
+                        />
+                      )}
+                    />
 
-                  <Route path="/">{landingPage}</Route>
-                </Switch>
-                {/* eslint-enable react/prop-types */}
-              </Main>
+                    <Route path="/">{landingPage}</Route>
+                  </Switch>
+                  {/* eslint-enable react/prop-types */}
+                </Main>
+              </div>
             </QueryParamProvider>
           </StyledEngineProvider>
         </CapabilitiesContext.Provider>
