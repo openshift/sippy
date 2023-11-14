@@ -231,10 +231,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	errs := []error{}
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
-						FROM ci_analysis_us.component_mapping cm
+						FROM ci_analysis_us.qe_component_mapping cm
 						WHERE created_at = (
 								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+								FROM openshift-gce-devel.ci_analysis_us.qe_component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
@@ -360,10 +360,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	errs := []error{}
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
-						FROM ci_analysis_us.component_mapping cm
+						FROM ci_analysis_us.qe_component_mapping cm
 						WHERE created_at = (
 								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+								FROM openshift-gce-devel.ci_analysis_us.qe_component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
