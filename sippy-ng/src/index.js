@@ -3,7 +3,7 @@ import { createTheme } from '@mui/material/styles'
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { QueryParamProvider } from 'use-query-params'
 import { BrowserRouter as Router } from 'react-router-dom'
-import { ThemeProvider } from '@mui/material'
+import { StyledEngineProvider, ThemeProvider } from '@mui/material'
 import App from './App'
 import React from 'react'
 import ReactDOM from 'react-dom'
@@ -40,7 +40,9 @@ ReactDOM.render(
     <Router basename="/sippy-ng/">
       <QueryParamProvider options={{ enableBatching: true }}>
         <ThemeProvider theme={createTheme(lightTheme)}>
-          <App />
+          <StyledEngineProvider injectFirst>
+            <App />
+          </StyledEngineProvider>
         </ThemeProvider>
       </QueryParamProvider>
     </Router>
