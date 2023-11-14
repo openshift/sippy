@@ -1,4 +1,4 @@
-import { Container, Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -38,13 +38,21 @@ export default function Tests(props) {
             <Typography align="center" variant="h4">
               Tests for {props.release}
             </Typography>
-            <Grid
-              container
-              justifyContent="center"
-              width="60%"
-              style={{ margin: 20 }}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
             >
-              <Paper>
+              <Paper
+                sx={{
+                  margin: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  display: 'inline-block',
+                }}
+              >
                 <Tabs
                   value={location.pathname.substring(
                     location.pathname.lastIndexOf('/') + 1
@@ -56,11 +64,13 @@ export default function Tests(props) {
                     label="All tests"
                     value={props.release}
                     component={Link}
+                    sx={{ padding: '6px 12px !important' }}
                     to={url + search}
                   />
                   <Tab
                     label="Tests by variant"
                     value="details"
+                    sx={{ padding: '6px 12px !important' }}
                     component={Link}
                     to={url + '/details' + search}
                   />
@@ -68,6 +78,7 @@ export default function Tests(props) {
                     label="Watchlist"
                     value="watchlist"
                     component={Link}
+                    sx={{ padding: '6px 12px !important' }}
                     to={withSort(
                       pathForAPIWithFilter(
                         `/tests/${props.release}/watchlist`,
@@ -87,7 +98,7 @@ export default function Tests(props) {
                   />
                 </Tabs>
               </Paper>
-            </Grid>
+            </Box>
             <Switch>
               <Route path={path + '/details'}>
                 <TestTable release={props.release} collapse={false} />

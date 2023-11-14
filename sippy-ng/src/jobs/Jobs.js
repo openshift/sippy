@@ -1,4 +1,12 @@
-import { Container, Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  Tab,
+  Tabs,
+  Typography,
+} from '@mui/material'
 import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -31,13 +39,21 @@ export default function Jobs(props) {
             <Typography align="center" variant="h4">
               Job health for {props.release}
             </Typography>
-            <Grid
-              container
-              justifyContent="center"
-              width="60%"
-              style={{ margin: 20 }}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
             >
-              <Paper>
+              <Paper
+                sx={{
+                  margin: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  display: 'inline-block',
+                }}
+              >
                 <Tabs
                   value={location.pathname.substring(
                     location.pathname.lastIndexOf('/') + 1
@@ -50,22 +66,25 @@ export default function Jobs(props) {
                     value={props.release}
                     component={Link}
                     to={url}
+                    sx={{ padding: '6px 12px !important' }}
                   />
                   <Tab
                     label="Permafailing"
                     value="permafailing"
                     component={Link}
                     to={url + '/permafailing'}
+                    sx={{ padding: '6px 12px !important' }}
                   />
                   <Tab
                     label="All job runs"
                     value="runs"
                     component={Link}
                     to={url + '/runs'}
+                    sx={{ padding: '6px 12px !important' }}
                   />
                 </Tabs>
               </Paper>
-            </Grid>
+            </Box>
             <Container size="xl">
               <Switch>
                 <Route path={path + '/runs'}>
