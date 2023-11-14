@@ -141,6 +141,7 @@ function RepositoriesTable(props) {
         return (
           <Tooltip title="Details">
             <Button
+              color="inherit"
               component={Link}
               target="_blank"
               startIcon={<Launch />}

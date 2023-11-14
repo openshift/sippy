@@ -282,6 +282,7 @@ export default function PullRequestsTable(props) {
         return (
           <Tooltip title="View job run history">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<History />}
@@ -304,6 +305,7 @@ export default function PullRequestsTable(props) {
         return (
           <Tooltip title="View pull request">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GitHub />}
