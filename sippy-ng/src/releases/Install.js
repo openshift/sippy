@@ -1,13 +1,11 @@
 import './Install.css'
-import { Alert, TabContext } from '@mui/lab'
-import { BOOKMARKS } from '../constants'
-import { Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
-import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import { Grid, Typography } from '@mui/material'
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
-import TestTable from '../tests/TestTable'
 import TopLevelIndicators from './InstallTopLevelIndicators'
 
 export default function Install(props) {

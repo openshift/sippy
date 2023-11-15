@@ -1,4 +1,3 @@
-import { Alert } from '@mui/lab'
 import {
   Button,
   Card,
@@ -16,6 +15,7 @@ import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'
+import Alert from '@mui/material/Alert'
 import PayloadTestFailures from './PayloadTestFailures'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'

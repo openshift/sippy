@@ -5,11 +5,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Alert } from '@mui/lab'
 import { ExpandMore } from '@mui/icons-material'
 import { pathForVariantAnalysis } from '../helpers'
 import { PropTypes } from 'prop-types'
 import { VARIANT_THRESHOLDS } from '../constants'
+import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Unstable_Grid2'
 import Info from '@mui/icons-material/Info'
 import MiniCard from '../components/MiniCard'

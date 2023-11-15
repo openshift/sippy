@@ -1,6 +1,6 @@
-import { Alert } from '@mui/lab'
 import { format } from 'date-fns'
 import { Typography } from '@mui/material'
+import Alert from '@mui/material/Alert'
 import green from './green-3.png'
 import green_half_data from './green-half-data.png'
 import green_missing_data from './green_no_data.png'

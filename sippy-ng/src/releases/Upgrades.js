@@ -1,16 +1,11 @@
-import PropTypes from 'prop-types'
-
-import { Alert, TabContext } from '@mui/lab'
-import { Container, Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
-import React, { Fragment, useEffect } from 'react'
-
 import './Upgrades.css'
-import { BOOKMARKS } from '../constants'
-import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
-import JobTable from '../jobs/JobTable'
+import { Grid, Typography } from '@mui/material'
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import Alert from '@mui/material/Alert'
+import PropTypes from 'prop-types'
+import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
-import TestTable from '../tests/TestTable'
 
 /**
  *  Upgrades is the landing page for upgrades.
