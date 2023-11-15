@@ -1,6 +1,6 @@
 import './PayloadTestFailures.css'
 import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'

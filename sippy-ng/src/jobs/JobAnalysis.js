@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { filterList } from '../datagrid/utils'
 import { getColumns, getViews } from './JobTable'
 import {

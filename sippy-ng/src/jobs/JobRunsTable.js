@@ -6,7 +6,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { DirectionsBoat, GitHub } from '@mui/icons-material'
 import {
   getReportStartDate,

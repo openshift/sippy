@@ -1,6 +1,6 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
 import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'

@@ -1,5 +1,5 @@
 import { CheckCircle, Error as ErrorIcon, Help } from '@mui/icons-material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'

@@ -8,7 +8,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
 import { scale } from 'chroma-js'

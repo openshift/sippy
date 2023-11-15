@@ -1,5 +1,5 @@
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
+import { DatePicker, MuiPickersUtilsProvider } from '@mui/x-date-pickers'
 import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,

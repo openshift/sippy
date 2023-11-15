@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   escapeRegex,
   filterFor,

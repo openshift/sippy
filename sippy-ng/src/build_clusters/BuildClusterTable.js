@@ -7,7 +7,7 @@ import {
 } from 'use-query-params'
 import { BUILD_CLUSTER_THRESHOLDS, JOB_THRESHOLDS } from '../constants'
 import { CircularProgress, Tooltip } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'

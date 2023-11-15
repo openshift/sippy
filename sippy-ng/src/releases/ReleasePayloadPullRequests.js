@@ -1,4 +1,4 @@
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'

@@ -6,7 +6,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { Details, Launch } from '@mui/icons-material'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'

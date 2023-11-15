@@ -1,4 +1,4 @@
-import { GridToolbarDensitySelector } from '@material-ui/data-grid'
+import { GridToolbarDensitySelector } from '@mui/x-data-grid'
 import { makeStyles, useTheme } from '@mui/styles'
 import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'

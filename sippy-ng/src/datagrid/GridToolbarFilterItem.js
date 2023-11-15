@@ -10,7 +10,7 @@ import {
   TextField,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
-import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
+import { DateTimePicker, MuiPickersUtilsProvider } from '@mui/x-date-pickers'
 import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
 import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'

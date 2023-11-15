@@ -7,7 +7,7 @@ import {
   Help,
   Warning,
 } from '@mui/icons-material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   getReportStartDate,
   relativeTime,

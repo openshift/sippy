@@ -2,7 +2,7 @@ import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@material-ui/data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   escapeRegex,
   pathForExactJobAnalysis,
