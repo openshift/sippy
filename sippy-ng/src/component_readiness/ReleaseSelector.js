@@ -1,5 +1,6 @@
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import { DatePicker } from '@mui/x-date-pickers'
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,
@@ -7,15 +8,16 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
 } from '@mui/material'
 import { Fragment, useContext, useEffect } from 'react'
-import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
 import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
-import { ToggleButton, ToggleButtonGroup } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
+import TextField from '@mui/material/TextField'
 
 const useStyles = makeStyles((theme) => ({
   formControl: {
@@ -104,30 +106,34 @@ function ReleaseSelector(props) {
               ))}
             </Select>
           </FormControl>
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="From"
-            format={dateFormat}
-            ampm={false}
-            value={startTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateFormat)
-              setStartTime(formattedTime)
-            }}
-          />
-          <DatePicker
-            showTodayButton
-            disableFuture
-            label="To"
-            format={dateEndFormat}
-            ampm={false}
-            value={endTime}
-            onChange={(e) => {
-              const formattedTime = formatLongDate(e, dateEndFormat)
-              setEndTime(formattedTime)
-            }}
-          />
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DatePicker
+              showTodayButton
+              disableFuture
+              label="From"
+              format={dateFormat}
+              ampm={false}
+              value={startTime}
+              onChange={(e) => {
+                const formattedTime = formatLongDate(e, dateFormat)
+                setStartTime(formattedTime)
+              }}
+              renderInput={(props) => <TextField {...props} />}
+            />
+            <DatePicker
+              showTodayButton
+              disableFuture
+              label="To"
+              format={dateEndFormat}
+              ampm={false}
+              value={endTime}
+              onChange={(e) => {
+                const formattedTime = formatLongDate(e, dateEndFormat)
+                setEndTime(formattedTime)
+              }}
+              renderInput={(props) => <TextField {...props} />}
+            />
+          </LocalizationProvider>
         </Grid>
         <Grid item md={12} style={{ marginTop: 5 }}>
           <ToggleButtonGroup aria-label="release-dates">
@@ -136,23 +142,25 @@ function ReleaseSelector(props) {
                 variant="primary"
                 onClick={set1Week}
                 aria-label="filter-2"
+                value=""
               >
                 <Filter1 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="Last 2 weeks">
-              <ToggleButton onClick={set2Weeks} aria-label="filter-2">
+              <ToggleButton onClick={set2Weeks} aria-label="filter-2" value="">
                 <Filter2 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="Last 4 weeks">
-              <ToggleButton onClick={set4Weeks} aria-label="filter-4">
+              <ToggleButton onClick={set4Weeks} aria-label="filter-4" value="">
                 <Filter4 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="4 weeks before GA">
               <ToggleButton
                 onClick={setGADate}
+                value=""
                 aria-label="ga-date"
                 fontSize="small"
                 style={{
