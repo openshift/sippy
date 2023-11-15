@@ -53,6 +53,6 @@ export default function GridToolbarViewSelector(props) {
 
 GridToolbarViewSelector.propTypes = {
   view: PropTypes.string,
-  views: PropTypes.arrayOf(Object),
+  views: PropTypes.object,
   setView: PropTypes.func.isRequired,
 }

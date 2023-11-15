@@ -1,5 +1,5 @@
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import { DatePicker, MuiPickersUtilsProvider } from '@mui/x-date-pickers'
+import { DatePicker } from '@mui/x-date-pickers'
 import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,
@@ -104,34 +104,30 @@ function ReleaseSelector(props) {
               ))}
             </Select>
           </FormControl>
-          <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-            <DatePicker
-              showTodayButton
-              disableFuture
-              label="From"
-              format={dateFormat}
-              ampm={false}
-              value={startTime}
-              onChange={(e) => {
-                const formattedTime = formatLongDate(e, dateFormat)
-                setStartTime(formattedTime)
-              }}
-            />
-          </MuiPickersUtilsProvider>
-          <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-            <DatePicker
-              showTodayButton
-              disableFuture
-              label="To"
-              format={dateEndFormat}
-              ampm={false}
-              value={endTime}
-              onChange={(e) => {
-                const formattedTime = formatLongDate(e, dateEndFormat)
-                setEndTime(formattedTime)
-              }}
-            />
-          </MuiPickersUtilsProvider>
+          <DatePicker
+            showTodayButton
+            disableFuture
+            label="From"
+            format={dateFormat}
+            ampm={false}
+            value={startTime}
+            onChange={(e) => {
+              const formattedTime = formatLongDate(e, dateFormat)
+              setStartTime(formattedTime)
+            }}
+          />
+          <DatePicker
+            showTodayButton
+            disableFuture
+            label="To"
+            format={dateEndFormat}
+            ampm={false}
+            value={endTime}
+            onChange={(e) => {
+              const formattedTime = formatLongDate(e, dateEndFormat)
+              setEndTime(formattedTime)
+            }}
+          />
         </Grid>
         <Grid item md={12} style={{ marginTop: 5 }}>
           <ToggleButtonGroup aria-label="release-dates">

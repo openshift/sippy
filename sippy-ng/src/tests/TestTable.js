@@ -1,28 +1,17 @@
 import './TestTable.css'
-import {
-  AcUnit,
-  BugReport,
-  Check,
-  Error as ErrorIcon,
-  Search,
-} from '@mui/icons-material'
+import { AcUnit, Error as ErrorIcon, Search } from '@mui/icons-material'
 import {
   Backdrop,
   Badge,
   Box,
-  Button,
   CircularProgress,
-  Container,
   Grid,
   Tooltip,
 } from '@mui/material'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { DataGrid } from '@mui/x-data-grid'
 import {
   escapeRegex,
   filterFor,
-  not,
-  pathForExactJobAnalysis,
   pathForExactTestAnalysisWithFilter,
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
@@ -35,6 +24,7 @@ import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
+import { StyledDataGrid } from '../datagrid/StyledDataGrid'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/lab/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -53,21 +43,9 @@ const bookmarks = [
 ]
 
 const useStyles = makeStyles((theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
+  backdrop: {
+    zIndex: 999999,
+    color: '#fff',
   },
 }))
 
@@ -188,6 +166,7 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
+          hide: true,
         },
         {
           field: 'variants',
@@ -253,6 +232,7 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
+          hide: true,
         },
         {
           field: 'variants',
@@ -398,9 +378,10 @@ function TestTable(props) {
     },
     suite_name: {
       field: 'suite_name',
+      hide: true,
       headerName: 'Suite',
       autocomplete: 'suite_name',
-      type: 'array',
+      type: 'string',
       renderCell: (params) => <div className="test-name">{params.value}</div>,
     },
     jira_component: {
@@ -412,7 +393,7 @@ function TestTable(props) {
       field: 'variants',
       headerName: 'Variants',
       autocomplete: 'variants',
-      type: 'array',
+      type: 'string',
       renderCell: (params) => (
         <div className="test-name">
           {params.value ? params.value.join(', ') : ''}
@@ -824,7 +805,15 @@ function TestTable(props) {
     }
     fetchData()
     prevLocation.current = location
-  }, [period, filterModel, sort, sortField, props.collapse, view])
+  }, [
+    period,
+    filterModel,
+    sort,
+    sortField,
+    props.collapse,
+    props.briefTable,
+    view,
+  ])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -891,18 +880,18 @@ function TestTable(props) {
     }
   }
 
+  console.log(gridView.columns)
+
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
-      <DataGrid
-        className={gridClasses.root}
+      <StyledDataGrid
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
         disableColumnFilter={props.briefTable}
-        disableColumnMenu={true}
         pageSize={pageSize}
         onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
         rowsPerPageOptions={props.rowsPerPageOptions}

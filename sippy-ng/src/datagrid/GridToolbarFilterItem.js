@@ -10,8 +10,7 @@ import {
   TextField,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
-import { DateTimePicker, MuiPickersUtilsProvider } from '@mui/x-date-pickers'
-import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
+import { DateTimePicker } from '@mui/x-date-pickers'
 import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
@@ -88,28 +87,26 @@ export default function GridToolbarFilterItem(props) {
       case 'date':
         return (
           <Fragment>
-            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-              <DateTimePicker
-                disabled={disabled}
-                showTodayButton
-                disableFuture
-                label="Value"
-                format="yyyy-MM-dd HH:mm 'UTC'"
-                ampm={false}
-                value={
-                  props.filterModel.value === ''
-                    ? null
-                    : new Date(parseInt(props.filterModel.value))
-                }
-                onChange={(e) => {
-                  props.setFilterModel({
-                    columnField: props.filterModel.columnField,
-                    operatorValue: props.filterModel.operatorValue,
-                    value: e.getTime().toString(),
-                  })
-                }}
-              />
-            </MuiPickersUtilsProvider>
+            <DateTimePicker
+              disabled={disabled}
+              showTodayButton
+              disableFuture
+              label="Value"
+              format="yyyy-MM-dd HH:mm 'UTC'"
+              ampm={false}
+              value={
+                props.filterModel.value === ''
+                  ? null
+                  : new Date(parseInt(props.filterModel.value))
+              }
+              onChange={(e) => {
+                props.setFilterModel({
+                  columnField: props.filterModel.columnField,
+                  operatorValue: props.filterModel.operatorValue,
+                  value: e.getTime().toString(),
+                })
+              }}
+            />
             <FormHelperText error={operatorValueError}>Required</FormHelperText>
           </Fragment>
         )
