@@ -118,7 +118,9 @@ function ReleaseSelector(props) {
                 const formattedTime = formatLongDate(e, dateFormat)
                 setStartTime(formattedTime)
               }}
-              renderInput={(props) => <TextField {...props} />}
+              renderInput={(props) => (
+                <TextField variant="standard" {...props} />
+              )}
             />
             <DatePicker
               showTodayButton
@@ -131,7 +133,9 @@ function ReleaseSelector(props) {
                 const formattedTime = formatLongDate(e, dateEndFormat)
                 setEndTime(formattedTime)
               }}
-              renderInput={(props) => <TextField {...props} />}
+              renderInput={(props) => (
+                <TextField variant="standard" {...props} />
+              )}
             />
           </LocalizationProvider>
         </Grid>
