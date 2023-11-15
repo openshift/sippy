@@ -20,7 +20,7 @@ import {
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
-import Alert from '@mui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 

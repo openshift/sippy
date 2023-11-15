@@ -20,7 +20,7 @@ import {
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useHistory } from 'react-router-dom'
 import { withStyles } from '@mui/styles'
-import Alert from '@mui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'

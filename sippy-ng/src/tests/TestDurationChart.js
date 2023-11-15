@@ -1,7 +1,7 @@
 import { CircularProgress } from '@mui/material'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
-import Alert from '@mui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 

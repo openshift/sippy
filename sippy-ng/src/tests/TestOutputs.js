@@ -13,7 +13,7 @@ import {
 import { DirectionsBoat } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
-import Alert from '@mui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

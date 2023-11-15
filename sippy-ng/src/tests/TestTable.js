@@ -26,7 +26,7 @@ import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { StyledDataGrid } from '../datagrid/StyledDataGrid'
 import { withStyles } from '@mui/styles'
-import Alert from '@mui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
@@ -879,8 +879,6 @@ function TestTable(props) {
       setSortField(model[0].field)
     }
   }
-
-  console.log(gridView.columns)
 
   return (
     /* eslint-disable react/prop-types */
