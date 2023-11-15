@@ -7,7 +7,6 @@ import {
   Favorite,
   FileCopyOutlined,
   GitHub,
-  Restore,
 } from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
@@ -20,6 +19,7 @@ import {
   withSort,
 } from '../helpers'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
+import { styled } from '@mui/styles'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import Collapse from '@mui/material/Collapse'
@@ -36,6 +36,11 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import SippyLogo from './SippyLogo'
+
+const StyledListItemButton = styled(ListItemButton)({
+  padding: 0,
+  margin: 0,
+})
 
 export default function Sidebar(props) {
   const classes = useTheme()
@@ -78,12 +83,12 @@ export default function Sidebar(props) {
     <Fragment>
       <List>
         <ListItem component={Link} to="/" key="Home">
-          <ListItemButton>
+          <StyledListItemButton>
             <ListItemIcon>
               <HomeIcon />
             </ListItemIcon>
             <ListItemText primary="Home" />
-          </ListItemButton>
+          </StyledListItemButton>
         </ListItem>
       </List>
       <CapabilitiesContext.Consumer>
@@ -105,12 +110,12 @@ export default function Sidebar(props) {
                     to={`/build_clusters`}
                     className={classes.nested}
                   >
-                    <ListItemButton>
+                    <StyledListItemButton>
                       <ListItemIcon>
                         <Favorite />
                       </ListItemIcon>
                       <ListItemText primary="Build Cluster Health" />
-                    </ListItemButton>
+                    </StyledListItemButton>
                   </ListItem>
                 </List>
               </Fragment>
@@ -137,14 +142,14 @@ export default function Sidebar(props) {
                     to={'/component_readiness/main'}
                     className={classes.nested}
                   >
-                    <ListItemButton>
+                    <StyledListItemButton>
                       <ListItemIcon>
                         <Tooltip title="This functionality is experimental; please do NOT depend on this data">
                           <InfoIcon />
                         </Tooltip>
                       </ListItemIcon>
                       <ListItemText primary="Component Readiness" />
-                    </ListItemButton>
+                    </StyledListItemButton>
                   </ListItem>
                 </List>
               </Fragment>
@@ -166,10 +171,10 @@ export default function Sidebar(props) {
               key={'item-release-' + index}
               onClick={() => handleClick(index)}
             >
-              <ListItemButton>
+              <StyledListItemButton>
                 {open[index] ? <ExpandLess /> : <ExpandMore />}
                 <ListItemText primary={release} />
-              </ListItemButton>
+              </StyledListItemButton>
             </ListItem>
             <Collapse in={open[index]} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
@@ -179,12 +184,12 @@ export default function Sidebar(props) {
                   to={'/release/' + release}
                   className={classes.nested}
                 >
-                  <ListItemButton>
+                  <StyledListItemButton>
                     <ListItemIcon>
                       <InfoIcon />
                     </ListItemIcon>
                     <ListItemText primary="Overview" />
-                  </ListItemButton>
+                  </StyledListItemButton>
                 </ListItem>
                 {release !== 'Presubmits' ? (
                   <CapabilitiesContext.Consumer>
@@ -197,12 +202,12 @@ export default function Sidebar(props) {
                             to={`/release/${release}/streams`}
                             className={classes.nested}
                           >
-                            <ListItemButton>
+                            <StyledListItemButton>
                               <ListItemIcon>
                                 <FileCopyOutlined />
                               </ListItemIcon>
                               <ListItemText primary="Payload Streams" />
-                            </ListItemButton>
+                            </StyledListItemButton>
                           </ListItem>
                         )
                       }
@@ -223,12 +228,12 @@ export default function Sidebar(props) {
                   )}
                   className={classes.nested}
                 >
-                  <ListItemButton>
+                  <StyledListItemButton>
                     <ListItemIcon>
                       <ListIcon />
                     </ListItemIcon>
                     <ListItemText primary="Jobs" />
-                  </ListItemButton>
+                  </StyledListItemButton>
                 </ListItem>
 
                 {
@@ -241,12 +246,12 @@ export default function Sidebar(props) {
                         to={`/pull_requests/${release}`}
                         className={classes.nested}
                       >
-                        <ListItemButton>
+                        <StyledListItemButton>
                           <ListItemIcon>
                             <GitHub />
                           </ListItemIcon>
                           <ListItemText primary="Pull Requests" />
-                        </ListItemButton>
+                        </StyledListItemButton>
                       </ListItem>
                       <ListItem
                         key={'release-repositories-' + index}
@@ -254,12 +259,12 @@ export default function Sidebar(props) {
                         to={`/repositories/${release}`}
                         className={classes.nested}
                       >
-                        <ListItemButton>
+                        <StyledListItemButton>
                           <ListItemIcon>
                             <Code />
                           </ListItemIcon>
                           <ListItemText primary="Repositories" />
-                        </ListItemButton>
+                        </StyledListItemButton>
                       </ListItem>
                     </Fragment>
                   ) : (
@@ -287,12 +292,12 @@ export default function Sidebar(props) {
                   )}
                   className={classes.nested}
                 >
-                  <ListItemButton>
+                  <StyledListItemButton>
                     <ListItemIcon>
                       <SearchIcon />
                     </ListItemIcon>
                     <ListItemText primary="Tests" />
-                  </ListItemButton>
+                  </StyledListItemButton>
                 </ListItem>
 
                 <CapabilitiesContext.Consumer>
@@ -305,12 +310,12 @@ export default function Sidebar(props) {
                           to={'/upgrade/' + release}
                           className={classes.nested}
                         >
-                          <ListItemButton>
+                          <StyledListItemButton>
                             <ListItemIcon>
                               <ArrowUpwardIcon />
                             </ListItemIcon>
                             <ListItemText primary="Upgrade" />
-                          </ListItemButton>
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
@@ -327,12 +332,12 @@ export default function Sidebar(props) {
                           to={'/install/' + release}
                           className={classes.nested}
                         >
-                          <ListItemButton>
+                          <StyledListItemButton>
                             <ListItemIcon>
                               <ExitToAppIcon />
                             </ListItemIcon>
                             <ListItemText primary="Install" />
-                          </ListItemButton>
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
@@ -363,12 +368,12 @@ export default function Sidebar(props) {
                           to={link}
                           className={classes.nested}
                         >
-                          <ListItemButton>
+                          <StyledListItemButton>
                             <ListItemIcon>
                               <ApartmentIcon />
                             </ListItemIcon>
                             <ListItemText primary="Infrastructure" />
-                          </ListItemButton>
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
