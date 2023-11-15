@@ -56,18 +56,18 @@ export default function MiniCard(props) {
     <Card
       elevation={5}
       className={`${classes.miniCard}`}
-      style={{ backgroundColor: bgColor }}
+      sx={{ backgroundColor: bgColor }}
     >
       <CardContent
         className={`${classes.cardContent}`}
-        style={{ textAlign: 'center' }}
+        sx={{ textAlign: 'center' }}
       >
         <Typography variant="h6">{props.name}</Typography>
         <Grid
           container
           direction="row"
           alignItems="center"
-          style={{ margin: 20, textAlign: 'center' }}
+          sx={{ textAlign: 'center' }}
         >
           {props.currentRuns > 0 ? summary : 'No data'}
         </Grid>

@@ -2,7 +2,6 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Grid,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -11,6 +10,7 @@ import { ExpandMore } from '@mui/icons-material'
 import { pathForVariantAnalysis } from '../helpers'
 import { PropTypes } from 'prop-types'
 import { VARIANT_THRESHOLDS } from '../constants'
+import Grid from '@mui/material/Unstable_Grid2'
 import Info from '@mui/icons-material/Info'
 import MiniCard from '../components/MiniCard'
 import React, { Fragment, useEffect } from 'react'
