@@ -1,4 +1,4 @@
-import { Card, Container, Grid, Tooltip, Typography } from '@mui/material'
+import { Card, Container, Tooltip } from '@mui/material'
 import {
   getReportStartDate,
   relativeDuration,
@@ -10,6 +10,8 @@ import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
+// https://github.com/mui/material-ui/issues/31244
+import Grid from '@mui/material/Unstable_Grid2'
 import NumberCard from '../components/NumberCard'
 import PayloadMiniCalendar from './PayloadMiniCalendar'
 import PropTypes from 'prop-types'
