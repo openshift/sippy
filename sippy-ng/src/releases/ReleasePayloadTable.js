@@ -232,6 +232,7 @@ function ReleasePayloadTable(props) {
           return (
             <Tooltip title="See diff between these two OS releases">
               <Button
+                color="inherit"
                 style={{ justifyContent: 'center' }}
                 startIcon={<CompareArrows />}
                 href={params.row.current_os_url}

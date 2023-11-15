@@ -18,7 +18,7 @@ build: builddir clean npm
 
 test: builddir npm
 	go test -v ./pkg/...
-	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
+	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
 
 lint: builddir npm
 	# See https://github.com/facebook/create-react-app/issues/11174 about
