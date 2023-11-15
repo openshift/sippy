@@ -149,6 +149,7 @@ export default function JobRunsTable(props) {
         return (
           <Tooltip title="View in Prow">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<DirectionsBoat />}
@@ -161,7 +162,7 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'pull_request_link',
-      headerName: 'Pull request link',
+      headerName: ' ',
       flex: 0.4,
       renderCell: (params) => {
         if (params.value === undefined || params.value === '') {
@@ -171,6 +172,7 @@ export default function JobRunsTable(props) {
         return (
           <Tooltip title="View pull request">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GitHub />}

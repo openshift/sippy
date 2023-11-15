@@ -360,7 +360,7 @@ function TestTable(props) {
           return params.value
         }
         return (
-          <div className="test-name">
+          <div align="left" className="test-name">
             <Tooltip title={params.value}>
               <Link
                 to={pathForExactTestAnalysisWithFilter(

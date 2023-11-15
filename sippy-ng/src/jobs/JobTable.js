@@ -38,7 +38,7 @@ export const getColumns = (config, openBugzillaDialog) => {
       flex: 3.5,
       renderCell: (params) => {
         return (
-          <div className="job-name">
+          <div align="left" className="job-name">
             <Tooltip title={params.value}>
               <Link to={pathForExactJobAnalysis(config.release, params.value)}>
                 {config.briefTable ? params.row.brief_name : params.value}
