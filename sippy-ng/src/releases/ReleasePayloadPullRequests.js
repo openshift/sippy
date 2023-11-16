@@ -1,5 +1,5 @@
 import { DataGrid } from '@mui/x-data-grid'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@mui/material/Alert'
