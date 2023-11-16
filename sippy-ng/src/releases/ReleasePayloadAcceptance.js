@@ -104,6 +104,7 @@ function ReleasePayloadAcceptance(props) {
 
     cards.push(
       <Box
+        key={`release-${props.release}-${row.architecture}-${row.stream}`}
         component={Link}
         to={`/release/${props.release}/streams/${row.architecture}/${row.stream}/overview`}
       >

@@ -55,7 +55,7 @@ export default function VariantCards(props) {
 
   const minicard = (variant, index) => {
     return (
-      <Grid item key={index} md={2} sm={4}>
+      <Grid key={index} md={2} sm={4}>
         <MiniCard
           link={pathForVariantAnalysis(props.release, variant.name)}
           threshold={VARIANT_THRESHOLDS}
@@ -87,7 +87,7 @@ export default function VariantCards(props) {
 
   return (
     <Fragment>
-      <Grid item md={12} sm={12}>
+      <Grid md={12} sm={12}>
         <Typography variant="h5">
           Variant status
           <Tooltip title="Variant status shows the current and previous pass rates for each variant. A variant is jobs grouped by platform, SDN, architecture, etc.">
