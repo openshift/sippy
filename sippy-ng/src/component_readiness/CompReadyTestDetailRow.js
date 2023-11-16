@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { Fragment } from 'react'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { Fragment, useContext } from 'react'
 import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -16,27 +17,29 @@ const getJobRunColor = (jobRun) => {
   }
 }
 
-const infoCell = (stats) => {
-  return (
-    <Typography className="cr-cell-name">
-      pass rate=
-      {(stats.success_rate * 100).toFixed(2)}%
-      <br />
-      successes={stats.success_count}
-      <br />
-      failures={stats.failure_count}
-      <br />
-      flakes={stats.flake_count}
-    </Typography>
-  )
-}
-
 // Represents a row on page 5a when you clicked a status cell on on page4 or page4a
 export default function CompReadyTestDetailRow(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   // element: a test detail element
   // idx: array index of test detail element
   // showOnlyFailures: says to focus on job failures
   const { element, idx, showOnlyFailures } = props
+
+  const infoCell = (stats) => {
+    return (
+      <Typography className={classes.crCellName}>
+        pass rate=
+        {(stats.success_rate * 100).toFixed(2)}%
+        <br />
+        successes={stats.success_count}
+        <br />
+        failures={stats.failure_count}
+        <br />
+        flakes={stats.flake_count}
+      </Typography>
+    )
+  }
 
   const testJobDetailCell = (element, statsKind) => {
     let item
@@ -85,7 +88,7 @@ export default function CompReadyTestDetailRow(props) {
                       marginRight: '1px',
                     }}
                   >
-                    <Typography className="cr-cell-name">
+                    <Typography className={classes.crCellName}>
                       {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
                     </Typography>
                   </a>
@@ -99,8 +102,10 @@ export default function CompReadyTestDetailRow(props) {
   return (
     <Fragment>
       <TableRow key={idx}>
-        <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
-          <Typography className="cr-cell-name">{element.job_name}</Typography>
+        <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+          <Typography className={classes.crCellName}>
+            {element.job_name}
+          </Typography>
         </TableCell>
         <TableCell style={{ verticalAlign: 'top' }}>
           {infoCell(element.base_stats)}
@@ -111,7 +116,7 @@ export default function CompReadyTestDetailRow(props) {
         </TableCell>
         {testJobDetailCell(element, 'sample')}
         <TableCell style={{ verticalAlign: 'top' }}>
-          <Typography className="cr-cell-name">
+          <Typography className={classes.crCellName}>
             {element.significant ? 'True' : 'False'}
           </Typography>
         </TableCell>

@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { Fragment } from 'react'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -24,6 +25,8 @@ function capabilityLink(filterVals, capabilityName) {
 // Represents a row when you clicked a cell from page 1
 // We display capabilities on the left.
 export default function CompCapRow(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   // capabilityName is the name of the capability
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
@@ -38,9 +41,9 @@ export default function CompCapRow(props) {
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
   const capabilityNameColumn = (
-    <TableCell className={'cr-component-name'} key={capabilityName}>
+    <TableCell className={classes.componentName} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
-        <Typography className="cr-cell-name">
+        <Typography className={classes.crCellName}>
           <Link to={capabilityLink(filterVals, capabilityName)}>
             {capabilityName}
           </Link>

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
+import { useCookies } from 'react-cookie'
 import { useTheme } from '@mui/material/styles'
-import Cookies from 'universal-cookie'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
@@ -181,18 +181,17 @@ Row.propTypes = {
 }
 
 export default function TestByVariantTable(props) {
-  const cookies = new Cookies()
-  const cookie = cookies.get('testDetailShowFull') === 'true'
-  const [showFull, setShowFull] = React.useState(
-    props.showFull ? props.showFull : cookie
-  )
+  const [cookies, setCookie] = useCookies(['testDetailShowFull'])
+  const cookie =
+    cookies['testDetailShowFull'] || cookies['testDetailShowFull'] === 'true'
+  const [showFull, setShowFull] = React.useState(props.showFull || cookie)
 
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
   }
 
   const handleSwitchFull = (e) => {
-    cookies.set('testDetailShowFull', e.target.checked, { sameSite: true })
+    setCookie('testDetailShowFull', e.target.checked, { sameSite: true })
     setShowFull(e.target.checked)
   }
 

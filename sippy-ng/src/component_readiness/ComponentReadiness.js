@@ -32,15 +32,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { ClassNameMap } from '@mui/styles'
 import { Fragment, useContext, useEffect, useState } from 'react'
-import {
-  Link,
-  Route,
-  Switch,
-  useLocation,
-  useRouteMatch,
-} from 'react-router-dom'
+import { Route, Switch, useRouteMatch } from 'react-router-dom'
 
+import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -130,7 +126,55 @@ const useStyles = makeStyles((theme) => ({
     }),
     marginLeft: 0,
   },
+
+  // Table styling
+
+  crColResultFull: {
+    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
+    fontWeight: 'bold',
+    position: 'sticky',
+    top: 0,
+    left: 0,
+    zIndex: 1,
+  },
+  crColResult: {
+    hyphens: 'auto',
+    verticalAlign: 'top !important',
+    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
+    fontWeight: 'bold',
+    position: 'sticky',
+    top: 0,
+    left: 0,
+    zIndex: 1,
+  },
+  componentName: {
+    width: 175,
+    minWidth: 175,
+    maxWidth: 175,
+    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
+    fontWeight: 'bold',
+    position: 'sticky',
+    left: 0,
+    zIndex: 1,
+  },
+  crCellResult: {
+    backgroundColor: theme.palette.mode === 'dark' ? grey[100] : 'white',
+    height: 50,
+    width: 50,
+    padding: '5px !important',
+    lineHeight: '13px !important',
+    border: '1px solid #EEE',
+  },
+  crCellName: {
+    fontSize: '11px !important',
+  },
+  crCellCapabCol: {
+    fontSize: '11px !important',
+    width: '300px',
+  },
 }))
+
+export const ComponentReadinessStyleContext = React.createContext({})
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -177,9 +221,8 @@ export default function ComponentReadiness(props) {
     setSampleEndTime(formatLongDate(initialSampleEndTime))
   }
 
-  //console.log('ComponentReadiness start')
-  const classes = useStyles()
   const theme = useTheme()
+  const classes = useStyles(theme)
 
   const [searchComponentRegex, setSearchComponentRegex] = useState('')
   const handleSearchComponentRegexChange = (event) => {
@@ -490,7 +533,7 @@ export default function ComponentReadiness(props) {
   )
 
   return (
-    <Fragment>
+    <ComponentReadinessStyleContext.Provider value={classes}>
       <Route
         path={path}
         render={({ location }) => (
@@ -886,8 +929,8 @@ export default function ComponentReadiness(props) {
                           <TableHead>
                             <TableRow>
                               {
-                                <TableCell className={'cr-col-result-full'}>
-                                  <Typography className="cr-cell-name">
+                                <TableCell className={classes.crColResultFull}>
+                                  <Typography className={classes.crCellName}>
                                     Name
                                   </Typography>
                                 </TableCell>
@@ -904,7 +947,7 @@ export default function ComponentReadiness(props) {
                                   if (column !== 'Name') {
                                     return (
                                       <TableCell
-                                        className={'cr-col-result'}
+                                        className={classes.crColResult}
                                         key={'column' + '-' + idx}
                                       >
                                         <Tooltip
@@ -912,7 +955,10 @@ export default function ComponentReadiness(props) {
                                             'Single row report for ' + column
                                           }
                                         >
-                                          <Typography className="cr-cell-name">
+                                          <Typography
+                                            className={classes.crCellName}
+                                          >
+                                            {' '}
                                             {column}
                                           </Typography>
                                         </Tooltip>
@@ -994,6 +1040,6 @@ export default function ComponentReadiness(props) {
           </Fragment>
         )}
       />
-    </Fragment>
+    </ComponentReadinessStyleContext.Provider>
   )
 }

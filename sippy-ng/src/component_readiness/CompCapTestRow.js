@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { Fragment } from 'react'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -12,6 +13,8 @@ import TableRow from '@mui/material/TableRow'
 
 // Represents a row on page 4 or page4a when you clicked a testName on page3
 export default function CompCapTestRow(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   // testName is the name of the test (called testName)
   // testId is the unique test ID that maps to the testName
   // results is an array of columns and contains the status value per columnName
@@ -31,9 +34,9 @@ export default function CompCapTestRow(props) {
 
   // Put the testName on the left side with no link.
   const testNameColumn = (
-    <TableCell className={'cr-component-name'} key={testName}>
+    <TableCell className={classes.componentName} key={testName}>
       <Tooltip title={testId}>
-        <Typography className="cr-cell-name">
+        <Typography className={classes.crCellName}>
           {[testSuite, testName].filter(Boolean).join('.')}
         </Typography>
       </Tooltip>

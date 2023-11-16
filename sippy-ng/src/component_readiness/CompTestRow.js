@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
-import { Fragment } from 'react'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
@@ -29,6 +30,8 @@ function testLink(filterVals, componentName, capabilityName, testId) {
 // Represents a row when you clicked a capability on page2
 // We display tests on the left and results on the right.
 export default function CompTestRow(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   // testName is the name of the test (called testName)
   // testId is the unique test ID that maps to the testName
   // results is an array of columns and contains the status value per columnName
@@ -59,9 +62,9 @@ export default function CompTestRow(props) {
   // Put the testName on the left side with a link to a test specific
   // test report.
   const testNameColumn = (
-    <TableCell className={'cr-component-name'} key={testName}>
+    <TableCell className={classes.componentName} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
-        <Typography className="cr-cell-name">
+        <Typography className={classes.crCellName}>
           <Link to={testLink(filterVals, component, capability, testId)}>
             {[testSuite, testName].filter(Boolean).join('.')}
           </Link>

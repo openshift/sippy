@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
@@ -15,6 +16,7 @@ import TableCell from '@mui/material/TableCell'
 export default function CompReadyCell(props) {
   const { status, environment, componentName, filterVals, grayFactor } = props
   const theme = useTheme()
+  const classes = useContext(ComponentReadinessStyleContext)
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -45,7 +47,7 @@ export default function CompReadyCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className="cr-cell-result"
+          className={classes.crCellResult}
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -58,10 +60,9 @@ export default function CompReadyCell(props) {
   } else {
     return (
       <TableCell
-        className="cr-cell-result"
+        className={classes.crCellResult}
         style={{
           textAlign: 'center',
-          backgroundColor: 'white',
         }}
       >
         <Link to={componentReport(componentName, environment, filterVals)}>

@@ -9,7 +9,6 @@ import React from 'react'
 
 const useStyles = makeStyles({
   cardContent: {
-    color: 'black',
     textAlign: 'center',
   },
   summaryCard: (props) => ({
@@ -32,9 +31,9 @@ export default function SummaryCard(props) {
     100
 
   const colors = scale([
-    theme.palette.error.light,
-    theme.palette.warning.light,
-    theme.palette.success.light,
+    theme.palette.error.main,
+    theme.palette.warning.main,
+    theme.palette.success.main,
   ]).domain([
     props.threshold.error,
     props.threshold.warning,

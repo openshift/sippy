@@ -9,6 +9,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { ReleasesContext } from '../App'
@@ -37,29 +38,11 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-const tableCell = (label, idx) => {
-  return (
-    <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
-      <Typography className="cr-cell-name">{label}</Typography>
-    </TableCell>
-  )
-}
-const tableTooltipCell = (label, idx, title) => {
-  return (
-    <Tooltip title={title}>
-      <TableCell className={'cr-col-result'} key={'column' + '-' + idx}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <InfoIcon style={{ fontSize: '16px', fontWeight: 'lighter' }} />
-          <Typography className="cr-cell-name">{label}</Typography>
-        </div>
-      </TableCell>
-    </Tooltip>
-  )
-}
-
 // This component runs when we see /component_readiness/test_details
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function CompReadyTestReport(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   const { filterVals, component, capability, testId, environment, testName } =
     props
 
@@ -152,6 +135,27 @@ export default function CompReadyTestReport(props) {
     `testName: ${testName}`,
     `environment: ${environment}`
   )
+
+  const tableCell = (label, idx) => {
+    return (
+      <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+        <Typography className={classes.crCellName}>{label}</Typography>
+      </TableCell>
+    )
+  }
+
+  const tableTooltipCell = (label, idx, title) => {
+    return (
+      <Tooltip title={title}>
+        <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <InfoIcon style={{ fontSize: '16px', fontWeight: 'lighter' }} />
+            <Typography className={classes.crCellName}>{label}</Typography>
+          </div>
+        </TableCell>
+      </Tooltip>
+    )
+  }
 
   if (!isLoaded) {
     return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />

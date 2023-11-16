@@ -1,7 +1,10 @@
 import './ComponentReadiness.css'
-import { Fragment } from 'react'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { Fragment, useContext } from 'react'
 import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
+import { grey } from '@mui/material/colors'
 import { Link } from 'react-router-dom'
+import { makeStyles, useTheme } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
@@ -22,6 +25,8 @@ function capabilitiesReport(filterVals, componentName) {
 }
 
 export default function CompReadyRow(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
+
   // componentName is the name of the component
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
@@ -36,9 +41,9 @@ export default function CompReadyRow(props) {
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
-    <TableCell className={'cr-component-name'} key={componentName}>
+    <TableCell className={classes.componentName} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
-        <Typography className="cr-cell-name">
+        <Typography className={classes.crCellName}>
           <Link to={capabilitiesReport(filterVals, componentName)}>
             {componentName}
           </Link>

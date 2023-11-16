@@ -8,6 +8,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
@@ -36,6 +37,7 @@ const cancelFetch = () => {
 // This component runs when we see /component_readiness/capabilities
 // This is page 2 or 2a which runs when you click a component cell on the left or under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
+  const classes = useContext(ComponentReadinessStyleContext)
   const { filterVals, component, environment } = props
 
   const [fetchError, setFetchError] = React.useState('')
@@ -136,18 +138,18 @@ export default function CompReadyEnvCapabilities(props) {
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
-              <TableCell className={'cr-col-result-full'}>
-                <Typography className="cr-cell-capab-col">Name</Typography>
+              <TableCell className={classes.crColResultFull}>
+                <Typography className={classes.crCellCapabCol}>Name</Typography>
               </TableCell>
               {columnNames.map((column, idx) => {
                 if (column !== 'Name') {
                   return (
                     <TableCell
-                      className={'cr-col-result'}
+                      className={classes.crColResult}
                       key={'column' + '-' + idx}
                     >
                       <Tooltip title={'Single row report for ' + column}>
-                        <Typography className="cr-cell-name">
+                        <Typography className={classes.crColName}>
                           {column}
                         </Typography>
                       </Tooltip>
