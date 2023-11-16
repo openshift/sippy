@@ -15,7 +15,6 @@ import React, { Fragment } from 'react'
 
 const useStyles = makeStyles({
   cardContent: {
-    color: 'black',
     textAlign: 'center',
   },
   miniCard: (props) => ({
