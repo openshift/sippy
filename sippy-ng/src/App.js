@@ -157,8 +157,8 @@ export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  const [cookies, setCookie] = useCookies(['sippy-color-mode'])
-  const prefersDarkMode = cookies['sippy-color-mode'] === 'dark'
+  const [cookies, setCookie] = useCookies(['sippyColorMode'])
+  const prefersDarkMode = cookies['sippyColorMode'] === 'dark'
   const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)')
   const [mode, setMode] = React.useState(
     prefersDarkMode ? 'dark' : systemPrefersDark ? 'dark' : 'light'
@@ -169,7 +169,7 @@ export default function App(props) {
       toggleColorMode: () => {
         setMode((prevMode) => {
           const newMode = prevMode === 'light' ? 'dark' : 'light'
-          setCookie('sippy-color-mode', newMode, { path: '/' })
+          setCookie('sippyColorMode', newMode, { path: '/' })
           return newMode
         })
       },
