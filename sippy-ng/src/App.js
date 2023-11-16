@@ -132,7 +132,7 @@ const lightTheme = {
       dark: cyan[700],
     },
     success: {
-      main: green[500],
+      main: green[300],
       light: green[300],
       dark: green[700],
     },

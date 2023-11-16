@@ -26,10 +26,10 @@ import React, { useEffect } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   releasePayloadOK: {
-    backgroundColor: theme.palette.success.light,
+    backgroundColor: theme.palette.success.main,
   },
   releasePayloadProblem: {
-    backgroundColor: theme.palette.error.light,
+    backgroundColor: theme.palette.error.main,
   },
 }))
 
@@ -88,16 +88,16 @@ function ReleasePayloadAcceptance(props) {
 
       if (row.last_phase === 'Accepted' && when <= 24 * 60 * 60 * 1000) {
         // If we had an accepted release in the last 24 hours, we're green
-        bgColor = theme.palette.success.light
+        bgColor = theme.palette.success.main
         icon = <CheckCircle style={{ fill: 'green' }} />
       } else if (row.last_phase === 'Rejected') {
         // If the last payload was rejected, we are red.
-        bgColor = theme.palette.error.light
+        bgColor = theme.palette.error.main
         icon = <ErrorIcon style={{ fill: 'maroon' }} />
       } else {
         // Otherwise we are yellow -- e.g., last release payload was accepted
         // but it's been several days.
-        bgColor = theme.palette.warning.light
+        bgColor = theme.palette.warning.main
         icon = <Warning style={{ fill: 'goldenrod' }} />
       }
     }
