@@ -3,6 +3,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment } from 'react'
 import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { makeStyles, useTheme } from '@mui/styles'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
@@ -11,7 +12,20 @@ import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
 
+const useStyles = makeStyles((theme) => ({
+  crRelease: {
+    textAlign: 'center',
+    marginBottom: 50,
+    fontWeight: 'bold',
+    padding: 5,
+    backgroundColor: theme.palette.grey[500],
+  },
+}))
+
 export default function CompReadyMainInputs(props) {
+  const theme = useTheme()
+  const classes = useStyles(theme)
+
   const {
     baseRelease,
     baseStartTime,
@@ -102,7 +116,7 @@ export default function CompReadyMainInputs(props) {
         </Button>
       </div>
 
-      <div className="cr-release-sample">
+      <div className={classes.crRelease}>
         <ReleaseSelector
           label="Release to Evaluate"
           version={sampleRelease}
@@ -113,7 +127,7 @@ export default function CompReadyMainInputs(props) {
           setEndTime={setSampleEndTime}
         ></ReleaseSelector>
       </div>
-      <div className="cr-release-historical">
+      <div className={classes.crRelease}>
         <ReleaseSelector
           version={baseRelease}
           label="Historical Release"
