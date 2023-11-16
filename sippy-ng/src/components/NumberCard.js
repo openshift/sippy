@@ -6,7 +6,6 @@ import React from 'react'
 
 const useStyles = makeStyles({
   cardContent: {
-    color: 'black',
     textAlign: 'center',
   },
   numberCard: (props) => ({
