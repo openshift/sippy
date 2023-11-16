@@ -158,10 +158,14 @@ export default function App(props) {
   const theme = useTheme()
 
   const [cookies, setCookie] = useCookies(['sippyColorMode'])
-  const prefersDarkMode = cookies['sippyColorMode'] === 'dark'
+  const colorModePreference = cookies['sippyColorMode']
   const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)')
   const [mode, setMode] = React.useState(
-    prefersDarkMode ? 'dark' : systemPrefersDark ? 'dark' : 'light'
+    colorModePreference === 'dark' || colorModePreference === 'light'
+      ? colorModePreference
+      : systemPrefersDark
+      ? 'dark'
+      : 'light'
   )
 
   const colorMode = React.useMemo(
