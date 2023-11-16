@@ -1,6 +1,6 @@
-import { CircularProgress } from '@material-ui/core'
+import { CircularProgress } from '@mui/material'
 import { Fragment } from 'react'
-import Button from '@material-ui/core/Button'
+import Button from '@mui/material/Button'
 import PropTypes from 'prop-types'
 import React from 'react'
 

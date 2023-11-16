@@ -1,23 +1,11 @@
-import PropTypes from 'prop-types'
-
-import { Alert, TabContext } from '@material-ui/lab'
-import {
-  Container,
-  Grid,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-} from '@material-ui/core'
-import React, { Fragment, useEffect } from 'react'
-
 import './Upgrades.css'
-import { BOOKMARKS } from '../constants'
-import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
-import JobTable from '../jobs/JobTable'
+import { Grid, Typography } from '@mui/material'
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
+import Alert from '@mui/material/Alert'
+import PropTypes from 'prop-types'
+import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestByVariantTable from '../tests/TestByVariantTable'
-import TestTable from '../tests/TestTable'
 
 /**
  *  Upgrades is the landing page for upgrades.
@@ -66,31 +54,15 @@ export default function Upgrades(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
+      <Grid width="100vw">
+        <Typography variant="h4" style={{ margin: 10 }} align="center">
+          Upgrade health for {props.release}
+        </Typography>
+      </Grid>
       <Route
         path="/"
         render={({ location }) => (
-          <TabContext value={path}>
-            <Typography align="center" variant="h4">
-              Upgrade health for {props.release}
-            </Typography>
-            <Grid container justifyContent="center" size="xl" className="view">
-              <Paper>
-                <Tabs
-                  value={location.pathname.substring(
-                    location.pathname.lastIndexOf('/') + 1
-                  )}
-                  indicatorColor="primary"
-                  textColor="primary"
-                >
-                  <Tab
-                    label="Upgrade rates by operator"
-                    value="operators"
-                    component={Link}
-                    to={url + '/operators'}
-                  />
-                </Tabs>
-              </Paper>
-            </Grid>
+          <Fragment>
             <Switch>
               <Route path={path + '/operators'}>
                 <TestByVariantTable
@@ -101,7 +73,7 @@ export default function Upgrades(props) {
               </Route>
               <Redirect from="/" to={url + '/operators'} />
             </Switch>
-          </TabContext>
+          </Fragment>
         )}
       />
     </Fragment>

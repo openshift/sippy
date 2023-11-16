@@ -8,11 +8,10 @@ import {
   MenuItem,
   Select,
   TextField,
-} from '@material-ui/core'
-import { Close } from '@material-ui/icons'
-import { DateTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { GridToolbarFilterDateUtils } from './GridToolbarFilterDateUtils'
-import { makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { Close } from '@mui/icons-material'
+import { DateTimePicker } from '@mui/x-date-pickers'
+import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -88,28 +87,26 @@ export default function GridToolbarFilterItem(props) {
       case 'date':
         return (
           <Fragment>
-            <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
-              <DateTimePicker
-                disabled={disabled}
-                showTodayButton
-                disableFuture
-                label="Value"
-                format="yyyy-MM-dd HH:mm 'UTC'"
-                ampm={false}
-                value={
-                  props.filterModel.value === ''
-                    ? null
-                    : new Date(parseInt(props.filterModel.value))
-                }
-                onChange={(e) => {
-                  props.setFilterModel({
-                    columnField: props.filterModel.columnField,
-                    operatorValue: props.filterModel.operatorValue,
-                    value: e.getTime().toString(),
-                  })
-                }}
-              />
-            </MuiPickersUtilsProvider>
+            <DateTimePicker
+              disabled={disabled}
+              showTodayButton
+              disableFuture
+              label="Value"
+              format="yyyy-MM-dd HH:mm 'UTC'"
+              ampm={false}
+              value={
+                props.filterModel.value === ''
+                  ? null
+                  : new Date(parseInt(props.filterModel.value))
+              }
+              onChange={(e) => {
+                props.setFilterModel({
+                  columnField: props.filterModel.columnField,
+                  operatorValue: props.filterModel.operatorValue,
+                  value: e.getTime().toString(),
+                })
+              }}
+            />
             <FormHelperText error={operatorValueError}>Required</FormHelperText>
           </Fragment>
         )
@@ -137,6 +134,7 @@ export default function GridToolbarFilterItem(props) {
           return (
             <Fragment>
               <TextField
+                variant="standard"
                 disabled={disabled}
                 inputProps={{ 'data-testid': `value-${props.id}` }}
                 error={operatorValueError}
@@ -170,9 +168,10 @@ export default function GridToolbarFilterItem(props) {
       ) : (
         <Button startIcon={<Close />} onClick={props.destroy} />
       )}
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel id={`columnFieldLabel-${props.id}`}>Field</InputLabel>
         <Select
+          variant="standard"
           disabled={disabled}
           inputProps={{ 'data-testid': `columnField-${props.id}` }}
           error={columnFieldError}
@@ -198,7 +197,7 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={columnFieldError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel shrink id={`notLabel-${props.id}`}>
           Not
         </InputLabel>
@@ -219,9 +218,10 @@ export default function GridToolbarFilterItem(props) {
           aria-labelledby={`notLabel-${props.id}`}
         />
       </FormControl>
-      <FormControl>
+      <FormControl variant="standard">
         <InputLabel id={`operatorValueLabel-${props.id}`}>Operator</InputLabel>
         <Select
+          variant="standard"
           disabled={disabled}
           inputProps={{ 'data-testid': `operatorValue-${props.id}` }}
           error={operatorValueError}
@@ -247,7 +247,7 @@ export default function GridToolbarFilterItem(props) {
         </Select>
         <FormHelperText error={operatorValueError}>Required</FormHelperText>
       </FormControl>
-      <FormControl>{inputField()}</FormControl>
+      <FormControl variant="standard">{inputField()}</FormControl>
     </Grid>
   )
 }

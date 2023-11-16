@@ -1,4 +1,4 @@
-import { Card, Container, Grid, Tooltip, Typography } from '@material-ui/core'
+import { Card, Container, Tooltip } from '@mui/material'
 import {
   getReportStartDate,
   relativeDuration,
@@ -8,8 +8,10 @@ import {
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
-import { useTheme } from '@material-ui/core/styles'
-import Alert from '@material-ui/lab/Alert'
+import { useTheme } from '@mui/material/styles'
+import Alert from '@mui/material/Alert'
+// https://github.com/mui/material-ui/issues/31244
+import Grid from '@mui/material/Unstable_Grid2'
 import NumberCard from '../components/NumberCard'
 import PayloadMiniCalendar from './PayloadMiniCalendar'
 import PropTypes from 'prop-types'
@@ -177,7 +179,7 @@ function PayloadStreamOverview(props) {
         spacing={3}
         direction="row"
         alignItems="stretch"
-        justify="center"
+        justifyContent="center"
       >
         <Grid item md={3}>
           <Grid container spacing={3}>

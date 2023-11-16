@@ -1,15 +1,15 @@
 import './JobDetailTable.css'
 import { Link } from 'react-router-dom'
 import { pathForExactJob } from '../helpers'
-import { TableContainer } from '@material-ui/core'
+import { TableContainer } from '@mui/material'
 import JobDetailTestModal from './JobDetailTestModal'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import Table from '@material-ui/core/Table'
-import TableBody from '@material-ui/core/TableBody'
-import TableCell from '@material-ui/core/TableCell'
-import TableHead from '@material-ui/core/TableHead'
-import TableRow from '@material-ui/core/TableRow'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 
 /**
  * JobDetailTable shows the runs of the selected job(s) grouped by day, and

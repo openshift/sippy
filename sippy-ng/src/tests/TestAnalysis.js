@@ -8,8 +8,8 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { BugReport, DirectionsRun } from '@material-ui/icons'
+} from '@mui/material'
+import { BugReport, DirectionsRun } from '@mui/icons-material'
 import {
   filterFor,
   not,
@@ -26,12 +26,12 @@ import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
 import { useQueryParam } from 'use-query-params'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
-import Divider from '@material-ui/core/Divider'
+import Divider from '@mui/material/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'

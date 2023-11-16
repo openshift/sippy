@@ -1,8 +1,8 @@
 import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
-import { BugReport, DirectionsRun, GridOn } from '@material-ui/icons'
-import { Button, Container, Tooltip, Typography } from '@material-ui/core'
-import { DataGrid } from '@material-ui/data-grid'
+import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
+import { Button, Container, Tooltip, Typography } from '@mui/material'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   escapeRegex,
   pathForExactJobAnalysis,
@@ -14,10 +14,10 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@material-ui/styles'
-import Alert from '@material-ui/lab/Alert'
+import { withStyles } from '@mui/styles'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
@@ -38,7 +38,7 @@ export const getColumns = (config, openBugzillaDialog) => {
       flex: 3.5,
       renderCell: (params) => {
         return (
-          <div className="job-name">
+          <div align="left" className="job-name">
             <Tooltip title={params.value}>
               <Link to={pathForExactJobAnalysis(config.release, params.value)}>
                 {config.briefTable ? params.row.brief_name : params.value}
@@ -133,6 +133,7 @@ export const getColumns = (config, openBugzillaDialog) => {
         return (
           <Tooltip title="TestGrid">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GridOn />}
@@ -152,6 +153,7 @@ export const getColumns = (config, openBugzillaDialog) => {
         return (
           <Tooltip title="See all job runs">
             <Button
+              color="inherit"
               component={Link}
               style={{ justifyContent: 'center' }}
               startIcon={<DirectionsRun />}
@@ -229,6 +231,114 @@ export const getColumns = (config, openBugzillaDialog) => {
     },
   }
 }
+
+export const getViews = (props) => {
+  return {
+    Default: {
+      sortField: 'current_pass_percentage',
+      sort: 'asc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'test_grid_url',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+        {
+          field: 'job_runs',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+      ],
+    },
+    'Pull Requests': {
+      sortField: 'average_retests_to_merge',
+      sort: 'desc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 1.5,
+          headerClassName: 'wrapHeader',
+        },
+        {
+          field: 'average_retests_to_merge',
+          flex: 1,
+          headerClassName: 'wrapHeader',
+        },
+      ],
+    },
+    'Last passing': {
+      sortField: 'current_runs',
+      sort: 'desc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'last_pass',
+          flex: 1.0,
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'test_grid_url',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+        {
+          field: 'job_runs',
+          flex: 0.4,
+          hide: props.briefTable,
+        },
+      ],
+    },
+  }
+}
+
 const useStyles = makeStyles((theme) => ({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
@@ -451,112 +561,7 @@ function JobTable(props) {
     </Button>
   )
 
-  const views = {
-    Default: {
-      sortField: 'current_pass_percentage',
-      sort: 'asc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'net_improvement',
-          flex: 0.5,
-        },
-        {
-          field: 'previous_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'open_bugs',
-          flex: 0.5,
-          hide: props.briefTable,
-        },
-        {
-          field: 'test_grid_url',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-        {
-          field: 'job_runs',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-      ],
-    },
-    'Pull Requests': {
-      sortField: 'average_retests_to_merge',
-      sort: 'desc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 1.5,
-          headerClassName: 'wrapHeader',
-        },
-        {
-          field: 'average_retests_to_merge',
-          flex: 1,
-          headerClassName: 'wrapHeader',
-        },
-      ],
-    },
-    'Last passing': {
-      sortField: 'current_runs',
-      sort: 'desc',
-      fieldOrder: [
-        {
-          field: 'name',
-          flex: 3.5,
-        },
-        {
-          field: 'current_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'net_improvement',
-          flex: 0.5,
-        },
-        {
-          field: 'previous_pass_percentage',
-          flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
-        },
-        {
-          field: 'last_pass',
-          flex: 1.0,
-        },
-        {
-          field: 'open_bugs',
-          flex: 0.5,
-          hide: props.briefTable,
-        },
-        {
-          field: 'test_grid_url',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-        {
-          field: 'job_runs',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-      ],
-    },
-  }
-
-  const gridView = new GridView(getColumns(props), views, view)
+  const gridView = new GridView(getColumns(props), getViews(props), view)
 
   const selectView = (v) => {
     setLoaded(false)

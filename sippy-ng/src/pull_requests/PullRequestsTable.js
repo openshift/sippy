@@ -6,15 +6,15 @@ import {
   Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { BOOKMARKS } from '../constants'
 import {
   CheckCircle,
   Error as ErrorIcon,
   GitHub,
   History,
-} from '@material-ui/icons'
-import { DataGrid } from '@material-ui/data-grid'
+} from '@mui/icons-material'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   getReportStartDate,
   relativeTime,
@@ -23,10 +23,10 @@ import {
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -282,6 +282,7 @@ export default function PullRequestsTable(props) {
         return (
           <Tooltip title="View job run history">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<History />}
@@ -304,6 +305,7 @@ export default function PullRequestsTable(props) {
         return (
           <Tooltip title="View pull request">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GitHub />}

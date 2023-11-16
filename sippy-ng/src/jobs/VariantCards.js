@@ -2,16 +2,16 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Grid,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { Alert } from '@material-ui/lab'
-import { ExpandMore } from '@material-ui/icons'
+} from '@mui/material'
+import { ExpandMore } from '@mui/icons-material'
 import { pathForVariantAnalysis } from '../helpers'
 import { PropTypes } from 'prop-types'
 import { VARIANT_THRESHOLDS } from '../constants'
-import Info from '@material-ui/icons/Info'
+import Alert from '@mui/material/Alert'
+import Grid from '@mui/material/Unstable_Grid2'
+import Info from '@mui/icons-material/Info'
 import MiniCard from '../components/MiniCard'
 import React, { Fragment, useEffect } from 'react'
 
@@ -55,7 +55,7 @@ export default function VariantCards(props) {
 
   const minicard = (variant, index) => {
     return (
-      <Grid item key={index} md={2} sm={4}>
+      <Grid key={index} md={2} sm={4}>
         <MiniCard
           link={pathForVariantAnalysis(props.release, variant.name)}
           threshold={VARIANT_THRESHOLDS}
@@ -87,7 +87,7 @@ export default function VariantCards(props) {
 
   return (
     <Fragment>
-      <Grid item md={12} sm={12}>
+      <Grid md={12} sm={12}>
         <Typography variant="h5">
           Variant status
           <Tooltip title="Variant status shows the current and previous pass rates for each variant. A variant is jobs grouped by platform, SDN, architecture, etc.">

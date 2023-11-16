@@ -3,12 +3,12 @@ import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { Tooltip, Typography } from '@material-ui/core'
+import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapsCell from './CompReadyCapsCell'
 import PropTypes from 'prop-types'
 import React from 'react'
-import TableCell from '@material-ui/core/TableCell'
-import TableRow from '@material-ui/core/TableRow'
+import TableCell from '@mui/material/TableCell'
+import TableRow from '@mui/material/TableRow'
 
 // After clicking a capability name on page 2, we add that capability name
 // to the api call along with all the other parts we already have.

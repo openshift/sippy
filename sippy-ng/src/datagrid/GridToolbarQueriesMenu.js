@@ -1,6 +1,6 @@
-import { Bookmark } from '@material-ui/icons'
-import { Button, Icon, Menu, MenuItem, Tooltip } from '@material-ui/core'
-import CheckIcon from '@material-ui/icons/Check'
+import { Bookmark } from '@mui/icons-material'
+import { Button, Icon, Menu, MenuItem, Tooltip } from '@mui/material'
+import CheckIcon from '@mui/icons-material/Check'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 

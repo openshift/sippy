@@ -1,21 +1,23 @@
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import { DatePicker, MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { Filter1, Filter2, Filter4, LocalShipping } from '@material-ui/icons'
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,
   Grid,
   InputLabel,
   MenuItem,
   Select,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { Fragment, useContext, useEffect } from 'react'
-import { GridToolbarFilterDateUtils } from '../datagrid/GridToolbarFilterDateUtils'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
-import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab'
 import PropTypes from 'prop-types'
 import React from 'react'
+import TextField from '@mui/material/TextField'
 
 const useStyles = makeStyles((theme) => ({
   formControl: {
@@ -94,9 +96,9 @@ function ReleaseSelector(props) {
     <Fragment>
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
-          <FormControl className={classes.formControl}>
+          <FormControl variant="standard" className={classes.formControl}>
             <InputLabel className={classes.label}>{label}</InputLabel>
-            <Select value={version} onChange={onChange}>
+            <Select variant="standard" value={version} onChange={onChange}>
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
                   {v}
@@ -104,7 +106,7 @@ function ReleaseSelector(props) {
               ))}
             </Select>
           </FormControl>
-          <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
               showTodayButton
               disableFuture
@@ -116,9 +118,10 @@ function ReleaseSelector(props) {
                 const formattedTime = formatLongDate(e, dateFormat)
                 setStartTime(formattedTime)
               }}
+              renderInput={(props) => (
+                <TextField variant="standard" {...props} />
+              )}
             />
-          </MuiPickersUtilsProvider>
-          <MuiPickersUtilsProvider utils={GridToolbarFilterDateUtils}>
             <DatePicker
               showTodayButton
               disableFuture
@@ -130,29 +133,38 @@ function ReleaseSelector(props) {
                 const formattedTime = formatLongDate(e, dateEndFormat)
                 setEndTime(formattedTime)
               }}
+              renderInput={(props) => (
+                <TextField variant="standard" {...props} />
+              )}
             />
-          </MuiPickersUtilsProvider>
+          </LocalizationProvider>
         </Grid>
         <Grid item md={12} style={{ marginTop: 5 }}>
-          <ToggleButtonGroup size="small" ria-label="release-dates">
+          <ToggleButtonGroup aria-label="release-dates">
             <Tooltip title="Last week">
-              <ToggleButton onClick={set1Week} aria-label="filter-2">
+              <ToggleButton
+                variant="primary"
+                onClick={set1Week}
+                aria-label="filter-2"
+                value=""
+              >
                 <Filter1 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="Last 2 weeks">
-              <ToggleButton onClick={set2Weeks} aria-label="filter-2">
+              <ToggleButton onClick={set2Weeks} aria-label="filter-2" value="">
                 <Filter2 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="Last 4 weeks">
-              <ToggleButton onClick={set4Weeks} aria-label="filter-4">
+              <ToggleButton onClick={set4Weeks} aria-label="filter-4" value="">
                 <Filter4 fontSize="small" />
               </ToggleButton>
             </Tooltip>
             <Tooltip title="4 weeks before GA">
               <ToggleButton
                 onClick={setGADate}
+                value=""
                 aria-label="ga-date"
                 fontSize="small"
                 style={{

@@ -5,9 +5,9 @@ import {
   Container,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { DataGrid } from '@material-ui/data-grid'
-import { DirectionsBoat, GitHub } from '@material-ui/icons'
+} from '@mui/material'
+import { DataGrid } from '@mui/x-data-grid'
+import { DirectionsBoat, GitHub } from '@mui/icons-material'
 import {
   getReportStartDate,
   pathForExactJob,
@@ -18,7 +18,7 @@ import {
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -149,6 +149,7 @@ export default function JobRunsTable(props) {
         return (
           <Tooltip title="View in Prow">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<DirectionsBoat />}
@@ -161,7 +162,7 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'pull_request_link',
-      headerName: 'Pull request link',
+      headerName: ' ',
       flex: 0.4,
       renderCell: (params) => {
         if (params.value === undefined || params.value === '') {
@@ -171,6 +172,7 @@ export default function JobRunsTable(props) {
         return (
           <Tooltip title="View pull request">
             <Button
+              color="inherit"
               style={{ justifyContent: 'center' }}
               target="_blank"
               startIcon={<GitHub />}

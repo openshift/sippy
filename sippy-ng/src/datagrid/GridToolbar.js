@@ -1,46 +1,42 @@
-import { createTheme } from '@material-ui/core/styles'
-import { GridToolbarDensitySelector } from '@material-ui/data-grid'
-import { makeStyles } from '@material-ui/styles'
-import ClearIcon from '@material-ui/icons/Clear'
+import { GridToolbarDensitySelector } from '@mui/x-data-grid'
+import { makeStyles, useTheme } from '@mui/styles'
+import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'
 import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
-import IconButton from '@material-ui/core/IconButton'
+import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import SearchIcon from '@material-ui/icons/Search'
-import TextField from '@material-ui/core/TextField'
+import SearchIcon from '@mui/icons-material/Search'
+import TextField from '@mui/material/TextField'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    root: {
-      padding: theme.spacing(0.5, 0.5, 0),
-      justifyContent: 'space-between',
-      display: 'flex',
-      alignItems: 'flex-start',
-      flexWrap: 'wrap',
+const useStyles = makeStyles((theme) => ({
+  root: {
+    padding: theme.spacing(0.5, 0.5, 0),
+    justifyContent: 'space-between',
+    display: 'flex',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+  },
+  textField: {
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
     },
-    textField: {
-      [theme.breakpoints.down('xs')]: {
-        width: '100%',
-      },
-      margin: theme.spacing(1, 0.5, 1.5),
-      '& .MuiSvgIcon-root': {
-        marginRight: theme.spacing(0.5),
-      },
-      '& .MuiInput-underline:before': {
-        borderBottom: `1px solid ${theme.palette.divider}`,
-      },
+    margin: theme.spacing(1, 0.5, 1.5),
+    '& .MuiSvgIcon-root': {
+      marginRight: theme.spacing(0.5),
     },
-  }),
-  { defaultTheme }
-)
+    '& .MuiInput-underline:before': {
+      borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+  },
+}))
 
 export default function GridToolbar(props) {
-  const classes = useStyles()
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const [search, setSearch] = React.useState('')
 

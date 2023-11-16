@@ -7,12 +7,12 @@ import {
   FormControl,
   FormControlLabel,
   FormGroup,
-} from '@material-ui/core'
-import { ExpandMore } from '@material-ui/icons'
-import { makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { ExpandMore } from '@mui/icons-material'
+import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
-import Typography from '@material-ui/core/Typography'
+import Typography from '@mui/material/Typography'
 
 export default function CheckBoxList(props) {
   const useStyles = makeStyles((theme) => ({
@@ -51,7 +51,11 @@ export default function CheckBoxList(props) {
   }
 
   return (
-    <FormControl className={classes.formControl} component="fieldset">
+    <FormControl
+      variant="standard"
+      className={classes.formControl}
+      component="fieldset"
+    >
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}

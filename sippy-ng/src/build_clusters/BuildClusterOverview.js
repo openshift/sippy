@@ -1,38 +1,25 @@
-import {
-  Card,
-  Container,
-  Paper,
-  Tab,
-  Tabs,
-  Tooltip,
-  Typography,
-} from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { Fragment, React } from 'react'
-import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
-import { TabContext } from '@material-ui/lab'
+import { Card, Container, Tooltip, Typography } from '@mui/material'
+import { makeStyles } from '@mui/styles'
+import { React } from 'react'
+import { useRouteMatch } from 'react-router-dom'
 import BuildClusterHealthChart from './BuildClusterHealthChart'
 import BuildClusterTable from './BuildClusterTable'
-import Grid from '@material-ui/core/Grid'
-import InfoIcon from '@material-ui/icons/Info'
+import Grid from '@mui/material/Grid'
+import InfoIcon from '@mui/icons-material/Info'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    root: {
-      flexGrow: 1,
-    },
-    card: {
-      minWidth: 275,
-      alignContent: 'center',
-      margin: 'auto',
-    },
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+  },
+  card: {
+    minWidth: 275,
+    alignContent: 'center',
+    margin: 'auto',
+  },
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 export default function BuildClusterOverview(props) {
   const classes = useStyles()

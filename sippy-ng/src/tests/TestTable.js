@@ -1,28 +1,17 @@
 import './TestTable.css'
-import {
-  AcUnit,
-  BugReport,
-  Check,
-  Error as ErrorIcon,
-  Search,
-} from '@material-ui/icons'
+import { AcUnit, Error as ErrorIcon, Search } from '@mui/icons-material'
 import {
   Backdrop,
   Badge,
   Box,
-  Button,
   CircularProgress,
-  Container,
   Grid,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
-import { DataGrid } from '@material-ui/data-grid'
 import {
   escapeRegex,
   filterFor,
-  not,
-  pathForExactJobAnalysis,
   pathForExactTestAnalysisWithFilter,
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
@@ -33,12 +22,13 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@material-ui/styles'
-import Alert from '@material-ui/lab/Alert'
+import { StyledDataGrid } from '../datagrid/StyledDataGrid'
+import { withStyles } from '@mui/styles'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
-import IconButton from '@material-ui/core/IconButton'
+import IconButton from '@mui/material/IconButton'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useRef } from 'react'
@@ -53,21 +43,9 @@ const bookmarks = [
 ]
 
 const useStyles = makeStyles((theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
+  backdrop: {
+    zIndex: 999999,
+    color: '#fff',
   },
 }))
 
@@ -188,6 +166,7 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
+          hide: true,
         },
         {
           field: 'variants',
@@ -253,6 +232,7 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
+          hide: true,
         },
         {
           field: 'variants',
@@ -380,7 +360,7 @@ function TestTable(props) {
           return params.value
         }
         return (
-          <div className="test-name">
+          <div align="left" className="test-name">
             <Tooltip title={params.value}>
               <Link
                 to={pathForExactTestAnalysisWithFilter(
@@ -398,9 +378,10 @@ function TestTable(props) {
     },
     suite_name: {
       field: 'suite_name',
+      hide: true,
       headerName: 'Suite',
       autocomplete: 'suite_name',
-      type: 'array',
+      type: 'string',
       renderCell: (params) => <div className="test-name">{params.value}</div>,
     },
     jira_component: {
@@ -412,7 +393,7 @@ function TestTable(props) {
       field: 'variants',
       headerName: 'Variants',
       autocomplete: 'variants',
-      type: 'array',
+      type: 'string',
       renderCell: (params) => (
         <div className="test-name">
           {params.value ? params.value.join(', ') : ''}
@@ -621,6 +602,7 @@ function TestTable(props) {
                   safeEncodeURIComponent(escapeRegex(params.row.name)) +
                   '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
                 }
+                size="large"
               >
                 <Search />
               </IconButton>
@@ -637,6 +619,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
+                size="large"
               >
                 <Badge
                   badgeContent={
@@ -660,6 +643,7 @@ function TestTable(props) {
                   'timestamp',
                   'desc'
                 )}
+                size="large"
               >
                 <Badge
                   badgeContent={
@@ -821,7 +805,15 @@ function TestTable(props) {
     }
     fetchData()
     prevLocation.current = location
-  }, [period, filterModel, sort, sortField, props.collapse, view])
+  }, [
+    period,
+    filterModel,
+    sort,
+    sortField,
+    props.collapse,
+    props.briefTable,
+    view,
+  ])
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -891,15 +883,13 @@ function TestTable(props) {
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
-      <DataGrid
-        className={gridClasses.root}
+      <StyledDataGrid
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
         disableColumnFilter={props.briefTable}
-        disableColumnMenu={true}
         pageSize={pageSize}
         onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
         rowsPerPageOptions={props.rowsPerPageOptions}

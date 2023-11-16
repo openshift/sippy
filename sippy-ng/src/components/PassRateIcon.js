@@ -1,9 +1,9 @@
-import { Tooltip } from '@material-ui/core'
-import ArrowDownwardRoundedIcon from '@material-ui/icons/ArrowDownwardRounded'
-import ArrowUpwardRoundedIcon from '@material-ui/icons/ArrowUpwardRounded'
+import { Tooltip } from '@mui/material'
+import ArrowDownwardRoundedIcon from '@mui/icons-material/ArrowDownwardRounded'
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
 import PropTypes from 'prop-types'
 import React from 'react'
-import SyncAltRoundedIcon from '@material-ui/icons/SyncAltRounded'
+import SyncAltRoundedIcon from '@mui/icons-material/SyncAltRounded'
 
 /**
  * PassRateIcon returns an up, down, or side-to-side arrows

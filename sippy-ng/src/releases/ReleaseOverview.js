@@ -1,7 +1,6 @@
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
-import { Card, Container, Tooltip, Typography } from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+import { Card, Container, Tooltip, Typography } from '@mui/material'
 import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import {
   getReportStartDate,
@@ -12,13 +11,13 @@ import {
   withSort,
 } from '../helpers'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import Alert from '@material-ui/lab/Alert'
-import BuildClusterHealthChart from '../build_clusters/BuildClusterHealthChart'
-import Grid from '@material-ui/core/Grid'
+import Alert from '@mui/material/Alert'
+import Grid from '@mui/material/Grid'
 import Histogram from '../components/Histogram'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -35,27 +34,23 @@ export const TWODAY_WARNING =
 export const TOP_FAILERS_TOOLTIP =
   'Shows the list of tests ordered by their failure percentage.'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    root: {
-      flexGrow: 1,
-    },
-    card: {
-      minWidth: 275,
-      alignContent: 'center',
-      margin: 'auto',
-    },
-    title: {
-      textAlign: 'center',
-    },
-    warning: {
-      margin: 10,
-      width: '100%',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+  },
+  card: {
+    minWidth: 275,
+    alignContent: 'center',
+    margin: 'auto',
+  },
+  title: {
+    textAlign: 'center',
+  },
+  warning: {
+    margin: 10,
+    width: '100%',
+  },
+}))
 
 export default function ReleaseOverview(props) {
   const classes = useStyles()

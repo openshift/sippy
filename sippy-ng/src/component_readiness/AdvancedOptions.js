@@ -5,15 +5,15 @@ import {
   AccordionSummary,
   FormControl,
   FormGroup,
-} from '@material-ui/core'
-import { ExpandMore } from '@material-ui/icons'
-import { makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { ExpandMore } from '@mui/icons-material'
+import { makeStyles } from '@mui/styles'
 
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
-import Slider from '@material-ui/core/Slider'
-import Switch from '@material-ui/core/Switch'
-import Typography from '@material-ui/core/Typography'
+import Slider from '@mui/material/Slider'
+import Switch from '@mui/material/Switch'
+import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
   const {
@@ -69,7 +69,11 @@ export default function AdvancedOptions(props) {
   }
 
   return (
-    <FormControl className={classes.formControl} component="fieldset">
+    <FormControl
+      variant="standard"
+      className={classes.formControl}
+      component="fieldset"
+    >
       <Accordion className={classes.headerName}>
         <AccordionSummary
           className={classes.summary}

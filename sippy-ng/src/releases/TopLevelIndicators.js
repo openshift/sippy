@@ -1,4 +1,4 @@
-import { Box, Tooltip, Typography } from '@material-ui/core'
+import { Box, Tooltip, Typography } from '@mui/material'
 import {
   INFRASTRUCTURE_THRESHOLDS,
   INSTALL_THRESHOLDS,
@@ -6,8 +6,8 @@ import {
   UPGRADE_THRESHOLDS,
 } from '../constants'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
-import Grid from '@material-ui/core/Grid'
-import InfoIcon from '@material-ui/icons/Info'
+import Grid from '@mui/material/Grid'
+import InfoIcon from '@mui/icons-material/Info'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -64,7 +64,7 @@ export default function TopLevelIndicators(props) {
             name="Infrastructure"
             link={pathForTestByVariant(
               props.release,
-              'cluster install.install should succeed: infrastructure'
+              'install should succeed: infrastructure'
             )}
             success={props.indicators.infrastructure.current_pass_percentage}
             flakes={props.indicators.infrastructure.current_flake_percentage}

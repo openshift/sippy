@@ -1,18 +1,40 @@
-import { Close } from '@material-ui/icons'
+import { Close } from '@mui/icons-material'
+import { createTheme } from '@mui/material/styles'
+import { format, utcToZonedTime } from 'date-fns-tz'
+import { green, orange, red } from '@mui/material/colors'
+import { Link } from 'react-router-dom'
 import {
-  createTheme,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Tooltip,
-} from '@material-ui/core'
-import { format, utcToZonedTime } from 'date-fns-tz'
-import { Link } from 'react-router-dom'
+} from '@mui/material'
 import { scale } from 'chroma-js'
-import List from '@material-ui/core/List'
+import List from '@mui/material/List'
 import React, { Fragment } from 'react'
 
-const theme = createTheme()
+// TODO(v5): colors aren't right but I can't wire in the provider's theme yet here...
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    success: {
+      main: green[500],
+      light: green[300],
+      dark: green[700],
+    },
+    warning: {
+      main: orange[500],
+      light: orange[300],
+      dark: orange[700],
+    },
+    error: {
+      main: red[500],
+      light: red[300],
+      dark: red[700],
+    },
+  },
+})
 
 // DataGrid tables can only be customized by specifying a classname, so this
 // creates the classes needed for creating background color gradient.
@@ -129,7 +151,7 @@ export function filterList(filter, setFilter) {
 
     explanations.push(
       <ListItem
-        button={Boolean(setFilter)}
+        key={`filter-item-${idx}`}
         onClick={
           setFilter
             ? () => setFilter(filterRemoveItem(originalFilters, idx))

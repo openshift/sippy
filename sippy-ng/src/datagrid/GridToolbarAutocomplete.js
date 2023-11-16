@@ -1,9 +1,9 @@
 import { safeEncodeURIComponent } from '../helpers'
-import Autocomplete from '@material-ui/lab/Autocomplete'
-import CircularProgress from '@material-ui/core/CircularProgress'
+import Autocomplete from '@mui/lab/Autocomplete'
+import CircularProgress from '@mui/material/CircularProgress'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import TextField from '@material-ui/core/TextField'
+import TextField from '@mui/material/TextField'
 
 export default function GridToolbarAutocomplete(props) {
   const [open, setOpen] = React.useState(false)
@@ -55,12 +55,13 @@ export default function GridToolbarAutocomplete(props) {
       }}
       onChange={(e, v) => v && props.onChange(v.name)}
       defaultValue={{ name: props.value }}
-      getOptionSelected={(option, value) => option.name === value.name}
+      isOptionEqualToValue={(option, value) => option.name === value.name}
       getOptionLabel={(option) => option.name}
       options={options}
       loading={loading}
       renderInput={(params) => (
         <TextField
+          variant="standard"
           {...params}
           id={props.id}
           label={props.label}

@@ -5,10 +5,10 @@ import {
   INSTALL_OTHER_THRESHOLDS,
   INSTALL_THRESHOLDS,
 } from '../constants'
-import { Box, Tooltip, Typography } from '@material-ui/core'
+import { Box, Tooltip, Typography } from '@mui/material'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
-import Grid from '@material-ui/core/Grid'
-import InfoIcon from '@material-ui/icons/Info'
+import Grid from '@mui/material/Grid'
+import InfoIcon from '@mui/icons-material/Info'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -55,15 +55,6 @@ export default function TopLevelIndicators(props) {
 
   return (
     <Fragment>
-      <Grid item md={12} sm={12} style={{ display: 'flex' }}>
-        <Typography variant="h5">
-          Top Level Install Indicators
-          <Tooltip title={TOOLTIP}>
-            <InfoIcon />
-          </Tooltip>
-        </Typography>
-      </Grid>
-
       <Grid item md={2} sm={4}>
         <SummaryCard
           key="infrastructure-summary"
@@ -71,7 +62,7 @@ export default function TopLevelIndicators(props) {
           name="Infrastructure"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: infrastructure'
+            'install should succeed: infrastructure'
           )}
           success={props.indicators.infrastructure.current_pass_percentage}
           flakes={props.indicators.infrastructure.current_flake_percentage}
@@ -88,7 +79,7 @@ export default function TopLevelIndicators(props) {
           name="Install-Config"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: configuration'
+            'install should succeed: configuration'
           )}
           success={props.indicators.installConfig.current_pass_percentage}
           flakes={props.indicators.installConfig.current_flake_percentage}
@@ -105,7 +96,7 @@ export default function TopLevelIndicators(props) {
           name="Bootstrap"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: cluster bootstrap'
+            'install should succeed: cluster bootstrap'
           )}
           success={props.indicators.bootstrap.current_pass_percentage}
           flakes={props.indicators.bootstrap.current_flake_percentage}
@@ -122,7 +113,7 @@ export default function TopLevelIndicators(props) {
           name="Install Other"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: other'
+            'install should succeed: other'
           )}
           success={props.indicators.installOther.current_pass_percentage}
           flakes={props.indicators.installOther.current_flake_percentage}

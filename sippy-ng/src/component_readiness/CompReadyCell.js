@@ -4,13 +4,13 @@ import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { Tooltip } from '@material-ui/core'
-import { useTheme } from '@material-ui/core/styles'
+import { Tooltip } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
-import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
-import TableCell from '@material-ui/core/TableCell'
+import TableCell from '@mui/material/TableCell'
 
 export default function CompReadyCell(props) {
   const { status, environment, componentName, filterVals, grayFactor } = props

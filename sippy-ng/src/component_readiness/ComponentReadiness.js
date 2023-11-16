@@ -31,7 +31,7 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { Fragment, useContext, useEffect, useState } from 'react'
 import {
   Link,
@@ -41,10 +41,10 @@ import {
   useRouteMatch,
 } from 'react-router-dom'
 
-import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { ReleasesContext } from '../App'
-import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
-import ChevronRightIcon from '@material-ui/icons/ChevronRight'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import clsx from 'clsx'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
@@ -55,14 +55,14 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
-import IconButton from '@material-ui/core/IconButton'
-import MenuIcon from '@material-ui/icons/Menu'
+import IconButton from '@mui/material/IconButton'
+import MenuIcon from '@mui/icons-material/Menu'
 import React from 'react'
-import Table from '@material-ui/core/Table'
-import TableBody from '@material-ui/core/TableBody'
-import TableCell from '@material-ui/core/TableCell'
-import TableHead from '@material-ui/core/TableHead'
-import TableRow from '@material-ui/core/TableRow'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 
 const drawerWidth = 240
 
@@ -764,6 +764,7 @@ export default function ComponentReadiness(props) {
                       classes.menuButton,
                       drawerOpen && classes.hide
                     )}
+                    size="large"
                   >
                     <MenuIcon />
                   </IconButton>
@@ -777,7 +778,7 @@ export default function ComponentReadiness(props) {
                     }}
                   >
                     <div className={classes.drawerHeader}>
-                      <IconButton onClick={handleDrawerClose}>
+                      <IconButton onClick={handleDrawerClose} size="large">
                         {theme.direction === 'ltr' ? (
                           <ChevronLeftIcon />
                         ) : (
@@ -848,11 +849,13 @@ export default function ComponentReadiness(props) {
                     <div>
                       <div style={{ display: 'flex', gap: '16px' }}>
                         <TextField
+                          variant="standard"
                           label="Search Component"
                           value={searchComponentRegex}
                           onChange={handleSearchComponentRegexChange}
                         />
                         <TextField
+                          variant="standard"
                           label="Search Column"
                           value={searchColumnRegex}
                           onChange={handleSearchColumnRegexChange}

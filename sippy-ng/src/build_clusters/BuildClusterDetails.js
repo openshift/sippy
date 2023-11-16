@@ -1,4 +1,4 @@
-import { Card, Container, Grid, Typography } from '@material-ui/core'
+import { Card, Container, Grid, Typography } from '@mui/material'
 import { filterFor, getReportStartDate, not } from '../helpers'
 import { JobStackedChart } from '../jobs/JobStackedChart'
 import { ReportEndContext } from '../App'

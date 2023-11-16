@@ -5,12 +5,12 @@ import {
   Link,
   Tooltip,
   Typography,
-} from '@material-ui/core'
-import { DataGrid } from '@material-ui/data-grid'
-import { Details, Launch } from '@material-ui/icons'
+} from '@mui/material'
+import { DataGrid } from '@mui/x-data-grid'
+import { Details, Launch } from '@mui/icons-material'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles } from '@mui/styles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,
@@ -19,10 +19,10 @@ import {
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useHistory } from 'react-router-dom'
-import { withStyles } from '@material-ui/styles'
-import Alert from '@material-ui/lab/Alert'
+import { withStyles } from '@mui/styles'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
-import InfoIcon from '@material-ui/icons/Info'
+import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
@@ -141,6 +141,7 @@ function RepositoriesTable(props) {
         return (
           <Tooltip title="Details">
             <Button
+              color="inherit"
               component={Link}
               target="_blank"
               startIcon={<Launch />}

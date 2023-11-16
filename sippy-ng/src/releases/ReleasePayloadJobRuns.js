@@ -1,32 +1,29 @@
-import { Button, Tooltip } from '@material-ui/core'
-import { Check, DirectionsBoat } from '@material-ui/icons'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { DataGrid } from '@material-ui/data-grid'
+import { Button, Tooltip } from '@mui/material'
+import { Check, DirectionsBoat } from '@mui/icons-material'
+import { DataGrid } from '@mui/x-data-grid'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseSucceeded: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseFailed: {
-      backgroundColor: theme.palette.error.light,
-    },
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseSucceeded: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseFailed: {
+    backgroundColor: theme.palette.error.light,
+  },
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 function ReleasePayloadJobRuns(props) {
-  const classes = useStyles()
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const columns = [
     {

@@ -2,7 +2,7 @@ import FullCalendar from '@fullcalendar/react'
 
 import { filterFor } from '../helpers'
 import { useHistory } from 'react-router-dom'
-import { useTheme } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import PayloadCalendarLegend from './PayloadCalendarLegend'
 import PropTypes from 'prop-types'

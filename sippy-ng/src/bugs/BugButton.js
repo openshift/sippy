@@ -1,15 +1,8 @@
-import {
-  Button,
-  IconButton,
-  makeStyles,
-  Modal,
-  TextField,
-} from '@material-ui/core'
+import { Button, IconButton, Modal, TextField } from '@mui/material'
+import { makeStyles } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
-import CloseIcon from '@material-ui/icons/Close'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
-import Typography from '@material-ui/core/Typography'
 
 const useStyles = makeStyles((theme) => ({
   alignedButton: {

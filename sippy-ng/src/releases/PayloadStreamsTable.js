@@ -1,34 +1,30 @@
-import { CheckCircle, Error as ErrorIcon, Help } from '@material-ui/icons'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
-import { DataGrid } from '@material-ui/data-grid'
+import { CheckCircle, Error as ErrorIcon, Help } from '@mui/icons-material'
+import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router-dom'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { Tooltip } from '@material-ui/core'
-import Alert from '@material-ui/lab/Alert'
+import { Tooltip } from '@mui/material'
+import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    rowPhaseAccepted: {
-      backgroundColor: theme.palette.success.light,
-    },
-    rowPhaseRejected: {
-      backgroundColor: theme.palette.error.light,
-    },
-    rowPhaseForced: {
-      backgroundColor: theme.palette.warning.light,
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  rowPhaseAccepted: {
+    backgroundColor: theme.palette.success.light,
+  },
+  rowPhaseRejected: {
+    backgroundColor: theme.palette.error.light,
+  },
+  rowPhaseForced: {
+    backgroundColor: theme.palette.warning.light,
+  },
+}))
 
 function PayloadStreamsTable(props) {
-  const classes = useStyles()
-  const theme = defaultTheme
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   const columns = [
     {

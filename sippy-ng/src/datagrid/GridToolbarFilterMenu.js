@@ -1,5 +1,5 @@
 import './GridToolbarFilterMenu.css'
-import { Add, FilterList } from '@material-ui/icons'
+import { Add, FilterList } from '@mui/icons-material'
 import {
   Badge,
   Button,
@@ -11,10 +11,10 @@ import {
   Popover,
   Select,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { filterTooltip } from './utils'
-import { makeStyles } from '@material-ui/core/styles'
-import Divider from '@material-ui/core/Divider'
+import { makeStyles } from '@mui/styles'
+import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
   operatorWithoutValue,
 } from './GridToolbarFilterItem'
@@ -177,9 +177,10 @@ export default function GridToolbarFilterMenu(props) {
       : props.filterModel.items.length
 
   const linkOperatorForm = (
-    <FormControl>
+    <FormControl variant="standard">
       <InputLabel id="linkOperatorLabel">Link operator</InputLabel>
       <Select
+        variant="standard"
         value={linkOperator}
         onChange={(e) => setLinkOperator(e.target.value)}
         className={classes.selector}
@@ -198,7 +199,7 @@ export default function GridToolbarFilterMenu(props) {
       <Tooltip title={filterTooltip(props.filterModel)}>
         <Button
           aria-describedby={id}
-          color={props.standalone ? 'default' : 'primary'}
+          color="primary"
           variant={props.standalone ? 'contained' : 'text'}
           onClick={handleClick}
         >

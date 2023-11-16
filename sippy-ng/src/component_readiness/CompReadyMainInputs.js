@@ -4,12 +4,12 @@ import { Fragment } from 'react'
 import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
-import Button from '@material-ui/core/Button'
+import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
-import Tooltip from '@material-ui/core/Tooltip'
+import Tooltip from '@mui/material/Tooltip'
 
 export default function CompReadyMainInputs(props) {
   const {
@@ -67,7 +67,6 @@ export default function CompReadyMainInputs(props) {
           size="large"
           variant="contained"
           color="primary"
-          component={Link}
           to={
             '/component_readiness/main' +
             getUpdatedUrlParts(
@@ -98,7 +97,7 @@ export default function CompReadyMainInputs(props) {
                against a historical (previous) release'
             }
           >
-            <span>Generate Report</span>
+            <Fragment>Generate Report</Fragment>
           </Tooltip>
         </Button>
       </div>

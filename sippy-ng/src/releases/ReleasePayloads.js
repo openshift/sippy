@@ -1,22 +1,19 @@
-import { Container, Typography } from '@material-ui/core'
-import { createTheme, makeStyles } from '@material-ui/core/styles'
+import { makeStyles, useTheme } from '@mui/styles'
+import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const defaultTheme = createTheme()
-const useStyles = makeStyles(
-  (theme) => ({
-    title: {
-      textAlign: 'center',
-    },
-  }),
-  { defaultTheme }
-)
+const useStyles = makeStyles((theme) => ({
+  title: {
+    textAlign: 'center',
+  },
+}))
 
 function ReleasePayloads(props) {
-  const classes = useStyles()
+  const theme = useTheme()
+  const classes = useStyles(theme)
 
   return (
     <Fragment>

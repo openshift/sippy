@@ -7,11 +7,10 @@ import {
   Favorite,
   FileCopyOutlined,
   GitHub,
-  Restore,
-} from '@material-ui/icons'
+} from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
-import { ListSubheader, Tooltip, useTheme } from '@material-ui/core'
+import { ListItemButton, ListSubheader, Tooltip, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
@@ -20,24 +19,28 @@ import {
   withSort,
 } from '../helpers'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
-import ApartmentIcon from '@material-ui/icons/Apartment'
-import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward'
-import AssessmentIcon from '@material-ui/icons/Assessment'
-import Collapse from '@material-ui/core/Collapse'
-import Divider from '@material-ui/core/Divider'
-import ExitToAppIcon from '@material-ui/icons/ExitToApp'
-import HomeIcon from '@material-ui/icons/Home'
-import InfoIcon from '@material-ui/icons/Info'
-import List from '@material-ui/core/List'
-import ListIcon from '@material-ui/icons/List'
-import ListItem from '@material-ui/core/ListItem'
-import ListItemIcon from '@material-ui/core/ListItemIcon'
-import ListItemText from '@material-ui/core/ListItemText'
-import NewReleasesIcon from '@material-ui/icons/NewReleases'
+import { styled } from '@mui/styles'
+import ApartmentIcon from '@mui/icons-material/Apartment'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
+import Collapse from '@mui/material/Collapse'
+import Divider from '@mui/material/Divider'
+import ExitToAppIcon from '@mui/icons-material/ExitToApp'
+import HomeIcon from '@mui/icons-material/Home'
+import InfoIcon from '@mui/icons-material/Info'
+import List from '@mui/material/List'
+import ListIcon from '@mui/icons-material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import SearchIcon from '@material-ui/icons/Search'
+import SearchIcon from '@mui/icons-material/Search'
 import SippyLogo from './SippyLogo'
+
+const StyledListItemButton = styled(ListItemButton)({
+  padding: 0,
+  margin: 0,
+})
 
 export default function Sidebar(props) {
   const classes = useTheme()
@@ -79,11 +82,13 @@ export default function Sidebar(props) {
   return (
     <Fragment>
       <List>
-        <ListItem button component={Link} to="/" key="Home">
-          <ListItemIcon>
-            <HomeIcon />
-          </ListItemIcon>
-          <ListItemText primary="Home" />
+        <ListItem component={Link} to="/" key="Home">
+          <StyledListItemButton>
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
+            <ListItemText primary="Home" />
+          </StyledListItemButton>
         </ListItem>
       </List>
       <CapabilitiesContext.Consumer>
@@ -103,13 +108,14 @@ export default function Sidebar(props) {
                     key={'build-cluster-health'}
                     component={Link}
                     to={`/build_clusters`}
-                    button
                     className={classes.nested}
                   >
-                    <ListItemIcon>
-                      <Favorite />
-                    </ListItemIcon>
-                    <ListItemText primary="Build Cluster Health" />
+                    <StyledListItemButton>
+                      <ListItemIcon>
+                        <Favorite />
+                      </ListItemIcon>
+                      <ListItemText primary="Build Cluster Health" />
+                    </StyledListItemButton>
                   </ListItem>
                 </List>
               </Fragment>
@@ -134,15 +140,16 @@ export default function Sidebar(props) {
                     key={'release-health-'}
                     component={Link}
                     to={'/component_readiness/main'}
-                    button
                     className={classes.nested}
                   >
-                    <ListItemIcon>
-                      <Tooltip title="This functionality is experimental; please do NOT depend on this data">
-                        <InfoIcon />
-                      </Tooltip>
-                    </ListItemIcon>
-                    <ListItemText primary="Component Readiness" />
+                    <StyledListItemButton>
+                      <ListItemIcon>
+                        <Tooltip title="This functionality is experimental; please do NOT depend on this data">
+                          <InfoIcon />
+                        </Tooltip>
+                      </ListItemIcon>
+                      <ListItemText primary="Component Readiness" />
+                    </StyledListItemButton>
                   </ListItem>
                 </List>
               </Fragment>
@@ -162,11 +169,12 @@ export default function Sidebar(props) {
           <Fragment key={'section-release-' + index}>
             <ListItem
               key={'item-release-' + index}
-              button
               onClick={() => handleClick(index)}
             >
-              {open[index] ? <ExpandLess /> : <ExpandMore />}
-              <ListItemText primary={release} />
+              <StyledListItemButton>
+                {open[index] ? <ExpandLess /> : <ExpandMore />}
+                <ListItemText primary={release} />
+              </StyledListItemButton>
             </ListItem>
             <Collapse in={open[index]} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
@@ -174,13 +182,14 @@ export default function Sidebar(props) {
                   key={'release-overview-' + index}
                   component={Link}
                   to={'/release/' + release}
-                  button
                   className={classes.nested}
                 >
-                  <ListItemIcon>
-                    <InfoIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Overview" />
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <InfoIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Overview" />
+                  </StyledListItemButton>
                 </ListItem>
                 {release !== 'Presubmits' ? (
                   <CapabilitiesContext.Consumer>
@@ -191,13 +200,14 @@ export default function Sidebar(props) {
                             key={'release-tags-' + index}
                             component={Link}
                             to={`/release/${release}/streams`}
-                            button
                             className={classes.nested}
                           >
-                            <ListItemIcon>
-                              <FileCopyOutlined />
-                            </ListItemIcon>
-                            <ListItemText primary="Payload Streams" />
+                            <StyledListItemButton>
+                              <ListItemIcon>
+                                <FileCopyOutlined />
+                              </ListItemIcon>
+                              <ListItemText primary="Payload Streams" />
+                            </StyledListItemButton>
                           </ListItem>
                         )
                       }
@@ -216,13 +226,14 @@ export default function Sidebar(props) {
                     'net_improvement',
                     'asc'
                   )}
-                  button
                   className={classes.nested}
                 >
-                  <ListItemIcon>
-                    <ListIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Jobs" />
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <ListIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Jobs" />
+                  </StyledListItemButton>
                 </ListItem>
 
                 {
@@ -233,25 +244,27 @@ export default function Sidebar(props) {
                         key={'release-pull-requests-' + index}
                         component={Link}
                         to={`/pull_requests/${release}`}
-                        button
                         className={classes.nested}
                       >
-                        <ListItemIcon>
-                          <GitHub />
-                        </ListItemIcon>
-                        <ListItemText primary="Pull Requests" />
+                        <StyledListItemButton>
+                          <ListItemIcon>
+                            <GitHub />
+                          </ListItemIcon>
+                          <ListItemText primary="Pull Requests" />
+                        </StyledListItemButton>
                       </ListItem>
                       <ListItem
                         key={'release-repositories-' + index}
                         component={Link}
                         to={`/repositories/${release}`}
-                        button
                         className={classes.nested}
                       >
-                        <ListItemIcon>
-                          <Code />
-                        </ListItemIcon>
-                        <ListItemText primary="Repositories" />
+                        <StyledListItemButton>
+                          <ListItemIcon>
+                            <Code />
+                          </ListItemIcon>
+                          <ListItemText primary="Repositories" />
+                        </StyledListItemButton>
                       </ListItem>
                     </Fragment>
                   ) : (
@@ -277,13 +290,14 @@ export default function Sidebar(props) {
                     'current_working_percentage',
                     'asc'
                   )}
-                  button
                   className={classes.nested}
                 >
-                  <ListItemIcon>
-                    <SearchIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Tests" />
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <SearchIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Tests" />
+                  </StyledListItemButton>
                 </ListItem>
 
                 <CapabilitiesContext.Consumer>
@@ -294,13 +308,14 @@ export default function Sidebar(props) {
                           key={'release-upgrade-' + index}
                           component={Link}
                           to={'/upgrade/' + release}
-                          button
                           className={classes.nested}
                         >
-                          <ListItemIcon>
-                            <ArrowUpwardIcon />
-                          </ListItemIcon>
-                          <ListItemText primary="Upgrade" />
+                          <StyledListItemButton>
+                            <ListItemIcon>
+                              <ArrowUpwardIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="Upgrade" />
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
@@ -315,13 +330,14 @@ export default function Sidebar(props) {
                           key={'release-install-' + index}
                           component={Link}
                           to={'/install/' + release}
-                          button
                           className={classes.nested}
                         >
-                          <ListItemIcon>
-                            <ExitToAppIcon />
-                          </ListItemIcon>
-                          <ListItemText primary="Install" />
+                          <StyledListItemButton>
+                            <ListItemIcon>
+                              <ExitToAppIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="Install" />
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
@@ -336,7 +352,7 @@ export default function Sidebar(props) {
                       if (newInstall) {
                         link = pathForTestByVariant(
                           release,
-                          'cluster install.install should succeed: infrastructure'
+                          'install should succeed: infrastructure'
                         )
                       } else {
                         link = pathForTestByVariant(
@@ -350,13 +366,14 @@ export default function Sidebar(props) {
                           key={'release-infrastructure-' + index}
                           component={Link}
                           to={link}
-                          button
                           className={classes.nested}
                         >
-                          <ListItemIcon>
-                            <ApartmentIcon />
-                          </ListItemIcon>
-                          <ListItemText primary="Infrastructure" />
+                          <StyledListItemButton>
+                            <ListItemIcon>
+                              <ApartmentIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="Infrastructure" />
+                          </StyledListItemButton>
                         </ListItem>
                       )
                     }
@@ -376,7 +393,6 @@ export default function Sidebar(props) {
         }
       >
         <ListItem
-          button
           component="a"
           target="_blank"
           href={reportAnIssueURI()}
@@ -389,7 +405,6 @@ export default function Sidebar(props) {
         </ListItem>
 
         <ListItem
-          button
           component="a"
           target="_blank"
           href="https://www.github.com/openshift/sippy"

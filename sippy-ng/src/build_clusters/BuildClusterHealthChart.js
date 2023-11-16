@@ -1,5 +1,5 @@
 import { Line } from 'react-chartjs-2'
-import Alert from '@material-ui/lab/Alert'
+import Alert from '@mui/material/Alert'
 import chroma from 'chroma-js'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
