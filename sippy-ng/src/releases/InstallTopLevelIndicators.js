@@ -62,7 +62,7 @@ export default function TopLevelIndicators(props) {
           name="Infrastructure"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: infrastructure'
+            'install should succeed: infrastructure'
           )}
           success={props.indicators.infrastructure.current_pass_percentage}
           flakes={props.indicators.infrastructure.current_flake_percentage}
@@ -79,7 +79,7 @@ export default function TopLevelIndicators(props) {
           name="Install-Config"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: configuration'
+            'install should succeed: configuration'
           )}
           success={props.indicators.installConfig.current_pass_percentage}
           flakes={props.indicators.installConfig.current_flake_percentage}
@@ -96,7 +96,7 @@ export default function TopLevelIndicators(props) {
           name="Bootstrap"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: cluster bootstrap'
+            'install should succeed: cluster bootstrap'
           )}
           success={props.indicators.bootstrap.current_pass_percentage}
           flakes={props.indicators.bootstrap.current_flake_percentage}
@@ -113,7 +113,7 @@ export default function TopLevelIndicators(props) {
           name="Install Other"
           link={pathForTestByVariant(
             props.release,
-            'cluster install.install should succeed: other'
+            'install should succeed: other'
           )}
           success={props.indicators.installOther.current_pass_percentage}
           flakes={props.indicators.installOther.current_flake_percentage}

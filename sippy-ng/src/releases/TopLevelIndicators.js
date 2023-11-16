@@ -64,7 +64,7 @@ export default function TopLevelIndicators(props) {
             name="Infrastructure"
             link={pathForTestByVariant(
               props.release,
-              'cluster install.install should succeed: infrastructure'
+              'install should succeed: infrastructure'
             )}
             success={props.indicators.infrastructure.current_pass_percentage}
             flakes={props.indicators.infrastructure.current_flake_percentage}
