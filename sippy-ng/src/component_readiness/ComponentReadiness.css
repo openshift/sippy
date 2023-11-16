@@ -29,55 +29,7 @@
 .cr-col-name {
 }
 
-.cr-cell-name {
-    font-size: 11px !important;
-}
-
 .cr-jobrun-table-wrapper {
   width: 205px;
   vertical-align: top !important;
-}
-
-.cr-cell-capab-col {
-    font-size: 11px !important;
-    width: 300px;
-}
-
-.cr-col-result {
-    hyphens: auto;
-    vertical-align: top !important;
-    background-color: whitesmoke;
-    font-weight: bold;
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 1;
-}
-
-.cr-col-result-full {
-  background-color: whitesmoke;
-  font-weight: bold;
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 1;
-}
-
-.cr-component-name {
-    width: 175px;
-    min-width: 175px;
-    max-width: 175px;
-    background-color: whitesmoke;
-    font-weight: bold;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-}
-
-.cr-cell-result {
-    height: 50px;
-    width: 50px;
-    padding: 5px !important;
-    line-height: 13px !important;
-    border: 1px solid #EEE;
 }

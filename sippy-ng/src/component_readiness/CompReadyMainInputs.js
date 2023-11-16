@@ -18,7 +18,10 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 50,
     fontWeight: 'bold',
     padding: 5,
-    backgroundColor: theme.palette.grey[500],
+    backgroundColor:
+      theme.palette.mode == 'dark'
+        ? theme.palette.grey[800]
+        : theme.palette.grey[500],
   },
 }))
 

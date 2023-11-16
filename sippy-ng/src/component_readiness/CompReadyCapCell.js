@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
@@ -16,6 +17,7 @@ export default function CompReadyCapCell(props) {
   const { status, environment, testId, filterVals, component, capability } =
     props
   const theme = useTheme()
+  const classes = useContext(ComponentReadinessStyleContext)
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -59,7 +61,7 @@ export default function CompReadyCapCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className="cr-cell-result"
+          className={classes.crCellResult}
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -72,7 +74,7 @@ export default function CompReadyCapCell(props) {
   } else {
     return (
       <TableCell
-        className="cr-cell-result"
+        className={classes.crCellResult}
         style={{
           textAlign: 'center',
           backgroundColor: 'white',
