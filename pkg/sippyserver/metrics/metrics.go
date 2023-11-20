@@ -181,10 +181,13 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	log.Debugf("most recent GA is %q", mostRecentGA)
 	baseRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: mostRecentGA,
-		// Match what UI sends to API.
-		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -29),
-		End:   releaseloader.GADateMap[mostRecentGA].Add(-1 * time.Second),
+		// Match what Component Readiness UI "Generate Report" screen sends to API.
+		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -27),
+		End:   releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, 1).Add(-1 * time.Second),
 	}
+
+	fmt.Println("Start :", baseRelease.Start.Format(time.RFC1123Z))
+	fmt.Println("End :", baseRelease.End.Format(time.RFC1123Z))
 
 	// Get the next minor, that's our sample release
 	next, err := nextMinor(mostRecentGA)
@@ -195,10 +198,12 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
-		Start:   today.AddDate(0, 0, -7),
+		Start:   today.AddDate(0, 0, -6),
 		// Match what UI sends to API.
 		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
 	}
+	fmt.Println("Start :", sampleRelease.Start.Format(time.RFC1123Z))
+	fmt.Println("End :", sampleRelease.End.Format(time.RFC1123Z))
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
 	excludeOption := apitype.ComponentReportRequestExcludeOptions{
