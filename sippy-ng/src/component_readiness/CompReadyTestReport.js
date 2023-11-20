@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { Box, Grid, Paper, TableContainer, Typography } from '@mui/material'
 import {
   cancelledDataTable,
   getColumns,
@@ -14,8 +15,8 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
-import { TableContainer, Typography } from '@mui/material'
 import { Tooltip } from '@mui/material'
+import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
@@ -312,8 +313,16 @@ export default function CompReadyTestReport(props) {
       <div align="center" style={{ marginTop: 50 }}>
         <h2>{testName}</h2>
       </div>
-      <h2>Known Bugs</h2>
-      <BugTable testName={testName} />
+      <Grid container>
+        <Grid md={12}>
+          <h2>Known Bugs</h2>
+          <BugTable testName={testName} />
+          <BugButton
+            testName={testName}
+            jiraComponentID={data.jira_component_id}
+          />
+        </Grid>
+      </Grid>
 
       <h2>Regression Report</h2>
       {printStats(

@@ -252,6 +252,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
 						ANY_VALUE(prowjob_name) AS prowjob_name,
+						ANY_VALUE(cm.jira_component) AS jira_component,
+						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
@@ -390,7 +392,9 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
-						ANY_VALUE(cm.capabilities) AS capabilities
+						ANY_VALUE(cm.capabilities) AS capabilities,
+						ANY_VALUE(cm.jira_component) AS jira_component,
+						ANY_VALUE(cm.jira_component_id) AS jira_component_id
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
 
@@ -1018,6 +1022,13 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, baseStats := range baseStatsList {
+			if result.JiraComponent == "" && baseStats.JiraComponent != "" {
+				result.JiraComponent = baseStats.JiraComponent
+			}
+			if result.JiraComponentID == nil && baseStats.JiraComponentID != nil {
+				result.JiraComponentID = baseStats.JiraComponentID
+			}
+
 			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, getJobRunStats(baseStats))
 			perJobBaseSuccess += baseStats.SuccessCount
 			perJobBaseFlake += baseStats.FlakeCount
@@ -1025,6 +1036,13 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		}
 		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
 			for _, sampleStats := range sampleStatsList {
+				if result.JiraComponent == "" && sampleStats.JiraComponent != "" {
+					result.JiraComponent = sampleStats.JiraComponent
+				}
+				if result.JiraComponentID == nil && sampleStats.JiraComponentID != nil {
+					result.JiraComponentID = sampleStats.JiraComponentID
+				}
+
 				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats))
 				perJobSampleSuccess += sampleStats.SuccessCount
 				perJobSampleFlake += sampleStats.FlakeCount

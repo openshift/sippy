@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -886,11 +887,13 @@ type ComponentReportStatus int
 type ComponentReportTestDetails struct {
 	ComponentReportRowIdentification
 	ComponentReportColumnIdentification
-	SampleStats  ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
-	BaseStats    ComponentReportTestDetailsReleaseStats `json:"base_stats"`
-	FisherExact  float64                                `json:"fisher_exact"`
-	ReportStatus ComponentReportStatus                  `json:"report_status"`
-	JobStats     []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
+	JiraComponent   string                                 `json:"jira_component"`
+	JiraComponentID *big.Rat                               `json:"jira_component_id"`
+	SampleStats     ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
+	BaseStats       ComponentReportTestDetailsReleaseStats `json:"base_stats"`
+	FisherExact     float64                                `json:"fisher_exact"`
+	ReportStatus    ComponentReportStatus                  `json:"report_status"`
+	JobStats        []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
 }
 
 type ComponentReportTestDetailsReleaseStats struct {
@@ -942,13 +945,15 @@ type ComponentJobRunTestIdentification struct {
 }
 
 type ComponentJobRunTestStatusRow struct {
-	ProwJob      string `bigquery:"prowjob_name"`
-	TestID       string `bigquery:"test_id"`
-	TestName     string `bigquery:"test_name"`
-	FilePath     string `bigquery:"file_path"`
-	TotalCount   int    `bigquery:"total_count"`
-	SuccessCount int    `bigquery:"success_count"`
-	FlakeCount   int    `bigquery:"flake_count"`
+	ProwJob         string   `bigquery:"prowjob_name"`
+	TestID          string   `bigquery:"test_id"`
+	TestName        string   `bigquery:"test_name"`
+	FilePath        string   `bigquery:"file_path"`
+	TotalCount      int      `bigquery:"total_count"`
+	SuccessCount    int      `bigquery:"success_count"`
+	FlakeCount      int      `bigquery:"flake_count"`
+	JiraComponent   string   `bigquery:"jira_component"`
+	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 }
 
 const (
