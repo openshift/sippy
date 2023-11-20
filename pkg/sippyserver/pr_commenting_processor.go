@@ -105,7 +105,6 @@ type CommentWorker struct {
 	commentUpdaterRateLimiter util.RateLimiter
 	pendingComments           chan PendingComment
 	ghCommenter               *commenter.GitHubCommenter
-	restrictedLogins          sets.String
 	dryRunOnly                bool
 }
 
@@ -167,11 +166,6 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 		// so that we don't make comments running locally
 		// or in a test deployment unless configured to do so
 		dryRunOnly: wp.dryRunOnly,
-
-		// internal testing, will go away
-		// don't want long term support for per login access
-		// but do want to restrict the initial rollout
-		restrictedLogins: buildRestrictedUsers([]string{"deads2k", "neisw", "dgoodwin", "stbenjam", "xueqzhan", "deepsm007", "DennisPeriquet"}),
 	}
 
 	if commentWorker.dryRunOnly {
@@ -325,21 +319,6 @@ func (cw *CommentWorker) Run() {
 	}
 }
 
-// internal testing, will go away
-// don't want long term support for per login access
-// but do want to restrict the initial rollout
-func (cw *CommentWorker) IsRestrictedLogin(login *string) bool {
-	if cw.restrictedLogins != nil {
-		if login != nil {
-			return !cw.restrictedLogins.Has(*login)
-		}
-		// if we have restricted logins defined and this login is missing or not in the map then they are restricted
-		return true
-	}
-
-	return false
-}
-
 func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pendingComment PendingComment) error {
 
 	start := time.Now()
@@ -401,14 +380,6 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 
 	if !strings.EqualFold(*prEntry.State, "open") {
 		logger.Warningf("Skipping commenting for PR state: %s", *prEntry.State)
-		return nil
-	}
-
-	// we allow all other processing up to this point
-	// but for now we only comment on specific logins
-	// this goes away completely when we have validated
-	// things are working as expected after roll out
-	if cw.IsRestrictedLogin(prEntry.Login) {
 		return nil
 	}
 
