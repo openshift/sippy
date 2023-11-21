@@ -301,6 +301,17 @@ export default function CompReadyTestReport(props) {
     )
   }
 
+  const printStatsText = (statsLabel, stats, from, to) => {
+    return `
+${statsLabel} Release: ${stats.release}
+Start Time: ${from}
+End Time: ${to}
+Success Rate: ${(stats.success_rate * 100).toFixed(2)}%
+Successes: ${stats.success_count}
+Failures: ${stats.failure_count}
+Flakes: ${stats.flake_count}`
+  }
+
   return (
     <Fragment>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
@@ -320,6 +331,24 @@ export default function CompReadyTestReport(props) {
           <BugButton
             testName={testName}
             jiraComponentID={data.jira_component_id}
+            context={`Component Readiness has found a potential regression in ${testName}.
+ 
+${probabilityStr(statusStr, data.fisher_exact)}
+${printStatsText(
+  'Sample (being evaluated)',
+  data.sample_stats,
+  sampleStartTime,
+  sampleEndTime
+)}
+${printStatsText(
+  'Base (historical)',
+  data.base_stats,
+  baseStartTime,
+  baseEndTime
+)}
+
+View the test details report at ${document.location.href}
+            `}
           />
         </Grid>
       </Grid>

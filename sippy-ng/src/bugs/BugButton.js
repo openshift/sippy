@@ -24,8 +24,12 @@ Additional context here:
   ${document.location.href}`
 
   const handleClick = () => {
+    let message = text
+    if (props.context) {
+      message = props.context
+    }
     let url = `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?pid=12332330&priority=10200&issuetype=1&description=${safeEncodeURIComponent(
-      text
+      message
     )}`
 
     if (props.jiraComponentID) {
@@ -51,5 +55,6 @@ Additional context here:
 
 BugButton.propTypes = {
   jiraComponentID: PropTypes.number,
+  context: PropTypes.string,
   testName: PropTypes.string.isRequired,
 }
