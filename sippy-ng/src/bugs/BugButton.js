@@ -24,9 +24,18 @@ Additional context here:
   ${document.location.href}`
 
   const handleClick = () => {
-    const url = `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?pid=12332330&priority=10200&issuetype=1&components=${
-      props.jiraComponentID
-    }&description=${safeEncodeURIComponent(text)}`
+    let message = text
+    if (props.context) {
+      message = props.context
+    }
+    let url = `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?pid=12332330&priority=10200&issuetype=1&description=${safeEncodeURIComponent(
+      message
+    )}`
+
+    if (props.jiraComponentID) {
+      url += `&components=${props.jiraComponentID}`
+    }
+
     window.open(url, '_blank')
   }
 
@@ -46,5 +55,6 @@ Additional context here:
 
 BugButton.propTypes = {
   jiraComponentID: PropTypes.number,
+  context: PropTypes.string,
   testName: PropTypes.string.isRequired,
 }
