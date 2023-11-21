@@ -782,10 +782,16 @@ func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) 
 	return status, errs
 }
 
+type testStatus struct {
+	testID apitype.ComponentReportTestIdentification
+	status apitype.ComponentReportStatus
+}
+
 func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 	columnIdentifications []apitype.ComponentReportColumnIdentification,
+	testID apitype.ComponentReportTestIdentification,
 	reportStatus apitype.ComponentReportStatus,
-	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus,
+	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]testStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
 	for _, columnIdentification := range columnIdentifications {
@@ -793,26 +799,45 @@ func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 			allColumns[columnIdentification] = struct{}{}
 		}
 	}
+	extremeStatus := testStatus{
+		testID: testID,
+		status: reportStatus,
+	}
 	for _, rowIdentification := range rowIdentifications {
+		// Each test might have multiple Capabilities. Initial ID just pick the first on
+		// the list. If we are on a page with specific capability, this needs to be rewritten.
+		if rowIdentification.Capability != "" {
+			extremeStatus.testID.Capability = rowIdentification.Capability
+		}
 		if _, ok := allRows[rowIdentification]; !ok {
 			allRows[rowIdentification] = struct{}{}
 		}
 		row, ok := status[rowIdentification]
 		if !ok {
-			row = map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
+			row = map[apitype.ComponentReportColumnIdentification]testStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = reportStatus
+				// Each test might have multiple Variants. Initial ID just pick the first on
+				// the list. If we are on a page with specific variant, this needs to be rewritten.
+				if columnIdentification.Variant != "" {
+					extremeStatus.testID.Variant = columnIdentification.Variant
+				}
+				row[columnIdentification] = extremeStatus
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
+				// Each test might have multiple Variants. Initial ID just pick the first on
+				// the list. If we are on a page with specific variant, this needs to be rewritten.
+				if columnIdentification.Variant != "" {
+					extremeStatus.testID.Variant = columnIdentification.Variant
+				}
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = reportStatus
-				} else if (reportStatus < apitype.NotSignificant && reportStatus < existing) ||
-					(existing == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
+					row[columnIdentification] = extremeStatus
+				} else if (reportStatus < apitype.NotSignificant && reportStatus < existing.status) ||
+					(existing.status == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
 					// We want to show the significant improvement if assessment is not regression
-					row[columnIdentification] = reportStatus
+					row[columnIdentification] = extremeStatus
 				}
 			}
 		}
@@ -825,11 +850,36 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		Rows: []apitype.ComponentReportRow{},
 	}
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
-	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
+	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]testStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[apitype.ComponentReportRowIdentification]struct{}{}
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
+	// testID is used to identify the most regressed/improved test. With this, we can
+	// create a shortcut link from any page to go straight to the most regressed test page.
+	var testID apitype.ComponentReportTestIdentification
 	for testIdentification, baseStats := range baseStatus {
+		testID = apitype.ComponentReportTestIdentification{
+			ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+				Component: baseStats.Component,
+				TestName:  baseStats.TestName,
+				TestSuite: baseStats.TestSuite,
+				TestID:    testIdentification.TestID,
+			},
+			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+				Network:  testIdentification.Network,
+				Upgrade:  testIdentification.Upgrade,
+				Arch:     testIdentification.Arch,
+				Platform: testIdentification.Platform,
+			},
+		}
+		// Take the first cap and variant for now. When we reach to a cell with specific capability
+		// or variant, we will override the value.
+		if len(baseStats.Capabilities) > 0 {
+			testID.Capability = baseStats.Capabilities[0]
+		}
+		if len(baseStats.Variants) > 0 {
+			testID.Variant = baseStats.Variants[0]
+		}
 		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
@@ -840,12 +890,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		delete(sampleStatus, testIdentification)
 
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateStatus(rowIdentifications, columnIdentifications, reportStatus, aggregatedStatus, allRows, allColumns)
+		updateStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
+		updateStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Sort the row identifications
@@ -907,7 +957,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			if !ok {
 				reportColumn.Status = apitype.MissingBasisAndSample
 			} else {
-				reportColumn.Status = status
+				reportColumn.Status = status.status
+				if status.status == apitype.ExtremeRegression || status.status == apitype.SignificantRegression {
+					reportColumn.MostRegressed = status.testID
+				}
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
 			if reportColumn.Status <= apitype.SignificantRegression {
@@ -967,17 +1020,19 @@ func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow) apitype.Componen
 func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus map[string][]apitype.ComponentJobRunTestStatusRow,
 	sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetails {
 	result := apitype.ComponentReportTestDetails{
-		ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
-			Component:  c.Component,
-			Capability: c.Capability,
-			TestID:     c.TestID,
-		},
-		ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-			Platform: c.Platform,
-			Upgrade:  c.Upgrade,
-			Arch:     c.Arch,
-			Network:  c.Network,
-			Variant:  c.Variant,
+		ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+			ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+				Component:  c.Component,
+				Capability: c.Capability,
+				TestID:     c.TestID,
+			},
+			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+				Platform: c.Platform,
+				Upgrade:  c.Upgrade,
+				Arch:     c.Arch,
+				Network:  c.Network,
+				Variant:  c.Variant,
+			},
 		},
 	}
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
