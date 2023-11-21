@@ -186,8 +186,14 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 		End:   releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, 1).Add(-1 * time.Second),
 	}
 
-	fmt.Println("Start :", baseRelease.Start.Format(time.RFC1123Z))
-	fmt.Println("End :", baseRelease.End.Format(time.RFC1123Z))
+	difference := baseRelease.End.Sub(baseRelease.Start)
+	numSecs := difference.Seconds()
+	numDays := numSecs / 24 / 3600
+
+	log.Infof("Start : %s", baseRelease.Start.Format(time.RFC1123Z))
+	log.Infof("End   : %s", baseRelease.End.Format(time.RFC1123Z))
+	log.Infof("diff  : %2.2f days", numDays)      // should be 28 days (minus 1 second) rounded to 2 decimals
+	log.Infof("int   : %d seconds", int(numSecs)) // 2419199 (28 days minus 1 second in seconds)
 
 	// Get the next minor, that's our sample release
 	next, err := nextMinor(mostRecentGA)
@@ -202,8 +208,14 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 		// Match what UI sends to API.
 		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
 	}
-	fmt.Println("Start :", sampleRelease.Start.Format(time.RFC1123Z))
-	fmt.Println("End :", sampleRelease.End.Format(time.RFC1123Z))
+	difference = sampleRelease.End.Sub(sampleRelease.Start)
+	numSecs = difference.Seconds()
+	numDays = numSecs / 24 / 3600
+
+	log.Infof("Start : %s", sampleRelease.Start.Format(time.RFC1123Z))
+	log.Infof("End : %s", sampleRelease.End.Format(time.RFC1123Z))
+	log.Infof("diff  : %2.2f days", numDays)      // should be 7 days (minus 1 second) rounded to 2 decimals
+	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
 	excludeOption := apitype.ComponentReportRequestExcludeOptions{

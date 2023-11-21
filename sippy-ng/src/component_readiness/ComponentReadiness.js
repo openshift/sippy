@@ -189,7 +189,9 @@ export default function ComponentReadiness(props) {
   const defaultBaseRelease = '4.14'
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
-      return new Date(releases.ga_dates[release])
+      // Remove the Z so that when the Date object is created, the date
+      // is not converted to a local time zone.
+      return new Date(releases.ga_dates[release].replace('Z', ''))
     }
 
     return new Date()
