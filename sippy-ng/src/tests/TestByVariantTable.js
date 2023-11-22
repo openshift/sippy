@@ -191,7 +191,10 @@ export default function TestByVariantTable(props) {
   }
 
   const handleSwitchFull = (e) => {
-    setCookie('testDetailShowFull', e.target.checked, { sameSite: true })
+    setCookie('testDetailShowFull', e.target.checked, {
+      sameSite: 'Strict',
+      expires: new Date('3000-12-31'),
+    })
     setShowFull(e.target.checked)
   }
 
