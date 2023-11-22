@@ -56,7 +56,7 @@ function ReleaseSelector(props) {
   const setGADate = () => {
     let start = new Date(versions[version])
     setStartTime(
-      formatLongDate(start.setDate(start.getDate() - 28), dateFormat)
+      formatLongDate(start.setDate(start.getDate() - 27), dateFormat)
     )
     setEndTime(formatLongDate(versions[version], dateEndFormat))
   }

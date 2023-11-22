@@ -199,7 +199,7 @@ export default function ComponentReadiness(props) {
   const now = new Date()
 
   // Sample is last 7 days by default
-  const initialSampleStartTime = new Date(now.getTime() - 7 * days)
+  const initialSampleStartTime = new Date(now.getTime() - 6 * days)
   const initialSampleEndTime = new Date(now.getTime())
 
   // Base is 30 days from GA or now
