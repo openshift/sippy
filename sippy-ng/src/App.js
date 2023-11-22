@@ -1,12 +1,5 @@
-import { adaptV4Theme, createTheme, useTheme } from '@mui/material/styles'
-import {
-  Brightness4,
-  Brightness7,
-  DarkMode,
-  LightMode,
-} from '@mui/icons-material'
-import { color } from 'chart.js/helpers'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
+import { createTheme, useTheme } from '@mui/material/styles'
 import {
   CssBaseline,
   Grid,
@@ -16,9 +9,9 @@ import {
   useMediaQuery,
 } from '@mui/material'
 import { cyan, green, orange, red } from '@mui/material/colors'
+import { DarkMode, LightMode } from '@mui/icons-material'
 import { getReportStartDate, relativeTime } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
-import { light } from '@mui/material/styles/createPalette'
 import { makeStyles, styled } from '@mui/styles'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
@@ -31,7 +24,6 @@ import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import clsx from 'clsx'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
@@ -173,7 +165,11 @@ export default function App(props) {
       toggleColorMode: () => {
         setMode((prevMode) => {
           const newMode = prevMode === 'light' ? 'dark' : 'light'
-          setCookie('sippyColorMode', newMode, { path: '/' })
+          setCookie('sippyColorMode', newMode, {
+            path: '/',
+            sameSite: 'Strict',
+            expires: new Date('3000-12-31'),
+          })
           return newMode
         })
       },
