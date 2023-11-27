@@ -60,8 +60,6 @@ const (
 )
 
 var (
-	componentReadinessCacheDuration = 8 * time.Hour
-
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
 	DefaultExcludePlatforms = "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown"

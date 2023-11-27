@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
+)
+
+var (
+	cacheDuration = 8 * time.Hour
 )
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
@@ -42,7 +47,7 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, ge
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)
 			if err == nil {
-				if err := c.Set(string(jsonCacheKey), cr, componentReadinessCacheDuration); err != nil {
+				if err := c.Set(string(jsonCacheKey), cr, cacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
 					log.Debugf("cache set for cache key: %s", string(jsonCacheKey))
