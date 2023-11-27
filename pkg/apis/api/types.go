@@ -990,3 +990,27 @@ var FailureRiskLevelMedium = RiskLevel{Name: "Medium", Level: 50}
 var FailureRiskLevelIncompleteTests = RiskLevel{Name: "IncompleteTests", Level: 75}
 var FailureRiskLevelMissingData = RiskLevel{Name: "MissingData", Level: 76}
 var FailureRiskLevelHigh = RiskLevel{Name: "High", Level: 100}
+
+type DisruptionReportDeltaRequestOptions struct {
+	Release string
+}
+
+type DisruptionReport struct {
+	Rows []DisruptionReportRow `json:"rows,omitempty"`
+}
+
+type DisruptionReportRow struct {
+	P50Delta                 float32 `json:"p50_delta"`
+	P75Delta                 float32 `json:"p75_delta"`
+	P95Delta                 float32 `json:"p95_delta"`
+	PercentageAboveZeroDelta float32 `json:"percentage_above_zero_delta"`
+	Release                  string  `json:"release"`
+	CompareRelease           string  `json:"compare_release,omitempty"` // only present in the vs prev GA view
+	BackendName              string  `json:"backend_name"`
+	Platform                 string  `json:"platform"`
+	UpgradeType              string  `json:"upgrade_type"`
+	MasterNodesUpdated       string  `json:"master_nodes_updated"`
+	Network                  string  `json:"network"`
+	Topology                 string  `json:"topology"`
+	Architecture             string  `json:"architecture"`
+}

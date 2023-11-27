@@ -71,6 +71,14 @@ var (
 		Name: "sippy_component_readiness",
 		Help: "Regression score for components",
 	}, []string{"component", "network", "arch", "platform"})
+	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_disruption_vs_prev_ga",
+		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
+	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	disruptionVsTwoWeeksAgo = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_disruption_vs_two_weeks_ago",
+		Help: "Delta of percentiles now vs two weeks ago for a given release",
+	}, []string{"delta", "release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
 )
 
 // presume in a historical context there won't be scraping of these metrics
@@ -133,6 +141,11 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 		if err := refreshComponentReadinessMetrics(bqc); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
+
+		if err := refreshDisruptionMetrics(bqc); err != nil {
+			log.WithError(err).Error("error refreshing disruption metrics")
+		}
+
 	}
 
 	if err := refreshInstallSuccessMetrics(dbc); err != nil {
@@ -328,6 +341,63 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 		}
 
 	}
+}
+
+// refreshDisruptionMetrics queries our BigQuery views for current release vs two weeks ago, and previous release GA.
+// Metrics are published for the delta for each NURP which can then be alerted on if certain thresholds are exceeded.
+// The previous GA view should have its release and GA date updated on each release GA.
+func refreshDisruptionMetrics(client *bqclient.Client) error {
+	if client == nil || client.BQ == nil {
+		log.Warningf("not generating disruption metrics as we don't have a bigquery client")
+		return nil
+	}
+
+	if client.Cache == nil {
+		log.Warningf("not generating disruption metrics as we don't have a cache configured")
+		return nil
+	}
+
+	disruptionReport, err := api.GetDisruptionVsPrevGAReportFromBigQuery(client)
+	if err != nil {
+		return fmt.Errorf("errors returned: %v", err)
+	}
+
+	for _, row := range disruptionReport.Rows {
+		disruptionVsPrevGAMetric.WithLabelValues("P50",
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50Delta))
+		disruptionVsPrevGAMetric.WithLabelValues("P75",
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75Delta))
+		disruptionVsPrevGAMetric.WithLabelValues("P95",
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95Delta))
+		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+	}
+
+	disruptionReport, err = api.GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client)
+	if err != nil {
+		return fmt.Errorf("errors returned: %v", err)
+	}
+
+	for _, row := range disruptionReport.Rows {
+		disruptionVsTwoWeeksAgo.WithLabelValues("P50",
+			row.Release, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50Delta))
+		disruptionVsTwoWeeksAgo.WithLabelValues("P75",
+			row.Release, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75Delta))
+		disruptionVsTwoWeeksAgo.WithLabelValues("P95",
+			row.Release, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95Delta))
+		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+	}
+
+	return nil
 }
 
 type promReportType struct {
