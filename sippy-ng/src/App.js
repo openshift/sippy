@@ -211,6 +211,13 @@ export default function App(props) {
         ])
       })
       .then(([releases, capabilities, reportDate]) => {
+        // Remove the Z from the ga_dates so that when Date objects are created,
+        // the date is not converted to a local time zone.
+        for (const key in releases.ga_dates) {
+          if (releases.ga_dates[key]) {
+            releases.ga_dates[key] = releases.ga_dates[key].replace('Z', '')
+          }
+        }
         setReleases(releases)
         setCapabilities(capabilities)
         setReportDate(reportDate['pinnedDateTime'])

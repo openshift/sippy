@@ -22,8 +22,9 @@ import {
 } from '@mui/material'
 import {
   cancelledDataTable,
+  dateEndFormat,
+  dateFormat,
   formatLongDate,
-  formatLongEndDate,
   formColumnName,
   getAPIUrl,
   getColumns,
@@ -189,7 +190,31 @@ const cancelFetch = () => {
 
 export default function ComponentReadiness(props) {
   const releases = useContext(ReleasesContext)
-  const defaultBaseRelease = '4.14'
+
+  // Throw out Presubmits, sort numerically so latest version (not GA'ed) is first
+  const sortedReleases = releases.releases
+    .filter((version) => version != 'Presubmits')
+    .sort((a, b) => {
+      // Split version into its numeric parts
+      const a_numbers = a.split('.').map(Number)
+      const b_numbers = b.split('.').map(Number)
+
+      // Compare the version parts (version are x.y so we only need 2)
+      for (let i = 0; i < 2; i++) {
+        if (a_numbers[i] !== b_numbers[i]) {
+          return b_numbers[i] - a_numbers[i]
+        }
+      }
+      return 0
+    })
+
+  console.log('sortedReleases: ', sortedReleases)
+
+  // Default to 4.14, but if we have two releases, use the previous one.
+  let defaultBaseRelease = '4.14'
+  if (sortedReleases[1]) {
+    defaultBaseRelease = sortedReleases[1]
+  }
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
       return new Date(releases.ga_dates[release])
@@ -198,31 +223,44 @@ export default function ComponentReadiness(props) {
     return new Date()
   }
   const days = 24 * 60 * 60 * 1000
-  const weeks = days * 7
+  const seconds = 1000
   const now = new Date()
 
   // Sample is last 7 days by default
-  const initialSampleStartTime = new Date(now.getTime() - 7 * days)
+  const initialSampleStartTime = new Date(now.getTime() - 6 * days)
   const initialSampleEndTime = new Date(now.getTime())
 
-  // Base is 30 days from GA or now
-  const initialBaseEndTime = getReleaseDate(defaultBaseRelease)
-  const initialBaseStartTime = initialBaseEndTime.getTime() - 4 * weeks
+  // Base is 28 days from the default base release's GA date
+  // Match what the metrics uses in the api.
+  const initialBaseStartTime =
+    getReleaseDate(defaultBaseRelease).getTime() - 27 * days
+  const initialBaseEndTime =
+    getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
+
+  console.log('defaultBaseRelease: ', defaultBaseRelease)
+  console.log(
+    'initialBaseStartTime: ',
+    formatLongDate(initialBaseStartTime, dateFormat)
+  )
+  console.log(
+    'initialBaseEndTime: ',
+    formatLongDate(initialBaseEndTime, dateEndFormat)
+  )
 
   const setBaseReleaseWithDates = (event) => {
     let release = event.target.value
     let endTime = getReleaseDate(release)
     let startTime = endTime.getTime() - 30 * days
     setBaseRelease(release)
-    setBaseStartTime(formatLongDate(startTime))
-    setBaseEndTime(formatLongDate(endTime))
+    setBaseStartTime(formatLongDate(startTime, dateFormat))
+    setBaseEndTime(formatLongDate(endTime, dateEndFormat))
   }
 
   const setSampleReleaseWithDates = (event) => {
     let release = event.target.value
     setSampleRelease(release)
-    setSampleStartTime(formatLongDate(initialSampleStartTime))
-    setSampleEndTime(formatLongDate(initialSampleEndTime))
+    setSampleStartTime(formatLongDate(initialSampleStartTime, dateFormat))
+    setSampleEndTime(formatLongDate(initialSampleEndTime, dateEndFormat))
   }
 
   const theme = useTheme()
@@ -273,11 +311,11 @@ export default function ComponentReadiness(props) {
   const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
     useQueryParam('baseRelease', StringParam)
   const [
-    baseStartTimeParam = formatLongDate(initialBaseStartTime),
+    baseStartTimeParam = formatLongDate(initialBaseStartTime, dateFormat),
     setBaseStartTimeParam,
   ] = useQueryParam('baseStartTime', StringParam)
   const [
-    baseEndTimeParam = formatLongDate(initialBaseEndTime),
+    baseEndTimeParam = formatLongDate(initialBaseEndTime, dateEndFormat),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
   const [sampleReleaseParam = '4.15', setSampleReleaseParam] = useQueryParam(
@@ -285,11 +323,11 @@ export default function ComponentReadiness(props) {
     StringParam
   )
   const [
-    sampleStartTimeParam = formatLongDate(initialSampleStartTime),
+    sampleStartTimeParam = formatLongDate(initialSampleStartTime, dateFormat),
     setSampleStartTimeParam,
   ] = useQueryParam('sampleStartTime', StringParam)
   const [
-    sampleEndTimeParam = formatLongDate(initialSampleEndTime),
+    sampleEndTimeParam = formatLongDate(initialSampleEndTime, dateEndFormat),
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
   const [
@@ -556,11 +594,11 @@ export default function ComponentReadiness(props) {
   const handleGenerateReport = (event) => {
     event.preventDefault()
     setBaseReleaseParam(baseRelease)
-    setBaseStartTimeParam(formatLongDate(baseStartTime))
-    setBaseEndTimeParam(formatLongDate(baseEndTime))
+    setBaseStartTimeParam(formatLongDate(baseStartTime, dateFormat))
+    setBaseEndTimeParam(formatLongDate(baseEndTime, dateEndFormat))
     setSampleReleaseParam(sampleRelease)
-    setSampleStartTimeParam(formatLongDate(sampleStartTime))
-    setSampleEndTimeParam(formatLongDate(sampleEndTime))
+    setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
+    setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
     setGroupByCheckedItemsParam(groupByCheckedItems)
     setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
     setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
@@ -895,11 +933,17 @@ export default function ComponentReadiness(props) {
                     </div>
                     <CompReadyMainInputs
                       baseRelease={baseRelease}
-                      baseStartTime={formatLongDate(baseStartTime)}
-                      baseEndTime={formatLongEndDate(baseEndTime)}
+                      baseStartTime={formatLongDate(baseStartTime, dateFormat)}
+                      baseEndTime={formatLongDate(baseEndTime, dateEndFormat)}
                       sampleRelease={sampleRelease}
-                      sampleStartTime={formatLongDate(sampleStartTime)}
-                      sampleEndTime={formatLongEndDate(sampleEndTime)}
+                      sampleStartTime={formatLongDate(
+                        sampleStartTime,
+                        dateFormat
+                      )}
+                      sampleEndTime={formatLongDate(
+                        sampleEndTime,
+                        dateEndFormat
+                      )}
                       groupByCheckedItems={groupByCheckedItems}
                       excludeCloudsCheckedItems={excludeCloudsCheckedItems}
                       excludeArchesCheckedItems={excludeArchesCheckedItems}

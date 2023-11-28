@@ -194,10 +194,19 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	log.Debugf("most recent GA is %q", mostRecentGA)
 	baseRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: mostRecentGA,
-		// Match what UI sends to API, although it's not correct TRT-1346
-		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -29),
-		End:   releaseloader.GADateMap[mostRecentGA].Add(-1 * time.Second),
+		// Match what Component Readiness UI "Generate Report" screen sends to API.
+		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -27),
+		End:   releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, 1).Add(-1 * time.Second),
 	}
+
+	difference := baseRelease.End.Sub(baseRelease.Start)
+	numSecs := difference.Seconds()
+	numDays := numSecs / 24 / 3600
+
+	log.Infof("Start : %s", baseRelease.Start.Format(time.RFC1123Z))
+	log.Infof("End   : %s", baseRelease.End.Format(time.RFC1123Z))
+	log.Infof("diff  : %2.2f days", numDays)      // should be 28 days (minus 1 second) rounded to 2 decimals
+	log.Infof("int   : %d seconds", int(numSecs)) // 2419199 (28 days minus 1 second in seconds)
 
 	// Get the next minor, that's our sample release
 	next, err := nextMinor(mostRecentGA)
@@ -208,10 +217,18 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
-		Start:   today.AddDate(0, 0, -7),
-		// Match what UI sends to API, although it's not correct TRT-1346
+		Start:   today.AddDate(0, 0, -6),
+		// Match what UI sends to API.
 		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
 	}
+	difference = sampleRelease.End.Sub(sampleRelease.Start)
+	numSecs = difference.Seconds()
+	numDays = numSecs / 24 / 3600
+
+	log.Infof("Start : %s", sampleRelease.Start.Format(time.RFC1123Z))
+	log.Infof("End : %s", sampleRelease.End.Format(time.RFC1123Z))
+	log.Infof("diff  : %2.2f days", numDays)      // should be 7 days (minus 1 second) rounded to 2 decimals
+	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
 	excludeOption := apitype.ComponentReportRequestExcludeOptions{

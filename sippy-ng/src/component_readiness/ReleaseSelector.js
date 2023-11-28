@@ -55,8 +55,10 @@ function ReleaseSelector(props) {
 
   const setGADate = () => {
     let start = new Date(versions[version])
-    setStartTime(formatLongDate(start.setDate(start.getDate() - 28)))
-    setEndTime(formatLongDate(versions[version]))
+    setStartTime(
+      formatLongDate(start.setDate(start.getDate() - 27), dateFormat)
+    )
+    setEndTime(formatLongDate(versions[version], dateEndFormat))
   }
 
   const set4Weeks = () => {
@@ -92,6 +94,19 @@ function ReleaseSelector(props) {
     return <p>Loading Releases...</p>
   }
 
+  // dateExtract takes a date from the DatePicker and extracts only the year, month, and day.
+  // We can then use these 3 things to create a UTC time (regardless of the local browser's TZ).
+  const dateExtractor = (descString, e) => {
+    // Extract year, month, day as a string.
+    console.log(`${descString} in: `, e)
+    const year = e.getFullYear()
+    const month = e.getMonth() + 1
+    const day = e.getDate()
+    const stringTime = `${year}-${month}-${day}`
+    console.log(`${descString}: `, stringTime)
+    return stringTime
+  }
+
   return (
     <Fragment>
       <Grid container justifyContent="center" alignItems="center">
@@ -115,7 +130,11 @@ function ReleaseSelector(props) {
               ampm={false}
               value={startTime}
               onChange={(e) => {
-                const formattedTime = formatLongDate(e, dateFormat)
+                const stringStartTime = dateExtractor('startTime', e)
+                const formattedTime = formatLongDate(
+                  stringStartTime,
+                  dateFormat
+                )
                 setStartTime(formattedTime)
               }}
               renderInput={(props) => (
@@ -130,7 +149,11 @@ function ReleaseSelector(props) {
               ampm={false}
               value={endTime}
               onChange={(e) => {
-                const formattedTime = formatLongDate(e, dateEndFormat)
+                const stringEndTime = dateExtractor('endTime', e)
+                const formattedTime = formatLongDate(
+                  stringEndTime,
+                  dateEndFormat
+                )
                 setEndTime(formattedTime)
               }}
               renderInput={(props) => (
