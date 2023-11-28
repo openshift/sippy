@@ -2,9 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,7 +16,6 @@ import (
 	"google.golang.org/api/iterator"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -63,8 +60,6 @@ const (
 )
 
 var (
-	componentReadinessCacheDuration = 8 * time.Hour
-
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
 	DefaultExcludePlatforms = "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown"
@@ -1174,42 +1169,6 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 		}
 	}
 	return status, fischerExact
-}
-
-// getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
-func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
-	if c != nil {
-		cacheKey, err := json.Marshal(cacheKey)
-		if err != nil {
-			return defaultVal, []error{err}
-		}
-		if res, err := c.Get(string(cacheKey)); err == nil {
-			log.WithFields(log.Fields{
-				"key":  string(cacheKey),
-				"type": reflect.TypeOf(defaultVal).String(),
-			}).Debugf("cache hit")
-			var cr T
-			if err := json.Unmarshal(res, &cr); err != nil {
-				return defaultVal, []error{err}
-			}
-			return cr, nil
-		}
-		log.Infof("cache miss for cache key: %s", string(cacheKey))
-		result, errs := generateFn()
-		if len(errs) == 0 {
-			cr, err := json.Marshal(result)
-			if err == nil {
-				if err := c.Set(string(cacheKey), cr, componentReadinessCacheDuration); err != nil {
-					log.WithError(err).Warningf("couldn't persist new item to cache")
-				} else {
-					log.Debugf("cache set for cache key: %s", string(cacheKey))
-				}
-			}
-		}
-		return result, errs
-	}
-
-	return generateFn()
 }
 
 func init() {
