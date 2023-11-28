@@ -8,6 +8,19 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import {
+  Button,
+  Checkbox,
+  Drawer,
+  FormControlLabel,
+  Grid,
+  Link,
+  Popover,
+  TableContainer,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import {
   cancelledDataTable,
   formatLongDate,
   formatLongEndDate,
@@ -22,20 +35,11 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
-import {
-  Checkbox,
-  Drawer,
-  FormControlLabel,
-  Grid,
-  TableContainer,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@mui/material'
 import { ClassNameMap } from '@mui/styles'
 import { Fragment, useContext, useEffect, useState } from 'react'
 import { Route, Switch, useRouteMatch } from 'react-router-dom'
 
+import { Clear, FileCopy } from '@mui/icons-material'
 import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
 import { ReleasesContext } from '../App'
@@ -224,18 +228,34 @@ export default function ComponentReadiness(props) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
-  const [searchComponentRegex, setSearchComponentRegex] = useState('')
+  const [searchComponentRegexURL, setSearchComponentRegexURL] = useQueryParam(
+    'searchComponent',
+    StringParam
+  )
+  const [searchComponentRegex, setSearchComponentRegex] = useState(
+    searchComponentRegexURL
+  )
   const handleSearchComponentRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchComponentRegex(searchValue)
   }
-  const [searchColumnRegex, setSearchColumnRegex] = useState('')
+
+  const [searchColumnRegexURL, setSearchColumnRegexURL] = useQueryParam(
+    'searchColumn',
+    StringParam
+  )
+  const [searchColumnRegex, setSearchColumnRegex] =
+    useState(searchColumnRegexURL)
   const handleSearchColumnRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchColumnRegex(searchValue)
   }
 
-  const [redOnlyChecked, setRedOnlyChecked] = React.useState(false)
+  const [redOnlyURL = false, setRedOnlyURL] = useQueryParam(
+    'redOnly',
+    BooleanParam
+  )
+  const [redOnlyChecked, setRedOnlyChecked] = React.useState(redOnlyURL)
   const handleRedOnlyCheckboxChange = (event) => {
     setRedOnlyChecked(event.target.checked)
   }
@@ -400,6 +420,50 @@ export default function ComponentReadiness(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+
+  const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
+  const copyPopoverOpen = Boolean(copyPopoverEl)
+
+  const linkToReport = () => {
+    const currentUrl = new URL(window.location.href)
+    if (searchComponentRegex && searchComponentRegex !== '') {
+      currentUrl.searchParams.set('searchComponent', searchComponentRegex)
+    }
+
+    if (searchColumnRegex && searchColumnRegex !== '') {
+      currentUrl.searchParams.set('searchColumn', searchColumnRegex)
+    }
+
+    if (redOnlyChecked) {
+      currentUrl.searchParams.set('redOnly', '1')
+    }
+
+    return currentUrl.href
+  }
+
+  const copyLinkToReport = (event) => {
+    event.preventDefault()
+    navigator.clipboard.writeText(linkToReport())
+    setCopyPopoverEl(event.currentTarget)
+    setTimeout(() => setCopyPopoverEl(null), 2000)
+  }
+
+  const clearSearches = () => {
+    setSearchComponentRegex('')
+    if (searchComponentRegexURL && searchComponentRegexURL !== '') {
+      setSearchComponentRegexURL('')
+    }
+
+    setSearchColumnRegex('')
+    if (searchColumnRegexURL && searchColumnRegexURL !== '') {
+      setSearchColumnRegexURL('')
+    }
+
+    if (setRedOnlyChecked) {
+      setRedOnlyURL(false)
+    }
+    setRedOnlyChecked(false)
+  }
 
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
@@ -920,6 +984,44 @@ export default function ComponentReadiness(props) {
                           }}
                           label="Red Only"
                         ></FormControlLabel>
+                        <Tooltip title="Copy link to search">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            variant="contained"
+                            component={Link}
+                            href={linkToReport()}
+                            onClick={copyLinkToReport}
+                          >
+                            <FileCopy />
+                          </IconButton>
+                        </Tooltip>
+                        <Popover
+                          id="copyPopover"
+                          open={copyPopoverOpen}
+                          anchorEl={copyPopoverEl}
+                          onClose={() => setCopyPopoverEl(null)}
+                          anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'center',
+                          }}
+                          transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'center',
+                          }}
+                        >
+                          Link copied!
+                        </Popover>
+                        <Tooltip title="Clear searches">
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            variant="contained"
+                            onClick={clearSearches}
+                          >
+                            <Clear />
+                          </IconButton>
+                        </Tooltip>
                       </div>
                       <TableContainer
                         component="div"
