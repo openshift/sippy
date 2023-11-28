@@ -230,6 +230,13 @@ export default function App(props) {
       })
   }
 
+  // Disable console.log in production
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      console.log = function () {}
+    }
+  }, [])
+
   useEffect(() => {
     if (!isLoaded) {
       fetchData()
