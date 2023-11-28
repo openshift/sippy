@@ -35,6 +35,7 @@ npm:
 clean:
 	rm -f sippy
 	rm -rf sippy-ng/build
+	rm -rf sippy-ng/node_modules
 
 e2e:
 	./scripts/e2e.sh
