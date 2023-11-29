@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/cache/redis"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/sippyserver"
@@ -64,6 +66,9 @@ func (f *ComponentReadinessFlags) BindFlags(flags *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
+	if len(f.GoogleServiceAccountCredentialFile) == 0 {
+		return fmt.Errorf("--google-service-account-credential-file is required")
+	}
 	return nil
 }
 
@@ -117,16 +122,16 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
-	var bigQueryClient *bigquery.Client
+	var bigQueryClient bqcachedclient.Client
 	if f.GoogleServiceAccountCredentialFile != "" {
-		bigQueryClient, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
+		bigQueryClient.BQ, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
 			option.WithCredentialsFile(f.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents component readiness queries from working")
 			return err
 		}
 		// Enable Storage API usage for fetching data
-		err = bigQueryClient.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(f.GoogleServiceAccountCredentialFile))
+		err = bigQueryClient.BQ.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(f.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error enabling BigQuery Storage API")
 			return err
@@ -153,7 +158,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		&static,
 		nil,
 		gcsClient,
-		bigQueryClient,
+		&bigQueryClient,
 		nil,
 		cacheClient,
 	)
