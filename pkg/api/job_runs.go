@@ -435,7 +435,7 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 	case jobRunTestCount < (int(float64(historicalRunTestCount) * .75)):
 		response.OverallRisk.Level = apitype.FailureRiskLevelIncompleteTests
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
-			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): IncompleteTests", jobRunTestCount, historicalRunTestCount))
+			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): IncompleteTests (not enough tests ran to make a reasonable risk analysis; this could be due to infra, installation, or upgrade problems)", jobRunTestCount, historicalRunTestCount))
 		return response, nil
 
 	// Return early if no tests failed in this run:
