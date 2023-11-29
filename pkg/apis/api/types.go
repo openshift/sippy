@@ -1013,4 +1013,5 @@ type DisruptionReportRow struct {
 	Network                  string  `json:"network"`
 	Topology                 string  `json:"topology"`
 	Architecture             string  `json:"architecture"`
+	Relevance                int     `json:"relevance"`
 }
