@@ -48,10 +48,11 @@ type Pagination struct {
 }
 
 type Repository struct {
-	ID       int    `json:"id"`
-	Org      string `json:"org"`
-	Repo     string `json:"repo"`
-	JobCount int    `json:"job_count"`
+	ID          int    `json:"id"`
+	Org         string `json:"org"`
+	Repo        string `json:"repo"`
+	JobCount    int    `json:"job_count"`
+	RevertCount int    `json:"revert_count"`
 
 	// WorstPremergeJobFailures is the average number of tries on the worst
 	// performing presubmit job. For example, if e2e-aws-upgrade takes 7 tries
