@@ -75,10 +75,18 @@ var (
 		Name: "sippy_disruption_vs_prev_ga",
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
 	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	disruptionVsPrevGARelevanceMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_disruption_vs_prev_ga_relevance",
+		Help: "Rating of how relevant we feel our data is for regression detection.",
+	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
 	disruptionVsTwoWeeksAgo = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_disruption_vs_two_weeks_ago",
 		Help: "Delta of percentiles now vs two weeks ago for a given release",
 	}, []string{"delta", "release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	disruptionVsTwoWeeksAgoRelevanceMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_disruption_vs_two_weeks_ago_relevance",
+		Help: "Rating of how relevant we feel our data is for regression detection.",
+	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
 )
 
 // presume in a historical context there won't be scraping of these metrics
@@ -392,6 +400,9 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+		disruptionVsPrevGARelevanceMetric.WithLabelValues(
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.Relevance))
 	}
 
 	disruptionReport, err = api.GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client)
@@ -409,9 +420,12 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 		disruptionVsTwoWeeksAgo.WithLabelValues("P95",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95Delta))
-		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
-			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+		disruptionVsTwoWeeksAgo.WithLabelValues("PercentageAboveZero",
+			row.Release, row.Platform, row.BackendName, row.UpgradeType,
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+		disruptionVsTwoWeeksAgoRelevanceMetric.WithLabelValues(
+			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.Relevance))
 	}
 
 	return nil
