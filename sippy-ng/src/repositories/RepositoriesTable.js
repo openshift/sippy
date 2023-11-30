@@ -51,6 +51,9 @@ function RepositoriesTable(props) {
     'Failures exclude developer pushes or successful retests due to code changes.  It only looks ' +
     'at failures on merged commit shas.'
 
+  const REVERT_COUNT_TOOLTIP =
+    'Revert count is our best guess for how many reverts this repo has had merged over the last 90 days.'
+
   const { classes } = props
   const gridClasses = useStyles()
   const history = useHistory()
@@ -90,6 +93,10 @@ function RepositoriesTable(props) {
           flex: 2,
         },
         {
+          field: 'revert_count',
+          flex: 2,
+        },
+        {
           field: 'worst_premerge_job_failures',
           flex: 2,
         },
@@ -115,6 +122,20 @@ function RepositoriesTable(props) {
     job_count: {
       field: 'job_count',
       headerName: 'Job count',
+      type: 'number',
+    },
+    revert_count: {
+      field: 'revert_count',
+      headerName: (
+        <Fragment>
+          <Tooltip title={REVERT_COUNT_TOOLTIP}>
+            <Typography>
+              Revert count
+              <InfoIcon />
+            </Typography>
+          </Tooltip>
+        </Fragment>
+      ),
       type: 'number',
     },
     worst_premerge_job_failures: {

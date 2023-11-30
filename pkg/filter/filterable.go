@@ -78,9 +78,9 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 			return fmt.Sprintf("? = ANY(%s)", field), f.Value
 		}
 		if f.Not {
-			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
 		}
-		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
 	case OperatorEquals, OperatorArithmeticEquals:
 
 		if f.Not {
@@ -114,14 +114,14 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		return fmt.Sprintf("%s <> ?", field), f.Value
 	case OperatorStartsWith:
 		if f.Not {
-			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%s%%", f.Value)
+			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
 		}
-		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value)
+		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
 	case OperatorEndsWith:
 		if f.Not {
-			return fmt.Sprintf("%s NOT LIKE ?", field), fmt.Sprintf("%%%s", f.Value)
+			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
 		}
-		return fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value)
+		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
 	case OperatorIsEmpty:
 		if f.Not {
 			return fmt.Sprintf("%s IS NOT NULL", field), nil
@@ -153,9 +153,9 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 			}
 		} else {
 			if f.Not {
-				db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
+				db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
 			} else {
-				db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
+				db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
 			}
 		}
 	case OperatorEquals, OperatorArithmeticEquals:
@@ -196,15 +196,15 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 		}
 	case OperatorStartsWith:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value))
+			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
 		} else {
-			db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%s%%", f.Value))
+			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
 		}
 	case OperatorEndsWith:
 		if f.Not {
-			db = db.Not(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value))
+			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
 		} else {
-			db = db.Where(fmt.Sprintf("%s LIKE ?", field), fmt.Sprintf("%%%s", f.Value))
+			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
 		}
 	case OperatorIsEmpty:
 		if f.Not {

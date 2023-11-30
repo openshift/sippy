@@ -117,6 +117,26 @@ export default function RepositoryDetails(props) {
                 />
               </Card>
             </Grid>
+
+            <Grid item md={12} sm={12}>
+              <Card elevation={5} style={{ padding: 20, height: '100%' }}>
+                <Typography variant="h6">Recent Reverts</Typography>
+                <PullRequestsTable
+                  view="Summary"
+                  pageSize={5}
+                  hideControls={true}
+                  release={props.release}
+                  filterModel={{
+                    items: [
+                      filterFor('org', 'equals', props.org),
+                      filterFor('repo', 'equals', props.repo),
+                      filterFor('merged_at', 'is not empty'),
+                      filterFor('title', 'contains', 'revert'),
+                    ],
+                  }}
+                />
+              </Card>
+            </Grid>
           </Grid>
         </Container>
       </div>
