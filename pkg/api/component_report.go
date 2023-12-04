@@ -783,15 +783,12 @@ func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) 
 }
 
 type cellStatus struct {
-	//testID apitype.ComponentReportTestIdentification
 	status         apitype.ComponentReportStatus
 	regressedTests []apitype.ComponentReportTestSummary
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus,
-	existingCellStatus *cellStatus,
-) cellStatus {
+	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
@@ -805,7 +802,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 	} else {
 		newCellStatus.status = reportStatus
 	}
-	if reportStatus < apitype.NotSignificant {
+	if reportStatus < apitype.MissingSample {
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
@@ -876,7 +873,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[apitype.ComponentReportRowIdentification]struct{}{}
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
-	// testID is used to identify the most regressed/improved test. With this, we can
+	// testID is used to identify the most regressed test. With this, we can
 	// create a shortcut link from any page to go straight to the most regressed test page.
 	var testID apitype.ComponentReportTestIdentification
 	for testIdentification, baseStats := range baseStatus {

@@ -34,6 +34,7 @@ import {
   initialPageTable,
   makePageTitle,
   makeRFC3339Time,
+  mergeRegressedTests,
   noDataTable,
 } from './CompReadyUtils'
 import { ClassNameMap } from '@mui/styles'
@@ -59,6 +60,7 @@ import CompReadyTestReport from './CompReadyTestReport'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
 import React from 'react'
+import RegressedTestsModal from './RegressedTestsModal'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -502,6 +504,11 @@ export default function ComponentReadiness(props) {
     setRedOnlyChecked(false)
   }
 
+  const [regressedTestDialog, setRegressedTestDialog] = React.useState(false)
+  const closeRegressedTestsDialog = () => {
+    setRegressedTestDialog(false)
+  }
+
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -544,6 +551,8 @@ export default function ComponentReadiness(props) {
       />
     )
   }
+
+  const regressedTests = mergeRegressedTests(data)
 
   const keepColumnsList =
     data &&
@@ -897,290 +906,289 @@ export default function ComponentReadiness(props) {
                   )
                 }}
               />
-              <Route path={'/component_readiness/main'}>
-                <div className="cr-view">
-                  <IconButton
-                    color="inherit"
-                    aria-label="open drawer"
-                    onClick={handleDrawerOpen}
-                    edge="start"
-                    className={clsx(
-                      classes.menuButton,
-                      drawerOpen && classes.hide
-                    )}
-                    size="large"
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                  <Drawer
-                    className={classes.drawer}
-                    variant="persistent"
-                    anchor="left"
-                    open={drawerOpen}
-                    classes={{
-                      paper: classes.drawerPaper,
-                    }}
-                  >
-                    <div className={classes.drawerHeader}>
-                      <IconButton onClick={handleDrawerClose} size="large">
-                        {theme.direction === 'ltr' ? (
-                          <ChevronLeftIcon />
-                        ) : (
-                          <ChevronRightIcon />
+              <Route
+                path={'/component_readiness/main'}
+                render={(props) => {
+                  const filterVals = getUpdatedUrlParts(
+                    baseRelease,
+                    baseStartTime,
+                    baseEndTime,
+                    sampleRelease,
+                    sampleStartTime,
+                    sampleEndTime,
+                    groupByCheckedItems,
+                    excludeCloudsCheckedItems,
+                    excludeArchesCheckedItems,
+                    excludeNetworksCheckedItems,
+                    excludeUpgradesCheckedItems,
+                    excludeVariantsCheckedItems,
+                    confidence,
+                    pity,
+                    minFail,
+                    ignoreDisruption,
+                    ignoreMissing
+                  )
+                  return (
+                    <div className="cr-view">
+                      <IconButton
+                        color="inherit"
+                        aria-label="open drawer"
+                        onClick={handleDrawerOpen}
+                        edge="start"
+                        className={clsx(
+                          classes.menuButton,
+                          drawerOpen && classes.hide
                         )}
-                      </IconButton>
-                    </div>
-                    <CompReadyMainInputs
-                      baseRelease={baseRelease}
-                      baseStartTime={formatLongDate(baseStartTime, dateFormat)}
-                      baseEndTime={formatLongDate(baseEndTime, dateEndFormat)}
-                      sampleRelease={sampleRelease}
-                      sampleStartTime={formatLongDate(
-                        sampleStartTime,
-                        dateFormat
-                      )}
-                      sampleEndTime={formatLongDate(
-                        sampleEndTime,
-                        dateEndFormat
-                      )}
-                      groupByCheckedItems={groupByCheckedItems}
-                      excludeCloudsCheckedItems={excludeCloudsCheckedItems}
-                      excludeArchesCheckedItems={excludeArchesCheckedItems}
-                      excludeNetworksCheckedItems={excludeNetworksCheckedItems}
-                      excludeUpgradesCheckedItems={excludeUpgradesCheckedItems}
-                      excludeVariantsCheckedItems={excludeVariantsCheckedItems}
-                      confidence={confidence}
-                      pity={pity}
-                      minFail={minFail}
-                      ignoreMissing={ignoreMissing}
-                      ignoreDisruption={ignoreDisruption}
-                      component={component}
-                      environment={environment}
-                      setBaseRelease={setBaseReleaseWithDates}
-                      setSampleRelease={setSampleReleaseWithDates}
-                      setBaseStartTime={setBaseStartTime}
-                      setBaseEndTime={setBaseEndTime}
-                      setSampleStartTime={setSampleStartTime}
-                      setSampleEndTime={setSampleEndTime}
-                      setGroupByCheckedItems={setGroupByCheckedItems}
-                      setExcludeArchesCheckedItems={
-                        setExcludeArchesCheckedItems
-                      }
-                      setExcludeNetworksCheckedItems={
-                        setExcludeNetworksCheckedItems
-                      }
-                      setExcludeCloudsCheckedItems={
-                        setExcludeCloudsCheckedItems
-                      }
-                      setExcludeUpgradesCheckedItems={
-                        setExcludeUpgradesCheckedItems
-                      }
-                      setExcludeVariantsCheckedItems={
-                        setExcludeVariantsCheckedItems
-                      }
-                      handleGenerateReport={handleGenerateReport}
-                      setConfidence={setConfidence}
-                      setPity={setPity}
-                      setMinFail={setMinFail}
-                      setIgnoreMissing={setIgnoreMissing}
-                      setIgnoreDisruption={setIgnoreDisruption}
-                    ></CompReadyMainInputs>
-                  </Drawer>
-                  <CompReadyPageTitle
-                    pageTitle={pageTitle}
-                    apiCallStr={showValuesForReport()}
-                  />
-                  {data === initialPageTable ? (
-                    <Typography variant="h6" style={{ textAlign: 'left' }}>
-                      To get started, make your filter selections on the left,
-                      then click Generate Report
-                    </Typography>
-                  ) : (
-                    <div>
-                      <div style={{ display: 'flex', gap: '16px' }}>
-                        <TextField
-                          variant="standard"
-                          label="Search Component"
-                          value={searchComponentRegex}
-                          onChange={handleSearchComponentRegexChange}
-                        />
-                        <TextField
-                          variant="standard"
-                          label="Search Column"
-                          value={searchColumnRegex}
-                          onChange={handleSearchColumnRegexChange}
-                        />
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={redOnlyChecked}
-                              onChange={handleRedOnlyCheckboxChange}
-                              color="primary"
-                              size="small"
-                              style={{ borderRadius: 1 }}
-                            />
-                          }
-                          htmlFor="redOnlyCheckbox"
-                          style={{
-                            textAlign: 'left',
-                            marginTop: 15,
-                          }}
-                          label="Red Only"
-                        ></FormControlLabel>
-                        <Tooltip title="Copy link to search">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            variant="contained"
-                            component={Link}
-                            href={linkToReport()}
-                            onClick={copyLinkToReport}
-                          >
-                            <FileCopy />
-                          </IconButton>
-                        </Tooltip>
-                        <Popover
-                          id="copyPopover"
-                          open={copyPopoverOpen}
-                          anchorEl={copyPopoverEl}
-                          onClose={() => setCopyPopoverEl(null)}
-                          anchorOrigin={{
-                            vertical: 'bottom',
-                            horizontal: 'center',
-                          }}
-                          transformOrigin={{
-                            vertical: 'top',
-                            horizontal: 'center',
-                          }}
-                        >
-                          Link copied!
-                        </Popover>
-                        <Tooltip title="Clear searches">
-                          <IconButton
-                            color="primary"
-                            size="small"
-                            variant="contained"
-                            onClick={clearSearches}
-                          >
-                            <Clear />
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                      <TableContainer
-                        component="div"
-                        className="cr-table-wrapper"
+                        size="large"
                       >
-                        <Table className="cr-comp-read-table">
-                          <TableHead>
-                            <TableRow>
-                              {
-                                <TableCell className={classes.crColResultFull}>
-                                  <Typography className={classes.crCellName}>
-                                    Name
-                                  </Typography>
-                                </TableCell>
-                              }
-                              {columnNames
-                                .filter(
-                                  (column, idx) =>
-                                    column.match(
-                                      new RegExp(searchColumnRegex, 'i')
-                                    ) && keepColumnsList[idx]
-                                )
-
-                                .map((column, idx) => {
-                                  if (column !== 'Name') {
-                                    return (
-                                      <TableCell
-                                        className={classes.crColResult}
-                                        key={'column' + '-' + idx}
-                                      >
-                                        <Tooltip
-                                          title={
-                                            'Single row report for ' + column
-                                          }
-                                        >
-                                          <Typography
-                                            className={classes.crCellName}
-                                          >
-                                            {' '}
-                                            {column}
-                                          </Typography>
-                                        </Tooltip>
-                                      </TableCell>
-                                    )
-                                  }
-                                })}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {Object.keys(data.rows)
-                              .filter((componentIndex) =>
-                                data.rows[componentIndex].component.match(
-                                  new RegExp(searchComponentRegex, 'i')
-                                )
-                              )
-                              .filter((componentIndex) =>
-                                redOnlyChecked
-                                  ? data.rows[componentIndex].columns.some(
-                                      // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
-                                      (column) =>
-                                        column.status <= -2 &&
-                                        formColumnName(column).match(
-                                          new RegExp(searchColumnRegex, 'i')
-                                        )
-                                    )
-                                  : true
-                              )
-                              .map((componentIndex) => (
-                                <CompReadyRow
-                                  key={componentIndex}
-                                  componentName={
-                                    data.rows[componentIndex].component
-                                  }
-                                  results={data.rows[
-                                    componentIndex
-                                  ].columns.filter(
-                                    (column, idx) =>
-                                      formColumnName(column).match(
-                                        new RegExp(searchColumnRegex, 'i')
-                                      ) && keepColumnsList[idx]
-                                  )}
-                                  columnNames={columnNames.filter(
-                                    (column, idx) =>
-                                      column.match(
-                                        new RegExp(searchColumnRegex, 'i')
-                                      ) && keepColumnsList[idx]
-                                  )}
-                                  grayFactor={redOnlyChecked ? 100 : 0}
-                                  filterVals={getUpdatedUrlParts(
-                                    baseRelease,
-                                    baseStartTime,
-                                    baseEndTime,
-                                    sampleRelease,
-                                    sampleStartTime,
-                                    sampleEndTime,
-                                    groupByCheckedItems,
-                                    excludeCloudsCheckedItems,
-                                    excludeArchesCheckedItems,
-                                    excludeNetworksCheckedItems,
-                                    excludeUpgradesCheckedItems,
-                                    excludeVariantsCheckedItems,
-                                    confidence,
-                                    pity,
-                                    minFail,
-                                    ignoreDisruption,
-                                    ignoreMissing
-                                  )}
+                        <MenuIcon />
+                      </IconButton>
+                      <Drawer
+                        className={classes.drawer}
+                        variant="persistent"
+                        anchor="left"
+                        open={drawerOpen}
+                        classes={{
+                          paper: classes.drawerPaper,
+                        }}
+                      >
+                        <div className={classes.drawerHeader}>
+                          <IconButton onClick={handleDrawerClose} size="large">
+                            {theme.direction === 'ltr' ? (
+                              <ChevronLeftIcon />
+                            ) : (
+                              <ChevronRightIcon />
+                            )}
+                          </IconButton>
+                        </div>
+                        <CompReadyMainInputs
+                          baseRelease={baseRelease}
+                          baseStartTime={formatLongDate(
+                            baseStartTime,
+                            dateFormat
+                          )}
+                          baseEndTime={formatLongDate(
+                            baseEndTime,
+                            dateEndFormat
+                          )}
+                          sampleRelease={sampleRelease}
+                          sampleStartTime={formatLongDate(
+                            sampleStartTime,
+                            dateFormat
+                          )}
+                          sampleEndTime={formatLongDate(
+                            sampleEndTime,
+                            dateEndFormat
+                          )}
+                          groupByCheckedItems={groupByCheckedItems}
+                          excludeCloudsCheckedItems={excludeCloudsCheckedItems}
+                          excludeArchesCheckedItems={excludeArchesCheckedItems}
+                          excludeNetworksCheckedItems={
+                            excludeNetworksCheckedItems
+                          }
+                          excludeUpgradesCheckedItems={
+                            excludeUpgradesCheckedItems
+                          }
+                          excludeVariantsCheckedItems={
+                            excludeVariantsCheckedItems
+                          }
+                          confidence={confidence}
+                          pity={pity}
+                          minFail={minFail}
+                          ignoreMissing={ignoreMissing}
+                          ignoreDisruption={ignoreDisruption}
+                          component={component}
+                          environment={environment}
+                          setBaseRelease={setBaseReleaseWithDates}
+                          setSampleRelease={setSampleReleaseWithDates}
+                          setBaseStartTime={setBaseStartTime}
+                          setBaseEndTime={setBaseEndTime}
+                          setSampleStartTime={setSampleStartTime}
+                          setSampleEndTime={setSampleEndTime}
+                          setGroupByCheckedItems={setGroupByCheckedItems}
+                          setExcludeArchesCheckedItems={
+                            setExcludeArchesCheckedItems
+                          }
+                          setExcludeNetworksCheckedItems={
+                            setExcludeNetworksCheckedItems
+                          }
+                          setExcludeCloudsCheckedItems={
+                            setExcludeCloudsCheckedItems
+                          }
+                          setExcludeUpgradesCheckedItems={
+                            setExcludeUpgradesCheckedItems
+                          }
+                          setExcludeVariantsCheckedItems={
+                            setExcludeVariantsCheckedItems
+                          }
+                          handleGenerateReport={handleGenerateReport}
+                          setConfidence={setConfidence}
+                          setPity={setPity}
+                          setMinFail={setMinFail}
+                          setIgnoreMissing={setIgnoreMissing}
+                          setIgnoreDisruption={setIgnoreDisruption}
+                        ></CompReadyMainInputs>
+                      </Drawer>
+                      <CompReadyPageTitle
+                        pageTitle={pageTitle}
+                        apiCallStr={showValuesForReport()}
+                      />
+                      {data === initialPageTable ? (
+                        <Typography variant="h6" style={{ textAlign: 'left' }}>
+                          To get started, make your filter selections on the
+                          left, left, then click Generate Report
+                        </Typography>
+                      ) : (
+                        <div>
+                          <div style={{ display: 'flex', gap: '16px' }}>
+                            <TextField
+                              variant="standard"
+                              label="Search Component"
+                              value={searchComponentRegex}
+                              onChange={handleSearchComponentRegexChange}
+                            />
+                            <TextField
+                              variant="standard"
+                              label="Search Column"
+                              value={searchColumnRegex}
+                              onChange={handleSearchColumnRegexChange}
+                            />
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={redOnlyChecked}
+                                  onChange={handleRedOnlyCheckboxChange}
+                                  color="primary"
+                                  size="small"
+                                  style={{ borderRadius: 1 }}
                                 />
-                              ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                              }
+                              htmlFor="redOnlyCheckbox"
+                              style={{
+                                textAlign: 'left',
+                                marginTop: 15,
+                              }}
+                              label="Red Only"
+                            ></FormControlLabel>
+                            <Button
+                              style={{ marginTop: 20 }}
+                              variant="contained"
+                              color="secondary"
+                              onClick={() => setRegressedTestDialog(true)}
+                            >
+                              Show Regressed
+                            </Button>
+                            <RegressedTestsModal
+                              regressedTests={regressedTests}
+                              filterVals={filterVals}
+                              isOpen={regressedTestDialog}
+                              close={closeRegressedTestsDialog}
+                            />
+                          </div>
+                          <TableContainer
+                            component="div"
+                            className="cr-table-wrapper"
+                          >
+                            <Table className="cr-comp-read-table">
+                              <TableHead>
+                                <TableRow>
+                                  {
+                                    <TableCell
+                                      className={classes.crColResultFull}
+                                    >
+                                      <Typography
+                                        className={classes.crCellName}
+                                      >
+                                        Name
+                                      </Typography>
+                                    </TableCell>
+                                  }
+                                  {columnNames
+                                    .filter(
+                                      (column, idx) =>
+                                        column.match(
+                                          new RegExp(searchColumnRegex, 'i')
+                                        ) && keepColumnsList[idx]
+                                    )
+
+                                    .map((column, idx) => {
+                                      if (column !== 'Name') {
+                                        return (
+                                          <TableCell
+                                            className={classes.crColResult}
+                                            key={'column' + '-' + idx}
+                                          >
+                                            <Tooltip
+                                              title={
+                                                'Single row report for ' +
+                                                column
+                                              }
+                                            >
+                                              <Typography
+                                                className={classes.crCellName}
+                                              >
+                                                {' '}
+                                                {column}
+                                              </Typography>
+                                            </Tooltip>
+                                          </TableCell>
+                                        )
+                                      }
+                                    })}
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {Object.keys(data.rows)
+                                  .filter((componentIndex) =>
+                                    data.rows[componentIndex].component.match(
+                                      new RegExp(searchComponentRegex, 'i')
+                                    )
+                                  )
+                                  .filter((componentIndex) =>
+                                    redOnlyChecked
+                                      ? data.rows[componentIndex].columns.some(
+                                          // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
+                                          (column) =>
+                                            column.status <= -2 &&
+                                            formColumnName(column).match(
+                                              new RegExp(searchColumnRegex, 'i')
+                                            )
+                                        )
+                                      : true
+                                  )
+                                  .map((componentIndex) => (
+                                    <CompReadyRow
+                                      key={componentIndex}
+                                      componentName={
+                                        data.rows[componentIndex].component
+                                      }
+                                      results={data.rows[
+                                        componentIndex
+                                      ].columns.filter(
+                                        (column, idx) =>
+                                          formColumnName(column).match(
+                                            new RegExp(searchColumnRegex, 'i')
+                                          ) && keepColumnsList[idx]
+                                      )}
+                                      columnNames={columnNames.filter(
+                                        (column, idx) =>
+                                          column.match(
+                                            new RegExp(searchColumnRegex, 'i')
+                                          ) && keepColumnsList[idx]
+                                      )}
+                                      grayFactor={redOnlyChecked ? 100 : 0}
+                                      filterVals={filterVals}
+                                    />
+                                  ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </Route>
+                  )
+                }}
+              />
             </Switch>
           </Fragment>
         )}

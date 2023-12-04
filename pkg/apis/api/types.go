@@ -873,7 +873,7 @@ type ComponentReportRowIdentification struct {
 type ComponentReportColumn struct {
 	ComponentReportColumnIdentification
 	Status         ComponentReportStatus        `json:"status"`
-	RegressedTests []ComponentReportTestSummary `json:"regress_tests,omitempty"`
+	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
 }
 
 type ComponentReportColumnIdentification struct {

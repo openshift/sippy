@@ -25,6 +25,7 @@ export const initialPageTable = {
         {
           empty: 'None',
           status: 3, // Let's start with success
+          regressed_tests: [],
         },
       ],
     },
@@ -388,4 +389,38 @@ export function getKeeperColumns(data, columnNames, redOnlyChecked) {
     })
   })
   return keepColumnList
+}
+
+export function mergeRegressedTests(data) {
+  if (!data || !data.rows || !data.rows[0] || !data.rows[0].component) {
+    console.log(
+      'data is one of: undefined, no rows, no rows[0], no row[0].component'
+    )
+    return ['No data']
+  }
+  if (data.rows[0].component == 'None' || !data.rows[0].columns) {
+    return ['No data']
+  }
+  if (data.rows[0].component === 'Cancelled') {
+    console.log('got cancelled')
+    return ['Cancelled']
+  }
+
+  let regressedTests = []
+  data.rows.forEach((row) => {
+    row.columns.forEach((column) => {
+      if (column.regressed_tests && column.regressed_tests.length > 0) {
+        regressedTests = regressedTests.concat(column.regressed_tests)
+      }
+    })
+  })
+
+  regressedTests.sort((a, b) => {
+    return (
+      a.component.toLowerCase() < b.component.toLowerCase() ||
+      a.capability.toLowerCase() < b.capability.toLowerCase()
+    )
+  })
+  regressedTests = regressedTests.map((item, index) => ({ ...item, id: index }))
+  return regressedTests
 }
