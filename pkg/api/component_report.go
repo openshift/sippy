@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -62,7 +62,7 @@ const (
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
-	DefaultExcludePlatforms = "openstack,alibaba,ibmcloud,libvirt,ovirt,unknown"
+	DefaultExcludePlatforms = "openstack,ibmcloud,libvirt,ovirt,unknown"
 	DefaultExcludeArches    = "arm64,heterogeneous,ppc64le,s390x"
 	DefaultExcludeVariants  = "hypershift,osd,microshift,techpreview,single-node,assisted,compact"
 	DefaultGroupBy          = "cloud,arch,network"
@@ -153,50 +153,26 @@ type componentReportGenerator struct {
 }
 
 func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {
-	result := apitype.ComponentReportTestVariants{}
 	errs := []error{}
-	var err error
-	queryString := `SELECT DISTINCT platform as name FROM ci_analysis_us.junit ORDER BY name`
-	query := c.client.Query(queryString)
-	result.Platform, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying platforms from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT network as name FROM ci_analysis_us.junit ORDER BY name`
-	query = c.client.Query(queryString)
-	result.Network, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying networks from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT arch as name FROM ci_analysis_us.junit ORDER BY name`
-	query = c.client.Query(queryString)
-	result.Arch, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying arches from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT upgrade as name FROM ci_analysis_us.junit ORDER BY name`
-	query = c.client.Query(queryString)
-	result.Upgrade, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying upgrades from bigquery")
-		errs = append(errs, err)
-		return result, errs
-	}
-	queryString = `SELECT DISTINCT variant as name FROM ci_analysis_us.junit, UNNEST(variants) variant`
-	query = c.client.Query(queryString)
-	result.Variant, err = getSingleColumnResultToSlice(query)
-	if err != nil {
-		log.WithError(err).Error("error querying variants from bigquery")
-		errs = append(errs, err)
+	columns := make(map[string][]string)
+
+	for _, column := range []string{"platform", "network", "arch", "upgrade", "variants"} {
+		values, err := c.getUniqueJUnitColumnValues(column, column == "variants")
+		if err != nil {
+			wrappedErr := errors.Wrapf(err, "couldn't fetch %s", column)
+			log.WithError(wrappedErr).Errorf("error generating variants")
+			errs = append(errs, wrappedErr)
+		}
+		columns[column] = values
 	}
 
-	return result, errs
+	return apitype.ComponentReportTestVariants{
+		Platform: columns["platform"],
+		Network:  columns["network"],
+		Arch:     columns["arch"],
+		Upgrade:  columns["upgrade"],
+		Variant:  columns["variants"],
+	}, errs
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
@@ -1169,6 +1145,33 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 		}
 	}
 	return status, fischerExact
+}
+
+func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nested bool) ([]string, error) {
+	unnest := ""
+	if nested {
+		unnest = fmt.Sprintf(", UNNEST(%s) nested", field)
+		field = "nested"
+	}
+
+	queryString := fmt.Sprintf(`SELECT
+						DISTINCT %s as name
+					FROM
+						ci_analysis_us.junit %s
+					WHERE
+						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+					ORDER BY
+						name`, field, unnest)
+
+	query := c.client.Query(queryString)
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "IgnoredJobs",
+			Value: ignoredJobsRegexp,
+		},
+	}
+
+	return getSingleColumnResultToSlice(query)
 }
 
 func init() {

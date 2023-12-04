@@ -181,7 +181,7 @@ export function formColumnName(column) {
 //       {
 //         "network": "ovn",
 //         "arch": "amd64",
-//         "platform": "alibaba",
+//         "platform": "aws",
 //         "status": 0
 //       },
 // Do our best to handle empty data or a "cancelled" condition.

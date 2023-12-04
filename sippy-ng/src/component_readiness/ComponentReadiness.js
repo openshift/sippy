@@ -337,7 +337,6 @@ export default function ComponentReadiness(props) {
   const [
     excludeCloudsCheckedItemsParam = [
       'openstack',
-      'alibaba',
       'ibmcloud',
       'libvirt',
       'ovirt',
