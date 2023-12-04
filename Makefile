@@ -1,5 +1,6 @@
 export PATH := ${HOME}/go/bin:/go/bin:${PATH}
 
+DOCKER := $(or $(DOCKER),podman)
 DEPS = npm go
 CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(exec) in PATH")))
@@ -30,7 +31,7 @@ lint: builddir npm
 npm:
 	# For debugging
 	npm --version
-	cd sippy-ng; [ -d node_modules ] || npm install --no-audit
+	cd sippy-ng; npm install --no-audit
 
 clean:
 	rm -f sippy
@@ -39,3 +40,6 @@ clean:
 
 e2e:
 	./scripts/e2e.sh
+
+images:
+	$(DOCKER) build .
