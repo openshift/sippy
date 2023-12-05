@@ -390,13 +390,13 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 	for _, row := range disruptionReport.Rows {
 		disruptionVsPrevGAMetric.WithLabelValues("P50",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50))
 		disruptionVsPrevGAMetric.WithLabelValues("P75",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75))
 		disruptionVsPrevGAMetric.WithLabelValues("P95",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95))
 		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
@@ -413,13 +413,13 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 	for _, row := range disruptionReport.Rows {
 		disruptionVsTwoWeeksAgo.WithLabelValues("P50",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50))
 		disruptionVsTwoWeeksAgo.WithLabelValues("P75",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75))
 		disruptionVsTwoWeeksAgo.WithLabelValues("P95",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95Delta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95))
 		disruptionVsTwoWeeksAgo.WithLabelValues("PercentageAboveZero",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))

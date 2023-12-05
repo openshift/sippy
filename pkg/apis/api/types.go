@@ -1001,9 +1001,9 @@ type DisruptionReport struct {
 }
 
 type DisruptionReportRow struct {
-	P50Delta                 float32 `json:"p50_delta"`
-	P75Delta                 float32 `json:"p75_delta"`
-	P95Delta                 float32 `json:"p95_delta"`
+	P50                      float32 `json:"p50"`
+	P75                      float32 `json:"p75"`
+	P95                      float32 `json:"p95"`
 	PercentageAboveZeroDelta float32 `json:"percentage_above_zero_delta"`
 	Release                  string  `json:"release"`
 	CompareRelease           string  `json:"compare_release,omitempty"` // only present in the vs prev GA view
