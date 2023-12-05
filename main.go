@@ -148,7 +148,7 @@ func main() {
 	flags.IntVar(&opt.FailureClusterThreshold, "failure-cluster-threshold", opt.FailureClusterThreshold, "Include separate report on job runs with more than N test failures, -1 to disable")
 	flags.StringVarP(&opt.Output, "output", "o", opt.Output, "Output format for report: json, text")
 	flags.StringVar(&opt.ListenAddr, "listen", opt.ListenAddr, "The address to serve analysis reports on (default :8080)")
-	flags.StringVar(&opt.MetricsAddr, "listen-metrics", opt.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
+	flags.StringVar(&opt.MetricsAddr, "listen-metrics", opt.MetricsAddr, "The address to serve prometheus metrics on (default :2112). If blank, metrics won't be served.")
 	flags.BoolVar(&opt.Server, "server", opt.Server, "Run in web server mode (serve reports over http)")
 	flags.BoolVar(&opt.DBOnlyMode, "db-only-mode", true, "OBSOLETE, this is now the default. Will soon be removed.")
 	flags.BoolVar(&opt.SkipBugLookup, "skip-bug-lookup", opt.SkipBugLookup, "Do not attempt to find bugs that match test/job failures")
@@ -487,13 +487,15 @@ func (o *Options) runDaemonServer(processes []sippyserver.DaemonProcess) {
 	daemonServer := sippyserver.NewDaemonServer(processes)
 
 	// Serve our metrics endpoint for prometheus to scrape
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
-		if err != nil {
-			panic(err)
-		}
-	}()
+	if o.MetricsAddr != "" {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
 	daemonServer.Serve()
 }
@@ -613,39 +615,41 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		cacheClient,
 	)
 
-	// Do an immediate metrics update
-	err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
-	if err != nil {
-		log.WithError(err).Error("error refreshing metrics")
-	}
-
-	// Refresh our metrics every 5 minutes:
-	ticker := time.NewTicker(5 * time.Minute)
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				log.Info("tick")
-				err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
-				if err != nil {
-					log.WithError(err).Error("error refreshing metrics")
-				}
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	// Serve our metrics endpoint for prometheus to scrape
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
+	if o.MetricsAddr != "" {
+		// Do an immediate metrics update
+		err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 		if err != nil {
-			panic(err)
+			log.WithError(err).Error("error refreshing metrics")
 		}
-	}()
+
+		// Refresh our metrics every 5 minutes:
+		ticker := time.NewTicker(5 * time.Minute)
+		quit := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					log.Info("tick")
+					err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+					if err != nil {
+						log.WithError(err).Error("error refreshing metrics")
+					}
+				case <-quit:
+					ticker.Stop()
+					return
+				}
+			}
+		}()
+
+		// Serve our metrics endpoint for prometheus to scrape
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			err := http.ListenAndServe(o.MetricsAddr, nil) //nolint
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
 	server.Serve()
 	return nil
