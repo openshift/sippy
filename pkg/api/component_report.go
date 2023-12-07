@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -342,32 +343,29 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
 	[]error,
 ) {
+	start := time.Now()
 	errs := []error{}
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM ci_analysis_us.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+	queryString := fmt.Sprintf(`
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
-						ANY_VALUE(testsuite) AS test_suite,
-						cm.id as test_id,
+						ANY_VALUE(test_suite) AS test_suite,
+						test_id,
 						network,
 						upgrade,
 						arch,
 						platform,
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
-						COUNT(cm.id) AS total_count,
-						SUM(success_val) AS success_count,
+						SUM(total_count) AS total_count,
+						SUM(success_count) AS success_count,
 						SUM(flake_count) AS flake_count,
-						ANY_VALUE(cm.component) AS component,
-						ANY_VALUE(cm.capabilities) AS capabilities,
-						ANY_VALUE(cm.jira_component) AS jira_component,
-						ANY_VALUE(cm.jira_component_id) AS jira_component_id
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
+						ANY_VALUE(component) AS component,
+						ANY_VALUE(capabilities) AS capabilities,
+						ANY_VALUE(jira_component) AS jira_component,
+						ANY_VALUE(jira_component_id) AS jira_component_id
+					FROM
+						ci_analysis_us.junit_precomputed_by_test_and_day
+					WHERE date >= @From AND date <= @To`)
 
 	groupString := `
 					GROUP BY
@@ -376,10 +374,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						arch,
 						platform,
 						flat_variants,
-						cm.id `
-
-	queryString += `
-					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
+						test_id `
 
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -419,7 +414,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		})
 	}
 	if c.TestID != "" {
-		queryString += ` AND cm.id = @TestId`
+		queryString += ` AND test_id = @TestId`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "TestId",
 			Value: c.TestID,
@@ -481,11 +476,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.BaseRelease.Start,
+			Value: civil.DateOf(c.BaseRelease.Start),
 		},
 		{
 			Name:  "To",
-			Value: c.BaseRelease.End,
+			Value: civil.DateOf(c.BaseRelease.End),
 		},
 		{
 			Name:  "BaseRelease",
@@ -508,11 +503,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.SampleRelease.Start,
+			Value: civil.DateOf(c.SampleRelease.Start),
 		},
 		{
 			Name:  "To",
-			Value: c.SampleRelease.End,
+			Value: civil.DateOf(c.SampleRelease.End),
 		},
 		{
 			Name:  "SampleRelease",
@@ -529,6 +524,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
 	}
+	log.Warnf("getTestStatusFromBigQuery complete after %+v", start)
 	return baseStatus, sampleStatus, errs
 }
 
