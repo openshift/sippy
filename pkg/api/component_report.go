@@ -21,45 +21,6 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-const (
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba`
-
-	// This query de-dupes the test results. There are multiple issues present in
-	// our data set:
-	//
-	// 1. Some test suites in OpenShift retry, resulting in potentially multiple
-	//    failures for the same test in a job.  Component Readiness is currently
-	//    counting these as separate failures, resulting in an outsized impact on
-	//    our statistical analysis.
-	//
-	// 2. There is a second bug where successful test cases are sometimes
-	//    recorded by openshift-tests more than once, it's tracked by
-	//    https://issues.redhat.com/browse/OCPBUGS-16039
-	//
-	// 3. Flaked tests also have rows for the failures, so we need to ensure we only collect the flakes.
-	//
-	// 4. Flaked tests appear to be able to have success_val as 0 or 1.
-	//
-	// So, this sorts the data, partitioning by the 3-tuple of file_path/test_name/testsuite -
-	// preferring flakes, then successes, then failures, and we get the first row of each
-	// partition.
-	dedupedJunitTable = `
-		WITH deduped_testcases AS (
-			SELECT  *,
-				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
-					CASE
-						WHEN flake_count > 0 THEN 0
-						WHEN success_val > 0 THEN 1
-						ELSE 2
-					END) AS row_num
-			FROM
-				ci_analysis_us.junit
-			WHERE modified_time >= DATETIME(@From)
-			AND modified_time < DATETIME(@To)
-		)
-		SELECT * FROM deduped_testcases WHERE row_num = 1`
-)
-
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
@@ -213,13 +174,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	[]error,
 ) {
 	errs := []error{}
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM ci_analysis_us.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
-					SELECT
+	queryString := fmt.Sprintf(`SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
@@ -229,8 +184,14 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						COUNT(*) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
+					FROM
+						ci_analysis_us.junit_deduped
+					INNER JOIN
+						ci_analysis_us.component_mapping_latest cm
+						ON
+							testsuite = cm.suite
+						AND
+							test_name = cm.name`)
 
 	groupString := `
 					GROUP BY
@@ -240,8 +201,6 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						modified_time `
 	queryString += `
 					WHERE
-						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
-						AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
 						AND upgrade = @Upgrade
 						AND arch = @Arch
 						AND network = @Network
@@ -249,10 +208,6 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						AND @Variant IN UNNEST(variants)
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
 		{
 			Name:  "Upgrade",
 			Value: c.Upgrade,
@@ -376,12 +331,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						flat_variants,
 						test_id `
 
-	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
-	}
+	commonParams := []bigquery.QueryParameter{}
 	if c.IgnoreDisruption {
 		queryString += ` AND test_name NOT LIKE '%disruption/%'`
 	}
@@ -1153,20 +1103,12 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 	queryString := fmt.Sprintf(`SELECT
 						DISTINCT %s as name
 					FROM
-						ci_analysis_us.junit %s
-					WHERE
-						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						ci_analysis_us.junit_precomputed_by_test_and_day %s
 					ORDER BY
 						name`, field, unnest)
 
+	log.Infof("getUniqueJUnitColumnValues: %s", queryString)
 	query := c.client.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
-	}
-
 	return getSingleColumnResultToSlice(query)
 }
 
