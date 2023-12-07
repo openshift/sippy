@@ -316,3 +316,9 @@ export function getReportStartDate(reportDate) {
   }
   return startDate
 }
+
+export function getUrlWithoutParams(params) {
+  const url = new URL(window.location.href)
+  params.forEach((param) => url.searchParams.delete(param))
+  return url.href
+}

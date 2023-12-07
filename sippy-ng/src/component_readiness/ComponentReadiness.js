@@ -504,7 +504,10 @@ export default function ComponentReadiness(props) {
     setRedOnlyChecked(false)
   }
 
-  const [regressedTestDialog, setRegressedTestDialog] = React.useState(false)
+  const [regressedTestDialog = false, setRegressedTestDialog] = useQueryParam(
+    'regressedModal',
+    BooleanParam
+  )
   const closeRegressedTestsDialog = () => {
     setRegressedTestDialog(false)
   }

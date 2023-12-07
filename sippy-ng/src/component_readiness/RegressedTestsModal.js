@@ -1,6 +1,6 @@
-import { Button, Grid, Tooltip, Typography } from '@mui/material'
+import { Button, Grid, Typography } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { DataGrid } from '@mui/x-data-grid'
+import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { formColumnName, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
@@ -66,58 +66,49 @@ export default function RegressedTestsModal(props) {
       headerName: 'Component',
       flex: 20,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
-      sortable: false,
     },
     {
       field: 'capability',
       headerName: 'Capability',
       flex: 12,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
-      sortable: false,
     },
     {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 40,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
-      sortable: false,
     },
     {
       field: 'test_suite',
       headerName: 'Test Suite',
       flex: 15,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
-      sortable: false,
     },
     {
       field: 'network',
       headerName: 'Network',
       flex: 6,
-      sortable: false,
     },
     {
       field: 'upgrade',
       headerName: 'Upgrade',
       flex: 10,
-      sortable: false,
     },
     {
       field: 'arch',
       headerName: 'Arch',
       flex: 6,
-      sortable: false,
     },
     {
       field: 'platform',
       headerName: 'Platform',
       flex: 6,
-      sortable: false,
     },
     {
       field: 'variant',
       headerName: 'Variant',
       flex: 8,
-      sortable: false,
     },
     {
       field: 'status',
@@ -166,7 +157,7 @@ export default function RegressedTestsModal(props) {
             Regressed Tests
           </Typography>
           <DataGrid
-            components={{ Toolbar: '' }}
+            components={{ Toolbar: GridToolbar }}
             rows={props.regressedTests}
             columns={columns}
             getRowId={(row) =>
@@ -183,6 +174,12 @@ export default function RegressedTestsModal(props) {
             rowHeight={60}
             autoHeight={true}
             checkboxSelection={false}
+            componentsProps={{
+              toolbar: {
+                columns: columns,
+                showQuickFilter: true,
+              },
+            }}
           />
 
           <Button

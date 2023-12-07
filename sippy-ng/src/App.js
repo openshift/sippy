@@ -10,7 +10,11 @@ import {
 } from '@mui/material'
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode } from '@mui/icons-material'
-import { getReportStartDate, relativeTime } from './helpers'
+import {
+  getReportStartDate,
+  getUrlWithoutParams,
+  relativeTime,
+} from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
 import { parse, stringify } from 'query-string'
@@ -489,7 +493,7 @@ export default function App(props) {
                             return (
                               <CompReadyVarsProvider>
                                 <ComponentReadiness
-                                  key={window.location.href}
+                                  key={getUrlWithoutParams(['regressedModal'])}
                                 />
                               </CompReadyVarsProvider>
                             )
