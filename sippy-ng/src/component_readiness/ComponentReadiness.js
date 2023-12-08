@@ -504,6 +504,7 @@ export default function ComponentReadiness(props) {
     setRedOnlyChecked(false)
   }
 
+  const regressedTests = mergeRegressedTests(data)
   const [regressedTestDialog = false, setRegressedTestDialog] = useQueryParam(
     'regressedModal',
     BooleanParam
@@ -554,8 +555,6 @@ export default function ComponentReadiness(props) {
       />
     )
   }
-
-  const regressedTests = mergeRegressedTests(data)
 
   const keepColumnsList =
     data &&
