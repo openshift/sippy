@@ -510,7 +510,7 @@ export default function ComponentReadiness(props) {
     BooleanParam
   )
   const closeRegressedTestsDialog = () => {
-    setRegressedTestDialog(false)
+    setRegressedTestDialog(false, 'replaceIn')
   }
 
   document.title = `Sippy > Component Readiness`
@@ -1076,7 +1076,9 @@ export default function ComponentReadiness(props) {
                               style={{ marginTop: 20 }}
                               variant="contained"
                               color="secondary"
-                              onClick={() => setRegressedTestDialog(true)}
+                              onClick={() =>
+                                setRegressedTestDialog(true, 'replaceIn')
+                              }
                             >
                               Show Regressed
                             </Button>

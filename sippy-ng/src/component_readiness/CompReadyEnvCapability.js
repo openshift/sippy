@@ -111,7 +111,7 @@ export default function CompReadyEnvCapability(props) {
     BooleanParam
   )
   const closeRegressedTestsDialog = () => {
-    setRegressedTestDialog(false)
+    setRegressedTestDialog(false, 'replaceIn')
   }
 
   const pageTitle = makePageTitle(
@@ -148,7 +148,7 @@ export default function CompReadyEnvCapability(props) {
         style={{ marginTop: 20 }}
         variant="contained"
         color="secondary"
-        onClick={() => setRegressedTestDialog(true)}
+        onClick={() => setRegressedTestDialog(true, 'replaceIn')}
       >
         Show Regressed
       </Button>
