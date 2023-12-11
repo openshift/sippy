@@ -943,7 +943,7 @@ func getSuccessRate(success, failure, flake int) float64 {
 	return float64(success+flake) / float64(total)
 }
 
-const prowJobPrefix = "https://prow.ci.openshift.org/view/gs/origin-ci-test/"
+const prowJobPrefix = "https://qe-private-deck-ci.apps.ci.l2s4.p1.openshiftapps.com/view/gs/qe-private-deck/"
 
 func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetailsJobRunStats {
 	failure := getFailureCount(stats)
