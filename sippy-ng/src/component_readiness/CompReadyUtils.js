@@ -169,7 +169,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
 // concatenated to form a column name
 export function formColumnName(column) {
   return Object.keys(column)
-    .filter((key) => key != 'status')
+    .filter((key) => key != 'status' && key != 'regressed_tests')
     .map((key) => column[key])
     .join(' ')
 }
