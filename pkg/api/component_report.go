@@ -782,10 +782,40 @@ func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) 
 	return status, errs
 }
 
-func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
+type cellStatus struct {
+	status         apitype.ComponentReportStatus
+	regressedTests []apitype.ComponentReportTestSummary
+}
+
+func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
+	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus) cellStatus {
+	var newCellStatus cellStatus
+	if existingCellStatus != nil {
+		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
+			(existingCellStatus.status == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
+			// We want to show the significant improvement if assessment is not regression
+			newCellStatus.status = reportStatus
+		} else {
+			newCellStatus.status = existingCellStatus.status
+		}
+		newCellStatus.regressedTests = existingCellStatus.regressedTests
+	} else {
+		newCellStatus.status = reportStatus
+	}
+	if reportStatus < apitype.MissingSample {
+		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
+			ComponentReportTestIdentification: testID,
+			Status:                            reportStatus,
+		})
+	}
+	return newCellStatus
+}
+
+func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 	columnIdentifications []apitype.ComponentReportColumnIdentification,
+	testID apitype.ComponentReportTestIdentification,
 	reportStatus apitype.ComponentReportStatus,
-	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus,
+	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
 	for _, columnIdentification := range columnIdentifications {
@@ -793,26 +823,40 @@ func updateStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 			allColumns[columnIdentification] = struct{}{}
 		}
 	}
+
 	for _, rowIdentification := range rowIdentifications {
+		// Each test might have multiple Capabilities. Initial ID just pick the first on
+		// the list. If we are on a page with specific capability, this needs to be rewritten.
+		if rowIdentification.Capability != "" {
+			testID.Capability = rowIdentification.Capability
+		}
 		if _, ok := allRows[rowIdentification]; !ok {
 			allRows[rowIdentification] = struct{}{}
 		}
 		row, ok := status[rowIdentification]
 		if !ok {
-			row = map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
+			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = reportStatus
+				// Each test might have multiple Variants. Initial ID just pick the first on
+				// the list. If we are on a page with specific variant, this needs to be rewritten.
+				if columnIdentification.Variant != "" {
+					testID.Variant = columnIdentification.Variant
+				}
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
+				// Each test might have multiple Variants. Initial ID just pick the first on
+				// the list. If we are on a page with specific variant, this needs to be rewritten.
+				if columnIdentification.Variant != "" {
+					testID.Variant = columnIdentification.Variant
+				}
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = reportStatus
-				} else if (reportStatus < apitype.NotSignificant && reportStatus < existing) ||
-					(existing == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
-					// We want to show the significant improvement if assessment is not regression
-					row[columnIdentification] = reportStatus
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
+				} else {
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing)
 				}
 			}
 		}
@@ -825,11 +869,36 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		Rows: []apitype.ComponentReportRow{},
 	}
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
-	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]apitype.ComponentReportStatus{}
+	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[apitype.ComponentReportRowIdentification]struct{}{}
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
+	// testID is used to identify the most regressed test. With this, we can
+	// create a shortcut link from any page to go straight to the most regressed test page.
+	var testID apitype.ComponentReportTestIdentification
 	for testIdentification, baseStats := range baseStatus {
+		testID = apitype.ComponentReportTestIdentification{
+			ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+				Component: baseStats.Component,
+				TestName:  baseStats.TestName,
+				TestSuite: baseStats.TestSuite,
+				TestID:    testIdentification.TestID,
+			},
+			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+				Network:  testIdentification.Network,
+				Upgrade:  testIdentification.Upgrade,
+				Arch:     testIdentification.Arch,
+				Platform: testIdentification.Platform,
+			},
+		}
+		// Take the first cap and variant for now. When we reach to a cell with specific capability
+		// or variant, we will override the value.
+		if len(baseStats.Capabilities) > 0 {
+			testID.Capability = baseStats.Capabilities[0]
+		}
+		if len(baseStats.Variants) > 0 {
+			testID.Variant = baseStats.Variants[0]
+		}
 		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
@@ -840,12 +909,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		delete(sampleStatus, testIdentification)
 
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateStatus(rowIdentifications, columnIdentifications, reportStatus, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateStatus(rowIdentifications, columnIdentification, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Sort the row identifications
@@ -907,7 +976,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			if !ok {
 				reportColumn.Status = apitype.MissingBasisAndSample
 			} else {
-				reportColumn.Status = status
+				reportColumn.Status = status.status
+				reportColumn.RegressedTests = status.regressedTests
+				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
+					return reportColumn.RegressedTests[i].Status < reportColumn.RegressedTests[j].Status
+				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
 			if reportColumn.Status <= apitype.SignificantRegression {
@@ -967,17 +1040,19 @@ func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow) apitype.Componen
 func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus map[string][]apitype.ComponentJobRunTestStatusRow,
 	sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetails {
 	result := apitype.ComponentReportTestDetails{
-		ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
-			Component:  c.Component,
-			Capability: c.Capability,
-			TestID:     c.TestID,
-		},
-		ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-			Platform: c.Platform,
-			Upgrade:  c.Upgrade,
-			Arch:     c.Arch,
-			Network:  c.Network,
-			Variant:  c.Variant,
+		ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+			ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+				Component:  c.Component,
+				Capability: c.Capability,
+				TestID:     c.TestID,
+			},
+			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+				Platform: c.Platform,
+				Upgrade:  c.Upgrade,
+				Arch:     c.Arch,
+				Network:  c.Network,
+				Variant:  c.Variant,
+			},
 		},
 	}
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int

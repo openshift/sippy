@@ -23,6 +23,10 @@ func fakeComponentAndCapabilityGetter(test apitype.ComponentTestIdentification, 
 			component:    "component 2",
 			capabilities: []string{"cap21", "cap22"},
 		},
+		"test 3": {
+			component:    "component 1",
+			capabilities: []string{"cap1"},
+		},
 	}
 	if comCap, ok := known[name]; ok {
 		return comCap.component, comCap.capabilities
@@ -107,6 +111,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		Network:  "sdn",
 		Upgrade:  "upgrade-micro",
 	}
+	awsAMD64OVN2Test := apitype.ComponentTestIdentification{
+		TestID:   "3",
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
+		Upgrade:  "upgrade-micro",
+	}
 	awsAMD64OVNBaseTestStats90Percent := apitype.ComponentTestStatus{
 		TestName:     "test 1",
 		Variants:     []string{"standard"},
@@ -183,6 +194,20 @@ func TestGenerateComponentReport(t *testing.T) {
 		TotalCount:   100,
 		FlakeCount:   1,
 		SuccessCount: 90,
+	}
+	awsAMD64OVN2BaseTestStats90Percent := apitype.ComponentTestStatus{
+		TestName:     "test 3",
+		Variants:     []string{"standard"},
+		TotalCount:   1000,
+		FlakeCount:   10,
+		SuccessCount: 900,
+	}
+	awsAMD64OVN2SampleTestStats80Percent := apitype.ComponentTestStatus{
+		TestName:     "test 3",
+		Variants:     []string{"standard"},
+		TotalCount:   100,
+		FlakeCount:   1,
+		SuccessCount: 80,
 	}
 	columnAWSAMD64OVN := apitype.ComponentReportColumnIdentification{
 		Platform: "aws",
@@ -304,12 +329,14 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test with both improvement and regression",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
-				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
-				awsAMD64SDNTest: awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTest:  awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64OVN2Test: awsAMD64OVN2BaseTestStats90Percent,
+				awsAMD64SDNTest:  awsAMD64SDNBaseTestStats50Percent,
 			},
 			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
-				awsAMD64OVNTest: awsAMD64OVNSampleTestStats50Percent,
-				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTest:  awsAMD64OVNSampleTestStats50Percent,
+				awsAMD64OVN2Test: awsAMD64OVN2SampleTestStats80Percent,
+				awsAMD64SDNTest:  awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -319,6 +346,40 @@ func TestGenerateComponentReport(t *testing.T) {
 							{
 								ComponentReportColumnIdentification: columnAWSAMD64OVN,
 								Status:                              apitype.ExtremeRegression,
+								RegressedTests: []apitype.ComponentReportTestSummary{
+									{
+										ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+											ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
+												TestID:   awsAMD64OVNTest.TestID,
+											},
+											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVNTest.Upgrade,
+												Variant:  awsAMD64OVNBaseTestStats90Percent.Variants[0],
+											},
+										},
+										Status: apitype.ExtremeRegression,
+									},
+									{
+										ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+											ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+												TestName: awsAMD64OVN2BaseTestStats90Percent.TestName,
+												TestID:   awsAMD64OVN2Test.TestID,
+											},
+											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVN2Test.Upgrade,
+												Variant:  awsAMD64OVN2BaseTestStats90Percent.Variants[0],
+											},
+										},
+										Status: apitype.SignificantRegression,
+									},
+								},
 							},
 							{
 								ComponentReportColumnIdentification: columnAWSAMD64SDN,
@@ -568,6 +629,24 @@ func TestGenerateComponentReport(t *testing.T) {
 							{
 								ComponentReportColumnIdentification: columnAWSAMD64OVN,
 								Status:                              apitype.SignificantRegression,
+								RegressedTests: []apitype.ComponentReportTestSummary{
+									{
+										ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+											ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
+												TestID:   awsAMD64OVNTest.TestID,
+											},
+											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVNTest.Upgrade,
+												Variant:  awsAMD64OVNBaseTestStats90Percent.Variants[0],
+											},
+										},
+										Status: apitype.SignificantRegression,
+									},
+								},
 							},
 							{
 								ComponentReportColumnIdentification: columnAWSAMD64SDN,
@@ -893,12 +972,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: apitype.ComponentReportTestDetails{
-				ComponentReportRowIdentification:    testDetailsRowIdentification,
-				ComponentReportColumnIdentification: testDetailsColumnIdentification,
-				SampleStats:                         sampleReleaseStatsOneHigh,
-				BaseStats:                           baseReleaseStatsOneHigh,
-				FisherExact:                         0.4807457902463764,
-				ReportStatus:                        apitype.NotSignificant,
+				ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+					ComponentReportRowIdentification:    testDetailsRowIdentification,
+					ComponentReportColumnIdentification: testDetailsColumnIdentification,
+				},
+				SampleStats:  sampleReleaseStatsOneHigh,
+				BaseStats:    baseReleaseStatsOneHigh,
+				FisherExact:  0.4807457902463764,
+				ReportStatus: apitype.NotSignificant,
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -931,12 +1012,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: apitype.ComponentReportTestDetails{
-				ComponentReportRowIdentification:    testDetailsRowIdentification,
-				ComponentReportColumnIdentification: testDetailsColumnIdentification,
-				SampleStats:                         sampleReleaseStatsOneLow,
-				BaseStats:                           baseReleaseStatsOneHigh,
-				FisherExact:                         8.209711662216515e-28,
-				ReportStatus:                        apitype.ExtremeRegression,
+				ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+					ComponentReportRowIdentification:    testDetailsRowIdentification,
+					ComponentReportColumnIdentification: testDetailsColumnIdentification,
+				},
+				SampleStats:  sampleReleaseStatsOneLow,
+				BaseStats:    baseReleaseStatsOneHigh,
+				FisherExact:  8.209711662216515e-28,
+				ReportStatus: apitype.ExtremeRegression,
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -969,12 +1052,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: apitype.ComponentReportTestDetails{
-				ComponentReportRowIdentification:    testDetailsRowIdentification,
-				ComponentReportColumnIdentification: testDetailsColumnIdentification,
-				SampleStats:                         sampleReleaseStatsOneHigh,
-				BaseStats:                           baseReleaseStatsOneLow,
-				FisherExact:                         4.911246201592593e-22,
-				ReportStatus:                        apitype.SignificantImprovement,
+				ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+					ComponentReportRowIdentification:    testDetailsRowIdentification,
+					ComponentReportColumnIdentification: testDetailsColumnIdentification,
+				},
+				SampleStats:  sampleReleaseStatsOneHigh,
+				BaseStats:    baseReleaseStatsOneLow,
+				FisherExact:  4.911246201592593e-22,
+				ReportStatus: apitype.SignificantImprovement,
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -1015,12 +1100,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: apitype.ComponentReportTestDetails{
-				ComponentReportRowIdentification:    testDetailsRowIdentification,
-				ComponentReportColumnIdentification: testDetailsColumnIdentification,
-				SampleStats:                         sampleReleaseStatsTwoHigh,
-				BaseStats:                           baseReleaseStatsTwoHigh,
-				FisherExact:                         0.4119831376606586,
-				ReportStatus:                        apitype.NotSignificant,
+				ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
+					ComponentReportRowIdentification:    testDetailsRowIdentification,
+					ComponentReportColumnIdentification: testDetailsColumnIdentification,
+				},
+				SampleStats:  sampleReleaseStatsTwoHigh,
+				BaseStats:    baseReleaseStatsTwoHigh,
+				FisherExact:  0.4119831376606586,
+				ReportStatus: apitype.NotSignificant,
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,

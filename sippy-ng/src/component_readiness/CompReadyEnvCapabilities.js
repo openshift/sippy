@@ -1,4 +1,6 @@
 import './ComponentReadiness.css'
+import { BooleanParam, useQueryParam } from 'use-query-params'
+import { Button, TableContainer, Tooltip, Typography } from '@mui/material'
 import {
   cancelledDataTable,
   getAPIUrl,
@@ -6,19 +8,20 @@ import {
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
+  mergeRegressedTests,
   noDataTable,
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
-import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapRow from './CompCapRow'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
+import RegressedTestsModal from './RegressedTestsModal'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -103,6 +106,15 @@ export default function CompReadyEnvCapabilities(props) {
     return gotFetchError(fetchError)
   }
 
+  const regressedTests = mergeRegressedTests(data)
+  const [regressedTestDialog = false, setRegressedTestDialog] = useQueryParam(
+    'regressedModal',
+    BooleanParam
+  )
+  const closeRegressedTestsDialog = () => {
+    setRegressedTestDialog(false, 'replaceIn')
+  }
+
   const pageTitle = makePageTitle(
     'Capabilities report' + (environment ? ', Environment' : ''),
     environment ? 'page 2a' : 'page2',
@@ -133,6 +145,20 @@ export default function CompReadyEnvCapabilities(props) {
         <Link to="/component_readiness">/</Link>
         {environment ? `${environment} > ${component}` : component}
       </h2>
+      <Button
+        style={{ marginTop: 20 }}
+        variant="contained"
+        color="secondary"
+        onClick={() => setRegressedTestDialog(true, 'replaceIn')}
+      >
+        Show Regressed
+      </Button>
+      <RegressedTestsModal
+        regressedTests={regressedTests}
+        filterVals={filterVals}
+        isOpen={regressedTestDialog}
+        close={closeRegressedTestsDialog}
+      />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
         <Table className="cr-comp-read-table">

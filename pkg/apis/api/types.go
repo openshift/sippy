@@ -872,7 +872,8 @@ type ComponentReportRowIdentification struct {
 
 type ComponentReportColumn struct {
 	ComponentReportColumnIdentification
-	Status ComponentReportStatus `json:"status"`
+	Status         ComponentReportStatus        `json:"status"`
+	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
 }
 
 type ComponentReportColumnIdentification struct {
@@ -885,9 +886,18 @@ type ComponentReportColumnIdentification struct {
 
 type ComponentReportStatus int
 
-type ComponentReportTestDetails struct {
+type ComponentReportTestIdentification struct {
 	ComponentReportRowIdentification
 	ComponentReportColumnIdentification
+}
+
+type ComponentReportTestSummary struct {
+	ComponentReportTestIdentification
+	Status ComponentReportStatus `json:"status"`
+}
+
+type ComponentReportTestDetails struct {
+	ComponentReportTestIdentification
 	JiraComponent   string                                 `json:"jira_component"`
 	JiraComponentID *big.Rat                               `json:"jira_component_id"`
 	SampleStats     ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
