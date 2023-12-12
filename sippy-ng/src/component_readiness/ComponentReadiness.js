@@ -3,16 +3,11 @@ import {
   AppBar,
   Badge,
   Box,
-  Button,
-  Checkbox,
-  Container,
   Drawer,
   FormControlLabel,
   Grid,
-  Link,
   Popover,
   TableContainer,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -42,29 +37,21 @@ import {
   noDataTable,
   Search,
   SearchIconWrapper,
-  StyledCheckbox,
-  StyledFormControlLabel,
   StyledInputBase,
 } from './CompReadyUtils'
-import { ClassNameMap } from '@mui/styles'
-import { Fragment, useContext, useEffect, useState } from 'react'
+import { makeStyles, useTheme } from '@mui/styles'
 import { Route, Switch, useRouteMatch } from 'react-router-dom'
+import React, { Fragment, useContext, useEffect, useState } from 'react'
 import SwitchControl from '@mui/material/Switch'
 
 import {
-  AccountCircle,
   Clear,
-  FileCopy,
   GridView,
   InsertLink,
-  Mail,
-  Notifications,
-  SwitchCamera,
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
 import { grey } from '@mui/material/colors'
-import { makeStyles, useTheme } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -80,9 +67,7 @@ import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
-import React from 'react'
 import RegressedTestsModal from './RegressedTestsModal'
-import SearchIcon from '@mui/icons-material/Search'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
