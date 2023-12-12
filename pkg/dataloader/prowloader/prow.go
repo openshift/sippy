@@ -516,6 +516,10 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	}
 
 	parts := strings.Split(pjURL.Path, pl.bktName)
+	pjLog.WithField("path", pjURL.Path).WithField("bucket", pl.bktName).WithField("parts", parts).Info("building path")
+	if len(parts) < 2 {
+		return fmt.Errorf("bucket name '%s' does not match prowjob url path '%s'", pl.bktName, pjURL.Path)
+	}
 	path := parts[1][1:]
 
 	// find all files here then pass to getClusterData
