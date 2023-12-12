@@ -1067,7 +1067,7 @@ export default function ComponentReadiness(props) {
                       ) : (
                         <div>
                           <Box sx={{ flexGrow: 1 }}>
-                            <AppBar position="static">
+                            <AppBar elevation={1} position="static">
                               <Toolbar sx={{ leftPadding: 0 }}>
                                 <Search>
                                   <SearchIconWrapper>
