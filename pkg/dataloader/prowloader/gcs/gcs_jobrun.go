@@ -14,8 +14,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/junit"
 )
 
-const OpenshiftGCSBucket = "origin-ci-test"
-
 const TestFailureSummaryFilePrefix = "risk-analysis"
 const ClusterDataFilePrefix = "cluster-data_"
 const JunitRegExStr = "\\/junit.*xml"

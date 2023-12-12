@@ -41,14 +41,17 @@ var (
 		MinimumFailure: 3,
 	}
 	defaultComponentReportGenerator = componentReportGenerator{
+		gcsBucket:                             "origin-ci-test",
 		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	groupByVariantComponentReportGenerator = componentReportGenerator{
+		gcsBucket:                             "origin-ci-test",
 		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network,variant"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	componentPageGenerator = componentReportGenerator{
+		gcsBucket: "origin-ci-test",
 		ComponentReportRequestTestIdentificationOptions: apitype.ComponentReportRequestTestIdentificationOptions{
 			Component: "component 2",
 		},
@@ -58,6 +61,7 @@ var (
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	capabilityPageGenerator = componentReportGenerator{
+		gcsBucket: "origin-ci-test",
 		ComponentReportRequestTestIdentificationOptions: apitype.ComponentReportRequestTestIdentificationOptions{
 			Component:  "component 2",
 			Capability: "cap22",
@@ -68,6 +72,7 @@ var (
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	testPageGenerator = componentReportGenerator{
+		gcsBucket: "origin-ci-test",
 		ComponentReportRequestTestIdentificationOptions: apitype.ComponentReportRequestTestIdentificationOptions{
 			Component:  "component 2",
 			Capability: "cap22",
@@ -79,6 +84,7 @@ var (
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	testDetailsGenerator = componentReportGenerator{
+		gcsBucket: "origin-ci-test",
 		ComponentReportRequestTestIdentificationOptions: apitype.ComponentReportRequestTestIdentificationOptions{
 			Component:  "component 1",
 			Capability: "cap11",

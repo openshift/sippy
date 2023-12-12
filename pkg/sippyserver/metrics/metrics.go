@@ -91,7 +91,7 @@ var (
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testidentification.VariantManager, reportEnd time.Time) error {
+func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := query.ReleasesFromDB(dbc)
@@ -146,7 +146,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 	refreshPayloadMetrics(dbc, reportEnd)
 
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, gcsBucket); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -170,7 +170,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, variantManager testident
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client) error {
+func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -256,7 +256,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client) error {
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption)
+	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
