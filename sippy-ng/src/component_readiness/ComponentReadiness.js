@@ -210,11 +210,14 @@ export default function ComponentReadiness(props) {
 
   console.log('sortedReleases: ', sortedReleases)
 
-  // Default to 4.14, but if we have two releases, use the previous one.
+  // manually set the defaults
+  // when a new release comes in but we haven't yet GA'd
+  // the previous release we continue to default to is
+  // we would need to evaluate the most recent GA release
+  // and use that as default base if we want this to be dynamic
+  let defaultSampleRelease = '4.15'
   let defaultBaseRelease = '4.14'
-  if (sortedReleases[1]) {
-    defaultBaseRelease = sortedReleases[1]
-  }
+
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
       return new Date(releases.ga_dates[release])
@@ -318,10 +321,8 @@ export default function ComponentReadiness(props) {
     baseEndTimeParam = formatLongDate(initialBaseEndTime, dateEndFormat),
     setBaseEndTimeParam,
   ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = '4.15', setSampleReleaseParam] = useQueryParam(
-    'sampleRelease',
-    StringParam
-  )
+  const [sampleReleaseParam = defaultSampleRelease, setSampleReleaseParam] =
+    useQueryParam('sampleRelease', StringParam)
   const [
     sampleStartTimeParam = formatLongDate(initialSampleStartTime, dateFormat),
     setSampleStartTimeParam,
