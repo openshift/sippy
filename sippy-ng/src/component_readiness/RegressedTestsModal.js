@@ -65,91 +65,55 @@ export default function RegressedTestsModal(props) {
       field: 'component',
       headerName: 'Component',
       flex: 20,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Component'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'capability',
       headerName: 'Capability',
       flex: 12,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Capability'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 30,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Test Name'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_suite',
       headerName: 'Test Suite',
       flex: 15,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Test Suite'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'network',
       headerName: 'Network',
       flex: 8,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Network'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'upgrade',
       headerName: 'Upgrade',
       flex: 12,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Upgrade'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'arch',
       headerName: 'Arch',
       flex: 8,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Arch'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'platform',
       headerName: 'Platform',
       flex: 8,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Platform'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'variant',
       headerName: 'Variant',
       flex: 10,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={'Variant'}>{param.value}</Tooltip>
-        </div>
-      ),
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'status',

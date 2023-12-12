@@ -1072,6 +1072,44 @@ export default function ComponentReadiness(props) {
                               }}
                               label="Red Only"
                             ></FormControlLabel>
+                            <Tooltip title="Copy link to search">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                variant="contained"
+                                component={Link}
+                                href={linkToReport()}
+                                onClick={copyLinkToReport}
+                              >
+                                <FileCopy />
+                              </IconButton>
+                            </Tooltip>
+                            <Popover
+                              id="copyPopover"
+                              open={copyPopoverOpen}
+                              anchorEl={copyPopoverEl}
+                              onClose={() => setCopyPopoverEl(null)}
+                              anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'center',
+                              }}
+                              transformOrigin={{
+                                vertical: 'top',
+                                horizontal: 'center',
+                              }}
+                            >
+                              Link copied!
+                            </Popover>
+                            <Tooltip title="Clear searches">
+                              <IconButton
+                                color="primary"
+                                size="small"
+                                variant="contained"
+                                onClick={clearSearches}
+                              >
+                                <Clear />
+                              </IconButton>
+                            </Tooltip>
                             <Button
                               style={{ marginTop: 20 }}
                               variant="contained"
