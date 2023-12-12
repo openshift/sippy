@@ -59,6 +59,10 @@ function generateTestReport(
 }
 
 export default function RegressedTestsModal(props) {
+  const [sortModel, setSortModel] = React.useState([
+    { field: 'component', sort: 'asc' },
+  ])
+
   // define table columns
   const columns = [
     {
@@ -162,6 +166,8 @@ export default function RegressedTestsModal(props) {
             Regressed Tests
           </Typography>
           <DataGrid
+            sortModel={sortModel}
+            onSortModelChange={setSortModel}
             components={{ Toolbar: GridToolbar }}
             rows={props.regressedTests}
             columns={columns}
