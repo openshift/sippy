@@ -1,5 +1,17 @@
 import './ComponentReadiness.css'
 import {
+  AppBar,
+  Badge,
+  Box,
+  Drawer,
+  FormControlLabel,
+  Grid,
+  Popover,
+  TableContainer,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import {
   ArrayParam,
   BooleanParam,
   NumberParam,
@@ -7,19 +19,6 @@ import {
   StringParam,
   useQueryParam,
 } from 'use-query-params'
-import {
-  Button,
-  Checkbox,
-  Drawer,
-  FormControlLabel,
-  Grid,
-  Link,
-  Popover,
-  TableContainer,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@mui/material'
 import {
   cancelledDataTable,
   dateEndFormat,
@@ -36,14 +35,23 @@ import {
   makeRFC3339Time,
   mergeRegressedTests,
   noDataTable,
+  Search,
+  SearchIconWrapper,
+  StyledInputBase,
 } from './CompReadyUtils'
-import { ClassNameMap } from '@mui/styles'
-import { Fragment, useContext, useEffect, useState } from 'react'
-import { Route, Switch, useRouteMatch } from 'react-router-dom'
-
-import { Clear, FileCopy } from '@mui/icons-material'
-import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
+import { Route, Switch, useRouteMatch } from 'react-router-dom'
+import React, { Fragment, useContext, useEffect, useState } from 'react'
+import SwitchControl from '@mui/material/Switch'
+
+import {
+  Clear,
+  GridView,
+  InsertLink,
+  ViewColumn,
+  Widgets,
+} from '@mui/icons-material'
+import { grey } from '@mui/material/colors'
 import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -59,13 +67,13 @@ import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
-import React from 'react'
 import RegressedTestsModal from './RegressedTestsModal'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Toolbar from '@mui/material/Toolbar'
 
 const drawerWidth = 240
 
@@ -1043,91 +1051,124 @@ export default function ComponentReadiness(props) {
                         </Typography>
                       ) : (
                         <div>
-                          <div style={{ display: 'flex', gap: '16px' }}>
-                            <TextField
-                              variant="standard"
-                              label="Search Component"
-                              value={searchComponentRegex}
-                              onChange={handleSearchComponentRegexChange}
-                            />
-                            <TextField
-                              variant="standard"
-                              label="Search Column"
-                              value={searchColumnRegex}
-                              onChange={handleSearchColumnRegexChange}
-                            />
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={redOnlyChecked}
-                                  onChange={handleRedOnlyCheckboxChange}
-                                  color="primary"
-                                  size="small"
-                                  style={{ borderRadius: 1 }}
-                                />
-                              }
-                              htmlFor="redOnlyCheckbox"
-                              style={{
-                                textAlign: 'left',
-                                marginTop: 15,
-                              }}
-                              label="Red Only"
-                            ></FormControlLabel>
-                            <Tooltip title="Copy link to search">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                variant="contained"
-                                component={Link}
-                                href={linkToReport()}
-                                onClick={copyLinkToReport}
-                              >
-                                <FileCopy />
-                              </IconButton>
-                            </Tooltip>
-                            <Popover
-                              id="copyPopover"
-                              open={copyPopoverOpen}
-                              anchorEl={copyPopoverEl}
-                              onClose={() => setCopyPopoverEl(null)}
-                              anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'center',
-                              }}
-                              transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'center',
-                              }}
-                            >
-                              Link copied!
-                            </Popover>
-                            <Tooltip title="Clear searches">
-                              <IconButton
-                                color="primary"
-                                size="small"
-                                variant="contained"
-                                onClick={clearSearches}
-                              >
-                                <Clear />
-                              </IconButton>
-                            </Tooltip>
-                            <Button
-                              style={{ marginTop: 20 }}
-                              variant="contained"
-                              color="secondary"
-                              onClick={() =>
-                                setRegressedTestDialog(true, 'replaceIn')
-                              }
-                            >
-                              Show Regressed
-                            </Button>
-                            <RegressedTestsModal
-                              regressedTests={regressedTests}
-                              filterVals={filterVals}
-                              isOpen={regressedTestDialog}
-                              close={closeRegressedTestsDialog}
-                            />
-                          </div>
+                          <Box sx={{ flexGrow: 1 }}>
+                            <AppBar elevation={1} position="static">
+                              <Toolbar sx={{ leftPadding: 0 }}>
+                                <Search>
+                                  <SearchIconWrapper>
+                                    <Widgets />
+                                  </SearchIconWrapper>
+                                  <StyledInputBase
+                                    placeholder="Search Component"
+                                    inputProps={{ 'aria-label': 'search' }}
+                                    value={searchComponentRegex}
+                                    onChange={handleSearchComponentRegexChange}
+                                  />
+                                </Search>
+                                <Search>
+                                  <SearchIconWrapper>
+                                    <ViewColumn />
+                                  </SearchIconWrapper>
+                                  <StyledInputBase
+                                    placeholder="Search Column"
+                                    inputProps={{ 'aria-label': 'search' }}
+                                    value={searchColumnRegex}
+                                    onChange={handleSearchColumnRegexChange}
+                                  />
+                                </Search>
+                                <Box
+                                  display="flex"
+                                  alignItems="center"
+                                  sx={{ paddingBottom: 2 }}
+                                >
+                                  <FormControlLabel
+                                    control={
+                                      <SwitchControl
+                                        checked={redOnlyChecked}
+                                        onChange={handleRedOnlyCheckboxChange}
+                                        color="primary"
+                                        size="small"
+                                        style={{ borderRadius: 1 }}
+                                      />
+                                    }
+                                    htmlFor="redOnlyCheckbox"
+                                    style={{
+                                      textAlign: 'left',
+                                      marginTop: 15,
+                                    }}
+                                    label="Red Only"
+                                  ></FormControlLabel>
+                                </Box>
+
+                                <IconButton
+                                  size="large"
+                                  aria-label="Copy Link"
+                                  color="inherit"
+                                  onClick={copyLinkToReport}
+                                >
+                                  <Tooltip title="Copy link to search">
+                                    <InsertLink />
+                                  </Tooltip>
+                                </IconButton>
+                                <IconButton
+                                  size="large"
+                                  aria-label="Clear Search"
+                                  color="inherit"
+                                  onClick={clearSearches}
+                                >
+                                  <Tooltip title="Clear searches">
+                                    <Clear />
+                                  </Tooltip>
+                                </IconButton>
+                                <Box sx={{ flexGrow: 1 }} />
+
+                                <Box
+                                  sx={{ display: { xs: 'none', md: 'flex' } }}
+                                >
+                                  <IconButton
+                                    size="large"
+                                    aria-label="Show Regressed Tests"
+                                    color="inherit"
+                                    onClick={() =>
+                                      setRegressedTestDialog(true, 'replaceIn')
+                                    }
+                                  >
+                                    <Badge
+                                      badgeContent={regressedTests.length}
+                                      color="error"
+                                    >
+                                      <Tooltip title="Show regressed tests">
+                                        <GridView />
+                                      </Tooltip>
+                                    </Badge>
+                                  </IconButton>
+                                </Box>
+                              </Toolbar>
+                            </AppBar>
+                          </Box>
+
+                          <Popover
+                            id="copyPopover"
+                            open={copyPopoverOpen}
+                            anchorEl={copyPopoverEl}
+                            onClose={() => setCopyPopoverEl(null)}
+                            anchorOrigin={{
+                              vertical: 'bottom',
+                              horizontal: 'center',
+                            }}
+                            transformOrigin={{
+                              vertical: 'top',
+                              horizontal: 'center',
+                            }}
+                          >
+                            Link copied!
+                          </Popover>
+                          <RegressedTestsModal
+                            regressedTests={regressedTests}
+                            filterVals={filterVals}
+                            isOpen={regressedTestDialog}
+                            close={closeRegressedTestsDialog}
+                          />
                           <TableContainer
                             component="div"
                             className="cr-table-wrapper"
