@@ -56,6 +56,9 @@ const (
 	commentProcessingDryRunDefault = true
 )
 
+// DefaultOpenshiftGCSBucket is the Google cloud storage bucket that will be used if none is provided as a CLI argument.
+const DefaultOpenshiftGCSBucket = "origin-ci-test"
+
 type Options struct {
 	// LocalData is a directory used for storing testgrid data, and then loading into database.
 	// Not required when loading db from prow, or when running the server.
@@ -89,6 +92,7 @@ type Options struct {
 	Config                             string
 	GoogleServiceAccountCredentialFile string
 	GoogleOAuthClientCredentialFile    string
+	GoogleStorageBucket                string
 	PinnedDateTime                     string
 	RedisURL                           string
 
@@ -170,6 +174,9 @@ func main() {
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
+
+	// Google storage bucket to pull CI data from
+	flags.StringVar(&opt.GoogleStorageBucket, "google-storage-bucket", DefaultOpenshiftGCSBucket, "GCS bucket to pull artifacts from")
 
 	// caching
 	flags.StringVar(&opt.RedisURL, "redis-url", os.Getenv("REDIS_URL"), "Redis caching server URL")
@@ -536,7 +543,7 @@ func (o *Options) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig v1.Sip
 		dbc,
 		gcsClient,
 		bigQueryClient,
-		gcs.OpenshiftGCSBucket,
+		o.GoogleStorageBucket,
 		githubClient,
 		o.getVariantManager(),
 		o.getSyntheticTestManager(),
@@ -609,6 +616,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		webRoot,
 		&static,
 		dbc,
+		o.GoogleStorageBucket,
 		gcsClient,
 		&bigQueryClient,
 		pinnedDateTime,
@@ -617,7 +625,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 
 	if o.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+		err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -630,7 +638,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+					err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

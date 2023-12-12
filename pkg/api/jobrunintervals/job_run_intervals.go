@@ -20,9 +20,9 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
-	bkt := gcsClient.Bucket(gcs.OpenshiftGCSBucket)
+	bkt := gcsClient.Bucket(gcsBucket)
 
 	var gcsJobRun *gcs.GCSJobRun
 
@@ -39,7 +39,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsP
 			logger.WithError(err).Error("error querying job run")
 			return nil, err
 		}
-		parts := strings.Split(jobRun.URL, gcs.OpenshiftGCSBucket)
+		parts := strings.Split(jobRun.URL, gcsBucket)
 		path := parts[1][1:]
 		log.WithField("path", path).Debug("calculated gcs path")
 		gcsJobRun = gcs.NewGCSJobRun(bkt, path)

@@ -54,6 +54,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	gcsBucket string,
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
@@ -70,12 +71,13 @@ func NewServer(
 		db:                   dbClient,
 		bigQueryClient:       bigQueryClient,
 		pinnedDateTime:       pinnedDateTime,
+		gcsBucket:            gcsBucket,
 		gcsClient:            gcsClient,
 		cache:                cacheClient,
 	}
 
 	if bigQueryClient.BQ != nil {
-		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient)
+		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient, gcsBucket)
 	}
 
 	return server
@@ -105,6 +107,7 @@ type Server struct {
 	bigQueryClient       *bigquery.Client
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
+	gcsBucket            string
 	cache                cache.Cache
 }
 
@@ -573,7 +576,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		})
 		return
 	}
-	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient)
+	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
 		for _, err := range errs {
@@ -600,6 +603,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 
 	outputs, errs := api.GetComponentReportFromBigQuery(
 		s.bigQueryClient,
+		s.gcsBucket,
 		baseRelease,
 		sampleRelease,
 		testIDOption,
@@ -631,6 +635,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	}
 	outputs, errs := api.GetComponentReportTestDetailsFromBigQuery(
 		s.bigQueryClient,
+		s.gcsBucket,
 		baseRelease,
 		sampleRelease,
 		testIDOption,
@@ -1193,7 +1198,8 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		// JobName was not passed.
 		gcsPath = ""
 	}
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, gcsPath, logger.WithField("func", "JobRunRiskIntervals"))
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+		logger.WithField("func", "JobRunRiskIntervals"))
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
