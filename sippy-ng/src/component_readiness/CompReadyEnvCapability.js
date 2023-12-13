@@ -1,8 +1,9 @@
 import './ComponentReadiness.css'
-import { BooleanParam, useQueryParam } from 'use-query-params'
+import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import { Button, TableContainer, Tooltip, Typography } from '@mui/material'
 import {
   cancelledDataTable,
+  formColumnName,
   getAPIUrl,
   getColumns,
   gotFetchError,
@@ -15,12 +16,13 @@ import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
+import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext, useEffect } from 'react'
+import React, { Fragment, useContext, useEffect, useState } from 'react'
 import RegressedTestsModal from './RegressedTestsModal'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -105,13 +107,51 @@ export default function CompReadyEnvCapability(props) {
     return gotFetchError(fetchError)
   }
 
-  const regressedTests = mergeRegressedTests(data)
-  const [regressedTestDialog = false, setRegressedTestDialog] = useQueryParam(
-    'regressedModal',
+  const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
+    'searchRow',
+    StringParam
+  )
+  const [searchRowRegex, setSearchRowRegex] = useState(searchRowRegexURL)
+  const handleSearchRowRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchRowRegex(searchValue)
+  }
+
+  const [searchColumnRegexURL, setSearchColumnRegexURL] = useQueryParam(
+    'searchColumn',
+    StringParam
+  )
+  const [searchColumnRegex, setSearchColumnRegex] =
+    useState(searchColumnRegexURL)
+  const handleSearchColumnRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchColumnRegex(searchValue)
+  }
+
+  const [redOnlyURL = false, setRedOnlyURL] = useQueryParam(
+    'redOnly',
     BooleanParam
   )
-  const closeRegressedTestsDialog = () => {
-    setRegressedTestDialog(false, 'replaceIn')
+  const [redOnlyChecked, setRedOnlyChecked] = React.useState(redOnlyURL)
+  const handleRedOnlyCheckboxChange = (event) => {
+    setRedOnlyChecked(event.target.checked)
+  }
+
+  const clearSearches = () => {
+    setSearchRowRegex('')
+    if (searchRowRegexURL && searchRowRegexURL !== '') {
+      setSearchRowRegexURL('')
+    }
+
+    setSearchColumnRegex('')
+    if (searchColumnRegexURL && searchColumnRegexURL !== '') {
+      setSearchColumnRegexURL('')
+    }
+
+    if (setRedOnlyChecked) {
+      setRedOnlyURL(false)
+    }
+    setRedOnlyChecked(false)
   }
 
   const pageTitle = makePageTitle(
@@ -144,19 +184,16 @@ export default function CompReadyEnvCapability(props) {
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>
-      <Button
-        style={{ marginTop: 20 }}
-        variant="contained"
-        color="secondary"
-        onClick={() => setRegressedTestDialog(true, 'replaceIn')}
-      >
-        Show Regressed
-      </Button>
-      <RegressedTestsModal
-        regressedTests={regressedTests}
+      <ComponentReadinessToolBar
+        searchRowRegex={searchRowRegex}
+        handleSearchRowRegexChange={handleSearchRowRegexChange}
+        searchColumnRegex={searchColumnRegex}
+        handleSearchColumnRegexChange={handleSearchColumnRegexChange}
+        redOnlyChecked={redOnlyChecked}
+        handleRedOnlyCheckboxChange={handleRedOnlyCheckboxChange}
+        clearSearches={clearSearches}
+        data={data}
         filterVals={filterVals}
-        isOpen={regressedTestDialog}
-        close={closeRegressedTestsDialog}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
@@ -166,42 +203,69 @@ export default function CompReadyEnvCapability(props) {
               <TableCell className={classes.crColResultFull}>
                 <Typography className={classes.crCellCapabCol}>Name</Typography>
               </TableCell>
-              {columnNames.map((column, idx) => {
-                if (column !== 'Name') {
-                  return (
-                    <TableCell
-                      className={classes.crColResult}
-                      key={'column' + '-' + idx}
-                    >
-                      <Tooltip title={'Single row report for ' + column}>
-                        <Typography className={classes.crCellName}>
-                          {column}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                  )
-                }
-              })}
+              {columnNames
+                .filter((column, idx) =>
+                  column.match(new RegExp(searchColumnRegex, 'i'))
+                )
+                .map((column, idx) => {
+                  if (column !== 'Name') {
+                    return (
+                      <TableCell
+                        className={classes.crColResult}
+                        key={'column' + '-' + idx}
+                      >
+                        <Tooltip title={'Single row report for ' + column}>
+                          <Typography className={classes.crCellName}>
+                            {column}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                    )
+                  }
+                })}
             </TableRow>
           </TableHead>
           <TableBody>
             {/* Ensure we have data before trying to map on it; we need data and rows */}
             {data && data.rows && Object.keys(data.rows).length > 0 ? (
-              Object.keys(data.rows).map((componentIndex) => {
-                return (
-                  <CompTestRow
-                    key={componentIndex}
-                    testSuite={data.rows[componentIndex].test_suite}
-                    testName={data.rows[componentIndex].test_name}
-                    testId={data.rows[componentIndex].test_id}
-                    results={data.rows[componentIndex].columns}
-                    columnNames={columnNames}
-                    filterVals={filterVals}
-                    component={component}
-                    capability={capability}
-                  />
+              Object.keys(data.rows)
+                .filter((rowIndex) =>
+                  data.rows[rowIndex].test_name.match(
+                    new RegExp(searchRowRegex, 'i')
+                  )
                 )
-              })
+                .filter((rowIndex) =>
+                  redOnlyChecked
+                    ? data.rows[rowIndex].columns.some(
+                        // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
+                        (column) =>
+                          column.status <= -2 &&
+                          formColumnName(column).match(
+                            new RegExp(searchColumnRegex, 'i')
+                          )
+                      )
+                    : true
+                )
+                .map((componentIndex) => {
+                  return (
+                    <CompTestRow
+                      key={componentIndex}
+                      testSuite={data.rows[componentIndex].test_suite}
+                      testName={data.rows[componentIndex].test_name}
+                      testId={data.rows[componentIndex].test_id}
+                      results={data.rows[componentIndex].columns.filter(
+                        (column, idx) =>
+                          formColumnName(column).match(
+                            new RegExp(searchColumnRegex, 'i')
+                          )
+                      )}
+                      columnNames={columnNames}
+                      filterVals={filterVals}
+                      component={component}
+                      capability={capability}
+                    />
+                  )
+                })
             ) : (
               <TableRow>
                 {/* No data to render (possible due to a Cancel */}
