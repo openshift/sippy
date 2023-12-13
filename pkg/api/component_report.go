@@ -383,7 +383,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						cm.id `
 
 	queryString += `
-					WHERE (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
+					WHERE cm.staff_approved_obsolete = false AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
 
 	commonParams := []bigquery.QueryParameter{
 		{
