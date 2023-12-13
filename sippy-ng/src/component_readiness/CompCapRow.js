@@ -63,6 +63,9 @@ export default function CompCapRow(props) {
             environment={columnNames[idx]}
             capabilityName={capabilityName}
             filterVals={filterVals}
+            regressedCount={
+              columnVal.regressed_tests ? columnVal.regressed_tests.length : 0
+            }
           />
         ))}
       </TableRow>
