@@ -202,32 +202,16 @@ const cancelFetch = () => {
 export default function ComponentReadiness(props) {
   const releases = useContext(ReleasesContext)
 
-  // Throw out Presubmits, sort numerically so latest version (not GA'ed) is first
-  const sortedReleases = releases.releases
-    .filter((version) => version != 'Presubmits')
-    .sort((a, b) => {
-      // Split version into its numeric parts
-      const a_numbers = a.split('.').map(Number)
-      const b_numbers = b.split('.').map(Number)
+  // Find the most recent GA
+  const gaReleases = Object.keys(releases.ga_dates)
+  gaReleases.sort(
+    (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
+  )
+  const defaultBaseRelease = gaReleases[0]
 
-      // Compare the version parts (version are x.y so we only need 2)
-      for (let i = 0; i < 2; i++) {
-        if (a_numbers[i] !== b_numbers[i]) {
-          return b_numbers[i] - a_numbers[i]
-        }
-      }
-      return 0
-    })
-
-  console.log('sortedReleases: ', sortedReleases)
-
-  // manually set the defaults
-  // when a new release comes in but we haven't yet GA'd
-  // the previous release we continue to default to is
-  // we would need to evaluate the most recent GA release
-  // and use that as default base if we want this to be dynamic
-  let defaultSampleRelease = '4.15'
-  let defaultBaseRelease = '4.14'
+  // Find the release after that
+  const nextReleaseIndex = releases.releases.indexOf(defaultBaseRelease) - 1
+  const defaultSampleRelease = releases.releases[nextReleaseIndex]
 
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
