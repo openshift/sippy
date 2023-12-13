@@ -14,7 +14,14 @@ import React, { useContext } from 'react'
 import TableCell from '@mui/material/TableCell'
 
 export default function CompReadyCell(props) {
-  const { status, environment, componentName, filterVals, grayFactor } = props
+  const {
+    status,
+    environment,
+    componentName,
+    filterVals,
+    grayFactor,
+    regressedCount,
+  } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
 
@@ -66,7 +73,11 @@ export default function CompReadyCell(props) {
         }}
       >
         <Link to={componentReport(componentName, environment, filterVals)}>
-          <CompSeverityIcon status={status} grayFactor={grayFactor} />
+          <CompSeverityIcon
+            status={status}
+            grayFactor={grayFactor}
+            count={regressedCount}
+          />
         </Link>
       </TableCell>
     )
@@ -79,4 +90,5 @@ CompReadyCell.propTypes = {
   componentName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
   grayFactor: PropTypes.number.isRequired,
+  regressedCount: PropTypes.number,
 }

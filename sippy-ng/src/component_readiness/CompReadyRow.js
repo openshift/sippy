@@ -64,6 +64,9 @@ export default function CompReadyRow(props) {
             componentName={componentName}
             filterVals={filterVals}
             grayFactor={grayFactor}
+            regressedCount={
+              columnVal.regressed_tests ? columnVal.regressed_tests.length : 0
+            }
           />
         ))}
       </TableRow>
