@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,6 +37,10 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
+
+// gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
+// from the path "/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn/1737420379221135360"
+var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 
 type ProwLoader struct {
 	ctx                     context.Context
@@ -515,12 +518,14 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		return err
 	}
 
-	parts := strings.Split(pjURL.Path, pl.bktName)
-	pjLog.WithField("path", pjURL.Path).WithField("bucket", pl.bktName).WithField("parts", parts).Info("building path")
-	if len(parts) < 2 {
-		return fmt.Errorf("bucket name '%s' does not match prowjob url path '%s'", pl.bktName, pjURL.Path)
+	// Get the path in the gcs bucket, strip out the bucket name and anything before it
+	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
+	pjLog.Infof("gcs bucket path: %+v", path)
+	if path == "" || len(path) == len(pjURL.Path) {
+		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
+		pjLog.Warningf(msg)
+		return fmt.Errorf(msg)
 	}
-	path := parts[1][1:]
 
 	// find all files here then pass to getClusterData
 	// and prowJobRunTestsFromGCS
@@ -585,46 +590,44 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	} else {
 		pjLog.Info("processing GCS bucket")
 
-		if len(parts) == 2 {
-			tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
-			if err != nil {
-				return err
-			}
+		tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
+		if err != nil {
+			return err
+		}
 
-			pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
+		pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
 
-			var duration time.Duration
-			if pj.Status.CompletionTime != nil {
-				duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
-			}
+		var duration time.Duration
+		if pj.Status.CompletionTime != nil {
+			duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
+		}
 
-			err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
-				Model: gorm.Model{
-					ID: uint(id),
-				},
-				Cluster:       pj.Spec.Cluster,
-				Duration:      duration,
-				ProwJob:       *dbProwJob,
-				ProwJobID:     dbProwJob.ID,
-				URL:           pj.Status.URL,
-				Timestamp:     pj.Status.StartTime,
-				OverallResult: overallResult,
-				PullRequests:  pulls,
-				TestFailures:  failures,
-				Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
-			}).Error
-			if err != nil {
-				return err
-			}
-			// Looks like sometimes, we might be getting duplicate entries from bigquery:
-			pl.prowJobRunCacheLock.Lock()
-			pl.prowJobRunCache[uint(id)] = true
-			pl.prowJobRunCacheLock.Unlock()
+		err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
+			Model: gorm.Model{
+				ID: uint(id),
+			},
+			Cluster:       pj.Spec.Cluster,
+			Duration:      duration,
+			ProwJob:       *dbProwJob,
+			ProwJobID:     dbProwJob.ID,
+			URL:           pj.Status.URL,
+			Timestamp:     pj.Status.StartTime,
+			OverallResult: overallResult,
+			PullRequests:  pulls,
+			TestFailures:  failures,
+			Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
+		}).Error
+		if err != nil {
+			return err
+		}
+		// Looks like sometimes, we might be getting duplicate entries from bigquery:
+		pl.prowJobRunCacheLock.Lock()
+		pl.prowJobRunCache[uint(id)] = true
+		pl.prowJobRunCacheLock.Unlock()
 
-			err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
-			if err != nil {
-				return err
-			}
+		err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
+		if err != nil {
+			return err
 		}
 	}
 

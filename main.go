@@ -57,7 +57,7 @@ const (
 )
 
 // DefaultOpenshiftGCSBucket is the Google cloud storage bucket that will be used if none is provided as a CLI argument.
-const DefaultOpenshiftGCSBucket = "origin-ci-test"
+const DefaultOpenshiftGCSBucket = "test-platform-results"
 
 type Options struct {
 	// LocalData is a directory used for storing testgrid data, and then loading into database.
