@@ -38,6 +38,8 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+// gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
+// from the path "/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn/1737420379221135360"
 var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 
 type ProwLoader struct {
