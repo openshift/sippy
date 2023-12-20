@@ -520,7 +520,12 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 	// Get the path in the gcs bucket, strip out the bucket name and anything before it
 	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
-	log.Infof("gcs bucket path: %+v", path)
+	pjLog.Infof("gcs bucket path: %+v", path)
+	if path == "" || len(path) == len(pjURL.Path) {
+		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
+		pjLog.Warningf(msg)
+		return fmt.Errorf(msg)
+	}
 
 	// find all files here then pass to getClusterData
 	// and prowJobRunTestsFromGCS
