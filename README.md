@@ -1,4 +1,4 @@
-# Sippy
+ # Sippy
 
 <img src=https://raw.github.com/openshift/sippy/master/sippy.svg height=100 width=100>
 
