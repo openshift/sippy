@@ -48,6 +48,8 @@ export default function TimelineChart({ eventIntervals, data }) {
       'PodLogInfo',
       'PodLogWarning',
       'PodLogError',
+      'GracefulShutdownInterval',
+      'CloudMetric',
     ])
     .range([
       '#6E6E6E',
@@ -88,6 +90,8 @@ export default function TimelineChart({ eventIntervals, data }) {
       '#96cbff',
       '#fada5e',
       '#d0312d',
+      '#6E6E6E', // GracefulShutdownInterval
+      '#6E6E6E', // CloudMetric
     ])
 
   useEffect(() => {

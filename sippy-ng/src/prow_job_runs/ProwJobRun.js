@@ -6,6 +6,7 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import { Button, ButtonGroup, TextField } from '@mui/material'
+import { CircularProgress } from '@mui/material'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -41,6 +42,8 @@ export default function ProwJobRun(props) {
     e2e_test_flaked: 'E2E Flaked',
     e2e_test_passed: 'E2E Passed',
     disruption: 'Disruption',
+    apiserver_shutdown: 'API Server Shutdown',
+    cloud_metrics: 'Cloud Metrics',
   }
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
@@ -178,11 +181,14 @@ export default function ProwJobRun(props) {
 
   if (isLoaded === false) {
     return (
-      <p>
-        Loading intervals for job run: jobRunID={props.jobRunID}, jobName=
-        {props.jobName}, pullNumber={props.pullNumber}, repoInfo=
-        {props.repoInfo}
-      </p>
+      <Fragment>
+        <p>
+          Loading intervals for job run: jobRunID={props.jobRunID}, jobName=
+          {props.jobName}, pullNumber={props.pullNumber}, repoInfo=
+          {props.repoInfo}
+        </p>
+        <CircularProgress />
+      </Fragment>
     )
   }
 
@@ -290,6 +296,8 @@ ProwJobRun.defaultProps = {
     'node_state',
     'e2e_test_failed',
     'disruption',
+    'apiserver_shutdown',
+    'cloud_metrics',
   ],
   intervalFiles: [],
 }
@@ -386,6 +394,9 @@ function mutateIntervals(eventIntervals) {
     eventInterval.categories.e2e_test_flaked = isE2EFlaked(eventInterval)
     eventInterval.categories.e2e_test_passed = isE2EPassed(eventInterval)
     eventInterval.categories.disruption = isEndpointConnectivity(eventInterval)
+    eventInterval.categories.apiserver_shutdown =
+      isGracefulShutdownActivity(eventInterval)
+    eventInterval.categories.cloud_metrics = isCloudMetrics(eventInterval)
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
   })
 }
@@ -460,12 +471,18 @@ function groupIntervals(filteredIntervals) {
     filteredIntervals,
     'node_state'
   )
+  // Sort the node-state intervals so rows are grouped by node
   timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
-    if (e1.label.includes('master') && e2.label.includes('worker')) {
-      return -1
-    }
-    return 0
+    return e1.label < e2.label ? -1 : e1.label > e2.label
   })
+
+  timelineGroups.push({ group: 'cloud-metrics', data: [] })
+  createTimelineData(
+    cloudMetricsValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredIntervals,
+    'cloud_metrics'
+  )
 
   timelineGroups.push({ group: 'disruption', data: [] })
   createTimelineData(
@@ -473,6 +490,14 @@ function groupIntervals(filteredIntervals) {
     timelineGroups[timelineGroups.length - 1].data,
     filteredIntervals,
     'disruption'
+  )
+
+  timelineGroups.push({ group: 'apiserver-shutdown', data: [] })
+  createTimelineData(
+    apiserverShutdownValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredIntervals,
+    'apiserver_shutdown'
   )
 
   timelineGroups.push({ group: 'e2e-test-failed', data: [] })
@@ -511,7 +536,7 @@ function groupIntervals(filteredIntervals) {
 
 function isOperatorAvailable(eventInterval) {
   if (
-    eventInterval.locator.startsWith('clusteroperator/') &&
+    eventInterval.locator.includes('clusteroperator/') &&
     eventInterval.message.includes('condition/Available') &&
     eventInterval.message.includes('status/False')
   ) {
@@ -522,7 +547,7 @@ function isOperatorAvailable(eventInterval) {
 
 function isOperatorDegraded(eventInterval) {
   if (
-    eventInterval.locator.startsWith('clusteroperator/') &&
+    eventInterval.locator.includes('clusteroperator/') &&
     eventInterval.message.includes('condition/Degraded') &&
     eventInterval.message.includes('status/True')
   ) {
@@ -533,7 +558,7 @@ function isOperatorDegraded(eventInterval) {
 
 function isOperatorProgressing(eventInterval) {
   if (
-    eventInterval.locator.startsWith('clusteroperator/') &&
+    eventInterval.locator.includes('clusteroperator/') &&
     eventInterval.message.includes('condition/Progressing') &&
     eventInterval.message.includes('status/True')
   ) {
@@ -544,6 +569,9 @@ function isOperatorProgressing(eventInterval) {
 
 function isPodLog(eventInterval) {
   if (eventInterval.locator.includes('src/podLog')) {
+    return true
+  }
+  if (eventInterval.locator.includes('etcd-member/')) {
     return true
   }
   return false
@@ -637,7 +665,7 @@ function isKubeletStartupProbeFailure(eventInterval) {
 
 function isE2EFailed(eventInterval) {
   if (
-    eventInterval.locator.startsWith('e2e-test/') &&
+    eventInterval.locator.includes('e2e-test/') &&
     eventInterval.message.includes('finished As "Failed')
   ) {
     return true
@@ -647,7 +675,7 @@ function isE2EFailed(eventInterval) {
 
 function isE2EFlaked(eventInterval) {
   if (
-    eventInterval.locator.startsWith('e2e-test/') &&
+    eventInterval.locator.includes('e2e-test/') &&
     eventInterval.message.includes('finished As "Flaked')
   ) {
     return true
@@ -657,12 +685,16 @@ function isE2EFlaked(eventInterval) {
 
 function isE2EPassed(eventInterval) {
   if (
-    eventInterval.locator.startsWith('e2e-test/') &&
+    eventInterval.locator.includes('e2e-test/') &&
     eventInterval.message.includes('finished As "Passed')
   ) {
     return true
   }
   return false
+}
+
+function isGracefulShutdownActivity(eventInterval) {
+  return eventInterval.tempSource === 'APIServerGracefulShutdown'
 }
 
 function isEndpointConnectivity(eventInterval) {
@@ -675,7 +707,7 @@ function isEndpointConnectivity(eventInterval) {
   if (eventInterval.locator.includes('disruption/')) {
     return true
   }
-  if (eventInterval.locator.startsWith('ns/e2e-k8s-service-lb-available')) {
+  if (eventInterval.locator.includes('ns/e2e-k8s-service-lb-available')) {
     return true
   }
   if (eventInterval.locator.includes(' route/')) {
@@ -686,17 +718,19 @@ function isEndpointConnectivity(eventInterval) {
 }
 
 function isNodeState(eventInterval) {
-  if (eventInterval.locator.startsWith('node/')) {
-    return (
-      eventInterval.message.startsWith('reason/NodeUpdate ') ||
-      eventInterval.message.includes('node is not ready')
-    )
-  }
-  return false
+  return (
+    eventInterval.tempStructuredLocator.type === 'Node' &&
+    (eventInterval.tempStructuredMessage.reason === 'NodeUpdate' ||
+      eventInterval.tempStructuredMessage.reason === 'NotReady')
+  )
+}
+
+function isCloudMetrics(eventInterval) {
+  return eventInterval.tempSource === 'CloudMetrics'
 }
 
 function isAlert(eventInterval) {
-  if (eventInterval.locator.startsWith('alert/')) {
+  if (eventInterval.locator.includes('alert/')) {
     return true
   }
   return false
@@ -710,6 +744,14 @@ function interestingEvents(item) {
       return [item.locator, ` (pathological new)`, 'PathologicalNew']
     }
   }
+  // TODO: hack that can likely be removed when we get to structured intervals for these
+  if (
+    item.message.includes('interesting/true') &&
+    item.message.includes('pod sandbox')
+  ) {
+    return [item.locator, ` (pod sandbox)`, 'PodSandbox']
+  }
+
   if (item.message.includes('interesting/true')) {
     return [item.locator, ` (interesting event)`, 'InterestingEvent']
   }
@@ -786,23 +828,18 @@ function podStateValue(item) {
 const rePhase = new RegExp('(^| )phase/([^ ]+)')
 function nodeStateValue(item) {
   let roles = ''
-  let i = item.message.indexOf('roles/')
-  if (i != -1) {
-    roles = item.message.substring(i + 'roles/'.length)
-    let j = roles.indexOf(' ')
-    if (j != -1) {
-      roles = roles.substring(0, j)
-    }
+  if (item.tempStructuredMessage.annotations.hasOwnProperty('roles')) {
+    roles = item.tempStructuredMessage.annotations.roles
   }
+  if (item.tempStructuredMessage.reason === 'NotReady') {
+    return [item.locator, ` (${roles})`, 'NodeNotReady']
+  }
+  let m = item.tempStructuredMessage.annotations.phase
+  return [item.locator, ` (${roles})`, m]
+}
 
-  if (item.message.includes('node is not ready')) {
-    return [item.locator, ` (${roles},not ready)`, 'NodeNotReady']
-  }
-  let m = item.message.match(rePhase)
-  if (m && m[2] != 'Update') {
-    return [item.locator, ` (${roles},update phases)`, m[2]]
-  }
-  return [item.locator, ` (${roles},updates)`, 'Update']
+function cloudMetricsValue(item) {
+  return [item.locator, '', 'CloudMetric']
 }
 
 function alertSeverity(item) {
@@ -829,6 +866,16 @@ function alertSeverity(item) {
   return [item.locator, '', 'AlertCritical']
 }
 
+function apiserverDisruptionValue(item) {
+  // TODO: isolate DNS error into CIClusterDisruption
+  return [item.locator, '', 'Disruption']
+}
+
+function apiserverShutdownValue(item) {
+  // TODO: isolate DNS error into CIClusterDisruption
+  return [item.locator, '', 'GracefulShutdownInterval']
+}
+
 function disruptionValue(item) {
   // We classify these disruption samples with this message if it thinks
   // it looks like a problem in the CI cluster running the tests, not the cluster under test.
@@ -840,6 +887,11 @@ function disruptionValue(item) {
     return [item.locator, '', 'CIClusterDisruption']
   }
   return [item.locator, '', 'Disruption']
+}
+
+function apiserverShutdownEventsValue(item) {
+  // TODO: isolate DNS error into CIClusterDisruption
+  return [item.locator, '', 'GracefulShutdownWindow']
 }
 
 function getDurationString(durationSeconds) {
@@ -854,13 +906,20 @@ function getDurationString(durationSeconds) {
 }
 
 function defaultToolTip(item) {
-  return (
-    item.message +
+  let tt = item.message
+  if ('tempSource' in item) {
+    tt = tt + ' source/' + item.tempSource
+  }
+  if ('display' in item) {
+    tt = tt + ' display/' + item.display
+  }
+  tt =
+    tt +
     ' ' +
     getDurationString(
       (new Date(item.to).getTime() - new Date(item.from).getTime()) / 1000
     )
-  )
+  return tt
 }
 
 function createTimelineData(

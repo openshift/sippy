@@ -11,8 +11,23 @@ type Condition struct {
 	Message string `json:"message"`
 }
 
+type Locator struct {
+	Type string            `json:"type"`
+	Keys map[string]string `json:"keys"`
+}
+
+type Message struct {
+	Reason       string            `json:"reason"`
+	Cause        string            `json:"cause"`
+	HumanMessage string            `json:"humanMessage"`
+	Annotations  map[string]string `json:"annotations"`
+}
 type EventInterval struct {
 	Condition
+
+	Source            string  `json:"tempSource,omitempty"`
+	StructuredLocator Locator `json:"tempStructuredLocator"`
+	StructuredMessage Message `json:"tempStructuredMessage"`
 
 	From time.Time `json:"from"`
 	To   time.Time `json:"to"`
