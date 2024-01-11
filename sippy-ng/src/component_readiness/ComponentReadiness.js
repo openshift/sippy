@@ -51,6 +51,7 @@ import {
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { grey } from '@mui/material/colors'
 import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -69,6 +70,7 @@ import CompReadyTestReport from './CompReadyTestReport'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
 import RegressedTestsModal from './RegressedTestsModal'
+import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -200,67 +202,6 @@ const cancelFetch = () => {
 }
 
 export default function ComponentReadiness(props) {
-  const releases = useContext(ReleasesContext)
-
-  // Find the most recent GA
-  const gaReleases = Object.keys(releases.ga_dates)
-  gaReleases.sort(
-    (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
-  )
-  const defaultBaseRelease = gaReleases[0]
-
-  // Find the release after that
-  const nextReleaseIndex = releases.releases.indexOf(defaultBaseRelease) - 1
-  const defaultSampleRelease = releases.releases[nextReleaseIndex]
-
-  const getReleaseDate = (release) => {
-    if (releases.ga_dates && releases.ga_dates[release]) {
-      return new Date(releases.ga_dates[release])
-    }
-
-    return new Date()
-  }
-  const days = 24 * 60 * 60 * 1000
-  const seconds = 1000
-  const now = new Date()
-
-  // Sample is last 7 days by default
-  const initialSampleStartTime = new Date(now.getTime() - 6 * days)
-  const initialSampleEndTime = new Date(now.getTime())
-
-  // Base is 28 days from the default base release's GA date
-  // Match what the metrics uses in the api.
-  const initialBaseStartTime =
-    getReleaseDate(defaultBaseRelease).getTime() - 27 * days
-  const initialBaseEndTime =
-    getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
-
-  console.log('defaultBaseRelease: ', defaultBaseRelease)
-  console.log(
-    'initialBaseStartTime: ',
-    formatLongDate(initialBaseStartTime, dateFormat)
-  )
-  console.log(
-    'initialBaseEndTime: ',
-    formatLongDate(initialBaseEndTime, dateEndFormat)
-  )
-
-  const setBaseReleaseWithDates = (event) => {
-    let release = event.target.value
-    let endTime = getReleaseDate(release)
-    let startTime = endTime.getTime() - 30 * days
-    setBaseRelease(release)
-    setBaseStartTime(formatLongDate(startTime, dateFormat))
-    setBaseEndTime(formatLongDate(endTime, dateEndFormat))
-  }
-
-  const setSampleReleaseWithDates = (event) => {
-    let release = event.target.value
-    setSampleRelease(release)
-    setSampleStartTime(formatLongDate(initialSampleStartTime, dateFormat))
-    setSampleEndTime(formatLongDate(initialSampleEndTime, dateEndFormat))
-  }
-
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -294,157 +235,13 @@ export default function ComponentReadiness(props) {
     setRedOnlyChecked(event.target.checked)
   }
 
-  const [drawerOpen, setDrawerOpen] = React.useState(true)
-  const handleDrawerOpen = () => {
-    setDrawerOpen(true)
-  }
+  const varsContext = useContext(CompReadyVarsContext)
 
-  const handleDrawerClose = () => {
-    setDrawerOpen(false)
-  }
-
-  // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
-    useQueryParam('baseRelease', StringParam)
-  const [
-    baseStartTimeParam = formatLongDate(initialBaseStartTime, dateFormat),
-    setBaseStartTimeParam,
-  ] = useQueryParam('baseStartTime', StringParam)
-  const [
-    baseEndTimeParam = formatLongDate(initialBaseEndTime, dateEndFormat),
-    setBaseEndTimeParam,
-  ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = defaultSampleRelease, setSampleReleaseParam] =
-    useQueryParam('sampleRelease', StringParam)
-  const [
-    sampleStartTimeParam = formatLongDate(initialSampleStartTime, dateFormat),
-    setSampleStartTimeParam,
-  ] = useQueryParam('sampleStartTime', StringParam)
-  const [
-    sampleEndTimeParam = formatLongDate(initialSampleEndTime, dateEndFormat),
-    setSampleEndTimeParam,
-  ] = useQueryParam('sampleEndTime', StringParam)
-  const [
-    groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
-    setGroupByCheckedItemsParam,
-  ] = useQueryParam('groupBy', ArrayParam)
-  const [
-    excludeCloudsCheckedItemsParam = [
-      'openstack',
-      'ibmcloud',
-      'libvirt',
-      'ovirt',
-      'unknown',
-    ],
-    setExcludeCloudsCheckedItemsParam,
-  ] = useQueryParam('excludeClouds', ArrayParam)
-  const [
-    excludeArchesCheckedItemsParam = [
-      'arm64',
-      'heterogeneous',
-      'ppc64le',
-      's390x',
-    ],
-    setExcludeArchesCheckedItemsParam,
-  ] = useQueryParam('excludeArches', ArrayParam)
-  const [
-    excludeNetworksCheckedItemsParam = [],
-    setExcludeNetworksCheckedItemsParam,
-  ] = useQueryParam('excludeNetworks', ArrayParam)
-  const [
-    excludeUpgradesCheckedItemsParam = [],
-    setExcludeUpgradesCheckedItemsParam,
-  ] = useQueryParam('excludeUpgrades', ArrayParam)
-  const [
-    excludeVariantsCheckedItemsParam = [
-      'hypershift',
-      'osd',
-      'microshift',
-      'techpreview',
-      'single-node',
-      'assisted',
-      'compact',
-    ],
-    setExcludeVariantsCheckedItemsParam,
-  ] = useQueryParam('excludeVariants', ArrayParam)
-
-  const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
-    'confidence',
-    NumberParam
-  )
-  const [pityParam = 5, setPityParam] = useQueryParam('pity', NumberParam)
-  const [minFailParam = 3, setMinFailParam] = useQueryParam(
-    'minFail',
-    NumberParam
-  )
-  const [ignoreMissingParam = false, setIgnoreMissingParam] = useQueryParam(
-    'ignoreMissing',
-    BooleanParam
-  )
-  const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
-    useQueryParam('ignoreDisruption', BooleanParam)
-
-  const [componentParam, setComponentParam] = useQueryParam(
-    'component',
-    SafeStringParam
-  )
-  const [environmentParam, setEnvironmentParam] = useQueryParam(
-    'environment',
-    StringParam
-  )
-  const [capabilityParam, setCapabilityParam] = useQueryParam(
-    'capability',
-    StringParam
-  )
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
   const [testNameParam, setTestNameParam] = useQueryParam('testName', String)
 
-  // Create the variables to be used for api calls; these are initilized to the
-  // value of the variables that got their values from the URL.
-  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
-    groupByCheckedItemsParam
-  )
-  const [component, setComponent] = React.useState(componentParam)
-  const [environment, setEnvironment] = React.useState(environmentParam)
-  const [capability, setCapability] = React.useState(capabilityParam)
   const [testId, setTestId] = React.useState(testIdParam)
   const [testName, setTestName] = React.useState(testNameParam)
-
-  const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(excludeCloudsCheckedItemsParam)
-  const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(excludeArchesCheckedItemsParam)
-  const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(excludeNetworksCheckedItemsParam)
-
-  const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
-
-  const [sampleRelease, setSampleRelease] = React.useState(sampleReleaseParam)
-
-  const [baseStartTime, setBaseStartTime] = React.useState(baseStartTimeParam)
-
-  const [baseEndTime, setBaseEndTime] = React.useState(baseEndTimeParam)
-
-  const [sampleStartTime, setSampleStartTime] =
-    React.useState(sampleStartTimeParam)
-  const [sampleEndTime, setSampleEndTime] = React.useState(sampleEndTimeParam)
-  const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(excludeUpgradesCheckedItemsParam)
-  const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(excludeVariantsCheckedItemsParam)
-
-  const [confidence, setConfidence] = React.useState(confidenceParam)
-  const [pity, setPity] = React.useState(pityParam)
-  const [minFail, setMinFail] = React.useState(minFailParam)
-
-  // for the two boolean values here, we need the || false because otherwise
-  // the value will be null.
-  const [ignoreMissing, setIgnoreMissing] = React.useState(
-    ignoreMissingParam || false
-  )
-  const [ignoreDisruption, setIgnoreDisruption] = React.useState(
-    ignoreDisruptionParam || true
-  )
 
   const { path, url } = useRouteMatch()
 
@@ -496,15 +293,6 @@ export default function ComponentReadiness(props) {
     setRedOnlyChecked(false)
   }
 
-  const regressedTests = mergeRegressedTests(data)
-  const [regressedTestDialog = false, setRegressedTestDialog] = useQueryParam(
-    'regressedModal',
-    BooleanParam
-  )
-  const closeRegressedTestsDialog = () => {
-    setRegressedTestDialog(false, 'replaceIn')
-  }
-
   document.title = `Sippy > Component Readiness`
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -516,23 +304,23 @@ export default function ComponentReadiness(props) {
     const apiCallStr =
       getAPIUrl() +
       getUpdatedUrlParts(
-        baseRelease,
-        baseStartTime,
-        baseEndTime,
-        sampleRelease,
-        sampleStartTime,
-        sampleEndTime,
-        groupByCheckedItems,
-        excludeCloudsCheckedItems,
-        excludeArchesCheckedItems,
-        excludeNetworksCheckedItems,
-        excludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems,
-        confidence,
-        pity,
-        minFail,
-        ignoreDisruption,
-        ignoreMissing
+        varsContext.baseRelease,
+        varsContext.baseStartTime,
+        varsContext.baseEndTime,
+        varsContext.sampleRelease,
+        varsContext.sampleStartTime,
+        varsContext.sampleEndTime,
+        varsContext.groupByCheckedItems,
+        varsContext.excludeCloudsCheckedItems,
+        varsContext.excludeArchesCheckedItems,
+        varsContext.excludeNetworksCheckedItems,
+        varsContext.excludeUpgradesCheckedItems,
+        varsContext.excludeVariantsCheckedItems,
+        varsContext.confidence,
+        varsContext.pity,
+        varsContext.minFail,
+        varsContext.ignoreDisruption,
+        varsContext.ignoreMissing
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     return formattedApiCallStr
@@ -591,32 +379,6 @@ export default function ComponentReadiness(props) {
     fetchData()
   }, [])
 
-  // This runs when someone pushes the "Generate Report" button.
-  // We form an api string and then call the api.
-  const handleGenerateReport = (event) => {
-    event.preventDefault()
-    setBaseReleaseParam(baseRelease)
-    setBaseStartTimeParam(formatLongDate(baseStartTime, dateFormat))
-    setBaseEndTimeParam(formatLongDate(baseEndTime, dateEndFormat))
-    setSampleReleaseParam(sampleRelease)
-    setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
-    setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
-    setGroupByCheckedItemsParam(groupByCheckedItems)
-    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
-    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
-    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
-    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
-    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
-    setConfidenceParam(confidence)
-    setPityParam(pity)
-    setMinFailParam(minFail)
-    setIgnoreDisruptionParam(ignoreDisruption)
-    setIgnoreMissingParam(ignoreMissing)
-    setComponentParam(component)
-    setEnvironmentParam(environment)
-    setCapabilityParam(capability)
-  }
-
   if (!isLoaded) {
     return (
       <CompReadyProgress
@@ -627,7 +389,7 @@ export default function ComponentReadiness(props) {
   }
 
   const pageTitle = makePageTitle(
-    `Component Readiness for ${sampleRelease} vs. ${baseRelease}`,
+    `Component Readiness for ${varsContext.sampleRelease} vs. ${varsContext.baseRelease}`,
     `page 1`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns
@@ -655,36 +417,36 @@ export default function ComponentReadiness(props) {
                 render={(props) => {
                   // We need to pass the testId and testName
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
+                  varsContext.setComponentParam(varsContext.component)
+                  varsContext.setCapabilityParam(varsContext.capability)
                   setTestIdParam(testId)
                   setTestNameParam(testName)
-                  setEnvironmentParam(environment)
+                  varsContext.setEnvironmentParam(varsContext.environment)
                   return (
                     <CompReadyTestReport
                       key="testreport"
                       filterVals={filterVals}
-                      component={component}
-                      capability={capability}
-                      environment={environment}
+                      component={varsContext.component}
+                      capability={varsContext.capability}
+                      environment={varsContext.environment}
                       testId={testId}
                       testName={testName}
                     ></CompReadyTestReport>
@@ -696,34 +458,35 @@ export default function ComponentReadiness(props) {
                 render={(props) => {
                   // We need to pass the testId
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
+                  varsContext.setComponentParam(varsContext.component)
+                  varsContext.setCapabilityParam(varsContext.capability)
                   setTestIdParam(testId)
                   return (
                     <CompReadyEnvCapabilityTest
                       key="capabilitytest"
                       filterVals={filterVals}
-                      component={component}
-                      capability={capability}
+                      component={varsContext.component}
+                      capability={varsContext.capability}
                       testId={testId}
+                      theme={theme}
                     ></CompReadyEnvCapabilityTest>
                   )
                 }}
@@ -733,36 +496,37 @@ export default function ComponentReadiness(props) {
                 render={(props) => {
                   // We need to pass the environment and testId
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
-                  setEnvironmentParam(environment)
+                  varsContext.setComponentParam(varsContext.component)
+                  varsContext.setCapabilityParam(varsContext.capability)
+                  varsContext.setEnvironmentParam(varsContext.environment)
                   setTestIdParam(testId)
                   return (
                     <CompReadyEnvCapabilityTest
                       key="capabilitytest"
                       filterVals={filterVals}
-                      component={component}
-                      capability={capability}
+                      component={varsContext.component}
+                      capability={varsContext.capability}
                       testId={testId}
-                      environment={environment}
+                      environment={varsContext.environment}
+                      theme={theme}
                     ></CompReadyEnvCapabilityTest>
                   )
                 }}
@@ -772,32 +536,33 @@ export default function ComponentReadiness(props) {
                 render={(props) => {
                   // We need the component and capability from url
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
-                  setComponentParam(component)
-                  setCapabilityParam(capability)
+                  varsContext.setComponentParam(varsContext.component)
+                  varsContext.setCapabilityParam(varsContext.capability)
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
                       filterVals={filterVals}
-                      component={component}
-                      capability={capability}
+                      component={varsContext.component}
+                      capability={varsContext.capability}
+                      theme={theme}
                     ></CompReadyEnvCapability>
                   )
                 }}
@@ -807,31 +572,32 @@ export default function ComponentReadiness(props) {
                 render={(props) => {
                   // We need the component and capability and environment from url
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
                       filterVals={filterVals}
-                      component={component}
-                      capability={capability}
-                      environment={environment}
+                      component={varsContext.component}
+                      capability={varsContext.capability}
+                      environment={varsContext.environment}
+                      theme={theme}
                     ></CompReadyEnvCapability>
                   )
                 }}
@@ -840,28 +606,29 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/capabilities"
                 render={(props) => {
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}
-                      component={component}
+                      component={varsContext.component}
+                      theme={theme}
                     ></CompReadyEnvCapabilities>
                   )
                 }}
@@ -870,32 +637,33 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/env_capabilities"
                 render={(props) => {
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
-                  setComponentParam(component)
-                  setEnvironmentParam(environment)
+                  varsContext.setComponentParam(varsContext.component)
+                  varsContext.setEnvironmentParam(varsContext.environment)
                   // We normally would get the environment and pass it but it doesn't work
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}
-                      component={component}
-                      environment={environment}
+                      component={varsContext.component}
+                      environment={varsContext.environment}
+                      theme={theme}
                     ></CompReadyEnvCapabilities>
                   )
                 }}
@@ -904,125 +672,27 @@ export default function ComponentReadiness(props) {
                 path={'/component_readiness/main'}
                 render={(props) => {
                   const filterVals = getUpdatedUrlParts(
-                    baseRelease,
-                    baseStartTime,
-                    baseEndTime,
-                    sampleRelease,
-                    sampleStartTime,
-                    sampleEndTime,
-                    groupByCheckedItems,
-                    excludeCloudsCheckedItems,
-                    excludeArchesCheckedItems,
-                    excludeNetworksCheckedItems,
-                    excludeUpgradesCheckedItems,
-                    excludeVariantsCheckedItems,
-                    confidence,
-                    pity,
-                    minFail,
-                    ignoreDisruption,
-                    ignoreMissing
+                    varsContext.baseRelease,
+                    varsContext.baseStartTime,
+                    varsContext.baseEndTime,
+                    varsContext.sampleRelease,
+                    varsContext.sampleStartTime,
+                    varsContext.sampleEndTime,
+                    varsContext.groupByCheckedItems,
+                    varsContext.excludeCloudsCheckedItems,
+                    varsContext.excludeArchesCheckedItems,
+                    varsContext.excludeNetworksCheckedItems,
+                    varsContext.excludeUpgradesCheckedItems,
+                    varsContext.excludeVariantsCheckedItems,
+                    varsContext.confidence,
+                    varsContext.pity,
+                    varsContext.minFail,
+                    varsContext.ignoreDisruption,
+                    varsContext.ignoreMissing
                   )
                   return (
                     <div className="cr-view">
-                      <IconButton
-                        color="inherit"
-                        aria-label="open drawer"
-                        onClick={handleDrawerOpen}
-                        edge="start"
-                        className={clsx(
-                          classes.menuButton,
-                          drawerOpen && classes.hide
-                        )}
-                        size="large"
-                      >
-                        <MenuIcon />
-                      </IconButton>
-                      <Drawer
-                        className={classes.drawer}
-                        variant="persistent"
-                        anchor="left"
-                        open={drawerOpen}
-                        classes={{
-                          paper: classes.drawerPaper,
-                        }}
-                      >
-                        <div className={classes.drawerHeader}>
-                          <IconButton onClick={handleDrawerClose} size="large">
-                            {theme.direction === 'ltr' ? (
-                              <ChevronLeftIcon />
-                            ) : (
-                              <ChevronRightIcon />
-                            )}
-                          </IconButton>
-                        </div>
-                        <CompReadyMainInputs
-                          baseRelease={baseRelease}
-                          baseStartTime={formatLongDate(
-                            baseStartTime,
-                            dateFormat
-                          )}
-                          baseEndTime={formatLongDate(
-                            baseEndTime,
-                            dateEndFormat
-                          )}
-                          sampleRelease={sampleRelease}
-                          sampleStartTime={formatLongDate(
-                            sampleStartTime,
-                            dateFormat
-                          )}
-                          sampleEndTime={formatLongDate(
-                            sampleEndTime,
-                            dateEndFormat
-                          )}
-                          groupByCheckedItems={groupByCheckedItems}
-                          excludeCloudsCheckedItems={excludeCloudsCheckedItems}
-                          excludeArchesCheckedItems={excludeArchesCheckedItems}
-                          excludeNetworksCheckedItems={
-                            excludeNetworksCheckedItems
-                          }
-                          excludeUpgradesCheckedItems={
-                            excludeUpgradesCheckedItems
-                          }
-                          excludeVariantsCheckedItems={
-                            excludeVariantsCheckedItems
-                          }
-                          confidence={confidence}
-                          pity={pity}
-                          minFail={minFail}
-                          ignoreMissing={ignoreMissing}
-                          ignoreDisruption={ignoreDisruption}
-                          component={component}
-                          environment={environment}
-                          setBaseRelease={setBaseReleaseWithDates}
-                          setSampleRelease={setSampleReleaseWithDates}
-                          setBaseStartTime={setBaseStartTime}
-                          setBaseEndTime={setBaseEndTime}
-                          setSampleStartTime={setSampleStartTime}
-                          setSampleEndTime={setSampleEndTime}
-                          setGroupByCheckedItems={setGroupByCheckedItems}
-                          setExcludeArchesCheckedItems={
-                            setExcludeArchesCheckedItems
-                          }
-                          setExcludeNetworksCheckedItems={
-                            setExcludeNetworksCheckedItems
-                          }
-                          setExcludeCloudsCheckedItems={
-                            setExcludeCloudsCheckedItems
-                          }
-                          setExcludeUpgradesCheckedItems={
-                            setExcludeUpgradesCheckedItems
-                          }
-                          setExcludeVariantsCheckedItems={
-                            setExcludeVariantsCheckedItems
-                          }
-                          handleGenerateReport={handleGenerateReport}
-                          setConfidence={setConfidence}
-                          setPity={setPity}
-                          setMinFail={setMinFail}
-                          setIgnoreMissing={setIgnoreMissing}
-                          setIgnoreDisruption={setIgnoreDisruption}
-                        ></CompReadyMainInputs>
-                      </Drawer>
+                      <Sidebar theme={theme} />
                       <CompReadyPageTitle
                         pageTitle={pageTitle}
                         apiCallStr={showValuesForReport()}

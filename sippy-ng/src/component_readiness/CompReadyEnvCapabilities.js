@@ -22,7 +22,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
-import RegressedTestsModal from './RegressedTestsModal'
+import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -42,7 +42,7 @@ const cancelFetch = () => {
 // This is page 2 or 2a which runs when you click a component cell on the left or under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { filterVals, component, environment } = props
+  const { filterVals, component, environment, theme } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -179,6 +179,7 @@ export default function CompReadyEnvCapabilities(props) {
 
   return (
     <Fragment>
+      <Sidebar theme={theme} />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link>
@@ -279,4 +280,5 @@ CompReadyEnvCapabilities.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   environment: PropTypes.string,
+  theme: PropTypes.object.isRequired,
 }

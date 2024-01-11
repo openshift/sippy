@@ -9,7 +9,6 @@ import {
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
-  mergeRegressedTests,
   noDataTable,
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
@@ -23,7 +22,7 @@ import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
-import RegressedTestsModal from './RegressedTestsModal'
+import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -44,7 +43,7 @@ const cancelFetch = () => {
 // a cell under an environment on the right in page 2 or 2a
 export default function CompReadyEnvCapability(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { filterVals, component, capability, environment } = props
+  const { filterVals, component, capability, environment, theme } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -180,6 +179,7 @@ export default function CompReadyEnvCapability(props) {
 
   return (
     <Fragment>
+      <Sidebar theme={theme} />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
@@ -284,4 +284,5 @@ CompReadyEnvCapability.propTypes = {
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
   environment: PropTypes.string,
+  theme: PropTypes.object.isRequired,
 }

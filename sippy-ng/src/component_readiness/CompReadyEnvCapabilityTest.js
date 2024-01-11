@@ -19,6 +19,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
+import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -39,7 +40,8 @@ const cancelFetch = () => {
 export default function CompReadyEnvCapabilityTest(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const { filterVals, component, capability, testId, environment } = props
+  const { filterVals, component, capability, testId, environment, theme } =
+    props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -130,6 +132,7 @@ export default function CompReadyEnvCapabilityTest(props) {
 
   return (
     <Fragment>
+      <Sidebar theme={theme} />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
@@ -197,4 +200,5 @@ CompReadyEnvCapabilityTest.propTypes = {
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string,
+  theme: PropTypes.object.isRequired,
 }

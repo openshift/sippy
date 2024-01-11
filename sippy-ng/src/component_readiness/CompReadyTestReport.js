@@ -318,7 +318,7 @@ Flakes: ${stats.flake_count}`
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
-          &gt; {testName}{' '}
+          &gt; {testName}
         </Link>
       </h3>
       <div align="center" style={{ marginTop: 50 }}>
