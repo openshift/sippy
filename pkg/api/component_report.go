@@ -55,6 +55,7 @@ const (
 				ci_analysis_us.junit
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
+			AND skipped = false
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
 )
