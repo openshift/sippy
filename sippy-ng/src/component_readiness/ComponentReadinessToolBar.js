@@ -11,16 +11,19 @@ import { BooleanParam, useQueryParam } from 'use-query-params'
 import {
   Clear,
   GridView,
+  HelpCenter,
   InsertLink,
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
+import { Link } from 'react-router-dom'
 import {
   mergeRegressedTests,
   Search,
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
+import ComponentReadinessHelp from './ComponentReadinessHelp'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -146,7 +149,6 @@ export default function ComponentReadinessToolBar(props) {
               </Tooltip>
             </IconButton>
             <Box sx={{ flexGrow: 1 }} />
-
             <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
               <IconButton
                 size="large"
@@ -159,6 +161,19 @@ export default function ComponentReadinessToolBar(props) {
                     <GridView />
                   </Tooltip>
                 </Badge>
+              </IconButton>
+            </Box>
+            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+              <IconButton
+                size="large"
+                aria-label="Help"
+                color="inherit"
+                component={Link}
+                to="/component_readiness/help"
+              >
+                <Tooltip title="Help and FAQ">
+                  <HelpCenter />
+                </Tooltip>
               </IconButton>
             </Box>
           </Toolbar>

@@ -56,6 +56,7 @@ import { ReleasesContext } from '../App'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import clsx from 'clsx'
+import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
@@ -650,6 +651,12 @@ export default function ComponentReadiness(props) {
             ></Grid>
             {/* eslint-disable react/prop-types */}
             <Switch>
+              <Route
+                path="/component_readiness/help"
+                render={(props) => {
+                  return <ComponentReadinessHelp key="cr-help" />
+                }}
+              />
               <Route
                 path="/component_readiness/test_details"
                 render={(props) => {
