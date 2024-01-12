@@ -2,11 +2,13 @@ import { BOOKMARKS } from '../constants'
 import {
   BugReport,
   Code,
+  Dashboard,
   ExpandLess,
   ExpandMore,
   Favorite,
   FileCopyOutlined,
   GitHub,
+  NotificationsActive,
 } from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
@@ -414,6 +416,30 @@ export default function Sidebar(props) {
             <GitHub />
           </ListItemIcon>
           <ListItemText primary="GitHub Repo" />
+        </ListItem>
+
+        <ListItem
+          component="a"
+          target="_blank"
+          href="https://grafana-loki.ci.openshift.org/d/ISnBj4LVk/disruption?orgId=1"
+          key="DisruptionDashboard"
+        >
+          <ListItemIcon>
+            <Dashboard />
+          </ListItemIcon>
+          <ListItemText primary="Disruption Dashboard" />
+        </ListItem>
+
+        <ListItem
+          component="a"
+          target="_blank"
+          href="https://alertmanager-trt-service.dptools.openshift.org/#/alerts?receiver=trt-monitoring-trt-trt-alerts-slack-notifications"
+          key="Alerts"
+        >
+          <ListItemIcon>
+            <NotificationsActive />
+          </ListItemIcon>
+          <ListItemText primary="Alert Manager" />
         </ListItem>
         <Divider />
         <div align="center">
