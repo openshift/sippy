@@ -1,5 +1,5 @@
-import { BOOKMARKS } from '../constants'
 import {
+  AppsOutage,
   BugReport,
   Code,
   Dashboard,
@@ -10,6 +10,7 @@ import {
   GitHub,
   NotificationsActive,
 } from '@mui/icons-material'
+import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, Tooltip, useTheme } from '@mui/material'
@@ -134,7 +135,7 @@ export default function Sidebar(props) {
                 <List
                   subheader={
                     <ListSubheader component="div" id="Overall Components">
-                      Experimental
+                      Tools
                     </ListSubheader>
                   }
                 >
@@ -146,12 +147,34 @@ export default function Sidebar(props) {
                   >
                     <StyledListItemButton>
                       <ListItemIcon>
-                        <Tooltip title="This functionality is experimental; please do NOT depend on this data">
-                          <InfoIcon />
-                        </Tooltip>
+                        <AppsOutage />
                       </ListItemIcon>
                       <ListItemText primary="Component Readiness" />
                     </StyledListItemButton>
+                  </ListItem>
+
+                  <ListItem
+                    component="a"
+                    target="_blank"
+                    href="https://alertmanager-trt-service.dptools.openshift.org/#/alerts?receiver=trt-monitoring-trt-trt-alerts-slack-notifications"
+                    key="Alerts"
+                  >
+                    <ListItemIcon>
+                      <NotificationsActive />
+                    </ListItemIcon>
+                    <ListItemText primary="Alert Manager" />
+                  </ListItem>
+
+                  <ListItem
+                    component="a"
+                    target="_blank"
+                    href="https://grafana-loki.ci.openshift.org/d/ISnBj4LVk/disruption?orgId=1"
+                    key="DisruptionDashboard"
+                  >
+                    <ListItemIcon>
+                      <Dashboard />
+                    </ListItemIcon>
+                    <ListItemText primary="Disruption Dashboard" />
                   </ListItem>
                 </List>
               </Fragment>
@@ -416,30 +439,6 @@ export default function Sidebar(props) {
             <GitHub />
           </ListItemIcon>
           <ListItemText primary="GitHub Repo" />
-        </ListItem>
-
-        <ListItem
-          component="a"
-          target="_blank"
-          href="https://grafana-loki.ci.openshift.org/d/ISnBj4LVk/disruption?orgId=1"
-          key="DisruptionDashboard"
-        >
-          <ListItemIcon>
-            <Dashboard />
-          </ListItemIcon>
-          <ListItemText primary="Disruption Dashboard" />
-        </ListItem>
-
-        <ListItem
-          component="a"
-          target="_blank"
-          href="https://alertmanager-trt-service.dptools.openshift.org/#/alerts?receiver=trt-monitoring-trt-trt-alerts-slack-notifications"
-          key="Alerts"
-        >
-          <ListItemIcon>
-            <NotificationsActive />
-          </ListItemIcon>
-          <ListItemText primary="Alert Manager" />
         </ListItem>
         <Divider />
         <div align="center">
