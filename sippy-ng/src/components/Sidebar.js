@@ -96,38 +96,6 @@ export default function Sidebar(props) {
       </List>
       <CapabilitiesContext.Consumer>
         {(value) => {
-          if (value.includes('build_clusters')) {
-            return (
-              <Fragment>
-                <Divider />
-                <List
-                  subheader={
-                    <ListSubheader component="div" id="infrastructure">
-                      Infrastructure
-                    </ListSubheader>
-                  }
-                >
-                  <ListItem
-                    key={'build-cluster-health'}
-                    component={Link}
-                    to={`/build_clusters`}
-                    className={classes.nested}
-                  >
-                    <StyledListItemButton>
-                      <ListItemIcon>
-                        <Favorite />
-                      </ListItemIcon>
-                      <ListItemText primary="Build Cluster Health" />
-                    </StyledListItemButton>
-                  </ListItem>
-                </List>
-              </Fragment>
-            )
-          }
-        }}
-      </CapabilitiesContext.Consumer>
-      <CapabilitiesContext.Consumer>
-        {(value) => {
           if (value.includes('openshift_releases')) {
             return (
               <Fragment>
@@ -176,6 +144,29 @@ export default function Sidebar(props) {
                     </ListItemIcon>
                     <ListItemText primary="Disruption Dashboard" />
                   </ListItem>
+                  <CapabilitiesContext.Consumer>
+                    {(value) => {
+                      if (value.includes('build_clusters')) {
+                        return (
+                          <Fragment>
+                            <ListItem
+                              key={'build-cluster-health'}
+                              component={Link}
+                              to={`/build_clusters`}
+                              className={classes.nested}
+                            >
+                              <StyledListItemButton>
+                                <ListItemIcon>
+                                  <Favorite />
+                                </ListItemIcon>
+                                <ListItemText primary="Build Cluster Health" />
+                              </StyledListItemButton>
+                            </ListItem>
+                          </Fragment>
+                        )
+                      }
+                    }}
+                  </CapabilitiesContext.Consumer>
                 </List>
               </Fragment>
             )
