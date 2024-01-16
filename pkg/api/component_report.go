@@ -52,7 +52,7 @@ const (
 						ELSE 2
 					END) AS row_num
 			FROM
-				ci_analysis_us.junit
+				%s.junit
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
@@ -99,7 +99,7 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 
 func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.ComponentReportTestVariants, []error) {
 	generator := componentReportGenerator{
-		client:    client.BQ,
+		client:    client,
 		gcsBucket: gcsBucket,
 	}
 
@@ -113,7 +113,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
-		client:        client.BQ,
+		client:        client,
 		gcsBucket:     gcsBucket,
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
@@ -133,7 +133,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
-		client:        client.BQ,
+		client:        client,
 		gcsBucket:     gcsBucket,
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
@@ -147,7 +147,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 }
 
 type componentReportGenerator struct {
-	client        *bigquery.Client
+	client        *bqcachedclient.Client
 	gcsBucket     string
 	BaseRelease   apitype.ComponentReportRequestReleaseOptions
 	SampleRelease apitype.ComponentReportRequestReleaseOptions
@@ -219,10 +219,10 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	errs := []error{}
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
-						FROM ci_analysis_us.component_mapping cm
+						FROM %s.component_mapping cm
 						WHERE created_at = (
 								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+								FROM %s.component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
@@ -234,7 +234,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
 
 	groupString := `
 					GROUP BY
@@ -284,7 +284,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	}
 
 	baseString := queryString + ` AND branch = @BaseRelease`
-	baseQuery := c.client.Query(baseString + groupString)
+	baseQuery := c.client.BQ.Query(baseString + groupString)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -312,7 +312,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
-	sampleQuery := c.client.Query(sampleString + groupString)
+	sampleQuery := c.client.BQ.Query(sampleString + groupString)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
@@ -350,10 +350,10 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	errs := []error{}
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
-						FROM ci_analysis_us.component_mapping cm
+						FROM %s.component_mapping cm
 						WHERE created_at = (
 								SELECT MAX(created_at)
-								FROM openshift-gce-devel.ci_analysis_us.component_mapping))
+								FROM %s.component_mapping))
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
@@ -372,7 +372,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, dedupedJunitTable)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
 
 	groupString := `
 					GROUP BY
@@ -480,7 +480,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	}
 
 	baseString := queryString + ` AND branch = @BaseRelease`
-	baseQuery := c.client.Query(baseString + groupString)
+	baseQuery := c.client.BQ.Query(baseString + groupString)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -508,7 +508,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	}()
 
 	sampleString := queryString + ` AND branch = @SampleRelease`
-	sampleQuery := c.client.Query(sampleString + groupString)
+	sampleQuery := c.client.BQ.Query(sampleString + groupString)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
@@ -1235,13 +1235,13 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 	queryString := fmt.Sprintf(`SELECT
 						DISTINCT %s as name
 					FROM
-						ci_analysis_us.junit %s
+						%s.junit %s
 					WHERE
 						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
 					ORDER BY
-						name`, field, unnest)
+						name`, field, c.client.Dataset, unnest)
 
-	query := c.client.Query(queryString)
+	query := c.client.BQ.Query(queryString)
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "IgnoredJobs",

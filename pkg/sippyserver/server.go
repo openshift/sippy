@@ -76,7 +76,7 @@ func NewServer(
 		cache:                cacheClient,
 	}
 
-	if bigQueryClient.BQ != nil {
+	if bigQueryClient != nil {
 		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient, gcsBucket)
 	}
 

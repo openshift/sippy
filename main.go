@@ -106,6 +106,9 @@ type Options struct {
 	SippyURL        string
 	SnapshotName    string
 	SnapshotRelease string
+
+	BigQueryProject string
+	BigQueryDataset string
 }
 
 func main() {
@@ -174,6 +177,10 @@ func main() {
 	// google cloud creds
 	flags.StringVar(&opt.GoogleServiceAccountCredentialFile, "google-service-account-credential-file", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"), "location of a credential file described by https://cloud.google.com/docs/authentication/production")
 	flags.StringVar(&opt.GoogleOAuthClientCredentialFile, "google-oauth-credential-file", opt.GoogleOAuthClientCredentialFile, "location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
+
+	// BigQuery options
+	flags.StringVar(&opt.BigQueryProject, "bigquery-project", "openshift-gce-devel", "BigQuery project to use")
+	flags.StringVar(&opt.BigQueryDataset, "bigquery-dataset", "ci_analysis_us", "Dataset to use")
 
 	// Google storage bucket to pull CI data from
 	flags.StringVar(&opt.GoogleStorageBucket, "google-storage-bucket", DefaultOpenshiftGCSBucket, "GCS bucket to pull artifacts from")
@@ -519,7 +526,7 @@ func (o *Options) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig v1.Sip
 
 	var bigQueryClient *bigquery.Client
 	if o.LoadOpenShiftCIBigQuery {
-		bigQueryClient, err = bigquery.NewClient(ctx, "openshift-gce-devel",
+		bigQueryClient, err = bigquery.NewClient(ctx, o.BigQueryProject,
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
@@ -582,22 +589,6 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 	}
 
-	var bigQueryClient bqcachedclient.Client
-	if o.GoogleServiceAccountCredentialFile != "" {
-		bigQueryClient.BQ, err = bigquery.NewClient(context.Background(), "openshift-gce-devel",
-			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
-		if err != nil {
-			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents component readiness queries from working")
-			return err
-		}
-		// Enable Storage API usage for fetching data
-		err = bigQueryClient.BQ.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
-		if err != nil {
-			log.WithError(err).Error("CRITICAL error enabling BigQuery Storage API")
-			return err
-		}
-	}
-
 	var cacheClient cache.Cache
 	if o.RedisURL != "" {
 		cacheClient, err = redis.NewRedisCache(o.RedisURL)
@@ -605,7 +596,14 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 			log.WithError(err).Error("couldn't create redis cache")
 			return err
 		}
-		bigQueryClient.Cache = cacheClient
+	}
+
+	var bigQueryClient *bqcachedclient.Client
+	if o.GoogleServiceAccountCredentialFile != "" {
+		bigQueryClient, err = bqcachedclient.New(context.Background(), o.GoogleServiceAccountCredentialFile, o.BigQueryProject, o.BigQueryDataset, cacheClient)
+		if err != nil {
+			log.WithError(err).Fatalf("couldn't create bigquery client")
+		}
 	}
 
 	server := sippyserver.NewServer(
@@ -618,14 +616,14 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		dbc,
 		o.GoogleStorageBucket,
 		gcsClient,
-		&bigQueryClient,
+		bigQueryClient,
 		pinnedDateTime,
 		cacheClient,
 	)
 
 	if o.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+		err = metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -638,7 +636,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(dbc, &bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+					err := metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
