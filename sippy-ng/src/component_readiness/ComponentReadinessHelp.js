@@ -18,6 +18,11 @@ const faqs = [
     by red squares, with the exploded red square indicating an extreme regression that is a 15% or more difference in pass rates.`,
   },
   {
+    question: 'What if a test name changes?',
+    answer: `If a test is renamed, it's still possible for component readiness to analyze the full history of the test under all names, if the rename is handled in the <a href="https://github.com/openshift-eng/ci-test-mapping/">
+    <u>test mapping repository</u></a>. See the README in that repository for information and examples.`,
+  },
+  {
     question: 'Why are some of my squares dim green?',
     answer: `This indicates that there is no history for at least one test during the selected time period. This can occur for a number of reasons, including that the test is new,  
       the test was removed, or the test was renamed. Test renames or removals should be handled through the <a href="https://github.com/openshift-eng/ci-test-mapping/">
