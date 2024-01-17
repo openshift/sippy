@@ -1,7 +1,12 @@
 import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
+import {
+  dateFormat,
+  formatLongDate,
+  getUpdatedUrlParts,
+  groupByList,
+} from './CompReadyUtils'
 import { Fragment } from 'react'
-import { getUpdatedUrlParts, groupByList } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import AdvancedOptions from './AdvancedOptions'
@@ -29,54 +34,7 @@ export default function CompReadyMainInputs(props) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
-  const {
-    baseRelease,
-    baseStartTime,
-    baseEndTime,
-    sampleRelease,
-    sampleStartTime,
-    sampleEndTime,
-    groupByCheckedItems,
-    excludeCloudsCheckedItems,
-    excludeArchesCheckedItems,
-    excludeNetworksCheckedItems,
-    excludeUpgradesCheckedItems,
-    excludeVariantsCheckedItems,
-    confidence,
-    pity,
-    minFail,
-    ignoreMissing,
-    ignoreDisruption,
-    component,
-    environment,
-    setBaseRelease,
-    setSampleRelease,
-    setBaseStartTime,
-    setBaseEndTime,
-    setSampleStartTime,
-    setSampleEndTime,
-    setGroupByCheckedItems,
-    setExcludeArchesCheckedItems,
-    setExcludeNetworksCheckedItems,
-    setExcludeCloudsCheckedItems,
-    setExcludeUpgradesCheckedItems,
-    setExcludeVariantsCheckedItems,
-    handleGenerateReport,
-    setConfidence,
-    setPity,
-    setMinFail,
-    setIgnoreMissing,
-    setIgnoreDisruption,
-  } = props
-
-  const {
-    excludeNetworksList,
-    excludeCloudsList,
-    excludeArchesList,
-    excludeUpgradesList,
-    excludeVariantsList,
-  } = useContext(CompReadyVarsContext)
-
+  const varsContext = useContext(CompReadyVarsContext)
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -87,26 +45,26 @@ export default function CompReadyMainInputs(props) {
           to={
             '/component_readiness/main' +
             getUpdatedUrlParts(
-              baseRelease,
-              baseStartTime,
-              baseEndTime,
-              sampleRelease,
-              sampleStartTime,
-              sampleEndTime,
-              groupByCheckedItems,
-              excludeCloudsCheckedItems,
-              excludeArchesCheckedItems,
-              excludeNetworksCheckedItems,
-              excludeUpgradesCheckedItems,
-              excludeVariantsCheckedItems,
-              confidence,
-              pity,
-              minFail,
-              ignoreDisruption,
-              ignoreMissing
+              varsContext.baseRelease,
+              varsContext.baseStartTime,
+              varsContext.baseEndTime,
+              varsContext.sampleRelease,
+              varsContext.sampleStartTime,
+              varsContext.sampleEndTime,
+              varsContext.groupByCheckedItems,
+              varsContext.excludeCloudsCheckedItems,
+              varsContext.excludeArchesCheckedItems,
+              varsContext.excludeNetworksCheckedItems,
+              varsContext.excludeUpgradesCheckedItems,
+              varsContext.excludeVariantsCheckedItems,
+              varsContext.confidence,
+              varsContext.pity,
+              varsContext.minFail,
+              varsContext.ignoreDisruption,
+              varsContext.ignoreMissing
             )
           }
-          onClick={handleGenerateReport}
+          onClick={varsContext.handleGenerateReport}
         >
           <Tooltip
             title={
@@ -122,74 +80,74 @@ export default function CompReadyMainInputs(props) {
       <div className={classes.crRelease}>
         <ReleaseSelector
           label="Release to Evaluate"
-          version={sampleRelease}
-          onChange={setSampleRelease}
-          startTime={sampleStartTime}
-          setStartTime={setSampleStartTime}
-          endTime={sampleEndTime}
-          setEndTime={setSampleEndTime}
+          version={varsContext.sampleRelease}
+          onChange={varsContext.setSampleReleaseWithDates}
+          startTime={formatLongDate(varsContext.sampleStartTime, dateFormat)}
+          setStartTime={varsContext.setSampleStartTime}
+          endTime={formatLongDate(varsContext.sampleEndTime, dateFormat)}
+          setEndTime={varsContext.setSampleEndTime}
         ></ReleaseSelector>
       </div>
       <div className={classes.crRelease}>
         <ReleaseSelector
-          version={baseRelease}
+          version={varsContext.baseRelease}
           label="Historical Release"
-          onChange={setBaseRelease}
-          startTime={baseStartTime}
-          setStartTime={setBaseStartTime}
-          endTime={baseEndTime}
-          setEndTime={setBaseEndTime}
+          onChange={varsContext.setBaseReleaseWithDates}
+          startTime={formatLongDate(varsContext.baseStartTime, dateFormat)}
+          setStartTime={varsContext.setBaseStartTime}
+          endTime={formatLongDate(varsContext.baseEndTime, dateFormat)}
+          setEndTime={varsContext.setBaseEndTime}
         ></ReleaseSelector>
       </div>
       <div>
         <CheckBoxList
           headerName="Group By"
           displayList={groupByList}
-          checkedItems={groupByCheckedItems}
-          setCheckedItems={setGroupByCheckedItems}
+          checkedItems={varsContext.groupByCheckedItems}
+          setCheckedItems={varsContext.setGroupByCheckedItems}
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Arches"
-          displayList={excludeArchesList}
-          checkedItems={excludeArchesCheckedItems}
-          setCheckedItems={setExcludeArchesCheckedItems}
+          displayList={varsContext.excludeArchesList}
+          checkedItems={varsContext.excludeArchesCheckedItems}
+          setCheckedItems={varsContext.setExcludeArchesCheckedItems}
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Networks"
-          displayList={excludeNetworksList}
-          checkedItems={excludeNetworksCheckedItems}
-          setCheckedItems={setExcludeNetworksCheckedItems}
+          displayList={varsContext.excludeNetworksList}
+          checkedItems={varsContext.excludeNetworksCheckedItems}
+          setCheckedItems={varsContext.setExcludeNetworksCheckedItems}
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Clouds"
-          displayList={excludeCloudsList}
-          checkedItems={excludeCloudsCheckedItems}
-          setCheckedItems={setExcludeCloudsCheckedItems}
+          displayList={varsContext.excludeCloudsList}
+          checkedItems={varsContext.excludeCloudsCheckedItems}
+          setCheckedItems={varsContext.setExcludeCloudsCheckedItems}
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Upgrades"
-          displayList={excludeUpgradesList}
-          checkedItems={excludeUpgradesCheckedItems}
-          setCheckedItems={setExcludeUpgradesCheckedItems}
+          displayList={varsContext.excludeUpgradesList}
+          checkedItems={varsContext.excludeUpgradesCheckedItems}
+          setCheckedItems={varsContext.setExcludeUpgradesCheckedItems}
         ></CheckBoxList>
         <CheckBoxList
           headerName="Exclude Variants"
-          displayList={excludeVariantsList}
-          checkedItems={excludeVariantsCheckedItems}
-          setCheckedItems={setExcludeVariantsCheckedItems}
+          displayList={varsContext.excludeVariantsList}
+          checkedItems={varsContext.excludeVariantsCheckedItems}
+          setCheckedItems={varsContext.setExcludeVariantsCheckedItems}
         ></CheckBoxList>
         <AdvancedOptions
           headerName="Advanced"
-          confidence={confidence}
-          pity={pity}
-          minFail={minFail}
-          ignoreMissing={ignoreMissing}
-          ignoreDisruption={ignoreDisruption}
-          setConfidence={setConfidence}
-          setPity={setPity}
-          setMinFail={setMinFail}
-          setIgnoreMissing={setIgnoreMissing}
-          setIgnoreDisruption={setIgnoreDisruption}
+          confidence={varsContext.confidence}
+          pity={varsContext.pity}
+          minFail={varsContext.minFail}
+          ignoreMissing={varsContext.ignoreMissing}
+          ignoreDisruption={varsContext.ignoreDisruption}
+          setConfidence={varsContext.setConfidence}
+          setPity={varsContext.setPity}
+          setMinFail={varsContext.setMinFail}
+          setIgnoreMissing={varsContext.setIgnoreMissing}
+          setIgnoreDisruption={varsContext.setIgnoreDisruption}
         ></AdvancedOptions>
       </div>
     </Fragment>
@@ -197,42 +155,4 @@ export default function CompReadyMainInputs(props) {
 }
 
 // component and environment may be null so they are not required
-CompReadyMainInputs.propTypes = {
-  baseRelease: PropTypes.string.isRequired,
-  baseStartTime: PropTypes.string.isRequired,
-  baseEndTime: PropTypes.string.isRequired,
-  sampleRelease: PropTypes.string.isRequired,
-  sampleStartTime: PropTypes.string.isRequired,
-  sampleEndTime: PropTypes.string.isRequired,
-  groupByCheckedItems: PropTypes.array.isRequired,
-  excludeCloudsCheckedItems: PropTypes.array.isRequired,
-  excludeArchesCheckedItems: PropTypes.array.isRequired,
-  excludeNetworksCheckedItems: PropTypes.array.isRequired,
-  excludeUpgradesCheckedItems: PropTypes.array.isRequired,
-  excludeVariantsCheckedItems: PropTypes.array.isRequired,
-  confidence: PropTypes.number.isRequired,
-  pity: PropTypes.number.isRequired,
-  minFail: PropTypes.number.isRequired,
-  ignoreMissing: PropTypes.bool.isRequired,
-  ignoreDisruption: PropTypes.bool.isRequired,
-  component: PropTypes.string,
-  environment: PropTypes.string,
-  setBaseRelease: PropTypes.func.isRequired,
-  setSampleRelease: PropTypes.func.isRequired,
-  setBaseStartTime: PropTypes.func.isRequired,
-  setBaseEndTime: PropTypes.func.isRequired,
-  setSampleStartTime: PropTypes.func.isRequired,
-  setSampleEndTime: PropTypes.func.isRequired,
-  setGroupByCheckedItems: PropTypes.func.isRequired,
-  setExcludeArchesCheckedItems: PropTypes.func.isRequired,
-  setExcludeNetworksCheckedItems: PropTypes.func.isRequired,
-  setExcludeCloudsCheckedItems: PropTypes.func.isRequired,
-  setExcludeUpgradesCheckedItems: PropTypes.func.isRequired,
-  setExcludeVariantsCheckedItems: PropTypes.func.isRequired,
-  handleGenerateReport: PropTypes.func.isRequired,
-  setConfidence: PropTypes.func.isRequired,
-  setPity: PropTypes.func.isRequired,
-  setMinFail: PropTypes.func.isRequired,
-  setIgnoreMissing: PropTypes.func.isRequired,
-  setIgnoreDisruption: PropTypes.func.isRequired,
-}
+CompReadyMainInputs.propTypes = {}
