@@ -376,7 +376,11 @@ export default function ComponentReadiness(props) {
   }
 
   useEffect(() => {
-    fetchData()
+    if (window.location.pathname.includes('/component_readiness/main')) {
+      fetchData()
+    } else {
+      setIsLoaded(true)
+    }
   }, [])
 
   if (!isLoaded) {
