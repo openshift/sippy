@@ -26,7 +26,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor:
       theme.palette.mode == 'dark'
         ? theme.palette.grey[800]
-        : theme.palette.grey[500],
+        : theme.palette.grey[300],
   },
 }))
 
