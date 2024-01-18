@@ -43,6 +43,7 @@ export default function ProwJobRun(props) {
     e2e_test_passed: 'E2E Passed',
     disruption: 'Disruption',
     apiserver_shutdown: 'API Server Shutdown',
+    etcd_leaders: 'Etcd Leaders',
     cloud_metrics: 'Cloud Metrics',
   }
 
@@ -297,6 +298,7 @@ ProwJobRun.defaultProps = {
     'e2e_test_failed',
     'disruption',
     'apiserver_shutdown',
+    'etcd_leaders',
     'cloud_metrics',
   ],
   intervalFiles: [],
@@ -396,6 +398,8 @@ function mutateIntervals(eventIntervals) {
     eventInterval.categories.disruption = isEndpointConnectivity(eventInterval)
     eventInterval.categories.apiserver_shutdown =
       isGracefulShutdownActivity(eventInterval)
+    eventInterval.categories.etcd_leaders =
+      isEtcdLeadershipAndNotEmpty(eventInterval)
     eventInterval.categories.cloud_metrics = isCloudMetrics(eventInterval)
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
   })
@@ -475,6 +479,14 @@ function groupIntervals(filteredIntervals) {
   timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
     return e1.label < e2.label ? -1 : e1.label > e2.label
   })
+
+  timelineGroups.push({ group: 'etcd-leaders', data: [] })
+  createTimelineData(
+    etcdLeadershipLogsValue,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredIntervals,
+    'etcd_leaders'
+  )
 
   timelineGroups.push({ group: 'cloud-metrics', data: [] })
   createTimelineData(
@@ -567,11 +579,20 @@ function isOperatorProgressing(eventInterval) {
   return false
 }
 
-function isPodLog(eventInterval) {
-  if (eventInterval.locator.includes('src/podLog')) {
+// When an interval in the openshift-etcd namespace had a reason of LeaderFound, LeaderLost,
+// LeaderElected, or LeaderMissing, tempSource was set to 'EtcdLeadership'.
+function isEtcdLeadership(eventInterval) {
+  if (eventInterval.tempSource == 'EtcdLeadership') {
     return true
   }
-  if (eventInterval.locator.includes('etcd-member/')) {
+  return false
+}
+
+function isPodLog(eventInterval) {
+  if (isEtcdLeadership(eventInterval)) {
+    return false
+  }
+  if (eventInterval.locator.includes('src/podLog')) {
     return true
   }
   return false
@@ -588,6 +609,10 @@ function isInterestingOrPathological(eventInterval) {
 }
 
 function isPod(eventInterval) {
+  if (isEtcdLeadership(eventInterval)) {
+    return false
+  }
+
   // this check was added to keep the repeating events out fo the "pods" section
   const nTimes = new RegExp('\\(\\d+ times\\)')
   if (eventInterval.message.match(nTimes)) {
@@ -838,6 +863,39 @@ function nodeStateValue(item) {
   return [item.locator, ` (${roles})`, m]
 }
 
+function etcdLeadershipLogsValue(item) {
+  // If source is isEtcdLeadership, the term is always there.
+  const term = item.tempStructuredMessage.annotations['term']
+
+  // We are only charting the intervals with a node.
+  const nodeVal = item.tempStructuredLocator.keys['node']
+
+  // Get etcd-member value (this will be present for a leader change).
+  let etcdMemberVal = item.tempStructuredLocator.keys['etcd-member'] || ''
+  if (etcdMemberVal.length > 0) {
+    etcdMemberVal = `etcd-member/${etcdMemberVal} `
+  }
+
+  let reason = item.tempStructuredMessage.reason
+  let color = 'EtcdOther'
+  if (reason.length > 0) {
+    color = reason
+    reason = `reason/${reason}`
+  }
+  return [`node/${nodeVal} ${etcdMemberVal} term/${term}`, ` ${reason}`, color]
+}
+
+function isEtcdLeadershipAndNotEmpty(item) {
+  if (isEtcdLeadership(item)) {
+    // Don't chart the ones where the node is empty.
+    const node = item.tempStructuredLocator.keys['node'] || ''
+    if (node.length > 0) {
+      return true
+    }
+  }
+  return false
+}
+
 function cloudMetricsValue(item) {
   return [item.locator, '', 'CloudMetric']
 }
@@ -953,7 +1011,10 @@ function createTimelineData(
       startDate = earliest
     }
     let endDate = new Date(item.to)
-    if (!item.to) {
+
+    // When go unmarshalls a null "to", the date is 0001-01-01T00:00:00Z which
+    // we're assuming is null.
+    if (!item.to || endDate.getTime() === -62135596800000) {
       endDate = latest
     }
     let label = item.locator
