@@ -17,6 +17,7 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -909,7 +910,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		if !ok {
 			reportStatus = apitype.MissingSample
 		} else {
-			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount)
+			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
+			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression)
 		}
 		delete(sampleStatus, testIdentification)
 
@@ -1058,6 +1060,8 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 			},
 		},
 	}
+	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
+
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
 	for prowJob, baseStatsList := range baseStatus {
@@ -1166,14 +1170,16 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		totalSampleFlake,
 		totalBaseSuccess+totalBaseFailure+totalBaseFlake,
 		totalBaseSuccess,
-		totalBaseFlake)
+		totalBaseFlake,
+		approvedRegression,
+	)
 	sort.Slice(result.JobStats, func(i, j int) bool {
 		return result.JobStats[i].JobName < result.JobStats[j].JobName
 	})
 	return result
 }
 
-func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (apitype.ComponentReportStatus, float64) {
+func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression) (apitype.ComponentReportStatus, float64) {
 	status := apitype.MissingBasis
 	fischerExact := 0.0
 	if baseTotal != 0 {
@@ -1188,10 +1194,24 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
 				return apitype.NotSignificant, fischerExact
 			}
+
 			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
 			samplePassPercentage := float64(sampleSuccess+sampleFlake) / float64(sampleTotal)
+			effectivePityFactor := c.PityFactor
+			if approvedRegression != nil && approvedRegression.RegressedPassPercentage < int(basisPassPercentage*100) {
+				// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
+				// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
+				effectivePityFactor = int(basisPassPercentage*100) - approvedRegression.RegressedPassPercentage + c.PityFactor
+
+				if effectivePityFactor < 0 {
+					log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
+					effectivePityFactor = c.PityFactor
+				}
+			}
+
 			significant := false
 			improved := samplePassPercentage >= basisPassPercentage
+
 			if improved {
 				_, _, r, _ := fischer.FisherExactTest(baseTotal-baseSuccess-baseFlake,
 					baseSuccess+baseFlake,
@@ -1199,7 +1219,7 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 					sampleSuccess+sampleFlake)
 				significant = r < 1-float64(c.Confidence)/100
 				fischerExact = r
-			} else if basisPassPercentage-samplePassPercentage > float64(c.PityFactor)/100 {
+			} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
 				_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess-sampleFlake,
 					sampleSuccess+sampleFlake,
 					baseTotal-baseSuccess-baseFlake,
