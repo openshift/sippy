@@ -25,6 +25,8 @@ func IntentionalRegressionFor(releaseString string, variant api.ComponentReportC
 	switch release(releaseString) {
 	case release415:
 		targetMap = regressions_415
+	case release416:
+		targetMap = regressions_416
 	default:
 		return nil
 	}
@@ -41,10 +43,12 @@ type release string
 
 var (
 	release415 release = "4.15"
+	release416 release = "4.16"
 )
 
 var (
 	regressions_415 = map[regressionKey]IntentionalRegression{}
+	regressions_416 = map[regressionKey]IntentionalRegression{}
 )
 
 type regressionKey struct {
@@ -113,6 +117,8 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	switch release {
 	case release415:
 		targetMap = regressions_415
+	case release416:
+		targetMap = regressions_416
 	default:
 		return fmt.Errorf("unknown release: %q", release)
 	}
