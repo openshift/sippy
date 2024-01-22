@@ -232,7 +232,6 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
-						cm.cababilities as capabilities,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
@@ -395,7 +394,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		},
 	}
 	if c.IgnoreDisruption {
-		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
+		queryString += ` AND test_name NOT LIKE '%disruption/%'`
 	}
 	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
