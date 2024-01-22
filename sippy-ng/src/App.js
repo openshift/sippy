@@ -155,7 +155,9 @@ export default function App(props) {
 
   const [cookies, setCookie] = useCookies(['sippyColorMode'])
   const colorModePreference = cookies['sippyColorMode']
-  const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)')
+  const systemPrefersDark = window.matchMedia(
+    '(prefers-color-scheme: dark)'
+  ).matches
   const [mode, setMode] = React.useState(
     colorModePreference === 'dark' || colorModePreference === 'light'
       ? colorModePreference
@@ -340,7 +342,7 @@ export default function App(props) {
                           title={
                             mode === 'dark'
                               ? 'Toggle light mode'
-                              : 'Toggle dark mode (experimental)'
+                              : 'Toggle dark mode'
                           }
                         >
                           <IconButton
