@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/pkg/errors"
@@ -911,7 +913,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			reportStatus = apitype.MissingSample
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
-			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression)
+			_, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 		}
 		delete(sampleStatus, testIdentification)
 
@@ -1061,6 +1064,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		},
 	}
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
+	_, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
@@ -1172,6 +1176,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		totalBaseSuccess,
 		totalBaseFlake,
 		approvedRegression,
+		resolvedIssueCompensation,
 	)
 	sort.Slice(result.JobStats, func(i, j int) bool {
 		return result.JobStats[i].JobName < result.JobStats[j].JobName
@@ -1179,7 +1184,14 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 	return result
 }
 
-func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression) (apitype.ComponentReportStatus, float64) {
+func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (apitype.ComponentReportStatus, float64) {
+	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
+	if adjustedSampleTotal < sampleSuccess {
+		log.Errorf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, sampleSuccess)
+	} else {
+		sampleTotal = adjustedSampleTotal
+	}
+
 	status := apitype.MissingBasis
 	fischerExact := 0.0
 	if baseTotal != 0 {
