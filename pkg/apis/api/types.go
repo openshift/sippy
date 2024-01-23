@@ -854,7 +854,8 @@ type ComponentTestStatusRow struct {
 }
 
 type ComponentReport struct {
-	Rows []ComponentReportRow `json:"rows,omitempty"`
+	Rows        []ComponentReportRow `json:"rows,omitempty"`
+	GeneratedAt *time.Time           `json:"generated_at"`
 }
 
 type ComponentReportRow struct {
@@ -905,6 +906,7 @@ type ComponentReportTestDetails struct {
 	FisherExact     float64                                `json:"fisher_exact"`
 	ReportStatus    ComponentReportStatus                  `json:"report_status"`
 	JobStats        []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
+	GeneratedAt     *time.Time                             `json:"generated_at"`
 }
 
 type ComponentReportTestDetailsReleaseStats struct {

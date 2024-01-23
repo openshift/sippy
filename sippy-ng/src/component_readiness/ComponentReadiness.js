@@ -2,7 +2,6 @@ import './ComponentReadiness.css'
 import {
   AppBar,
   Badge,
-  Box,
   Drawer,
   FormControlLabel,
   Grid,
@@ -68,6 +67,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
+import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
 import RegressedTestsModal from './RegressedTestsModal'
@@ -830,6 +830,7 @@ export default function ComponentReadiness(props) {
                               </TableBody>
                             </Table>
                           </TableContainer>
+                          <GeneratedAt time={data.generated_at} />
                         </div>
                       )}
                     </div>

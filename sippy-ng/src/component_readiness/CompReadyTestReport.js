@@ -1,5 +1,4 @@
 import './ComponentReadiness.css'
-import { Box, Grid, Paper, TableContainer, Typography } from '@mui/material'
 import {
   cancelledDataTable,
   getColumns,
@@ -12,6 +11,7 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { Grid, Paper, TableContainer, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
@@ -22,6 +22,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
+import GeneratedAt from './GeneratedAt'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
@@ -459,6 +460,7 @@ View the test details report at ${document.location.href}
           </TableBody>
         </Table>
       </TableContainer>
+      <GeneratedAt time={data.generated_at} />
     </Fragment>
   )
 }

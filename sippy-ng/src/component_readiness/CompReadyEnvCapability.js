@@ -20,6 +20,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
+import GeneratedAt from './GeneratedAt'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
 import Sidebar from './Sidebar'
@@ -275,6 +276,7 @@ export default function CompReadyEnvCapability(props) {
           </TableBody>
         </Table>
       </TableContainer>
+      <GeneratedAt time={data.generated_at} />
     </Fragment>
   )
 }

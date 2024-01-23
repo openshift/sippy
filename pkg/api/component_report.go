@@ -192,6 +192,8 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 
 	report := c.generateComponentTestReport(baseStatus, sampleStatus)
+	now := time.Now()
+	report.GeneratedAt = &now
 	return report, nil
 }
 
@@ -211,6 +213,8 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	}
 	log.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 	report := c.generateComponentTestDetailsReport(baseStatus, sampleStatus)
+	now := time.Now()
+	report.GeneratedAt = &now
 	return report, nil
 }
 
