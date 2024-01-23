@@ -354,35 +354,52 @@ View the test details report at ${document.location.href}
       </Grid>
 
       <h2>Regression Report</h2>
-      {printStats(
-        'Sample (being evaluated)',
-        data.sample_stats,
-        sampleStartTime,
-        sampleEndTime
-      )}
-      {printStats(
-        'Base (historical)',
-        data.base_stats,
-        baseStartTime,
-        baseEndTime
-      )}
-      <Fragment>
-        <div style={{ display: 'block' }}>Environment: {environment}</div>
-        <br />
-        Assessment: <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
-        <br />
-        <div style={{ display: 'block' }}>
-          {/* data.fisher_exact is from 0-1; from that we calculate the probability of regression
-              expressed as a percentage */}
-          <Tooltip
-            title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
-          >
-            <InfoIcon />
-          </Tooltip>
-          {probabilityStr(statusStr, data.fisher_exact)}
-        </div>
-        <br />
-      </Fragment>
+
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableCell>Test ID:</TableCell>
+            <TableCell>{testId}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Environment:</TableCell>
+            <TableCell>{environment}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Assessment:</TableCell>
+            <TableCell>
+              <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Probability:</TableCell>
+            <TableCell>
+              {probabilityStr(statusStr, data.fisher_exact)}
+              <Tooltip
+                title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
+              >
+                <InfoIcon />
+              </Tooltip>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+
+      <Box sx={{ marginTop: 5 }}>
+        {printStats(
+          'Sample (being evaluated)',
+          data.sample_stats,
+          sampleStartTime,
+          sampleEndTime
+        )}
+        {printStats(
+          'Base (historical)',
+          data.base_stats,
+          baseStartTime,
+          baseEndTime
+        )}
+      </Box>
+
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <label>
           <input
