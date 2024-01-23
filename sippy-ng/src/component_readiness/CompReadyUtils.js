@@ -8,14 +8,13 @@ import {
 import { format } from 'date-fns'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import green from './green-3.png'
-import green_half_data from './green-half-data.png'
-import green_missing_data from './green_no_data.png'
-import heart from './green-heart.png'
+import green from './green.svg'
+import green_half_data from './half.svg'
+import green_missing_data from './none.svg'
+import heart from './improved.svg'
 import React from 'react'
-import red from './red-3.png'
-import red_3d from './red-3d.png'
+import red from './regressed.svg'
+import red_3d from './extreme.svg'
 
 // Set to true for debug mode
 export const debugMode = false
@@ -113,8 +112,8 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     icon = (
       <img
         src={heart}
-        width="20px"
-        height="20px"
+        width="15px"
+        height="15px"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
@@ -138,7 +137,9 @@ export function getStatusAndIcon(status, grayFactor = 0) {
         alt="MissingBasis"
         width="15px"
         height="15px"
-        style={{ filter: `grayscale(${grayFactor}%)` }}
+        style={{
+          filter: `grayscale(${grayFactor}%)`,
+        }}
       />
     )
   } else if (status == 0) {
@@ -146,6 +147,8 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     icon = (
       <img
         src={green}
+        width="15px"
+        height="15px"
         alt="NotSignificant"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
@@ -154,20 +157,32 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     icon = (
       <img
-        src={green_missing_data}
-        alt="MissingBasisAndSample"
+        src={green_half_data}
+        alt="MissingSample"
         width="15px"
         height="15px"
-        style={{ filter: `grayscale(${grayFactor}%)` }}
+        style={{
+          transform: `rotate(180deg)`,
+          filter: `grayscale(${grayFactor}%)`,
+        }}
       />
     )
   } else if (status == -2) {
     statusStr = statusStr + 'SignificantRegression detected'
-    icon = <img src={red} alt="SignificantRegression" />
+    icon = (
+      <img width="15px" height="15px" src={red} alt="SignificantRegression" />
+    )
   } else if (status <= -3) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
-    icon = <img src={red_3d} alt="ExtremRegressio >15%n" />
+    icon = (
+      <img
+        width="15px"
+        height="15px"
+        src={red_3d}
+        alt="ExtremeRegression >15%"
+      />
+    )
   }
 
   return [statusStr, icon]
