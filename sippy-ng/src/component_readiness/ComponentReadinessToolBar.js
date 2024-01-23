@@ -149,7 +149,7 @@ export default function ComponentReadinessToolBar(props) {
               </Tooltip>
             </IconButton>
             <Box sx={{ flexGrow: 1 }} />
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
                 aria-label="Show Regressed Tests"
@@ -163,7 +163,7 @@ export default function ComponentReadinessToolBar(props) {
                 </Badge>
               </IconButton>
             </Box>
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
                 aria-label="Help"
