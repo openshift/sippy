@@ -1011,10 +1011,7 @@ function createTimelineData(
       startDate = earliest
     }
     let endDate = new Date(item.to)
-
-    // When go unmarshalls a null "to", the date is 0001-01-01T00:00:00Z which
-    // we're assuming is null.
-    if (!item.to || endDate.getTime() === -62135596800000) {
+    if (!item.to) {
       endDate = latest
     }
     let label = item.locator
