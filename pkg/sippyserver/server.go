@@ -669,7 +669,7 @@ func (s *Server) parseReleaseTime(timeStr string) (time.Time, error) {
 		return releaseTime, err
 	}
 	now := time.Now().UTC()
-	if s.crTimeRoundingFactor != 0 && releaseTime.Year() == now.Year() && releaseTime.YearDay() == now.YearDay() {
+	if s.crTimeRoundingFactor > 0 && now.Format("2006-01-02") == releaseTime.Format("2006-01-02") {
 		releaseTime = now.Truncate(s.crTimeRoundingFactor)
 	}
 	return releaseTime, err

@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	cacheDuration = 8 * time.Hour
+	// CacheDuration defines how long responses stay in Cache. This will be synced with CRTimeRoundingFactor from Command Option
+	CacheDuration = 8 * time.Hour
 )
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
@@ -50,7 +51,7 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.Reque
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)
 			if err == nil {
-				if err := c.Set(string(jsonCacheKey), cr, cacheDuration); err != nil {
+				if err := c.Set(string(jsonCacheKey), cr, CacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
 					log.Debugf("cache set for cache key: %s", string(jsonCacheKey))

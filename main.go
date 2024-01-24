@@ -20,6 +20,7 @@ import (
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/cache/redis"
@@ -303,6 +304,9 @@ func (o *Options) Validate() error {
 
 	if o.CRTimeRoundingFactor > maxCRTimeRoundingFactor {
 		return fmt.Errorf("please provide a value smaller than %v for --component-readiness-time-rounding-factor", maxCRTimeRoundingFactor)
+	}
+	if o.CRTimeRoundingFactor > 0 {
+		api.CacheDuration = o.CRTimeRoundingFactor
 	}
 
 	return nil
