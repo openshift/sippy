@@ -18,6 +18,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -106,7 +107,7 @@ func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBuck
 		gcsBucket: gcsBucket,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
+	return getReportFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{}, cache.CacheOptions{})
 }
 
 func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -114,10 +115,13 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
 	excludeOption apitype.ComponentReportRequestExcludeOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReport, []error) {
+	advancedOption apitype.ComponentReportRequestAdvancedOptions,
+	cacheOption cache.CacheOptions,
+) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
 		client:        client,
 		gcsBucket:     gcsBucket,
+		cacheOption:   cacheOption,
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
@@ -126,7 +130,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReport](client.Cache, generator, generator.GenerateReport, apitype.ComponentReport{})
+	return getReportFromCacheOrGenerate[apitype.ComponentReport](client.Cache, generator, generator.GenerateReport, apitype.ComponentReport{}, cacheOption)
 }
 
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -134,10 +138,12 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
 	excludeOption apitype.ComponentReportRequestExcludeOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions) (apitype.ComponentReportTestDetails, []error) {
+	advancedOption apitype.ComponentReportRequestAdvancedOptions,
+	cacheOption cache.CacheOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
 		client:        client,
 		gcsBucket:     gcsBucket,
+		cacheOption:   cacheOption,
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
@@ -146,7 +152,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReportTestDetails](client.Cache, generator, generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+	return getReportFromCacheOrGenerate[apitype.ComponentReportTestDetails](client.Cache, generator, generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{}, cacheOption)
 }
 
 type componentReportGenerator struct {
@@ -158,6 +164,7 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
 	apitype.ComponentReportRequestAdvancedOptions
+	cacheOption cache.CacheOptions
 }
 
 func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {

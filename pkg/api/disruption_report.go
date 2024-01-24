@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 )
 
 func GetDisruptionVsPrevGAReportFromBigQuery(client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
@@ -18,7 +20,7 @@ func GetDisruptionVsPrevGAReportFromBigQuery(client *bqcachedclient.Client) (api
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGA",
 	}
 
-	return getReportFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, generator, generator.GenerateReport, apitype.DisruptionReport{})
+	return getReportFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, generator, generator.GenerateReport, apitype.DisruptionReport{}, cache.CacheOptions{})
 }
 
 func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
@@ -27,7 +29,7 @@ func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client *bqcachedclient.Client)
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVs14DaysAgo",
 	}
 
-	return getReportFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, generator, generator.GenerateReport, apitype.DisruptionReport{})
+	return getReportFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, generator, generator.GenerateReport, apitype.DisruptionReport{}, cache.CacheOptions{})
 }
 
 type disruptionReportGenerator struct {

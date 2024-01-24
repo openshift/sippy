@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -592,7 +593,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -609,7 +610,9 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		testIDOption,
 		variantOption,
 		excludeOption,
-		advancedOption)
+		advancedOption,
+		cacheOption,
+	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
 		for _, err := range errs {
@@ -625,7 +628,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 }
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -641,7 +644,8 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		testIDOption,
 		variantOption,
 		excludeOption,
-		advancedOption)
+		advancedOption,
+		cacheOption)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
@@ -657,53 +661,54 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 }
 
 func (s *Server) parseComponentReportRequest(req *http.Request) (
-	apitype.ComponentReportRequestReleaseOptions,
-	apitype.ComponentReportRequestReleaseOptions,
-	apitype.ComponentReportRequestTestIdentificationOptions,
-	apitype.ComponentReportRequestVariantOptions,
-	apitype.ComponentReportRequestExcludeOptions,
-	apitype.ComponentReportRequestAdvancedOptions,
-	error) {
-	var baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions
-	var testIDOption apitype.ComponentReportRequestTestIdentificationOptions
-	var variantOption apitype.ComponentReportRequestVariantOptions
-	var excludeOption apitype.ComponentReportRequestExcludeOptions
-	var advancedOption apitype.ComponentReportRequestAdvancedOptions
+	baseRelease apitype.ComponentReportRequestReleaseOptions,
+	sampleRelease apitype.ComponentReportRequestReleaseOptions,
+	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
+	variantOption apitype.ComponentReportRequestVariantOptions,
+	excludeOption apitype.ComponentReportRequestExcludeOptions,
+	advancedOption apitype.ComponentReportRequestAdvancedOptions,
+	cacheOption cache.CacheOptions,
+	err error) {
 
-	var err error
 	if s.bigQueryClient == nil {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption,
-			fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		err = fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		return
 	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if baseRelease.Release == "" {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("missing base_release")
+		err = fmt.Errorf("missing base_release")
+		return
 	}
 
 	if sampleRelease.Release == "" {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("missing sample_release")
+		err = fmt.Errorf("missing sample_release")
+		return
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")
 	baseRelease.Start, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("base start time in wrong format")
+		err = fmt.Errorf("base start time in wrong format")
+		return
 	}
 	timeStr = req.URL.Query().Get("baseEndTime")
 	baseRelease.End, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("base end time in wrong format")
+		err = fmt.Errorf("base end time in wrong format")
+		return
 	}
 	timeStr = req.URL.Query().Get("sampleStartTime")
 	sampleRelease.Start, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("sample start time in wrong format")
+		err = fmt.Errorf("sample start time in wrong format")
+		return
 	}
 	timeStr = req.URL.Query().Get("sampleEndTime")
 	sampleRelease.End, err = time.Parse(time.RFC3339, timeStr)
 	if err != nil {
-		return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("sample end time in wrong format")
+		err = fmt.Errorf("sample end time in wrong format")
+		return
 	}
 
 	testIDOption.Component = req.URL.Query().Get("component")
@@ -728,10 +733,12 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	if confidenceStr != "" {
 		advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
 		if err != nil {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("confidence is not a number")
+			err = fmt.Errorf("confidence is not a number")
+			return
 		}
 		if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("confidence is not in the correct range")
+			return
+			err = fmt.Errorf("confidence is not in the correct range")
 		}
 	}
 
@@ -740,10 +747,12 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	if pityStr != "" {
 		advancedOption.PityFactor, err = strconv.Atoi(pityStr)
 		if err != nil {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("pity factor is not a number")
+			err = fmt.Errorf("pity factor is not a number")
+			return
 		}
 		if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("pity factor is not in the correct range")
+			err = fmt.Errorf("pity factor is not in the correct range")
+			return
 		}
 	}
 
@@ -752,35 +761,45 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	if minFailStr != "" {
 		advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
 		if err != nil {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("min_fail is not a number")
+			err = fmt.Errorf("min_fail is not a number")
+			return
 		}
 		if advancedOption.MinimumFailure < 0 {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("min_fail is not in the correct range")
+			err = fmt.Errorf("min_fail is not in the correct range")
+			return
 		}
 	}
 
 	advancedOption.IgnoreMissing = false
 	ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
 	if ignoreMissingStr != "" {
-		if ignoreMissingStr == "true" {
-			advancedOption.IgnoreMissing = true
-		} else if ignoreMissingStr != "false" {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("missing parameter is in the wrong format")
+		advancedOption.IgnoreMissing, err = strconv.ParseBool(ignoreMissingStr)
+		if err != nil {
+			err = errors.WithMessage(err, "expected boolean for ignore missing")
+			return
 		}
-
 	}
 
 	advancedOption.IgnoreDisruption = true
 	ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
-	if ignoreDisruptionsStr != "" {
-		if ignoreDisruptionsStr == "false" {
-			advancedOption.IgnoreDisruption = false
-		} else if ignoreDisruptionsStr != "true" {
-			return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, fmt.Errorf("ignore disruption is in the wrong format")
+	if ignoreMissingStr != "" {
+		advancedOption.IgnoreDisruption, err = strconv.ParseBool(ignoreDisruptionsStr)
+		if err != nil {
+			err = errors.WithMessage(err, "expected boolean for ignore disruption")
+			return
 		}
 	}
 
-	return baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, err
+	forceRefreshStr := req.URL.Query().Get("forceRefresh")
+	if forceRefreshStr != "" {
+		cacheOption.ForceRefresh, err = strconv.ParseBool(forceRefreshStr)
+		if err != nil {
+			err = errors.WithMessage(err, "expected boolean for force refresh")
+			return
+		}
+	}
+
+	return
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {

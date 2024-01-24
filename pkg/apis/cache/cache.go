@@ -14,3 +14,7 @@ type APIResponse struct {
 	Headers  http.Header
 	Response []byte
 }
+
+type CacheOptions struct {
+	ForceRefresh bool
+}
