@@ -54,6 +54,8 @@ const (
 	defaultLogLevel                = "info"
 	defaultDBLogLevel              = "warn"
 	commentProcessingDryRunDefault = true
+	defaultCRTimeRoundingFactor    = 1 * time.Hour
+	maxCRTimeRoundingFactor        = 12 * time.Hour
 )
 
 // DefaultOpenshiftGCSBucket is the Google cloud storage bucket that will be used if none is provided as a CLI argument.
@@ -95,6 +97,7 @@ type Options struct {
 	GoogleStorageBucket                string
 	PinnedDateTime                     string
 	RedisURL                           string
+	CRTimeRoundingFactor               time.Duration
 
 	DaemonServer            bool
 	CommentProcessing       bool
@@ -197,6 +200,9 @@ func main() {
 	flags.BoolVar(&opt.CommentProcessing, "comment-processing", opt.CommentProcessing, "Enable comment processing for github repos")
 	flags.BoolVar(&opt.CommentProcessingDryRun, "comment-processing-dry-run", commentProcessingDryRunDefault, "Enable github comment interaction for comment processing, disabled by default")
 
+	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
+	flags.DurationVar(&opt.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
+
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -293,6 +299,10 @@ func (o *Options) Validate() error {
 
 	if !o.DBOnlyMode {
 		return fmt.Errorf("--db-only-mode cannot be set to false (deprecated flag soon to be removed, feature now mandatory)")
+	}
+
+	if o.CRTimeRoundingFactor > maxCRTimeRoundingFactor {
+		return fmt.Errorf("please provide a value smaller than %v for --component-readiness-time-rounding-factor", maxCRTimeRoundingFactor)
 	}
 
 	return nil
@@ -619,6 +629,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 		bigQueryClient,
 		pinnedDateTime,
 		cacheClient,
+		o.CRTimeRoundingFactor,
 	)
 
 	if o.MetricsAddr != "" {
