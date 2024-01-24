@@ -667,7 +667,7 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	variantOption apitype.ComponentReportRequestVariantOptions,
 	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
-	cacheOption cache.CacheOptions,
+	cacheOption cache.RequestOptions,
 	err error) {
 
 	if s.bigQueryClient == nil {

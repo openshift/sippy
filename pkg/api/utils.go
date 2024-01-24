@@ -16,7 +16,7 @@ var (
 )
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
-func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, generateFn func() (T, []error), defaultVal T, cacheOptions cache.CacheOptions) (T, []error) {
+func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
 	// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
 	if isStructWithNoPublicFields(cacheKey) {
 		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))

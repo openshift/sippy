@@ -15,6 +15,8 @@ type APIResponse struct {
 	Response []byte
 }
 
-type CacheOptions struct {
+// RequestOptions specifies options for an individual
+// request, such as forcing the cache to be bypassed.
+type RequestOptions struct {
 	ForceRefresh bool
 }

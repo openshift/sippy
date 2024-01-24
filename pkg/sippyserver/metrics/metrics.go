@@ -257,7 +257,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string)
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cache.CacheOptions{})
+	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cache.RequestOptions{})
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
