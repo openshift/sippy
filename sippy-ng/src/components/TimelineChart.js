@@ -48,6 +48,11 @@ export default function TimelineChart({ eventIntervals, data }) {
       'PodLogInfo',
       'PodLogWarning',
       'PodLogError',
+      'EtcdOther',
+      'EtcdLeaderFound',
+      'EtcdLeaderLost',
+      'EtcdLeaderElected',
+      'EtcdLeaderMissing',
       'GracefulShutdownInterval',
       'CloudMetric',
     ])
@@ -90,6 +95,11 @@ export default function TimelineChart({ eventIntervals, data }) {
       '#96cbff',
       '#fada5e',
       '#d0312d',
+      '#d3d3de',
+      '#03fc62',
+      '#fc0303',
+      '#fada5e',
+      '#8c5efa',
       '#6E6E6E', // GracefulShutdownInterval
       '#6E6E6E', // CloudMetric
     ])
