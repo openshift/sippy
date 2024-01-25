@@ -96,4 +96,38 @@ func init() {
 			},
 		},
 	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "openshift-tests-upgrade:567152bb097fa9ce13dd2fb6885e094a",
+		TestName: "[sig-arch] events should not repeat pathologically for ns/openshift-monitoring",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "upgrade-minor",
+			Arch:     "amd64",
+			Platform: "metal-ipi",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/origin/pull/28549",
+				ResolutionDate: mustTime("2024-01-24T23:54:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// RecreatingTerminatedPod and SuccessfulDelete
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-upgrade-from-stable-4.14-e2e-metal-ipi-upgrade-ovn-ipv6/1750230625601720320",
+				StartTime: mustTime("2024-01-24T18:54:33Z"),
+			},
+			{
+				// RecreatingTerminatedPod
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-upgrade-from-stable-4.14-e2e-metal-ipi-upgrade-ovn-ipv6/1749463575023325184",
+				StartTime: mustTime("2024-01-22T16:06:32Z"),
+			},
+			{
+				// RecreatingTerminatedPod
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-upgrade-from-stable-4.14-e2e-metal-ipi-upgrade-ovn-ipv6/1748875328249401344",
+				StartTime: mustTime("2024-01-21T01:09:05Z"),
+			},
+		},
+	})
 }
