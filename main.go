@@ -306,7 +306,7 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("please provide a value smaller than %v for --component-readiness-time-rounding-factor", maxCRTimeRoundingFactor)
 	}
 	if o.CRTimeRoundingFactor > 0 {
-		api.CacheDuration = o.CRTimeRoundingFactor
+		api.CacheRoundingDuration = o.CRTimeRoundingFactor
 	}
 
 	return nil
