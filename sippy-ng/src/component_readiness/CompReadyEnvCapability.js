@@ -20,6 +20,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
+import GeneratedAt from './GeneratedAt'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
 import Sidebar from './Sidebar'
@@ -57,7 +58,7 @@ export default function CompReadyEnvCapability(props) {
   const safeCapability = safeEncodeURIComponent(capability)
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
-  const apiCallStr =
+  let apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
@@ -66,6 +67,14 @@ export default function CompReadyEnvCapability(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+    fetchData()
+  }, [])
+
+  const fetchData = (fresh) => {
+    if (fresh) {
+      apiCallStr += '&forceRefresh=true'
+    }
+
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -100,7 +109,12 @@ export default function CompReadyEnvCapability(props) {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }, [])
+  }
+
+  const forceRefresh = () => {
+    setIsLoaded(false)
+    fetchData(true)
+  }
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -194,6 +208,7 @@ export default function CompReadyEnvCapability(props) {
         clearSearches={clearSearches}
         data={data}
         filterVals={filterVals}
+        forceRefresh={forceRefresh}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
@@ -275,6 +290,7 @@ export default function CompReadyEnvCapability(props) {
           </TableBody>
         </Table>
       </TableContainer>
+      <GeneratedAt time={data.generated_at} />
     </Fragment>
   )
 }

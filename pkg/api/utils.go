@@ -16,7 +16,7 @@ var (
 )
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
-func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
+func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
 	// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
 	if isStructWithNoPublicFields(cacheKey) {
 		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
@@ -31,18 +31,21 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheKey interface{}, ge
 		if err != nil {
 			return defaultVal, []error{err}
 		}
-		if res, err := c.Get(string(jsonCacheKey)); err == nil {
-			log.WithFields(log.Fields{
-				"key":  string(jsonCacheKey),
-				"type": reflect.TypeOf(defaultVal).String(),
-			}).Debugf("cache hit")
-			var cr T
-			if err := json.Unmarshal(res, &cr); err != nil {
-				return defaultVal, []error{err}
+
+		if !cacheOptions.ForceRefresh {
+			if res, err := c.Get(string(jsonCacheKey)); err == nil {
+				log.WithFields(log.Fields{
+					"key":  string(jsonCacheKey),
+					"type": reflect.TypeOf(defaultVal).String(),
+				}).Debugf("cache hit")
+				var cr T
+				if err := json.Unmarshal(res, &cr); err != nil {
+					return defaultVal, []error{err}
+				}
+				return cr, nil
 			}
-			return cr, nil
+			log.Infof("cache miss for cache key: %s", string(jsonCacheKey))
 		}
-		log.Infof("cache miss for cache key: %s", string(jsonCacheKey))
 		result, errs := generateFn()
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)

@@ -13,6 +13,7 @@ import {
   GridView,
   HelpCenter,
   InsertLink,
+  Refresh,
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
@@ -26,7 +27,7 @@ import {
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { Fragment } from 'react'
 import RegressedTestsModal from './RegressedTestsModal'
 import SwitchControl from '@mui/material/Switch'
 import Toolbar from '@mui/material/Toolbar'
@@ -86,69 +87,106 @@ export default function ComponentReadinessToolBar(props) {
       <Box sx={{ flexGrow: 1 }}>
         <AppBar elevation={1} position="static">
           <Toolbar sx={{ leftPadding: 0 }}>
-            <Search>
-              <SearchIconWrapper>
-                <Widgets />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Search Row"
-                inputProps={{ 'aria-label': 'search' }}
-                value={searchRowRegex}
-                onChange={handleSearchRowRegexChange}
-              />
-            </Search>
-            <Search>
-              <SearchIconWrapper>
-                <ViewColumn />
-              </SearchIconWrapper>
-              <StyledInputBase
-                placeholder="Search Column"
-                inputProps={{ 'aria-label': 'search' }}
-                value={searchColumnRegex}
-                onChange={handleSearchColumnRegexChange}
-              />
-            </Search>
-            <Box display="flex" alignItems="center" sx={{ paddingBottom: 2 }}>
-              <FormControlLabel
-                control={
-                  <SwitchControl
-                    checked={redOnlyChecked}
-                    onChange={handleRedOnlyCheckboxChange}
-                    color="primary"
-                    size="small"
-                    style={{ borderRadius: 1 }}
-                  />
-                }
-                htmlFor="redOnlyCheckbox"
-                style={{
-                  textAlign: 'left',
-                  marginTop: 15,
-                }}
-                label="Red Only"
-              ></FormControlLabel>
-            </Box>
+            {handleSearchRowRegexChange ? (
+              <Search>
+                <SearchIconWrapper>
+                  <Widgets />
+                </SearchIconWrapper>
+                <StyledInputBase
+                  placeholder="Search Row"
+                  inputProps={{ 'aria-label': 'search' }}
+                  value={searchRowRegex}
+                  onChange={handleSearchRowRegexChange}
+                />
+              </Search>
+            ) : (
+              <></>
+            )}
+            {handleSearchColumnRegexChange ? (
+              <Search>
+                <SearchIconWrapper>
+                  <ViewColumn />
+                </SearchIconWrapper>
+                <StyledInputBase
+                  placeholder="Search Column"
+                  inputProps={{ 'aria-label': 'search' }}
+                  value={searchColumnRegex}
+                  onChange={handleSearchColumnRegexChange}
+                />
+              </Search>
+            ) : (
+              <></>
+            )}
+            {handleRedOnlyCheckboxChange ? (
+              <Box display="flex" alignItems="center" sx={{ paddingBottom: 2 }}>
+                <FormControlLabel
+                  control={
+                    <SwitchControl
+                      checked={redOnlyChecked}
+                      onChange={handleRedOnlyCheckboxChange}
+                      color="primary"
+                      size="small"
+                      style={{ borderRadius: 1 }}
+                    />
+                  }
+                  htmlFor="redOnlyCheckbox"
+                  style={{
+                    textAlign: 'left',
+                    marginTop: 15,
+                  }}
+                  label="Red Only"
+                ></FormControlLabel>
+              </Box>
+            ) : (
+              <></>
+            )}
 
-            <IconButton
-              size="large"
-              aria-label="Copy Link"
-              color="inherit"
-              onClick={copyLinkToReport}
-            >
-              <Tooltip title="Copy link to search">
-                <InsertLink />
-              </Tooltip>
-            </IconButton>
-            <IconButton
-              size="large"
-              aria-label="Clear Search"
-              color="inherit"
-              onClick={clearSearches}
-            >
-              <Tooltip title="Clear searches">
-                <Clear />
-              </Tooltip>
-            </IconButton>
+            {handleSearchColumnRegexChange ||
+            handleRedOnlyCheckboxChange ||
+            handleSearchRowRegexChange ? (
+              <Fragment>
+                <IconButton
+                  size="large"
+                  aria-label="Copy Link"
+                  color="inherit"
+                  onClick={copyLinkToReport}
+                >
+                  <Tooltip title="Copy link to search">
+                    <InsertLink />
+                  </Tooltip>
+                </IconButton>
+                <IconButton
+                  size="large"
+                  aria-label="Clear Search"
+                  color="inherit"
+                  onClick={clearSearches}
+                >
+                  <Tooltip title="Clear searches">
+                    <Clear />
+                  </Tooltip>
+                </IconButton>
+              </Fragment>
+            ) : (
+              <></>
+            )}
+
             <Box sx={{ flexGrow: 1 }} />
+            {props.forceRefresh ? (
+              <Box sx={{ display: { md: 'flex' } }}>
+                <IconButton
+                  size="large"
+                  aria-label="Force data refresh"
+                  color="inherit"
+                  onClick={props.forceRefresh}
+                >
+                  <Tooltip title="Force data refresh">
+                    <Refresh />
+                  </Tooltip>
+                </IconButton>
+              </Box>
+            ) : (
+              <></>
+            )}
             <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
@@ -215,5 +253,6 @@ ComponentReadinessToolBar.propTypes = {
   handleRedOnlyCheckboxChange: PropTypes.func,
   clearSearches: PropTypes.func,
   data: PropTypes.object,
+  forceRefresh: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }

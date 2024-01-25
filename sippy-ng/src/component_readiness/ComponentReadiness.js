@@ -2,7 +2,6 @@ import './ComponentReadiness.css'
 import {
   AppBar,
   Badge,
-  Box,
   Drawer,
   FormControlLabel,
   Grid,
@@ -68,6 +67,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
+import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
 import RegressedTestsModal from './RegressedTestsModal'
@@ -343,8 +343,11 @@ export default function ComponentReadiness(props) {
     data.rows.length > 1 &&
     getKeeperColumns(data, columnNames, redOnlyChecked)
 
-  const fetchData = () => {
-    const formattedApiCallStr = showValuesForReport()
+  const fetchData = (fresh) => {
+    let formattedApiCallStr = showValuesForReport()
+    if (fresh) {
+      formattedApiCallStr += '&forceRefresh=true'
+    }
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -374,6 +377,11 @@ export default function ComponentReadiness(props) {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
+  }
+
+  const forceRefresh = () => {
+    setIsLoaded(false)
+    fetchData(true)
   }
 
   useEffect(() => {
@@ -731,6 +739,7 @@ export default function ComponentReadiness(props) {
                             clearSearches={clearSearches}
                             data={data}
                             filterVals={filterVals}
+                            forceRefresh={forceRefresh}
                           />
                           <TableContainer
                             component="div"
@@ -830,6 +839,7 @@ export default function ComponentReadiness(props) {
                               </TableBody>
                             </Table>
                           </TableContainer>
+                          <GeneratedAt time={data.generated_at} />
                         </div>
                       )}
                     </div>

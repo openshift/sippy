@@ -22,6 +22,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
+import GeneratedAt from './GeneratedAt'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
@@ -459,6 +460,7 @@ View the test details report at ${document.location.href}
           </TableBody>
         </Table>
       </TableContainer>
+      <GeneratedAt time={data.generated_at} />
     </Fragment>
   )
 }

@@ -14,3 +14,9 @@ type APIResponse struct {
 	Headers  http.Header
 	Response []byte
 }
+
+// RequestOptions specifies options for an individual
+// request, such as forcing the cache to be bypassed.
+type RequestOptions struct {
+	ForceRefresh bool
+}
