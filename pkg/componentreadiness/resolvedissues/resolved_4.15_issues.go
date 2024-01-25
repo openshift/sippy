@@ -56,4 +56,44 @@ func init() {
 			},
 		},
 	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "Operator results:4b5f6af893ad5577904fbaec3254506d",
+		TestName: "operator conditions network",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "upgrade-micro",
+			Arch:     "amd64",
+			Platform: "azure",
+		},
+		Issue: Issue{
+			IssueType: "Infrastructure",
+			Infrastructure: &InfrastructureIssue{
+				Description:    "azure cloud problems during install",
+				JiraURL:        "https://issues.redhat.com/browse/OCPBUGS-27495",
+				ResolutionDate: mustTime("2024-01-21T06:09:09Z"), // date is after all those jobruns were over
+			},
+			PayloadBug: nil,
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// failed to get vm: compute.VirtualMachinesClient#Get
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1748875348252037120",
+				StartTime: mustTime("2024-01-21T01:09:10Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1748875341679562752",
+				StartTime: mustTime("2024-01-21T01:09:12Z"),
+			},
+			{
+				// failed to get vm: compute.VirtualMachinesClient
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1748875344930148352",
+				StartTime: mustTime("2024-01-21T01:09:09Z"),
+			},
+			{
+				// failed to get vm: compute.VirtualMachinesClient
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-azure-upgrade-cnv/1748875321513349120",
+				StartTime: mustTime("2024-01-21T01:09:08Z"),
+			},
+		},
+	})
 }
