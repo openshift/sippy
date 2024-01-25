@@ -737,8 +737,8 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			return
 		}
 		if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
-			return
 			err = fmt.Errorf("confidence is not in the correct range")
+			return
 		}
 	}
 
