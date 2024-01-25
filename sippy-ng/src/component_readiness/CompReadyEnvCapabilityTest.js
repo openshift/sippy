@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
   getAPIUrl,
@@ -14,12 +15,13 @@ import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapTestRow from './CompCapTestRow'
+import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import GeneratedAt from './GeneratedAt'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext, useEffect } from 'react'
+import React, { Fragment, useContext, useEffect, useState } from 'react'
 import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -48,6 +50,53 @@ export default function CompReadyEnvCapabilityTest(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
+  const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
+    'searchRow',
+    StringParam
+  )
+  const [searchRowRegex, setSearchRowRegex] = useState(searchRowRegexURL)
+  const handleSearchRowRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchRowRegex(searchValue)
+  }
+
+  const [searchColumnRegexURL, setSearchColumnRegexURL] = useQueryParam(
+    'searchColumn',
+    StringParam
+  )
+  const [searchColumnRegex, setSearchColumnRegex] =
+    useState(searchColumnRegexURL)
+  const handleSearchColumnRegexChange = (event) => {
+    const searchValue = event.target.value
+    setSearchColumnRegex(searchValue)
+  }
+
+  const [redOnlyURL = false, setRedOnlyURL] = useQueryParam(
+    'redOnly',
+    BooleanParam
+  )
+  const [redOnlyChecked, setRedOnlyChecked] = React.useState(redOnlyURL)
+  const handleRedOnlyCheckboxChange = (event) => {
+    setRedOnlyChecked(event.target.checked)
+  }
+
+  const clearSearches = () => {
+    setSearchRowRegex('')
+    if (searchRowRegexURL && searchRowRegexURL !== '') {
+      setSearchRowRegexURL('')
+    }
+
+    setSearchColumnRegex('')
+    if (searchColumnRegexURL && searchColumnRegexURL !== '') {
+      setSearchColumnRegexURL('')
+    }
+
+    if (setRedOnlyChecked) {
+      setRedOnlyURL(false)
+    }
+    setRedOnlyChecked(false)
+  }
+
   // Set the browser tab title
   document.title =
     'Sippy > Component Readiness > Capabilities > Tests > Capability Tests' +
@@ -57,7 +106,7 @@ export default function CompReadyEnvCapabilityTest(props) {
   const safeTestId = safeEncodeURIComponent(testId)
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
-  const apiCallStr =
+  let apiCallStr =
     getAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
@@ -65,8 +114,21 @@ export default function CompReadyEnvCapabilityTest(props) {
     `&testId=${safeTestId}` +
     (environment ? expandEnvironment(environment) : '')
 
+  const forceRefresh = () => {
+    setIsLoaded(false)
+    fetchData(true)
+  }
+
   useEffect(() => {
     setIsLoaded(false)
+    fetchData()
+  }, [])
+
+  const fetchData = (fresh) => {
+    if (fresh) {
+      apiCallStr += '&forceRefresh=true'
+    }
+
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -100,7 +162,7 @@ export default function CompReadyEnvCapabilityTest(props) {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }, [])
+  }
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -138,6 +200,11 @@ export default function CompReadyEnvCapabilityTest(props) {
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>
+      <ComponentReadinessToolBar
+        data={data}
+        filterVals={filterVals}
+        forceRefresh={forceRefresh}
+      />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
         <Table className="cr-comp-read-table">
