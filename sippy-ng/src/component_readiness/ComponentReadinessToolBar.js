@@ -87,7 +87,7 @@ export default function ComponentReadinessToolBar(props) {
       <Box sx={{ flexGrow: 1 }}>
         <AppBar elevation={1} position="static">
           <Toolbar sx={{ leftPadding: 0 }}>
-            {searchRowRegex ? (
+            {handleSearchRowRegexChange ? (
               <Search>
                 <SearchIconWrapper>
                   <Widgets />
@@ -102,7 +102,7 @@ export default function ComponentReadinessToolBar(props) {
             ) : (
               <></>
             )}
-            {searchColumnRegex ? (
+            {handleSearchColumnRegexChange ? (
               <Search>
                 <SearchIconWrapper>
                   <ViewColumn />
@@ -117,7 +117,7 @@ export default function ComponentReadinessToolBar(props) {
             ) : (
               <></>
             )}
-            {redOnlyChecked ? (
+            {handleRedOnlyCheckboxChange ? (
               <Box display="flex" alignItems="center" sx={{ paddingBottom: 2 }}>
                 <FormControlLabel
                   control={
@@ -141,7 +141,9 @@ export default function ComponentReadinessToolBar(props) {
               <></>
             )}
 
-            {searchColumnRegex || searchRowRegex || redOnlyChecked ? (
+            {handleSearchColumnRegexChange ||
+            handleRedOnlyCheckboxChange ||
+            handleSearchRowRegexChange ? (
               <Fragment>
                 <IconButton
                   size="large"
