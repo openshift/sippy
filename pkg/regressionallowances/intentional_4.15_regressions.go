@@ -19,6 +19,7 @@ func init() {
 				PreviousSampleSize:        0, // number of runs used for the percentage
 				RegressedPassPercentage:   0,
 				RegressedSampleSize:       0, // number of runs used for the percentage
+				JiraBug: "", // this is a link to the bug for this red cell
 				ReasonToAllowInsteadOfFix: "",
 			})
 	*/

@@ -2,10 +2,10 @@ package regressionallowances
 
 import (
 	"fmt"
-
-	log "github.com/sirupsen/logrus"
+	"net/url"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	log "github.com/sirupsen/logrus"
 )
 
 type IntentionalRegression struct {
@@ -17,6 +17,7 @@ type IntentionalRegression struct {
 	PreviousSampleSize        int
 	RegressedPassPercentage   int
 	RegressedSampleSize       int
+	JiraBug                   string
 	ReasonToAllowInsteadOfFix string
 }
 
@@ -94,6 +95,9 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	}
 	if len(in.ReasonToAllowInsteadOfFix) == 0 {
 		return fmt.Errorf("reasonToAllowInsteadOfFix must be specified")
+	}
+	if _, err := url.ParseRequestURI(in.JiraBug); err != nil {
+		return fmt.Errorf("jiraBug must be a valid URL")
 	}
 	if len(in.Variant.Network) == 0 {
 		return fmt.Errorf("network must be specified")
