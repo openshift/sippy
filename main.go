@@ -55,7 +55,7 @@ const (
 	defaultLogLevel                = "info"
 	defaultDBLogLevel              = "warn"
 	commentProcessingDryRunDefault = true
-	defaultCRTimeRoundingFactor    = 1 * time.Hour
+	defaultCRTimeRoundingFactor    = 4 * time.Hour
 	maxCRTimeRoundingFactor        = 12 * time.Hour
 )
 
@@ -307,6 +307,7 @@ func (o *Options) Validate() error {
 	}
 	if o.CRTimeRoundingFactor > 0 {
 		api.CacheRoundingDuration = o.CRTimeRoundingFactor
+		metrics.CRTimeRoundingFactor = o.CRTimeRoundingFactor
 	}
 
 	return nil

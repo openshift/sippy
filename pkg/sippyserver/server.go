@@ -663,18 +663,6 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) parseReleaseTime(timeStr string) (time.Time, error) {
-	releaseTime, err := time.Parse(time.RFC3339, timeStr)
-	if err != nil {
-		return releaseTime, err
-	}
-	now := time.Now().UTC()
-	if s.crTimeRoundingFactor > 0 && now.Format("2006-01-02") == releaseTime.Format("2006-01-02") {
-		releaseTime = now.Truncate(s.crTimeRoundingFactor)
-	}
-	return releaseTime, err
-}
-
 func (s *Server) parseComponentReportRequest(req *http.Request) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
@@ -702,25 +690,25 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")
-	baseRelease.Start, err = s.parseReleaseTime(timeStr)
+	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("baseEndTime")
-	baseRelease.End, err = s.parseReleaseTime(timeStr)
+	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base end time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleRelease.Start, err = s.parseReleaseTime(timeStr)
+	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleRelease.End, err = s.parseReleaseTime(timeStr)
+	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample end time in wrong format")
 		return

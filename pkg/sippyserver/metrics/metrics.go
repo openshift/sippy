@@ -32,6 +32,11 @@ const (
 )
 
 var (
+	// CRTimeRoundingFactor will be synced with CRTimeRoundingFactor from Command Option
+	CRTimeRoundingFactor = 0 * time.Hour
+)
+
+var (
 	buildClusterHealthMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_build_cluster_pass_ratio",
 		Help: "Ratio of passed job runs for a build cluster in a period (2 day, 7 day, etc)",
@@ -223,12 +228,16 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string)
 		log.WithError(err).Error("couldn't calculate next minor")
 		return err
 	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	now := time.Now().UTC()
+	today := now.Truncate(24 * time.Hour)
+	end := today.Add(24 * time.Hour).Add(-1 * time.Second)
+	if CRTimeRoundingFactor > 0 {
+		end, _ = util.ParseCRReleaseTime(now.Format(time.RFC3339), CRTimeRoundingFactor)
+	}
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
 		Start:   today.AddDate(0, 0, -6),
-		// Match what UI sends to API.
-		End: today.Add(24 * time.Hour).Add(-1 * time.Second),
+		End:     end,
 	}
 	difference = sampleRelease.End.Sub(sampleRelease.Start)
 	numSecs = difference.Seconds()

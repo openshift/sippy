@@ -78,3 +78,16 @@ func URLForJob(dashboard, jobName string) *gourl.URL {
 
 	return url
 }
+
+// ParseCRReleaseTime parses the time for component readiness. It adjusts the time based on a rounding factor
+func ParseCRReleaseTime(timeStr string, crTimeRoundingFactor time.Duration) (time.Time, error) {
+	releaseTime, err := time.Parse(time.RFC3339, timeStr)
+	if err != nil {
+		return releaseTime, err
+	}
+	now := time.Now().UTC()
+	if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == releaseTime.Format("2006-01-02") {
+		releaseTime = now.Truncate(crTimeRoundingFactor)
+	}
+	return releaseTime, err
+}
