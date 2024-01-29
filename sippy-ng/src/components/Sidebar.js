@@ -136,13 +136,13 @@ export default function Sidebar(props) {
                   <ListItem
                     component="a"
                     target="_blank"
-                    href="https://grafana-loki.ci.openshift.org/d/ISnBj4LVk/disruption?orgId=1"
-                    key="DisruptionDashboard"
+                    href="https://grafana-loki.ci.openshift.org/dashboards/f/4X8Jfhs4z/openshift-ci-observability"
+                    key="ObservabilityDashboard"
                   >
                     <ListItemIcon>
                       <Dashboard />
                     </ListItemIcon>
-                    <ListItemText primary="Disruption Dashboard" />
+                    <ListItemText primary="CI Observability Dashboards" />
                   </ListItem>
                   <CapabilitiesContext.Consumer>
                     {(value) => {
