@@ -6,6 +6,7 @@ import {
   Card,
   Container,
   Grid,
+  TableContainer,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -37,6 +38,10 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableRow from '@mui/material/TableRow'
 import TestPassRateCharts from './TestPassRateCharts'
 import TestTable from './TestTable'
 
@@ -160,9 +165,29 @@ export function TestAnalysis(props) {
               elevation={5}
               style={{ height: '100%' }}
             >
-              <Typography variant="h5" style={{ paddingBottom: 20 }}>
-                {testName}
-              </Typography>
+              <TableContainer sx={{ marginBottom: 2 }}>
+                <Table aria-label="simple table">
+                  <TableBody>
+                    <TableRow>
+                      <TableCell colSpan={2}>
+                        <Typography variant="h5">{testName}</Typography>
+                      </TableCell>
+                    </TableRow>
+                    {test.jira_component ? (
+                      <TableRow>
+                        <TableCell scope="row">
+                          <b>Jira component</b>
+                        </TableCell>
+                        <TableCell align="left">
+                          {test.jira_component}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <></>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
               <Grid container justifyContent="space-between">
                 <GridToolbarFilterMenu
