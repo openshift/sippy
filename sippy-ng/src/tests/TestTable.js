@@ -283,6 +283,38 @@ function TestTable(props) {
         },
       ],
     },
+    'Jira component': {
+      sortField: 'current_working_percentage',
+      sort: 'asc',
+      rowColor: {
+        field: 'current_working_percentage',
+      },
+      fieldOrder: [
+        {
+          field: 'jira_component',
+          flex: 1,
+        },
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_working_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'open_bugs',
+          flex: 0.5,
+          hide: props.briefTable,
+        },
+        {
+          field: 'link',
+          flex: props.collapse ? 1.25 : 2,
+          hide: props.briefTable,
+        },
+      ],
+    },
   }
 
   const currentPercentageRender = (params) => (
@@ -386,8 +418,7 @@ function TestTable(props) {
     },
     jira_component: {
       field: 'jira_component',
-      headerName: 'Jira Component',
-      autocomplete: 'jira_component',
+      headerName: 'Jira component',
     },
     variants: {
       field: 'variants',
