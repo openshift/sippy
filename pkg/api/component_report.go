@@ -247,7 +247,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
-						cm.cababilities as capabilities,
+						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
