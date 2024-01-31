@@ -20,7 +20,6 @@ import (
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 
-	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/cache/redis"
@@ -304,10 +303,6 @@ func (o *Options) Validate() error {
 
 	if o.CRTimeRoundingFactor > maxCRTimeRoundingFactor {
 		return fmt.Errorf("please provide a value smaller than %v for --component-readiness-time-rounding-factor", maxCRTimeRoundingFactor)
-	}
-	if o.CRTimeRoundingFactor > 0 {
-		api.CacheRoundingDuration = o.CRTimeRoundingFactor
-		metrics.CRTimeRoundingFactor = o.CRTimeRoundingFactor
 	}
 
 	return nil
@@ -639,7 +634,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 
 	if o.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+		err = metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: o.CRTimeRoundingFactor})
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -652,7 +647,7 @@ func (o *Options) runServerMode(pinnedDateTime *time.Time, gormLogLevel gormlogg
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime))
+					err := metrics.RefreshMetricsDB(dbc, bigQueryClient, o.GoogleStorageBucket, o.getVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: o.CRTimeRoundingFactor})
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

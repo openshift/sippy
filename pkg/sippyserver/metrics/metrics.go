@@ -32,11 +32,6 @@ const (
 )
 
 var (
-	// CRTimeRoundingFactor will be synced with CRTimeRoundingFactor from Command Option
-	CRTimeRoundingFactor = 0 * time.Hour
-)
-
-var (
 	buildClusterHealthMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_build_cluster_pass_ratio",
 		Help: "Ratio of passed job runs for a build cluster in a period (2 day, 7 day, etc)",
@@ -97,7 +92,7 @@ var (
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time) error {
+func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := query.ReleasesFromDB(dbc)
@@ -152,7 +147,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 	refreshPayloadMetrics(dbc, reportEnd)
 
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, gcsBucket); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, gcsBucket, cacheOptions); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -176,7 +171,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string) error {
+func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string, cacheOptions cache.RequestOptions) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -231,8 +226,8 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string)
 	now := time.Now().UTC()
 	today := now.Truncate(24 * time.Hour)
 	end := today.Add(24 * time.Hour).Add(-1 * time.Second)
-	if CRTimeRoundingFactor > 0 {
-		end, _ = util.ParseCRReleaseTime(now.Format(time.RFC3339), CRTimeRoundingFactor)
+	if cacheOptions.CRTimeRoundingFactor > 0 {
+		end, _ = util.ParseCRReleaseTime(now.Format(time.RFC3339), cacheOptions.CRTimeRoundingFactor)
 	}
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
@@ -266,7 +261,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string)
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cache.RequestOptions{})
+	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

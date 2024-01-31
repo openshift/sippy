@@ -801,6 +801,7 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			return
 		}
 	}
+	cacheOption.CRTimeRoundingFactor = s.crTimeRoundingFactor
 
 	return
 }

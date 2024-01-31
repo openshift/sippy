@@ -19,4 +19,6 @@ type APIResponse struct {
 // request, such as forcing the cache to be bypassed.
 type RequestOptions struct {
 	ForceRefresh bool
+	// CRTimeRoundingFactor is used to calculate cache expiration time
+	CRTimeRoundingFactor time.Duration
 }
