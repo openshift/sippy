@@ -267,7 +267,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 						AND arch = @Arch
 						AND network = @Network
 						AND platform = @Platform
-						AND @Variant IN UNNEST(variants)
+						AND flat_variants = @Variant
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -449,7 +449,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	}
 
 	if c.Variant != "" {
-		queryString += ` AND @Variant IN UNNEST(variants)`
+		queryString += ` AND flat_variants = @Variant`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Variant",
 			Value: c.Variant,
@@ -626,56 +626,32 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 	columns := []apitype.ComponentReportColumnIdentification{}
 	if c.TestID != "" {
 		// When testID is specified, ignore groupBy to disambiguate the test
-		index := 0
-		for {
-			column := apitype.ComponentReportColumnIdentification{}
-			column.Platform = test.Platform
-			column.Network = test.Network
-			column.Arch = test.Arch
-			column.Upgrade = test.Upgrade
-			if len(stats.Variants) == 0 {
-				columns = append(columns, column)
-				break
-			}
-			if index < len(stats.Variants) {
-				column.Variant = stats.Variants[index]
-				columns = append(columns, column)
-			}
-			index++
-			if index >= len(stats.Variants) {
-				break
-			}
-		}
+		column := apitype.ComponentReportColumnIdentification{}
+		column.Platform = test.Platform
+		column.Network = test.Network
+		column.Arch = test.Arch
+		column.Upgrade = test.Upgrade
+		column.Variant = test.FlatVariants
+		columns = append(columns, column)
 	} else {
 		groups := sets.NewString(strings.Split(c.GroupBy, ",")...)
-		index := 0
-		for {
-			column := apitype.ComponentReportColumnIdentification{}
-			if groups.Has("cloud") {
-				column.Platform = test.Platform
-			}
-			if groups.Has("network") {
-				column.Network = test.Network
-			}
-			if groups.Has("arch") {
-				column.Arch = test.Arch
-			}
-			if groups.Has("upgrade") {
-				column.Upgrade = test.Upgrade
-			}
-			if !groups.Has("variant") || len(stats.Variants) == 0 {
-				columns = append(columns, column)
-				break
-			}
-			if index < len(stats.Variants) {
-				column.Variant = stats.Variants[index]
-				columns = append(columns, column)
-			}
-			index++
-			if index >= len(stats.Variants) {
-				break
-			}
+		column := apitype.ComponentReportColumnIdentification{}
+		if groups.Has("cloud") {
+			column.Platform = test.Platform
 		}
+		if groups.Has("network") {
+			column.Network = test.Network
+		}
+		if groups.Has("arch") {
+			column.Arch = test.Arch
+		}
+		if groups.Has("upgrade") {
+			column.Upgrade = test.Upgrade
+		}
+		if groups.Has("variants") {
+			column.Variant = test.FlatVariants
+		}
+		columns = append(columns, column)
 	}
 
 	return rows, columns
@@ -859,21 +835,11 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				// Each test might have multiple Variants. Initial ID just pick the first on
-				// the list. If we are on a page with specific variant, this needs to be rewritten.
-				if columnIdentification.Variant != "" {
-					testID.Variant = columnIdentification.Variant
-				}
 				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
-				// Each test might have multiple Variants. Initial ID just pick the first on
-				// the list. If we are on a page with specific variant, this needs to be rewritten.
-				if columnIdentification.Variant != "" {
-					testID.Variant = columnIdentification.Variant
-				}
 				existing, ok := row[columnIdentification]
 				if !ok {
 					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
@@ -911,16 +877,14 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 				Upgrade:  testIdentification.Upgrade,
 				Arch:     testIdentification.Arch,
 				Platform: testIdentification.Platform,
+				Variant:  testIdentification.FlatVariants,
 			},
 		}
-		// Take the first cap and variant for now. When we reach to a cell with specific capability
-		// or variant, we will override the value.
+		// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
 		if len(baseStats.Capabilities) > 0 {
 			testID.Capability = baseStats.Capabilities[0]
 		}
-		if len(baseStats.Variants) > 0 {
-			testID.Variant = baseStats.Variants[0]
-		}
+
 		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
