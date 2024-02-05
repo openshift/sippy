@@ -60,6 +60,7 @@ func NewServer(
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
+	crTimeRoundingFactor time.Duration,
 ) *Server {
 
 	server := &Server{
@@ -75,6 +76,7 @@ func NewServer(
 		gcsBucket:            gcsBucket,
 		gcsClient:            gcsClient,
 		cache:                cacheClient,
+		crTimeRoundingFactor: crTimeRoundingFactor,
 	}
 
 	if bigQueryClient != nil {
@@ -110,6 +112,7 @@ type Server struct {
 	gcsClient            *storage.Client
 	gcsBucket            string
 	cache                cache.Cache
+	crTimeRoundingFactor time.Duration
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -687,25 +690,25 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")
-	baseRelease.Start, err = time.Parse(time.RFC3339, timeStr)
+	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("baseEndTime")
-	baseRelease.End, err = time.Parse(time.RFC3339, timeStr)
+	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base end time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleRelease.Start, err = time.Parse(time.RFC3339, timeStr)
+	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleRelease.End, err = time.Parse(time.RFC3339, timeStr)
+	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample end time in wrong format")
 		return
@@ -798,6 +801,7 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			return
 		}
 	}
+	cacheOption.CRTimeRoundingFactor = s.crTimeRoundingFactor
 
 	return
 }

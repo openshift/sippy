@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	cacheDuration = 8 * time.Hour
+	defaultCacheDuration = 8 * time.Hour
 )
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
@@ -50,6 +50,12 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.Reque
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)
 			if err == nil {
+				cacheDuration := defaultCacheDuration
+				if cacheOptions.CRTimeRoundingFactor > 0 {
+					now := time.Now().UTC()
+					// Only cache until the next rounding duration
+					cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
+				}
 				if err := c.Set(string(jsonCacheKey), cr, cacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
