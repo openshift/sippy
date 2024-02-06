@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -62,6 +63,8 @@ const (
 const DefaultOpenshiftGCSBucket = "test-platform-results"
 
 type Options struct {
+	// TODO: temp
+	SyncJobVariants bool
 	// LocalData is a directory used for storing testgrid data, and then loading into database.
 	// Not required when loading db from prow, or when running the server.
 	LocalData              string
@@ -140,6 +143,9 @@ func main() {
 	}
 
 	flags := cmd.Flags()
+
+	flags.BoolVar(&opt.SyncJobVariants, "sync-job-variants", opt.SyncJobVariants, "Temporary cmd for syncing the job variants to bigquery")
+
 	flags.StringVar(&opt.LocalData, "local-data", opt.LocalData, "Path to testgrid data from local disk")
 	flags.StringVar(&opt.DSN, "database-dsn", os.Getenv("SIPPY_DATABASE_DSN"), "Database DSN for storage of some types of data")
 	flags.StringArrayVar(&opt.OpenshiftReleases, "release", opt.OpenshiftReleases, "Which releases to analyze (one per arg instance)")
@@ -317,6 +323,22 @@ func (o *Options) Run() error { //nolint:gocyclo
 		log.WithError(err).Fatal("Cannot parse log-level")
 	}
 	log.SetLevel(level)
+
+	if o.SyncJobVariants {
+		bigQueryClient, err := bigquery.NewClient(context.TODO(), "openshift-gce-devel",
+			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
+		if err != nil {
+			log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents syncing job variant registry to bigquery")
+		}
+
+		jvs := variantregistry.VariantSyncer{
+			BigQueryClient: bigQueryClient,
+		}
+		error := jvs.Sync()
+		if error != nil {
+			log.WithError(err).Fatal("Error syncing job variants to bigquery")
+		}
+	}
 
 	gormLogLevel, err := db.ParseGormLogLevel(o.DBLogLevel)
 	if err != nil {
