@@ -22,8 +22,27 @@ func (v *VariantSyncer) Sync() error {
 
 	// TODO: pull presubmits for sippy as well
 
+	// delete everything from the registry for now, we'll rebuild completely until sync logic is implemented.
+	// TODO: Remove this, sync the changes we need to only, otherwise the apps will be working incorrectly while this process runs
+	query := v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.JobVariants WHERE true`)
+	_, err := query.Read(context.TODO())
+	if err != nil {
+		logrus.WithError(err).Error("error clearing current registry job variants")
+		return errors.Wrap(err, "error clearing current registry job variants")
+	}
+	logrus.Warn("deleted all current job variants in the registry")
+	query = v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.Jobs WHERE true`)
+	_, err = query.Read(context.TODO())
+	if err != nil {
+		logrus.WithError(err).Error("error clearing current registry jobs")
+		return errors.Wrap(err, "error clearing current registry jobs")
+	}
+	logrus.Warn("deleted all current jobs in the registry")
+
 	// For the primary list of all job names, we will query everything that's run in the last 3 months:
-	query := v.BigQueryClient.Query(`SELECT distinct(prowjob_job_name) FROM ` +
+	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
+	// since start of 4.14 perhaps?
+	query = v.BigQueryClient.Query(`SELECT distinct(prowjob_job_name) FROM ` +
 		"`ci_analysis_us.jobs` " +
 		`WHERE 
 	  	created BETWEEN DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 90 DAY) AND CURRENT_DATETIME()
@@ -51,5 +70,11 @@ func (v *VariantSyncer) Sync() error {
 		count++
 	}
 	logrus.WithField("count", count).Info("loaded primary job list")
+
+	// TODO: load the current registry job to variant mappings. join and then iterate building out go structure.
+	// keep variants list sorted for comparisons.
+
+	// build out a data structure mapping job name to variant key/value pairs:
+
 	return nil
 }
