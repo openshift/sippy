@@ -333,6 +333,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 
 		jvs := variantregistry.VariantSyncer{
 			BigQueryClient: bigQueryClient,
+			VariantManager: o.getVariantManager(),
 		}
 		error := jvs.Sync()
 		if error != nil {

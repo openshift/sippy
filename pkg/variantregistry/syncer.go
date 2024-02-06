@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -11,6 +13,7 @@ import (
 
 type VariantSyncer struct {
 	BigQueryClient *bigquery.Client
+	VariantManager testidentification.VariantManager
 }
 
 type prowJobName struct {
@@ -65,7 +68,8 @@ func (v *VariantSyncer) Sync() error {
 			logrus.WithError(err).Error("error parsing prowjob name from bigquery")
 			return err
 		}
-		logrus.WithField("job", jn.JobName).Debug("found job")
+		variants := v.GetVariantsForJob(jn.JobName)
+		logrus.WithField("variants", variants).Debugf("calculated variants for %s", jn.JobName)
 
 		count++
 	}
@@ -77,4 +81,9 @@ func (v *VariantSyncer) Sync() error {
 	// build out a data structure mapping job name to variant key/value pairs:
 
 	return nil
+}
+
+func (v *VariantSyncer) GetVariantsForJob(jobName string) []string {
+	variants := v.VariantManager.IdentifyVariants(jobName, "0.0", models.ClusterData{})
+	return variants
 }
