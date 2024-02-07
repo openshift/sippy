@@ -315,10 +315,17 @@ export const CompReadyVarsProvider = ({ children }) => {
         params.network = item
       } else if (excludeUpgradesList.includes(item)) {
         params.upgrade = item
-      } else if (excludeVariantsList.includes(item)) {
-        params.variant = item
       } else {
-        console.log(`Warning: Item '${item}' not found in lists`)
+        const variants = item.split(',')
+        let valid = variants.some((variant) => {
+          if (excludeVariantsList.includes(variant)) {
+            params.variant = item
+            return true
+          }
+        })
+        if (!valid) {
+          console.log(`Warning: Item '${item}' not found in lists`)
+        }
       }
     })
     const paramStrings = Object.entries(params).map(
