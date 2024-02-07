@@ -8,7 +8,7 @@ import (
 )
 
 func TestVariantSyncer(t *testing.T) {
-	variantSyncer := VariantSyncer{VariantManager: testidentification.NewOpenshiftVariantManager()}
+	variantSyncer := OCPVariantLoader{VariantManager: testidentification.NewOpenshiftVariantManager()}
 	tests := []struct {
 		job      string
 		expected []string

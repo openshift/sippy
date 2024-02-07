@@ -331,11 +331,11 @@ func (o *Options) Run() error { //nolint:gocyclo
 			log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents syncing job variant registry to bigquery")
 		}
 
-		jvs := variantregistry.VariantSyncer{
+		jvs := variantregistry.OCPVariantLoader{
 			BigQueryClient: bigQueryClient,
 			VariantManager: o.getVariantManager(),
 		}
-		error := jvs.Sync()
+		error := jvs.LoadAllJobs()
 		if error != nil {
 			log.WithError(err).Fatal("Error syncing job variants to bigquery")
 		}
