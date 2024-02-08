@@ -15,7 +15,7 @@ builddir:
 
 build: builddir clean npm
 	cd sippy-ng; npm run build
-	go build -mod=vendor .
+	go build -mod=vendor ./cmd/...
 
 test: builddir npm
 	go test -v ./pkg/...
@@ -35,6 +35,7 @@ npm:
 
 clean:
 	rm -f sippy
+	rm -f sippy-daemon
 	rm -rf sippy-ng/build
 	rm -rf sippy-ng/node_modules
 
