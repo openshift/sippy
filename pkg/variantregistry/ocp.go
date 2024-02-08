@@ -7,7 +7,6 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/hashicorp/go-version"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
@@ -90,8 +89,9 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	return nil
 }
 
-func (v *OCPVariantLoader) GetVariantsForJob(jobName string) []string {
-	variants := v.VariantManager.IdentifyVariants(jobName, "0.0", models.ClusterData{})
+func (v *OCPVariantLoader) GetVariantsForJob(jobName string) map[string]string {
+	variants := v.IdentifyVariants(jobName, "0.0")
+
 	return variants
 }
 
@@ -108,12 +108,9 @@ var (
 	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
 	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
+	upiRegex        = regexp.MustCompile(`(?i)-upi`)
 	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
-	// metal-assisted jobs do not have a trailing -version segment
-	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
-	// metal-ipi jobs do not have a trailing -version segment
-	metalIPIRegex   = regexp.MustCompile(`(?i)-metal-ipi`)
 	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
 	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
@@ -136,8 +133,7 @@ var (
 	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
-	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
-	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere.*-upi`)
+	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
 
 	allOpenshiftVariants = sets.NewString(
 		"alibaba",
@@ -154,9 +150,7 @@ var (
 		"hypershift",
 		"heterogeneous",
 		"libvirt",
-		"metal-assisted",
-		"metal-ipi",
-		"metal-upi",
+		"metal",
 		"microshift",
 		"never-stable",
 		"openstack",
@@ -175,8 +169,7 @@ var (
 		"upgrade",
 		"upgrade-micro",
 		"upgrade-minor",
-		"vsphere-ipi",
-		"vsphere-upi",
+		"vsphere",
 	)
 
 	allPlatforms = sets.NewString(
@@ -186,12 +179,10 @@ var (
 		"gcp",
 		"libvirt",
 		"metal-assisted",
-		"metal-ipi",
-		"metal-upi",
+		"metal",
 		"openstack",
 		"ovirt",
-		"vsphere-ipi",
-		"vsphere-upi",
+		"vsphere",
 	)
 )
 
@@ -213,9 +204,7 @@ const (
 	VariantUpgrade       = "Upgrade"
 )
 
-type openshiftVariants struct{}
-
-func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants models.ClusterData) map[string]string {
+func (v OCPVariantLoader) IdentifyVariants(jobName, release string) map[string]string {
 	variants := map[string]string{}
 
 	/*
@@ -289,38 +278,56 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 		variants[VariantControlPlane] = "microshift" // or should this be external?
 	}
 
-	// TODO: suite may not be the right word heru
+	// TODO: suite may not be the right word here
 	if serialRegex.MatchString(jobName) {
 		variants[VariantSuite] = "serial"
+	} else if etcdScaling.MatchString(jobName) {
+		variants[VariantSuite] = "etcd-scaling"
 	} else {
-		variants[VariantSuite] = "parallel"
+		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
+	}
 
-	}
 	if assistedRegex.MatchString(jobName) {
-		variants = append(variants, "assisted")
+		variants[VariantInstaller] = "assisted"
+	} else if upiRegex.MatchString(jobName) {
+		variants[VariantInstaller] = "upi"
+	} else {
+		variants[VariantInstaller] = "ipi" // assume ipi by default
 	}
-	if etcdScaling.MatchString(jobName) {
-		variants = append(variants, "etcd-scaling")
-	}
+
 	if osdRegex.MatchString(jobName) {
-		variants = append(variants, "osd")
+		variants[VariantOwner] = "osd"
+	} else {
+		variants[VariantOwner] = "eng"
 	}
+
 	if fipsRegex.MatchString(jobName) {
-		variants = append(variants, "fips")
+		variants[VariantSecurityMode] = "fips"
+	} else {
+		variants[VariantSecurityMode] = "default"
 	}
+
 	if techpreview.MatchString(jobName) {
-		variants = append(variants, "techpreview")
+		variants[VariantFeatureSet] = "techpreview"
+	} else {
+		variants[VariantFeatureSet] = "default"
 	}
+
 	if rtRegex.MatchString(jobName) {
-		variants = append(variants, "realtime")
+		variants[VariantScheduler] = "realtime"
+	} else {
+		variants[VariantScheduler] = "default"
 	}
+
 	if proxyRegex.MatchString(jobName) {
-		variants = append(variants, "proxy")
+		variants[VariantNetworkAccess] = "proxy"
+	} else {
+		variants[VariantNetworkAccess] = "default"
 	}
 
 	if len(variants) == 0 {
-		log.Infof("unknown variant for job: %s\n", jobName)
-		return []string{"unknown variant"}
+		log.WithField("job", jobName).Warn("unable to determine any variants for job")
+		return map[string]string{}
 	}
 
 	return variants
@@ -340,24 +347,14 @@ func determinePlatform(variants map[string]string, jobName string) {
 		platform = "gcp"
 	} else if libvirtRegex.MatchString(jobName) {
 		platform = "libvirt"
-	} else if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
-		// Without support for negative lookbacks in the native
-		// regexp library, it's easiest to differentiate these
-		// three by seeing if it's metal-assisted or metal-ipi, and then fall through
-		// to check if it's UPI metal.
-		platform = "metal-assisted"
-	} else if metalIPIRegex.MatchString(jobName) {
-		platform = "metal-ipi"
 	} else if metalRegex.MatchString(jobName) {
-		platform = "metal-upi"
+		platform = "metal"
 	} else if openstackRegex.MatchString(jobName) {
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		platform = "ovirt"
-	} else if vsphereUPIRegex.MatchString(jobName) {
-		platform = "vsphere-upi"
 	} else if vsphereRegex.MatchString(jobName) {
-		platform = "vsphere-ipi"
+		platform = "vsphere"
 	}
 
 	if platform == "" {
