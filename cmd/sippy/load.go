@@ -133,9 +133,9 @@ func NewLoadCommand() *cobra.Command {
 						f.GoogleCloudFlags.OAuthClientCredentialFile)
 					if err != nil {
 						return errors.WithMessage(err, "failed to create component loader")
-					} else {
-						loaders = append(loaders, cl)
 					}
+
+					loaders = append(loaders, cl)
 				}
 
 				// Bug Loader
