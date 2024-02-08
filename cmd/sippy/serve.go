@@ -31,11 +31,11 @@ var (
 )
 
 type ServerFlags struct {
-	DBFlags          *flags.PostgresFlags
-	ModeFlags        *flags.ModeFlags
 	BigQueryFlags    *flags.BigQueryFlags
 	CacheFlags       *flags.CacheFlags
+	DBFlags          *flags.PostgresFlags
 	GoogleCloudFlags *flags.GoogleCloudFlags
+	ModeFlags        *flags.ModeFlags
 
 	ListenAddr           string
 	MetricsAddr          string
@@ -44,22 +44,22 @@ type ServerFlags struct {
 
 func NewServerFlags() *ServerFlags {
 	return &ServerFlags{
-		DBFlags:          flags.NewPostgresDatabaseFlags(),
-		ModeFlags:        flags.NewModeFlags(),
 		BigQueryFlags:    flags.NewBigQueryFlags(),
 		CacheFlags:       flags.NewCacheFlags(),
+		DBFlags:          flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
+		ModeFlags:        flags.NewModeFlags(),
 		ListenAddr:       ":8080",
 		MetricsAddr:      ":2112",
 	}
 }
 
 func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
-	f.DBFlags.BindFlags(flagSet)
-	f.ModeFlags.BindFlags(flagSet)
 	f.BigQueryFlags.BindFlags(flagSet)
 	f.CacheFlags.BindFlags(flagSet)
+	f.DBFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
+	f.ModeFlags.BindFlags(flagSet)
 
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")

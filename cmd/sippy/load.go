@@ -30,38 +30,39 @@ import (
 
 type LoadFlags struct {
 	LoadOpenShiftCIBigQuery bool
-	Releases                []string
-	Architectures           []string
 	Loaders                 []string
 
-	DBFlags              *flags.PostgresFlags
-	ConfigFlags          *flags.ConfigFlags
-	ModeFlags            *flags.ModeFlags
-	GoogleCloudFlags     *flags.GoogleCloudFlags
+	InitDatabase bool
+
+	Architectures []string
+	Releases      []string
+
 	BigQueryFlags        *flags.BigQueryFlags
+	ConfigFlags          *flags.ConfigFlags
+	DBFlags              *flags.PostgresFlags
 	GithubCommenterFlags *flags.GithubCommenterFlags
-	InitDatabase         bool
+	GoogleCloudFlags     *flags.GoogleCloudFlags
+	ModeFlags            *flags.ModeFlags
 }
 
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
-		// DefaultOpenshiftGCSBucket is the Google cloud storage bucket that will be used if none is provided as a CLI argument.
-		DBFlags:              flags.NewPostgresDatabaseFlags(),
-		ConfigFlags:          flags.NewConfigFlags(),
-		ModeFlags:            flags.NewModeFlags(),
-		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
 		BigQueryFlags:        flags.NewBigQueryFlags(),
+		ConfigFlags:          flags.NewConfigFlags(),
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
+		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
+		ModeFlags:            flags.NewModeFlags(),
 	}
 }
 
 func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
-	f.DBFlags.BindFlags(fs)
-	f.ConfigFlags.BindFlags(fs)
-	f.ModeFlags.BindFlags(fs)
 	f.BigQueryFlags.BindFlags(fs)
-	f.GoogleCloudFlags.BindFlags(fs)
+	f.ConfigFlags.BindFlags(fs)
+	f.DBFlags.BindFlags(fs)
 	f.GithubCommenterFlags.BindFlags(fs)
+	f.GoogleCloudFlags.BindFlags(fs)
+	f.ModeFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
