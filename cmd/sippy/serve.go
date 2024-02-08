@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -15,6 +16,7 @@ import (
 
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/flags"
@@ -83,17 +85,22 @@ func NewServeCommand() *cobra.Command {
 				return errors.WithMessage(err, "couldn't get cache client")
 			}
 
-			bigQueryClient, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
-			if err != nil {
-				return errors.WithMessage(err, "couldn't get bigquery client")
-			}
+			var bigQueryClient *bigquery.Client
+			var gcsClient *storage.Client
+			if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
+				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(),
+					cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+				if err != nil {
+					return errors.WithMessage(err, "couldn't get bigquery client")
+				}
 
-			gcsClient, err := gcs.NewGCSClient(context.TODO(),
-				f.GoogleCloudFlags.ServiceAccountCredentialFile,
-				f.GoogleCloudFlags.OAuthClientCredentialFile,
-			)
-			if err != nil {
-				log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
+				gcsClient, err = gcs.NewGCSClient(context.TODO(),
+					f.GoogleCloudFlags.ServiceAccountCredentialFile,
+					f.GoogleCloudFlags.OAuthClientCredentialFile,
+				)
+				if err != nil {
+					log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
+				}
 			}
 
 			// Make sure the db is intialized, otherwise let the user know:
