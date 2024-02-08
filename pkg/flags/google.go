@@ -15,8 +15,8 @@ type GoogleCloudFlags struct {
 
 func NewGoogleCloudFlags() *GoogleCloudFlags {
 	return &GoogleCloudFlags{
-		OAuthClientCredentialFile: os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-		StorageBucket:             "test-platform-results",
+		ServiceAccountCredentialFile: os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+		StorageBucket:                "test-platform-results",
 	}
 }
 

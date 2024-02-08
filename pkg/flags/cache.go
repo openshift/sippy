@@ -1,7 +1,6 @@
 package flags
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -32,5 +31,5 @@ func (f *CacheFlags) GetCacheClient() (cache.Cache, error) {
 		return redis.NewRedisCache(f.RedisURL)
 	}
 
-	return nil, fmt.Errorf("no redis URL was specified")
+	return nil, nil
 }
