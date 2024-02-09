@@ -21,8 +21,10 @@ type OCPVariantLoader struct {
 	VariantManager testidentification.VariantManager
 }
 
-type prowJobName struct {
-	JobName string `bigquery:"prowjob_job_name"`
+type prowJobLastRun struct {
+	JobName  string `bigquery:"prowjob_job_name"`
+	JobRunID string `bigquery:"prowjob_build_id"`
+	URL      string `bigquery:"prowjob_url"`
 }
 
 // LoadAllJobs queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
@@ -52,7 +54,7 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	// For the primary list of all job names, we will query everything that's run in the last 3 months:
 	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
 	// since start of 4.14 perhaps?
-	query = v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_completion), MAX(prowjob_url) FROM ` +
+	query = v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`ci_analysis_us.jobs` " +
 		`WHERE (prowjob_job_name LIKE 'periodic-%%' OR prowjob_job_name LIKE 'release-%%' OR prowjob_job_name like 'aggregator-%%')
 		GROUP BY prowjob_job_name`)
@@ -65,8 +67,8 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	//prowJobs := map[string]bool{}
 	count := 0
 	for {
-		jn := prowJobName{}
-		err := it.Next(&jn)
+		jlr := prowJobLastRun{}
+		err := it.Next(&jlr)
 		if err == iterator.Done {
 			break
 		}
@@ -74,8 +76,9 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 			logrus.WithError(err).Error("error parsing prowjob name from bigquery")
 			return err
 		}
-		variants := v.GetVariantsForJob(jn.JobName)
-		logrus.WithField("variants", variants).Debugf("calculated variants for %s", jn.JobName)
+		logrus.Infof("%+v", jlr)
+		variants := v.GetVariantsForJob(jlr.JobName)
+		logrus.WithField("variants", variants).Debugf("calculated variants for %s", jlr.JobName)
 
 		count++
 	}
