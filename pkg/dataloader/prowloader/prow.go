@@ -510,27 +510,15 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 	pjLog.Infof("starting processing")
 
-	// this err validation has moved up
-	// and will exit before we save / update the ProwJob
-	// now, any concerns?
-	pjURL, err := url.Parse(pj.Status.URL)
-	if err != nil {
-		return err
-	}
-
-	// Get the path in the gcs bucket, strip out the bucket name and anything before it
-	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
-	pjLog.Infof("gcs bucket path: %+v", path)
-	if path == "" || len(path) == len(pjURL.Path) {
-		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
-		pjLog.Warningf(msg)
-		return fmt.Errorf(msg)
-	}
-
 	// find all files here then pass to getClusterData
 	// and prowJobRunTestsFromGCS
 	// add more regexes if we require more
 	// results from scanning for file names
+	path, err := GetGCSPathForProwJobURL(pjLog, pj.Status.URL)
+	if err != nil {
+		pjLog.WithError(err).WithField("prowJobURL", pj.Status.URL).Error("error getting GCS path for prow job URL")
+		return err
+	}
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile(), gcs.GetDefaultJunitFile()})
 	var clusterMatches []string
@@ -633,6 +621,26 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 	pjLog.Infof("processing complete")
 	return nil
+}
+
+func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, error) {
+	// this err validation has moved up
+	// and will exit before we save / update the ProwJob
+	// now, any concerns?
+	pjURL, err := url.Parse(prowJobURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the path in the gcs bucket, strip out the bucket name and anything before it
+	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
+	pjLog.Debugf("gcs bucket path: %+v", path)
+	if path == "" || len(path) == len(pjURL.Path) {
+		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
+		return "", fmt.Errorf(msg)
+	}
+
+	return path, nil
 }
 
 func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []models.ProwPullRequest {

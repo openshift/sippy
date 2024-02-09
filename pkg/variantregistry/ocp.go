@@ -6,12 +6,14 @@ import (
 	"regexp"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
 
@@ -19,6 +21,20 @@ import (
 type OCPVariantLoader struct {
 	BigQueryClient *bigquery.Client
 	VariantManager testidentification.VariantManager
+	bkt            *storage.BucketHandle
+}
+
+func NewOCPVariantLoader(
+	bigQueryClient *bigquery.Client,
+	gcsClient *storage.Client,
+	gcsBucket string) *OCPVariantLoader {
+
+	bkt := gcsClient.Bucket(gcsBucket)
+	return &OCPVariantLoader{
+		BigQueryClient: bigQueryClient,
+		bkt:            bkt,
+	}
+
 }
 
 type prowJobLastRun struct {
@@ -30,7 +46,8 @@ type prowJobLastRun struct {
 // LoadAllJobs queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
 // This effectively is every job that actually ran in the last several years.
 func (v *OCPVariantLoader) LoadAllJobs() error {
-	logrus.Info("Loading all known jobs")
+	log := logrus.WithField("func", "LoadAllJobs")
+	log.Info("Loading all known jobs")
 
 	// TODO: pull presubmits for sippy as well
 
@@ -39,17 +56,17 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	query := v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.JobVariants WHERE true`)
 	_, err := query.Read(context.TODO())
 	if err != nil {
-		logrus.WithError(err).Error("error clearing current registry job variants")
+		log.WithError(err).Error("error clearing current registry job variants")
 		return errors.Wrap(err, "error clearing current registry job variants")
 	}
-	logrus.Warn("deleted all current job variants in the registry")
+	log.Warn("deleted all current job variants in the registry")
 	query = v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.Jobs WHERE true`)
 	_, err = query.Read(context.TODO())
 	if err != nil {
-		logrus.WithError(err).Error("error clearing current registry jobs")
+		log.WithError(err).Error("error clearing current registry jobs")
 		return errors.Wrap(err, "error clearing current registry jobs")
 	}
-	logrus.Warn("deleted all current jobs in the registry")
+	log.Warn("deleted all current jobs in the registry")
 
 	// For the primary list of all job names, we will query everything that's run in the last 3 months:
 	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
@@ -73,16 +90,32 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 			break
 		}
 		if err != nil {
-			logrus.WithError(err).Error("error parsing prowjob name from bigquery")
+			log.WithError(err).Error("error parsing prowjob name from bigquery")
 			return err
 		}
-		logrus.Infof("%+v", jlr)
-		variants := v.GetVariantsForJob(jlr.JobName)
-		logrus.WithField("variants", variants).Debugf("calculated variants for %s", jlr.JobName)
+		jLog := log.WithField("job", jlr.JobName)
+		variants := v.GetVariantsForJob(jLog, jlr.JobName)
+		jLog.WithField("variants", variants).Debug("calculated variants")
+		path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL)
+		if err != nil {
+			jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
+			return err
+		}
+		gcsJobRun := gcs.NewGCSJobRun(v.bkt, path)
+		allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+		jLog.Infof("Found file path matches: %s", allMatches)
+		/*
+			var clusterMatches []string
+			if len(allMatches) > 0 {
+				clusterMatches = allMatches[0]
+			}
+
+			clusterData := pl.getClusterData(ctx, path, clusterMatches)
+		*/
 
 		count++
 	}
-	logrus.WithField("count", count).Info("loaded primary job list")
+	log.WithField("count", count).Info("loaded primary job list")
 
 	// TODO: load the current registry job to variant mappings. join and then iterate building out go structure.
 	// keep variants list sorted for comparisons.
@@ -92,8 +125,8 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	return nil
 }
 
-func (v *OCPVariantLoader) GetVariantsForJob(jobName string) map[string]string {
-	variants := v.IdentifyVariants(jobName, "0.0")
+func (v *OCPVariantLoader) GetVariantsForJob(jLog logrus.FieldLogger, jobName string) map[string]string {
+	variants := v.IdentifyVariants(jLog, jobName, "0.0")
 
 	return variants
 }
@@ -207,7 +240,7 @@ const (
 	VariantUpgrade       = "Upgrade"
 )
 
-func (v OCPVariantLoader) IdentifyVariants(jobName, release string) map[string]string {
+func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, release string) map[string]string {
 	variants := map[string]string{}
 
 	/*
@@ -239,7 +272,7 @@ func (v OCPVariantLoader) IdentifyVariants(jobName, release string) map[string]s
 		// and sippy will need to know to strip out other variants if it's an aggregated job
 	}
 
-	determinePlatform(variants, jobName)
+	determinePlatform(jLog, variants, jobName)
 
 	arch := determineArchitecture(jobName)
 	if arch != "" {
@@ -247,7 +280,7 @@ func (v OCPVariantLoader) IdentifyVariants(jobName, release string) map[string]s
 	}
 
 	// Network
-	network := determineNetwork(jobName, release)
+	network := determineNetwork(jLog, jobName, release)
 	if network != "" {
 		variants[VariantNetwork] = network
 	}
@@ -329,14 +362,14 @@ func (v OCPVariantLoader) IdentifyVariants(jobName, release string) map[string]s
 	}
 
 	if len(variants) == 0 {
-		log.WithField("job", jobName).Warn("unable to determine any variants for job")
+		jLog.WithField("job", jobName).Warn("unable to determine any variants for job")
 		return map[string]string{}
 	}
 
 	return variants
 }
 
-func determinePlatform(variants map[string]string, jobName string) {
+func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
 	platform := ""
 
 	// Platforms
@@ -361,7 +394,7 @@ func determinePlatform(variants map[string]string, jobName string) {
 	}
 
 	if platform == "" {
-		logrus.WithField("jobName", jobName).Warn("unable to determine platform from job name")
+		jLog.WithField("jobName", jobName).Warn("unable to determine platform from job name")
 	}
 	variants[VariantPlatform] = platform
 }
@@ -380,7 +413,7 @@ func determineArchitecture(jobName string) string {
 	}
 }
 
-func determineNetwork(jobName, release string) string {
+func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 	if ovnRegex.MatchString(jobName) {
 		return "ovn"
 	} else if sdnRegex.MatchString(jobName) {
@@ -390,7 +423,7 @@ func determineNetwork(jobName, release string) string {
 		ovnBecomesDefault, _ := version.NewVersion("4.12")
 		releaseVersion, err := version.NewVersion(release)
 		if err != nil {
-			log.Warningf("could not determine network type for %q", jobName)
+			jLog.Warningf("could not determine network type for %q", jobName)
 			return ""
 		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
 			return "ovn"
