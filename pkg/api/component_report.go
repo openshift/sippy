@@ -107,7 +107,7 @@ func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBuck
 		gcsBucket: gcsBucket,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
+	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
 
 func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -119,6 +119,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 	cacheOption cache.RequestOptions,
 ) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
+		CacheType:     "data",
 		client:        client,
 		gcsBucket:     gcsBucket,
 		cacheOption:   cacheOption,
@@ -130,7 +131,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReport](client.Cache, cacheOption, generator, generator.GenerateReport, apitype.ComponentReport{})
+	return generator.GenerateReport(client.Cache, generator)
 }
 
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -141,6 +142,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
+		CacheType:     "data",
 		client:        client,
 		gcsBucket:     gcsBucket,
 		cacheOption:   cacheOption,
@@ -152,12 +154,13 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getReportFromCacheOrGenerate[apitype.ComponentReportTestDetails](client.Cache, cacheOption, generator, generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+	return generator.GenerateTestDetailsReport(client.Cache, generator)
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
 // not add public fields to this struct if they are not valid as a cache key.
 type componentReportGenerator struct {
+	CacheType     string
 	client        *bqcachedclient.Client
 	gcsBucket     string
 	cacheOption   cache.RequestOptions
@@ -192,21 +195,29 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 	}, errs
 }
 
-func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
-	before := time.Now()
-	baseStatus, sampleStatus, errs := c.getTestStatusFromBigQuery()
+func (c *componentReportGenerator) GenerateReport(cc cache.Cache, cacheKey interface{}) (apitype.ComponentReport, []error) {
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](cc, c.cacheOption, cacheKey, c.GenerateComponentReportTestStatus, apitype.ComponentReportTestStatus{})
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
-
-	report := c.generateComponentTestReport(baseStatus, sampleStatus)
-	now := time.Now()
-	report.GeneratedAt = &now
+	report := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
+	report.GeneratedAt = componentReportTestStatus.GeneratedAt
 	return report, nil
 }
 
-func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.ComponentReportTestDetails, []error) {
+func (c *componentReportGenerator) GenerateComponentReportTestStatus() (apitype.ComponentReportTestStatus, []error) {
+	before := time.Now()
+	componentReportTestStatus, errs := c.getTestStatusFromBigQuery()
+	if len(errs) > 0 {
+		return apitype.ComponentReportTestStatus{}, errs
+	}
+	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
+	now := time.Now()
+	componentReportTestStatus.GeneratedAt = &now
+	return componentReportTestStatus, nil
+}
+
+func (c *componentReportGenerator) GenerateTestDetailsReport(cc cache.Cache, cacheKey interface{}) (apitype.ComponentReportTestDetails, []error) {
 	if c.TestID == "" ||
 		c.Platform == "" ||
 		c.Network == "" ||
@@ -215,21 +226,29 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 		c.Variant == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all parameters have to be defined for test details: test_id, platform, network, upgrade, arch, variant")}
 	}
-	before := time.Now()
-	baseStatus, sampleStatus, errs := c.getJobRunTestStatusFromBigQuery()
+	componentJobRunTestReportStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](cc, c.cacheOption, cacheKey, c.GenerateJobRunTestReportStatus, apitype.ComponentJobRunTestReportStatus{})
 	if len(errs) > 0 {
 		return apitype.ComponentReportTestDetails{}, errs
 	}
-	log.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
-	report := c.generateComponentTestDetailsReport(baseStatus, sampleStatus)
-	now := time.Now()
-	report.GeneratedAt = &now
+	report := c.generateComponentTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
+	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 	return report, nil
 }
 
+func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
+	before := time.Now()
+	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery()
+	if len(errs) > 0 {
+		return apitype.ComponentJobRunTestReportStatus{}, errs
+	}
+	log.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
+	now := time.Now()
+	componentJobRunTestReportStatus.GeneratedAt = &now
+	return componentJobRunTestReportStatus, nil
+}
+
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
-	map[string][]apitype.ComponentJobRunTestStatusRow,
-	map[string][]apitype.ComponentJobRunTestStatusRow,
+	apitype.ComponentJobRunTestReportStatus,
 	[]error,
 ) {
 	errs := []error{}
@@ -356,12 +375,11 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 		errs = append(errs, sampleErrs...)
 	}
 
-	return baseStatus, sampleStatus, errs
+	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (
-	map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
-	map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
+	apitype.ComponentReportTestStatus,
 	[]error,
 ) {
 	errs := []error{}
@@ -551,7 +569,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
 	}
-	return baseStatus, sampleStatus, errs
+	return apitype.ComponentReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
 var componentAndCapabilityGetter func(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string)

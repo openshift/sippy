@@ -15,8 +15,8 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-// getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
-func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
+// getDataFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
+func getDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
 	// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
 	if isStructWithNoPublicFields(cacheKey) {
 		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
@@ -40,8 +40,12 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.Reque
 				}).Debugf("cache hit")
 				var cr T
 				if err := json.Unmarshal(res, &cr); err != nil {
+					// we got bad data back from the cache,
+					// should we log error then fall through and call generateFn?
 					return defaultVal, []error{err}
 				}
+				// unfortunately we don't get an error when the cached object does not match the defaultVal type
+				// our jsonCacheKey needs to change if the underlying data changes
 				return cr, nil
 			}
 			log.Infof("cache miss for cache key: %s", string(jsonCacheKey))
