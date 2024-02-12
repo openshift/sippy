@@ -9,12 +9,15 @@ import {
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
+import { StringParam } from 'use-query-params'
+import { useQueryParam } from 'use-query-params'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
 import ReleaseSelector from './ReleaseSelector'
+import SavedViews from './SavedViews'
 import Tooltip from '@mui/material/Tooltip'
 
 const useStyles = makeStyles((theme) => ({
@@ -34,7 +37,27 @@ export default function CompReadyMainInputs(props) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
+  const [viewParam, setViewParam] = useQueryParam('view', StringParam)
+
   const varsContext = useContext(CompReadyVarsContext)
+  const views = varsContext.views
+
+  const applyView = (view) => {
+    console.log('Setting view to', view)
+    const config = views[view].config
+    varsContext.setGroupByCheckedItems(config['Group By'])
+    varsContext.setExcludeArchesCheckedItems(config['Exclude Arches'])
+    varsContext.setExcludeNetworksCheckedItems(config['Exclude Networks'])
+    varsContext.setExcludeCloudsCheckedItems(config['Exclude Clouds'])
+    varsContext.setExcludeUpgradesCheckedItems(config['Exclude Upgrades'])
+    varsContext.setExcludeVariantsCheckedItems(config['Exclude Variants'])
+    varsContext.setConfidence(config['Confidence'])
+    varsContext.setPity(config['Pity'])
+    varsContext.setMinFail(config['Min Fail'])
+    varsContext.setIgnoreMissing(config['Ignore Missing'])
+    varsContext.setIgnoreDisruption(config['Ignore Disruption'])
+  }
+
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -100,6 +123,13 @@ export default function CompReadyMainInputs(props) {
         ></ReleaseSelector>
       </div>
       <div>
+        <SavedViews
+          view={viewParam === undefined ? 'Default' : viewParam}
+          views={views}
+          applyView={applyView}
+          viewParam={viewParam}
+          setViewParam={setViewParam}
+        />
         <CheckBoxList
           headerName="Group By"
           displayList={groupByList}
