@@ -24,7 +24,7 @@ func NewModeFlags() *ModeFlags {
 }
 
 func (f *ModeFlags) BindFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&f.Mode, "mode", f.Mode, "Mode to use: {ocp,kube,none}")
+	fs.StringVar(&f.Mode, "mode", f.Mode, "Mode to use: {ocp,none}")
 }
 
 func (f *ModeFlags) GetServerMode() sippyserver.Mode {
@@ -42,7 +42,7 @@ func (f *ModeFlags) GetVariantManager() testidentification.VariantManager {
 	case ModeNone:
 		return testidentification.NewEmptyVariantManager()
 	default:
-		panic("only ocp, kube, or none is allowed")
+		panic("only ocp or none is allowed")
 	}
 }
 
