@@ -66,7 +66,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
-	fs.StringSliceVar(&f.Loaders, "loaders", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 }

@@ -60,7 +60,7 @@ available [here](config/README.md).
 
 ```bash
 ./sippy load \
-  --loaders prow
+  --loader prow
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -77,8 +77,8 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
 
 ```bash
 ./sippy load \
-  --loaders prow
-  --loaders github
+  --loader prow
+  --loader github
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -93,7 +93,7 @@ releases and architectures like this:
 
 ```
 ./sippy load \
-  --loaders releases
+  --loader releases
   --arch amd64 \
   --arch arm64 \
   --release 4.12 \

@@ -36,7 +36,7 @@ sleep 5
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 make build
-./sippy load --loaders prow,releases \
+./sippy load --loader prow --loader releases \
   --release 4.7 \
   --database-dsn="postgresql://postgres:password@localhost:$PSQL_PORT/postgres" \
   --mode=ocp \
