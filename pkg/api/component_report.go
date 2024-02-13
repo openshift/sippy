@@ -131,7 +131,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return generator.GenerateReport(client.Cache, generator)
+	return generator.GenerateReport()
 }
 
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -154,11 +154,14 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return generator.GenerateTestDetailsReport(client.Cache, generator)
+	return generator.GenerateTestDetailsReport()
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
 // not add public fields to this struct if they are not valid as a cache key.
+// CacheType is used to differentiate cached objects using the
+// same componentReportGenerator (report vs. data, etc.) and used when the struct
+// is marshalled for the cache key
 type componentReportGenerator struct {
 	CacheType     string
 	client        *bqcachedclient.Client
@@ -195,8 +198,8 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 	}, errs
 }
 
-func (c *componentReportGenerator) GenerateReport(cc cache.Cache, cacheKey interface{}) (apitype.ComponentReport, []error) {
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](cc, c.cacheOption, cacheKey, c.GenerateComponentReportTestStatus, apitype.ComponentReportTestStatus{})
+func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, c, c.GenerateComponentReportTestStatus, apitype.ComponentReportTestStatus{})
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
@@ -217,7 +220,7 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus() (apitype.
 	return componentReportTestStatus, nil
 }
 
-func (c *componentReportGenerator) GenerateTestDetailsReport(cc cache.Cache, cacheKey interface{}) (apitype.ComponentReportTestDetails, []error) {
+func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.ComponentReportTestDetails, []error) {
 	if c.TestID == "" ||
 		c.Platform == "" ||
 		c.Network == "" ||
@@ -226,7 +229,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport(cc cache.Cache, cac
 		c.Variant == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all parameters have to be defined for test details: test_id, platform, network, upgrade, arch, variant")}
 	}
-	componentJobRunTestReportStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](cc, c.cacheOption, cacheKey, c.GenerateJobRunTestReportStatus, apitype.ComponentJobRunTestReportStatus{})
+	componentJobRunTestReportStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](c.client.Cache, c.cacheOption, c, c.GenerateJobRunTestReportStatus, apitype.ComponentJobRunTestReportStatus{})
 	if len(errs) > 0 {
 		return apitype.ComponentReportTestDetails{}, errs
 	}

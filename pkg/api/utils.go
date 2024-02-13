@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/pkg/errors"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -15,7 +17,7 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-// getDataFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
+// getDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
 func getDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
 	// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
 	if isStructWithNoPublicFields(cacheKey) {
@@ -40,12 +42,8 @@ func getDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.Request
 				}).Debugf("cache hit")
 				var cr T
 				if err := json.Unmarshal(res, &cr); err != nil {
-					// we got bad data back from the cache,
-					// should we log error then fall through and call generateFn?
-					return defaultVal, []error{err}
+					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
 				}
-				// unfortunately we don't get an error when the cached object does not match the defaultVal type
-				// our jsonCacheKey needs to change if the underlying data changes
 				return cr, nil
 			}
 			log.Infof("cache miss for cache key: %s", string(jsonCacheKey))
