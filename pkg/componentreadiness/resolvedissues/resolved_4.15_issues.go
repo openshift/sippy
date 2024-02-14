@@ -130,4 +130,201 @@ func init() {
 			},
 		},
 	})
+
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "cluster install:0cb1bb27e418491b1ffdacab58c5c8c0",
+		TestName: "install should succeed: overall",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "no-upgrade",
+			Arch:     "amd64",
+			Platform: "gcp",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/release/pull/48714",
+				ResolutionDate: mustTime("2024-02-13T11:58:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1757192985587486720",
+				StartTime: mustTime("2024-02-13T00:00:24Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756468298477735936",
+				StartTime: mustTime("2024-02-11T00:00:46Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756105880006299648",
+				StartTime: mustTime("2024-02-10T00:00:40Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1755743516648017920",
+				StartTime: mustTime("2024-02-09T00:00:45Z"),
+			},
+		},
+	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "cluster install:2bc0fe9de9a98831c20e569a21d7ded9",
+		TestName: "install should succeed: cluster creation",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "no-upgrade",
+			Arch:     "amd64",
+			Platform: "gcp",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/release/pull/48714",
+				ResolutionDate: mustTime("2024-02-13T11:58:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1757192985587486720",
+				StartTime: mustTime("2024-02-13T00:00:24Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756468298477735936",
+				StartTime: mustTime("2024-02-11T00:00:46Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756105880006299648",
+				StartTime: mustTime("2024-02-10T00:00:40Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1755743516648017920",
+				StartTime: mustTime("2024-02-09T00:00:45Z"),
+			},
+		},
+	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "Operator results:a2bfee761baf19bc7be479d649c54603",
+		TestName: "operator conditions operator-lifecycle-manager-catalog",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "no-upgrade",
+			Arch:     "amd64",
+			Platform: "gcp",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/release/pull/48714",
+				ResolutionDate: mustTime("2024-02-13T11:58:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1757192985587486720",
+				StartTime: mustTime("2024-02-13T00:00:24Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756468298477735936",
+				StartTime: mustTime("2024-02-11T00:00:46Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756105880006299648",
+				StartTime: mustTime("2024-02-10T00:00:40Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1755743516648017920",
+				StartTime: mustTime("2024-02-09T00:00:45Z"),
+			},
+		},
+	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "Operator results:8ff97a6ad27e7d31f1898878dfb086cf",
+		TestName: "operator conditions operator-lifecycle-manager",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "no-upgrade",
+			Arch:     "amd64",
+			Platform: "gcp",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/release/pull/48714",
+				ResolutionDate: mustTime("2024-02-13T11:58:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1757192985587486720",
+				StartTime: mustTime("2024-02-13T00:00:24Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756468298477735936",
+				StartTime: mustTime("2024-02-11T00:00:46Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756105880006299648",
+				StartTime: mustTime("2024-02-10T00:00:40Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1755743516648017920",
+				StartTime: mustTime("2024-02-09T00:00:45Z"),
+			},
+		},
+	})
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "Operator results:55a75a8aa11231d0ca36a4d65644e1dd",
+		TestName: "operator conditions operator-lifecycle-manager-packageserver",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "ovn",
+			Upgrade:  "no-upgrade",
+			Arch:     "amd64",
+			Platform: "gcp",
+		},
+		Issue: Issue{
+			IssueType: "PayloadBug",
+			PayloadBug: &PayloadIssue{
+				PullRequestURL: "https://github.com/openshift/release/pull/48714",
+				ResolutionDate: mustTime("2024-02-13T11:58:33Z"), // date is after all those jobruns were over
+			},
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1757192985587486720",
+				StartTime: mustTime("2024-02-13T00:00:24Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756468298477735936",
+				StartTime: mustTime("2024-02-11T00:00:46Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1756105880006299648",
+				StartTime: mustTime("2024-02-10T00:00:40Z"),
+			},
+			{
+				// glibc
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-operator-framework-olm-release-4.15-periodics-e2e-gcp-olm/1755743516648017920",
+				StartTime: mustTime("2024-02-09T00:00:45Z"),
+			},
+		},
+	})
+
 }
