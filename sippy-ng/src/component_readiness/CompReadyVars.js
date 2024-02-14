@@ -373,7 +373,31 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
   }
 
-  const [views, setViews] = useState(initialViews)
+  // Save user views to browser local storage; if empty, we're saving {}.
+  const saveViewsToLocal = (views) => {
+    const viewsToSave = Object.entries(views).reduce((acc, [key, value]) => {
+      if (value.config.class === 'user') {
+        acc[key] = value
+      }
+      return acc
+    }, {})
+    localStorage.setItem('savedViews', JSON.stringify(viewsToSave))
+  }
+
+  // See if user has saved views.
+  const loadViewsFromBrowser = () => {
+    // If there is data in the local storage and it has keys, then merge it with the
+    // initial views.  Otherwise, just use the initial views.
+    const savedViews = localStorage.getItem('savedViews')
+    if (savedViews && Object.keys(JSON.parse(savedViews)).length > 0) {
+      const mergedViews = { ...initialViews, ...JSON.parse(savedViews) }
+      return mergedViews
+    } else {
+      return initialViews
+    }
+  }
+
+  const [views, setViews] = useState(loadViewsFromBrowser())
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
@@ -558,6 +582,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         handleGenerateReport,
         views,
         setViews,
+        saveViewsToLocal,
       }}
     >
       {children}

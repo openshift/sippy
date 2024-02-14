@@ -79,6 +79,9 @@ export default function SavedViews(props) {
         [newViewName]: newViewConfig,
       }
       setViews(newViews)
+
+      // Update on save.
+      varsContext.saveViewsToLocal(newViews)
       handleCloseSaveDialog()
     }
   }
@@ -97,6 +100,9 @@ export default function SavedViews(props) {
     const newViews = { ...views }
     delete newViews[viewToDelete]
     setViews(newViews)
+
+    // Update on delete.
+    varsContext.saveViewsToLocal(newViews)
 
     // User deleted their current view, so switch to Default.
     if (viewToDelete === buttonName) {
