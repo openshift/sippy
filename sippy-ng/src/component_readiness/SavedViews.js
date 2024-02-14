@@ -8,6 +8,7 @@ export default function SavedViews(props) {
   const [buttonName, setButtonName] = React.useState(props.view)
 
   const setViewParam = props.setViewParam
+  const views = props.views
 
   setViewParam(buttonName)
   const handleClick = (event) => {
@@ -28,7 +29,9 @@ export default function SavedViews(props) {
         color="primary"
         onClick={handleClick}
       >
-        View: {buttonName}
+        <Tooltip title={views[buttonName].config.help}>
+          View: {buttonName}
+        </Tooltip>
       </Button>
       <Menu
         id="view-menu"
@@ -49,7 +52,7 @@ export default function SavedViews(props) {
               handleClose()
             }}
           >
-            {e}
+            <Tooltip title={views[e].config.help}>{e}</Tooltip>
           </MenuItem>
         ))}
       </Menu>

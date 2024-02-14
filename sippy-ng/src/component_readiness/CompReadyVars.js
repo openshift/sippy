@@ -267,6 +267,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const views = {
     Default: {
       config: {
+        help: 'The most commonly used view and focuses on amd64',
         'Group By': defaultGroupByCheckedItems,
         'Exclude Arches': defaultExcludeArchesCheckedItems,
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
@@ -282,6 +283,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
     Strict: {
       config: {
+        help: 'Default view except Pity and MinFail set to 0',
         'Group By': defaultGroupByCheckedItems,
         'Exclude Arches': defaultExcludeArchesCheckedItems,
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
@@ -297,6 +299,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
     UpgradeVariants: {
       config: {
+        help: 'Default view but groups by upgrades and variants',
         'Group By': ['upgrade', 'variants'],
         'Exclude Arches': defaultExcludeArchesCheckedItems,
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
@@ -312,6 +315,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
     ARM64: {
       config: {
+        help: 'Default view but only for amd64',
         'Group By': defaultGroupByCheckedItems,
         'Exclude Arches': ['amd64', 'ppc64le', 's390x', 'heterogeneous'],
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
@@ -327,6 +331,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
     heterogeneous: {
       config: {
+        help: 'Default view but only for heterogeneous architecture',
         'Group By': defaultGroupByCheckedItems,
         'Exclude Arches': ['amd64', 'arm64', 'ppc64le', 's390x'],
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
@@ -342,6 +347,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     },
     AWS_GCP_Azure: {
       config: {
+        help: 'Default view but only for AWS, GCP, and Azure only',
         'Group By': defaultGroupByCheckedItems,
         'Exclude Arches': defaultExcludeArchesCheckedItems,
         'Exclude Networks': defaultExcludeNetworksCheckedItems,
