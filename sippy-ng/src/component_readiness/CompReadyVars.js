@@ -264,7 +264,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapability(capabilityParam)
   }
 
-  const views = {
+  const initialViews = {
     Default: {
       config: {
         help: 'The most commonly used view and focuses on amd64',
@@ -372,6 +372,8 @@ export const CompReadyVarsProvider = ({ children }) => {
       },
     },
   }
+
+  const [views, setViews] = useState(initialViews)
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
@@ -555,6 +557,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         setEnvironmentParam,
         handleGenerateReport,
         views,
+        setViews,
       }}
     >
       {children}

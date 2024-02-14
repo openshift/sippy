@@ -124,8 +124,13 @@ export default function CompReadyMainInputs(props) {
       </div>
       <div>
         <SavedViews
-          view={viewParam === undefined ? 'Default' : viewParam}
+          view={
+            viewParam === undefined || !(viewParam in views)
+              ? 'Default'
+              : viewParam
+          }
           views={views}
+          setViews={varsContext.setViews}
           applyView={applyView}
           viewParam={viewParam}
           setViewParam={setViewParam}
