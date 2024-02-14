@@ -103,8 +103,9 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 
 func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.ComponentReportTestVariants, []error) {
 	generator := componentReportGenerator{
-		client:    client,
-		gcsBucket: gcsBucket,
+		GeneratorVersion: 1,
+		client:           client,
+		gcsBucket:        gcsBucket,
 	}
 
 	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
@@ -119,12 +120,12 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 	cacheOption cache.RequestOptions,
 ) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
-		CacheType:     "data",
-		client:        client,
-		gcsBucket:     gcsBucket,
-		cacheOption:   cacheOption,
-		BaseRelease:   baseRelease,
-		SampleRelease: sampleRelease,
+		GeneratorVersion: 1,
+		client:           client,
+		gcsBucket:        gcsBucket,
+		cacheOption:      cacheOption,
+		BaseRelease:      baseRelease,
+		SampleRelease:    sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestExcludeOptions:            excludeOption,
@@ -142,12 +143,12 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
-		CacheType:     "data",
-		client:        client,
-		gcsBucket:     gcsBucket,
-		cacheOption:   cacheOption,
-		BaseRelease:   baseRelease,
-		SampleRelease: sampleRelease,
+		GeneratorVersion: 1,
+		client:           client,
+		gcsBucket:        gcsBucket,
+		cacheOption:      cacheOption,
+		BaseRelease:      baseRelease,
+		SampleRelease:    sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestExcludeOptions:            excludeOption,
@@ -159,16 +160,17 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
 // not add public fields to this struct if they are not valid as a cache key.
-// CacheType is used to differentiate cached objects using the
-// same componentReportGenerator (report vs. data, etc.) and used when the struct
-// is marshalled for the cache key
+// GeneratorVersion is used to indicate breaking changes in the versions of
+// the cached data.  It is used when the struct
+// is marshalled for the cache key and should be changed when the object being
+// cached changes in a way that will no longer be compatible with any prior cached version.
 type componentReportGenerator struct {
-	CacheType     string
-	client        *bqcachedclient.Client
-	gcsBucket     string
-	cacheOption   cache.RequestOptions
-	BaseRelease   apitype.ComponentReportRequestReleaseOptions
-	SampleRelease apitype.ComponentReportRequestReleaseOptions
+	GeneratorVersion int
+	client           *bqcachedclient.Client
+	gcsBucket        string
+	cacheOption      cache.RequestOptions
+	BaseRelease      apitype.ComponentReportRequestReleaseOptions
+	SampleRelease    apitype.ComponentReportRequestReleaseOptions
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
