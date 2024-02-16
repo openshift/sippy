@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kube-fetchdata
+  namespace: sippy
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid # if we haven't finished the last, don't start a new
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: kube-sippy
+          containers:
+          - name: fetchdata
+            # ImageStreamTags can't interact directly with Kube native CronJobs, but
+            # we can use the latest as published to our registry.
+            image: image-registry.openshift-image-registry.svc:5000/sippy/sippy:latest
+            imagePullPolicy: Always
+            resources:
+              requests:
+                memory: 500M
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            command:
+            - /bin/fetchdata-kube.sh
+            env:
+              - name: SIPPY_DATABASE_DSN
+                valueFrom:
+                  secretKeyRef:
+                    name: kube-postgres
+                    key: dsn
+              #- name: GITHUB_TOKEN
+                #valueFrom:
+                  #secretKeyRef:
+                    #name: sippy-github-token
+                    #key: token
+            volumeMounts:
+            - mountPath: /data
+              name: data
+
