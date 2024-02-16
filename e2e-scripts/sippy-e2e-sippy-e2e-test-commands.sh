@@ -57,13 +57,11 @@ spec:
     command:
     - /bin/sippy
     args:
-    - --server
+    - serve
     - --listen
     - ":8080"
     - --listen-metrics
     -  ":12112"
-    - --local-data
-    -  /opt/sippy-testdata
     - --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
     - --log-level
     - debug
