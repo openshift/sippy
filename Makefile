@@ -7,22 +7,15 @@ CHECK := $(foreach dep,$(DEPS),\
 
 all: test build
 
-build: builddir clean npm frontend sippy sippy-daemon
-
 verify: lint
 
 builddir:
 	mkdir -p sippy-ng/build
 	touch sippy-ng/build/index.html
 
-frontend:
+build: builddir clean npm
 	cd sippy-ng; npm run build
-
-sippy:
-	go build -mod=vendor ./cmd/sippy/...
-
-sippy-daemon:
-	go build -mod=vendor ./cmd/sippy-daemon/...
+	go build -mod=vendor .
 
 test: builddir npm
 	go test -v ./pkg/...
@@ -42,7 +35,6 @@ npm:
 
 clean:
 	rm -f sippy
-	rm -f sippy-daemon
 	rm -rf sippy-ng/build
 	rm -rf sippy-ng/node_modules
 

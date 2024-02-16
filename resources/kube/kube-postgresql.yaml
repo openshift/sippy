@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kube-postgresql
+  namespace: sippy
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1G
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: kube-postgresql
+    app.kubernetes.io/component: kube-postgresql
+    app.kubernetes.io/instance: kube-postgresql
+  name: kube-postgresql
+  namespace: sippy
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    app: kube-postgresql
+  strategy:
+    activeDeadlineSeconds: 21600
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: kube-postgresql
+    spec:
+      containers:
+      - name: postgres
+        image: quay.io/enterprisedb/postgresql
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 5432
+        resources:
+          limits:
+            memory: 2G
+        env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+        volumeMounts:
+          - mountPath: /var/lib/postgresql/data
+            name: db
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: db
+        persistentVolumeClaim:
+          claimName: kube-postgresql
+  test: false
+  triggers:
+  - type: ConfigChange
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-postgresql
+  labels:
+    app: kube-postgresql
+spec:
+  ports:
+   - port: 5432
+     targetPort: 5432
+     protocol: TCP
+  selector:
+   app: kube-postgresql
