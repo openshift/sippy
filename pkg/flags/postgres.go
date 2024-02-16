@@ -98,9 +98,8 @@ func NewPostgresDatabaseFlags() *PostgresFlags {
 	}
 
 	return &PostgresFlags{
-		LogLevel:   logLevel(logger.Info),
-		DSN:        dsn,
-		PinnedTime: PinnedTime(time.Now()),
+		LogLevel: logLevel(logger.Info),
+		DSN:      dsn,
 	}
 }
 
