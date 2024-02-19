@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 	gormlogger "gorm.io/gorm/logger"
@@ -25,8 +24,8 @@ func init() {
 				os.Exit(1)
 			}
 
-			t := time.Time(f.PinnedTime)
-			if err := dbc.UpdateSchema(&t); err != nil {
+			t := f.GetPinnedTime()
+			if err := dbc.UpdateSchema(t); err != nil {
 				fmt.Printf("could not migrate db: %+v", err)
 				os.Exit(1)
 			}

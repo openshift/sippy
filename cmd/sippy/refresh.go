@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -37,8 +35,8 @@ func NewRefreshCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			pinnedDateTime := time.Time(f.DBFlags.PinnedTime)
-			sippyserver.RefreshData(dbc, &pinnedDateTime, f.RefreshOnlyIfEmpty)
+			pinnedDateTime := f.DBFlags.GetPinnedTime()
+			sippyserver.RefreshData(dbc, pinnedDateTime, f.RefreshOnlyIfEmpty)
 			return nil
 		},
 	}

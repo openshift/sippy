@@ -115,7 +115,7 @@ func NewServeCommand() *cobra.Command {
 				log.WithError(err).Fatal("could not load frontend")
 			}
 
-			pinnedDateTime := time.Time(f.DBFlags.PinnedTime)
+			pinnedDateTime := f.DBFlags.GetPinnedTime()
 
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
@@ -128,14 +128,14 @@ func NewServeCommand() *cobra.Command {
 				f.GoogleCloudFlags.StorageBucket,
 				gcsClient,
 				bigQueryClient,
-				&pinnedDateTime,
+				pinnedDateTime,
 				cacheClient,
 				f.CRTimeRoundingFactor,
 			)
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(&pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -148,7 +148,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(&pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}

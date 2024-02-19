@@ -94,8 +94,8 @@ func NewLoadCommand() *cobra.Command {
 			start := time.Now()
 
 			if f.InitDatabase {
-				t := time.Time(f.DBFlags.PinnedTime)
-				if err := dbc.UpdateSchema(&t); err != nil {
+				t := f.DBFlags.GetPinnedTime()
+				if err := dbc.UpdateSchema(t); err != nil {
 					return errors.WithMessage(err, "could not migrate db")
 				}
 			}
@@ -155,7 +155,8 @@ func NewLoadCommand() *cobra.Command {
 			elapsed := time.Since(start)
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
-			sippyserver.RefreshData(dbc, f.DBFlags.PinnedTime.Time(), false)
+			pinnedTime := f.DBFlags.GetPinnedTime()
+			sippyserver.RefreshData(dbc, pinnedTime, false)
 
 			if len(allErrs) > 0 {
 				log.Warningf("%d errors were encountered while loading database:", len(allErrs))

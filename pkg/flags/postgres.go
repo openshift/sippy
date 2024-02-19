@@ -62,12 +62,11 @@ func (l *logLevel) Type() string {
 type PinnedTime time.Time
 
 func (p *PinnedTime) String() string {
-	return time.Time(*p).Format(time.RFC3339)
-}
+	if time.Time(*p).IsZero() {
+		return ""
+	}
 
-func (p *PinnedTime) Time() *time.Time {
-	t := time.Time(*p)
-	return &t
+	return time.Time(*p).Format(time.RFC3339)
 }
 
 func (p *PinnedTime) Set(v string) error {
@@ -81,14 +80,25 @@ func (p *PinnedTime) Set(v string) error {
 }
 
 func (p *PinnedTime) Type() string {
-	return "PinnedTime"
+	return "pinnedTime"
+}
+
+func (f *PostgresFlags) GetPinnedTime() *time.Time {
+	if time.Time(f.pinnedTime).IsZero() {
+		return nil
+	}
+
+	t := time.Time(f.pinnedTime)
+	return &t
 }
 
 // PostgresFlags contains the set of flags needed to connect to a postgres database.
 type PostgresFlags struct {
-	LogLevel   logLevel
-	PinnedTime PinnedTime
-	DSN        string
+	LogLevel logLevel
+	DSN      string
+
+	// pinnedTime should not be exported. Use GetPinnedTime() instead.
+	pinnedTime PinnedTime
 }
 
 func NewPostgresDatabaseFlags() *PostgresFlags {
@@ -98,16 +108,15 @@ func NewPostgresDatabaseFlags() *PostgresFlags {
 	}
 
 	return &PostgresFlags{
-		LogLevel:   logLevel(logger.Info),
-		DSN:        dsn,
-		PinnedTime: PinnedTime(time.Now()),
+		LogLevel: logLevel(logger.Info),
+		DSN:      dsn,
 	}
 }
 
 func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "db-log-level", "GORM database log level")
 	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres")
-	fs.Var(&f.PinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
+	fs.Var(&f.pinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
 }
 
 func (f *PostgresFlags) GetDBClient() (*db.DB, error) {
