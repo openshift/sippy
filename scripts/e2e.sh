@@ -36,10 +36,7 @@ sleep 5
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 make build
-./sippy --load-database \
-  --log-level=debug \
-  --load-prow=true \
-  --load-testgrid=false \
+./sippy load --loader prow --loader releases \
   --release 4.7 \
   --database-dsn="postgresql://postgres:password@localhost:$PSQL_PORT/postgres" \
   --mode=ocp \
@@ -48,10 +45,9 @@ make build
 
 # Spawn sippy server off into a separate process:
 (
-./sippy --server \
+./sippy serve \
   --listen ":18080" \
   --listen-metrics ":12112" \
-  --local-data /opt/sippy-testdata \
   --database-dsn="postgresql://postgres:password@localhost:$PSQL_PORT/postgres" \
   --log-level debug \
   --mode ocp
